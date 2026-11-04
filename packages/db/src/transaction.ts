@@ -1,7 +1,9 @@
 /**
  * Learning HUB — standard transaction atomicity helpers.
  *
- * better-sqlite3 transactions are strictly synchronous.
+ * Transactions are strictly synchronous (better-sqlite3 AND the sqlite-wasm
+ * shim share drizzle-orm/better-sqlite3's sync session, so the same contract
+ * holds on both drivers).
  * Passing an async function throws `TypeError: Transaction function cannot return a promise`.
  * All asynchronous operations must precede withTransaction.
  *
@@ -11,7 +13,7 @@
 import type { BetterSQLiteTransaction } from 'drizzle-orm/better-sqlite3'
 import type { ExtractTablesWithRelations } from 'drizzle-orm/relations'
 import * as schema from './schema'
-import { db, type LearningHubDB } from './index'
+import { getDb, type LearningHubDB } from './index'
 
 /** Transaction handle `withTransaction` callbacks receive (sync SQLite transaction). */
 export type Transaction = BetterSQLiteTransaction<
@@ -30,7 +32,7 @@ export function withTransaction<T>(
   cb: (tx: Transaction) => NonPromise<T>,
   database?: LearningHubDB,
 ): T {
-  const targetDb: LearningHubDB = database ?? db
+  const targetDb: LearningHubDB = database ?? getDb()
   // The `as T` is sound by construction: `NonPromise<T>` is `T` for every
   // callable callback (async ones are `never` and cannot return at all), but
   // TS cannot see through the conditional type to satisfy drizzle's generic.

@@ -26,17 +26,9 @@ import {
   fsrsToCardRow,
   eventBus,
 } from '@learning-hub/core'
-import { db, type LearningHubDB } from './index'
+import { getDb, type LearningHubDB } from './index'
 import { withTransaction, type Transaction } from './transaction'
-import {
-  cards,
-  revlog,
-  streaks,
-  xpEvents,
-  eloEvents,
-  mastery,
-  userSettings,
-} from './schema'
+import { cards, revlog, streaks, xpEvents, eloEvents, mastery, userSettings } from './schema'
 
 /** One card grade to process (all fields optional except cardId and grade). */
 export interface ReviewPayload {
@@ -153,8 +145,7 @@ function executeReviewInTx(
   now: Date,
 ): ReviewResult {
   const confidence: Confidence = payload.confidence === 0 ? 0 : 1
-  const timeMs =
-    typeof payload.timeMs === 'number' && payload.timeMs >= 0 ? payload.timeMs : 5000
+  const timeMs = typeof payload.timeMs === 'number' && payload.timeMs >= 0 ? payload.timeMs : 5000
 
   // a. Load Card
   const card = tx.select().from(cards).where(eq(cards.id, payload.cardId)).get()
@@ -200,7 +191,10 @@ function executeReviewInTx(
   let revlogId = now.getTime()
   const collision = tx.select({ id: revlog.id }).from(revlog).where(eq(revlog.id, revlogId)).get()
   if (collision) {
-    const maxRow = tx.select({ maxId: sql<number>`max(id)` }).from(revlog).get()
+    const maxRow = tx
+      .select({ maxId: sql<number>`max(id)` })
+      .from(revlog)
+      .get()
     revlogId = Math.max(revlogId + 1, (maxRow?.maxId ?? revlogId) + 1)
   }
 
@@ -316,7 +310,7 @@ export async function executeBatchReview(
     return []
   }
 
-  const database = opts?.db ?? db
+  const database = opts?.db ?? getDb()
 
   // 1. Validate payloads
   for (const payload of payloads) {

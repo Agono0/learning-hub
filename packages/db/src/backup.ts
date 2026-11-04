@@ -7,19 +7,19 @@
  * TEXT) — the exact bytes that round-trip back through `restoreAll`.
  *
  * `restoreAll` validates the envelope with zod, then truncates and reinserts
- * everything inside ONE better-sqlite3 transaction (`PRAGMA defer_foreign_keys`
- * keeps FK checks until commit). Rows are inserted with their explicit ids, so
+ * everything inside ONE transaction (`PRAGMA defer_foreign_keys` keeps FK
+ * checks until commit). Rows are inserted with their explicit ids, so
  * append-only event tables (revlog, xp_events, elo_events) keep their ids.
  *
- * NODE-only (better-sqlite3) — server routes and tests only. A `Database`
- * argument lets tests target a throwaway connection; the default is the app DB.
+ * Driver-agnostic: consumes the structural RawSqliteHandle, so it works over
+ * better-sqlite3 AND the sqlite-wasm shim. A handle argument lets tests target
+ * a throwaway connection; the default is the active app DB.
  */
-import Database from 'better-sqlite3'
 import { getTableName, is, Table } from 'drizzle-orm'
 import { z } from 'zod'
 import * as schema from './schema'
 import { ValidationError } from './review-service'
-import { getRawDb } from './index'
+import { getRawDb, type RawSqliteHandle } from './index'
 
 /** Current backup envelope version (bumped on breaking envelope changes). */
 export const BACKUP_VERSION = 1
@@ -49,7 +49,7 @@ const KNOWN_TABLES: ReadonlySet<string> = new Set(
 )
 
 /** All schema tables physically present in the database (excludes sqlite_% and views). */
-function presentTables(database: Database.Database): string[] {
+function presentTables(database: RawSqliteHandle): string[] {
   return (
     database
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
@@ -60,7 +60,7 @@ function presentTables(database: Database.Database): string[] {
 }
 
 /** FK dependencies (child → parent table names) among schema tables. */
-function foreignKeyParents(database: Database.Database, tables: string[]): Map<string, Set<string>> {
+function foreignKeyParents(database: RawSqliteHandle, tables: string[]): Map<string, Set<string>> {
   const parents = new Map<string, Set<string>>()
   for (const table of tables) {
     const fks = database.pragma(`foreign_key_list("${table}")`) as { table: string }[]
@@ -74,14 +74,16 @@ function foreignKeyParents(database: Database.Database, tables: string[]): Map<s
 }
 
 /** Topological order (parents before children); ties keep alphabetical order. */
-function topologicalOrder(database: Database.Database, tables: string[]): string[] {
+function topologicalOrder(database: RawSqliteHandle, tables: string[]): string[] {
   const parents = foreignKeyParents(database, tables)
   const ordered: string[] = []
   const done = new Set<string>()
   const tableSet = new Set(tables)
   let pending = [...tables].sort()
   while (pending.length > 0) {
-    const ready = pending.filter((t) => [...parents.get(t)!].every((p) => done.has(p) || !tableSet.has(p)))
+    const ready = pending.filter((t) =>
+      [...parents.get(t)!].every((p) => done.has(p) || !tableSet.has(p)),
+    )
     if (ready.length === 0) {
       // FK cycle — emit the rest alphabetically; defer_foreign_keys covers ordering.
       ordered.push(...pending)
@@ -98,14 +100,17 @@ function topologicalOrder(database: Database.Database, tables: string[]): string
  * Dump every schema table into a backup envelope. Pass a connection to back up
  * a non-default database (tests); defaults to the app database.
  */
-export function backupAll(database: Database.Database = getRawDb()): BackupFile {
+export function backupAll(database: RawSqliteHandle = getRawDb()): BackupFile {
   const out: BackupFile = {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     tables: {},
   }
   for (const name of topologicalOrder(database, presentTables(database))) {
-    out.tables[name] = database.prepare(`SELECT * FROM "${name}"`).all() as Record<string, unknown>[]
+    out.tables[name] = database.prepare(`SELECT * FROM "${name}"`).all() as Record<
+      string,
+      unknown
+    >[]
   }
   return out
 }
@@ -122,12 +127,14 @@ export interface RestoreResult {
  * transaction (commit fails and rolls back if the restored data violates FKs).
  * Tables missing from the backup are simply emptied — this is a whole-DB restore.
  */
-export function restoreAll(data: unknown, database: Database.Database = getRawDb()): RestoreResult {
+export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()): RestoreResult {
   const parsed = backupFileSchema.safeParse(data)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
     const path = issue ? issue.path.map(String).join('.') : '?'
-    throw new ValidationError(`invalid backup file at "${path}": ${issue?.message ?? 'unexpected shape'}`)
+    throw new ValidationError(
+      `invalid backup file at "${path}": ${issue?.message ?? 'unexpected shape'}`,
+    )
   }
   const backupTables = parsed.data.tables
   const unknownTables = Object.keys(backupTables).filter((name) => !KNOWN_TABLES.has(name))
@@ -161,7 +168,9 @@ export function restoreAll(data: unknown, database: Database.Database = getRawDb
     let rowCount = 0
     for (const [table, rows] of Object.entries(backupTables)) {
       if (rows.length === 0) continue
-      const columns = (database.pragma(`table_info("${table}")`) as { name: string }[]).map((c) => c.name)
+      const columns = (database.pragma(`table_info("${table}")`) as { name: string }[]).map(
+        (c) => c.name,
+      )
       const columnSet = new Set(columns)
       const insert = database.prepare(
         `INSERT INTO "${table}" (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
@@ -182,7 +191,9 @@ export function restoreAll(data: unknown, database: Database.Database = getRawDb
 }
 
 /** Coerce a validated backup value into something better-sqlite3 can bind. */
-function normalizeBackupValue(value: string | number | boolean | null | undefined): string | number | null {
+function normalizeBackupValue(
+  value: string | number | boolean | null | undefined,
+): string | number | null {
   if (value === undefined || value === null) return null
   if (typeof value === 'boolean') return value ? 1 : 0 // SQLite has no boolean type
   return value

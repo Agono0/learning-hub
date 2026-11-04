@@ -35,10 +35,15 @@
  * INTEGER columns return Number when within the safe range, else BigInt
  * (same rule as both better-sqlite3 and the wasm build itself).
  *
- * VFS: never hardcoded. Node opens real files through the default unix VFS;
- * pass `{ vfs: 'opfs-sahpool' }` in the browser later. Caveat: WAL is not
- * supported on shared-nothing VFSes (opfs-sahpool), where
- * `PRAGMA journal_mode = WAL` silently degrades to DELETE (see report).
+ * VFS: never hardcoded. Caveats:
+ *   - The default 'unix' VFS of this wasm build routes file I/O through
+ *     emscripten's in-memory FS — paths never touch the host filesystem in
+ *     Node (an absolute host path fails with SQLITE_CANTOPEN). Real DB images
+ *     must be passed as `Uint8Array` bytes (sqlite3_deserialize); serialize
+ *     back with `capi.sqlite3_js_db_export(db.handle.pointer)`. In the browser,
+ *     pass `{ vfs: 'opfs-sahpool' }` for real persistence.
+ *   - WAL is not supported on shared-nothing VFSes (opfs-sahpool), where
+ *     `PRAGMA journal_mode = WAL` silently degrades to DELETE (see report).
  */
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm'
 
@@ -213,19 +218,32 @@ function openSqliteWasmDatabase(
     // Byte source (better-sqlite3's `new Database(buffer)`): deserialize into memory.
     const bytes = source instanceof Uint8Array ? source : new Uint8Array(source)
     const mem = new sqlite3.oo1.DB(':memory:', 'c', options?.vfs ?? null)
-    const p = sqlite3.wasm.allocFromTypedArray(bytes)
-    const rc = sqlite3.capi.sqlite3_deserialize(
-      mem.pointer,
-      'main',
-      p,
-      bytes.byteLength,
-      bytes.byteLength,
-      0,
-    )
-    if (rc !== 0) {
-      mem.close()
-      throw new Error(`sqlite3_deserialize failed with rc=${rc}`)
+    if (bytes.byteLength > 0) {
+      // Give the deserialized image writable headroom: sqlite3_deserialize gets
+      // szDb = image size and szBuf = allocated buffer size, and space beyond
+      // szDb becomes free page space. Passing szDb === szBuf (as this spike
+      // originally did) leaves ZERO free pages, so any write after the
+      // deserialize — CREATE VIEW, INSERT, even CREATE INDEX — fails with
+      // SQLITE_FULL. Reserve a fixed slab plus ~10% of the image.
+      const headroom = 64 * 1024 + Math.ceil(bytes.byteLength / 10)
+      const buf = new Uint8Array(bytes.byteLength + headroom)
+      buf.set(bytes)
+      const p = sqlite3.wasm.allocFromTypedArray(buf)
+      const rc = sqlite3.capi.sqlite3_deserialize(
+        mem.pointer,
+        'main',
+        p,
+        bytes.byteLength,
+        buf.byteLength,
+        0,
+      )
+      if (rc !== 0) {
+        mem.close()
+        throw new Error(`sqlite3_deserialize failed with rc=${rc}`)
+      }
     }
+    // byteLength === 0: an empty SQLite image — the fresh :memory: DB already
+    // IS that (deserialize of a zero-size image leaves no usable free pages).
     db = mem
   }
   return new SqliteWasmDb(sqlite3, db)

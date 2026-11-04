@@ -3,10 +3,13 @@ import { dirname, join } from 'node:path'
 
 /**
  * Resolve the SQLite database path.
- * Priority: $LEARNING_HUB_DB env var → walk up from cwd to find the repo root
- * (the package.json containing "workspaces") → <repo>/data/learning-hub.db
+ * An explicit argument short-circuits everything (workers inject a
+ * Tauri-provided path this way; initDb({ path }) passes through here).
+ * Priority otherwise: $LEARNING_HUB_DB env var → walk up from cwd to find the
+ * repo root (the package.json containing "workspaces") → <repo>/data/learning-hub.db
  */
-export function resolveDbPath(): string {
+export function resolveDbPath(explicit?: string): string {
+  if (explicit) return explicit
   if (process.env.LEARNING_HUB_DB) return process.env.LEARNING_HUB_DB
   let dir = process.cwd()
   for (let i = 0; i < 10; i++) {
@@ -30,4 +33,3 @@ export function resolveDbPath(): string {
 export function resolveImagesDir(): string {
   return join(dirname(resolveDbPath()), 'images')
 }
-
