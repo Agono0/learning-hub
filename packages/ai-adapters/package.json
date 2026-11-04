@@ -1,0 +1,47 @@
+{
+  "name": "@learning-hub/ai-adapters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Learning HUB AI provider adapters: AI SDK factories for anthropic/openai/openai-compatible/ollama plus a custom-endpoint HTTP provider, all registered into @learning-hub/core's provider registry at import time",
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "ai-sdk",
+    "provider-registry",
+    "learning"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/learning-hub/learning-hub.git"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.96",
+    "@ai-sdk/openai": "^4.0.108",
+    "@ai-sdk/openai-compatible": "^3.0.84",
+    "@learning-hub/core": "*",
+    "ai": "^7.0.162",
+    "zod": "^4.6.7"
+  }
+}

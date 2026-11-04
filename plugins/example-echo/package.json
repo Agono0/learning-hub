@@ -1,0 +1,11 @@
+{
+  "name": "@learning-hub/plugin-example-echo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal Learning HUB plugin: logs completed reviews and adds the `hub-echo` CLI command",
+  "main": "./index.ts",
+  "peerDependencies": {
+    "@learning-hub/core": "*"
+  }
+}

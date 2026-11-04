@@ -1,0 +1,33 @@
+{
+  "name": "learning-hub",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "The research-backed self-learning system: FSRS spaced repetition, curriculum, motivation, addiction defense, ideas — all AI-agent accessible via MCP",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @learning-hub/web",
+    "build": "npm run build --workspace @learning-hub/web",
+    "build:packages": "npm run build --workspace @learning-hub/core && npm run build --workspace @learning-hub/db && npm run build --workspace @learning-hub/cli",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "vitest run --config vitest.e2e.config.mjs",
+    "coverage": "npm run coverage --workspaces --if-present",
+    "check": "npm run typecheck && npm run test",
+    "db:push": "npm run db:push --workspace @learning-hub/db",
+    "db:seed": "npm run db:seed --workspace @learning-hub/db",
+    "mcp": "tsx apps/mcp/src/index.ts",
+    "cli": "tsx apps/cli/src/index.ts",
+    "serve": "tsx apps/server/src/index.ts",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

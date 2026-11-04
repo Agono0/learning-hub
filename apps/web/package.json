@@ -1,0 +1,55 @@
+{
+  "name": "@learning-hub/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Learning HUB web app: Next.js 16 review UI, analytics, curriculum and AI study tools",
+  "license": "MIT",
+  "keywords": [
+    "nextjs",
+    "learning",
+    "spaced-repetition"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/learning-hub/learning-hub.git"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc -p tsconfig.json --noEmit --incremental false"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@learning-hub/ai-adapters": "*",
+    "@learning-hub/core": "*",
+    "@learning-hub/db": "*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@tanstack/react-query": "^5.105.3",
+    "better-sqlite3": "^13.0.3",
+    "cmdk": "^1.1.1",
+    "drizzle-orm": "^0.45.4",
+    "katex": "^0.19.1",
+    "lucide-react": "^1.68.0",
+    "next": "^16.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-force-graph-2d": "^1.29.2",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "unpdf": "^2.1.0",
+    "zod": "^4.6.7",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.4",
+    "@types/katex": "^0.16.7",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.4",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@learning-hub/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Learning HUB MCP stdio server: 14 agent-accessible tools over packages/core + packages/db",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "learning"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/learning-hub/learning-hub.git"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@learning-hub/ai-adapters": "*",
+    "@learning-hub/core": "*",
+    "@learning-hub/db": "*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "drizzle-orm": "^0.45.4",
+    "zod": "^4.6.7"
+  }
+}

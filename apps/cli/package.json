@@ -1,0 +1,34 @@
+{
+  "name": "@learning-hub/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Learning HUB terminal client: capture, review sessions, stats, focus timers and quick quotes",
+  "license": "MIT",
+  "keywords": [
+    "cli",
+    "learning",
+    "spaced-repetition"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/learning-hub/learning-hub.git"
+  },
+  "bin": { "learning-hub": "./src/index.ts" },
+  "publishConfig": {
+    "bin": { "learning-hub": "./dist/index.js" }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @learning-hub/core && npm run build --workspace @learning-hub/db && npm run clean && tsc -p tsconfig.build.json && node scripts/ensure-shebang.mjs",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@learning-hub/core": "*",
+    "@learning-hub/db": "*",
+    "drizzle-orm": "^0.45.4"
+  }
+}

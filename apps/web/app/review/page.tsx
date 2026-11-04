@@ -1,0 +1,642 @@
+'use client'
+
+/**
+ * Review session (Agent A). Per-format rendering for basic / cloze / typein /
+ * mcq / occlusion / proof_step cards, confidence toggle, keyboard 1-4 + space +
+ * e (undo), session energy, and a summary with the .celebrate flourish.
+ *
+ * CLIENT component — imports core via SUBPATHS only (never the barrel: it
+ * drags ai.ts/better-sqlite3 into the client bundle).
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  ArrowRight, Battery, BatteryLow, Check, Eye, Home, RotateCcw, Sparkles, Undo2, X, Zap,
+} from 'lucide-react'
+import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
+import { clozeSegments, isCardAnswerCorrect } from '@learning-hub/core/cards'
+import { applyMistake, initialEnergy, MAX_ENERGY, stepsToShow, workedExampleFade } from '@learning-hub/core/review'
+
+interface CardRow {
+  id: number
+  deckId: number
+  type: CardFormat
+  content: CardContent
+  tags: string[]
+  state: number
+  reps: number
+  stability: number
+  due: string
+}
+interface DeckInfo { id: number; name: string; emoji: string | null; due: number; total: number }
+interface PreReview {
+  due: string; stability: number; difficulty: number; elapsedDays: number; scheduledDays: number
+  reps: number; lapses: number; state: number; lastReview: string | null; learningStep: number
+}
+interface ReviewResponse {
+  ok: boolean
+  preReview: PreReview
+  intervalDays: number
+  xp: number
+  streak: { current: number; best: number }
+}
+interface SessionResult { cardId: number; grade: Grade; intervalDays: number; xp: number }
+
+const GRADES: { grade: Grade; label: string; color: string }[] = [
+  { grade: 1, label: 'Again', color: 'bg-red-600 hover:bg-red-500' },
+  { grade: 2, label: 'Hard', color: 'bg-amber-600 hover:bg-amber-500' },
+  { grade: 3, label: 'Good', color: 'bg-indigo-600 hover:bg-indigo-500' },
+  { grade: 4, label: 'Easy', color: 'bg-emerald-600 hover:bg-emerald-500' },
+]
+
+export default function ReviewPage() {
+  const qc = useQueryClient()
+  const [deckId, setDeckId] = useState<number | null>(null)
+  const [mode, setMode] = useState<'normal' | 'pretest' | 'cram'>('normal')
+  const [limit, setLimit] = useState(20)
+  const [started, setStarted] = useState(false)
+
+  const { data: decksData } = useQuery<{ decks: DeckInfo[] }>({
+    queryKey: ['decks'],
+    queryFn: () => fetch('/api/decks').then((r) => r.json()),
+  })
+  const session = useQuery<{ cards: CardRow[] }>({
+    queryKey: ['review-session', deckId, limit, mode],
+    queryFn: () => fetch(`/api/review?deckId=${deckId ?? ''}&limit=${limit}&mode=${mode}`).then((r) => r.json()),
+    enabled: started && deckId !== null,
+  })
+
+  const [queue, setQueue] = useState<CardRow[]>([])
+  const [idx, setIdx] = useState(0)
+  const [revealed, setRevealed] = useState(false)
+  const [confidence, setConfidence] = useState<Confidence>(1)
+  const [energy, setEnergy] = useState(initialEnergy)
+  const [results, setResults] = useState<SessionResult[]>([])
+  const [undoStack, setUndoStack] = useState<{ card: CardRow; preReview: PreReview; wasMistake: boolean }[]>([])
+  const [typeinValue, setTypeinValue] = useState('')
+  const [mcqPick, setMcqPick] = useState<number | null>(null)
+  const [clozeInput, setClozeInput] = useState<Record<number, string>>({})
+  const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (session.data) {
+      setQueue(session.data.cards)
+      setIdx(0)
+      setResults([])
+      setUndoStack([])
+      setEnergy(initialEnergy())
+      setFinishedAt(null)
+    }
+  }, [session.data])
+
+  const current = queue[idx]
+
+  const resetCardState = useCallback(() => {
+    setRevealed(false)
+    setConfidence(1)
+    setTypeinValue('')
+    setMcqPick(null)
+    setClozeInput({})
+  }, [])
+
+  const gradeMutation = useMutation({
+    mutationFn: async (payload: { cardId: number; grade: Grade; confidence: Confidence }) => {
+      const res = await fetch('/api/review', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...payload, timeMs: 5000, tzOffset: new Date().getTimezoneOffset() }),
+      })
+      return res.json() as Promise<ReviewResponse>
+    },
+    onSuccess: (data, variables) => {
+      if (!data.ok) return
+      const wasMistake = variables.grade === 1
+      setUndoStack((s) => [...s, { card: current!, preReview: data.preReview, wasMistake }])
+      if (wasMistake) setEnergy((e) => applyMistake(e))
+      setResults((r) => [...r, { cardId: variables.cardId, grade: variables.grade, intervalDays: data.intervalDays, xp: data.xp }])
+      // Again → re-learn within this session (once)
+      if (wasMistake) setQueue((q) => [...q, current!])
+      resetCardState()
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+      if (idx + 1 >= queue.length) setFinishedAt(Date.now())
+      else setIdx((i) => i + 1)
+    },
+  })
+
+  const undoMutation = useMutation({
+    mutationFn: async (payload: { cardId: number; preReview: PreReview }) => {
+      const res = await fetch('/api/review/undo', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      return res.json() as Promise<{ ok: boolean }>
+    },
+    onSuccess: (data) => {
+      if (!data.ok || undoStack.length === 0) return
+      const last = undoStack[undoStack.length - 1]!
+      setUndoStack((s) => s.slice(0, -1))
+      setResults((r) => r.slice(0, -1))
+      if (last.wasMistake) setEnergy((e) => Math.min(MAX_ENERGY, e + 1))
+      setQueue((q) => {
+        const copy = [...q]
+        // remove the trailing re-queued copy if it came from this mistake
+        if (last.wasMistake && copy[copy.length - 1]?.id === last.card.id) copy.pop()
+        copy.splice(Math.min(idx, copy.length), 0, last.card)
+        return copy
+      })
+      resetCardState()
+      setFinishedAt(null)
+    },
+  })
+
+  const commit = useCallback((grade: Grade) => {
+    if (!current || gradeMutation.isPending) return
+    gradeMutation.mutate({ cardId: current.id, grade, confidence })
+  }, [current, gradeMutation, confidence])
+
+  const reveal = useCallback(() => setRevealed(true), [])
+
+  // keyboard: 1-4 grade · space reveal/Good · e undo
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!current) return
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          if (!revealed) {
+            reveal()
+          } else {
+            // Enter commits the typed answer for typein AND cloze/multi-blank
+            // cards — the shared core evaluator decides, never a hardcoded
+            // Again. Committing stays disabled while the input is empty.
+            const input = current.content.cloze ? clozeInput : typeinValue
+            if (!answerInputHasText(input)) return
+            commit(isCardAnswerCorrect(current.content, input) ? 3 : 1)
+          }
+        }
+        return
+      }
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (!revealed) reveal()
+        else commit(3)
+      } else if (['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault()
+        if (revealed) commit(Number(e.key) as Grade)
+      } else if (e.key === 'e') {
+        e.preventDefault()
+        if (undoStack.length > 0) undoMutation.mutate({ cardId: undoStack[undoStack.length - 1]!.card.id, preReview: undoStack[undoStack.length - 1]!.preReview })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [current, revealed, commit, reveal, undoStack, typeinValue, clozeInput])
+
+  useEffect(() => {
+    if (revealed) inputRef.current?.blur()
+  }, [revealed])
+
+  const stats = useMemo(() => {
+    const total = results.length
+    const correct = results.filter((r) => r.grade > 1).length
+    return { total, correct, accuracy: total ? Math.round((correct / total) * 100) : 0, xp: results.reduce((a, r) => a + r.xp, 0) }
+  }, [results])
+
+  // ─── Setup screen ───
+  if (!started) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Review</h1>
+        <div className="panel space-y-4">
+          <div>
+            <div className="label mb-2">Deck</div>
+            <div className="flex flex-wrap gap-2">
+              {(decksData?.decks ?? []).map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => setDeckId(d.id)}
+                  className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    deckId === d.id
+                      ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
+                      : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-[#26262b] dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                  }`}
+                >
+                  {d.emoji} {d.name}
+                  <span className="ml-2 text-xs text-neutral-500">{d.due} due</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="label mb-2">Mode</div>
+              <div className="flex gap-2">
+                {(['normal', 'pretest', 'cram'] as const).map((m) => (
+                  <button key={m} onClick={() => setMode(m)} className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300' : ''}`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-neutral-500">
+                {mode === 'normal' && 'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
+                {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
+                {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
+              </p>
+            </div>
+            <div>
+              <div className="label mb-2">Session size</div>
+              <input type="number" min={1} max={100} value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="input" />
+            </div>
+          </div>
+          <button className="btn" disabled={!deckId} onClick={() => setStarted(true)}>
+            <Zap className="h-4 w-4" /> Start session
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Session summary ───
+  if (finishedAt !== null || (!current && results.length > 0)) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Session complete</h1>
+        <div className="panel celebrate space-y-3">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-amber-400" />
+            <div>
+              <div className="text-lg font-bold">{stats.correct} / {stats.total} recalled ({stats.accuracy}%)</div>
+              <div className="text-sm text-neutral-500">+{stats.xp} XP earned</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button className="btn" onClick={() => { setStarted(false); setFinishedAt(null); setResults([]) }}>
+              <RotateCcw className="h-4 w-4" /> New session
+            </button>
+            <a href="/" className="btn-ghost"><Home className="h-4 w-4" /> Dashboard</a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (session.isLoading || !current) {
+    return <div className="panel text-sm text-neutral-500">{session.isLoading ? 'Building session…' : 'No cards due in this deck.'}</div>
+  }
+
+  // ─── Active card ───
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Review</h1>
+        <div className="flex items-center gap-3 text-sm text-neutral-500">
+          <span>{idx + 1} / {queue.length}</span>
+          <EnergyBar energy={energy} />
+        </div>
+      </div>
+
+      <div className="panel min-h-[280px] space-y-4">
+        <div className="flex gap-2 text-[10px] uppercase tracking-widest text-neutral-500">
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">{current.type}</span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">reps {current.reps}</span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">stability {current.stability.toFixed(1)}d</span>
+        </div>
+
+        <CardFront
+          card={current}
+          revealed={revealed}
+          typeinValue={typeinValue}
+          setTypeinValue={setTypeinValue}
+          mcqPick={mcqPick}
+          setMcqPick={setMcqPick}
+          clozeInput={clozeInput}
+          setClozeInput={setClozeInput}
+          inputRef={inputRef}
+        />
+
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          {!revealed ? (
+            <button className="btn" onClick={reveal}>
+              <Eye className="h-4 w-4" /> Reveal <span className="text-xs opacity-70">space</span>
+            </button>
+          ) : (
+            GRADES.map((g) => (
+              <button key={g.grade} className={`btn ${g.color}`} onClick={() => commit(g.grade)} disabled={gradeMutation.isPending}>
+                {g.label} <span className="text-xs opacity-70">{g.grade}</span>
+              </button>
+            ))
+          )}
+          <div className="ml-auto flex items-center gap-1 text-xs">
+            <span className="text-neutral-500">confidence</span>
+            <button
+              onClick={() => setConfidence(1)}
+              className={`rounded px-2 py-1 ${confidence === 1 ? 'bg-emerald-600/20 text-emerald-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+            >
+              <Check className="inline h-3 w-3" /> sure
+            </button>
+            <button
+              onClick={() => setConfidence(0)}
+              className={`rounded px-2 py-1 ${confidence === 0 ? 'bg-amber-600/20 text-amber-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+            >
+              <X className="inline h-3 w-3" /> unsure
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs text-neutral-500">
+        <button
+          className="btn-ghost"
+          disabled={undoStack.length === 0 || undoMutation.isPending}
+          onClick={() => {
+            const last = undoStack[undoStack.length - 1]
+            if (last) undoMutation.mutate({ cardId: last.card.id, preReview: last.preReview })
+          }}
+        >
+          <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
+        </button>
+        <span>keys: 1-4 grade · space reveal/Good · e undo</span>
+        <button className="btn-ghost ml-auto" onClick={() => { setStarted(false); setFinishedAt(null) }}>
+          End session <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function EnergyBar({ energy }: { energy: number }) {
+  const low = energy <= 1
+  const Icon = low ? BatteryLow : Battery
+  return (
+    <span className={`flex items-center gap-1 ${low ? 'text-red-400' : 'text-emerald-400'}`} title="session energy — mistakes drain it">
+      <Icon className="h-4 w-4" />
+      {Array.from({ length: MAX_ENERGY }, (_, i) => (
+        <span key={i} className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-red-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-[#26262b]'}`} />
+      ))}
+    </span>
+  )
+}
+
+function typeinCorrect(value: string, content: CardContent): boolean {
+  const accepted = content.typein?.acceptedAnswers ?? []
+  return accepted.some((a) => a.toLowerCase().trim() === value.toLowerCase().trim())
+}
+
+/** True when the answer input holds any text (typein string or cloze blanks map). */
+function answerInputHasText(input: string | Record<number, string>): boolean {
+  if (typeof input === 'string') return input.trim() !== ''
+  return Object.values(input).some((v) => v.trim() !== '')
+}
+
+// ─── Per-format card rendering ──────────────────────────────────────────────
+
+function CardFront(props: {
+  card: CardRow
+  revealed: boolean
+  typeinValue: string
+  setTypeinValue: (v: string) => void
+  mcqPick: number | null
+  setMcqPick: (i: number | null) => void
+  clozeInput: Record<number, string>
+  setClozeInput: (v: Record<number, string>) => void
+  inputRef: React.RefObject<HTMLInputElement | null>
+}) {
+  const { card, revealed } = props
+  const content = card.content
+
+  if (content.basic) {
+    return (
+      <div className="space-y-4">
+        <div className="text-xl font-medium">{content.basic.front}</div>
+        {revealed && <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-[#26262b]">{content.basic.back}</div>}
+      </div>
+    )
+  }
+
+  if (content.cloze) {
+    const segments = clozeSegments(content.cloze.text)
+    // evaluate ALL blanks with the shared core evaluator (multi-blank aware)
+    const clozeCorrect = isCardAnswerCorrect(content, props.clozeInput)
+    return (
+      <div className="space-y-3">
+        <div className="text-xl leading-loose">
+          {/* segments are a pure function of the card's immutable content —
+              they never reorder or grow, so index keys are stable per card */}
+          {segments.map((seg, i) => {
+            if (seg.kind === 'text') return <span key={i}>{seg.text}</span>
+            const typed = props.clozeInput[seg.index] ?? ''
+            return (
+              <span key={i} className="mx-1 inline-block align-baseline">
+                {revealed ? (
+                  <span className="rounded bg-indigo-600/20 px-2 py-0.5 font-medium text-indigo-300">{seg.answer}</span>
+                ) : content.cloze?.mode === 'typein' ? (
+                  <input
+                    ref={props.inputRef}
+                    value={typed}
+                    onChange={(e) => props.setClozeInput({ ...props.clozeInput, [seg.index]: e.target.value })}
+                    className="mx-1 w-32 rounded border-b-2 border-indigo-500 bg-transparent px-1 py-0.5 text-center outline-none"
+                    placeholder={'␣'.repeat(Math.min(seg.answer.length, 8))}
+                  />
+                ) : (
+                  <span className="rounded border-b-2 border-indigo-500 px-3 text-transparent select-none">{'␣'.repeat(Math.min(seg.answer.length, 8))}</span>
+                )}
+              </span>
+            )
+          })}
+        </div>
+        {content.cloze.hint && !revealed && <div className="text-xs text-neutral-500">hint: {content.cloze.hint}</div>}
+        {revealed && content.cloze.mode === 'typein' && (
+          <div className={`text-sm ${clozeCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+            {clozeCorrect ? 'correct' : `answer: ${content.cloze.answers.join(', ')}`}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (content.typein) {
+    return (
+      <div className="space-y-4">
+        <div className="text-xl font-medium">{content.typein.question}</div>
+        <input
+          ref={props.inputRef}
+          value={props.typeinValue}
+          onChange={(e) => props.setTypeinValue(e.target.value)}
+          disabled={revealed}
+          className="input max-w-md"
+          placeholder="type the answer, Enter to grade"
+        />
+        {revealed && (
+          <div className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-emerald-400' : 'text-red-400'}`}>
+            {typeinCorrect(props.typeinValue, content) ? 'correct' : content.typein.acceptedAnswers.join(' · ')}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (content.mcq) {
+    return (
+      <div className="space-y-4">
+        <div className="text-xl font-medium">{content.mcq.question}</div>
+        {!revealed && <div className="text-sm text-neutral-500">options appear after you commit — recall first (stepwise MCQ)</div>}
+        {revealed && (
+          <div className="space-y-2">
+            {content.mcq.options.map((opt, i) => {
+              const picked = props.mcqPick === i
+              const isCorrect = i === content.mcq!.correctIndex
+              const show = props.mcqPick !== null
+              return (
+                <button
+                  key={i}
+                  onClick={() => props.setMcqPick(i)}
+                  className={`block w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    show && isCorrect
+                      ? 'border-emerald-600 bg-emerald-600/10 text-emerald-300'
+                      : picked
+                        ? 'border-red-600 bg-red-600/10 text-red-300'
+                        : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100 dark:border-[#26262b] dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                  }`}
+                >
+                  {String.fromCharCode(65 + i)}. {opt}
+                </button>
+              )
+            })}
+            {props.mcqPick !== null && content.mcq.rationale && (
+              <div className="text-xs text-neutral-500">{content.mcq.rationale}</div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (content.occlusion) {
+    return <OcclusionView card={card} revealed={revealed} />
+  }
+
+  if (content.proof_step) {
+    const ps = content.proof_step
+    const fade = workedExampleFade(1) // completion-problem level by default
+    const visibleCount = Math.max(1, stepsToShow(1, ps.proofSteps.length))
+    return (
+      <div className="space-y-3">
+        <div className="text-lg font-medium">{ps.theorem}</div>
+        <ol className="space-y-1.5 text-sm">
+          {/* static slice of the card's immutable proof steps — items never
+              reorder or drop, so index keys are safe */}
+          {ps.proofSteps.slice(0, Math.max(ps.stepIndex + 1, visibleCount)).map((step, i) => {
+            const visible = i < visibleCount || i <= ps.stepIndex
+            const isTarget = i === ps.stepIndex
+            return (
+              <li key={i} className={`flex gap-2 ${isTarget ? 'font-medium text-indigo-300' : ''}`}>
+                <span className="text-neutral-500">{i + 1}.</span>
+                <span>{visible ? step : '•••'}</span>
+              </li>
+            )
+          })}
+        </ol>
+        <div className="text-sm text-neutral-500">
+          {revealed ? (
+            <span className="text-base text-emerald-400">
+              justified by: {ps.justification}
+              {ps.sourceLemma ? ` (lemma: ${ps.sourceLemma})` : ''}
+            </span>
+          ) : (
+            <>What justifies step {ps.stepIndex + 1}?</>
+          )}
+        </div>
+        <div className="text-[10px] uppercase tracking-widest text-neutral-600">{fade.label}</div>
+      </div>
+    )
+  }
+
+  if (content.grammar) {
+    const g = content.grammar
+    const parts = g.sentence.split(new RegExp(`(${g.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i'))
+    return (
+      <div className="space-y-3">
+        <div className="label">pattern: {g.pattern}</div>
+        <div className="text-xl">
+          {parts.map((part, i) =>
+            part.toLowerCase() === g.target.toLowerCase() ? (
+              revealed ? (
+                <span key={i} className="rounded bg-indigo-600/20 px-2 font-medium text-indigo-300">{part}</span>
+              ) : (
+                <span key={i} className="rounded border-b-2 border-indigo-500 px-4 text-transparent select-none">{'␣'.repeat(Math.min(part.length, 10))}</span>
+              )
+            ) : (
+              <span key={i}>{part}</span>
+            ),
+          )}
+        </div>
+        {g.translation && revealed && <div className="text-sm text-neutral-500">{g.translation}</div>}
+      </div>
+    )
+  }
+
+  if (content.matching) {
+    return (
+      <div className="space-y-2">
+        <div className="label">matching set (play it in Games)</div>
+        {revealed && (
+          <ul className="list-inside list-disc text-sm text-neutral-300">
+            {content.matching.pairs.map((p, i) => (
+              <li key={i}>{p.left} → {p.right}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  return <div className="text-sm text-neutral-500">Unsupported card format.</div>
+}
+
+/** Image occlusion: absolutely-positioned normalized-rect overlays, labels on reveal. */
+function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean }) {
+  const occ = card.content.occlusion
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+  if (!occ) return null
+  return (
+    <div className="space-y-2">
+      <div
+        className="relative mx-auto max-w-xl overflow-hidden rounded-lg border border-neutral-200 dark:border-[#26262b]"
+        style={{ minHeight: 200 }}
+      >
+        <img
+          src={`/api/images/${occ.imageId}`}
+          alt="occlusion card"
+          className="block w-full"
+          onLoad={(e) => {
+            const img = e.currentTarget
+            setSize({ w: img.clientWidth, h: img.clientHeight })
+          }}
+        />
+        {/* overlays are positioned in normalized 0-1 coords — resize-proof */}
+        {occ.rects.map((rect) => (
+          <div
+            key={rect.id}
+            className={`absolute rounded-sm border ${revealed ? 'border-indigo-400 bg-indigo-500/25' : 'border-neutral-500 bg-neutral-700'}`}
+            style={{
+              left: `${rect.x * 100}%`,
+              top: `${rect.y * 100}%`,
+              width: `${rect.w * 100}%`,
+              height: `${rect.h * 100}%`,
+            }}
+          >
+            {revealed && rect.label && (
+              <span className="absolute inset-0 grid place-items-center text-xs font-medium text-white drop-shadow">
+                {rect.label}
+              </span>
+            )}
+          </div>
+        ))}
+        {size === null && <div className="absolute inset-0 grid place-items-center text-xs text-neutral-500">loading image…</div>}
+      </div>
+      {!revealed && <div className="text-center text-xs text-neutral-500">reveal to show the labels</div>}
+    </div>
+  )
+}

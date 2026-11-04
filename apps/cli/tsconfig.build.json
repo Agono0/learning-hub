@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": [],
+    "paths": {
+      "@learning-hub/core": ["../../packages/core/dist/index.d.ts"],
+      "@learning-hub/db": ["../../packages/db/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

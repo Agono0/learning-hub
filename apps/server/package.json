@@ -1,0 +1,28 @@
+{
+  "name": "@learning-hub/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Learning HUB headless REST server: same brain (packages/core + packages/db) over Node 22+ native http — no web framework",
+  "license": "MIT",
+  "keywords": [
+    "rest",
+    "spaced-repetition",
+    "fsrs",
+    "learning"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/learning-hub/learning-hub.git"
+  },
+  "main": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@learning-hub/core": "*",
+    "@learning-hub/db": "*",
+    "drizzle-orm": "^0.45.4",
+    "zod": "^4.6.7"
+  }
+}

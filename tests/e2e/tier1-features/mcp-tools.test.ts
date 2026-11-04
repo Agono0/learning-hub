@@ -1,0 +1,90 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { McpTestClient } from '../helpers/mcp-client'
+import { getActiveDbPath } from '../helpers/setup'
+
+describe('Tier 1: MCP Server Tools Execution', () => {
+  let client: McpTestClient
+
+  beforeAll(async () => {
+    client = new McpTestClient(getActiveDbPath())
+    await client.start()
+  }, 15000)
+
+  afterAll(() => {
+    client?.stop()
+  })
+
+  it('lists registered MCP tools via tools/list', async () => {
+    const tools = await client.listTools()
+    expect(Array.isArray(tools)).toBe(true)
+    const toolNames = tools.map((t) => t.name)
+
+    expect(toolNames).toContain('idea_create')
+    expect(toolNames).toContain('idea_search')
+    expect(toolNames).toContain('note_create')
+    expect(toolNames).toContain('review_log')
+    expect(toolNames).toContain('review_stats')
+    expect(toolNames).toContain('goal_woop')
+    expect(toolNames).toContain('focus_summary')
+    expect(toolNames).toContain('quote_random')
+    expect(toolNames).toContain('card_generate')
+  })
+
+  it('captures and searches ideas via idea_create and idea_search', async () => {
+    const createRes = await client.callTool('idea_create', {
+      title: 'MCP Autonomous Spaced Repetition Agent',
+      content: 'An agent that creates review decks from chat sessions automatically.',
+      tags: ['mcp', 'automation'],
+    })
+
+    expect(createRes.ok).toBe(true)
+    expect(createRes.idea.id).toBeDefined()
+    expect(createRes.idea.title).toBe('MCP Autonomous Spaced Repetition Agent')
+
+    const searchRes = await client.callTool('idea_search', {
+      query: 'Autonomous',
+    })
+    expect(searchRes.count).toBeGreaterThanOrEqual(1)
+    expect(searchRes.ideas.some((i: any) => i.title.includes('Autonomous'))).toBe(true)
+  })
+
+  it('creates notes and resolves wikilinks via note_create', async () => {
+    const res = await client.callTool('note_create', {
+      title: 'Hebbian Learning Principle',
+      content: 'Neurons that fire together wire together. Contextualized in [[Neural Plasticity]].',
+      supertag: 'DEFINITION',
+    })
+
+    expect(res.ok).toBe(true)
+    expect(res.note.id).toBeDefined()
+    expect(res.note.title).toBe('Hebbian Learning Principle')
+    expect(Array.isArray(res.wikilinksUnresolved)).toBe(true)
+  })
+
+  it('retrieves review retention stats via review_stats', async () => {
+    const res = await client.callTool('review_stats', {})
+
+    expect(res.trueRetention).toBeDefined()
+    expect(typeof res.dueCount).toBe('number')
+  })
+
+  it('generates basic cards without AI via card_generate', async () => {
+    const res = await client.callTool('card_generate', {
+      text: 'What is neurogenesis? :: The creation of new neurons in the brain\nWhat is myelin? :: Insulating layer around nerves',
+      deckName: 'MCP Neuroscience Deck',
+    })
+
+    expect(res.ok).toBe(true)
+    expect(res.created).toBe(2)
+    expect(Array.isArray(res.cardIds)).toBe(true)
+    expect(res.cardIds.length).toBe(2)
+  })
+
+  it('retrieves random quote via quote_random', async () => {
+    const res = await client.callTool('quote_random', {})
+
+    expect(res.quote).toBeDefined()
+    expect(res.quote.text).toBeDefined()
+    expect(res.quote.author).toBeDefined()
+  })
+})
