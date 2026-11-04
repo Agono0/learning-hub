@@ -44,7 +44,11 @@ export function aiErrorResponse(err: unknown): Response {
   const message = err instanceof Error ? err.message : String(err)
   if (message.includes('not configured') || message.includes('Settings')) {
     return Response.json(
-      { ok: false, error: 'AI is not configured — pick a provider and model in Settings.', needsSetup: true },
+      {
+        ok: false,
+        error: 'AI is not configured — pick a provider and model in Settings.',
+        needsSetup: true,
+      },
       { status: 400 },
     )
   }
@@ -95,23 +99,46 @@ export async function readJson<T>(req: Request, schema: z.ZodType<T>): Promise<T
 
 /** JSON error response with a consistent `{ error, detail? }` shape. */
 export function jsonError(status: number, message: string, detail?: unknown): Response {
-  return Response.json(
-    detail !== undefined ? { error: message, detail } : { error: message },
-    { status },
-  )
+  return Response.json(detail !== undefined ? { error: message, detail } : { error: message }, {
+    status,
+  })
 }
 
 /**
- * Wrap a Next.js route handler: ApiError → its status, CardNotFoundError → 404,
+ * Normalize a route context so handlers are runtime-neutral. Next.js 15+/16
+ * passes `{ params: Promise<...> }`; other callers (tests, a future worker
+ * runtime, direct handler invocation) may pass `{ params: {...} }` synchronously
+ * or no context at all. Thenable `params` are awaited; anything else — including
+ * `undefined` — passes through untouched. Handlers that `await ctx.params` work
+ * with every shape, because `await` on a plain value is a no-op.
+ */
+export async function normalizeRouteContext<C>(context: C): Promise<C> {
+  if (context === undefined || context === null) return context
+  const params = (context as { params?: unknown }).params
+  if (
+    params !== undefined &&
+    params !== null &&
+    typeof (params as PromiseLike<unknown>).then === 'function'
+  ) {
+    return { ...(context as object), params: await params } as C
+  }
+  return context
+}
+
+/**
+ * Wrap a route handler: ApiError → its status, CardNotFoundError → 404,
  * ValidationError → 400, everything else → sanitized 500 (`{error:"Internal error"}`)
- * with the real error logged via console.error.
+ * with the real error logged via console.error. The wrapped handler is a pure
+ * Request→Response function (no next/server import), so the same function can
+ * serve from a Next.js route OR a non-Node runtime; the 2nd argument is
+ * normalized via {@link normalizeRouteContext} before the handler sees it.
  */
 export function withRoute<C = unknown>(
   handler: (req: Request, context: C) => Promise<Response>,
 ): (req: Request, context: C) => Promise<Response> {
   return async (req, context) => {
     try {
-      return await handler(req, context)
+      return await handler(req, await normalizeRouteContext(context))
     } catch (err) {
       if (err instanceof ApiError) return jsonError(err.status, err.message, err.detail)
       if (err instanceof CardNotFoundError) return jsonError(404, err.message)

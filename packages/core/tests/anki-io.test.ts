@@ -3,12 +3,14 @@
  * - parseAnkiTxt: Anki plain-text export (headers, TSV rows, cloze syntax)
  * - formatAnkiTxt ↔ parseAnkiTxt lossless round-trip (basic + cloze)
  * - parseApkg against a SYNTHETIC .apkg built in-test (fflate zip + better-sqlite3
- *   legacy collection) — no fixture file needed.
+ *   legacy collection) — no fixture file needed. Tests use the Node DEFAULT
+ *   opener (better-sqlite3 loads lazily at call time) plus a custom in-memory
+ *   SqliteOpener covering the browser path — see also anki-portable.test.ts.
  */
 import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { zipSync, unzipSync, strFromU8 } from 'fflate'
-import { parseAnkiTxt, parseApkg } from '../src/anki'
+import { parseAnkiTxt, parseApkg, type SqliteOpener } from '../src/anki'
 import {
   formatAnkiTxt,
   exportDeckToJSON,
@@ -118,9 +120,19 @@ describe('formatAnkiTxt', () => {
   it('emits cloze cards as single-column lines with the {{cN::…}} markers intact', () => {
     const txt = formatAnkiTxt({
       name: 'D',
-      cards: [{ type: 'cloze', content: { cloze: { text: 'The {{c1::sun}} is hot.', answers: ['sun'], mode: 'basic' } } }],
+      cards: [
+        {
+          type: 'cloze',
+          content: { cloze: { text: 'The {{c1::sun}} is hot.', answers: ['sun'], mode: 'basic' } },
+        },
+      ],
     })
-    expect(txt.split('\n')).toEqual(['#separator:tab', '#html:true', '#deck:D', 'The {{c1::sun}} is hot.'])
+    expect(txt.split('\n')).toEqual([
+      '#separator:tab',
+      '#html:true',
+      '#deck:D',
+      'The {{c1::sun}} is hot.',
+    ])
   })
 
   it('quotes fields containing separators, quotes or newlines', () => {
@@ -137,10 +149,37 @@ describe('formatAnkiTxt ↔ parseAnkiTxt round-trip (lossless for basic + cloze)
   const deck: DeckExportInput = {
     name: 'Round Trip Deck',
     cards: [
-      { type: 'basic', content: { basic: { front: 'What is FSRS?', back: 'A spaced-repetition scheduler' } } },
-      { type: 'basic', content: { basic: { front: 'Quotes test', back: 'He said "hi"\tthere\nfriend' } }, tags: ['hard', 'review'] },
-      { type: 'cloze', content: { cloze: { text: 'The capital of {{c1::France}} is {{c2::Paris}}.', answers: ['France', 'Paris'], mode: 'enumeration' } } },
-      { type: 'cloze', content: { cloze: { text: 'FSRS stands for {{c1::Free Spaced Repetition Scheduler::expansion}}.', answers: ['Free Spaced Repetition Scheduler'], mode: 'basic', hint: 'expansion' } }, tags: ['meta'] },
+      {
+        type: 'basic',
+        content: { basic: { front: 'What is FSRS?', back: 'A spaced-repetition scheduler' } },
+      },
+      {
+        type: 'basic',
+        content: { basic: { front: 'Quotes test', back: 'He said "hi"\tthere\nfriend' } },
+        tags: ['hard', 'review'],
+      },
+      {
+        type: 'cloze',
+        content: {
+          cloze: {
+            text: 'The capital of {{c1::France}} is {{c2::Paris}}.',
+            answers: ['France', 'Paris'],
+            mode: 'enumeration',
+          },
+        },
+      },
+      {
+        type: 'cloze',
+        content: {
+          cloze: {
+            text: 'FSRS stands for {{c1::Free Spaced Repetition Scheduler::expansion}}.',
+            answers: ['Free Spaced Repetition Scheduler'],
+            mode: 'basic',
+            hint: 'expansion',
+          },
+        },
+        tags: ['meta'],
+      },
     ],
   }
 
@@ -199,10 +238,14 @@ describe('JSON deck export', () => {
   it('rejects envelopes that are not a hub deck and reports invalid card contents', () => {
     expect(() => parseHubDeckJson('{"kind":"other"}')).toThrow(/schema mismatch/)
     expect(() => parseHubDeckJson('not json')).toThrow(/not valid JSON/)
-    const parsed = parseHubDeckJson(JSON.stringify({
-      kind: 'learning-hub-deck', version: 1, name: 'D',
-      cards: [{ type: 'basic', content: { basic: { front: 'only front' } } }],
-    }))
+    const parsed = parseHubDeckJson(
+      JSON.stringify({
+        kind: 'learning-hub-deck',
+        version: 1,
+        name: 'D',
+        cards: [{ type: 'basic', content: { basic: { front: 'only front' } } }],
+      }),
+    )
     expect(parsed.invalidCardIndices).toEqual([1])
     expect(parsed.cards).toHaveLength(0)
   })
@@ -217,10 +260,34 @@ CREATE TABLE cards (id INTEGER PRIMARY KEY, nid INTEGER NOT NULL, did INTEGER NO
 `
 
 const MODELS = {
-  basic: { id: 1, name: 'Basic', type: 0, flds: [{ name: 'Front' }, { name: 'Back' }], tmpls: [{ name: 'Card 1' }] },
-  reversed: { id: 2, name: 'Basic (and reversed card)', type: 0, flds: [{ name: 'Front' }, { name: 'Back' }], tmpls: [{ name: 'Card 1' }, { name: 'Card 2' }] },
-  cloze: { id: 3, name: 'Cloze', type: 1, flds: [{ name: 'Text' }, { name: 'Back Extra' }], tmpls: [{ name: 'Cloze' }] },
-  unknown: { id: 4, name: 'IQ Test', type: 0, flds: [{ name: 'A' }, { name: 'B' }, { name: 'C' }], tmpls: [{ name: 'Card 1' }] },
+  basic: {
+    id: 1,
+    name: 'Basic',
+    type: 0,
+    flds: [{ name: 'Front' }, { name: 'Back' }],
+    tmpls: [{ name: 'Card 1' }],
+  },
+  reversed: {
+    id: 2,
+    name: 'Basic (and reversed card)',
+    type: 0,
+    flds: [{ name: 'Front' }, { name: 'Back' }],
+    tmpls: [{ name: 'Card 1' }, { name: 'Card 2' }],
+  },
+  cloze: {
+    id: 3,
+    name: 'Cloze',
+    type: 1,
+    flds: [{ name: 'Text' }, { name: 'Back Extra' }],
+    tmpls: [{ name: 'Cloze' }],
+  },
+  unknown: {
+    id: 4,
+    name: 'IQ Test',
+    type: 0,
+    flds: [{ name: 'A' }, { name: 'B' }, { name: 'C' }],
+    tmpls: [{ name: 'Card 1' }],
+  },
 }
 
 const DECKS = {
@@ -229,12 +296,14 @@ const DECKS = {
 }
 
 /** Build a legacy Anki collection SQLite image and wrap it in a .apkg ZIP. */
-function buildApkg(options: {
-  decks?: typeof DECKS
-  collectionName?: string
-  /** put note 4's card into deck 2, making the collection span two decks */
-  spreadDecks?: boolean
-} = {}): Uint8Array {
+function buildApkg(
+  options: {
+    decks?: typeof DECKS
+    collectionName?: string
+    /** put note 4's card into deck 2, making the collection span two decks */
+    spreadDecks?: boolean
+  } = {},
+): Uint8Array {
   const db = new Database(':memory:')
   db.exec(LEGACY_DDL)
   db.prepare(
@@ -254,18 +323,31 @@ function buildApkg(options: {
 
   const insertNote = db.prepare(
     // usn/dgus/csum/flags/data are literals — bind id, guid, mid, mod, tags, flds, sfld
-    'INSERT INTO notes (id, guid, mid, mod, usn, tags, dgus, flds, sfld, csum, flags, data) VALUES (?, ?, ?, ?, 0, ?, \'\', ?, ?, 0, 0, \'\')',
+    "INSERT INTO notes (id, guid, mid, mod, usn, tags, dgus, flds, sfld, csum, flags, data) VALUES (?, ?, ?, ?, 0, ?, '', ?, ?, 0, 0, '')",
   )
   insertNote.run(1, 'g1', MODELS.basic.id, 0, ' geo ', 'Front 1\x1fBack 1', 'Front 1')
   insertNote.run(2, 'g2', MODELS.reversed.id, 0, '', 'Front 2\x1fBack 2', 'Front 2')
-  insertNote.run(3, 'g3', MODELS.cloze.id, 0, '', 'The capital of {{c1::France}} is {{c2::Paris}}.\x1fextra', 'The capital…')
+  insertNote.run(
+    3,
+    'g3',
+    MODELS.cloze.id,
+    0,
+    '',
+    'The capital of {{c1::France}} is {{c2::Paris}}.\x1fextra',
+    'The capital…',
+  )
   insertNote.run(4, 'g4', MODELS.unknown.id, 0, '', 'A\x1fB\x1fC', 'A')
 
   const insertCard = db.prepare(
-    'INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \'\')',
+    "INSERT INTO cards (id, nid, did, ord, mod, usn, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags, data) VALUES (?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '')",
   )
   const lastDid = options.spreadDecks ? 2 : 1
-  for (const [id, nid, did] of [[1, 1, 1], [2, 2, 1], [3, 3, 1], [4, 4, lastDid]] as const) {
+  for (const [id, nid, did] of [
+    [1, 1, 1],
+    [2, 2, 1],
+    [3, 3, 1],
+    [4, 4, lastDid],
+  ] as const) {
     insertCard.run(id, nid, did)
   }
 
@@ -276,8 +358,8 @@ function buildApkg(options: {
 }
 
 describe('parseApkg', () => {
-  it('maps Basic / Basic (and reversed card) / Cloze models and reports skipped ones', () => {
-    const deck = parseApkg(buildApkg())
+  it('maps Basic / Basic (and reversed card) / Cloze models and reports skipped ones', async () => {
+    const deck = await parseApkg(buildApkg())
     expect(deck.name).toBe('Imported::Sub Deck')
     expect(deck.skippedModels).toEqual(['IQ Test'])
 
@@ -295,40 +377,86 @@ describe('parseApkg', () => {
     expect(cloze.answers).toEqual(['France', 'Paris'])
   })
 
-  it('falls back to the common :: parent when a collection spans several subdecks', () => {
-    const deck2 = parseApkg(buildApkg({
-      spreadDecks: true,
-      decks: { 1: { id: 1, name: 'Parent::A' }, 2: { id: 2, name: 'Parent::B' } },
-    }))
+  it('falls back to the common :: parent when a collection spans several subdecks', async () => {
+    const deck2 = await parseApkg(
+      buildApkg({
+        spreadDecks: true,
+        decks: { 1: { id: 1, name: 'Parent::A' }, 2: { id: 2, name: 'Parent::B' } },
+      }),
+    )
     expect(deck2.name).toBe('Parent')
   })
 
-  it('validates every mapped card and round-trips through formatAnkiTxt', () => {
-    const deck = parseApkg(buildApkg())
+  it('validates every mapped card and round-trips through formatAnkiTxt', async () => {
+    const deck = await parseApkg(buildApkg())
     for (const card of deck.cards) {
       expect(validateCardContent(card.format, card.content).ok).toBe(true)
     }
-    const txt = formatAnkiTxt({ name: deck.name, cards: deck.cards.map((c) => ({ type: c.format, content: c.content, tags: c.tags })) })
+    const txt = formatAnkiTxt({
+      name: deck.name,
+      cards: deck.cards.map((c) => ({ type: c.format, content: c.content, tags: c.tags })),
+    })
     expect(parseAnkiTxt(txt).cards).toHaveLength(deck.cards.length)
   })
 
-  it('reads collection.anki21 when the legacy anki2 entry is absent', () => {
+  it('reads collection.anki21 when the legacy anki2 entry is absent', async () => {
     const bytes = buildApkg({ collectionName: 'collection.anki21' })
-    expect(parseApkg(bytes).cards).toHaveLength(4)
+    expect((await parseApkg(bytes)).cards).toHaveLength(4)
   })
 
-  it('throws a helpful error for a ZIP without a legacy collection', () => {
+  it('throws a helpful error for a ZIP without a legacy collection', async () => {
     const bytes = zipSync({ 'collection.anki21b': Buffer.from('zstd-bytes') })
-    expect(() => parseApkg(bytes)).toThrow(/collection\.anki21b|no legacy collection/)
+    await expect(parseApkg(bytes)).rejects.toThrow(/collection\.anki21b|no legacy collection/)
   })
 
-  it('throws on input that is not a ZIP at all', () => {
-    expect(() => parseApkg(Buffer.from('definitely not a zip'))).toThrow()
+  it('throws on input that is not a ZIP at all', async () => {
+    await expect(parseApkg(Buffer.from('definitely not a zip'))).rejects.toThrow()
   })
 
   it('the synthetic fixture really is a zip containing a SQLite collection', () => {
     const files = unzipSync(buildApkg())
     expect(Object.keys(files)).toContain('collection.anki2')
     expect(strFromU8(files['collection.anki2']!.slice(0, 15))).toContain('SQLite format 3')
+  })
+
+  it('accepts a custom in-memory SqliteOpener — no better-sqlite3 involved (browser path)', async () => {
+    let closed = 0
+    const opener: SqliteOpener = () => ({
+      prepare(sql: string) {
+        if (sql.includes('FROM col')) {
+          return {
+            get: () => ({
+              models: JSON.stringify({ 7: { id: 7, name: 'Basic', type: 0 } }),
+              decks: JSON.stringify({ 3: { id: 3, name: 'In-Memory Deck' } }),
+            }),
+            all: () => [],
+          }
+        }
+        if (sql.includes('FROM notes')) {
+          return {
+            get: () => undefined,
+            all: () => [{ mid: 7, tags: 'a b', flds: 'Hello\x1fWorld' }],
+          }
+        }
+        if (sql.includes('FROM cards')) {
+          return { get: () => undefined, all: () => [{ did: 3 }] }
+        }
+        throw new Error(`unexpected statement: ${sql}`)
+      },
+      close() {
+        closed++
+      },
+    })
+
+    // the entry bytes are never decoded — the fake opener is the database
+    const zip = zipSync({ 'collection.anki2': new Uint8Array([1, 2, 3]) })
+    const deck = await parseApkg(zip, { openDatabase: opener })
+
+    expect(closed).toBe(1) // handle is closed exactly once
+    expect(deck.name).toBe('In-Memory Deck')
+    expect(deck.skippedModels).toEqual([])
+    expect(deck.cards).toEqual([
+      { format: 'basic', content: { basic: { front: 'Hello', back: 'World' } }, tags: ['a', 'b'] },
+    ])
   })
 })

@@ -4,8 +4,10 @@ import {
   getPluginContributions,
   listPlugins,
   loadPlugins,
+  registerBundledPlugin,
   registerPlugin,
   resetPlugins,
+  type LearningHubPlugin,
 } from '../src/plugin-loader'
 import { eventBus } from '../src/events'
 import { definePlugin, type PluginContext } from '../src/plugin'
@@ -56,13 +58,27 @@ describe('registerPlugin — programmatic / npm-installed plugins', () => {
 
   it('contributions pushed during setup are aggregated in registration order', async () => {
     await registerPlugin({
-      name: 'first', version: '1', setup(ctx: PluginContext) {
-        ctx.mcpTools.push({ name: 'tool_one', description: 'one', inputSchema: {}, handler: () => ({ content: [] }) })
+      name: 'first',
+      version: '1',
+      setup(ctx: PluginContext) {
+        ctx.mcpTools.push({
+          name: 'tool_one',
+          description: 'one',
+          inputSchema: {},
+          handler: () => ({ content: [] }),
+        })
       },
     })
     await registerPlugin({
-      name: 'second', version: '1', setup(ctx: PluginContext) {
-        ctx.mcpTools.push({ name: 'tool_two', description: 'two', inputSchema: {}, handler: () => ({ content: [] }) })
+      name: 'second',
+      version: '1',
+      setup(ctx: PluginContext) {
+        ctx.mcpTools.push({
+          name: 'tool_two',
+          description: 'two',
+          inputSchema: {},
+          handler: () => ({ content: [] }),
+        })
         ctx.cliCommands.push({ name: 'cmd_two', description: 'two', run: () => {} })
       },
     })
@@ -76,9 +92,12 @@ describe('registerPlugin — programmatic / npm-installed plugins', () => {
     const unsubs: (() => void)[] = []
     try {
       await registerPlugin({
-        name: 'listener-plugin', version: '1',
+        name: 'listener-plugin',
+        version: '1',
         setup(ctx: PluginContext) {
-          unsubs.push(ctx.events.on('streak.updated', (p) => seen.push({ current: p.current, best: p.best })))
+          unsubs.push(
+            ctx.events.on('streak.updated', (p) => seen.push({ current: p.current, best: p.best })),
+          )
         },
       })
       eventBus.emit('streak.updated', { current: 4, best: 9 })
@@ -106,14 +125,19 @@ describe('registerPlugin — programmatic / npm-installed plugins', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       const failed = await registerPlugin({
-        name: 'exploding-plugin', version: '1',
+        name: 'exploding-plugin',
+        version: '1',
         setup() {
           throw new Error('setup boom')
         },
       })
       expect(failed).toBeNull()
 
-      const healthy = await registerPlugin({ name: 'healthy-plugin', version: '1', setup: () => {} })
+      const healthy = await registerPlugin({
+        name: 'healthy-plugin',
+        version: '1',
+        setup: () => {},
+      })
       expect(healthy?.plugin.name).toBe('healthy-plugin')
       expect(listPlugins().map((p) => p.plugin.name)).toEqual(['healthy-plugin'])
       expect(String(errorSpy.mock.calls[0]?.[0])).toContain('exploding-plugin')
@@ -133,6 +157,96 @@ describe('registerPlugin — programmatic / npm-installed plugins', () => {
       expect(warnSpy).toHaveBeenCalledTimes(1)
     } finally {
       warnSpy.mockRestore()
+    }
+  })
+})
+
+describe('registerBundledPlugin — bundled imports (mobile path)', () => {
+  it('registers synchronously: listPlugins includes it and contributions aggregate', () => {
+    registerBundledPlugin(
+      definePlugin({
+        name: 'bundled-echo',
+        version: '1.0.0',
+        description: 'compiled into the host bundle',
+        setup(ctx) {
+          ctx.cliCommands.push({ name: 'bundled-cmd', description: 'from bundle', run: () => {} })
+        },
+      }),
+    )
+
+    // no await needed — bundled registration is synchronous
+    const entries = listPlugins()
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.plugin.name).toBe('bundled-echo')
+    expect(entries[0]?.source).toBe('bundled')
+    expect(getPluginContributions().cliCommands.map((c) => c.name)).toEqual(['bundled-cmd'])
+  })
+
+  it('bundled plugins appear alongside scanned ones in listPlugins', async () => {
+    registerBundledPlugin(definePlugin({ name: 'bundled-first', version: '1', setup: () => {} }))
+    const loaded = await loadPlugins([`${fixtureRoot}/good-js`])
+    expect(loaded.map((p) => p.plugin.name)).toEqual(['bundled-first', 'fixture-js'])
+  })
+
+  it('an invalid candidate is logged and skipped — never thrown', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      registerBundledPlugin({ name: 'no-setup' } as LearningHubPlugin)
+      expect(listPlugins()).toEqual([])
+      expect(String(errorSpy.mock.calls[0]?.[0])).toContain('[plugins]')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('duplicate bundled names are skipped (first registration wins)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      registerBundledPlugin(definePlugin({ name: 'once', version: '1', setup: () => {} }))
+      registerBundledPlugin(definePlugin({ name: 'once', version: '2', setup: () => {} }))
+      expect(listPlugins()).toHaveLength(1)
+      expect(listPlugins()[0]?.plugin.version).toBe('1')
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('a sync-throwing setup means the plugin is not registered', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      registerBundledPlugin({
+        name: 'sync-boom',
+        version: '1',
+        setup() {
+          throw new Error('bundled boom')
+        },
+      })
+      expect(listPlugins()).toEqual([])
+      expect(String(errorSpy.mock.calls[0]?.[0])).toContain('sync-boom')
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('an async setup that later rejects removes the entry (isolation contract)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      registerBundledPlugin({
+        name: 'async-boom',
+        version: '1',
+        setup: async () => {
+          throw new Error('late boom')
+        },
+      })
+      // registered immediately (synchronous contract)…
+      expect(listPlugins().map((p) => p.plugin.name)).toEqual(['async-boom'])
+      // …then removed once the rejection lands
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      expect(listPlugins()).toEqual([])
+      expect(String(errorSpy.mock.calls[0]?.[0])).toContain('async-boom')
+    } finally {
+      errorSpy.mockRestore()
     }
   })
 })

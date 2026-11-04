@@ -10,6 +10,7 @@ export default defineConfig({
       // mirror apps/web/tsconfig.json paths so route modules resolve in vitest
       '@learning-hub/core/media': resolve(here, '../../packages/core/src/media.ts'),
       '@learning-hub/core/ai': resolve(here, '../../packages/core/src/ai.ts'),
+      '@learning-hub/core/anki': resolve(here, '../../packages/core/src/anki.ts'),
       '@learning-hub/core': resolve(here, '../../packages/core/src/index.ts'),
       '@learning-hub/db': resolve(here, '../../packages/db/src/index.ts'),
       '@': resolve(here, 'src'),

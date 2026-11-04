@@ -12,10 +12,13 @@
  *
  * Also hosts the .apkg (ZIP + legacy SQLite) importer and the strict plain-text
  * parser used for lossless round-trips with `anki-export.ts` (formatAnkiTxt).
- * NODE-ONLY: importing better-sqlite3/fflate means client bundles must use
- * subpath imports (@learning-hub/core/cards …), never this module via the barrel.
+ *
+ * Runtime-portable: the plain-text and ZIP layers are pure JS (fflate is
+ * webview-safe), and the SQLite driver (better-sqlite3 — Node-only) is loaded
+ * LAZILY inside the default opener, so importing this module never pulls it
+ * in. On browser/webview runtimes, pass `{ openDatabase }` to {@link parseApkg}
+ * with an adapter over any SQLite implementation (sql.js, wa-sqlite, …).
  */
-import Database from 'better-sqlite3'
 import { unzipSync } from 'fflate'
 import { parseCloze } from './cards'
 import type { CardContent } from './types'
@@ -614,6 +617,36 @@ export function parseAnkiTxt(text: string, options?: { defaultDeckName?: string 
 
 // ─── .apkg import ───────────────────────────────────────────────────────────
 
+/**
+ * Minimal synchronous statement surface the .apkg parser consumes — the exact
+ * subset of better-sqlite3's `Statement` it needs (`.get()` / `.all()`, no
+ * parameters bound). Rows come back untyped; the parser narrows them.
+ */
+export interface SqliteStatement {
+  /** First row of the result set, or `undefined` when the result is empty. */
+  get(): unknown
+  /** Every row of the result set (empty array when there are none). */
+  all(): unknown[]
+}
+
+/**
+ * Minimal synchronous SQLite handle the .apkg parser consumes — the exact
+ * subset of better-sqlite3's `Database` it needs. Structural on purpose:
+ * better-sqlite3's `Database` satisfies it as-is, and adapters over sql.js /
+ * wa-sqlite / expo-sqlite can implement it in a few lines.
+ */
+export interface SqliteHandle {
+  prepare(sql: string): SqliteStatement
+  close(): void
+}
+
+/**
+ * Opens the raw SQLite database image (the `collection.anki2` bytes unzipped
+ * from a .apkg). Node default: better-sqlite3, loaded lazily at call time so
+ * this module stays importable on runtimes without Node.
+ */
+export type SqliteOpener = (bytes: Uint8Array) => SqliteHandle
+
 /** Minimal shape of the notetype JSON stored in `col.models`. */
 interface AnkiModel {
   id: number | string
@@ -632,10 +665,18 @@ interface AnkiModel {
  * basic/cloze ParsedCards. Notes on any other model are skipped and their model
  * names reported in `skippedModels`. Media and scheduling state are ignored.
  *
+ * The database is opened through `options.openDatabase` when given (portable
+ * runtimes); otherwise the Node default lazily imports better-sqlite3 — the
+ * ONLY code path that touches it. Async: unzipping is sync, but the lazy
+ * driver load is not.
+ *
  * Throws when `buffer` is not a ZIP or has no readable legacy collection
  * (e.g. the newer zstd-compressed `collection.anki21b` format).
  */
-export function parseApkg(buffer: Uint8Array | ArrayBuffer): ParsedDeck {
+export async function parseApkg(
+  buffer: Uint8Array | ArrayBuffer,
+  options?: { openDatabase?: SqliteOpener },
+): Promise<ParsedDeck> {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
   const files = unzipSync(bytes)
   const collectionKey = ['collection.anki2', 'collection.anki21'].find((k) => k in files)
@@ -646,7 +687,9 @@ export function parseApkg(buffer: Uint8Array | ArrayBuffer): ParsedDeck {
     )
   }
 
-  const db = new Database(Buffer.from(files[collectionKey]))
+  const db = options?.openDatabase
+    ? options.openDatabase(files[collectionKey])
+    : await openSqliteNode(files[collectionKey])
   try {
     const colRow = db.prepare('SELECT models, decks FROM col LIMIT 1').get() as
       { models: string; decks: string } | undefined
@@ -690,6 +733,16 @@ export function parseApkg(buffer: Uint8Array | ArrayBuffer): ParsedDeck {
   } finally {
     db.close()
   }
+}
+
+/**
+ * Node default opener: better-sqlite3, imported lazily so that merely loading
+ * this module (and the barrel) never resolves the driver — the dynamic import
+ * only fires when parseApkg runs WITHOUT a custom `openDatabase`.
+ */
+async function openSqliteNode(bytes: Uint8Array): Promise<SqliteHandle> {
+  const { default: Database } = await import('better-sqlite3')
+  return new Database(Buffer.from(bytes))
 }
 
 /** Map one Anki note onto our card formats, or null when the model is unsupported. */
