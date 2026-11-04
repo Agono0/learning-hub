@@ -267,10 +267,7 @@ export function expandClozeCard(card: AnkiParsedCard): AnkiParsedCard[] {
 /**
  * Parse an Anki deck export (TSV or CSV format).
  */
-export function parseAnkiDecks(
-  input: string,
-  options?: AnkiParseOptions,
-): AnkiParseResult {
+export function parseAnkiDecks(input: string, options?: AnkiParseOptions): AnkiParseResult {
   const defaultDeck = options?.defaultDeckName?.trim() || 'Default'
   const errors: Array<{ line: number; message: string; raw?: string }> = []
 
@@ -426,7 +423,11 @@ export function parseAnkiDecks(
     const back = sanitizeAnkiHtml(backRaw, options?.stripHtml ?? false)
 
     if (!front.trim()) {
-      errors.push({ line: lineNum, message: 'Card front cannot be empty', raw: row.join(delimiter) })
+      errors.push({
+        line: lineNum,
+        message: 'Card front cannot be empty',
+        raw: row.join(delimiter),
+      })
       return
     }
 
@@ -559,7 +560,10 @@ export function parseAnkiTxt(text: string, options?: { defaultDeckName?: string 
   let cursor = 0
   while (cursor < lines.length) {
     const line = lines[cursor]!
-    if (line.trim().length === 0) { cursor++; continue }
+    if (line.trim().length === 0) {
+      cursor++
+      continue
+    }
     if (!line.startsWith('#')) break
     const colon = line.indexOf(':')
     if (colon !== -1) {
@@ -578,12 +582,15 @@ export function parseAnkiTxt(text: string, options?: { defaultDeckName?: string 
   const rowDeckNames: string[] = []
   for (const row of parseDelimitedRows(lines.slice(cursor).join('\n'), separator)) {
     if (row.length === 1 && row[0]!.trim() === '') continue
-    const rowDeck = deckColumn !== undefined && row.length >= deckColumn ? row[deckColumn - 1] : undefined
+    const rowDeck =
+      deckColumn !== undefined && row.length >= deckColumn ? row[deckColumn - 1] : undefined
 
     // Strip metadata columns (highest index first so lower indices stay valid).
-    let fields = [...row]
+    const fields = [...row]
     let tags: string[] = []
-    for (const col of [tagsColumn, deckColumn].filter((c): c is number => c !== undefined).sort((a, b) => b - a)) {
+    for (const col of [tagsColumn, deckColumn]
+      .filter((c): c is number => c !== undefined)
+      .sort((a, b) => b - a)) {
       if (row.length < col) continue
       const idx = col - 1
       if (col === tagsColumn) tags = parseTags(row[idx])
@@ -635,22 +642,24 @@ export function parseApkg(buffer: Uint8Array | ArrayBuffer): ParsedDeck {
   if (!collectionKey) {
     throw new Error(
       'no legacy collection found in .apkg — expected collection.anki2 or collection.anki21 ' +
-      '(zstd-compressed collection.anki21b exports are not supported; re-export with "support older Anki versions" enabled)',
+        '(zstd-compressed collection.anki21b exports are not supported; re-export with "support older Anki versions" enabled)',
     )
   }
 
   const db = new Database(Buffer.from(files[collectionKey]))
   try {
     const colRow = db.prepare('SELECT models, decks FROM col LIMIT 1').get() as
-      | { models: string; decks: string }
-      | undefined
+      { models: string; decks: string } | undefined
     if (!colRow) throw new Error(`invalid ${collectionKey}: missing col table row`)
 
     const models = JSON.parse(colRow.models) as Record<string, AnkiModel>
     const ankiDecks = JSON.parse(colRow.decks) as Record<string, { name?: string }>
 
-    const notes = db.prepare('SELECT mid, tags, flds FROM notes').all() as
-      { mid: number | string; tags: string; flds: string }[]
+    const notes = db.prepare('SELECT mid, tags, flds FROM notes').all() as {
+      mid: number | string
+      tags: string
+      flds: string
+    }[]
     const deckIds = (db.prepare('SELECT DISTINCT did FROM cards').all() as { did: number }[])
       .map((r) => r.did)
       .filter((did) => ankiDecks[String(did)]?.name)
@@ -702,7 +711,8 @@ function mapAnkiModel(model: AnkiModel, fields: string[], tags: string[]): Parse
     return [asBasic(front, back)]
   }
   if (model.name === 'Basic') return [asBasic(front, back)]
-  if (model.name === 'Basic (and reversed card)') return [asBasic(front, back), asBasic(back, front)]
+  if (model.name === 'Basic (and reversed card)')
+    return [asBasic(front, back), asBasic(back, front)]
   return null
 }
 
@@ -718,7 +728,10 @@ function commonPrefix(names: string[]): string {
   let prefix: string[] | null = null
   for (const name of names) {
     const parts = name.split('::')
-    if (prefix === null) { prefix = parts; continue }
+    if (prefix === null) {
+      prefix = parts
+      continue
+    }
     let i = 0
     while (i < prefix.length && i < parts.length && prefix[i] === parts[i]) i++
     prefix = prefix.slice(0, i)

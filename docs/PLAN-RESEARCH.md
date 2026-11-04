@@ -1,6 +1,6 @@
 # PLAN-RESEARCH — the science behind Learning HUB
 
-Compiled by 6 research agents (~120 web searches) on 2026-11-03/04. Key findings that shaped the design, with primary sources.
+The research baseline for the design: ~120 web-searched studies up to 2026, distilled into the key findings that shaped each subsystem, with primary sources.
 
 ## Learning core
 
@@ -44,5 +44,3 @@ Compiled by 6 research agents (~120 web searches) on 2026-11-03/04. Key findings
 ## Agent access
 
 - MCP = open standard connecting AI apps to tools/resources; one stdio server reaches Claude Desktop, Claude Code, Cursor, ChatGPT — [modelcontextprotocol.io](https://modelcontextprotocol.io)
-
-Full URL lists live in the session research reports; this file is the design-facing summary.

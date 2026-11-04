@@ -35,7 +35,7 @@ tests/e2e/
 │   ├── api-client.ts         # Next.js App Router route caller (Request/Response bridge)
 │   ├── cli-runner.ts         # Subprocess runner for `apps/cli/src/index.ts`
 │   └── mcp-client.ts         # Full JSON-RPC 2.0 stdio client for `apps/mcp/src/index.ts`
-├── tier1-features/           # Feature Coverage (Happy path across PROJECT.md inventory)
+├── tier1-features/           # Feature Coverage (happy path across every subsystem)
 │   ├── db-integrity.test.ts
 │   ├── api-decks-cards.test.ts
 │   ├── api-review.test.ts
@@ -81,10 +81,7 @@ Validates state transitions spanning multiple subsystems:
 - **Outliner Bullet-to-Card**: Bullet conversion links `noteId`, `bulletId`, and `cardId`, and re-conversion regenerates the card without duplication.
 - **Knowledge Graph Interconnection**: Note creation with wikilinks forms bidirectional edges in the graph API.
 - **Focus & Friction**: Completed focus sessions capture distraction friction events and award focus XP.
-- **Defect Audits**: Verifies and documents known defect behaviors:
-  - DEF-001: Streak persistence across review sessions.
-  - DEF-004: Foreign key cascade when deleting reading sources with attached highlights.
-  - DEF-009: Bullet-to-card content schema validation.
+- **Regression Audits**: Pins the fixed hardening behaviors — streak persistence across review sessions, foreign-key cascade when deleting reading sources with attached highlights, and bullet-to-card content schema validation.
 
 ### Tier 4: Real-World Application Scenarios
 Simulates realistic end-to-end user workflows:

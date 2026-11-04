@@ -32,8 +32,18 @@ import {
 
 describe('generateDailyQuests', () => {
   it('is deterministic for the same date', () => {
-    const a = generateDailyQuests({ date: '2026-11-04', dueCount: 12, habitsCount: 4, focusMinutesTarget: 25 })
-    const b = generateDailyQuests({ date: '2026-11-04', dueCount: 12, habitsCount: 4, focusMinutesTarget: 25 })
+    const a = generateDailyQuests({
+      date: '2026-11-04',
+      dueCount: 12,
+      habitsCount: 4,
+      focusMinutesTarget: 25,
+    })
+    const b = generateDailyQuests({
+      date: '2026-11-04',
+      dueCount: 12,
+      habitsCount: 4,
+      focusMinutesTarget: 25,
+    })
     expect(a).toEqual(b)
   })
 
@@ -88,9 +98,20 @@ describe('generateDailyQuests', () => {
 
 describe('achievements', () => {
   const KEYS = [
-    'first_review', 'reviews_100', 'reviews_1000', 'streak_7', 'streak_30',
-    'first_teachback', 'first_focus', 'focus_600_minutes', 'first_course',
-    'skill_mastered', 'first_idea', 'idea_evolved', 'journal_7', 'exam_prepped',
+    'first_review',
+    'reviews_100',
+    'reviews_1000',
+    'streak_7',
+    'streak_30',
+    'first_teachback',
+    'first_focus',
+    'focus_600_minutes',
+    'first_course',
+    'skill_mastered',
+    'first_idea',
+    'idea_evolved',
+    'journal_7',
+    'exam_prepped',
     'palace_built',
   ]
 
@@ -104,9 +125,18 @@ describe('achievements', () => {
   })
 
   const zeros = {
-    totalReviews: 0, streakBest: 0, streakCurrent: 0, teachbackCount: 0,
-    focusSessions: 0, focusMinutes: 0, coursesCompleted: 0, masteredSkills: 0,
-    ideasCaptured: 0, ideasEvolved: 0, journalEntries: 0, examsPrepped: 0,
+    totalReviews: 0,
+    streakBest: 0,
+    streakCurrent: 0,
+    teachbackCount: 0,
+    focusSessions: 0,
+    focusMinutes: 0,
+    coursesCompleted: 0,
+    masteredSkills: 0,
+    ideasCaptured: 0,
+    ideasEvolved: 0,
+    journalEntries: 0,
+    examsPrepped: 0,
     palacesBuilt: 0,
   }
 
@@ -115,25 +145,67 @@ describe('achievements', () => {
   })
 
   it('predicates fire at their thresholds', () => {
-    expect(ACHIEVEMENTS.find((a) => a.key === 'first_review')?.check({ ...zeros, totalReviews: 1 })).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'first_review')?.check({ ...zeros, totalReviews: 1 }),
+    ).toBe(true)
     expect(ACHIEVEMENTS.find((a) => a.key === 'first_review')?.check(zeros)).toBe(false)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'reviews_100')?.check({ ...zeros, totalReviews: 100 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'reviews_1000')?.check({ ...zeros, totalReviews: 999 })).toBe(false)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'streak_7')?.check({ ...zeros, streakBest: 7 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'streak_7')?.check({ ...zeros, streakBest: 6 })).toBe(false)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'streak_30')?.check({ ...zeros, streakBest: 30 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'first_teachback')?.check({ ...zeros, teachbackCount: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'first_focus')?.check({ ...zeros, focusSessions: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'focus_600_minutes')?.check({ ...zeros, focusMinutes: 600 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'focus_600_minutes')?.check({ ...zeros, focusMinutes: 599 })).toBe(false)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'first_course')?.check({ ...zeros, coursesCompleted: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'skill_mastered')?.check({ ...zeros, masteredSkills: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'first_idea')?.check({ ...zeros, ideasCaptured: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'idea_evolved')?.check({ ...zeros, ideasEvolved: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'journal_7')?.check({ ...zeros, journalEntries: 7 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'journal_7')?.check({ ...zeros, journalEntries: 6 })).toBe(false)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'exam_prepped')?.check({ ...zeros, examsPrepped: 1 })).toBe(true)
-    expect(ACHIEVEMENTS.find((a) => a.key === 'palace_built')?.check({ ...zeros, palacesBuilt: 1 })).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'reviews_100')?.check({ ...zeros, totalReviews: 100 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'reviews_1000')?.check({ ...zeros, totalReviews: 999 }),
+    ).toBe(false)
+    expect(ACHIEVEMENTS.find((a) => a.key === 'streak_7')?.check({ ...zeros, streakBest: 7 })).toBe(
+      true,
+    )
+    expect(ACHIEVEMENTS.find((a) => a.key === 'streak_7')?.check({ ...zeros, streakBest: 6 })).toBe(
+      false,
+    )
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'streak_30')?.check({ ...zeros, streakBest: 30 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'first_teachback')?.check({ ...zeros, teachbackCount: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'first_focus')?.check({ ...zeros, focusSessions: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'focus_600_minutes')?.check({
+        ...zeros,
+        focusMinutes: 600,
+      }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'focus_600_minutes')?.check({
+        ...zeros,
+        focusMinutes: 599,
+      }),
+    ).toBe(false)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'first_course')?.check({ ...zeros, coursesCompleted: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'skill_mastered')?.check({ ...zeros, masteredSkills: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'first_idea')?.check({ ...zeros, ideasCaptured: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'idea_evolved')?.check({ ...zeros, ideasEvolved: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'journal_7')?.check({ ...zeros, journalEntries: 7 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'journal_7')?.check({ ...zeros, journalEntries: 6 }),
+    ).toBe(false)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'exam_prepped')?.check({ ...zeros, examsPrepped: 1 }),
+    ).toBe(true)
+    expect(
+      ACHIEVEMENTS.find((a) => a.key === 'palace_built')?.check({ ...zeros, palacesBuilt: 1 }),
+    ).toBe(true)
   })
 })
 
@@ -178,7 +250,12 @@ describe('validateWoopGoal', () => {
     expect(validateWoopGoal({ wish: 'Master linear algebra this semester' }).ok).toBe(true)
   })
   it('checks the if-then shape of implementation intentions', () => {
-    expect(validateWoopGoal({ wish: 'Learn Go', ifThenPlan: 'If I feel the urge to scroll, then I will do 3 cards' }).ok).toBe(true)
+    expect(
+      validateWoopGoal({
+        wish: 'Learn Go',
+        ifThenPlan: 'If I feel the urge to scroll, then I will do 3 cards',
+      }).ok,
+    ).toBe(true)
     expect(validateWoopGoal({ wish: 'Learn Go', ifThenPlan: 'do 3 cards' }).ok).toBe(false)
     expect(validateWoopGoal({ wish: 'Learn Go', ifThenPlan: '' }).ok).toBe(true) // optional
   })
@@ -198,7 +275,11 @@ describe('validateWoopGoal', () => {
 // ─── Streaks (extra cases) ──────────────────────────────────────────────────
 
 const baseState: StreakState = {
-  current: 0, best: 0, lastActiveDate: null, freezes: 2, weekendAmulet: false,
+  current: 0,
+  best: 0,
+  lastActiveDate: null,
+  freezes: 2,
+  weekendAmulet: false,
 }
 
 function day(n: number): Date {
@@ -216,7 +297,7 @@ describe('streaks — extra cases', () => {
   })
 
   it('is idempotent within the same day', () => {
-    let s = recordActivity(baseState, day(1))
+    const s = recordActivity(baseState, day(1))
     const again = recordActivity(s, day(1))
     expect(again).toEqual(s)
   })
@@ -313,7 +394,13 @@ describe('streaks — extra cases', () => {
   })
 
   it('updates best streak and preserves streak when freeze protection is consumed in afternoon', () => {
-    let s: StreakState = { ...baseState, current: 3, best: 3, lastActiveDate: '2026-11-01', freezes: 2 }
+    let s: StreakState = {
+      ...baseState,
+      current: 3,
+      best: 3,
+      lastActiveDate: '2026-11-01',
+      freezes: 2,
+    }
     // Missed 2026-11-02 completely. Active on 2026-11-03 at 17:45 UTC
     s = recordActivity(s, new Date('2026-11-03T17:45:00.000Z'))
     expect(s.current).toBe(4)
@@ -323,7 +410,14 @@ describe('streaks — extra cases', () => {
   })
 
   it('updates best streak and preserves streak when weekend amulet is used in afternoon/evening', () => {
-    let s: StreakState = { ...baseState, current: 4, best: 4, lastActiveDate: '2026-11-05', freezes: 0, weekendAmulet: true }
+    let s: StreakState = {
+      ...baseState,
+      current: 4,
+      best: 4,
+      lastActiveDate: '2026-11-05',
+      freezes: 0,
+      weekendAmulet: true,
+    }
     // 2026-11-05 is Thursday. Friday Nov 6 missed. Saturday Nov 7 active at 16:30 UTC
     s = recordActivity(s, new Date('2026-11-07T16:30:00.000Z'))
     expect(s.current).toBe(5)
@@ -333,7 +427,13 @@ describe('streaks — extra cases', () => {
   })
 
   it('safely ignores out-of-order past reviews without breaking streak or rewinding date', () => {
-    let s: StreakState = { ...baseState, current: 5, best: 5, lastActiveDate: '2026-11-05', freezes: 2 }
+    const s: StreakState = {
+      ...baseState,
+      current: 5,
+      best: 5,
+      lastActiveDate: '2026-11-05',
+      freezes: 2,
+    }
     const result = recordActivity(s, new Date('2026-11-04T12:00:00.000Z'))
     expect(result.current).toBe(5)
     expect(result.best).toBe(5)
@@ -342,7 +442,13 @@ describe('streaks — extra cases', () => {
   })
 
   it('resets streak to 1 and preserves best when gap is 3 or more days regardless of review hour', () => {
-    let s: StreakState = { ...baseState, current: 10, best: 10, lastActiveDate: '2026-11-01', freezes: 2 }
+    let s: StreakState = {
+      ...baseState,
+      current: 10,
+      best: 10,
+      lastActiveDate: '2026-11-01',
+      freezes: 2,
+    }
     // Missed 2026-11-02 and 2026-11-03 (gap = 3 days). Active on 2026-11-04 at 18:00 UTC
     s = recordActivity(s, new Date('2026-11-04T18:00:00.000Z'))
     expect(s.current).toBe(1)
@@ -356,7 +462,12 @@ describe('streaks — extra cases', () => {
 
 describe('habits', () => {
   it('validateHabit requires cue + response, warns on craving/reward', () => {
-    const full = validateHabit({ cue: 'After morning coffee', craving: 'feeling sharp', response: 'read 1 page', reward: 'tick the box' })
+    const full = validateHabit({
+      cue: 'After morning coffee',
+      craving: 'feeling sharp',
+      response: 'read 1 page',
+      reward: 'tick the box',
+    })
     expect(full.ok).toBe(true)
     expect(full.warnings).toHaveLength(0)
     const minimal = validateHabit({ cue: 'After lunch', response: '2 push-ups' })
@@ -386,11 +497,17 @@ describe('habits', () => {
     expect(ten.days).toBe(3) // deduped
     expect(ten.stage).toBe('forming')
     expect(ten.daysToNext).toBe(18)
-    const twentyOne = solidifying(Array.from({ length: 21 }, (_, i) => dayKey(new Date(Date.UTC(2026, 0, 1 + i)))))
+    const twentyOne = solidifying(
+      Array.from({ length: 21 }, (_, i) => dayKey(new Date(Date.UTC(2026, 0, 1 + i)))),
+    )
     expect(twentyOne.stage).toBe('solidifying')
-    const sixty = solidifying(Array.from({ length: 60 }, (_, i) => dayKey(new Date(Date.UTC(2026, 0, 1 + i)))))
+    const sixty = solidifying(
+      Array.from({ length: 60 }, (_, i) => dayKey(new Date(Date.UTC(2026, 0, 1 + i)))),
+    )
     expect(sixty.stage).toBe('automatic')
-    const many = solidifying(Array.from({ length: 75 }, (_, i) => dayKey(new Date(Date.UTC(2026, 0, 1 + i)))))
+    const many = solidifying(
+      Array.from({ length: 75 }, (_, i) => dayKey(new Date(Date.UTC(2026, 0, 1 + i)))),
+    )
     expect(many.stage).toBe('automatic')
     expect(many.daysToNext).toBe(0)
     expect(solidifying([]).stage).toBe('forming')
@@ -426,9 +543,7 @@ describe('aggregateWeek', () => {
       { startedAt: '2026-11-02T14:00:00Z', actualMinutes: 10, completed: false }, // ignored
       { startedAt: '2026-11-05T09:00:00Z', actualMinutes: 50, completed: true },
     ],
-    habitLogs: [
-      { date: '2026-11-02' }, { date: '2026-11-02' }, { date: '2026-11-04' },
-    ],
+    habitLogs: [{ date: '2026-11-02' }, { date: '2026-11-02' }, { date: '2026-11-04' }],
     journalEntries: [
       { date: '2026-11-02', mood: 4 },
       { date: '2026-11-03', mood: 2 },

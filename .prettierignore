@@ -1,0 +1,18 @@
+# Dependencies and build artifacts — generated, never formatted
+node_modules/
+dist/
+out/
+.next/
+coverage/
+
+# Local-only / private directories
+data/
+.agents/
+.zcode/
+math-333/
+.husky/_/
+
+# Generated files
+package-lock.json
+*.tsbuildinfo
+next-env.d.ts
