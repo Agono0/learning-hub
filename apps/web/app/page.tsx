@@ -3,7 +3,16 @@
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
-import { Flame, Quote as QuoteIcon, Repeat2, Sparkles, Timer, Zap } from 'lucide-react'
+import {
+  CalendarClock,
+  CirclePlay,
+  Flame,
+  Quote as QuoteIcon,
+  Repeat2,
+  Sparkles,
+  Timer,
+  Zap,
+} from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
@@ -93,6 +102,35 @@ export default function DashboardPage() {
           </Link>
         </div>
       </section>
+
+      {d.openLoops.length > 0 && (
+        <section className="panel">
+          <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            Pick up where you left off
+          </div>
+          <ul className="mt-3 space-y-2">
+            {d.openLoops.map((loop) => (
+              <li key={loop.kind + loop.href}>
+                <Link
+                  href={loop.href}
+                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+                >
+                  {loop.kind === 'lesson' ? (
+                    <CirclePlay className="h-4 w-4 shrink-0 text-indigo-400" />
+                  ) : (
+                    <CalendarClock className="h-4 w-4 shrink-0 text-amber-400" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">
+                    {loop.title}
+                    <span className="text-neutral-500"> · {loop.context}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-indigo-400">continue →</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="grid gap-3 md:grid-cols-2">
         <div className="panel">
