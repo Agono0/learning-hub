@@ -14,12 +14,14 @@ import type { NextConfig } from 'next'
 const isTauri = process.env.LEARNING_HUB_TARGET === 'tauri'
 
 /**
- * Browser-side aliases for the Tauri bundle: the hub worker imports the same
- * handlers/packages as the Node server, whose Node-only branches must resolve
- * (but are never executed) inside the webview. See src/platform/shims/*.
+ * Browser-side aliases (BOTH targets): the hub worker is part of the client
+ * bundle in web mode too (transport.ts constructs it lazily; Turbopack still
+ * bundles it), and its import graph reaches Node-only branches that must
+ * RESOLVE in the browser even though they never execute there. See
+ * src/platform/shims/*.
  */
 const NODE_BUILTINS = ['node:fs', 'node:fs/promises', 'node:path', 'node:module', 'node:url']
-const tauriAliases: Record<string, { browser: string }> = {
+const browserAliases: Record<string, { browser: string }> = {
   'better-sqlite3': { browser: './src/platform/shims/better-sqlite3.ts' },
   '@sqlite.org/sqlite-wasm': { browser: './src/platform/shims/sqlite-wasm.ts' },
   ...Object.fromEntries(
@@ -34,6 +36,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@learning-hub/core', '@learning-hub/db'],
   devIndicators: false,
   env: { NEXT_PUBLIC_LEARNING_HUB_TARGET: isTauri ? 'tauri' : 'web' },
+  turbopack: { resolveAlias: browserAliases },
   ...(isTauri
     ? {
         output: 'export' as const,
@@ -42,7 +45,6 @@ const nextConfig: NextConfig = {
         images: { unoptimized: true },
         trailingSlash: true,
         distDir: '.next-tauri',
-        turbopack: { resolveAlias: tauriAliases },
       }
     : {}),
 }
