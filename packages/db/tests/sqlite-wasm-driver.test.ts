@@ -28,6 +28,7 @@ import { executeReview } from '../src/review-service'
 import { initSqliteWasm, createSqliteWasmDb } from '../src/driver/sqlite-wasm'
 import type { SqliteWasmDatabase } from '../src/driver/sqlite-wasm'
 import { createWasmLearningHubDb } from '../src/driver/sqlite-wasm-drizzle'
+import { schemaTableSql } from '../src/schema-ddl'
 
 let tmpDir: string
 let nextId = 0
@@ -71,105 +72,12 @@ function createBsDb(label: string): Database.Database {
 }
 
 /**
- * Minimal schema DDL copied from packages/db/src/schema.ts (cards, revlog,
- * streaks, xp_events, mastery, elo_events, decks, user_settings). mastery's
- * `references(() => skills.id)` FK clause is omitted because the minimal DB
- * has no skills table; the unique index on skill_id is kept.
+ * The real schema DDL, generated from schema.ts (never hand-copied — copies
+ * drift whenever a column is added).
  */
-const MINIMAL_DDL = `
-CREATE TABLE \`decks\` (
-  \`id\` integer PRIMARY KEY AUTOINCREMENT,
-  \`name\` text NOT NULL,
-  \`description\` text,
-  \`emoji\` text DEFAULT '📚',
-  \`created_at\` text NOT NULL
-);
-CREATE TABLE \`cards\` (
-  \`id\` integer PRIMARY KEY AUTOINCREMENT,
-  \`deck_id\` integer NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
-  \`note_id\` integer,
-  \`bullet_id\` integer,
-  \`type\` text NOT NULL,
-  \`content\` text NOT NULL,
-  \`tags\` text DEFAULT '[]',
-  \`source\` text,
-  \`skill_id\` integer,
-  \`suspended\` integer DEFAULT 0,
-  \`bury_until\` text,
-  \`due\` text NOT NULL,
-  \`stability\` real DEFAULT 0,
-  \`difficulty\` real DEFAULT 0,
-  \`elapsed_days\` integer DEFAULT 0,
-  \`scheduled_days\` integer DEFAULT 0,
-  \`reps\` integer DEFAULT 0,
-  \`lapses\` integer DEFAULT 0,
-  \`state\` integer DEFAULT 0,
-  \`last_review\` text,
-  \`learning_step\` integer DEFAULT 0,
-  \`created_at\` text NOT NULL
-);
-CREATE TABLE \`revlog\` (
-  \`id\` integer PRIMARY KEY,
-  \`card_id\` integer NOT NULL,
-  \`rating\` integer NOT NULL,
-  \`state\` integer NOT NULL,
-  \`elapsed_days\` integer NOT NULL,
-  \`scheduled_days\` integer NOT NULL,
-  \`time_ms\` integer NOT NULL,
-  \`confidence\` integer DEFAULT 1,
-  \`retrievability\` real,
-  \`reviewed_at\` text NOT NULL
-);
-CREATE TABLE \`streaks\` (
-  \`id\` integer PRIMARY KEY AUTOINCREMENT,
-  \`current\` integer DEFAULT 0,
-  \`best\` integer DEFAULT 0,
-  \`last_active_date\` text,
-  \`freezes\` integer DEFAULT 2,
-  \`weekend_amulet\` integer DEFAULT 0,
-  \`updated_at\` text NOT NULL
-);
-CREATE TABLE \`xp_events\` (
-  \`id\` integer PRIMARY KEY AUTOINCREMENT,
-  \`source\` text NOT NULL,
-  \`amount\` integer NOT NULL,
-  \`meta\` text,
-  \`created_at\` text NOT NULL
-);
-CREATE TABLE \`elo_events\` (
-  \`id\` integer PRIMARY KEY AUTOINCREMENT,
-  \`skill_id\` integer,
-  \`rating_before\` real NOT NULL,
-  \`rating_after\` real NOT NULL,
-  \`item_difficulty\` real,
-  \`outcome\` real NOT NULL,
-  \`created_at\` text NOT NULL
-);
-CREATE TABLE \`mastery\` (
-  \`id\` integer PRIMARY KEY AUTOINCREMENT,
-  \`skill_id\` integer NOT NULL UNIQUE,
-  \`p_known\` real DEFAULT 0.1,
-  \`attempts\` integer DEFAULT 0,
-  \`correct\` integer DEFAULT 0,
-  \`elo\` real DEFAULT 1000,
-  \`updated_at\` text NOT NULL
-);
-CREATE TABLE \`user_settings\` (
-  \`id\` text PRIMARY KEY DEFAULT 'default',
-  \`ai_provider\` text DEFAULT 'none',
-  \`ai_model\` text,
-  \`ai_base_url\` text,
-  \`ai_api_key\` text,
-  \`ai_headers\` text,
-  \`desired_retention\` real DEFAULT 0.9,
-  \`session_minutes\` integer DEFAULT 25,
-  \`theme\` text DEFAULT 'dark',
-  \`detox_wizard\` text DEFAULT '{}',
-  \`values_affirmation\` text,
-  \`daily_loop_state\` text DEFAULT '{}',
-  \`updated_at\` text NOT NULL
-);
-`
+const MINIMAL_DDL = schemaTableSql()
+  .map((sql) => `${sql};`)
+  .join('\n')
 
 // ─── (a) raw CRUD parity: shim vs better-sqlite3 ────────────────────────────
 
@@ -450,6 +358,8 @@ describe('(d) executeReview end-to-end over sqlite-wasm', () => {
       })
       .run()
     db.insert(schema.decks).values({ id: 1, name: 'Deck', createdAt: now.toISOString() }).run()
+    // the real schema enforces mastery.skill_id → skills.id
+    db.insert(schema.skills).values({ id: 7, name: 'SQLite basics' }).run()
     db.insert(schema.cards)
       .values({
         id: 1,

@@ -25,6 +25,7 @@ import path from 'node:path'
 import { eq, sql } from 'drizzle-orm'
 import Database from 'better-sqlite3'
 import * as schema from '../src/schema'
+import { schemaTableSql } from '../src/schema-ddl'
 import * as dbpkg from '../src/index' // plain import — must have NO side effects
 import { executeReview } from '../src/review-service'
 
@@ -55,20 +56,9 @@ afterAll(() => {
   }
 })
 
-/** Full 45-table DDL, dumped once from the auto-initialized app DB (same trick as the other suites). */
-let ddlCache: string[] | undefined
+/** Full schema DDL, generated from schema.ts (CREATE TABLE IF NOT EXISTS — idempotent). */
 function fullTableDdl(): string[] {
-  ddlCache ??= (
-    dbpkg
-      .getRawDb()
-      .prepare(
-        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL",
-      )
-      .all() as { sql: string }[]
-  )
-    // initDb's migration runner creates schema_migrations itself → idempotent DDL
-    .map((r) => r.sql.replace(/^CREATE TABLE (?!IF NOT EXISTS)/i, 'CREATE TABLE IF NOT EXISTS '))
-  return ddlCache
+  return schemaTableSql()
 }
 
 /** Full-schema SQLite image bytes, created with the native driver (initDb migrates, never creates tables). */
