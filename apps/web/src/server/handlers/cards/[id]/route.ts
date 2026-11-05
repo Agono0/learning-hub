@@ -102,6 +102,18 @@ export const PATCH = withRoute(async (req: Request, ctx: { params: Promise<{ id:
 
 export const DELETE = withRoute(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params
-  await db.delete(cards).where(eq(cards.id, parseId(id)))
+  const cardId = parseId(id)
+  const [existing] = await db.select().from(cards).where(eq(cards.id, cardId)).limit(1)
+  await db.delete(cards).where(eq(cards.id, cardId))
+  if (existing) {
+    const { computeRecordNaturalKey, recordDeletionTombstone } = await import('@learning-hub/db')
+    const nk = computeRecordNaturalKey('cards', {
+      deck_id: existing.deckId,
+      source_key: existing.sourceKey,
+      type: existing.type,
+      content: JSON.stringify(existing.content),
+    })
+    if (nk) recordDeletionTombstone('cards', nk)
+  }
   return Response.json({ ok: true })
 })

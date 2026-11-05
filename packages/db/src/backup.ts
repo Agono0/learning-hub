@@ -42,14 +42,14 @@ export const backupFileSchema = z.object({
 })
 
 /** Tables defined by the drizzle schema — the restore whitelist. */
-const KNOWN_TABLES: ReadonlySet<string> = new Set(
+export const KNOWN_TABLES: ReadonlySet<string> = new Set(
   Object.values(schema)
     .filter((value) => is(value, Table))
     .map((value) => getTableName(value as Table)),
 )
 
 /** All schema tables physically present in the database (excludes sqlite_% and views). */
-function presentTables(database: RawSqliteHandle): string[] {
+export function presentTables(database: RawSqliteHandle): string[] {
   return (
     database
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
@@ -60,7 +60,10 @@ function presentTables(database: RawSqliteHandle): string[] {
 }
 
 /** FK dependencies (child → parent table names) among schema tables. */
-function foreignKeyParents(database: RawSqliteHandle, tables: string[]): Map<string, Set<string>> {
+export function foreignKeyParents(
+  database: RawSqliteHandle,
+  tables: string[],
+): Map<string, Set<string>> {
   const parents = new Map<string, Set<string>>()
   for (const table of tables) {
     const fks = database.pragma(`foreign_key_list("${table}")`) as { table: string }[]
@@ -74,7 +77,7 @@ function foreignKeyParents(database: RawSqliteHandle, tables: string[]): Map<str
 }
 
 /** Topological order (parents before children); ties keep alphabetical order. */
-function topologicalOrder(database: RawSqliteHandle, tables: string[]): string[] {
+export function topologicalOrder(database: RawSqliteHandle, tables: string[]): string[] {
   const parents = foreignKeyParents(database, tables)
   const ordered: string[] = []
   const done = new Set<string>()
@@ -107,10 +110,22 @@ export function backupAll(database: RawSqliteHandle = getRawDb()): BackupFile {
     tables: {},
   }
   for (const name of topologicalOrder(database, presentTables(database))) {
-    out.tables[name] = database.prepare(`SELECT * FROM "${name}"`).all() as Record<
-      string,
-      unknown
-    >[]
+    if (name === 'sync_configs') {
+      // Device-local credentials NEVER leave the device in backups or cloud sync
+      out.tables[name] = []
+      continue
+    }
+    const rows = database.prepare(`SELECT * FROM "${name}"`).all() as Record<string, unknown>[]
+    if (name === 'user_settings') {
+      // Strip device-local AI API keys and custom auth headers from exported envelopes
+      out.tables[name] = rows.map((r) => ({
+        ...r,
+        ai_api_key: null,
+        ai_headers: null,
+      }))
+    } else {
+      out.tables[name] = rows
+    }
   }
   return out
 }
@@ -161,13 +176,26 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
   const restore = database.transaction(() => {
     database.pragma('defer_foreign_keys = ON')
 
+    // Preserve device-local credentials across destructive restores
+    const savedSyncConfigs = presentSet.has('sync_configs')
+      ? (database.prepare('SELECT * FROM "sync_configs"').all() as Record<string, unknown>[])
+      : []
+    const savedLocalSecrets = presentSet.has('user_settings')
+      ? (database.prepare('SELECT id, ai_api_key, ai_headers FROM "user_settings"').all() as {
+          id: string
+          ai_api_key: string | null
+          ai_headers: string | null
+        }[])
+      : []
+
     for (const table of [...order].reverse()) {
+      if (table === 'sync_configs') continue
       database.prepare(`DELETE FROM "${table}"`).run()
     }
 
     let rowCount = 0
     for (const [table, rows] of Object.entries(backupTables)) {
-      if (rows.length === 0) continue
+      if (table === 'sync_configs' || rows.length === 0) continue
       const columns = (database.pragma(`table_info("${table}")`) as { name: string }[]).map(
         (c) => c.name,
       )
@@ -180,10 +208,26 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
         if (extraKey !== undefined) {
           throw new ValidationError(`backup row for "${table}" has unknown column "${extraKey}"`)
         }
-        insert.run(...columns.map((c) => normalizeBackupValue(row[c])))
+        insert.run(...columns.map((c) => normalizeBackupValue(row[c] as never)))
         rowCount++
       }
     }
+
+    // Re-attach local AI API keys/headers if the restored row had them stripped
+    for (const sec of savedLocalSecrets) {
+      if (sec.ai_api_key || sec.ai_headers) {
+        database
+          .prepare(
+            `UPDATE "user_settings"
+             SET ai_api_key = coalesce(ai_api_key, ?),
+                 ai_headers = coalesce(ai_headers, ?)
+             WHERE id = ?`,
+          )
+          .run(sec.ai_api_key, sec.ai_headers, sec.id)
+      }
+    }
+    void savedSyncConfigs
+
     return { tables: Object.keys(backupTables).length, rows: rowCount }
   })
 
@@ -191,7 +235,7 @@ export function restoreAll(data: unknown, database: RawSqliteHandle = getRawDb()
 }
 
 /** Coerce a validated backup value into something better-sqlite3 can bind. */
-function normalizeBackupValue(
+export function normalizeBackupValue(
   value: string | number | boolean | null | undefined,
 ): string | number | null {
   if (value === undefined || value === null) return null

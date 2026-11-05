@@ -4,7 +4,14 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { fsrsWeightsSchema } from '@learning-hub/core'
-import { db, cards, decks, withTransaction } from '@learning-hub/db'
+import {
+  computeRecordNaturalKey,
+  db,
+  cards,
+  decks,
+  recordDeletionTombstone,
+  withTransaction,
+} from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 const patchDeckSchema = z.object({
@@ -55,10 +62,12 @@ export const DELETE = withRoute(async (_req: Request, ctx: { params: Promise<{ i
   const [existing] = await db.select().from(decks).where(eq(decks.id, deckId)).limit(1)
   if (!existing) return Response.json({ error: 'not found' }, { status: 404 })
 
+  const nk = computeRecordNaturalKey('decks', { name: existing.name })
   withTransaction((tx) => {
     tx.delete(cards).where(eq(cards.deckId, deckId)).run()
     tx.delete(decks).where(eq(decks.id, deckId)).run()
   })
+  if (nk) recordDeletionTombstone('decks', nk)
 
   return Response.json({ ok: true })
 })

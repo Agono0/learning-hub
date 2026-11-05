@@ -1,18 +1,66 @@
 'use client'
 
 /**
- * Backup & Import/Export — one page for moving data in and out:
- * - drag-drop import of all three kinds (.apkg / Anki .txt / our deck .json)
- * - per-deck export buttons (Anki txt + JSON)
- * - whole-database backup download + restore (with a confirm dialog)
+ * Backup, Cloud Sync & Import/Export — one calm hub for data portability:
+ * - Serverless free Cloud Sync (Dropbox, GitHub Secret Gist / Private Repo,
+ *   Google Drive, WebDAV) with optional client-side AES-256-GCM E2EE
+ * - Non-destructive Smart Merge (`?mode=merge`) alongside full Replace restore
+ * - Drag-drop import (.apkg / Anki .txt / deck .json / whole-DB backup .json)
+ * - Per-deck export buttons (Anki txt + JSON)
  *
- * CLIENT component — talks to /api/import, /api/export and /api/backup only.
+ * CLIENT component — talks exclusively via `@/lib/transport` (Hard Rule #1).
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiDownload, apiGet, apiSend } from '@/lib/transport'
-import { AlertTriangle, DatabaseBackup, Download, FileJson, FileUp, Upload, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Cloud,
+  DatabaseBackup,
+  Download,
+  FileJson,
+  FileUp,
+  GitMerge,
+  Lock,
+  RefreshCw,
+  ShieldCheck,
+  Upload,
+  X,
+} from 'lucide-react'
+
+type SyncProviderKind = 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
+
+interface SyncConfigState {
+  provider: SyncProviderKind
+  config: Record<string, string>
+  encryptionEnabled: boolean
+  hasPassphrase: boolean
+  lastSyncedAt: string | null
+  lastSyncRevision: string | null
+  updatedAt: string
+}
+
+interface SyncActionResponse {
+  ok: boolean
+  action?: 'test' | 'pull' | 'push' | 'sync'
+  provider?: SyncProviderKind
+  encrypted?: boolean
+  pulled?: boolean
+  pushed?: boolean
+  mergeResult?: {
+    tablesProcessed: number
+    inserted: number
+    updated: number
+    tombstoned: number
+    rescheduledCards: number
+  } | null
+  revision?: string | null
+  syncedAt?: string | null
+  sync?: SyncConfigState
+  error?: string
+}
 
 interface DeckInfo {
   id: number
@@ -35,20 +83,24 @@ interface ImportResult {
 
 interface RestoreResult {
   ok?: boolean
+  mode?: 'merge' | 'replace'
   tables?: number
   rows?: number
+  tablesProcessed?: number
+  inserted?: number
+  updated?: number
+  tombstoned?: number
+  rescheduledCards?: number
   error?: string
 }
 
-/** Line-based status feed shown under the drop zone. */
 interface StatusLine {
   kind: 'ok' | 'error' | 'info'
   text: string
 }
 
-const APKG_MAX_BYTES = 50 * 1024 * 1024 // base64 cap mirrors the API contract
+const APKG_MAX_BYTES = 50 * 1024 * 1024
 
-/** Shape-check a .json file as a whole-DB backup envelope ({version, exportedAt, tables}). */
 function isBackupEnvelope(
   parsed: unknown,
 ): parsed is { version: number; exportedAt: string; tables: Record<string, unknown[]> } {
@@ -62,6 +114,14 @@ function isBackupEnvelope(
   )
 }
 
+function isEncryptedEnvelope(
+  parsed: unknown,
+): parsed is { encrypted: true; cipher: string; exportedAt: string } {
+  if (!parsed || typeof parsed !== 'object') return false
+  const candidate = parsed as { encrypted?: unknown; cipher?: unknown; ciphertext?: unknown }
+  return candidate.encrypted === true && typeof candidate.ciphertext === 'string'
+}
+
 export default function BackupPage() {
   const qc = useQueryClient()
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -70,12 +130,34 @@ export default function BackupPage() {
   const [deckName, setDeckName] = useState('')
   const [status, setStatus] = useState<StatusLine[]>([])
   const [downloading, setDownloading] = useState(false)
+  const [restorePassphrase, setRestorePassphrase] = useState('')
   const [pendingBackup, setPendingBackup] = useState<{
     name: string
     tables: number
     rows: number
+    encrypted: boolean
     data: unknown
   } | null>(null)
+
+  // Cloud sync form state
+  const [provider, setProvider] = useState<SyncProviderKind>('none')
+  const [cfg, setCfg] = useState<Record<string, string>>({})
+  const [encryptionEnabled, setEncryptionEnabled] = useState(false)
+  const [passphrase, setPassphrase] = useState('')
+  const [syncFeedback, setSyncFeedback] = useState<StatusLine | null>(null)
+
+  const syncQuery = useQuery<{ ok: boolean; sync: SyncConfigState }>({
+    queryKey: ['sync-config'],
+    queryFn: () => apiGet<{ ok: boolean; sync: SyncConfigState }>('/api/sync'),
+  })
+
+  useEffect(() => {
+    const s = syncQuery.data?.sync
+    if (!s) return
+    setProvider(s.provider)
+    setCfg(s.config ?? {})
+    setEncryptionEnabled(s.encryptionEnabled)
+  }, [syncQuery.data])
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
     queryKey: ['decks'],
@@ -83,6 +165,87 @@ export default function BackupPage() {
   })
 
   const log = (line: StatusLine) => setStatus((prev) => [line, ...prev].slice(0, 8))
+
+  const updateCfg = (key: string, value: string) => {
+    setCfg((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const saveSyncMutation = useMutation({
+    mutationFn: () =>
+      apiSend<{ ok: boolean; sync: SyncConfigState }>('/api/sync', 'PUT', {
+        provider,
+        config: cfg,
+        encryptionEnabled,
+        ...(passphrase.trim() ? { passphrase: passphrase.trim() } : {}),
+      }),
+    onSuccess: (res) => {
+      setPassphrase('')
+      void qc.invalidateQueries({ queryKey: ['sync-config'] })
+      setSyncFeedback({
+        kind: 'ok',
+        text: `Cloud Sync settings saved (${res.sync.provider === 'none' ? 'disabled' : res.sync.provider}).`,
+      })
+    },
+    onError: (e) =>
+      setSyncFeedback({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Could not save Cloud Sync settings',
+      }),
+  })
+
+  const runSyncMutation = useMutation({
+    mutationFn: async (action: 'test' | 'pull' | 'push' | 'sync') => {
+      // Save unsaved config changes first if running a live sync/pull/push
+      if (action !== 'test') {
+        await apiSend('/api/sync', 'PUT', {
+          provider,
+          config: cfg,
+          encryptionEnabled,
+          ...(passphrase.trim() ? { passphrase: passphrase.trim() } : {}),
+        })
+      }
+      return apiSend<SyncActionResponse>('/api/sync', 'POST', {
+        action,
+        override: {
+          provider,
+          config: cfg,
+          encryptionEnabled,
+          ...(passphrase.trim() ? { passphrase: passphrase.trim() } : {}),
+        },
+      })
+    },
+    onSuccess: (res, action) => {
+      if (!res.ok) {
+        setSyncFeedback({ kind: 'error', text: res.error ?? 'Cloud sync failed' })
+        return
+      }
+      setPassphrase('')
+      void qc.invalidateQueries()
+      if (action === 'test') {
+        setSyncFeedback({
+          kind: 'ok',
+          text: `Connection verified (${res.provider})${res.pulled ? ' — existing remote snapshot found' : ' — ready for first push'}.`,
+        })
+        return
+      }
+      const m = res.mergeResult
+      const mergeSummary = m
+        ? `merged +${m.inserted} new, ${m.updated} updated${m.rescheduledCards ? `, ${m.rescheduledCards} FSRS cards replayed` : ''}`
+        : 'no remote snapshot yet'
+      const label =
+        action === 'sync'
+          ? `Synced (${mergeSummary} → pushed${res.encrypted ? ' E2EE' : ''})`
+          : action === 'pull'
+            ? `Pulled (${mergeSummary})`
+            : `Pushed snapshot${res.encrypted ? ' (AES-256-GCM E2EE)' : ''}`
+      setSyncFeedback({ kind: 'ok', text: label })
+    },
+    onError: (e) =>
+      setSyncFeedback({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Cloud sync request failed',
+      }),
+  })
 
   const importMutation = useMutation({
     mutationFn: (body: { kind: 'apkg' | 'txt' | 'json'; payload: string; deckName?: string }) =>
@@ -102,15 +265,29 @@ export default function BackupPage() {
   })
 
   const restoreMutation = useMutation({
-    mutationFn: (backup: unknown) => apiSend<RestoreResult>('/api/backup', 'POST', backup),
-    onSuccess: (data) => {
+    mutationFn: (vars: { mode: 'merge' | 'replace'; data: unknown; passphrase?: string }) => {
+      const url = vars.mode === 'merge' ? '/api/backup?mode=merge' : '/api/backup'
+      const body = vars.passphrase
+        ? { envelope: vars.data, passphrase: vars.passphrase }
+        : vars.data
+      return apiSend<RestoreResult>(url, 'POST', body)
+    },
+    onSuccess: (data, vars) => {
       setPendingBackup(null)
+      setRestorePassphrase('')
       if (data.ok) {
-        log({
-          kind: 'ok',
-          text: `backup restored — ${data.rows} rows across ${data.tables} tables`,
-        })
-        void qc.invalidateQueries() // everything changed
+        if (vars.mode === 'merge') {
+          log({
+            kind: 'ok',
+            text: `smart merge complete — +${data.inserted ?? 0} inserted, ${data.updated ?? 0} updated${data.rescheduledCards ? `, ${data.rescheduledCards} cards rescheduled` : ''}`,
+          })
+        } else {
+          log({
+            kind: 'ok',
+            text: `backup restored — ${data.rows} rows across ${data.tables} tables`,
+          })
+        }
+        void qc.invalidateQueries()
       } else {
         log({ kind: 'error', text: data.error ?? 'restore failed' })
       }
@@ -127,7 +304,7 @@ export default function BackupPage() {
     return btoa(binary)
   }
 
-  /** Route one dropped/picked file by extension (json is sniffed: backup vs deck). */
+  /** Route one dropped/picked file by extension (json is sniffed: backup vs encrypted vs deck). */
   const handleFile = async (file: File) => {
     if (file.name.endsWith('.apkg')) {
       if (file.size > APKG_MAX_BYTES) {
@@ -145,12 +322,21 @@ export default function BackupPage() {
       return
     }
 
-    // .json — either a whole-DB backup envelope or a deck JSON export
     let parsed: unknown
     try {
       parsed = JSON.parse(text)
     } catch {
       log({ kind: 'error', text: `${file.name} is not valid JSON` })
+      return
+    }
+    if (isEncryptedEnvelope(parsed)) {
+      setPendingBackup({
+        name: file.name,
+        tables: 0,
+        rows: 0,
+        encrypted: true,
+        data: parsed,
+      })
       return
     }
     if (isBackupEnvelope(parsed)) {
@@ -159,7 +345,13 @@ export default function BackupPage() {
         (n, t) => n + (Array.isArray(parsed.tables[t]) ? parsed.tables[t]!.length : 0),
         0,
       )
-      setPendingBackup({ name: file.name, tables: tables.length, rows, data: parsed })
+      setPendingBackup({
+        name: file.name,
+        tables: tables.length,
+        rows,
+        encrypted: false,
+        data: parsed,
+      })
       return
     }
     importMutation.mutate({ kind: 'json', payload: text, deckName: deckName || undefined })
@@ -171,10 +363,18 @@ export default function BackupPage() {
     for (const file of Array.from(e.dataTransfer.files)) void handleFile(file)
   }
 
+  const lastSynced = syncQuery.data?.sync.lastSyncedAt
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Backup & Import/Export</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Backup, Sync & Import/Export</h1>
+          <p className="text-xs text-neutral-500">
+            Free multi-device Cloud Sync, non-destructive Smart Merge, Anki import, and full
+            snapshots
+          </p>
+        </div>
         <button
           className="btn"
           disabled={downloading}
@@ -189,6 +389,331 @@ export default function BackupPage() {
         >
           <DatabaseBackup className="h-4 w-4" /> {downloading ? 'preparing…' : 'Download backup'}
         </button>
+      </div>
+
+      {/* Free Serverless Cloud Sync */}
+      <div className="panel space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Cloud className="h-4 w-4 text-indigo-400" />
+            <span className="text-sm font-semibold">Free Cloud Sync</span>
+            {encryptionEnabled && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                <Lock className="h-3 w-3" /> AES-256-GCM E2EE
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-neutral-500">
+            {lastSynced
+              ? `Last synced ${new Date(lastSynced).toLocaleString()}`
+              : 'Not synced yet — choose a free provider below'}
+          </span>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-xs">
+            <span className="font-medium text-neutral-400">Cloud provider (100% serverless)</span>
+            <select
+              className="input w-full"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as SyncProviderKind)}
+            >
+              <option value="none">Disabled (local files only)</option>
+              <option value="github">GitHub — Free Secret Gist or Private Repo</option>
+              <option value="dropbox">Dropbox — Free 2GB App/File Sync</option>
+              <option value="gdrive">Google Drive — Free 15GB AppData / Drive</option>
+              <option value="webdav">WebDAV — Nextcloud / Koofr / Fastmail / NAS</option>
+            </select>
+          </label>
+
+          <div className="space-y-1 text-xs">
+            <label className="flex items-center gap-2 font-medium text-neutral-400">
+              <input
+                type="checkbox"
+                checked={encryptionEnabled}
+                onChange={(e) => setEncryptionEnabled(e.target.checked)}
+              />
+              End-to-end encrypt snapshot (`AES-256-GCM`)
+            </label>
+            <input
+              type="password"
+              className="input w-full"
+              disabled={!encryptionEnabled}
+              placeholder={
+                syncQuery.data?.sync.hasPassphrase
+                  ? '•••• passphrase saved locally (enter to change)'
+                  : 'Encryption passphrase (never leaves your devices)'
+              }
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {provider === 'github' && (
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">
+                Personal Access Token (`gist` or `repo` scope)
+              </span>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={cfg['token'] || 'ghp_... or github_pat_...'}
+                value={cfg['token']?.includes('••••') ? '' : (cfg['token'] ?? '')}
+                onChange={(e) => updateCfg('token', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Storage target</span>
+              <select
+                className="input w-full"
+                value={cfg['target'] || 'gist'}
+                onChange={(e) => updateCfg('target', e.target.value)}
+              >
+                <option value="gist">Secret Gist (auto-created on first push)</option>
+                <option value="repo">Private Repository file</option>
+              </select>
+            </label>
+            {(cfg['target'] || 'gist') === 'gist' ? (
+              <>
+                <label className="space-y-1 text-xs">
+                  <span className="text-neutral-400">
+                    Gist ID (leave blank on first device — copy to second device)
+                  </span>
+                  <input
+                    className="input w-full"
+                    placeholder="Auto-created on first Sync/Push"
+                    value={cfg['gistId'] ?? ''}
+                    onChange={(e) => updateCfg('gistId', e.target.value)}
+                  />
+                </label>
+                <label className="space-y-1 text-xs">
+                  <span className="text-neutral-400">Filename</span>
+                  <input
+                    className="input w-full"
+                    placeholder="learning-hub-sync.json"
+                    value={cfg['filename'] ?? ''}
+                    onChange={(e) => updateCfg('filename', e.target.value)}
+                  />
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="space-y-1 text-xs">
+                  <span className="text-neutral-400">Private repo (`owner/name`)</span>
+                  <input
+                    className="input w-full"
+                    placeholder="alice/my-learning-sync"
+                    value={cfg['repo'] ?? ''}
+                    onChange={(e) => updateCfg('repo', e.target.value)}
+                  />
+                </label>
+                <label className="space-y-1 text-xs">
+                  <span className="text-neutral-400">File path in repo</span>
+                  <input
+                    className="input w-full"
+                    placeholder="learning-hub-sync.json"
+                    value={cfg['path'] ?? ''}
+                    onChange={(e) => updateCfg('path', e.target.value)}
+                  />
+                </label>
+              </>
+            )}
+          </div>
+        )}
+
+        {provider === 'dropbox' && (
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Dropbox Access Token</span>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={cfg['accessToken'] || 'sl....'}
+                value={cfg['accessToken']?.includes('••••') ? '' : (cfg['accessToken'] ?? '')}
+                onChange={(e) => updateCfg('accessToken', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Dropbox file path</span>
+              <input
+                className="input w-full"
+                placeholder="/learning-hub-sync.json"
+                value={cfg['path'] ?? ''}
+                onChange={(e) => updateCfg('path', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">
+                Optional App Key (for long-lived refresh token)
+              </span>
+              <input
+                className="input w-full"
+                placeholder="Dropbox App Key (optional)"
+                value={cfg['appKey'] ?? ''}
+                onChange={(e) => updateCfg('appKey', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Optional Refresh Token</span>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={cfg['refreshToken'] || 'Refresh token (optional)'}
+                value={cfg['refreshToken']?.includes('••••') ? '' : (cfg['refreshToken'] ?? '')}
+                onChange={(e) => updateCfg('refreshToken', e.target.value)}
+              />
+            </label>
+          </div>
+        )}
+
+        {provider === 'gdrive' && (
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Google OAuth Access Token</span>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={cfg['accessToken'] || 'ya29....'}
+                value={cfg['accessToken']?.includes('••••') ? '' : (cfg['accessToken'] ?? '')}
+                onChange={(e) => updateCfg('accessToken', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Drive space</span>
+              <select
+                className="input w-full"
+                value={cfg['space'] || 'appDataFolder'}
+                onChange={(e) => updateCfg('space', e.target.value)}
+              >
+                <option value="appDataFolder">Hidden appDataFolder (`drive.appdata`)</option>
+                <option value="drive">My Drive (`drive.file`)</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Optional OAuth Client ID (for auto-refresh)</span>
+              <input
+                className="input w-full"
+                placeholder="...apps.googleusercontent.com"
+                value={cfg['clientId'] ?? ''}
+                onChange={(e) => updateCfg('clientId', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Optional OAuth Refresh Token</span>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={cfg['refreshToken'] || '1//...'}
+                value={cfg['refreshToken']?.includes('••••') ? '' : (cfg['refreshToken'] ?? '')}
+                onChange={(e) => updateCfg('refreshToken', e.target.value)}
+              />
+            </label>
+          </div>
+        )}
+
+        {provider === 'webdav' && (
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+            <label className="space-y-1 text-xs sm:col-span-2">
+              <span className="text-neutral-400">WebDAV target file URL</span>
+              <input
+                className="input w-full"
+                placeholder="https://cloud.example.com/remote.php/dav/files/me/learning-hub-sync.json"
+                value={cfg['url'] ?? ''}
+                onChange={(e) => updateCfg('url', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Username</span>
+              <input
+                className="input w-full"
+                placeholder="username"
+                value={cfg['username'] ?? ''}
+                onChange={(e) => updateCfg('username', e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">App password</span>
+              <input
+                type="password"
+                className="input w-full"
+                placeholder={cfg['password'] || 'app-specific password'}
+                value={cfg['password']?.includes('••••') ? '' : (cfg['password'] ?? '')}
+                onChange={(e) => updateCfg('password', e.target.value)}
+              />
+            </label>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="btn"
+            disabled={provider === 'none' || runSyncMutation.isPending}
+            onClick={() => runSyncMutation.mutate('sync')}
+          >
+            <RefreshCw className={`h-4 w-4 ${runSyncMutation.isPending ? 'animate-spin' : ''}`} />{' '}
+            {runSyncMutation.isPending ? 'Syncing…' : 'Sync now (Pull + Merge + Push)'}
+          </button>
+          <button
+            className="btn-ghost"
+            disabled={saveSyncMutation.isPending}
+            onClick={() => saveSyncMutation.mutate()}
+          >
+            {saveSyncMutation.isPending ? 'Saving…' : 'Save config'}
+          </button>
+          {provider !== 'none' && (
+            <>
+              <button
+                className="btn-ghost"
+                disabled={runSyncMutation.isPending}
+                onClick={() => runSyncMutation.mutate('test')}
+              >
+                Test connection
+              </button>
+              <button
+                className="btn-ghost"
+                disabled={runSyncMutation.isPending}
+                onClick={() => runSyncMutation.mutate('pull')}
+              >
+                Pull & Merge
+              </button>
+              <button
+                className="btn-ghost"
+                disabled={runSyncMutation.isPending}
+                onClick={() => runSyncMutation.mutate('push')}
+              >
+                Push only
+              </button>
+            </>
+          )}
+        </div>
+
+        {syncFeedback && (
+          <div
+            className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
+              syncFeedback.kind === 'ok'
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                : 'border-red-500/40 bg-red-500/10 text-red-300'
+            }`}
+          >
+            {syncFeedback.kind === 'ok' ? (
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+            )}
+            <span>{syncFeedback.text}</span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+          <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+          <span>
+            Sync tokens, passphrases, and AI API keys stay strictly on this device and are stripped
+            from every backup & cloud snapshot. Append-only review logs union-merge without data
+            loss.
+          </span>
+        </div>
       </div>
 
       {/* import drop zone */}
@@ -225,7 +750,7 @@ export default function BackupPage() {
           </div>
           <div className="text-xs text-neutral-500">
             Anki deck packages (≤50MB), Anki plain-text exports, deck JSON exports — a whole-DB
-            backup .json asks for confirmation before restore
+            backup .json lets you choose Smart Merge or Full Replace
           </div>
           <button
             className="btn-ghost"
@@ -310,15 +835,16 @@ export default function BackupPage() {
         </div>
       </div>
 
-      {/* whole-db restore */}
+      {/* whole-db merge / restore */}
       <div className="panel space-y-3">
         <div className="flex items-center gap-2">
           <DatabaseBackup className="h-4 w-4 text-neutral-500" />
-          <span className="text-sm font-medium">Restore whole-database backup</span>
+          <span className="text-sm font-medium">Smart Merge or Restore whole-database backup</span>
         </div>
         <p className="text-xs text-neutral-500">
-          Replaces ALL data with the contents of a backup file (the kind “Download backup” above
-          produces). Append-only history (reviews, XP, Elo) keeps its ids.
+          Pick any backup <code className="rounded px-1">.json</code> (plain or E2EE encrypted).
+          <strong> Smart Merge</strong> unions your offline reviews, XP, notes, and decks without
+          wiping local progress; <strong>Replace All</strong> performs a clean destructive restore.
         </p>
         <div>
           <button
@@ -339,40 +865,89 @@ export default function BackupPage() {
             }}
           />
         </div>
-        {restoreMutation.isPending && <div className="text-xs text-neutral-500">restoring…</div>}
+        {restoreMutation.isPending && <div className="text-xs text-neutral-500">processing…</div>}
       </div>
 
-      {/* confirm dialog */}
+      {/* confirm dialog with Smart Merge (Recommended) + Replace All */}
       {pendingBackup && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
           onClick={(e) => e.target === e.currentTarget && setPendingBackup(null)}
         >
-          <div className="panel w-full max-w-md space-y-4">
+          <div className="panel w-full max-w-lg space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold">
-                <AlertTriangle className="h-5 w-5 text-amber-400" /> Restore backup?
+                <GitMerge className="h-5 w-5 text-indigo-400" /> Import backup snapshot
               </h2>
               <button className="btn-ghost px-2" onClick={() => setPendingBackup(null)}>
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="text-sm text-neutral-400">
-              <span className="font-medium text-neutral-200">{pendingBackup.name}</span> contains{' '}
-              {pendingBackup.rows} rows across {pendingBackup.tables} tables. Restoring{' '}
-              <span className="font-medium text-red-300">deletes all current data</span> and
-              replaces it with the backup. This cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
+
+            {pendingBackup.encrypted ? (
+              <div className="space-y-2 text-sm text-neutral-400">
+                <p>
+                  <span className="font-medium text-neutral-200">{pendingBackup.name}</span> is
+                  protected with <span className="text-emerald-400">AES-256-GCM E2EE</span>.
+                </p>
+                <input
+                  type="password"
+                  className="input w-full"
+                  placeholder="Enter encryption passphrase to unlock"
+                  value={restorePassphrase}
+                  onChange={(e) => setRestorePassphrase(e.target.value)}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-neutral-400">
+                <span className="font-medium text-neutral-200">{pendingBackup.name}</span> contains{' '}
+                {pendingBackup.rows} rows across {pendingBackup.tables} tables. Choose how to apply
+                it:
+              </p>
+            )}
+
+            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs text-neutral-300">
+              <div className="font-semibold text-indigo-300">
+                Smart Merge (Recommended — Non-Destructive)
+              </div>
+              <div className="mt-1 text-neutral-400">
+                Unions append-only review logs & XP, replays FSRS-6 intervals on cards reviewed on
+                both devices, and remaps colliding offline IDs without deleting local work.
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2">
               <button className="btn-ghost" onClick={() => setPendingBackup(null)}>
                 Cancel
               </button>
               <button
+                className="btn-ghost text-red-400 hover:text-red-300"
+                disabled={restoreMutation.isPending}
+                onClick={() =>
+                  pendingBackup &&
+                  restoreMutation.mutate({
+                    mode: 'replace',
+                    data: pendingBackup.data,
+                    passphrase: restorePassphrase || undefined,
+                  })
+                }
+              >
+                <AlertTriangle className="h-3.5 w-3.5" /> Replace All (Destructive)
+              </button>
+              <button
                 className="btn"
                 disabled={restoreMutation.isPending}
-                onClick={() => pendingBackup && restoreMutation.mutate(pendingBackup.data)}
+                onClick={() =>
+                  pendingBackup &&
+                  restoreMutation.mutate({
+                    mode: 'merge',
+                    data: pendingBackup.data,
+                    passphrase: restorePassphrase || undefined,
+                  })
+                }
               >
-                {restoreMutation.isPending ? 'restoring…' : 'Restore'}
+                <GitMerge className="h-4 w-4" />{' '}
+                {restoreMutation.isPending ? 'Merging…' : 'Smart Merge'}
               </button>
             </div>
           </div>

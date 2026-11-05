@@ -76,6 +76,7 @@ import * as review from '../server/handlers/review/route'
 import * as settings from '../server/handlers/settings/route'
 import * as streaks from '../server/handlers/streaks/route'
 import * as studyPlan from '../server/handlers/study-plan/route'
+import * as sync from '../server/handlers/sync/route'
 import * as weekly from '../server/handlers/weekly/route'
 import * as curriculumImport from '../server/handlers/curriculum/import/route'
 import * as curriculumPrompt from '../server/handlers/curriculum/prompt/route'
@@ -183,6 +184,7 @@ add('search', search)
 add('settings', settings)
 add('streaks', streaks)
 add('study-plan', studyPlan)
+add('sync', sync)
 add('weekly', weekly)
 add('curriculum/import', curriculumImport)
 add('curriculum/prompt', curriculumPrompt)

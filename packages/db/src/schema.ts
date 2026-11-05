@@ -894,6 +894,10 @@ export const userSettings = table('user_settings', {
     .$type<Record<string, boolean>>()
     .notNull()
     .default({}),
+  onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  sidebarCollapsedGroups: text('sidebar_collapsed_groups', { mode: 'json' }).$type<string[]>(),
   updatedAt: text('updated_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
@@ -958,6 +962,43 @@ export const schemaMigrations = table('schema_migrations', {
   id: integer('id').primaryKey(),
   name: text('name').notNull(),
   appliedAt: text('applied_at').notNull(),
+})
+
+/**
+ * Synced deletion tombstones so non-destructive multi-device merge (`mergeBackup`)
+ * does not resurrect intentionally deleted user entities.
+ */
+export const syncTombstones = table(
+  'sync_tombstones',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    tableName: text('table_name').notNull(),
+    recordKey: text('record_key').notNull(),
+    deletedAt: text('deleted_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('sync_tombstones_key_idx').on(t.tableName, t.recordKey)],
+)
+
+/**
+ * Device-local cloud sync configuration & credentials.
+ *
+ * SECURITY INVARIANT: `backupAll`, `restoreAll`, and `mergeBackup` NEVER export
+ * or overwrite `sync_configs` rows — OAuth tokens, GitHub PATs, WebDAV passwords,
+ * and E2EE passphrases never leave the local device.
+ */
+export const syncConfigs = table('sync_configs', {
+  id: text('id').primaryKey().default('default'),
+  provider: text('provider').notNull().default('none'), // none|dropbox|github|gdrive|webdav
+  configJson: text('config_json').notNull().default('{}'),
+  encryptionEnabled: integer('encryption_enabled', { mode: 'boolean' }).notNull().default(false),
+  passphrase: text('passphrase'),
+  lastSyncedAt: text('last_synced_at'),
+  lastSyncRevision: text('last_sync_revision'),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
 })
 
 // ─── Derived views (append-only stats — never mutate) ──────────────────────

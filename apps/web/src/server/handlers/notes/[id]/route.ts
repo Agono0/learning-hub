@@ -114,6 +114,11 @@ export const PATCH = withRoute(async (req: Request, ctx: { params: Promise<{ id:
 export const DELETE = withRoute(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params
   const noteId = Number(id)
+  const [existing] = await db
+    .select({ title: notes.title })
+    .from(notes)
+    .where(eq(notes.id, noteId))
+    .limit(1)
   // cascade in one transaction so a failed delete never leaves orphan bullets/links
   withTransaction((tx) => {
     tx.delete(noteBullets).where(eq(noteBullets.noteId, noteId)).run()
@@ -122,5 +127,10 @@ export const DELETE = withRoute(async (_req: Request, ctx: { params: Promise<{ i
       .run()
     tx.delete(notes).where(eq(notes.id, noteId)).run()
   })
+  if (existing) {
+    const { computeRecordNaturalKey, recordDeletionTombstone } = await import('@learning-hub/db')
+    const nk = computeRecordNaturalKey('notes', { title: existing.title })
+    if (nk) recordDeletionTombstone('notes', nk)
+  }
   return Response.json({ ok: true })
 })
