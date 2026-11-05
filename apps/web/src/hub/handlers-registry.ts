@@ -68,12 +68,15 @@ import * as physio from '../server/handlers/physio/route'
 import * as quests from '../server/handlers/quests/route'
 import * as quotes from '../server/handlers/quotes/route'
 import * as readingHighlights from '../server/handlers/reading/highlights/route'
+import * as readingIngest from '../server/handlers/reading/ingest/route'
+import * as readingSq3r from '../server/handlers/reading/sq3r/route'
 import * as readingId from '../server/handlers/reading/[id]/route'
 import * as reading from '../server/handlers/reading/route'
 import * as reviewStats from '../server/handlers/review/stats/route'
 import * as reviewUndo from '../server/handlers/review/undo/route'
 import * as review from '../server/handlers/review/route'
 import * as settings from '../server/handlers/settings/route'
+import * as starter from '../server/handlers/starter/route'
 import * as streaks from '../server/handlers/streaks/route'
 import * as studyPlan from '../server/handlers/study-plan/route'
 import * as sync from '../server/handlers/sync/route'
@@ -177,11 +180,14 @@ add('quotes', quotes)
 add('reading', reading)
 add('reading/[id]', readingId)
 add('reading/highlights', readingHighlights)
+add('reading/ingest', readingIngest)
+add('reading/sq3r', readingSq3r)
 add('review', review)
 add('review/stats', reviewStats)
 add('review/undo', reviewUndo)
 add('search', search)
 add('settings', settings)
+add('starter', starter)
 add('streaks', streaks)
 add('study-plan', studyPlan)
 add('sync', sync)

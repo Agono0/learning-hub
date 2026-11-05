@@ -1,25 +1,26 @@
 /**
- * /api/reading — source library + ingest.
- * POST accepts multipart/form-data (file: PDF → unpdf extractText) or JSON
- * { title, kind, content, url } for pasted articles.
+ * /api/reading — source library + file/text ingest.
+ * POST accepts multipart/form-data (PDF → unpdf, EPUB → extractEpubBytes,
+ * Markdown/TXT → UTF-8 text) or JSON { title, kind, content, url }.
  */
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, highlights, sources } from '@learning-hub/db'
+import { extractEpubBytes } from '@learning-hub/core'
+import { db, highlights, sources, sq3rSessions } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 const pasteSourceSchema = z.object({
   title: z.string().trim().min(1, 'title and content required'),
-  kind: z.enum(['pdf', 'article', 'paste', 'youtube']).optional(),
+  kind: z.enum(['pdf', 'epub', 'article', 'paste', 'youtube', 'markdown']).optional(),
   content: z.string().trim().min(1, 'title and content required'),
   url: z.string().optional(),
   priority: z.number().int().min(0).max(100).optional(),
 })
 
-export async function GET() {
+export const GET = withRoute(async () => {
   const rows = await db.select().from(sources).orderBy(desc(sources.priority)).limit(200)
   return Response.json({ sources: rows })
-}
+})
 
 export const POST = withRoute(async (req: Request) => {
   const contentType = req.headers.get('content-type') ?? ''
@@ -33,22 +34,60 @@ export const POST = withRoute(async (req: Request) => {
     }
     const file = form.get('file')
     if (!(file instanceof File)) return Response.json({ error: 'file required' }, { status: 400 })
-    const title = String(form.get('title') ?? '') || file.name.replace(/\.pdf$/i, '')
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      return Response.json(
-        { error: 'only PDF upload is supported here — paste text for other kinds' },
-        { status: 400 },
-      )
+    const rawName = file.name.toLowerCase()
+    const customTitle = String(form.get('title') ?? '').trim()
+    const priority = Math.min(100, Math.max(0, Number(form.get('priority') ?? 50) || 50))
+
+    if (rawName.endsWith('.pdf')) {
+      const title = customTitle || file.name.replace(/\.pdf$/i, '')
+      const { extractText, getDocumentProxy } = await import('unpdf')
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      const pdf = await getDocumentProxy(buffer)
+      const { text } = await extractText(pdf, { mergePages: true })
+      const [source] = await db
+        .insert(sources)
+        .values({ kind: 'pdf', title, content: text, priority })
+        .returning()
+      return Response.json({ ok: true, source, characters: text.length })
     }
-    const { extractText, getDocumentProxy } = await import('unpdf')
-    const buffer = new Uint8Array(await file.arrayBuffer())
-    const pdf = await getDocumentProxy(buffer)
-    const { text } = await extractText(pdf, { mergePages: true })
-    const [source] = await db
-      .insert(sources)
-      .values({ kind: 'pdf', title, content: text, priority: 50 })
-      .returning()
-    return Response.json({ ok: true, source, characters: text.length })
+
+    if (rawName.endsWith('.epub')) {
+      const buffer = new Uint8Array(await file.arrayBuffer())
+      let extracted: ReturnType<typeof extractEpubBytes>
+      try {
+        extracted = extractEpubBytes(buffer)
+      } catch (err) {
+        throw new ApiError(400, err instanceof Error ? err.message : 'invalid EPUB file')
+      }
+      const title = customTitle || extracted.title || file.name.replace(/\.epub$/i, '')
+      const [source] = await db
+        .insert(sources)
+        .values({ kind: 'epub', title, content: extracted.content, priority })
+        .returning()
+      return Response.json({
+        ok: true,
+        source,
+        chapters: extracted.chapters.length,
+        characters: extracted.content.length,
+      })
+    }
+
+    if (rawName.endsWith('.md') || rawName.endsWith('.markdown') || rawName.endsWith('.txt')) {
+      const text = (await file.text()).trim()
+      if (!text) throw new ApiError(400, 'uploaded text file is empty')
+      const title = customTitle || file.name.replace(/\.(md|markdown|txt)$/i, '')
+      const kind = rawName.endsWith('.txt') ? 'paste' : 'markdown'
+      const [source] = await db
+        .insert(sources)
+        .values({ kind, title, content: text, priority })
+        .returning()
+      return Response.json({ ok: true, source, characters: text.length })
+    }
+
+    return Response.json(
+      { error: 'supported file types: .pdf, .epub, .md, .markdown, .txt' },
+      { status: 400 },
+    )
   }
 
   const body = await readJson(req, pasteSourceSchema)
@@ -71,6 +110,7 @@ export const DELETE = withRoute(async (req: Request) => {
   if (!id || Number.isNaN(id)) return Response.json({ error: 'id required' }, { status: 400 })
 
   db.transaction((tx) => {
+    tx.delete(sq3rSessions).where(eq(sq3rSessions.sourceId, id)).run()
     tx.delete(highlights).where(eq(highlights.sourceId, id)).run()
     tx.delete(sources).where(eq(sources.id, id)).run()
   })

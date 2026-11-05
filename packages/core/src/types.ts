@@ -164,7 +164,7 @@ export interface AIGenerationResult<T> {
 
 // ─── Reading pipeline ──────────────────────────────────────────────────────
 
-export type SourceKind = 'pdf' | 'article' | 'paste' | 'youtube'
+export type SourceKind = 'pdf' | 'epub' | 'article' | 'paste' | 'youtube' | 'markdown'
 /** Highlight triage state: 0 new, 1 kept, 2 discarded. */
 export type HighlightTriage = 0 | 1 | 2
 

@@ -280,6 +280,44 @@ export const highlights = table(
   (t) => [index('highlights_source_idx').on(t.sourceId)],
 )
 
+export interface Sq3rQuestionItem {
+  id: string
+  question: string
+  answer: string
+  cardId?: number
+}
+
+/**
+ * Guided SQ3R study session per reading source (Robinson 1946, *Effective Study*):
+ * Survey → Question → Read → Recite → Review.
+ */
+export const sq3rSessions = table(
+  'sq3r_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sourceId: integer('source_id')
+      .notNull()
+      .references(() => sources.id, { onDelete: 'cascade' }),
+    surveyHeadings: text('survey_headings', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    questions: text('questions', { mode: 'json' })
+      .$type<Sq3rQuestionItem[]>()
+      .notNull()
+      .default([]),
+    reciteNotes: text('recite_notes').notNull().default(''),
+    completedSteps: text('completed_steps', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('sq3r_sessions_source_idx').on(t.sourceId)],
+)
+
 // ─── Curriculum ─────────────────────────────────────────────────────────────
 
 /** Catalog groups of courses (e.g. "Data"); `slug` makes imports idempotent. */

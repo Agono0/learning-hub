@@ -1,15 +1,47 @@
 'use client'
 
 /**
- * Courses — the catalog. "Continue learning" first (the single most useful
- * action), then every course grouped by track with its progress ring.
- * New courses come from "Create with AI" or "Import" (LHCF in JSON/YAML/Markdown).
+ * Courses — the catalog + In-App Starter Course Library (works offline on Web,
+ * Windows & Android OPFS with zero CLI or AI setup required).
  */
+import { useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
-import { Award, BookOpen, FileUp, GraduationCap, Play, Sparkles } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Award,
+  BookOpen,
+  CheckCircle2,
+  Download,
+  FileUp,
+  GraduationCap,
+  Library,
+  Play,
+  Sparkles,
+} from 'lucide-react'
 import { curriculumApi, curriculumKeys, type CatalogCourse } from '@/lib/curriculum-api'
-import { Badge, EmptyState, PageHeader, Panel, ProgressBar, ProgressRing } from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
+import { Badge, EmptyState, PageHeader, Panel, ProgressBar, ProgressRing, Sheet } from '@/ui'
+
+interface StarterCourseItem {
+  slug: string
+  title: string
+  subtitle: string
+  emoji: string
+  track: string
+  level: string
+  estHours: number
+  lessonsCount: number
+  exercisesCount: number
+  installed: boolean
+  courseId: number | null
+}
+
+interface StarterStatusResponse {
+  ok: boolean
+  seededQuotes: number
+  seededMnemonics: number
+  courses: StarterCourseItem[]
+}
 
 function CourseCard({ course }: { course: CatalogCourse }) {
   return (
@@ -80,11 +112,30 @@ function ContinueCard({ course }: { course: CatalogCourse }) {
 }
 
 export default function CoursesPage() {
+  const qc = useQueryClient()
+  const [starterOpen, setStarterOpen] = useState(false)
+
   const {
     data: courses,
     isLoading,
     error,
   } = useQuery({ queryKey: curriculumKeys.courses(), queryFn: curriculumApi.courses })
+
+  const starterQuery = useQuery<StarterStatusResponse>({
+    queryKey: ['starter-catalog'],
+    queryFn: () => apiGet<StarterStatusResponse>('/api/starter'),
+  })
+
+  const installMutation = useMutation({
+    mutationFn: (courseSlugs: string[]) =>
+      apiSend('/api/starter', 'POST', { seedCore: true, courseSlugs }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: curriculumKeys.courses() })
+      void qc.invalidateQueries({ queryKey: ['starter-catalog'] })
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
 
   const active =
     (courses ?? [])
@@ -98,8 +149,14 @@ export default function CoursesPage() {
     byTrack.set(key, [...(byTrack.get(key) ?? []), c])
   }
 
+  const starterCourses = starterQuery.data?.courses ?? []
+  const uninstalledSlugs = starterCourses.filter((c) => !c.installed).map((c) => c.slug)
+
   const actions = (
     <>
+      <button className="btn-ghost" onClick={() => setStarterOpen(true)}>
+        <Library className="h-4 w-4" /> Starter Library
+      </button>
       <Link href="/courses/new" className="btn">
         <Sparkles className="h-4 w-4" /> Create with AI
       </Link>
@@ -107,6 +164,47 @@ export default function CoursesPage() {
         <FileUp className="h-4 w-4" /> Import
       </Link>
     </>
+  )
+
+  const renderStarterGrid = () => (
+    <div className="space-y-3">
+      {starterCourses.map((sc) => (
+        <div
+          key={sc.slug}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429]"
+        >
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600/10 text-xl">
+              {sc.emoji}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="font-medium">{sc.title}</div>
+              <div className="text-xs text-neutral-500">{sc.subtitle}</div>
+              <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-neutral-500">
+                <Badge>{sc.track}</Badge>
+                <Badge>{sc.level}</Badge>
+                <span>
+                  {sc.lessonsCount} lessons · {sc.exercisesCount} exercises · ~{sc.estHours}h
+                </span>
+              </div>
+            </div>
+          </div>
+          {sc.installed && sc.courseId ? (
+            <Link href={`/courses/course?id=${sc.courseId}`} className="btn-ghost text-xs">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Open course
+            </Link>
+          ) : (
+            <button
+              className="btn text-xs"
+              disabled={installMutation.isPending}
+              onClick={() => installMutation.mutate([sc.slug])}
+            >
+              <Download className="h-3.5 w-3.5" /> Install
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
   )
 
   return (
@@ -126,14 +224,50 @@ export default function CoursesPage() {
       {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
 
       {courses && courses.length === 0 && (
-        <EmptyState
-          icon={<BookOpen className="h-8 w-8" />}
-          title="No courses yet"
-          action={<div className="flex flex-wrap justify-center gap-2">{actions}</div>}
-        >
-          Tell any AI what you want to learn — Learning HUB turns its answer into a full course with
-          lessons, exercises, projects and a certificate.
-        </EmptyState>
+        <div className="space-y-4">
+          <Panel className="space-y-3 border-indigo-500/30">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold">
+                  Start in 1 click — Built-in Starter Library
+                </h2>
+                <p className="text-xs text-neutral-500">
+                  Offline, research-backed courses with interactive exercises, worked examples &
+                  certificates — no AI key needed.
+                </p>
+              </div>
+              {uninstalledSlugs.length > 0 && (
+                <button
+                  className="btn text-xs"
+                  disabled={installMutation.isPending}
+                  onClick={() => installMutation.mutate(uninstalledSlugs)}
+                >
+                  <Download className="h-3.5 w-3.5" />{' '}
+                  {installMutation.isPending ? 'Installing…' : 'Install all 3 starter courses'}
+                </button>
+              )}
+            </div>
+            {renderStarterGrid()}
+          </Panel>
+
+          <EmptyState
+            icon={<BookOpen className="h-8 w-8" />}
+            title="Or build a custom course on any topic"
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link href="/courses/new" className="btn">
+                  <Sparkles className="h-4 w-4" /> Create with AI
+                </Link>
+                <Link href="/courses/new?mode=import" className="btn-ghost">
+                  <FileUp className="h-4 w-4" /> Import LHCF
+                </Link>
+              </div>
+            }
+          >
+            Tell any AI what you want to learn — Learning HUB turns its answer into a full course
+            with lessons, exercises, projects and a certificate.
+          </EmptyState>
+        </div>
       )}
 
       {active && <ContinueCard course={active} />}
@@ -158,6 +292,35 @@ export default function CoursesPage() {
           .
         </p>
       )}
+
+      <Sheet
+        open={starterOpen}
+        onClose={() => setStarterOpen(false)}
+        title="Built-in Starter Course Library"
+        footer={
+          uninstalledSlugs.length > 0 ? (
+            <button
+              className="btn"
+              disabled={installMutation.isPending}
+              onClick={() => installMutation.mutate(uninstalledSlugs)}
+            >
+              <Download className="h-4 w-4" />{' '}
+              {installMutation.isPending
+                ? 'Installing…'
+                : `Install all (${uninstalledSlugs.length})`}
+            </button>
+          ) : undefined
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-neutral-400">
+            Every starter course includes theory, worked examples, scheduled FSRS practice cards, a
+            project stage, and a final exam — plus curated learning-science quotes & Major/PAO
+            mnemonic tables.
+          </p>
+          {renderStarterGrid()}
+        </div>
+      </Sheet>
     </div>
   )
 }

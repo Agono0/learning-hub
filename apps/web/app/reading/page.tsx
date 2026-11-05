@@ -1,26 +1,47 @@
 'use client'
 
 /**
- * Incremental reading: library + priority queue, reader (next 800-word
- * fragment + position slider), highlight extraction → triage queue
- * (keep/discard), daily resurfacing, one-tap Ghostreader prompts.
+ * Reading Studio — Incremental Reading + Guided SQ3R Mode + Multi-Format Ingestion:
+ * - Ingest PDF, EPUB, Markdown/TXT files, Web Article URLs, YouTube transcripts,
+ *   or pasted Markdown via a calm `@/ui` Sheet (zero `window.prompt`/`window.alert`)
+ * - Real SQLite highlight IDs in the triage queue (`keep` / `discard` / `→ cards`)
+ * - Full SQ3R workflow (Survey → Question → Read → Recite → Review → 1-click FSRS cards)
+ *
+ * CLIENT component — uses `@/lib/transport` and `<Markdown>` exclusively (Hard Rules #1, #11).
  */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Highlighter, Sparkles, Trash2, Upload } from 'lucide-react'
+import {
+  BookOpen,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  FileText,
+  Globe,
+  Highlighter,
+  ListChecks,
+  Plus,
+  Sparkles,
+  Trash2,
+  Upload,
+  Video,
+} from 'lucide-react'
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
+import { Badge, Markdown, Sheet, Tabs } from '@/ui'
 
 interface Source {
   id: number
   kind: string
   title: string
+  url?: string | null
   content: string
   priority: number
   position: number
   status: string
 }
+
 interface Highlight {
   id: number
   sourceId: number
@@ -28,6 +49,7 @@ interface Highlight {
   triaged: number
   strength: number
 }
+
 interface Fragment {
   text: string
   nextPosition: number
@@ -35,7 +57,27 @@ interface Fragment {
   words: number
 }
 
-/** Manual-mode (provider 'none') replacements for the Ghostreader actions — never dead-end the reader. */
+interface Sq3rQuestion {
+  id: string
+  question: string
+  answer: string
+  cardId?: number
+}
+
+interface Sq3rSession {
+  id: number
+  sourceId: number
+  surveyHeadings: string[]
+  questions: Sq3rQuestion[]
+  reciteNotes: string
+  completedSteps: ('survey' | 'question' | 'read' | 'recite' | 'review')[]
+  updatedAt: string
+}
+
+type IngestTab = 'file' | 'url' | 'youtube' | 'markdown'
+type StudyMode = 'incremental' | 'sq3r'
+type Sq3rStep = 'survey' | 'question' | 'read' | 'recite' | 'review'
+
 function manualGhostHint(mode: 'define' | 'simplify' | 'flashcard', selected: string): string {
   const quote = selected.trim() ? `"${selected.trim().slice(0, 120)}…"` : 'the fragment'
   switch (mode) {
@@ -44,7 +86,7 @@ function manualGhostHint(mode: 'define' | 'simplify' | 'flashcard', selected: st
     case 'simplify':
       return `Manual mode — no AI configured. Self-explain: rewrite ${quote} for a smart 15-year-old, keeping every technical term but explaining it. Where you can't simplify is a gap — log it in the Journal.`
     case 'flashcard':
-      return `Manual mode — no AI configured. Make the card by hand from ${quote}: pick the most load-bearing term, replace it with "____", and add the card via the Decks page (cloze format, answer must appear verbatim).`
+      return `Manual mode — no AI configured. Make the card by hand from ${quote}: click "→ cards" on any highlight below or use SQ3R Review mode to convert your Q&As directly into cards.`
   }
 }
 
@@ -52,11 +94,26 @@ export default function ReadingPage() {
   const qc = useQueryClient()
   const { data: aiStatus } = useAiStatus()
   const manual = aiStatus?.configured === false
+
   const { data: lib } = useQuery<{ sources: Source[] }>({
     queryKey: ['sources'],
     queryFn: () => apiGet<{ sources: Source[] }>('/api/reading'),
   })
+
   const [activeId, setActiveId] = useState<number | null>(null)
+  const [studyMode, setStudyMode] = useState<StudyMode>('incremental')
+  const [sq3rStep, setSq3rStep] = useState<Sq3rStep>('survey')
+  const [peekDuringRecite, setPeekDuringRecite] = useState(false)
+
+  // Add Source Sheet state
+  const [ingestOpen, setIngestOpen] = useState(false)
+  const [ingestTab, setIngestTab] = useState<IngestTab>('file')
+  const [urlInput, setUrlInput] = useState('')
+  const [titleInput, setTitleInput] = useState('')
+  const [markdownInput, setMarkdownInput] = useState('')
+  const [priorityInput, setPriorityInput] = useState(50)
+  const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+
   const { data: detail } = useQuery<{
     source: Source
     highlights: Highlight[]
@@ -69,6 +126,28 @@ export default function ReadingPage() {
       ),
     enabled: Boolean(activeId),
   })
+
+  const sq3rQuery = useQuery<{ ok: boolean; session: Sq3rSession }>({
+    queryKey: ['sq3r', activeId],
+    queryFn: () =>
+      apiGet<{ ok: boolean; session: Sq3rSession }>(`/api/reading/sq3r?sourceId=${activeId}`),
+    enabled: Boolean(activeId) && studyMode === 'sq3r',
+  })
+
+  // Local editable SQ3R state synced with server
+  const [questions, setQuestions] = useState<Sq3rQuestion[]>([])
+  const [newQuestion, setNewQuestion] = useState('')
+  const [reciteNotes, setReciteNotes] = useState('')
+  const [completedSteps, setCompletedSteps] = useState<Sq3rStep[]>([])
+
+  useEffect(() => {
+    const s = sq3rQuery.data?.session
+    if (!s) return
+    setQuestions(s.questions ?? [])
+    setReciteNotes(s.reciteNotes ?? '')
+    setCompletedSteps((s.completedSteps ?? []) as Sq3rStep[])
+  }, [sq3rQuery.data])
+
   const { data: resurfaceData } = useQuery<{
     resurface: (Highlight & { sourceTitle: string | null })[]
   }>({
@@ -78,6 +157,7 @@ export default function ReadingPage() {
         '/api/reading/highlights?mode=resurface&limit=10',
       ),
   })
+
   const [selected, setSelected] = useState('')
   const [triageQueue, setTriageQueue] = useState<Highlight[]>([])
   const [ghostResult, setGhostResult] = useState<string | null>(null)
@@ -88,34 +168,91 @@ export default function ReadingPage() {
     void qc.invalidateQueries({ queryKey: ['sources'] })
     void qc.invalidateQueries({ queryKey: ['source', activeId] })
     void qc.invalidateQueries({ queryKey: ['resurface'] })
+    void qc.invalidateQueries({ queryKey: ['sq3r', activeId] })
   }
 
-  const upload = useMutation({
+  const resetIngestForm = () => {
+    setUrlInput('')
+    setTitleInput('')
+    setMarkdownInput('')
+    setPriorityInput(50)
+  }
+
+  const uploadFile = useMutation({
     mutationFn: async (file: File) => {
       const form = new FormData()
       form.append('file', file)
-      return apiUpload<{ source: Source }>('/api/reading', form)
+      if (titleInput.trim()) form.append('title', titleInput.trim())
+      form.append('priority', String(priorityInput))
+      return apiUpload<{ ok: boolean; source: Source; chapters?: number; error?: string }>(
+        '/api/reading',
+        form,
+      )
     },
     onSuccess: (r) => {
       invalidate()
       setActiveId(r.source.id)
+      setIngestOpen(false)
+      resetIngestForm()
+      setFeedback({
+        kind: 'ok',
+        text: `Added "${r.source.title}"${r.chapters ? ` (${r.chapters} chapters)` : ''}.`,
+      })
     },
-    onError: (e) => window.alert(e.message),
+    onError: (e) =>
+      setFeedback({ kind: 'error', text: e instanceof Error ? e.message : 'Upload failed' }),
   })
 
-  const addPaste = useMutation({
+  const ingestRemoteOrMarkdown = useMutation({
     mutationFn: async () => {
-      const title = window.prompt('Title?')
-      if (!title) throw new Error('cancelled')
-      const content = window.prompt('Paste the text:')
-      if (!content) throw new Error('cancelled')
-      return apiSend<{ source: Source }>('/api/reading', 'POST', { title, kind: 'paste', content })
+      if (ingestTab === 'url') {
+        return apiSend<{ ok: boolean; source?: Source; error?: string }>(
+          '/api/reading/ingest',
+          'POST',
+          {
+            mode: 'url',
+            url: urlInput.trim(),
+            title: titleInput.trim() || undefined,
+            priority: priorityInput,
+          },
+        )
+      }
+      if (ingestTab === 'youtube') {
+        return apiSend<{ ok: boolean; source?: Source; error?: string }>(
+          '/api/reading/ingest',
+          'POST',
+          {
+            mode: 'youtube',
+            url: urlInput.trim(),
+            title: titleInput.trim() || undefined,
+            priority: priorityInput,
+          },
+        )
+      }
+      return apiSend<{ ok: boolean; source?: Source; error?: string }>(
+        '/api/reading/ingest',
+        'POST',
+        {
+          mode: 'markdown',
+          title: titleInput.trim() || 'Untitled Note',
+          content: markdownInput.trim(),
+          priority: priorityInput,
+        },
+      )
     },
     onSuccess: (r) => {
+      if (!r.ok || !r.source) {
+        setFeedback({ kind: 'error', text: r.error ?? 'Could not import source' })
+        return
+      }
       invalidate()
       setActiveId(r.source.id)
+      setIngestOpen(false)
+      resetIngestForm()
+      setFeedback({ kind: 'ok', text: `Imported "${r.source.title}".` })
     },
-    onError: () => undefined,
+    onError: (e) =>
+      setFeedback({ kind: 'error', text: e instanceof Error ? e.message : 'Import failed' }),
   })
 
   const patchSource = useMutation({
@@ -126,56 +263,98 @@ export default function ReadingPage() {
 
   const extractHighlights = useMutation({
     mutationFn: async (sourceId: number) => {
-      const body = await apiSend<{ ok: boolean; highlights?: string[]; error?: string }>(
-        '/api/reading/highlights',
-        'POST',
-        {
-          sourceId,
-          text: selected || undefined,
-        },
-      )
+      const body = await apiSend<{
+        ok: boolean
+        highlights?: string[]
+        createdRows?: Highlight[]
+        error?: string
+      }>('/api/reading/highlights', 'POST', {
+        sourceId,
+        text: selected || undefined,
+      })
       if (!body.ok) throw new Error(body.error ?? 'extract failed')
-      return body as { highlights: string[] }
+      return body
     },
     onSuccess: (r) => {
       invalidate()
-      // push freshly extracted highlights into the triage queue
-      const extracted = r.highlights.map((text, i) => ({
-        id: -1 - i,
-        sourceId: activeId ?? 0,
-        text,
-        triaged: 0,
-        strength: 0.5,
-      }))
-      setTriageQueue((q) => [...extracted, ...q])
+      // Use real persisted SQLite highlight rows so Keep/Discard triage persists!
+      const persistedRows: Highlight[] =
+        r.createdRows && r.createdRows.length > 0
+          ? r.createdRows
+          : (r.highlights ?? []).map((text, i) => ({
+              id: -1 - i,
+              sourceId: activeId ?? 0,
+              text,
+              triaged: 0,
+              strength: 0.5,
+            }))
+      setTriageQueue((q) => [...persistedRows, ...q])
       setSelected('')
+      setFeedback({
+        kind: 'ok',
+        text: `Extracted ${persistedRows.length} highlight candidate(s) into triage queue.`,
+      })
     },
-    onError: (e) => window.alert(e.message),
+    onError: (e) =>
+      setFeedback({ kind: 'error', text: e instanceof Error ? e.message : 'Extraction failed' }),
   })
 
   const triage = useMutation({
     mutationFn: async ({ id, action }: { id: number; action: 'keep' | 'discard' }) => {
-      if (id < 0) return { action } // not yet persisted (extract preview) — drop locally
+      if (id < 0) return { action }
       return apiSend(`/api/reading/highlights`, 'PATCH', { id, action })
     },
     onSuccess: invalidate,
   })
 
-  // the resurface GET is read-only now — strength promotion is opt-in
   const markSeen = useMutation({
     mutationFn: async (ids: number[]) => {
       if (ids.length === 0) return { ok: true, seen: [] as number[] }
-      const body = await apiSend<{ ok: boolean; seen?: number[]; error?: string }>(
+      return apiSend<{ ok: boolean; seen?: number[]; error?: string }>(
         '/api/reading/highlights',
         'POST',
-        {
-          seenIds: ids,
-        },
+        { seenIds: ids },
       )
-      if (!body.ok) throw new Error(body.error ?? 'mark-seen failed')
-      return body as { ok: true; seen: number[] }
     },
     onSuccess: invalidate,
+  })
+
+  const saveSq3r = useMutation({
+    mutationFn: (patch: {
+      questions?: Sq3rQuestion[]
+      reciteNotes?: string
+      completedSteps?: Sq3rStep[]
+    }) =>
+      apiSend<{ ok: boolean; session: Sq3rSession }>('/api/reading/sq3r', 'PUT', {
+        sourceId: activeId,
+        ...patch,
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['sq3r', activeId] }),
+  })
+
+  const convertSq3rCards = useMutation({
+    mutationFn: () =>
+      apiSend<{ ok: boolean; createdCards: number; deckId: number; session: Sq3rSession }>(
+        '/api/reading/sq3r',
+        'POST',
+        { sourceId: activeId },
+      ),
+    onSuccess: (res) => {
+      invalidate()
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+      setFeedback({
+        kind: 'ok',
+        text:
+          res.createdCards > 0
+            ? `Created ${res.createdCards} FSRS flashcard(s) from your SQ3R Q&As!`
+            : 'All answered SQ3R questions are already linked to flashcards.',
+      })
+    },
+    onError: (e) =>
+      setFeedback({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Could not create flashcards',
+      }),
   })
 
   const ghost = useMutation({
@@ -212,34 +391,70 @@ export default function ReadingPage() {
     onError: (e) => setGhostResult(`⚠ ${e.message}`),
   })
 
+  const markStepDone = (step: Sq3rStep) => {
+    const next = completedSteps.includes(step) ? completedSteps : [...completedSteps, step]
+    setCompletedSteps(next)
+    saveSq3r.mutate({ questions, reciteNotes, completedSteps: next })
+  }
+
+  const addGuidingQuestion = (qText: string) => {
+    const trimmed = qText.trim()
+    if (!trimmed) return
+    const item: Sq3rQuestion = {
+      id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      question: trimmed.endsWith('?') ? trimmed : `${trimmed}?`,
+      answer: '',
+    }
+    const next = [...questions, item]
+    setQuestions(next)
+    setNewQuestion('')
+    saveSq3r.mutate({ questions: next })
+  }
+
+  const updateQuestionAnswer = (id: string, answer: string) => {
+    const next = questions.map((q) => (q.id === id ? { ...q, answer } : q))
+    setQuestions(next)
+  }
+
   const source = detail?.source
   const fragment = detail?.fragment
+  const surveyHeadings = sq3rQuery.data?.session.surveyHeadings ?? []
 
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Reading</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Reading Studio</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Incremental reading: one fragment a day, highlights on the way, triage after.
+            PDF, EPUB, Web Articles, YouTube transcripts & Markdown — incremental reading or guided
+            SQ3R.
           </p>
         </div>
-        <div className="flex gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && upload.mutate(e.target.files[0])}
-          />
-          <button className="btn" onClick={() => fileRef.current?.click()}>
-            <Upload className="h-4 w-4" /> Upload PDF
-          </button>
-          <button className="btn-ghost" onClick={() => addPaste.mutate()}>
-            Paste text
+        <button
+          className="btn"
+          onClick={() => {
+            setFeedback(null)
+            setIngestOpen(true)
+          }}
+        >
+          <Plus className="h-4 w-4" /> Add source
+        </button>
+      </header>
+
+      {feedback && (
+        <div
+          className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+            feedback.kind === 'ok'
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+              : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+          }`}
+        >
+          <span>{feedback.text}</span>
+          <button className="opacity-70 hover:opacity-100" onClick={() => setFeedback(null)}>
+            ✕
           </button>
         </div>
-      </header>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         <aside className="space-y-2">
@@ -263,7 +478,10 @@ export default function ReadingPage() {
             </button>
           ))}
           {lib?.sources.length === 0 && (
-            <p className="px-1 text-sm text-neutral-500">Nothing queued yet.</p>
+            <p className="px-1 text-sm text-neutral-500">
+              Nothing queued yet — click “Add source” to import a PDF, EPUB, URL, YouTube video, or
+              Markdown note.
+            </p>
           )}
 
           <div className="panel mt-4">
@@ -296,11 +514,29 @@ export default function ReadingPage() {
         <section className="space-y-3">
           {source && fragment ? (
             <>
-              <div className="panel">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-semibold">{source.title}</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Tabs<StudyMode>
+                  label="Reading workflow mode"
+                  value={studyMode}
+                  onChange={setStudyMode}
+                  items={[
+                    {
+                      key: 'incremental',
+                      label: 'Incremental Reader',
+                      icon: <BookOpen className="h-3.5 w-3.5" />,
+                    },
+                    {
+                      key: 'sq3r',
+                      label: 'SQ3R Guided Study',
+                      icon: <ListChecks className="h-3.5 w-3.5" />,
+                    },
+                  ]}
+                />
+                <div className="flex items-center gap-2">
+                  <Badge>{source.kind}</Badge>
                   <button
                     className="btn-ghost text-xs text-red-400"
+                    title="Delete source"
                     onClick={async () => {
                       await apiSend(`/api/reading/${source.id}`, 'DELETE')
                       setActiveId(null)
@@ -310,66 +546,382 @@ export default function ReadingPage() {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="mt-2 flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={Math.round(source.position)}
-                    onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
-                    className="flex-1 accent-indigo-500"
-                  />
-                  <span className="w-12 text-right text-xs text-neutral-500">
-                    {Math.round(source.position)}%
-                  </span>
-                </div>
-                <p
-                  className="mt-3 max-h-[40vh] overflow-y-auto text-sm leading-relaxed selection:bg-indigo-500/30"
-                  onMouseUp={() => setSelected(window.getSelection()?.toString() ?? '')}
-                >
-                  {fragment.text}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
-                  <button
-                    className="btn"
-                    onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
-                  >
-                    {fragment.done ? 'Finish source' : 'Next fragment →'}
-                  </button>
-                  <button
-                    className="btn-ghost text-xs"
-                    disabled={!selected}
-                    onClick={() => extractHighlights.mutate(source.id)}
-                  >
-                    <Highlighter className="h-3.5 w-3.5" /> Extract highlight
-                    {selected ? ' (from selection)' : 's (auto)'}
-                  </button>
-                  {(['define', 'simplify', 'flashcard'] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      className="btn-ghost text-xs"
-                      onClick={() =>
-                        manual
-                          ? setGhostResult(manualGhostHint(mode, selected))
-                          : ghost.mutate(mode)
-                      }
-                      title={
-                        manual
-                          ? 'Manual mode — no AI configured; the hint shows the offline alternative'
-                          : undefined
-                      }
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />{' '}
-                      {mode === 'flashcard' ? 'Make flashcard' : mode}
-                    </button>
-                  ))}
-                </div>
-                {ghostResult && (
-                  <div className="mt-2 rounded-lg bg-neutral-100 p-2 text-xs whitespace-pre-wrap dark:bg-[#1a1a1f]">
-                    {ghostResult}
-                  </div>
-                )}
               </div>
+
+              {studyMode === 'incremental' ? (
+                <div className="panel">
+                  <h2 className="font-semibold">{source.title}</h2>
+                  <div className="mt-2 flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(source.position)}
+                      onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
+                      className="flex-1 accent-indigo-500"
+                    />
+                    <span className="w-12 text-right text-xs text-neutral-500">
+                      {Math.round(source.position)}%
+                    </span>
+                  </div>
+                  <div
+                    className="mt-3 max-h-[48vh] overflow-y-auto text-sm leading-relaxed selection:bg-indigo-500/30"
+                    onMouseUp={() => setSelected(window.getSelection()?.toString() ?? '')}
+                  >
+                    <Markdown>{fragment.text}</Markdown>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+                    <button
+                      className="btn"
+                      onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
+                    >
+                      {fragment.done ? 'Finish source' : 'Next fragment →'}
+                    </button>
+                    <button
+                      className="btn-ghost text-xs"
+                      onClick={() => extractHighlights.mutate(source.id)}
+                      disabled={extractHighlights.isPending}
+                    >
+                      <Highlighter className="h-3.5 w-3.5" /> Extract highlight
+                      {selected ? ' (from selection)' : 's (auto)'}
+                    </button>
+                    {(['define', 'simplify', 'flashcard'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        className="btn-ghost text-xs"
+                        onClick={() =>
+                          manual
+                            ? setGhostResult(manualGhostHint(mode, selected))
+                            : ghost.mutate(mode)
+                        }
+                        title={
+                          manual
+                            ? 'Manual mode — no AI configured; shows offline active-learning prompt'
+                            : undefined
+                        }
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />{' '}
+                        {mode === 'flashcard' ? 'Make flashcard' : mode}
+                      </button>
+                    ))}
+                  </div>
+                  {ghostResult && (
+                    <div className="mt-2 rounded-lg bg-neutral-100 p-2 text-xs whitespace-pre-wrap dark:bg-[#1a1a1f]">
+                      {ghostResult}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* ─── Guided SQ3R Mode (Robinson 1946) ─── */
+                <div className="panel space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h2 className="font-semibold">{source.title}</h2>
+                      <p className="text-xs text-neutral-500">
+                        Robinson’s SQ3R method turns passive reading into retrieval-ready encoding.
+                      </p>
+                    </div>
+                    <span className="text-xs text-indigo-400">
+                      {completedSteps.length}/5 SQ3R steps completed
+                    </span>
+                  </div>
+
+                  <Tabs<Sq3rStep>
+                    label="SQ3R stages"
+                    value={sq3rStep}
+                    onChange={setSq3rStep}
+                    items={(
+                      [
+                        ['survey', '1. Survey'],
+                        ['question', '2. Question'],
+                        ['read', '3. Read'],
+                        ['recite', '4. Recite'],
+                        ['review', '5. Review'],
+                      ] as const
+                    ).map(([k, lbl]) => ({
+                      key: k,
+                      label: (
+                        <span className="inline-flex items-center gap-1">
+                          {completedSteps.includes(k) && (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                          )}
+                          {lbl}
+                        </span>
+                      ),
+                    }))}
+                  />
+
+                  {sq3rStep === 'survey' && (
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-400">
+                        Scan the structural outline first so your brain builds hooks before diving
+                        into prose. Click any heading to turn it into a guiding question.
+                      </p>
+                      <div className="space-y-1.5">
+                        {surveyHeadings.map((h, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-[#242429]"
+                          >
+                            <span className="font-medium text-neutral-200">{h}</span>
+                            <button
+                              className="btn-ghost px-2 py-1 text-[11px]"
+                              onClick={() =>
+                                addGuidingQuestion(
+                                  `How or why does "${h}" work, and what is its key takeaway?`,
+                                )
+                              }
+                            >
+                              + Question
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            markStepDone('survey')
+                            setSq3rStep('question')
+                          }}
+                        >
+                          Survey done → Formulate Questions
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {sq3rStep === 'question' && (
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-400">
+                        Write 2–5 explicit questions you intend to answer while reading. Searching
+                        for answers turns passive eye movement into active foraging.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          className="input flex-1"
+                          placeholder="e.g. Why does spacing outperform massed practice after 7 days?"
+                          value={newQuestion}
+                          onChange={(e) => setNewQuestion(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addGuidingQuestion(newQuestion)}
+                        />
+                        <button className="btn" onClick={() => addGuidingQuestion(newQuestion)}>
+                          Add
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {questions.map((q) => (
+                          <div
+                            key={q.id}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-[#242429]"
+                          >
+                            <span className="text-neutral-200">{q.question}</span>
+                            <button
+                              className="text-neutral-500 hover:text-rose-400"
+                              onClick={() => {
+                                const next = questions.filter((x) => x.id !== q.id)
+                                setQuestions(next)
+                                saveSq3r.mutate({ questions: next })
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {questions.length === 0 && (
+                          <p className="text-xs text-neutral-500">
+                            No guiding questions yet — add one above or click “+ Question” on a
+                            Survey heading.
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            markStepDone('question')
+                            setSq3rStep('read')
+                          }}
+                        >
+                          Start Active Reading →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {sq3rStep === 'read' && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={Math.round(source.position)}
+                          onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
+                          className="flex-1 accent-indigo-500"
+                        />
+                        <span className="w-12 text-right text-xs text-neutral-500">
+                          {Math.round(source.position)}%
+                        </span>
+                      </div>
+                      <div className="max-h-[42vh] overflow-y-auto rounded-xl border border-neutral-200 p-3 text-sm leading-relaxed dark:border-[#242429]">
+                        <Markdown>{fragment.text}</Markdown>
+                      </div>
+                      {questions.length > 0 && (
+                        <div className="space-y-2 rounded-xl bg-neutral-100 p-3 dark:bg-[#16161a]">
+                          <div className="text-xs font-semibold text-neutral-400">
+                            Answer your guiding questions as you read:
+                          </div>
+                          {questions.map((q) => (
+                            <div key={q.id} className="space-y-1">
+                              <div className="text-xs font-medium text-neutral-200">
+                                {q.question}
+                              </div>
+                              <textarea
+                                rows={2}
+                                className="input w-full text-xs"
+                                placeholder="Capture the concise answer in your own words…"
+                                value={q.answer}
+                                onChange={(e) => updateQuestionAnswer(q.id, e.target.value)}
+                                onBlur={() => saveSq3r.mutate({ questions })}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <button
+                          className="btn-ghost"
+                          onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
+                        >
+                          {fragment.done ? 'At end of source' : 'Next fragment →'}
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            setPeekDuringRecite(false)
+                            markStepDone('read')
+                            setSq3rStep('recite')
+                          }}
+                        >
+                          Hide text & Recite from memory →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {sq3rStep === 'recite' && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-neutral-400">
+                          <strong>Closed-book Recitation:</strong> Without looking at the text,
+                          write everything you remember from this section.
+                        </p>
+                        <button
+                          className="btn-ghost text-xs"
+                          onClick={() => setPeekDuringRecite((p) => !p)}
+                        >
+                          {peekDuringRecite ? (
+                            <>
+                              <EyeOff className="h-3.5 w-3.5" /> Hide text
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-3.5 w-3.5" /> Peek text to check gaps
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      {peekDuringRecite && (
+                        <div className="max-h-48 overflow-y-auto rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+                          <Markdown>{fragment.text}</Markdown>
+                        </div>
+                      )}
+                      <textarea
+                        rows={6}
+                        className="input w-full text-sm"
+                        placeholder="Summarize the core mechanisms, examples, and connections from memory…"
+                        value={reciteNotes}
+                        onChange={(e) => setReciteNotes(e.target.value)}
+                        onBlur={() => saveSq3r.mutate({ reciteNotes })}
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            markStepDone('recite')
+                            setSq3rStep('review')
+                          }}
+                        >
+                          Proceed to Review & Flashcard Minting →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {sq3rStep === 'review' && (
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-400">
+                        Lock in long-term retention: convert your answered SQ3R questions directly
+                        into FSRS-6 flashcards in one click.
+                      </p>
+                      <div className="space-y-2">
+                        {questions.map((q) => (
+                          <div
+                            key={q.id}
+                            className="rounded-xl border border-neutral-200 p-3 text-xs space-y-1.5 dark:border-[#242429]"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-semibold text-neutral-200">{q.question}</span>
+                              {q.cardId ? (
+                                <Badge tone="success">Card #{q.cardId}</Badge>
+                              ) : q.answer.trim() ? (
+                                <Badge>Ready to mint</Badge>
+                              ) : (
+                                <Badge>Needs answer</Badge>
+                              )}
+                            </div>
+                            <textarea
+                              rows={2}
+                              className="input w-full text-xs"
+                              placeholder="Write or refine the answer before minting card…"
+                              value={q.answer}
+                              onChange={(e) => updateQuestionAnswer(q.id, e.target.value)}
+                              onBlur={() => saveSq3r.mutate({ questions })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        {reciteNotes.trim() && (
+                          <button
+                            className="btn-ghost text-xs"
+                            onClick={() => setMineText(reciteNotes)}
+                          >
+                            Mine cards from Recite summary
+                          </button>
+                        )}
+                        <button
+                          className="btn ml-auto"
+                          disabled={
+                            convertSq3rCards.isPending ||
+                            questions.filter((q) => !q.cardId && q.answer.trim()).length === 0
+                          }
+                          onClick={async () => {
+                            await saveSq3r.mutateAsync({ questions, reciteNotes })
+                            convertSq3rCards.mutate()
+                          }}
+                        >
+                          <Sparkles className="h-4 w-4" />{' '}
+                          {convertSq3rCards.isPending
+                            ? 'Creating cards…'
+                            : 'Convert Q&As to FSRS Flashcards'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {triageQueue.length > 0 && (
                 <div className="panel space-y-3">
@@ -434,11 +986,158 @@ export default function ReadingPage() {
             </>
           ) : (
             <div className="panel text-sm text-neutral-500">
-              Pick a source, or upload a PDF to begin.
+              Pick a source on the left, or click <strong>Add source</strong> to import a PDF, EPUB,
+              Web article, YouTube transcript, or Markdown note.
             </div>
           )}
         </section>
       </div>
+
+      {/* Multi-Format Ingestion Sheet */}
+      <Sheet
+        open={ingestOpen}
+        onClose={() => setIngestOpen(false)}
+        title="Add Reading Source"
+        footer={
+          ingestTab !== 'file' ? (
+            <>
+              <button className="btn-ghost" onClick={() => setIngestOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="btn"
+                disabled={
+                  ingestRemoteOrMarkdown.isPending ||
+                  (ingestTab === 'markdown' ? !markdownInput.trim() : !urlInput.trim())
+                }
+                onClick={() => ingestRemoteOrMarkdown.mutate()}
+              >
+                {ingestRemoteOrMarkdown.isPending ? 'Importing…' : 'Import source'}
+              </button>
+            </>
+          ) : undefined
+        }
+      >
+        <div className="space-y-4">
+          <Tabs<IngestTab>
+            label="Import format"
+            value={ingestTab}
+            onChange={setIngestTab}
+            items={[
+              {
+                key: 'file',
+                label: 'File (PDF / EPUB / MD)',
+                icon: <Upload className="h-3.5 w-3.5" />,
+              },
+              { key: 'url', label: 'Web URL', icon: <Globe className="h-3.5 w-3.5" /> },
+              { key: 'youtube', label: 'YouTube', icon: <Video className="h-3.5 w-3.5" /> },
+              {
+                key: 'markdown',
+                label: 'Paste / Markdown',
+                icon: <FileText className="h-3.5 w-3.5" />,
+              },
+            ]}
+          />
+
+          <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Custom title (optional)</span>
+              <input
+                className="input w-full"
+                placeholder="Auto-detected when left blank"
+                value={titleInput}
+                onChange={(e) => setTitleInput(e.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-xs">
+              <span className="text-neutral-400">Priority (0–100)</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className="input w-full"
+                value={priorityInput}
+                onChange={(e) => setPriorityInput(Number(e.target.value))}
+              />
+            </label>
+          </div>
+
+          {ingestTab === 'file' && (
+            <div className="rounded-xl border-2 border-dashed border-neutral-300 p-6 text-center space-y-2 dark:border-[#26262b]">
+              <Upload className="mx-auto h-6 w-6 text-neutral-400" />
+              <div className="text-sm font-medium">
+                Choose a <code>.pdf</code>, <code>.epub</code>, <code>.md</code>, or{' '}
+                <code>.txt</code> file
+              </div>
+              <p className="text-xs text-neutral-500">
+                Extracted locally inside Learning HUB — works offline on desktop & mobile.
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.epub,.md,.markdown,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) uploadFile.mutate(f)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                className="btn"
+                disabled={uploadFile.isPending}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploadFile.isPending ? 'Extracting…' : 'Select file'}
+              </button>
+            </div>
+          )}
+
+          {ingestTab === 'url' && (
+            <label className="block space-y-1 text-xs">
+              <span className="text-neutral-400">Article URL</span>
+              <input
+                type="url"
+                className="input w-full"
+                placeholder="https://example.com/essay"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+              />
+              <span className="block text-[11px] text-neutral-500">
+                Strips navigation, ads, and scripts into clean Markdown headings & paragraphs.
+              </span>
+            </label>
+          )}
+
+          {ingestTab === 'youtube' && (
+            <label className="block space-y-1 text-xs">
+              <span className="text-neutral-400">YouTube video URL</span>
+              <input
+                className="input w-full"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+              />
+              <span className="block text-[11px] text-neutral-500">
+                Imports caption tracks grouped into timestamped 1-minute sections ready for SQ3R.
+              </span>
+            </label>
+          )}
+
+          {ingestTab === 'markdown' && (
+            <label className="block space-y-1 text-xs">
+              <span className="text-neutral-400">Markdown or plain text</span>
+              <textarea
+                rows={8}
+                className="input w-full font-mono text-xs"
+                placeholder="# Chapter Title&#10;&#10;Paste notes, book excerpts, or lecture transcripts here…"
+                value={markdownInput}
+                onChange={(e) => setMarkdownInput(e.target.value)}
+              />
+            </label>
+          )}
+        </div>
+      </Sheet>
 
       <CardMinerSheet
         open={mineText !== null}

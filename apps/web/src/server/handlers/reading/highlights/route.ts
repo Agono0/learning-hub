@@ -88,15 +88,24 @@ export const POST = withRoute(async (req: Request) => {
   if (!source) return Response.json({ error: 'source not found' }, { status: 404 })
   const text = body.text?.trim() || source.content
   const candidates = extractHighlightCandidates(text, body.max ?? 8)
-  const created: number[] = []
-  for (const candidate of candidates) {
-    const [row] = await db
-      .insert(highlights)
-      .values({ sourceId: source.id, text: candidate, strength: 0.5, triaged: 0 })
-      .returning()
-    created.push(row!.id)
-  }
-  return Response.json({ ok: true, created: created.length, highlights: candidates })
+  const createdRows = db.transaction((tx) => {
+    const out: (typeof highlights.$inferSelect)[] = []
+    for (const candidate of candidates) {
+      const [row] = tx
+        .insert(highlights)
+        .values({ sourceId: source.id, text: candidate, strength: 0.5, triaged: 0 })
+        .returning()
+        .all()
+      if (row) out.push(row)
+    }
+    return out
+  })
+  return Response.json({
+    ok: true,
+    created: createdRows.length,
+    highlights: candidates,
+    createdRows,
+  })
 })
 
 export const PATCH = withRoute(async (req: Request) => {

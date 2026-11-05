@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import {
   CalendarClock,
@@ -13,13 +13,18 @@ import {
   Timer,
   Zap,
 } from 'lucide-react'
-import { apiGet } from '@/lib/transport'
+import { apiGet, apiSend } from '@/lib/transport'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 export default function DashboardPage() {
+  const qc = useQueryClient()
   const { data: d } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
+  })
+  const seedQuotesMutation = useMutation({
+    mutationFn: () => apiSend('/api/starter', 'POST', { seedCore: true }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['dashboard'] }),
   })
   if (!d) return null
   const level = levelFromXp(d.xpTotal)
@@ -146,10 +151,16 @@ export default function DashboardPage() {
               </footer>
             </blockquote>
           ) : (
-            <p className="mt-3 text-sm text-neutral-500">
-              No quotes yet — run{' '}
-              <code className="rounded bg-neutral-200 px-1 dark:bg-[#26262b]">npm run db:seed</code>
-            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-500">
+              <span>No quotes seeded yet on this device.</span>
+              <button
+                className="btn-ghost text-xs"
+                disabled={seedQuotesMutation.isPending}
+                onClick={() => seedQuotesMutation.mutate()}
+              >
+                {seedQuotesMutation.isPending ? 'Loading…' : 'Load starter quotes & mnemonics'}
+              </button>
+            </div>
           )}
         </div>
 

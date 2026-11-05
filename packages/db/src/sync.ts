@@ -140,7 +140,9 @@ export function computeRecordNaturalKey(
     case 'mnemonic_tables':
       return `sys:${str(row['system'])}:code:${str(row['code'])}`
     case 'sources':
-      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+      return `title:${str(row['title'])}:created:${str(row['added_at'] || row['created_at'])}`
+    case 'sq3r_sessions':
+      return `src:${str(row['source_id'])}`
     case 'highlights':
       return `src:${str(row['source_id'])}:txt:${str(row['text'])}`
     case 'palaces':

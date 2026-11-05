@@ -15,6 +15,7 @@ import { curriculumV2 } from './002-curriculum-v2'
 import { ftsSearch } from './003-fts-search'
 import { fsrsAndUndo } from './004-fsrs-and-undo'
 import { syncAndOnboarding } from './005-sync-and-onboarding'
+import { sq3rReading } from './006-sq3r-reading'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -23,6 +24,7 @@ export const MIGRATIONS: readonly Migration[] = [
   ftsSearch,
   fsrsAndUndo,
   syncAndOnboarding,
+  sq3rReading,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
