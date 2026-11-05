@@ -12,6 +12,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ClipboardCopy, ClipboardPaste, Check } from 'lucide-react'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface AiStatus {
   provider: string
@@ -51,7 +52,7 @@ interface TransportResult {
 export function useAiStatus() {
   return useQuery<AiStatus>({
     queryKey: ['ai-status'],
-    queryFn: () => fetch('/api/ai/transport').then((r) => r.json()),
+    queryFn: () => apiGet<AiStatus>('/api/ai/transport'),
     staleTime: 30_000,
   })
 }
@@ -86,14 +87,9 @@ export function TransportPanel({
     queryFn: async () => {
       if (!big) {
         const qs = new URLSearchParams({ feature, ...cleanParams }).toString()
-        return fetch(`/api/ai/transport?${qs}`).then((r) => r.json())
+        return apiGet<TransportInfo>(`/api/ai/transport?${qs}`)
       }
-      const res = await fetch('/api/ai/transport', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ feature, params: cleanParams }),
-      })
-      return res.json()
+      return apiSend<TransportInfo>('/api/ai/transport', 'POST', { feature, params: cleanParams })
     },
   })
 
@@ -102,14 +98,8 @@ export function TransportPanel({
   const [showSteps, setShowSteps] = useState(false)
 
   const validate = useMutation({
-    mutationFn: async (result: string) => {
-      const res = await fetch('/api/ai/transport', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ feature, result }),
-      })
-      return (await res.json()) as TransportResult
-    },
+    mutationFn: (result: string) =>
+      apiSend<TransportResult>('/api/ai/transport', 'POST', { feature, result }),
     onSuccess: (r) => {
       if (r.ok && onValidated) onValidated(r.data ?? r.result, r.kind ?? 'text')
     },
@@ -117,7 +107,11 @@ export function TransportPanel({
 
   if (info.isLoading) return <div className="text-xs text-neutral-500">Loading prompt…</div>
   if (info.isError || !info.data?.ok) {
-    return <div className="text-xs text-amber-500">{info.data?.error ?? 'Failed to load the prompt envelope.'}</div>
+    return (
+      <div className="text-xs text-amber-500">
+        {info.data?.error ?? 'Failed to load the prompt envelope.'}
+      </div>
+    )
   }
 
   const t = info.data
@@ -131,7 +125,11 @@ export function TransportPanel({
           onClick={() => copy(JSON.stringify(t.envelope, null, 2), setCopied)}
           title="Copy the envelope JSON — paste it into any chatbot"
         >
-          {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
+          ) : (
+            <ClipboardCopy className="h-3.5 w-3.5" />
+          )}
           Copy envelope
         </button>
         {t.manual && (
@@ -146,7 +144,11 @@ export function TransportPanel({
         {'\n\n── user ──\n'}
         {t.envelope.prompt}
       </pre>
-      {t.envelope.schema && <p className="text-[11px] text-neutral-500">Expected reply shape: <code>{t.envelope.schema}</code></p>}
+      {t.envelope.schema && (
+        <p className="text-[11px] text-neutral-500">
+          Expected reply shape: <code>{t.envelope.schema}</code>
+        </p>
+      )}
 
       <textarea
         className="input min-h-20 text-xs"
@@ -155,11 +157,22 @@ export function TransportPanel({
         onChange={(e) => setPasted(e.target.value)}
       />
       <div className="flex items-center gap-2">
-        <button className="btn text-xs" disabled={!pasted.trim() || validate.isPending} onClick={() => validate.mutate(pasted)}>
-          <ClipboardPaste className="h-3.5 w-3.5" /> {validate.isPending ? 'Validating…' : 'Validate & use'}
+        <button
+          className="btn text-xs"
+          disabled={!pasted.trim() || validate.isPending}
+          onClick={() => validate.mutate(pasted)}
+        >
+          <ClipboardPaste className="h-3.5 w-3.5" />{' '}
+          {validate.isPending ? 'Validating…' : 'Validate & use'}
         </button>
-        {validate.data?.ok === true && <span className="text-xs text-emerald-500">Validated{validate.data.kind === 'json' ? ' JSON' : ''}.</span>}
-        {validate.data?.ok === false && <span className="text-xs text-amber-500">{validate.data.error}</span>}
+        {validate.data?.ok === true && (
+          <span className="text-xs text-emerald-500">
+            Validated{validate.data.kind === 'json' ? ' JSON' : ''}.
+          </span>
+        )}
+        {validate.data?.ok === false && (
+          <span className="text-xs text-amber-500">{validate.data.error}</span>
+        )}
         {validate.isError && <span className="text-xs text-amber-500">network error</span>}
       </div>
 

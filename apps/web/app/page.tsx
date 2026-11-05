@@ -4,16 +4,13 @@ import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import { Flame, Quote as QuoteIcon, Repeat2, Sparkles, Timer, Zap } from 'lucide-react'
+import { apiGet } from '@/lib/transport'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 export default function DashboardPage() {
   const { data: d } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
-    queryFn: async () => {
-      const res = await fetch('/api/dashboard')
-      if (!res.ok) throw new Error(`dashboard fetch failed: ${res.status}`)
-      return (await res.json()) as DashboardData
-    },
+    queryFn: () => apiGet<DashboardData>('/api/dashboard'),
   })
   if (!d) return null
   const level = levelFromXp(d.xpTotal)

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, BedDouble, Coffee, Dumbbell, Gauge } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface PhysioLog {
   id: number
@@ -20,23 +21,19 @@ interface PhysioLog {
 interface PhysioResponse {
   history: PhysioLog[]
   insights: {
-    sleep: { shortSleepMean: number | null; restMean: number | null; deltaPct: number | null; nShort: number; nRest: number; insight: string }
+    sleep: {
+      shortSleepMean: number | null
+      restMean: number | null
+      deltaPct: number | null
+      nShort: number
+      nRest: number
+      insight: string
+    }
     exercise: { hoursAfterLearning: number | null; nudge: string }
     caffeine: { cutoffHour: number; advice: string }
     arousal: { value: number | null; zone: string; advice: string }
   }
   bedtimeHour: number
-}
-
-async function jget<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`GET ${url} failed`)
-  return res.json() as Promise<T>
-}
-async function jsend<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
-  if (!res.ok) throw new Error(`${method} ${url} failed`)
-  return res.json() as Promise<T>
 }
 
 const numOrEmpty = (v: string): number | null => (v.trim() === '' ? null : Number(v))
@@ -54,11 +51,14 @@ export default function PhysiologyPage() {
   })
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
 
-  const data = useQuery({ queryKey: ['physio'], queryFn: () => jget<PhysioResponse>('/api/physio') })
+  const data = useQuery({
+    queryKey: ['physio'],
+    queryFn: () => apiGet<PhysioResponse>('/api/physio'),
+  })
 
   const save = useMutation({
     mutationFn: () =>
-      jsend<{ created: boolean }>('/api/physio', 'POST', {
+      apiSend<{ created: boolean }>('/api/physio', 'POST', {
         date: dayKey(new Date()),
         sleepHours: numOrEmpty(form.sleepHours),
         sleepQuality: numOrEmpty(form.sleepQuality),
@@ -84,7 +84,9 @@ export default function PhysiologyPage() {
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
           <Activity className="h-6 w-6 text-indigo-400" /> Physiology
         </h1>
-        <p className="text-sm text-neutral-500">Sleep, movement, caffeine and arousal — correlated with your real retention.</p>
+        <p className="text-sm text-neutral-500">
+          Sleep, movement, caffeine and arousal — correlated with your real retention.
+        </p>
       </header>
 
       {/* daily log form */}
@@ -95,32 +97,91 @@ export default function PhysiologyPage() {
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
           <label className="space-y-1">
-            <span className="label flex items-center gap-1"><BedDouble className="h-3 w-3" /> sleep (h)</span>
-            <input className="input" type="number" step="0.5" min="0" max="24" value={form.sleepHours} onChange={(e) => setForm({ ...form, sleepHours: e.target.value })} />
+            <span className="label flex items-center gap-1">
+              <BedDouble className="h-3 w-3" /> sleep (h)
+            </span>
+            <input
+              className="input"
+              type="number"
+              step="0.5"
+              min="0"
+              max="24"
+              value={form.sleepHours}
+              onChange={(e) => setForm({ ...form, sleepHours: e.target.value })}
+            />
           </label>
           <label className="space-y-1">
             <span className="label">sleep quality (1-5)</span>
-            <input className="input" type="number" min="1" max="5" value={form.sleepQuality} onChange={(e) => setForm({ ...form, sleepQuality: e.target.value })} />
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="5"
+              value={form.sleepQuality}
+              onChange={(e) => setForm({ ...form, sleepQuality: e.target.value })}
+            />
           </label>
           <label className="space-y-1">
-            <span className="label flex items-center gap-1"><Dumbbell className="h-3 w-3" /> exercise (min)</span>
-            <input className="input" type="number" min="0" max="600" value={form.exerciseMinutes} onChange={(e) => setForm({ ...form, exerciseMinutes: e.target.value })} />
+            <span className="label flex items-center gap-1">
+              <Dumbbell className="h-3 w-3" /> exercise (min)
+            </span>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              max="600"
+              value={form.exerciseMinutes}
+              onChange={(e) => setForm({ ...form, exerciseMinutes: e.target.value })}
+            />
           </label>
           <label className="space-y-1">
             <span className="label">exercise — hours after learning</span>
-            <input className="input" type="number" step="0.5" min="0" max="48" value={form.exerciseHoursAfterLearning} onChange={(e) => setForm({ ...form, exerciseHoursAfterLearning: e.target.value })} />
+            <input
+              className="input"
+              type="number"
+              step="0.5"
+              min="0"
+              max="48"
+              value={form.exerciseHoursAfterLearning}
+              onChange={(e) => setForm({ ...form, exerciseHoursAfterLearning: e.target.value })}
+            />
           </label>
           <label className="space-y-1">
-            <span className="label flex items-center gap-1"><Coffee className="h-3 w-3" /> caffeine cutoff (0-23h)</span>
-            <input className="input" type="number" min="0" max="23" value={form.caffeineCutoffHour} onChange={(e) => setForm({ ...form, caffeineCutoffHour: e.target.value })} />
+            <span className="label flex items-center gap-1">
+              <Coffee className="h-3 w-3" /> caffeine cutoff (0-23h)
+            </span>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              max="23"
+              value={form.caffeineCutoffHour}
+              onChange={(e) => setForm({ ...form, caffeineCutoffHour: e.target.value })}
+            />
           </label>
           <label className="space-y-1">
-            <span className="label flex items-center gap-1"><Gauge className="h-3 w-3" /> arousal (1-10)</span>
-            <input className="input" type="number" min="1" max="10" value={form.arousal} onChange={(e) => setForm({ ...form, arousal: e.target.value })} />
+            <span className="label flex items-center gap-1">
+              <Gauge className="h-3 w-3" /> arousal (1-10)
+            </span>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="10"
+              value={form.arousal}
+              onChange={(e) => setForm({ ...form, arousal: e.target.value })}
+            />
           </label>
-          <input className="input sm:col-span-3" placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          <input
+            className="input sm:col-span-3"
+            placeholder="Notes"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
         </div>
-        <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>Save log</button>
+        <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>
+          Save log
+        </button>
       </div>
 
       {/* insight cards */}
@@ -136,12 +197,19 @@ export default function PhysiologyPage() {
         <div className="panel space-y-1">
           <p className="label">Exercise timing (van Dongen 2016)</p>
           <p className="text-sm text-neutral-200">{i?.exercise.nudge ?? 'Loading…'}</p>
-          <p className="text-xs text-neutral-500">{i?.exercise.hoursAfterLearning != null ? `last logged: T+${i.exercise.hoursAfterLearning}h` : 'no exercise logged yet'}</p>
+          <p className="text-xs text-neutral-500">
+            {i?.exercise.hoursAfterLearning != null
+              ? `last logged: T+${i.exercise.hoursAfterLearning}h`
+              : 'no exercise logged yet'}
+          </p>
         </div>
         <div className="panel space-y-1">
           <p className="label">Caffeine cutoff (8h rule)</p>
           <p className="text-sm text-neutral-200">{i?.caffeine.advice ?? 'Loading…'}</p>
-          <p className="text-xs text-neutral-500">assumes bedtime {data.data?.bedtimeHour ?? 23}:00 — keep your cutoff hour in the daily log for precision</p>
+          <p className="text-xs text-neutral-500">
+            assumes bedtime {data.data?.bedtimeHour ?? 23}:00 — keep your cutoff hour in the daily
+            log for precision
+          </p>
         </div>
         <div className="panel space-y-1">
           <p className="label">Yerkes-Dodson zone</p>
@@ -149,7 +217,9 @@ export default function PhysiologyPage() {
             {i?.arousal.zone ?? '—'}
             {i?.arousal.value != null ? ` (arousal ${i.arousal.value}/10)` : ''}
           </p>
-          <p className="text-xs text-neutral-500">{i?.arousal.advice ?? 'Log arousal to place yourself on the inverted-U.'}</p>
+          <p className="text-xs text-neutral-500">
+            {i?.arousal.advice ?? 'Log arousal to place yourself on the inverted-U.'}
+          </p>
         </div>
       </div>
 
@@ -179,7 +249,11 @@ export default function PhysiologyPage() {
                     <td className="py-1.5 pr-3">{h.sleepHours ?? '—'}</td>
                     <td className="py-1.5 pr-3">{h.sleepQuality ?? '—'}</td>
                     <td className="py-1.5 pr-3">{h.exerciseMinutes ?? '—'}</td>
-                    <td className="py-1.5 pr-3">{h.exerciseHoursAfterLearning != null ? `+${h.exerciseHoursAfterLearning}h` : '—'}</td>
+                    <td className="py-1.5 pr-3">
+                      {h.exerciseHoursAfterLearning != null
+                        ? `+${h.exerciseHoursAfterLearning}h`
+                        : '—'}
+                    </td>
                     <td className="py-1.5 pr-3">{h.arousal ?? '—'}</td>
                     <td className="py-1.5 max-w-40 truncate">{h.notes ?? ''}</td>
                   </tr>

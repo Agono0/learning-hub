@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { apiGet } from '@/lib/transport'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
@@ -21,7 +22,11 @@ interface GraphNode {
   x?: number
   y?: number
 }
-interface GraphEdge { source: string | GraphNode; target: string | GraphNode; type: string }
+interface GraphEdge {
+  source: string | GraphNode
+  target: string | GraphNode
+  type: string
+}
 
 const KIND_COLOR: Record<GraphNode['kind'], string> = {
   note: '#818cf8',
@@ -34,9 +39,14 @@ export default function GraphPage() {
   const router = useRouter()
   const { data } = useQuery<{ nodes: GraphNode[]; edges: GraphEdge[] }>({
     queryKey: ['graph'],
-    queryFn: () => fetch('/api/graph').then((r) => r.json()),
+    queryFn: () => apiGet<{ nodes: GraphNode[]; edges: GraphEdge[] }>('/api/graph'),
   })
-  const [filters, setFilters] = useState<Record<GraphNode['kind'], boolean>>({ note: true, idea: true, skill: true, card: false })
+  const [filters, setFilters] = useState<Record<GraphNode['kind'], boolean>>({
+    note: true,
+    idea: true,
+    skill: true,
+    card: false,
+  })
 
   const graph = useMemo(() => {
     const nodes = (data?.nodes ?? []).filter((n) => filters[n.kind])
@@ -48,14 +58,22 @@ export default function GraphPage() {
   }, [data, filters])
 
   const routeFor = (n: GraphNode): string =>
-    n.kind === 'note' ? '/notes' : n.kind === 'idea' ? '/ideas' : n.kind === 'skill' ? '/curriculum' : '/decks'
+    n.kind === 'note'
+      ? '/notes'
+      : n.kind === 'idea'
+        ? '/ideas'
+        : n.kind === 'skill'
+          ? '/curriculum'
+          : '/decks'
 
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Knowledge graph</h1>
-          <p className="mt-1 text-sm text-neutral-500">Notes, ideas, and skills as one navigable web. Click a node to open it.</p>
+          <p className="mt-1 text-sm text-neutral-500">
+            Notes, ideas, and skills as one navigable web. Click a node to open it.
+          </p>
         </div>
         <div className="flex gap-2">
           {(Object.keys(KIND_COLOR) as GraphNode['kind'][]).map((k) => (
@@ -73,7 +91,9 @@ export default function GraphPage() {
 
       <div className="panel h-[70vh] overflow-hidden">
         {graph.nodes.length === 0 ? (
-          <div className="grid h-full place-items-center text-sm text-neutral-500">No nodes yet — write notes and capture ideas first.</div>
+          <div className="grid h-full place-items-center text-sm text-neutral-500">
+            No nodes yet — write notes and capture ideas first.
+          </div>
         ) : (
           <ForceGraph2D
             graphData={graph}

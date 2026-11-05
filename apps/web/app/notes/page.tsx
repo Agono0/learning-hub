@@ -11,20 +11,44 @@ import { Bold, Heading, Link2, List, Save } from 'lucide-react'
 // subpath import (NOT the barrel) — keeps the client bundle free of the AI/db graph
 import { SUPERTAG_TEMPLATES } from '@learning-hub/core/notes'
 import type { SupertagKey } from '@learning-hub/core/notes'
+import { apiGet, apiSend } from '@/lib/transport'
 
-interface Note { id: number; title: string; content: string; supertag: string | null; fields: Record<string, string> | null; status: string; deckId: number | null }
-interface Bullet { id: number; noteId: number; content: string; position: number; cardId: number | null }
-interface Backlink { fromNoteId: number; fromTitle: string; type: string; context: string | null }
+interface Note {
+  id: number
+  title: string
+  content: string
+  supertag: string | null
+  fields: Record<string, string> | null
+  status: string
+  deckId: number | null
+}
+interface Bullet {
+  id: number
+  noteId: number
+  content: string
+  position: number
+  cardId: number | null
+}
+interface Backlink {
+  fromNoteId: number
+  fromTitle: string
+  type: string
+  context: string | null
+}
 
 export default function NotesPage() {
   const qc = useQueryClient()
-  const { data: list } = useQuery<{ notes: Note[] }>({ queryKey: ['notes'], queryFn: () => fetch('/api/notes').then((r) => r.json()) })
+  const { data: list } = useQuery<{ notes: Note[] }>({
+    queryKey: ['notes'],
+    queryFn: () => apiGet<{ notes: Note[] }>('/api/notes'),
+  })
   const [activeId, setActiveId] = useState<number | null>(null)
   const active = list?.notes.find((n) => n.id === activeId) ?? null
 
   const { data: detail } = useQuery<{ note: Note; bullets: Bullet[]; backlinks: Backlink[] }>({
     queryKey: ['note', activeId],
-    queryFn: () => fetch(`/api/notes/${activeId}`).then((r) => r.json()),
+    queryFn: () =>
+      apiGet<{ note: Note; bullets: Bullet[]; backlinks: Backlink[] }>(`/api/notes/${activeId}`),
     enabled: Boolean(activeId),
   })
 
@@ -42,14 +66,7 @@ export default function NotesPage() {
   }, [detail])
 
   const createNote = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: 'Untitled note' }),
-      })
-      return res.json() as Promise<{ note: Note }>
-    },
+    mutationFn: () => apiSend<{ note: Note }>('/api/notes', 'POST', { title: 'Untitled note' }),
     onSuccess: (r) => {
       void qc.invalidateQueries({ queryKey: ['notes'] })
       setActiveId(r.note.id)
@@ -57,14 +74,13 @@ export default function NotesPage() {
   })
 
   const saveNote = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/notes/${activeId}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, content, supertag: supertag || null, fields }),
-      })
-      return res.json()
-    },
+    mutationFn: () =>
+      apiSend(`/api/notes/${activeId}`, 'PATCH', {
+        title,
+        content,
+        supertag: supertag || null,
+        fields,
+      }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['notes'] })
       void qc.invalidateQueries({ queryKey: ['note', activeId] })
@@ -72,7 +88,7 @@ export default function NotesPage() {
   })
 
   const deleteNote = useMutation({
-    mutationFn: async (id: number) => fetch(`/api/notes/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => apiSend(`/api/notes/${id}`, 'DELETE'),
     onSuccess: () => {
       setActiveId(null)
       void qc.invalidateQueries({ queryKey: ['notes'] })
@@ -80,20 +96,14 @@ export default function NotesPage() {
   })
 
   const bulletToCard = useMutation({
-    mutationFn: async (bullet: Bullet) => {
-      const res = await fetch('/api/cards/bullet', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          noteId: bullet.noteId,
-          bulletId: bullet.id,
-          content: bullet.content,
-          deckId: active?.deckId ?? 1,
-          format: 'basic',
-        }),
-      })
-      return res.json()
-    },
+    mutationFn: (bullet: Bullet) =>
+      apiSend('/api/cards/bullet', 'POST', {
+        noteId: bullet.noteId,
+        bulletId: bullet.id,
+        content: bullet.content,
+        deckId: active?.deckId ?? 1,
+        format: 'basic',
+      }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['note', activeId] })
     },
@@ -115,7 +125,9 @@ export default function NotesPage() {
   return (
     <div className="grid gap-4 lg:grid-cols-[240px_1fr_220px]">
       <aside className="space-y-2">
-        <button className="btn w-full" onClick={() => createNote.mutate()}>New note</button>
+        <button className="btn w-full" onClick={() => createNote.mutate()}>
+          New note
+        </button>
         <div className="space-y-1">
           {(list?.notes ?? []).map((n) => (
             <button
@@ -135,59 +147,119 @@ export default function NotesPage() {
         ) : (
           <>
             <div className="panel space-y-3">
-              <input className="input text-lg font-semibold" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input
+                className="input text-lg font-semibold"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
               <div className="flex flex-wrap items-center gap-1">
-                <button className="btn-ghost" title="Bold" onClick={() => wrapSelection('**')}><Bold className="h-4 w-4" /></button>
-                <button className="btn-ghost" title="Heading" onClick={() => setContent((c) => `${c}\n## `)}><Heading className="h-4 w-4" /></button>
-                <button className="btn-ghost" title="Wikilink" onClick={() => setContent((c) => `${c}[[title]]`)}><Link2 className="h-4 w-4" /></button>
-                <button className="btn-ghost" title="Bullet" onClick={() => setContent((c) => `${c}\n- `)}><List className="h-4 w-4" /></button>
-                <select className="input ml-auto w-40 text-xs" value={supertag} onChange={(e) => e.target.value && applySupertag(e.target.value as SupertagKey)}>
+                <button className="btn-ghost" title="Bold" onClick={() => wrapSelection('**')}>
+                  <Bold className="h-4 w-4" />
+                </button>
+                <button
+                  className="btn-ghost"
+                  title="Heading"
+                  onClick={() => setContent((c) => `${c}\n## `)}
+                >
+                  <Heading className="h-4 w-4" />
+                </button>
+                <button
+                  className="btn-ghost"
+                  title="Wikilink"
+                  onClick={() => setContent((c) => `${c}[[title]]`)}
+                >
+                  <Link2 className="h-4 w-4" />
+                </button>
+                <button
+                  className="btn-ghost"
+                  title="Bullet"
+                  onClick={() => setContent((c) => `${c}\n- `)}
+                >
+                  <List className="h-4 w-4" />
+                </button>
+                <select
+                  className="input ml-auto w-40 text-xs"
+                  value={supertag}
+                  onChange={(e) => e.target.value && applySupertag(e.target.value as SupertagKey)}
+                >
                   <option value="">Supertag…</option>
                   {Object.values(SUPERTAG_TEMPLATES).map((t) => (
-                    <option key={t.key} value={t.key}>{t.emoji} {t.name}</option>
+                    <option key={t.key} value={t.key}>
+                      {t.emoji} {t.name}
+                    </option>
                   ))}
                 </select>
-                <button className="btn" onClick={() => saveNote.mutate()} disabled={saveNote.isPending}>
+                <button
+                  className="btn"
+                  onClick={() => saveNote.mutate()}
+                  disabled={saveNote.isPending}
+                >
                   <Save className="h-4 w-4" /> Save
                 </button>
-                <button className="btn-ghost text-xs text-red-400" onClick={() => activeId && deleteNote.mutate(activeId)}>Delete</button>
+                <button
+                  className="btn-ghost text-xs text-red-400"
+                  onClick={() => activeId && deleteNote.mutate(activeId)}
+                >
+                  Delete
+                </button>
               </div>
-              <textarea className="input min-h-[40vh] font-mono text-sm" value={content} onChange={(e) => setContent(e.target.value)} />
+              <textarea
+                className="input min-h-[40vh] font-mono text-sm"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
             </div>
 
             {supertag && SUPERTAG_TEMPLATES[supertag as SupertagKey] && (
               <div className="panel space-y-2">
-                <div className="label">Supertag fields — {SUPERTAG_TEMPLATES[supertag as SupertagKey].name}</div>
-                {Object.entries(SUPERTAG_TEMPLATES[supertag as SupertagKey].fields).map(([field, placeholder]) => (
-                  <div key={field} className="flex items-center gap-2">
-                    <span className="w-28 shrink-0 text-xs text-neutral-500">{field}</span>
-                    <input
-                      className="input text-sm"
-                      placeholder={placeholder}
-                      value={fields[field] ?? ''}
-                      onChange={(e) => setFields((f) => ({ ...f, [field]: e.target.value }))}
-                    />
-                  </div>
-                ))}
+                <div className="label">
+                  Supertag fields — {SUPERTAG_TEMPLATES[supertag as SupertagKey].name}
+                </div>
+                {Object.entries(SUPERTAG_TEMPLATES[supertag as SupertagKey].fields).map(
+                  ([field, placeholder]) => (
+                    <div key={field} className="flex items-center gap-2">
+                      <span className="w-28 shrink-0 text-xs text-neutral-500">{field}</span>
+                      <input
+                        className="input text-sm"
+                        placeholder={placeholder}
+                        value={fields[field] ?? ''}
+                        onChange={(e) => setFields((f) => ({ ...f, [field]: e.target.value }))}
+                      />
+                    </div>
+                  ),
+                )}
               </div>
             )}
 
             <div className="panel space-y-2">
               <div className="label">Bullets — any bullet can BE a card</div>
-              {bullets.length === 0 && <p className="text-sm text-neutral-500">No bullets yet — write "- something" and save.</p>}
+              {bullets.length === 0 && (
+                <p className="text-sm text-neutral-500">
+                  No bullets yet — write "- something" and save.
+                </p>
+              )}
               {bullets.map((b) => (
                 <div key={b.id} className="flex items-center gap-2 text-sm">
                   <span className="flex-1">{b.content}</span>
                   {b.cardId ? (
                     <span className="text-xs text-emerald-500">card #{b.cardId}</span>
                   ) : (
-                    <button className="btn-ghost text-xs" onClick={() => bulletToCard.mutate(b)} disabled={bulletToCard.isPending}>
+                    <button
+                      className="btn-ghost text-xs"
+                      onClick={() => bulletToCard.mutate(b)}
+                      disabled={bulletToCard.isPending}
+                    >
                       → card
                     </button>
                   )}
                 </div>
               ))}
-              {bulletToCard.isError && <p className="text-xs text-amber-500">Card service not reachable (Agent A&apos;s /api/cards/bullet may not be deployed yet).</p>}
+              {bulletToCard.isError && (
+                <p className="text-xs text-amber-500">
+                  Card service not reachable (Agent A&apos;s /api/cards/bullet may not be deployed
+                  yet).
+                </p>
+              )}
             </div>
           </>
         )}
@@ -196,9 +268,15 @@ export default function NotesPage() {
       <aside className="space-y-3">
         <div className="panel">
           <div className="label mb-2">Backlinks</div>
-          {backlinks.length === 0 && <p className="text-xs text-neutral-500">Nothing links here yet.</p>}
+          {backlinks.length === 0 && (
+            <p className="text-xs text-neutral-500">Nothing links here yet.</p>
+          )}
           {backlinks.map((b) => (
-            <button key={b.fromNoteId} className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline" onClick={() => setActiveId(b.fromNoteId)}>
+            <button
+              key={b.fromNoteId}
+              className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline"
+              onClick={() => setActiveId(b.fromNoteId)}
+            >
               {b.fromTitle} <span className="text-neutral-500">({b.type})</span>
             </button>
           ))}

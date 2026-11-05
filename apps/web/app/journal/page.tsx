@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, PenLine, Sparkles } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { useAiStatus } from '@/components/TransportPanel'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface JournalEntry {
   id: number
@@ -18,7 +19,14 @@ interface JournalEntry {
 
 interface WeekResponse {
   weekStart: string
-  days: { date: string; reviews: number; xp: number; focusMinutes: number; habitsDone: number; mood: number | null }[]
+  days: {
+    date: string
+    reviews: number
+    xp: number
+    focusMinutes: number
+    habitsDone: number
+    mood: number | null
+  }[]
   totals: { reviews: number; xp: number; focusMinutes: number; habitsDone: number }
   moodAvg: number | null
   prompts: string[]
@@ -26,17 +34,6 @@ interface WeekResponse {
 }
 
 const MOODS = ['😞', '🙁', '😐', '🙂', '😄'] as const
-
-async function jget<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`GET ${url} failed`)
-  return res.json() as Promise<T>
-}
-async function jsend<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
-  if (!res.ok) throw new Error(`${method} ${url} failed`)
-  return res.json() as Promise<T>
-}
 
 function mondayOf(d: Date, tzOffsetMinutes = 0): string {
   const key = dayKey(d, tzOffsetMinutes)
@@ -62,11 +59,15 @@ export default function JournalPage() {
 
   const entryQ = useQuery({
     queryKey: ['journal', 'range', weekStart, today],
-    queryFn: () => jget<{ entries: JournalEntry[] }>(`/api/journal?from=${weekStart}&to=${today}&tzOffset=${tz}`),
+    queryFn: () =>
+      apiGet<{ entries: JournalEntry[] }>(
+        `/api/journal?from=${weekStart}&to=${today}&tzOffset=${tz}`,
+      ),
   })
   const weekly = useQuery({
     queryKey: ['journal', 'weekly', weekStart],
-    queryFn: () => jget<WeekResponse>(`/api/journal/weekly?weekStart=${weekStart}&tzOffset=${tz}`),
+    queryFn: () =>
+      apiGet<WeekResponse>(`/api/journal/weekly?weekStart=${weekStart}&tzOffset=${tz}`),
   })
 
   const existingToday = entryQ.data?.entries.find((e) => e.date === today)
@@ -82,7 +83,15 @@ export default function JournalPage() {
   }, [existingToday, untouched])
 
   const save = useMutation({
-    mutationFn: () => jsend<{ created: boolean; xpAwarded: number }>('/api/journal', 'POST', { date: today, mood, smallWins, gratitude, worryDump, tzOffset: tz }),
+    mutationFn: () =>
+      apiSend<{ created: boolean; xpAwarded: number }>('/api/journal', 'POST', {
+        date: today,
+        mood,
+        smallWins,
+        gratitude,
+        worryDump,
+        tzOffset: tz,
+      }),
     onSuccess: (res) => {
       setSavedMsg(res.created ? `Saved · +${res.xpAwarded} XP` : 'Updated')
       setTimeout(() => setSavedMsg(null), 3000)
@@ -93,12 +102,29 @@ export default function JournalPage() {
   const aiCoach = useMutation({
     // provider 'none' → the server stores deterministic reflection prompts as the
     // insight (mode: 'manual') — the button never dead-ends offline
-    mutationFn: () => jsend<{ ok: boolean; insight?: string; mode?: string; error?: string; hint?: string }>('/api/journal/ai', 'POST', { date: today, tzOffset: tz }),
+    mutationFn: () =>
+      apiSend<{ ok: boolean; insight?: string; mode?: string; error?: string; hint?: string }>(
+        '/api/journal/ai',
+        'POST',
+        { date: today, tzOffset: tz },
+      ),
     onSuccess: (res) => {
-      if (res.ok && res.insight) setAiResult({ ok: true, text: `${res.mode === 'manual' ? '[manual reflection] ' : ''}${res.insight}` })
-      else setAiResult({ ok: false, text: `${res.error ?? 'AI not configured'}${res.hint ? ` — ${res.hint}` : ''}` })
+      if (res.ok && res.insight)
+        setAiResult({
+          ok: true,
+          text: `${res.mode === 'manual' ? '[manual reflection] ' : ''}${res.insight}`,
+        })
+      else
+        setAiResult({
+          ok: false,
+          text: `${res.error ?? 'AI not configured'}${res.hint ? ` — ${res.hint}` : ''}`,
+        })
     },
-    onError: () => setAiResult({ ok: false, text: 'Network error — the weekly prompts below work without any provider.' }),
+    onError: () =>
+      setAiResult({
+        ok: false,
+        text: 'Network error — the weekly prompts below work without any provider.',
+      }),
   })
 
   // prefill from existing entry once loaded
@@ -125,7 +151,9 @@ export default function JournalPage() {
             <button
               key={emoji}
               className={`h-11 w-11 rounded-full text-xl transition-colors ${
-                shownMood === i + 1 ? 'bg-indigo-600/30 ring-2 ring-indigo-400' : 'hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'
+                shownMood === i + 1
+                  ? 'bg-indigo-600/30 ring-2 ring-indigo-400'
+                  : 'hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'
               }`}
               onClick={() => setMood(i + 1)}
               aria-label={`mood ${i + 1}`}
@@ -135,13 +163,33 @@ export default function JournalPage() {
           ))}
         </div>
 
-        <textarea className="input min-h-20" placeholder="Small wins — even tiny ones, especially tiny ones" value={smallWins} onChange={(e) => setSmallWins(e.target.value)} />
-        <textarea className="input min-h-16" placeholder="Gratitude — one specific thing" value={gratitude} onChange={(e) => setGratitude(e.target.value)} />
-        <textarea className="input min-h-16" placeholder="Worry dump — exam expressive writing empties working memory" value={worryDump} onChange={(e) => setWorryDump(e.target.value)} />
+        <textarea
+          className="input min-h-20"
+          placeholder="Small wins — even tiny ones, especially tiny ones"
+          value={smallWins}
+          onChange={(e) => setSmallWins(e.target.value)}
+        />
+        <textarea
+          className="input min-h-16"
+          placeholder="Gratitude — one specific thing"
+          value={gratitude}
+          onChange={(e) => setGratitude(e.target.value)}
+        />
+        <textarea
+          className="input min-h-16"
+          placeholder="Worry dump — exam expressive writing empties working memory"
+          value={worryDump}
+          onChange={(e) => setWorryDump(e.target.value)}
+        />
 
         <div className="flex items-center justify-between">
-          <button className="btn-ghost text-xs" onClick={() => aiCoach.mutate()} disabled={aiCoach.isPending}>
-            <Bot className="h-4 w-4" /> {manual ? 'Weekly reflection (offline)' : 'AI coach reflection'}
+          <button
+            className="btn-ghost text-xs"
+            onClick={() => aiCoach.mutate()}
+            disabled={aiCoach.isPending}
+          >
+            <Bot className="h-4 w-4" />{' '}
+            {manual ? 'Weekly reflection (offline)' : 'AI coach reflection'}
           </button>
           <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>
             Save entry
@@ -149,7 +197,9 @@ export default function JournalPage() {
         </div>
 
         {aiResult && (
-          <div className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-amber-300'}`}>
+          <div
+            className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-amber-300'}`}
+          >
             <Sparkles className="mr-2 inline h-4 w-4" />
             {aiResult.text}
           </div>
@@ -161,9 +211,14 @@ export default function JournalPage() {
         <p className="label">This week</p>
         <div className="grid grid-cols-7 gap-1 text-center">
           {weekly.data?.days.map((d) => (
-            <div key={d.date} className={`rounded-lg p-2 ${d.date === today ? 'bg-indigo-600/15' : ''}`}>
+            <div
+              key={d.date}
+              className={`rounded-lg p-2 ${d.date === today ? 'bg-indigo-600/15' : ''}`}
+            >
               <p className="text-[10px] text-neutral-500">{d.date.slice(8)}</p>
-              <p className="text-lg">{d.mood != null ? MOODS[Math.min(4, Math.max(0, d.mood - 1))] : '·'}</p>
+              <p className="text-lg">
+                {d.mood != null ? MOODS[Math.min(4, Math.max(0, d.mood - 1))] : '·'}
+              </p>
               <p className="text-[10px] text-neutral-500">{d.reviews} rev</p>
             </div>
           ))}
@@ -181,7 +236,10 @@ export default function JournalPage() {
             { k: 'habits', v: weekly.data?.totals.habitsDone ?? 0 },
             { k: 'mood avg', v: weekly.data?.moodAvg ?? '—' },
           ].map((s) => (
-            <div key={s.k} className="rounded-lg border border-neutral-200 p-2 text-center dark:border-[#26262b]">
+            <div
+              key={s.k}
+              className="rounded-lg border border-neutral-200 p-2 text-center dark:border-[#26262b]"
+            >
               <p className="text-xl font-bold tabular-nums">{s.v}</p>
               <p className="text-[10px] uppercase tracking-wide text-neutral-500">{s.k}</p>
             </div>
@@ -190,7 +248,10 @@ export default function JournalPage() {
         <ul className="space-y-1.5">
           {/* static server-derived prompt list for the week — never mutated, index keys are safe */}
           {weekly.data?.prompts.map((p, i) => (
-            <li key={i} className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-[#101014] dark:text-neutral-300">
+            <li
+              key={i}
+              className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-[#101014] dark:text-neutral-300"
+            >
               {p}
             </li>
           ))}

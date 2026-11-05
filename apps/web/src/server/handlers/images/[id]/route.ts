@@ -1,7 +1,8 @@
 /**
  * /api/images/[id] — serve an image by table id. The registry row maps the id
  * to the storage id; the bytes come from the ImageStore port
- * (src/server/storage.ts — data/images today).
+ * (src/server/storage.ts — images.data base64, with a legacy data/images
+ * fallback for rows stored on disk before the DB store existed).
  */
 import { eq } from 'drizzle-orm'
 import { db, images } from '@learning-hub/db'

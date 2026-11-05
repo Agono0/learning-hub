@@ -15,6 +15,7 @@ import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { GraduationCap, Send, Sparkles } from 'lucide-react'
 import { TransportPanel, useAiStatus, type ManualModeInfo } from '@/components/TransportPanel'
+import { apiGet, apiSend, apiStream } from '@/lib/transport'
 
 interface Msg {
   /** stable client-side identity — the message list grows during a session */
@@ -32,7 +33,8 @@ interface GradeResult {
 function useManualMode(feature: string, enabled: boolean) {
   return useQuery<{ manual: ManualModeInfo | null }>({
     queryKey: ['ai-transport-manual', feature],
-    queryFn: () => fetch(`/api/ai/transport?feature=${feature}`).then((r) => r.json()),
+    queryFn: () =>
+      apiGet<{ manual: ManualModeInfo | null }>(`/api/ai/transport?feature=${feature}`),
     enabled,
     staleTime: 60_000,
   })
@@ -65,14 +67,18 @@ export default function FeynmanPage() {
 
   const { data: decksData } = useQuery<{ decks: { id: number; name: string }[] }>({
     queryKey: ['decks-for-teachback'],
-    queryFn: () => fetch('/api/decks').then((r) => r.json()),
+    queryFn: () => apiGet<{ decks: { id: number; name: string }[] }>('/api/decks'),
     enabled: manual && started,
   })
   const [deckId, setDeckId] = useState<number | ''>('')
 
   const start = () => {
     if (!concept.trim() || !explanation.trim()) return
-    const first: Msg = { id: crypto.randomUUID(), role: 'user', content: `Let me explain "${concept.trim()}": ${explanation.trim()}` }
+    const first: Msg = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: `Let me explain "${concept.trim()}": ${explanation.trim()}`,
+    }
     setStarted(true)
     setMessages([first])
     if (manual) {
@@ -86,40 +92,28 @@ export default function FeynmanPage() {
   const chat = async (history: Msg[]) => {
     setStreaming(true)
     setError(null)
+    setMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', content: '' }])
     try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
+      await apiStream(
+        '/api/ai/chat',
+        {
           sessionId: sessionId ?? undefined,
           kind: 'feynman',
           contextType: 'concept',
           // send only the wire shape — ids are a client-side rendering concern
           messages: history.map(({ role, content }) => ({ role, content })),
-        }),
-      })
-      if (!res.ok) {
-        const body = (await res.json()) as { error?: string }
-        setError(body.error ?? 'Request failed')
-        return
-      }
-      const sid = res.headers.get('x-session-id')
-      if (sid) setSessionId(Number(sid))
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('no stream')
-      const decoder = new TextDecoder()
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', content: '' }])
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        setMessages((m) => {
-          const copy = [...m]
-          const last = copy[copy.length - 1]
-          if (last?.role === 'assistant') copy[copy.length - 1] = { ...last, content: last.content + chunk }
-          return copy
-        })
-      }
+        },
+        (chunk) => {
+          setMessages((m) => {
+            const copy = [...m]
+            const last = copy[copy.length - 1]
+            if (last?.role === 'assistant')
+              copy[copy.length - 1] = { ...last, content: last.content + chunk }
+            return copy
+          })
+        },
+        (sid) => setSessionId(Number(sid)),
+      )
       setFollowUps((n) => n + 1)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -135,7 +129,15 @@ export default function FeynmanPage() {
     setMessages(next)
     setInput('')
     if (manual) {
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: 'assistant', content: '(Manual mode — that answer is for your listener. Note where you hesitated: it goes in the rubric below.)' }])
+      setMessages((m) => [
+        ...m,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content:
+            '(Manual mode — that answer is for your listener. Note where you hesitated: it goes in the rubric below.)',
+        },
+      ])
       setFollowUps((n) => n + 1)
       return
     }
@@ -150,16 +152,22 @@ export default function FeynmanPage() {
         .filter(Boolean)
         .map((line) => {
           const [front, back] = line.split('::')
-          return { type: 'basic', content: { basic: { front: (front ?? '').trim(), back: (back ?? '').trim() } }, tags: ['teachback', 'gap', 'manual'] }
+          return {
+            type: 'basic',
+            content: { basic: { front: (front ?? '').trim(), back: (back ?? '').trim() } },
+            tags: ['teachback', 'gap', 'manual'],
+          }
         })
         .filter((i) => i.content.basic.front && i.content.basic.back)
-      const res = await fetch('/api/cards?bulk=1', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ deckId: Number(deckId), items }),
-      })
-      const body = (await res.json()) as { ok?: boolean; created?: number[]; error?: string }
-      if (!res.ok || !body.ok) throw new Error(body.error ?? 'saving cards failed')
+      const body = await apiSend<{ ok?: boolean; created?: number[]; error?: string }>(
+        '/api/cards?bulk=1',
+        'PUT',
+        {
+          deckId: Number(deckId),
+          items,
+        },
+      )
+      if (!body.ok) throw new Error(body.error ?? 'saving cards failed')
       return body.created!.length
     },
     onSuccess: (n) => setSavedCards(n),
@@ -171,17 +179,20 @@ export default function FeynmanPage() {
     setGrading(true)
     setError(null)
     try {
-      const res = await fetch('/api/ai/feynman/grade', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ sessionId }),
-      })
-      const body = (await res.json()) as { ok?: boolean; score?: GradeResult & { suggestedCards?: { front: string; back: string }[] }; error?: string }
-      if (!res.ok || !body.ok) {
+      const body = await apiSend<{
+        ok?: boolean
+        score?: GradeResult & { suggestedCards?: { front: string; back: string }[] }
+        error?: string
+      }>('/api/ai/feynman/grade', 'POST', { sessionId })
+      if (!body.ok) {
         setError(body.error ?? 'grading failed')
         return
       }
-      setGrade({ coverage: body.score!.coverage, misconceptions: body.score!.misconceptions, gaps: body.score!.gaps })
+      setGrade({
+        coverage: body.score!.coverage,
+        misconceptions: body.score!.misconceptions,
+        gaps: body.score!.gaps,
+      })
       setGapCards(body.score!.suggestedCards ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -193,8 +204,14 @@ export default function FeynmanPage() {
   const applySelfGrade = () => {
     setGrade({
       coverage: typeof selfCoverage === 'number' ? selfCoverage : 0,
-      misconceptions: selfMisconceptions.split('\n').map((s) => s.trim()).filter(Boolean),
-      gaps: selfGaps.split('\n').map((s) => s.trim()).filter(Boolean),
+      misconceptions: selfMisconceptions
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean),
+      gaps: selfGaps
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean),
     })
     setGapCards([])
   }
@@ -228,10 +245,17 @@ export default function FeynmanPage() {
         <div className="panel space-y-3">
           <div>
             <label className="label mb-1 block">Concept you're teaching</label>
-            <input className="input" value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="e.g. Bayesian updating" />
+            <input
+              className="input"
+              value={concept}
+              onChange={(e) => setConcept(e.target.value)}
+              placeholder="e.g. Bayesian updating"
+            />
           </div>
           <div>
-            <label className="label mb-1 block">Your explanation (start here — the student will interrupt)</label>
+            <label className="label mb-1 block">
+              Your explanation (start here — the student will interrupt)
+            </label>
             <textarea
               className="input min-h-40"
               value={explanation}
@@ -253,7 +277,9 @@ export default function FeynmanPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Teaching: {concept}</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            {manual ? 'Answer your listener from memory. Every stumble is rubric data.' : "Answer the student's questions. One question at a time — just like they'd ask."}
+            {manual
+              ? 'Answer your listener from memory. Every stumble is rubric data.'
+              : "Answer the student's questions. One question at a time — just like they'd ask."}
           </p>
         </div>
         {!manual && (
@@ -267,23 +293,51 @@ export default function FeynmanPage() {
         <div className="flex-1 space-y-3 overflow-y-auto pr-1">
           {manual && (
             <div className="rounded-lg border border-indigo-500/40 bg-indigo-500/10 p-3 text-xs text-indigo-200">
-              {studentManual?.manual?.title ?? 'Teach a real 12-year-old'}: {(studentManual?.manual?.steps ?? []).map((s, i) => (
+              {studentManual?.manual?.title ?? 'Teach a real 12-year-old'}:{' '}
+              {(studentManual?.manual?.steps ?? []).map((s, i) => (
                 <div key={i}>{s}</div>
               ))}
             </div>
           )}
           {messages.map((m) => (
-            <div key={m.id} className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-              m.role === 'user' ? 'ml-auto bg-indigo-600 text-white' : 'bg-neutral-100 dark:bg-[#1a1a1f]'
-            }`}>
+            <div
+              key={m.id}
+              className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                m.role === 'user'
+                  ? 'ml-auto bg-indigo-600 text-white'
+                  : 'bg-neutral-100 dark:bg-[#1a1a1f]'
+              }`}
+            >
               {m.content || '…'}
             </div>
           ))}
         </div>
-        {error && <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-500">{error}</div>}
-        <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
-          <input className="input" value={input} onChange={(e) => setInput(e.target.value)} placeholder={manual ? 'Log your answers + the questions you got asked…' : 'Explain further…'} disabled={streaming || Boolean(grade)} />
-          <button className="btn" type="submit" disabled={streaming || !input.trim() || Boolean(grade)}>
+        {error && (
+          <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+            {error}
+          </div>
+        )}
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void send()
+          }}
+        >
+          <input
+            className="input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={
+              manual ? 'Log your answers + the questions you got asked…' : 'Explain further…'
+            }
+            disabled={streaming || Boolean(grade)}
+          />
+          <button
+            className="btn"
+            type="submit"
+            disabled={streaming || !input.trim() || Boolean(grade)}
+          >
             <Send className="h-4 w-4" />
           </button>
         </form>
@@ -291,7 +345,9 @@ export default function FeynmanPage() {
 
       {manual && !grade && graderManual?.manual && (
         <div className="panel space-y-3">
-          <h2 className="text-sm font-semibold">Self-assessment rubric — grade substance, not style</h2>
+          <h2 className="text-sm font-semibold">
+            Self-assessment rubric — grade substance, not style
+          </h2>
           <p className="text-xs text-neutral-500">{graderManual.manual.summary}</p>
           {graderManual.manual.rubric?.map((r) => (
             <div key={r.key}>
@@ -304,19 +360,35 @@ export default function FeynmanPage() {
                   min={0}
                   max={100}
                   value={selfCoverage}
-                  onChange={(e) => setSelfCoverage(e.target.value === '' ? '' : Math.max(0, Math.min(100, Number(e.target.value))))}
+                  onChange={(e) =>
+                    setSelfCoverage(
+                      e.target.value === ''
+                        ? ''
+                        : Math.max(0, Math.min(100, Number(e.target.value))),
+                    )
+                  }
                   placeholder="0–100"
                 />
               ) : (
                 <textarea
                   className="input min-h-16 text-xs"
-                  value={r.key === 'misconceptions' ? selfMisconceptions : r.key === 'gaps' ? selfGaps : selfCards}
+                  value={
+                    r.key === 'misconceptions'
+                      ? selfMisconceptions
+                      : r.key === 'gaps'
+                        ? selfGaps
+                        : selfCards
+                  }
                   onChange={(e) => {
                     if (r.key === 'misconceptions') setSelfMisconceptions(e.target.value)
                     else if (r.key === 'gaps') setSelfGaps(e.target.value)
                     else setSelfCards(e.target.value)
                   }}
-                  placeholder={r.key === 'suggestedCards' ? 'What is ____? :: A single-idea answer' : 'One per line…'}
+                  placeholder={
+                    r.key === 'suggestedCards'
+                      ? 'What is ____? :: A single-idea answer'
+                      : 'One per line…'
+                  }
                 />
               )}
             </div>
@@ -362,7 +434,11 @@ export default function FeynmanPage() {
             <div className="space-y-2">
               <div className="label">Save gap-cards ({followUps} answer(s) logged)</div>
               <div className="flex flex-wrap items-center gap-2">
-                <select className="input w-52" value={deckId} onChange={(e) => setDeckId(Number(e.target.value) || '')}>
+                <select
+                  className="input w-52"
+                  value={deckId}
+                  onChange={(e) => setDeckId(Number(e.target.value) || '')}
+                >
                   <option value="">Pick a deck…</option>
                   {(decksData?.decks ?? []).map((d) => (
                     <option key={d.id} value={d.id}>
@@ -376,11 +452,19 @@ export default function FeynmanPage() {
                   value={selfCards}
                   onChange={(e) => setSelfCards(e.target.value)}
                 />
-                <button className="btn text-xs" disabled={!deckId || saveGapCards.isPending || !selfCards.trim()} onClick={() => saveGapCards.mutate()}>
+                <button
+                  className="btn text-xs"
+                  disabled={!deckId || saveGapCards.isPending || !selfCards.trim()}
+                  onClick={() => saveGapCards.mutate()}
+                >
                   {saveGapCards.isPending ? 'Saving…' : 'Save gap-cards'}
                 </button>
               </div>
-              {savedCards !== null && <p className="celebrate text-xs text-emerald-400">{savedCards} card(s) created — scheduled for review.</p>}
+              {savedCards !== null && (
+                <p className="celebrate text-xs text-emerald-400">
+                  {savedCards} card(s) created — scheduled for review.
+                </p>
+              )}
             </div>
           ) : (
             gapCards.length > 0 && (
@@ -389,7 +473,10 @@ export default function FeynmanPage() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   {/* fixed list from one grade response — never reordered, index keys are safe */}
                   {gapCards.map((c, i) => (
-                    <div key={i} className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]">
+                    <div
+                      key={i}
+                      className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+                    >
                       <div className="font-medium">{c.front}</div>
                       <div className="mt-1 text-neutral-500">{c.back}</div>
                     </div>

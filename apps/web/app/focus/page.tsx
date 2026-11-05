@@ -14,6 +14,7 @@ import {
   type FrictionGate,
 } from '@learning-hub/core/src/focus'
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface FocusSession {
   id: number
@@ -31,21 +32,6 @@ interface DetoxState {
   steps: { id: string; label: string; detail: string }[]
   state: Record<string, boolean>
   done: boolean
-}
-
-async function jget<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`GET ${url} failed`)
-  return res.json() as Promise<T>
-}
-async function jsend<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`${method} ${url} failed`)
-  return res.json() as Promise<T>
 }
 
 const BREATH_LABELS = ['Breathe in…', 'Hold…', 'Breathe out…'] as const
@@ -118,12 +104,16 @@ export default function FocusPage() {
       const spentMinutes = startedAt !== null ? (Date.now() - startedAt) / 60_000 : 0
       const actualMinutes = Math.max(1, Math.round(spentMinutes * 10) / 10)
       try {
-        const res = await jsend<{ session: FocusSession; xpAwarded: number }>(`/api/focus/${session.id}`, 'PATCH', {
-          actualMinutes,
-          leaks: leakCount,
-          completed,
-          notes: task,
-        })
+        const res = await apiSend<{ session: FocusSession; xpAwarded: number }>(
+          `/api/focus/${session.id}`,
+          'PATCH',
+          {
+            actualMinutes,
+            leaks: leakCount,
+            completed,
+            notes: task,
+          },
+        )
         if (res.xpAwarded > 0) {
           setXpToast(`+${res.xpAwarded} XP — focus session complete`)
           setTimeout(() => setXpToast(null), 4000)
@@ -169,7 +159,7 @@ export default function FocusPage() {
 
   const startSession = useMutation({
     mutationFn: () =>
-      jsend<{ session: FocusSession }>('/api/focus', 'POST', {
+      apiSend<{ session: FocusSession }>('/api/focus', 'POST', {
         plannedMinutes: minutes,
         type: minutes <= 25 ? 'pomodoro' : minutes <= 50 ? 'deep' : 'custom',
         task: task.trim() === '' ? undefined : task.trim(),
@@ -186,7 +176,15 @@ export default function FocusPage() {
     if (!session) return
     setReflectionText('')
     gateStartedAt.current = Date.now()
-    setGate(createFrictionGate(trigger, { session: { plannedMinutes: session.plannedMinutes, task: task || undefined, startedAt: session.startedAt } }))
+    setGate(
+      createFrictionGate(trigger, {
+        session: {
+          plannedMinutes: session.plannedMinutes,
+          task: task || undefined,
+          startedAt: session.startedAt,
+        },
+      }),
+    )
   }
 
   const finishGate = async (proceeded: boolean) => {
@@ -194,9 +192,19 @@ export default function FocusPage() {
     const trigger = gate.state.trigger
     const reflection = proceeded ? reflectionText.trim() : undefined
     const delaySec = Math.round((Date.now() - gateStartedAt.current) / 1000)
-    setGate(proceeded ? tickGate(gate, { type: 'reflect', text: reflectionText }) : tickGate(gate, { type: 'abort' }))
+    setGate(
+      proceeded
+        ? tickGate(gate, { type: 'reflect', text: reflectionText })
+        : tickGate(gate, { type: 'abort' }),
+    )
     try {
-      await jsend('/api/friction', 'POST', { trigger, proceeded, reflection, sessionId: session?.id, delaySec })
+      await apiSend('/api/friction', 'POST', {
+        trigger,
+        proceeded,
+        reflection,
+        sessionId: session?.id,
+        delaySec,
+      })
     } catch {
       /* friction log is best-effort */
     }
@@ -210,9 +218,12 @@ export default function FocusPage() {
 
   const history = useQuery({
     queryKey: ['focus'],
-    queryFn: () => jget<{ sessions: FocusSession[]; running: FocusSession | null }>('/api/focus'),
+    queryFn: () => apiGet<{ sessions: FocusSession[]; running: FocusSession | null }>('/api/focus'),
   })
-  const detox = useQuery({ queryKey: ['detox'], queryFn: () => jget<DetoxState>('/api/onboarding/detox') })
+  const detox = useQuery({
+    queryKey: ['detox'],
+    queryFn: () => apiGet<DetoxState>('/api/onboarding/detox'),
+  })
 
   // ── restore a running session after a reload: GET /api/focus reports the
   // unfinished session as `running` — re-anchor the countdown to its real
@@ -229,7 +240,11 @@ export default function FocusPage() {
   }, [history.data, session, armTimer])
 
   const detoxStep = useMutation({
-    mutationFn: (step: string) => jsend<{ state: Record<string, boolean> }>('/api/onboarding/detox', 'POST', { step, done: true }),
+    mutationFn: (step: string) =>
+      apiSend<{ state: Record<string, boolean> }>('/api/onboarding/detox', 'POST', {
+        step,
+        done: true,
+      }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['detox'] }),
   })
 
@@ -243,13 +258,17 @@ export default function FocusPage() {
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Timer className="h-6 w-6 text-indigo-400" /> Focus
           </h1>
-          <p className="text-sm text-neutral-500">Protected sessions, honest leak counting, and the friction gate.</p>
+          <p className="text-sm text-neutral-500">
+            Protected sessions, honest leak counting, and the friction gate.
+          </p>
         </div>
         <Shield className="h-8 w-8 text-indigo-500/40" />
       </header>
 
       {xpToast && (
-        <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm text-indigo-300">{xpToast}</div>
+        <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm text-indigo-300">
+          {xpToast}
+        </div>
       )}
 
       {/* ── session starter ── */}
@@ -273,7 +292,9 @@ export default function FocusPage() {
                 max={180}
                 className="input w-20"
                 value={minutes}
-                onChange={(e) => setMinutes(Math.min(180, Math.max(5, Number(e.target.value) || 5)))}
+                onChange={(e) =>
+                  setMinutes(Math.min(180, Math.max(5, Number(e.target.value) || 5)))
+                }
               />
               min
             </label>
@@ -290,7 +311,11 @@ export default function FocusPage() {
             <p className="text-sm font-medium text-emerald-400" aria-live="polite">
               {finishLine}
             </p>
-            <button className="btn" onClick={() => startSession.mutate()} disabled={startSession.isPending}>
+            <button
+              className="btn"
+              onClick={() => startSession.mutate()}
+              disabled={startSession.isPending}
+            >
               <Timer className="h-4 w-4" /> Start session
             </button>
           </div>
@@ -302,7 +327,10 @@ export default function FocusPage() {
             </p>
             <div className="grid gap-1.5 sm:grid-cols-2">
               {phoneProtocolChecklist.map((item) => (
-                <label key={item.id} className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+                <label
+                  key={item.id}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300"
+                >
                   <input
                     type="checkbox"
                     checked={protocol[item.id] === true}
@@ -326,14 +354,22 @@ export default function FocusPage() {
           </div>
           <div className="flex items-center justify-center gap-6 text-sm text-neutral-500">
             <span>
-              tab switches: <span className={leaks > 0 ? 'font-semibold text-amber-400' : ''}>{leaks}</span> (honest count via Page Visibility)
+              tab switches:{' '}
+              <span className={leaks > 0 ? 'font-semibold text-amber-400' : ''}>{leaks}</span>{' '}
+              (honest count via Page Visibility)
             </span>
           </div>
           <div className="flex items-center justify-center gap-2">
-            <button className="btn-ghost border border-neutral-200 dark:border-[#26262b]" onClick={() => armGate('break_focus')}>
+            <button
+              className="btn-ghost border border-neutral-200 dark:border-[#26262b]"
+              onClick={() => armGate('break_focus')}
+            >
               End early → friction gate
             </button>
-            <button className="btn-ghost border border-amber-500/40 text-amber-500" onClick={() => armGate('relapse')}>
+            <button
+              className="btn-ghost border border-amber-500/40 text-amber-500"
+              onClick={() => armGate('relapse')}
+            >
               Log relapse → friction gate
             </button>
           </div>
@@ -345,10 +381,13 @@ export default function FocusPage() {
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-6 text-center backdrop-blur">
           {gate.state.phase === 'countdown' && (
             <div className="space-y-4">
-              <p className="text-lg text-neutral-300">{gate.state.trigger === 'relapse' ? 'Before you go back…' : 'Ending early?'}</p>
+              <p className="text-lg text-neutral-300">
+                {gate.state.trigger === 'relapse' ? 'Before you go back…' : 'Ending early?'}
+              </p>
               <div className="text-8xl font-bold tabular-nums">{gate.state.secondsLeft}</div>
               <p className="max-w-sm text-sm text-neutral-500">
-                The gate is not a punishment — it separates the impulse from the action. {FRICTION_PROMPT.split('.')[0]} in a moment.
+                The gate is not a punishment — it separates the impulse from the action.{' '}
+                {FRICTION_PROMPT.split('.')[0]} in a moment.
               </p>
             </div>
           )}
@@ -382,16 +421,25 @@ export default function FocusPage() {
                 >
                   <CheckCircle2 className="h-4 w-4" /> I will do that instead — proceed
                 </button>
-                <button className="btn-ghost text-neutral-400" onClick={() => void finishGate(false)}>
+                <button
+                  className="btn-ghost text-neutral-400"
+                  onClick={() => void finishGate(false)}
+                >
                   <XCircle className="h-4 w-4" /> Abort the session
                 </button>
               </div>
-              <p className="text-xs text-neutral-600">Proceeding requires a written reflection — that is the whole point.</p>
+              <p className="text-xs text-neutral-600">
+                Proceeding requires a written reflection — that is the whole point.
+              </p>
             </div>
           )}
 
           {gate.state.phase === 'outcome' && (
-            <p className="text-xl text-neutral-300">{gate.state.outcome === 'proceeded' ? 'Good choice. Resuming…' : 'Session closed. No guilt — fresh start framing.'}</p>
+            <p className="text-xl text-neutral-300">
+              {gate.state.outcome === 'proceeded'
+                ? 'Good choice. Resuming…'
+                : 'Session closed. No guilt — fresh start framing.'}
+            </p>
           )}
         </div>
       )}
@@ -402,21 +450,29 @@ export default function FocusPage() {
         {history.isLoading ? (
           <p className="text-sm text-neutral-500">Loading…</p>
         ) : (history.data?.sessions.length ?? 0) === 0 ? (
-          <p className="text-sm text-neutral-500">No sessions yet — start your first protected block.</p>
+          <p className="text-sm text-neutral-500">
+            No sessions yet — start your first protected block.
+          </p>
         ) : (
           <ul className="divide-y divide-neutral-200 text-sm dark:divide-[#26262b]">
             {history.data?.sessions.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-neutral-700 dark:text-neutral-200">{s.task ?? 'Focus session'}</p>
+                  <p className="truncate text-neutral-700 dark:text-neutral-200">
+                    {s.task ?? 'Focus session'}
+                  </p>
                   <p className="text-xs text-neutral-500">
                     {new Date(s.startedAt).toLocaleString()} · planned {s.plannedMinutes}m
                     {s.actualMinutes != null ? ` · actual ${s.actualMinutes}m` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs">
-                  <span className={s.leaks > 0 ? 'text-amber-500' : 'text-neutral-500'}>{s.leaks} leaks</span>
-                  <span className={s.completed ? 'text-emerald-500' : 'text-neutral-500'}>{s.completed ? 'completed' : 'ended early'}</span>
+                  <span className={s.leaks > 0 ? 'text-amber-500' : 'text-neutral-500'}>
+                    {s.leaks} leaks
+                  </span>
+                  <span className={s.completed ? 'text-emerald-500' : 'text-neutral-500'}>
+                    {s.completed ? 'completed' : 'ended early'}
+                  </span>
                 </div>
               </li>
             ))}
@@ -427,15 +483,23 @@ export default function FocusPage() {
       {/* ── detox wizard (one-time, 10 steps) ── */}
       {detox.data && !detox.data.done && (
         <div className="panel space-y-3">
-          <p className="label">Dopamine detox wizard — one-time setup ({Object.values(detox.data.state).filter(Boolean).length}/10)</p>
+          <p className="label">
+            Dopamine detox wizard — one-time setup (
+            {Object.values(detox.data.state).filter(Boolean).length}/10)
+          </p>
           <ol className="space-y-2">
             {detox.data.steps.map((s, i) => {
               const done = detox.data.state[s.id] === true
               return (
-                <li key={s.id} className={`flex items-start gap-3 rounded-lg p-2 ${done ? 'opacity-50' : ''}`}>
+                <li
+                  key={s.id}
+                  className={`flex items-start gap-3 rounded-lg p-2 ${done ? 'opacity-50' : ''}`}
+                >
                   <span className="mt-0.5 text-xs text-neutral-500">{i + 1}.</span>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{s.label}</p>
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                      {s.label}
+                    </p>
                     <p className="text-xs text-neutral-500">{s.detail}</p>
                   </div>
                   {done ? (

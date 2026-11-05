@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/core'
 import { Brain, PartyPopper, RotateCcw, Timer, Trophy } from 'lucide-react'
 import { evaluateMatchingGame } from '@learning-hub/core/games'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface DeckInfo {
   id: number
@@ -54,11 +55,11 @@ export default function GamesPage() {
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
     queryKey: ['decks'],
-    queryFn: () => fetch('/api/decks').then((r) => r.json()),
+    queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const game = useQuery<GameData>({
     queryKey: ['game', deckId],
-    queryFn: () => fetch(`/api/games?deckId=${deckId}`).then((r) => r.json()),
+    queryFn: () => apiGet<GameData>(`/api/games?deckId=${deckId}`),
     enabled: deckId !== null,
   })
 
@@ -140,19 +141,14 @@ function MatchingBoard({
         misses,
         timeMs: Date.now() - startedAt.current,
       })
-      const res = await fetch('/api/games', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          deckId,
-          correct: evaluation.pairs,
-          total: evaluation.totalAttempts,
-          misses: evaluation.misses,
-          cardIds: game.pairs.map((p) => p.cardId),
-          timeMs: Date.now() - startedAt.current,
-        }),
+      return apiSend<GameResult>('/api/games', 'POST', {
+        deckId,
+        correct: evaluation.pairs,
+        total: evaluation.totalAttempts,
+        misses: evaluation.misses,
+        cardIds: game.pairs.map((p) => p.cardId),
+        timeMs: Date.now() - startedAt.current,
       })
-      return res.json() as Promise<GameResult>
     },
     onSuccess: (data) => {
       setPosted(data)

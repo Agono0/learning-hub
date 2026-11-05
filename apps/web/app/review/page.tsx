@@ -11,11 +11,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowRight, Battery, BatteryLow, Check, Eye, Home, RotateCcw, Sparkles, Undo2, X, Zap,
+  ArrowRight,
+  Battery,
+  BatteryLow,
+  Check,
+  Eye,
+  Home,
+  RotateCcw,
+  Sparkles,
+  Undo2,
+  X,
+  Zap,
 } from 'lucide-react'
 import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
 import { clozeSegments, isCardAnswerCorrect } from '@learning-hub/core/cards'
-import { applyMistake, initialEnergy, MAX_ENERGY, stepsToShow, workedExampleFade } from '@learning-hub/core/review'
+import {
+  applyMistake,
+  initialEnergy,
+  MAX_ENERGY,
+  stepsToShow,
+  workedExampleFade,
+} from '@learning-hub/core/review'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface CardRow {
   id: number
@@ -28,10 +45,24 @@ interface CardRow {
   stability: number
   due: string
 }
-interface DeckInfo { id: number; name: string; emoji: string | null; due: number; total: number }
+interface DeckInfo {
+  id: number
+  name: string
+  emoji: string | null
+  due: number
+  total: number
+}
 interface PreReview {
-  due: string; stability: number; difficulty: number; elapsedDays: number; scheduledDays: number
-  reps: number; lapses: number; state: number; lastReview: string | null; learningStep: number
+  due: string
+  stability: number
+  difficulty: number
+  elapsedDays: number
+  scheduledDays: number
+  reps: number
+  lapses: number
+  state: number
+  lastReview: string | null
+  learningStep: number
 }
 interface ReviewResponse {
   ok: boolean
@@ -40,7 +71,12 @@ interface ReviewResponse {
   xp: number
   streak: { current: number; best: number }
 }
-interface SessionResult { cardId: number; grade: Grade; intervalDays: number; xp: number }
+interface SessionResult {
+  cardId: number
+  grade: Grade
+  intervalDays: number
+  xp: number
+}
 
 const GRADES: { grade: Grade; label: string; color: string }[] = [
   { grade: 1, label: 'Again', color: 'bg-red-600 hover:bg-red-500' },
@@ -58,11 +94,14 @@ export default function ReviewPage() {
 
   const { data: decksData } = useQuery<{ decks: DeckInfo[] }>({
     queryKey: ['decks'],
-    queryFn: () => fetch('/api/decks').then((r) => r.json()),
+    queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const session = useQuery<{ cards: CardRow[] }>({
     queryKey: ['review-session', deckId, limit, mode],
-    queryFn: () => fetch(`/api/review?deckId=${deckId ?? ''}&limit=${limit}&mode=${mode}`).then((r) => r.json()),
+    queryFn: () =>
+      apiGet<{ cards: CardRow[] }>(
+        `/api/review?deckId=${deckId ?? ''}&limit=${limit}&mode=${mode}`,
+      ),
     enabled: started && deckId !== null,
   })
 
@@ -72,7 +111,9 @@ export default function ReviewPage() {
   const [confidence, setConfidence] = useState<Confidence>(1)
   const [energy, setEnergy] = useState(initialEnergy)
   const [results, setResults] = useState<SessionResult[]>([])
-  const [undoStack, setUndoStack] = useState<{ card: CardRow; preReview: PreReview; wasMistake: boolean }[]>([])
+  const [undoStack, setUndoStack] = useState<
+    { card: CardRow; preReview: PreReview; wasMistake: boolean }[]
+  >([])
   const [typeinValue, setTypeinValue] = useState('')
   const [mcqPick, setMcqPick] = useState<number | null>(null)
   const [clozeInput, setClozeInput] = useState<Record<number, string>>({})
@@ -101,20 +142,26 @@ export default function ReviewPage() {
   }, [])
 
   const gradeMutation = useMutation({
-    mutationFn: async (payload: { cardId: number; grade: Grade; confidence: Confidence }) => {
-      const res = await fetch('/api/review', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...payload, timeMs: 5000, tzOffset: new Date().getTimezoneOffset() }),
-      })
-      return res.json() as Promise<ReviewResponse>
-    },
+    mutationFn: async (payload: { cardId: number; grade: Grade; confidence: Confidence }) =>
+      apiSend<ReviewResponse>('/api/review', 'POST', {
+        ...payload,
+        timeMs: 5000,
+        tzOffset: new Date().getTimezoneOffset(),
+      }),
     onSuccess: (data, variables) => {
       if (!data.ok) return
       const wasMistake = variables.grade === 1
       setUndoStack((s) => [...s, { card: current!, preReview: data.preReview, wasMistake }])
       if (wasMistake) setEnergy((e) => applyMistake(e))
-      setResults((r) => [...r, { cardId: variables.cardId, grade: variables.grade, intervalDays: data.intervalDays, xp: data.xp }])
+      setResults((r) => [
+        ...r,
+        {
+          cardId: variables.cardId,
+          grade: variables.grade,
+          intervalDays: data.intervalDays,
+          xp: data.xp,
+        },
+      ])
       // Again → re-learn within this session (once)
       if (wasMistake) setQueue((q) => [...q, current!])
       resetCardState()
@@ -125,14 +172,8 @@ export default function ReviewPage() {
   })
 
   const undoMutation = useMutation({
-    mutationFn: async (payload: { cardId: number; preReview: PreReview }) => {
-      const res = await fetch('/api/review/undo', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      return res.json() as Promise<{ ok: boolean }>
-    },
+    mutationFn: async (payload: { cardId: number; preReview: PreReview }) =>
+      apiSend<{ ok: boolean }>('/api/review/undo', 'POST', payload),
     onSuccess: (data) => {
       if (!data.ok || undoStack.length === 0) return
       const last = undoStack[undoStack.length - 1]!
@@ -151,10 +192,13 @@ export default function ReviewPage() {
     },
   })
 
-  const commit = useCallback((grade: Grade) => {
-    if (!current || gradeMutation.isPending) return
-    gradeMutation.mutate({ cardId: current.id, grade, confidence })
-  }, [current, gradeMutation, confidence])
+  const commit = useCallback(
+    (grade: Grade) => {
+      if (!current || gradeMutation.isPending) return
+      gradeMutation.mutate({ cardId: current.id, grade, confidence })
+    },
+    [current, gradeMutation, confidence],
+  )
 
   const reveal = useCallback(() => setRevealed(true), [])
 
@@ -187,7 +231,11 @@ export default function ReviewPage() {
         if (revealed) commit(Number(e.key) as Grade)
       } else if (e.key === 'e') {
         e.preventDefault()
-        if (undoStack.length > 0) undoMutation.mutate({ cardId: undoStack[undoStack.length - 1]!.card.id, preReview: undoStack[undoStack.length - 1]!.preReview })
+        if (undoStack.length > 0)
+          undoMutation.mutate({
+            cardId: undoStack[undoStack.length - 1]!.card.id,
+            preReview: undoStack[undoStack.length - 1]!.preReview,
+          })
       }
     }
     window.addEventListener('keydown', onKey)
@@ -201,7 +249,12 @@ export default function ReviewPage() {
   const stats = useMemo(() => {
     const total = results.length
     const correct = results.filter((r) => r.grade > 1).length
-    return { total, correct, accuracy: total ? Math.round((correct / total) * 100) : 0, xp: results.reduce((a, r) => a + r.xp, 0) }
+    return {
+      total,
+      correct,
+      accuracy: total ? Math.round((correct / total) * 100) : 0,
+      xp: results.reduce((a, r) => a + r.xp, 0),
+    }
   }, [results])
 
   // ─── Setup screen ───
@@ -234,20 +287,32 @@ export default function ReviewPage() {
               <div className="label mb-2">Mode</div>
               <div className="flex gap-2">
                 {(['normal', 'pretest', 'cram'] as const).map((m) => (
-                  <button key={m} onClick={() => setMode(m)} className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300' : ''}`}>
+                  <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300' : ''}`}
+                  >
                     {m}
                   </button>
                 ))}
               </div>
               <p className="mt-2 text-xs text-neutral-500">
-                {mode === 'normal' && 'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
+                {mode === 'normal' &&
+                  'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
                 {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
                 {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
               </p>
             </div>
             <div>
               <div className="label mb-2">Session size</div>
-              <input type="number" min={1} max={100} value={limit} onChange={(e) => setLimit(Number(e.target.value))} className="input" />
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={limit}
+                onChange={(e) => setLimit(Number(e.target.value))}
+                className="input"
+              />
             </div>
           </div>
           <button className="btn" disabled={!deckId} onClick={() => setStarted(true)}>
@@ -267,15 +332,26 @@ export default function ReviewPage() {
           <div className="flex items-center gap-3">
             <Sparkles className="h-8 w-8 text-amber-400" />
             <div>
-              <div className="text-lg font-bold">{stats.correct} / {stats.total} recalled ({stats.accuracy}%)</div>
+              <div className="text-lg font-bold">
+                {stats.correct} / {stats.total} recalled ({stats.accuracy}%)
+              </div>
               <div className="text-sm text-neutral-500">+{stats.xp} XP earned</div>
             </div>
           </div>
           <div className="flex gap-2">
-            <button className="btn" onClick={() => { setStarted(false); setFinishedAt(null); setResults([]) }}>
+            <button
+              className="btn"
+              onClick={() => {
+                setStarted(false)
+                setFinishedAt(null)
+                setResults([])
+              }}
+            >
               <RotateCcw className="h-4 w-4" /> New session
             </button>
-            <a href="/" className="btn-ghost"><Home className="h-4 w-4" /> Dashboard</a>
+            <a href="/" className="btn-ghost">
+              <Home className="h-4 w-4" /> Dashboard
+            </a>
           </div>
         </div>
       </div>
@@ -283,7 +359,11 @@ export default function ReviewPage() {
   }
 
   if (session.isLoading || !current) {
-    return <div className="panel text-sm text-neutral-500">{session.isLoading ? 'Building session…' : 'No cards due in this deck.'}</div>
+    return (
+      <div className="panel text-sm text-neutral-500">
+        {session.isLoading ? 'Building session…' : 'No cards due in this deck.'}
+      </div>
+    )
   }
 
   // ─── Active card ───
@@ -292,16 +372,24 @@ export default function ReviewPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Review</h1>
         <div className="flex items-center gap-3 text-sm text-neutral-500">
-          <span>{idx + 1} / {queue.length}</span>
+          <span>
+            {idx + 1} / {queue.length}
+          </span>
           <EnergyBar energy={energy} />
         </div>
       </div>
 
       <div className="panel min-h-[280px] space-y-4">
         <div className="flex gap-2 text-[10px] uppercase tracking-widest text-neutral-500">
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">{current.type}</span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">reps {current.reps}</span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">stability {current.stability.toFixed(1)}d</span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+            {current.type}
+          </span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+            reps {current.reps}
+          </span>
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+            stability {current.stability.toFixed(1)}d
+          </span>
         </div>
 
         <CardFront
@@ -323,7 +411,12 @@ export default function ReviewPage() {
             </button>
           ) : (
             GRADES.map((g) => (
-              <button key={g.grade} className={`btn ${g.color}`} onClick={() => commit(g.grade)} disabled={gradeMutation.isPending}>
+              <button
+                key={g.grade}
+                className={`btn ${g.color}`}
+                onClick={() => commit(g.grade)}
+                disabled={gradeMutation.isPending}
+              >
                 {g.label} <span className="text-xs opacity-70">{g.grade}</span>
               </button>
             ))
@@ -358,7 +451,13 @@ export default function ReviewPage() {
           <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
         </button>
         <span>keys: 1-4 grade · space reveal/Good · e undo</span>
-        <button className="btn-ghost ml-auto" onClick={() => { setStarted(false); setFinishedAt(null) }}>
+        <button
+          className="btn-ghost ml-auto"
+          onClick={() => {
+            setStarted(false)
+            setFinishedAt(null)
+          }}
+        >
           End session <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -370,10 +469,16 @@ function EnergyBar({ energy }: { energy: number }) {
   const low = energy <= 1
   const Icon = low ? BatteryLow : Battery
   return (
-    <span className={`flex items-center gap-1 ${low ? 'text-red-400' : 'text-emerald-400'}`} title="session energy — mistakes drain it">
+    <span
+      className={`flex items-center gap-1 ${low ? 'text-red-400' : 'text-emerald-400'}`}
+      title="session energy — mistakes drain it"
+    >
       <Icon className="h-4 w-4" />
       {Array.from({ length: MAX_ENERGY }, (_, i) => (
-        <span key={i} className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-red-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-[#26262b]'}`} />
+        <span
+          key={i}
+          className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-red-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-[#26262b]'}`}
+        />
       ))}
     </span>
   )
@@ -410,7 +515,11 @@ function CardFront(props: {
     return (
       <div className="space-y-4">
         <div className="text-xl font-medium">{content.basic.front}</div>
-        {revealed && <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-[#26262b]">{content.basic.back}</div>}
+        {revealed && (
+          <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-[#26262b]">
+            {content.basic.back}
+          </div>
+        )}
       </div>
     )
   }
@@ -430,23 +539,31 @@ function CardFront(props: {
             return (
               <span key={i} className="mx-1 inline-block align-baseline">
                 {revealed ? (
-                  <span className="rounded bg-indigo-600/20 px-2 py-0.5 font-medium text-indigo-300">{seg.answer}</span>
+                  <span className="rounded bg-indigo-600/20 px-2 py-0.5 font-medium text-indigo-300">
+                    {seg.answer}
+                  </span>
                 ) : content.cloze?.mode === 'typein' ? (
                   <input
                     ref={props.inputRef}
                     value={typed}
-                    onChange={(e) => props.setClozeInput({ ...props.clozeInput, [seg.index]: e.target.value })}
+                    onChange={(e) =>
+                      props.setClozeInput({ ...props.clozeInput, [seg.index]: e.target.value })
+                    }
                     className="mx-1 w-32 rounded border-b-2 border-indigo-500 bg-transparent px-1 py-0.5 text-center outline-none"
                     placeholder={'␣'.repeat(Math.min(seg.answer.length, 8))}
                   />
                 ) : (
-                  <span className="rounded border-b-2 border-indigo-500 px-3 text-transparent select-none">{'␣'.repeat(Math.min(seg.answer.length, 8))}</span>
+                  <span className="rounded border-b-2 border-indigo-500 px-3 text-transparent select-none">
+                    {'␣'.repeat(Math.min(seg.answer.length, 8))}
+                  </span>
                 )}
               </span>
             )
           })}
         </div>
-        {content.cloze.hint && !revealed && <div className="text-xs text-neutral-500">hint: {content.cloze.hint}</div>}
+        {content.cloze.hint && !revealed && (
+          <div className="text-xs text-neutral-500">hint: {content.cloze.hint}</div>
+        )}
         {revealed && content.cloze.mode === 'typein' && (
           <div className={`text-sm ${clozeCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
             {clozeCorrect ? 'correct' : `answer: ${content.cloze.answers.join(', ')}`}
@@ -469,8 +586,12 @@ function CardFront(props: {
           placeholder="type the answer, Enter to grade"
         />
         {revealed && (
-          <div className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-emerald-400' : 'text-red-400'}`}>
-            {typeinCorrect(props.typeinValue, content) ? 'correct' : content.typein.acceptedAnswers.join(' · ')}
+          <div
+            className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-emerald-400' : 'text-red-400'}`}
+          >
+            {typeinCorrect(props.typeinValue, content)
+              ? 'correct'
+              : content.typein.acceptedAnswers.join(' · ')}
           </div>
         )}
       </div>
@@ -481,7 +602,11 @@ function CardFront(props: {
     return (
       <div className="space-y-4">
         <div className="text-xl font-medium">{content.mcq.question}</div>
-        {!revealed && <div className="text-sm text-neutral-500">options appear after you commit — recall first (stepwise MCQ)</div>}
+        {!revealed && (
+          <div className="text-sm text-neutral-500">
+            options appear after you commit — recall first (stepwise MCQ)
+          </div>
+        )}
         {revealed && (
           <div className="space-y-2">
             {content.mcq.options.map((opt, i) => {
@@ -555,7 +680,9 @@ function CardFront(props: {
 
   if (content.grammar) {
     const g = content.grammar
-    const parts = g.sentence.split(new RegExp(`(${g.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i'))
+    const parts = g.sentence.split(
+      new RegExp(`(${g.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i'),
+    )
     return (
       <div className="space-y-3">
         <div className="label">pattern: {g.pattern}</div>
@@ -563,16 +690,25 @@ function CardFront(props: {
           {parts.map((part, i) =>
             part.toLowerCase() === g.target.toLowerCase() ? (
               revealed ? (
-                <span key={i} className="rounded bg-indigo-600/20 px-2 font-medium text-indigo-300">{part}</span>
+                <span key={i} className="rounded bg-indigo-600/20 px-2 font-medium text-indigo-300">
+                  {part}
+                </span>
               ) : (
-                <span key={i} className="rounded border-b-2 border-indigo-500 px-4 text-transparent select-none">{'␣'.repeat(Math.min(part.length, 10))}</span>
+                <span
+                  key={i}
+                  className="rounded border-b-2 border-indigo-500 px-4 text-transparent select-none"
+                >
+                  {'␣'.repeat(Math.min(part.length, 10))}
+                </span>
               )
             ) : (
               <span key={i}>{part}</span>
             ),
           )}
         </div>
-        {g.translation && revealed && <div className="text-sm text-neutral-500">{g.translation}</div>}
+        {g.translation && revealed && (
+          <div className="text-sm text-neutral-500">{g.translation}</div>
+        )}
       </div>
     )
   }
@@ -584,7 +720,9 @@ function CardFront(props: {
         {revealed && (
           <ul className="list-inside list-disc text-sm text-neutral-300">
             {content.matching.pairs.map((p, i) => (
-              <li key={i}>{p.left} → {p.right}</li>
+              <li key={i}>
+                {p.left} → {p.right}
+              </li>
             ))}
           </ul>
         )}
@@ -634,9 +772,15 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
             )}
           </div>
         ))}
-        {size === null && <div className="absolute inset-0 grid place-items-center text-xs text-neutral-500">loading image…</div>}
+        {size === null && (
+          <div className="absolute inset-0 grid place-items-center text-xs text-neutral-500">
+            loading image…
+          </div>
+        )}
       </div>
-      {!revealed && <div className="text-center text-xs text-neutral-500">reveal to show the labels</div>}
+      {!revealed && (
+        <div className="text-center text-xs text-neutral-500">reveal to show the labels</div>
+      )}
     </div>
   )
 }

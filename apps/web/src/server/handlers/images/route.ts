@@ -1,10 +1,10 @@
 /**
- * /api/images — upload an image for occlusion cards. Bytes go to the ImageStore
- * port (src/server/storage.ts — data/images today); the returned storage id is
- * registered in the `images` table together with the validated MIME type.
+ * /api/images — upload an image for occlusion cards. Bytes are persisted by the
+ * ImageStore port (src/server/storage.ts — base64 in the images.data column;
+ * no filesystem write), which also registers the `images` row. This route only
+ * validates (MIME allow-list + 8MB cap live HERE by design) and relays.
  * POST multipart/form-data: { file } → { id, filename, mime }
  */
-import { db, images } from '@learning-hub/db'
 import { ApiError, withRoute } from '@/lib/api'
 import { getImageStore } from '@/server/storage'
 
@@ -27,11 +27,9 @@ export const POST = withRoute(async (req: Request) => {
 
   const ext =
     (file.name.split('.').pop() ?? 'png').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'png'
-  const stored = await getImageStore().put(new Uint8Array(await file.arrayBuffer()), ext)
-
-  const [row] = await db.insert(images).values({ filename: stored.id, mime: file.type }).returning()
+  const stored = await getImageStore().put(new Uint8Array(await file.arrayBuffer()), ext, file.type)
   return Response.json(
-    { ok: true, id: row!.id, filename: row!.filename, mime: row!.mime },
+    { ok: true, id: stored.rowId, filename: stored.id, mime: file.type },
     { status: 201 },
   )
 })

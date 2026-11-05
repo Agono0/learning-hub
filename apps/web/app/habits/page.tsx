@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarCheck, Coffee, Link2, PartyPopper, Plus, Trash2 } from 'lucide-react'
 import { DOPAMINE_MENU, type DopamineType } from '@learning-hub/core/src/habits'
 import { dayKey } from '@learning-hub/core/src/streaks'
+import { apiGet, apiSend } from '@/lib/transport'
 
 interface Habit {
   id: number
@@ -19,7 +20,12 @@ interface Habit {
   archived: boolean
   logDates: string[]
   todayDone: boolean
-  solidifying: { days: number; stage: 'forming' | 'solidifying' | 'automatic'; daysToNext: number; nextStage: string | null }
+  solidifying: {
+    days: number
+    stage: 'forming' | 'solidifying' | 'automatic'
+    daysToNext: number
+    nextStage: string | null
+  }
 }
 
 interface HabitsResponse {
@@ -28,24 +34,21 @@ interface HabitsResponse {
   stageThresholds: { solidifying: number; automatic: number }
 }
 
-async function jget<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`GET ${url} failed`)
-  return res.json() as Promise<T>
-}
-async function jsend<T>(url: string, method: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
-  if (!res.ok) throw new Error(`${method} ${url} failed`)
-  return res.json() as Promise<T>
-}
-
 const STAGE_COLOR: Record<string, string> = {
   forming: 'text-amber-400',
   solidifying: 'text-sky-400',
   automatic: 'text-emerald-400',
 }
 
-const EMPTY_FORM = { name: '', cue: '', cueType: 'time', craving: '', response: '', reward: '', anchor: '' }
+const EMPTY_FORM = {
+  name: '',
+  cue: '',
+  cueType: 'time',
+  craving: '',
+  response: '',
+  reward: '',
+  anchor: '',
+}
 
 export default function HabitsPage() {
   const qc = useQueryClient()
@@ -56,11 +59,11 @@ export default function HabitsPage() {
 
   const habitsQ = useQuery({
     queryKey: ['habits'],
-    queryFn: () => jget<HabitsResponse>(`/api/habits?tzOffset=${new Date().getTimezoneOffset()}`),
+    queryFn: () => apiGet<HabitsResponse>(`/api/habits?tzOffset=${new Date().getTimezoneOffset()}`),
   })
 
   const createHabit = useMutation({
-    mutationFn: () => jsend('/api/habits', 'POST', form),
+    mutationFn: () => apiSend('/api/habits', 'POST', form),
     onSuccess: () => {
       setForm(EMPTY_FORM)
       setFormError(null)
@@ -72,7 +75,11 @@ export default function HabitsPage() {
   })
 
   const checkin = useMutation({
-    mutationFn: (habitId: number) => jsend<{ alreadyDone: boolean }>('/api/habits/checkin', 'POST', { habitId, tzOffset: new Date().getTimezoneOffset() }),
+    mutationFn: (habitId: number) =>
+      apiSend<{ alreadyDone: boolean }>('/api/habits/checkin', 'POST', {
+        habitId,
+        tzOffset: new Date().getTimezoneOffset(),
+      }),
     onSuccess: (_res, habitId) => {
       setCelebrated(habitId)
       setTimeout(() => setCelebrated(null), 1200)
@@ -82,7 +89,7 @@ export default function HabitsPage() {
   })
 
   const removeHabit = useMutation({
-    mutationFn: (habitId: number) => jsend(`/api/habits/${habitId}`, 'DELETE'),
+    mutationFn: (habitId: number) => apiSend(`/api/habits/${habitId}`, 'DELETE'),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['habits'] }),
   })
 
@@ -94,7 +101,10 @@ export default function HabitsPage() {
 
   const habits = habitsQ.data?.habits ?? []
   const doneToday = habits.filter((h) => h.todayDone).length
-  const dopamine = dopamineFilter === 'all' ? DOPAMINE_MENU : DOPAMINE_MENU.filter((d) => d.type === dopamineFilter)
+  const dopamine =
+    dopamineFilter === 'all'
+      ? DOPAMINE_MENU
+      : DOPAMINE_MENU.filter((d) => d.type === dopamineFilter)
 
   return (
     <div className="space-y-4">
@@ -103,10 +113,15 @@ export default function HabitsPage() {
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <CalendarCheck className="h-6 w-6 text-indigo-400" /> Habits
           </h1>
-          <p className="text-sm text-neutral-500">Cue → craving → response → reward. Tiny versions count.</p>
+          <p className="text-sm text-neutral-500">
+            Cue → craving → response → reward. Tiny versions count.
+          </p>
         </div>
         <p className="text-sm text-neutral-500">
-          today: <span className="font-semibold text-indigo-400">{doneToday}/{habits.length}</span>
+          today:{' '}
+          <span className="font-semibold text-indigo-400">
+            {doneToday}/{habits.length}
+          </span>
         </p>
       </header>
 
@@ -116,12 +131,16 @@ export default function HabitsPage() {
           <Link2 className="h-3.5 w-3.5" /> Today — the stack, in chain order
         </p>
         {habits.length === 0 ? (
-          <p className="text-sm text-neutral-500">No habits yet. Create the first tiny one below.</p>
+          <p className="text-sm text-neutral-500">
+            No habits yet. Create the first tiny one below.
+          </p>
         ) : (
           <ul className="space-y-2">
             {habits.map((h, i) => (
               <li key={h.id} className="flex items-center gap-3">
-                <span className="w-5 text-center text-xs text-neutral-600">{i === 0 ? '┌' : '└'}</span>
+                <span className="w-5 text-center text-xs text-neutral-600">
+                  {i === 0 ? '┌' : '└'}
+                </span>
                 <button
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
                     h.todayDone
@@ -132,11 +151,17 @@ export default function HabitsPage() {
                   disabled={checkin.isPending}
                   aria-label={`check in ${h.name}`}
                 >
-                  {h.todayDone ? <PartyPopper className="h-4 w-4" /> : <Coffee className="h-4 w-4" />}
+                  {h.todayDone ? (
+                    <PartyPopper className="h-4 w-4" />
+                  ) : (
+                    <Coffee className="h-4 w-4" />
+                  )}
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-neutral-700 dark:text-neutral-200">
-                    {h.anchor ? <span className="text-xs text-indigo-400">After {h.anchor} → </span> : null}
+                    {h.anchor ? (
+                      <span className="text-xs text-indigo-400">After {h.anchor} → </span>
+                    ) : null}
                     {h.name}
                   </p>
                   <p className="truncate text-xs text-neutral-500">
@@ -150,11 +175,17 @@ export default function HabitsPage() {
                       style={{ width: `${Math.min(100, (h.solidifying.days / 60) * 100)}%` }}
                     />
                   </div>
-                  <p className={`mt-0.5 text-right text-[10px] ${STAGE_COLOR[h.solidifying.stage]}`}>
+                  <p
+                    className={`mt-0.5 text-right text-[10px] ${STAGE_COLOR[h.solidifying.stage]}`}
+                  >
                     {h.solidifying.stage} · {h.solidifying.days}d
                   </p>
                 </div>
-                <button className="btn-ghost px-2 text-neutral-600" onClick={() => removeHabit.mutate(h.id)} aria-label={`delete ${h.name}`}>
+                <button
+                  className="btn-ghost px-2 text-neutral-600"
+                  onClick={() => removeHabit.mutate(h.id)}
+                  aria-label={`delete ${h.name}`}
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </li>
@@ -195,20 +226,60 @@ export default function HabitsPage() {
           <Plus className="h-3.5 w-3.5" /> New habit (the full loop)
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
-          <input className="input" placeholder="Name — e.g. Read 1 page" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          <select className="input" value={form.cueType} onChange={(e) => setForm({ ...form, cueType: e.target.value })}>
+          <input
+            className="input"
+            placeholder="Name — e.g. Read 1 page"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <select
+            className="input"
+            value={form.cueType}
+            onChange={(e) => setForm({ ...form, cueType: e.target.value })}
+          >
             {['time', 'location', 'preceding', 'emotional', 'people'].map((t) => (
-              <option key={t} value={t}>{t} cue</option>
+              <option key={t} value={t}>
+                {t} cue
+              </option>
             ))}
           </select>
-          <input className="input" placeholder="Cue — when/where (required)" value={form.cue} onChange={(e) => setForm({ ...form, cue: e.target.value })} />
-          <input className="input" placeholder="Craving — the feeling you want" value={form.craving} onChange={(e) => setForm({ ...form, craving: e.target.value })} />
-          <input className="input" placeholder="Response — the two-minute version (required)" value={form.response} onChange={(e) => setForm({ ...form, response: e.target.value })} />
-          <input className="input" placeholder="Reward — immediate satisfaction" value={form.reward} onChange={(e) => setForm({ ...form, reward: e.target.value })} />
-          <input className="input sm:col-span-2" placeholder="Anchor — 'After [existing habit]' for stacking" value={form.anchor} onChange={(e) => setForm({ ...form, anchor: e.target.value })} />
+          <input
+            className="input"
+            placeholder="Cue — when/where (required)"
+            value={form.cue}
+            onChange={(e) => setForm({ ...form, cue: e.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="Craving — the feeling you want"
+            value={form.craving}
+            onChange={(e) => setForm({ ...form, craving: e.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="Response — the two-minute version (required)"
+            value={form.response}
+            onChange={(e) => setForm({ ...form, response: e.target.value })}
+          />
+          <input
+            className="input"
+            placeholder="Reward — immediate satisfaction"
+            value={form.reward}
+            onChange={(e) => setForm({ ...form, reward: e.target.value })}
+          />
+          <input
+            className="input sm:col-span-2"
+            placeholder="Anchor — 'After [existing habit]' for stacking"
+            value={form.anchor}
+            onChange={(e) => setForm({ ...form, anchor: e.target.value })}
+          />
         </div>
         {formError && <p className="text-sm text-rose-400">{formError}</p>}
-        <button className="btn" onClick={() => createHabit.mutate()} disabled={createHabit.isPending}>
+        <button
+          className="btn"
+          onClick={() => createHabit.mutate()}
+          disabled={createHabit.isPending}
+        >
           Create habit
         </button>
       </div>
@@ -229,9 +300,14 @@ export default function HabitsPage() {
         </div>
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {dopamine.map((d, i) => (
-            <li key={i} className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]">
+            <li
+              key={i}
+              className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+            >
               <p className="text-neutral-700 dark:text-neutral-200">{d.label}</p>
-              <p className="mt-1 text-xs text-neutral-500">{d.type} · ~{d.minutes} min</p>
+              <p className="mt-1 text-xs text-neutral-500">
+                {d.type} · ~{d.minutes} min
+              </p>
             </li>
           ))}
         </ul>
