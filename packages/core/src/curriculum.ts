@@ -7,3 +7,4 @@
  */
 export * from './curriculum/pedagogy'
 export * from './curriculum/lhcf/index'
+export * from './curriculum/progress'
