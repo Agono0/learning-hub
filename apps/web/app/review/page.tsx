@@ -33,6 +33,14 @@ import {
   stepsToShow,
   workedExampleFade,
 } from '@learning-hub/core/review'
+import {
+  DEFAULT_SR_CRITERION,
+  initialSrState,
+  MAX_SR_CRITERION,
+  needsAnotherRecall,
+  recordSrResult,
+  type SuccessiveState,
+} from '@learning-hub/core/practice'
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 
@@ -134,11 +142,15 @@ function ReviewPageInner() {
   const [energy, setEnergy] = useState(initialEnergy)
   const [results, setResults] = useState<SessionResult[]>([])
   const [undoStack, setUndoStack] = useState<
-    { card: CardRow; preReview: PreReview; wasMistake: boolean }[]
+    { card: CardRow; preReview: PreReview; wasMistake: boolean; requeuedAt: number | null }[]
   >([])
   const [typeinValue, setTypeinValue] = useState('')
   const [mcqPick, setMcqPick] = useState<number | null>(null)
   const [clozeInput, setClozeInput] = useState<Record<number, string>>({})
+  // successive relearning (Rawson & Dunlosky): a failed card needs N spaced
+  // correct recalls before the session lets it go
+  const [srCriterion, setSrCriterion] = useState(DEFAULT_SR_CRITERION)
+  const srMap = useRef(new Map<number, SuccessiveState>())
   // practice-engine exercise cards: the graded response from ExercisePractice
   // (the practice endpoint already recorded the review — the session only advances)
   const [exerciseResult, setExerciseResult] = useState<PracticeResponse | null>(null)
@@ -153,6 +165,7 @@ function ReviewPageInner() {
       setUndoStack([])
       setEnergy(initialEnergy())
       setFinishedAt(null)
+      srMap.current = new Map()
       // a stale answer from a previous session must never unlock "Next card"
       // for the first exercise card of the new one
       setExerciseResult(null)
@@ -160,6 +173,31 @@ function ReviewPageInner() {
   }, [session.data])
 
   const current = queue[idx]
+
+  /** fold a graded recall into the card's successive-relearning state */
+  const recordSr = useCallback((cardId: number, correct: boolean) => {
+    const next = recordSrResult(srMap.current.get(cardId) ?? initialSrState(), correct)
+    srMap.current.set(cardId, next)
+    return next
+  }, [])
+
+  /**
+   * Re-queue a card with SPACING (≥ 1 other card before the retry when the
+   * queue has room) — successive relearning interleaves rather than repeats.
+   * Returns the index the retry will be inserted at (for the undo buffer).
+   */
+  const requeueSpaced = useCallback(
+    (card: CardRow): number => {
+      const at = Math.min(queue.length, idx + 2)
+      setQueue((q) => {
+        const copy = [...q]
+        copy.splice(Math.min(copy.length, idx + 2), 0, card)
+        return copy
+      })
+      return at
+    },
+    [queue.length, idx],
+  )
 
   const resetCardState = useCallback(() => {
     setRevealed(false)
@@ -179,7 +217,15 @@ function ReviewPageInner() {
     onSuccess: (data, variables) => {
       if (!data.ok) return
       const wasMistake = variables.grade === 1
-      setUndoStack((s) => [...s, { card: current!, preReview: data.preReview, wasMistake }])
+      const sr = recordSr(variables.cardId, !wasMistake)
+      // successive relearning: a correct recall still re-queues (without
+      // draining energy) while the criterion is unmet
+      const requeue = wasMistake || needsAnotherRecall(sr, srCriterion)
+      const requeuedAt = requeue ? requeueSpaced(current!) : null
+      setUndoStack((s) => [
+        ...s,
+        { card: current!, preReview: data.preReview, wasMistake, requeuedAt },
+      ])
       if (wasMistake) setEnergy((e) => applyMistake(e))
       setResults((r) => [
         ...r,
@@ -190,13 +236,11 @@ function ReviewPageInner() {
           xp: data.xp,
         },
       ])
-      // Again → re-learn within this session (once per mistake). The re-queued
-      // copy extends the queue, so a mistake on the LAST card must also extend
-      // the end check — otherwise the retry is silently dropped.
-      if (wasMistake) setQueue((q) => [...q, current!])
+      // The re-queued copy extends the queue, so a re-queue on the LAST card
+      // must also extend the end check — otherwise the retry is dropped.
       resetCardState()
       void qc.invalidateQueries({ queryKey: ['decks'] })
-      if (idx + 1 >= queue.length + (wasMistake ? 1 : 0)) setFinishedAt(Date.now())
+      if (idx + 1 >= queue.length + (requeue ? 1 : 0)) setFinishedAt(Date.now())
       else setIdx((i) => i + 1)
     },
   })
@@ -212,8 +256,17 @@ function ReviewPageInner() {
       if (last.wasMistake) setEnergy((e) => Math.min(MAX_ENERGY, e + 1))
       setQueue((q) => {
         const copy = [...q]
-        // remove the trailing re-queued copy if it came from this mistake
-        if (last.wasMistake && copy[copy.length - 1]?.id === last.card.id) copy.pop()
+        // remove the re-queued copy this grade inserted (spaced insert, with
+        // a trailing-copy fallback for stacks graded before spacing existed)
+        if (
+          last.requeuedAt !== null &&
+          last.requeuedAt < copy.length &&
+          copy[last.requeuedAt]?.id === last.card.id
+        ) {
+          copy.splice(last.requeuedAt, 1)
+        } else if (copy[copy.length - 1]?.id === last.card.id) {
+          copy.pop()
+        }
         copy.splice(Math.min(idx, copy.length), 0, last.card)
         return copy
       })
@@ -237,9 +290,11 @@ function ReviewPageInner() {
     if (!current || !exerciseResult) return
     const { result, review } = exerciseResult
     const wasMistake = !result.pending && result.grade === 1
-    if (wasMistake) {
-      setEnergy((e) => applyMistake(e))
-      setQueue((q) => [...q, current])
+    const sr = recordSr(current.id, !wasMistake)
+    const requeue = wasMistake || needsAnotherRecall(sr, srCriterion)
+    if (requeue) {
+      if (wasMistake) setEnergy((e) => applyMistake(e))
+      requeueSpaced(current)
     }
     if (review) {
       const intervalDays = Math.max(
@@ -254,9 +309,18 @@ function ReviewPageInner() {
     setExerciseResult(null)
     resetCardState()
     void qc.invalidateQueries({ queryKey: ['decks'] })
-    if (idx + 1 >= queue.length + (wasMistake ? 1 : 0)) setFinishedAt(Date.now())
+    if (idx + 1 >= queue.length + (requeue ? 1 : 0)) setFinishedAt(Date.now())
     else setIdx((i) => i + 1)
-  }, [current, exerciseResult, idx, queue.length, resetCardState])
+  }, [
+    current,
+    exerciseResult,
+    idx,
+    queue.length,
+    resetCardState,
+    recordSr,
+    requeueSpaced,
+    srCriterion,
+  ])
 
   const reveal = useCallback(() => setRevealed(true), [])
 
@@ -372,6 +436,27 @@ function ReviewPageInner() {
                 onChange={(e) => setLimit(Number(e.target.value))}
                 className="input"
               />
+              <div className="label mb-2 mt-3">
+                Retrieval criterion{' '}
+                <span className="font-normal text-neutral-500">
+                  (correct recalls after a mistake)
+                </span>
+              </div>
+              <select
+                className="input"
+                value={srCriterion}
+                onChange={(e) => setSrCriterion(Number(e.target.value))}
+              >
+                {Array.from({ length: MAX_SR_CRITERION }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n} — {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-neutral-500">
+                Successive relearning: a failed card repeats (spaced) until it has been recalled
+                correctly this many times (Rawson &amp; Dunlosky 2011).
+              </p>
             </div>
           </div>
           <button className="btn" disabled={!deckId} onClick={() => setStarted(true)}>
