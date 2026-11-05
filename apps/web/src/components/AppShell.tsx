@@ -37,7 +37,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
 /** Desktop sidebar (lg+). */
 function Sidebar({ pathname }: { pathname: string | null }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-[#26262b] dark:bg-[#0e0e11]/90">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-[#26262b] dark:bg-[#0e0e11]/90">
       <div className="px-4 py-4">
         <Brand />
       </div>
@@ -76,7 +76,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
 /** Tablet icon rail (md – lg). */
 function Rail({ pathname }: { pathname: string | null }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-16 flex-col items-center border-r border-neutral-200 bg-white/80 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:flex lg:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/90">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-16 print:hidden flex-col items-center border-r border-neutral-200 bg-white/80 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:flex lg:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/90">
       <Brand compact />
       <nav
         aria-label="Main"
@@ -197,14 +197,14 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/85">
+      <header className="sticky top-0 z-30 flex print:hidden items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/85">
         <Brand compact />
         <span className="text-sm font-semibold tracking-tight">Learning HUB</span>
       </header>
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-neutral-200 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/92"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 print:hidden border-t border-neutral-200 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/92"
       >
         {PRIMARY_NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href)
@@ -249,7 +249,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar pathname={pathname} />
       <Rail pathname={pathname} />
       <PhoneChrome pathname={pathname} />
-      <main className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56">
+      <main className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0">
         <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">{children}</div>
       </main>
     </div>

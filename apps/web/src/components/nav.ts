@@ -26,6 +26,7 @@ import {
   Route,
   Settings,
   Sparkles,
+  Target,
   Timer,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -49,8 +50,9 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard, primary: true },
       { href: '/review', label: 'Review', icon: Repeat2, primary: true },
-      { href: '/decks', label: 'Decks & Cards', icon: Layers, primary: true },
-      { href: '/curriculum', label: 'Curriculum', icon: GraduationCap },
+      { href: '/courses', label: 'Courses', icon: GraduationCap, primary: true },
+      { href: '/decks', label: 'Decks & Cards', icon: Layers },
+      { href: '/curriculum', label: 'Skills & exams', icon: Target },
       { href: '/reading', label: 'Reading', icon: BookOpen },
       { href: '/tutor', label: 'Tutor', icon: MessageCircleQuestion },
       { href: '/feynman', label: 'Feynman', icon: NotebookPen },
