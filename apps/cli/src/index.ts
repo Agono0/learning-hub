@@ -15,6 +15,7 @@
 import { and, eq, gte, lte, sql } from 'drizzle-orm'
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout, exit } from 'node:process'
+import { curriculumCommand } from './commands/curriculum'
 import {
   db,
   cards,
@@ -53,18 +54,29 @@ function renderCard(type: string, content: CardContent): { prompt: string; revea
         // mirror the web review page: split the text into text/blank segments and
         // render every blank as an answer-length placeholder (capped at 8 chars)
         const hidden = clozeSegments(content.cloze.text)
-          .map((seg) => (seg.kind === 'text' ? seg.text : '␣'.repeat(Math.min(seg.answer.length, 8))))
+          .map((seg) =>
+            seg.kind === 'text' ? seg.text : '␣'.repeat(Math.min(seg.answer.length, 8)),
+          )
           .join('')
         return { prompt: hidden, reveal: content.cloze.answers.join(' · ') }
       }
       break
     case 'typein':
-      if (content.typein) return { prompt: `${content.typein.question}\n  (type your answer, then compare)`, reveal: content.typein.acceptedAnswers.join(' · ') }
+      if (content.typein)
+        return {
+          prompt: `${content.typein.question}\n  (type your answer, then compare)`,
+          reveal: content.typein.acceptedAnswers.join(' · '),
+        }
       break
     case 'mcq':
       if (content.mcq) {
-        const opts = content.mcq.options.map((o, i) => `   ${String.fromCharCode(97 + i)}) ${o}`).join('\n')
-        return { prompt: `${content.mcq.question}\n${opts}`, reveal: `${String.fromCharCode(97 + content.mcq.correctIndex)}) ${content.mcq.options[content.mcq.correctIndex] ?? ''}${content.mcq.rationale ? `\n  why: ${content.mcq.rationale}` : ''}` }
+        const opts = content.mcq.options
+          .map((o, i) => `   ${String.fromCharCode(97 + i)}) ${o}`)
+          .join('\n')
+        return {
+          prompt: `${content.mcq.question}\n${opts}`,
+          reveal: `${String.fromCharCode(97 + content.mcq.correctIndex)}) ${content.mcq.options[content.mcq.correctIndex] ?? ''}${content.mcq.rationale ? `\n  why: ${content.mcq.rationale}` : ''}`,
+        }
       }
       break
     default:
@@ -96,7 +108,10 @@ async function capture(text: string) {
     console.error('Usage: learning-hub capture "idea text"')
     exit(1)
   }
-  const [idea] = await db.insert(ideas).values({ title: text.trim().slice(0, 120), content: text }).returning()
+  const [idea] = await db
+    .insert(ideas)
+    .values({ title: text.trim().slice(0, 120), content: text })
+    .returning()
   console.log(`💡 Captured idea #${idea!.id} → inbox (stage: seed)\n   ${idea!.title}`)
 }
 
@@ -106,8 +121,16 @@ async function today() {
     .select({ dueCount: sql<number>`count(*)` })
     .from(cards)
     .where(and(lte(cards.due, now.toISOString()), eq(cards.suspended, false)))
-  const quest = await db.select().from(quests).where(eq(quests.date, dayKey(now))).limit(1)
-  const [quote] = await db.select().from(quotes).orderBy(sql`random()`).limit(1)
+  const quest = await db
+    .select()
+    .from(quests)
+    .where(eq(quests.date, dayKey(now)))
+    .limit(1)
+  const [quote] = await db
+    .select()
+    .from(quotes)
+    .orderBy(sql`random()`)
+    .limit(1)
   const [streakRow] = await db.select().from(streaks).limit(1)
   const lines = [
     `Due cards:   ${Number(dueCount ?? 0)}`,
@@ -121,7 +144,9 @@ async function today() {
 
 async function stats() {
   const now = new Date()
-  const [retention] = await db.all<{ total: number; retention_pct: number }>(sql`SELECT total, retention_pct FROM v_true_retention`)
+  const [retention] = await db.all<{ total: number; retention_pct: number }>(
+    sql`SELECT total, retention_pct FROM v_true_retention`,
+  )
   const [{ dueCount }] = await db
     .select({ dueCount: sql<number>`count(*)` })
     .from(cards)
@@ -132,7 +157,9 @@ async function stats() {
     .select({ today: sql<number>`coalesce(sum(amount),0)` })
     .from(xpEvents)
     .where(gte(xpEvents.createdAt, `${dayKey(now)}T00:00:00.000Z`))
-  const week = await db.all<{ day: string; reviews: number }>(sql`SELECT day, reviews FROM v_daily_reviews ORDER BY day DESC LIMIT 7`)
+  const week = await db.all<{ day: string; reviews: number }>(
+    sql`SELECT day, reviews FROM v_daily_reviews ORDER BY day DESC LIMIT 7`,
+  )
   const focusWeek = await db
     .select({ minutes: sql<number>`coalesce(sum(actual_minutes),0)` })
     .from(focusSessions)
@@ -150,12 +177,24 @@ async function stats() {
     ...week
       .slice()
       .reverse()
-      .map((d) => `  ${d.day}  ${bar(Number(d.reviews), Math.max(...week.map((w) => Number(w.reviews)), 1))} ${d.reviews}`),
+      .map(
+        (d) =>
+          `  ${d.day}  ${bar(Number(d.reviews), Math.max(...week.map((w) => Number(w.reviews)), 1))} ${d.reviews}`,
+      ),
   ]
   console.log(panel('LEARNING STATS', lines))
 }
 
-const GRADE_ALIASES: Record<string, Grade> = { '1': 1, '2': 2, '3': 3, '4': 4, a: 1, h: 2, g: 3, e: 4 }
+const GRADE_ALIASES: Record<string, Grade> = {
+  '1': 1,
+  '2': 2,
+  '3': 3,
+  '4': 4,
+  a: 1,
+  h: 2,
+  g: 3,
+  e: 4,
+}
 
 async function review(limitArg?: string) {
   const limit = Math.max(1, Math.min(100, Number(limitArg ?? 20) || 20))
@@ -170,7 +209,9 @@ async function review(limitArg?: string) {
     return
   }
   const rl = createInterface({ input: stdin, output: stdout })
-  console.log(`Review session: ${dueCards.length} cards. Grade with 1=Again 2=Hard 3=Good 4=Easy (q quits).\n`)
+  console.log(
+    `Review session: ${dueCards.length} cards. Grade with 1=Again 2=Hard 3=Good 4=Easy (q quits).\n`,
+  )
   let done = 0
   let correct = 0
   let xpEarned = 0
@@ -226,13 +267,20 @@ async function review(limitArg?: string) {
 
 async function focus(minutesArg?: string) {
   const planned = Math.max(1, Math.min(180, Number(minutesArg ?? 25) || 25))
-  const [session] = await db.insert(focusSessions).values({ startedAt: new Date().toISOString(), plannedMinutes: planned, type: 'pomodoro' }).returning()
-  console.log(`⏳ Focus session #${session!.id} started — ${planned} minutes. Ctrl+C to bail (it counts as a leak).`)
+  const [session] = await db
+    .insert(focusSessions)
+    .values({ startedAt: new Date().toISOString(), plannedMinutes: planned, type: 'pomodoro' })
+    .returning()
+  console.log(
+    `⏳ Focus session #${session!.id} started — ${planned} minutes. Ctrl+C to bail (it counts as a leak).`,
+  )
   const startedAt = Date.now()
   const timer = setInterval(() => {
     const elapsedMin = Math.floor((Date.now() - startedAt) / 60_000)
     const left = planned - elapsedMin
-    process.stdout.write(`\r${' '.repeat(40)}\r${left > 0 ? `${left} min left ${bar(elapsedMin, planned)}` : ''}`)
+    process.stdout.write(
+      `\r${' '.repeat(40)}\r${left > 0 ? `${left} min left ${bar(elapsedMin, planned)}` : ''}`,
+    )
     if (left <= 0) finish()
   }, 10_000)
   const finish = async () => {
@@ -244,7 +292,13 @@ async function focus(minutesArg?: string) {
       .update(focusSessions)
       .set({ endedAt: new Date().toISOString(), actualMinutes, completed: true })
       .where(eq(focusSessions.id, session!.id))
-    await db.insert(xpEvents).values({ source: 'focus', amount: XP_REWARDS.focusSession, meta: { sessionId: session!.id } })
+    await db
+      .insert(xpEvents)
+      .values({
+        source: 'focus',
+        amount: XP_REWARDS.focusSession,
+        meta: { sessionId: session!.id },
+      })
     console.log(`\n✅ Focus complete: ${actualMinutes} min. +${XP_REWARDS.focusSession} XP`)
     exit(0)
   }
@@ -274,7 +328,11 @@ async function focus(minutesArg?: string) {
 }
 
 async function quote() {
-  const [q] = await db.select().from(quotes).orderBy(sql`random()`).limit(1)
+  const [q] = await db
+    .select()
+    .from(quotes)
+    .orderBy(sql`random()`)
+    .limit(1)
   if (!q) {
     console.log('No quotes in the database — run `npm run db:seed` first.')
     return
@@ -301,12 +359,35 @@ function helpLine(command: RegisteredCommand): string {
 }
 
 const builtinCommands: RegisteredCommand[] = [
-  { name: 'capture', description: 'quick-capture an idea', usage: '"text"', run: (runArgs) => capture(runArgs.join(' ')) },
+  {
+    name: 'capture',
+    description: 'quick-capture an idea',
+    usage: '"text"',
+    run: (runArgs) => capture(runArgs.join(' ')),
+  },
   { name: 'today', description: 'due cards, quests, quote', run: () => today() },
   { name: 'stats', description: 'retention, streak, XP, focus', run: () => stats() },
-  { name: 'review', description: 'terminal review session', usage: '[n]', run: (runArgs) => review(runArgs[0]) },
-  { name: 'focus', description: 'start a focus session', usage: '[min]', run: (runArgs) => focus(runArgs[0]) },
+  {
+    name: 'review',
+    description: 'terminal review session',
+    usage: '[n]',
+    run: (runArgs) => review(runArgs[0]),
+  },
+  {
+    name: 'focus',
+    description: 'start a focus session',
+    usage: '[min]',
+    run: (runArgs) => focus(runArgs[0]),
+  },
   { name: 'quote', description: 'random quote', run: () => quote() },
+  {
+    name: 'curriculum',
+    description: 'import/list courses, print AI prompt',
+    usage: 'import|list|prompt',
+    run: (runArgs) => {
+      process.exitCode = curriculumCommand(runArgs)
+    },
+  },
 ]
 
 async function main() {
@@ -314,7 +395,9 @@ async function main() {
   const plugins = await loadPlugins(['plugins'])
   const { cliCommands: pluginCommands } = getPluginContributions()
   if (plugins.length > 0) {
-    console.error(`Loaded ${plugins.length} plugin(s): ${plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(', ')}`)
+    console.error(
+      `Loaded ${plugins.length} plugin(s): ${plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(', ')}`,
+    )
   }
   const commands: RegisteredCommand[] = [...builtinCommands, ...pluginCommands]
 
@@ -333,5 +416,5 @@ main()
   })
   .then(() => {
     // keep long-running commands (focus) alive; exit otherwise
-    if (cmd !== 'focus') exit(0)
+    if (cmd !== 'focus') exit(process.exitCode ?? 0)
   })
