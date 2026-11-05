@@ -71,7 +71,13 @@ export async function GET(req: Request) {
   const [reviewsToday] = db
     .select({ n: sql<number>`count(*)` })
     .from(revlog)
-    .where(and(gte(revlog.reviewedAt, start), lt(revlog.reviewedAt, end)))
+    .where(
+      and(
+        gte(revlog.reviewedAt, start),
+        lt(revlog.reviewedAt, end),
+        sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`,
+      ),
+    )
     .all()
   const [focusToday] = db
     .select({ minutes: sql<number>`coalesce(sum(${focusSessions.actualMinutes}), 0)` })

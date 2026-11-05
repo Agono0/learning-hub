@@ -4,7 +4,7 @@
  * @learning-hub/db drizzle schema and hands them to core's pure
  * `computeWeeklyReportMetrics`. SERVER-only — imports the native SQLite client.
  */
-import { and, gte, lt } from 'drizzle-orm'
+import { and, gte, lt, sql } from 'drizzle-orm'
 import { db, cards, focusSessions, revlog, streaks, xpEvents } from '@learning-hub/db'
 import {
   clozeSegments,
@@ -62,7 +62,13 @@ export async function gatherWeeklyReportRaw(offsetMinutes: number): Promise<Week
         reviewedAt: revlog.reviewedAt,
       })
       .from(revlog)
-      .where(and(gte(revlog.reviewedAt, fetchFrom), lt(revlog.reviewedAt, fetchUntil)))
+      .where(
+        and(
+          gte(revlog.reviewedAt, fetchFrom),
+          lt(revlog.reviewedAt, fetchUntil),
+          sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`,
+        ),
+      )
       .limit(20_000)
       .all(),
     db

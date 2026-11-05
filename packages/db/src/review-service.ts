@@ -11,7 +11,7 @@
  * - Unified XP rewards and Elo/BKT skill tree progression (DEF-005)
  * - 100% atomic synchronous transactions with rollback on failure
  */
-import { eq, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { DefaultScheduler, type Grade as FsrsGrade } from 'ts-fsrs'
 import {
   type Grade,
@@ -24,11 +24,12 @@ import {
   bktUpdate,
   cardRowToFsrs,
   fsrsToCardRow,
+  parseFsrsWeights,
   eventBus,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from './index'
 import { withTransaction, type Transaction } from './transaction'
-import { cards, revlog, streaks, xpEvents, eloEvents, mastery, userSettings } from './schema'
+import { cards, decks, revlog, streaks, xpEvents, eloEvents, mastery, userSettings } from './schema'
 
 /** One card grade to process (all fields optional except cardId and grade). */
 export interface ReviewPayload {
@@ -37,7 +38,8 @@ export interface ReviewPayload {
   confidence?: Confidence // 0 (Uncertain) | 1 (Confident) - defaults to 1
   timeMs?: number // Milliseconds spent on review - defaults to 5000
   today?: string | Date // Review timestamp - defaults to new Date()
-  desiredRetention?: number // Override default user setting (0.9)
+  desiredRetention?: number // Override deck/user setting (0.9)
+  fsrsWeights?: readonly number[] | null // Override deck/user FSRS-6 weights
 }
 
 /** Full outcome of one review: card before/after, revlog row, streak, XP, Elo. */
@@ -114,20 +116,40 @@ export function updateStreakInTx(tx: Transaction, now: Date): StreakState {
   return nextStreak
 }
 
-/** Cache schedulers by desiredRetention. */
+/** Cache schedulers by (desiredRetention, weights). */
 const schedulerCache = new Map<string, Promise<DefaultScheduler<'FSRS-6'>>>()
 
+function schedulerKey(desiredRetention: number, weights?: readonly number[] | null): string {
+  const clamped = Math.max(0.5, Math.min(0.97, desiredRetention))
+  const wKey =
+    weights && weights.length > 0 ? weights.map((n) => n.toFixed(4)).join(',') : 'default'
+  return `${clamped.toFixed(3)}:${wKey}`
+}
+
 /**
- * Get (and cache) the FSRS-6 scheduler for a desired retention (0–1).
- * Schedulers are pure config, so one per retention is created and reused.
+ * Get (and cache) the FSRS-6 scheduler for a desired retention (0.5–0.97) and
+ * optional 21-parameter weight vector.
  */
-export async function getScheduler(desiredRetention: number): Promise<DefaultScheduler<'FSRS-6'>> {
-  const key = desiredRetention.toFixed(3)
+export async function getScheduler(
+  desiredRetention: number,
+  weights?: readonly number[] | null,
+): Promise<DefaultScheduler<'FSRS-6'>> {
+  const clamped = Math.max(0.5, Math.min(0.97, desiredRetention))
+  let validWeights: number[] | undefined
+  if (weights && weights.length > 0) {
+    try {
+      validWeights = parseFsrsWeights(weights)
+    } catch {
+      validWeights = undefined
+    }
+  }
+  const key = schedulerKey(clamped, validWeights)
   let cached = schedulerCache.get(key)
   if (!cached) {
     cached = DefaultScheduler({
       version: 'FSRS-6',
-      desiredRetention,
+      desiredRetention: clamped,
+      weights: validWeights,
       enableShortTerm: true,
     })
     schedulerCache.set(key, cached)
@@ -322,28 +344,67 @@ export async function executeBatchReview(
     }
   }
 
-  // 2. Pre-transaction Async Preparation: resolve retention and schedulers
-  const defaultRetention =
-    database
-      .select({ desiredRetention: userSettings.desiredRetention })
-      .from(userSettings)
-      .limit(1)
-      .get()?.desiredRetention ?? 0.9
+  // 2. Pre-transaction Async Preparation: resolve deck + global retention & weights
+  const settingsRow = database
+    .select({
+      desiredRetention: userSettings.desiredRetention,
+      fsrsWeights: userSettings.fsrsWeights,
+    })
+    .from(userSettings)
+    .limit(1)
+    .get()
+  const defaultRetention = settingsRow?.desiredRetention ?? 0.9
+  const defaultWeights = settingsRow?.fsrsWeights ?? null
 
-  const schedulers = new Map<number, DefaultScheduler<'FSRS-6'>>()
+  const uniqueCardIds = [...new Set(payloads.map((p) => p.cardId))]
+  const cardDeckRows =
+    uniqueCardIds.length > 0
+      ? database
+          .select({ id: cards.id, deckId: cards.deckId })
+          .from(cards)
+          .where(inArray(cards.id, uniqueCardIds))
+          .all()
+      : []
+  const deckByCard = new Map<number, number>(cardDeckRows.map((r) => [r.id, r.deckId]))
+
+  const uniqueDeckIds = [...new Set(cardDeckRows.map((r) => r.deckId))]
+  const deckRows =
+    uniqueDeckIds.length > 0
+      ? database
+          .select({
+            id: decks.id,
+            desiredRetention: decks.desiredRetention,
+            fsrsWeights: decks.fsrsWeights,
+          })
+          .from(decks)
+          .where(inArray(decks.id, uniqueDeckIds))
+          .all()
+      : []
+  const deckConfig = new Map(deckRows.map((d) => [d.id, d]))
+
+  const schedulers = new Map<string, DefaultScheduler<'FSRS-6'>>()
+  const payloadKeys: string[] = []
   for (const payload of payloads) {
-    const ret = payload.desiredRetention ?? defaultRetention
-    if (!schedulers.has(ret)) {
-      schedulers.set(ret, await getScheduler(ret))
+    const deckId = deckByCard.get(payload.cardId)
+    const dCfg = deckId !== undefined ? deckConfig.get(deckId) : undefined
+    const ret = payload.desiredRetention ?? dCfg?.desiredRetention ?? defaultRetention
+    const weights =
+      payload.fsrsWeights !== undefined
+        ? payload.fsrsWeights
+        : (dCfg?.fsrsWeights ?? defaultWeights)
+    const key = schedulerKey(ret, weights)
+    payloadKeys.push(key)
+    if (!schedulers.has(key)) {
+      schedulers.set(key, await getScheduler(ret, weights))
     }
   }
 
   // 3. Synchronous Atomic Transaction Execution
   const results = withTransaction((tx) => {
     const results: ReviewResult[] = []
-    for (const payload of payloads) {
-      const ret = payload.desiredRetention ?? defaultRetention
-      const sched = schedulers.get(ret)!
+    for (let i = 0; i < payloads.length; i++) {
+      const payload = payloads[i]!
+      const sched = schedulers.get(payloadKeys[i]!)!
       const now =
         opts?.now ??
         (payload.today

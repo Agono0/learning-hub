@@ -19,6 +19,8 @@ export async function GET() {
       name: decks.name,
       description: decks.description,
       emoji: decks.emoji,
+      desiredRetention: decks.desiredRetention,
+      fsrsWeights: decks.fsrsWeights,
       createdAt: decks.createdAt,
       total: sql<number>`count(${cards.id})`,
       due: sql<number>`sum(CASE WHEN ${cards.due} <= ${new Date().toISOString()} AND ${cards.suspended} = 0 THEN 1 ELSE 0 END)`,
@@ -31,6 +33,7 @@ export async function GET() {
   return Response.json({
     decks: rows.map((r) => ({
       ...r,
+      hasCustomWeights: Array.isArray(r.fsrsWeights) && r.fsrsWeights.length === 21,
       total: Number(r.total ?? 0),
       due: Number(r.due ?? 0),
       newCards: Number(r.newCards ?? 0),

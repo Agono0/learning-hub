@@ -39,6 +39,7 @@ import * as exportRoute from '../server/handlers/export/route'
 import * as focusId from '../server/handlers/focus/[id]/route'
 import * as focus from '../server/handlers/focus/route'
 import * as friction from '../server/handlers/friction/route'
+import * as fsrsOptimize from '../server/handlers/fsrs/optimize/route'
 import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
@@ -145,6 +146,7 @@ add('export', exportRoute)
 add('focus', focus)
 add('focus/[id]', focusId)
 add('friction', friction)
+add('fsrs/optimize', fsrsOptimize)
 add('games', games)
 add('goals', goals)
 add('goals/[id]', goalsId)

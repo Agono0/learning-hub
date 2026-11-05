@@ -71,9 +71,11 @@ The first illustrated textbook; Paivio (1971) later formalized why it works.
 ### Forgetting curve & savings — Hermann Ebbinghaus, 1885
 *Über das Gedächtnis*: retention decays predictably; relearning is faster.
 - **In Learning HUB:** FSRS-6 models exactly this curve per card —
-  `packages/core/src/fsrs.ts`, scheduler `packages/db/src/review-service.ts`
-  (`executeReview` is the single grading path); retrievability shown in
-  analytics (`packages/core/src/analytics.ts`).
+  `packages/core/src/fsrs.ts`, personalized 21-parameter MAP optimizer &
+  `Reschedule` history replayer in `packages/core/src/fsrs-optimizer.ts`,
+  scheduler `packages/db/src/review-service.ts` (`executeReview` is the single
+  grading path, with per-deck retention/weight presets and append-only
+  `revlog_undos`); retrievability shown in analytics (`packages/core/src/analytics.ts`).
 - **Status:** ✅
 
 ---

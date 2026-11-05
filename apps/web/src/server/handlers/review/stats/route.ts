@@ -23,6 +23,7 @@ export async function GET() {
            round(avg(time_ms)) AS avg_time_ms
     FROM revlog
     WHERE substr(reviewed_at, 1, 10) = ${todayKey}
+      AND NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
   `)
 
   const dueRows = await db

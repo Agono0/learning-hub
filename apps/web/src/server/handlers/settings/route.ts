@@ -8,7 +8,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, userSettings } from '@learning-hub/db'
-import { getAIClient, type AIProvider } from '@learning-hub/core'
+import { fsrsWeightsSchema, getAIClient, type AIProvider } from '@learning-hub/core'
 import '@/lib/ai'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
@@ -30,8 +30,9 @@ const putSettingsSchema = z.object({
   /** JSON object string of extra HTTP headers (custom-endpoint); validated + stored canonically. */
   aiHeaders: z.string().max(4000).nullable().optional(),
   desiredRetention: z.number().optional(), // zod rejects NaN/Infinity → finite by construction
+  fsrsWeights: fsrsWeightsSchema.nullable().optional(),
   sessionMinutes: z.number().optional(),
-  theme: z.enum(['dark', 'light']).optional(),
+  theme: z.enum(['dark', 'light', 'system']).optional(),
 })
 
 const testSettingsSchema = z.object({
@@ -91,6 +92,7 @@ export async function GET() {
       hasApiKey: Boolean(row.aiApiKey),
       aiHeaders: row.aiHeaders ? '••••' : null, // values masked; the UI keeps them unless edited
       hasHeaders: Boolean(row.aiHeaders),
+      hasCustomWeights: Array.isArray(row.fsrsWeights) && row.fsrsWeights.length === 21,
     },
   })
 }
@@ -110,6 +112,9 @@ export const PUT = withRoute(async (req: Request) => {
     // clamp to the supported FSRS band [0.5, 0.97]
     patch.desiredRetention = Math.max(0.5, Math.min(0.97, body.desiredRetention))
   }
+  if (body.fsrsWeights !== undefined) {
+    patch.fsrsWeights = body.fsrsWeights
+  }
   if (body.sessionMinutes !== undefined)
     patch.sessionMinutes = Math.max(5, Math.min(180, Math.round(body.sessionMinutes)))
   if (body.theme !== undefined) patch.theme = body.theme
@@ -123,6 +128,7 @@ export const PUT = withRoute(async (req: Request) => {
       hasApiKey: Boolean(updated.aiApiKey),
       aiHeaders: updated.aiHeaders ? '••••' : null,
       hasHeaders: Boolean(updated.aiHeaders),
+      hasCustomWeights: Array.isArray(updated.fsrsWeights) && updated.fsrsWeights.length === 21,
     },
   })
 })

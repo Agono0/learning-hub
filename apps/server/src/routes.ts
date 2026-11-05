@@ -172,12 +172,17 @@ async function today(_req: IncomingMessage, res: ServerResponse): Promise<void> 
     .select({ count: sql<number>`count(*)` })
     .from(cards)
     .where(and(eq(cards.state, 0), eq(cards.suspended, false)))
-  const [todayStats] = await db.all<{ reviews: number; correct: number; avg_time_ms: number | null }>(sql`
+  const [todayStats] = await db.all<{
+    reviews: number
+    correct: number
+    avg_time_ms: number | null
+  }>(sql`
     SELECT count(*) AS reviews,
            sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) AS correct,
            round(avg(time_ms)) AS avg_time_ms
     FROM revlog
     WHERE substr(reviewed_at, 1, 10) = ${todayKey}
+      AND NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
   `)
   const [streakRow] = await db.select().from(streaks).limit(1)
 
@@ -208,18 +213,25 @@ async function stats(_req: IncomingMessage, res: ServerResponse): Promise<void> 
   const retention = await db.all<{ total: number; retained: number; retention_pct: number }>(
     sql`SELECT total, retained, retention_pct FROM v_true_retention`,
   )
-  const [todayStats] = await db.all<{ reviews: number; correct: number; avg_time_ms: number | null }>(sql`
+  const [todayStats] = await db.all<{
+    reviews: number
+    correct: number
+    avg_time_ms: number | null
+  }>(sql`
     SELECT count(*) AS reviews,
            sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) AS correct,
            round(avg(time_ms)) AS avg_time_ms
     FROM revlog
     WHERE substr(reviewed_at, 1, 10) = ${todayKey}
+      AND NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
   `)
   const dueRows = await db
     .select({ due: cards.due, suspended: cards.suspended })
     .from(cards)
     .limit(5000)
-  const forecast = forecastNext30Days(dueRows.filter((r) => !r.suspended).map((r) => ({ due: r.due })))
+  const forecast = forecastNext30Days(
+    dueRows.filter((r) => !r.suspended).map((r) => ({ due: r.due })),
+  )
 
   sendJson(res, 200, {
     ok: true,
@@ -261,11 +273,36 @@ export interface Route {
 export const routes: Route[] = [
   { method: 'GET', path: '/health', summary: 'liveness + resolved DB path', handler: health },
   { method: 'GET', path: '/decks', summary: 'decks with card/due/new counts', handler: listDecks },
-  { method: 'GET', path: '/cards', summary: 'browse cards (?deckId=&due=1&limit=)', handler: listCards },
-  { method: 'POST', path: '/review', summary: 'grade one card (executeReview)', handler: postReview },
-  { method: 'POST', path: '/review/batch', summary: 'grade many cards atomically (executeBatchReview)', handler: postReviewBatch },
-  { method: 'GET', path: '/today', summary: 'due/new counts, today tallies, streak', handler: today },
-  { method: 'GET', path: '/stats', summary: 'retention, today tallies, 30-day forecast', handler: stats },
+  {
+    method: 'GET',
+    path: '/cards',
+    summary: 'browse cards (?deckId=&due=1&limit=)',
+    handler: listCards,
+  },
+  {
+    method: 'POST',
+    path: '/review',
+    summary: 'grade one card (executeReview)',
+    handler: postReview,
+  },
+  {
+    method: 'POST',
+    path: '/review/batch',
+    summary: 'grade many cards atomically (executeBatchReview)',
+    handler: postReviewBatch,
+  },
+  {
+    method: 'GET',
+    path: '/today',
+    summary: 'due/new counts, today tallies, streak',
+    handler: today,
+  },
+  {
+    method: 'GET',
+    path: '/stats',
+    summary: 'retention, today tallies, 30-day forecast',
+    handler: stats,
+  },
   { method: 'GET', path: '/plugins', summary: 'loaded plugin names + versions', handler: plugins },
 ]
 

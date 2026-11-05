@@ -61,6 +61,7 @@ export async function GET() {
         eq(revlog.confidence, 1),
         eq(revlog.rating, 1),
         gte(revlog.reviewedAt, new Date(Date.now() - 4 * WEEK_MS).toISOString()),
+        sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`,
       ),
     )
   const radar = weaknessRadar({

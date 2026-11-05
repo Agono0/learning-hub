@@ -90,6 +90,10 @@ export const decks = table(
     name: text('name').notNull(),
     description: text('description'),
     emoji: text('emoji').default('📚'),
+    /** Optional per-deck retention override in [0.5, 0.97]; null inherits global setting. */
+    desiredRetention: real('desired_retention'),
+    /** Optional per-deck 21-parameter FSRS-6 weight vector; null inherits global weights. */
+    fsrsWeights: text('fsrs_weights', { mode: 'json' }).$type<number[]>(),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -156,6 +160,27 @@ export const revlog = table(
     reviewedAt: text('reviewed_at').notNull(), // ISO
   },
   (t) => [index('revlog_card_idx').on(t.cardId), index('revlog_time_idx').on(t.reviewedAt)],
+)
+
+/**
+ * Append-only undo tombstones for `revlog` (preserves Hard Rule #8: `revlog`
+ * itself is never DELETEd or UPDATEd; derived views and FSRS optimizers filter
+ * out `revlog.id IN (SELECT revlog_id FROM revlog_undos)`).
+ */
+export const revlogUndos = table(
+  'revlog_undos',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    revlogId: integer('revlog_id').notNull(),
+    cardId: integer('card_id').notNull(),
+    undoneAt: text('undone_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('revlog_undos_revlog_idx').on(t.revlogId),
+    index('revlog_undos_card_idx').on(t.cardId),
+  ],
 )
 
 /** Registry of image files stored in the images dir on disk (or in `data` as base64). */
@@ -856,6 +881,8 @@ export const userSettings = table('user_settings', {
   /** JSON object of extra HTTP headers for the 'custom-endpoint' provider, e.g. {"Authorization":"Bearer …"}. */
   aiHeaders: text('ai_headers'),
   desiredRetention: real('desired_retention').notNull().default(0.9),
+  /** Optional personalized 21-parameter FSRS-6 weight vector; null uses FSRS-6 defaults. */
+  fsrsWeights: text('fsrs_weights', { mode: 'json' }).$type<number[]>(),
   sessionMinutes: integer('session_minutes').notNull().default(25),
   theme: text('theme').notNull().default('dark'),
   detoxWizard: text('detox_wizard', { mode: 'json' })

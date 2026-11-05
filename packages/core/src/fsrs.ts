@@ -108,21 +108,49 @@ export interface RevlogInsert {
 
 const DAY_MS = 86_400_000
 
-/** Schedulers are pure config — cache one per desired retention to avoid re-parsing params. */
+/** Schedulers are pure config — cache one per (desiredRetention, weights) pair. */
 const schedulerCache = new Map<string, Promise<Awaited<ReturnType<typeof DefaultScheduler>>>>()
 
-async function getScheduler(desiredRetention: number) {
-  const key = desiredRetention.toFixed(3)
+function weightsCacheKey(weights?: readonly number[] | null): string {
+  if (!weights || weights.length === 0) return 'default'
+  return weights.map((n) => n.toFixed(4)).join(',')
+}
+
+async function getScheduler(desiredRetention: number, weights?: readonly number[] | null) {
+  const clampedRetention = Math.max(0.5, Math.min(0.97, desiredRetention))
+  const key = `${clampedRetention.toFixed(3)}:${weightsCacheKey(weights)}`
   let cached = schedulerCache.get(key)
   if (!cached) {
     cached = DefaultScheduler({
       version: 'FSRS-6',
-      desiredRetention,
+      desiredRetention: clampedRetention,
+      weights: weights && weights.length > 0 ? [...weights] : undefined,
       enableShortTerm: true,
     })
     schedulerCache.set(key, cached)
   }
   return cached
+}
+
+/**
+ * Format a future due timestamp relative to `now` as a compact Anki-style
+ * interval badge (`<1m`, `10m`, `4h`, `1d`, `6d`, `1.5mo`, `1.2y`).
+ */
+export function formatInterval(dueAtIso: string, now: Date = new Date()): string {
+  const diffMs = Math.max(0, Date.parse(dueAtIso) - now.getTime())
+  if (diffMs < 60_000) return '<1m'
+  const mins = Math.round(diffMs / 60_000)
+  if (mins < 60) return `${mins}m`
+  const hours = Math.round(diffMs / 3_600_000)
+  if (hours < 24) return `${hours}h`
+  const days = Math.round(diffMs / DAY_MS)
+  if (days < 30) return `${days}d`
+  if (days < 365) {
+    const months = Math.round((days / 30) * 10) / 10
+    return `${months}mo`
+  }
+  const years = Math.round((days / 365) * 10) / 10
+  return `${years}y`
 }
 
 function scheduleStatusForState(state: number): 'new' | 'learning' | 'review' {
@@ -182,10 +210,10 @@ export async function reviewCard(
   confidence: Confidence,
   timeMs: number,
   desiredRetention = 0.9,
-  opts: { now?: Date } = {},
+  opts: { now?: Date; weights?: readonly number[] | null } = {},
 ): Promise<{ card: FsrsCard; revlogItem: RevlogInsert }> {
   const now = opts.now ?? new Date()
-  const sched = await getScheduler(desiredRetention)
+  const sched = await getScheduler(desiredRetention, opts.weights)
   const input = cardRowToFsrs(cardRow)
   const { card: next, revlog } = sched.review({
     // `as never`: ts-fsrs 6.0.0's review() INPUT type demands `stabilityFast`
@@ -198,9 +226,10 @@ export async function reviewCard(
   const elapsedDays = cardRow.lastReview
     ? Math.max(0, Math.round((now.getTime() - Date.parse(cardRow.lastReview)) / DAY_MS))
     : 0
+  const decay = opts.weights && opts.weights.length === 21 ? opts.weights[20]! : FSRS6_DEFAULT_DECAY
   const retrievability =
     cardRow.state !== 0 && cardRow.stability > 0
-      ? Math.round(calculateRetrievability(cardRow.stability, elapsedDays) * 10000) / 10000
+      ? Math.round(calculateRetrievability(cardRow.stability, elapsedDays, decay) * 10000) / 10000
       : null
   return {
     card: next,
@@ -223,17 +252,19 @@ export async function reviewCard(
 export async function previewGrades(
   cardRow: FsrsCardRow,
   desiredRetention = 0.9,
-  opts: { now?: Date } = {},
-): Promise<{ grade: Grade; dueAt: string; scheduledDays: number }[]> {
+  opts: { now?: Date; weights?: readonly number[] | null } = {},
+): Promise<{ grade: Grade; dueAt: string; scheduledDays: number; label: string }[]> {
   const now = opts.now ?? new Date()
-  const sched = await getScheduler(desiredRetention)
+  const sched = await getScheduler(desiredRetention, opts.weights)
   const input = cardRowToFsrs(cardRow)
-  const out: { grade: Grade; dueAt: string; scheduledDays: number }[] = []
+  const out: { grade: Grade; dueAt: string; scheduledDays: number; label: string }[] = []
   for (const preview of sched.preview({ card: input as never, now })) {
+    const dueAt = preview.card.dueAt.toISOString()
     out.push({
       grade: preview.grade as Grade,
-      dueAt: preview.card.dueAt.toISOString(),
+      dueAt,
       scheduledDays: preview.card.scheduledDays,
+      label: formatInterval(dueAt, now),
     })
   }
   return out
@@ -326,3 +357,4 @@ export function formatRotation(type: string, stability: number): string {
 }
 
 export { Rating, State as FsrsState } from 'ts-fsrs'
+export * from './fsrs-optimizer'

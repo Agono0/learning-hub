@@ -13,9 +13,10 @@
 import { baseline } from './001-baseline'
 import { curriculumV2 } from './002-curriculum-v2'
 import { ftsSearch } from './003-fts-search'
+import { fsrsAndUndo } from './004-fsrs-and-undo'
 import type { Migration } from './runner'
 
-export const MIGRATIONS: readonly Migration[] = [baseline, curriculumV2, ftsSearch]
+export const MIGRATIONS: readonly Migration[] = [baseline, curriculumV2, ftsSearch, fsrsAndUndo]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
 export type { Migration, MigrationContext, MigrationReport } from './runner'

@@ -24,6 +24,9 @@ interface DeckInfo {
   name: string
   description: string | null
   emoji: string | null
+  desiredRetention: number | null
+  fsrsWeights: number[] | null
+  hasCustomWeights: boolean
   total: number
   due: number
   newCards: number
@@ -114,6 +117,40 @@ export default function DecksPage() {
       void qc.invalidateQueries({ queryKey: ['decks'] })
     },
   })
+  const patchDeck = useMutation({
+    mutationFn: (payload: { id: number; desiredRetention?: number | null }) =>
+      apiSend(`/api/decks/${payload.id}`, 'PATCH', {
+        desiredRetention: payload.desiredRetention,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+    },
+  })
+  const optimizeDeck = useMutation({
+    mutationFn: (payload: { deckId: number; mode: 'optimize' | 'reset' }) =>
+      apiSend<{
+        ok: boolean
+        mode: string
+        optimization?: { status: string; sampleCount: number; minRequired: number }
+      }>('/api/fsrs/optimize', 'POST', payload),
+    onSuccess: (res) => {
+      if (res.mode === 'optimize' && res.optimization?.status === 'insufficient_data') {
+        setDeckFsrsNote(
+          `Need ≥${res.optimization.minRequired} deck reviews to optimize (${res.optimization.sampleCount} so far).`,
+        )
+      } else if (res.mode === 'reset') {
+        setDeckFsrsNote('Reset deck to global FSRS-6 weights.')
+      } else {
+        setDeckFsrsNote('Deck FSRS-6 weights updated.')
+      }
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+    },
+  })
+  const [deckFsrsNote, setDeckFsrsNote] = useState<string | null>(null)
+  const selectedDeckObj = useMemo(
+    () => decks.data?.decks.find((d) => d.id === activeDeck) ?? null,
+    [decks.data, activeDeck],
+  )
   const deleteDeck = useMutation({
     mutationFn: (id: number) => apiSend(`/api/decks/${id}`, 'DELETE'),
     onSuccess: () => {
@@ -167,6 +204,19 @@ export default function DecksPage() {
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setActiveDeck(null)
+              setDeckFsrsNote(null)
+            }}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              activeDeck === null
+                ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
+                : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300'
+            }`}
+          >
+            📚 All decks
+          </button>
           {(decks.data?.decks ?? []).map((d) => (
             <span
               key={d.id}
@@ -176,11 +226,26 @@ export default function DecksPage() {
                   : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300'
               }`}
             >
-              <button onClick={() => setActiveDeck(d.id)}>
+              <button
+                onClick={() => {
+                  setActiveDeck(d.id)
+                  setDeckFsrsNote(null)
+                }}
+              >
                 {d.emoji} {d.name}
                 <span className="ml-2 text-xs text-neutral-500">
                   {d.due}/{d.total} due
                 </span>
+                {d.desiredRetention !== null && (
+                  <span className="ml-1.5 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] text-indigo-400">
+                    {Math.round(d.desiredRetention * 100)}%
+                  </span>
+                )}
+                {d.hasCustomWeights && (
+                  <span className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-400">
+                    21w
+                  </span>
+                )}
               </button>
               <button
                 className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400"
@@ -192,6 +257,56 @@ export default function DecksPage() {
             </span>
           ))}
         </div>
+
+        {selectedDeckObj && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-[#26262b]">
+            <span className="font-medium text-neutral-700 dark:text-neutral-300">
+              Deck FSRS-6 preset:
+            </span>
+            <label className="flex items-center gap-1.5 text-neutral-500">
+              Retention
+              <select
+                className="input h-8 py-1 text-xs"
+                value={
+                  selectedDeckObj.desiredRetention === null
+                    ? 'inherit'
+                    : String(Math.round(selectedDeckObj.desiredRetention * 100))
+                }
+                onChange={(e) => {
+                  const val = e.target.value
+                  patchDeck.mutate({
+                    id: selectedDeckObj.id,
+                    desiredRetention: val === 'inherit' ? null : Number(val) / 100,
+                  })
+                }}
+              >
+                <option value="inherit">Global default</option>
+                {[80, 85, 88, 90, 92, 95].map((pct) => (
+                  <option key={pct} value={String(pct)}>
+                    {pct}%
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="btn-ghost py-1 text-xs"
+              disabled={optimizeDeck.isPending}
+              onClick={() => optimizeDeck.mutate({ deckId: selectedDeckObj.id, mode: 'optimize' })}
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Optimize deck weights
+            </button>
+            {selectedDeckObj.hasCustomWeights && (
+              <button
+                className="btn-ghost py-1 text-xs"
+                disabled={optimizeDeck.isPending}
+                onClick={() => optimizeDeck.mutate({ deckId: selectedDeckObj.id, mode: 'reset' })}
+              >
+                Reset weights
+              </button>
+            )}
+            {deckFsrsNote && <span className="text-neutral-500">{deckFsrsNote}</span>}
+          </div>
+        )}
       </div>
 
       {/* browser */}

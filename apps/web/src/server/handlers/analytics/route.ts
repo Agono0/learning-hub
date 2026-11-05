@@ -36,6 +36,7 @@ export async function GET(req: Request) {
       retrievability: revlog.retrievability,
     })
     .from(revlog)
+    .where(sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`)
     .orderBy(desc(revlog.reviewedAt))
     .limit(5000)
     .all()

@@ -35,7 +35,8 @@
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "db:push": "drizzle-kit push",
+    "db:push": "tsx src/push.ts",
+    "db:push:drizzle": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx src/seed.ts",
     "test": "vitest run",

@@ -40,6 +40,7 @@ export async function GET() {
   const [reviewCount] = db
     .select({ n: sql<number>`count(*)` })
     .from(revlog)
+    .where(sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`)
     .all()
   const [streakRow] = db.select().from(streaks).limit(1).all()
   const [teachbackCount] = db

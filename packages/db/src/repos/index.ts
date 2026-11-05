@@ -4,5 +4,6 @@
  * as a second caller needs it.
  */
 export * from './curriculum'
+export * from './fsrs'
 export * from './learning'
 export * from './search'

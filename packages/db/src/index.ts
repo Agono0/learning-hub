@@ -213,12 +213,16 @@ function ensureViews(sqlite: RawSqliteHandle) {
     SELECT count(*) AS total,
            sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) AS retained,
            round(100.0 * sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) / count(*), 1) AS retention_pct
-    FROM revlog WHERE state >= 2`)
+    FROM revlog
+    WHERE state >= 2
+      AND NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)`)
   sqlite.exec(`CREATE VIEW IF NOT EXISTS v_daily_reviews AS
     SELECT substr(reviewed_at, 1, 10) AS day, count(*) AS reviews,
            sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) AS correct,
            round(avg(time_ms)) AS avg_time_ms
-    FROM revlog GROUP BY substr(reviewed_at, 1, 10)`)
+    FROM revlog
+    WHERE NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
+    GROUP BY substr(reviewed_at, 1, 10)`)
   sqlite.exec(`CREATE VIEW IF NOT EXISTS v_xp_daily AS
     SELECT substr(created_at, 1, 10) AS day, sum(amount) AS xp
     FROM xp_events GROUP BY substr(created_at, 1, 10)`)

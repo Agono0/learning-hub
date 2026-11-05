@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Moon, Sun, Wand2 } from 'lucide-react'
-import type { AIProvider } from '@learning-hub/core'
+import { Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
+import type { AIProvider } from '@learning-hub/core/types'
+import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
 import { apiGet, apiSend } from '@/lib/transport'
 
 const PROVIDERS: {
@@ -80,8 +81,25 @@ interface SettingsRow {
   aiHeaders: string | null
   hasHeaders: boolean
   desiredRetention: number
+  fsrsWeights: number[] | null
+  hasCustomWeights?: boolean
   sessionMinutes: number
   theme: string
+}
+
+interface FsrsEval {
+  logLoss: number | null
+  rmse: number | null
+  sampleCount: number
+  cardCount: number
+}
+
+interface FsrsStatusResponse {
+  ok: boolean
+  desiredRetention: number
+  customWeights: number[] | null
+  baseline: FsrsEval
+  active: FsrsEval
 }
 
 export default function SettingsPage() {
@@ -89,6 +107,10 @@ export default function SettingsPage() {
   const { data } = useQuery<{ settings: SettingsRow }>({
     queryKey: ['settings'],
     queryFn: () => apiGet<{ settings: SettingsRow }>('/api/settings'),
+  })
+  const fsrsQuery = useQuery<FsrsStatusResponse>({
+    queryKey: ['fsrs-status', 'global'],
+    queryFn: () => apiGet<FsrsStatusResponse>('/api/fsrs/optimize'),
   })
   const s = data?.settings
   const [provider, setProvider] = useState<AIProvider>('none')
@@ -100,6 +122,9 @@ export default function SettingsPage() {
   const [sessionMinutes, setSessionMinutes] = useState(25)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
+  const [weightsDraft, setWeightsDraft] = useState('')
+  const [rescheduleOnSave, setRescheduleOnSave] = useState(false)
+  const [fsrsMessage, setFsrsMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     if (!s) return
@@ -109,7 +134,69 @@ export default function SettingsPage() {
     setRetention(s.desiredRetention)
     setSessionMinutes(s.sessionMinutes)
     setTheme(s.theme === 'light' ? 'light' : 'dark')
+    setWeightsDraft(
+      s.fsrsWeights && s.fsrsWeights.length === 21
+        ? s.fsrsWeights.map((w) => Number(w.toFixed(4))).join(', ')
+        : FSRS6_DEFAULT_WEIGHTS.join(', '),
+    )
   }, [s])
+
+  const fsrsAction = useMutation({
+    mutationFn: (payload: {
+      mode: 'optimize' | 'set' | 'reset'
+      weights?: string
+      reschedule?: boolean
+    }) =>
+      apiSend<{
+        ok: boolean
+        mode: string
+        rescheduledCards: number
+        weights: number[] | null
+        optimization?: {
+          status: 'optimized' | 'already_optimal' | 'insufficient_data'
+          sampleCount: number
+          minRequired: number
+          optimized: FsrsEval
+        }
+      }>('/api/fsrs/optimize', 'POST', payload),
+    onSuccess: (res) => {
+      void qc.invalidateQueries({ queryKey: ['settings'] })
+      void qc.invalidateQueries({ queryKey: ['fsrs-status'] })
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+      if (res.mode === 'reset') {
+        setFsrsMessage({
+          ok: true,
+          text: `Reset to FSRS-6 defaults${res.rescheduledCards ? ` (${res.rescheduledCards} cards rescheduled)` : ''}.`,
+        })
+      } else if (res.mode === 'set') {
+        setFsrsMessage({
+          ok: true,
+          text: `Saved 21 custom weights${res.rescheduledCards ? ` (${res.rescheduledCards} cards rescheduled)` : ''}.`,
+        })
+      } else if (res.optimization?.status === 'insufficient_data') {
+        setFsrsMessage({
+          ok: false,
+          text: `Need at least ${res.optimization.minRequired} spaced transitions to personalize weights (currently ${res.optimization.sampleCount}).`,
+        })
+      } else if (res.optimization?.status === 'already_optimal') {
+        setFsrsMessage({
+          ok: true,
+          text: 'Default FSRS-6 weights already match or beat personalized fit on your current history.',
+        })
+      } else {
+        setFsrsMessage({
+          ok: true,
+          text: `Personalized 21 FSRS-6 weights${res.rescheduledCards ? ` and rescheduled ${res.rescheduledCards} cards` : ''}.`,
+        })
+      }
+    },
+    onError: (err) => {
+      setFsrsMessage({
+        ok: false,
+        text: err instanceof Error ? err.message : 'FSRS parameter update failed',
+      })
+    },
+  })
 
   const save = useMutation({
     mutationFn: () =>
@@ -320,6 +407,121 @@ export default function SettingsPage() {
             {theme === 'dark' ? 'Dark' : 'Light'}
           </button>
         </div>
+      </section>
+
+      <section className="panel space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="label">FSRS-6 Weight Optimizer &amp; Calibration</div>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              Trains personalized 21-parameter FSRS-6 weights directly on your local review log (MAP
+              regularization toward population defaults; requires ≥50 spaced reviews).
+            </p>
+          </div>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              s?.hasCustomWeights
+                ? 'bg-emerald-500/15 text-emerald-500'
+                : 'bg-neutral-200/70 text-neutral-600 dark:bg-[#26262b] dark:text-neutral-400'
+            }`}
+          >
+            {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
+          </span>
+        </div>
+
+        {fsrsQuery.data && (
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-[#26262b]">
+            <div>
+              <div className="text-neutral-500">Spaced transitions</div>
+              <div className="mt-0.5 text-sm font-semibold">
+                {fsrsQuery.data.active.sampleCount}
+              </div>
+            </div>
+            <div>
+              <div className="text-neutral-500">Default Log-Loss</div>
+              <div className="mt-0.5 text-sm font-semibold">
+                {fsrsQuery.data.baseline.logLoss !== null
+                  ? fsrsQuery.data.baseline.logLoss.toFixed(4)
+                  : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-neutral-500">Active Log-Loss</div>
+              <div className="mt-0.5 text-sm font-semibold text-indigo-400">
+                {fsrsQuery.data.active.logLoss !== null
+                  ? fsrsQuery.data.active.logLoss.toFixed(4)
+                  : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-neutral-500">Calibration RMSE</div>
+              <div className="mt-0.5 text-sm font-semibold">
+                {fsrsQuery.data.active.rmse !== null
+                  ? `${(fsrsQuery.data.active.rmse * 100).toFixed(2)}%`
+                  : '—'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="label mb-1 block">
+            21 FSRS-6 weights (comma-separated, Anki compatible)
+          </label>
+          <textarea
+            className="input min-h-16 font-mono text-xs"
+            value={weightsDraft}
+            onChange={(e) => setWeightsDraft(e.target.value)}
+            placeholder={FSRS6_DEFAULT_WEIGHTS.join(', ')}
+          />
+        </div>
+
+        <label className="flex items-center gap-2 text-xs text-neutral-500">
+          <input
+            type="checkbox"
+            checked={rescheduleOnSave}
+            onChange={(e) => setRescheduleOnSave(e.target.checked)}
+            className="accent-indigo-500"
+          />
+          Reschedule existing reviewed cards by replaying active revlog history
+        </label>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="btn"
+            disabled={fsrsAction.isPending}
+            onClick={() => fsrsAction.mutate({ mode: 'optimize', reschedule: rescheduleOnSave })}
+          >
+            <Sparkles className="h-4 w-4" />{' '}
+            {fsrsAction.isPending ? 'Optimizing…' : 'Optimize weights'}
+          </button>
+          <button
+            className="btn-ghost"
+            disabled={fsrsAction.isPending || !weightsDraft.trim()}
+            onClick={() =>
+              fsrsAction.mutate({
+                mode: 'set',
+                weights: weightsDraft,
+                reschedule: rescheduleOnSave,
+              })
+            }
+          >
+            Apply custom weights
+          </button>
+          <button
+            className="btn-ghost"
+            disabled={fsrsAction.isPending}
+            onClick={() => fsrsAction.mutate({ mode: 'reset', reschedule: rescheduleOnSave })}
+          >
+            <RotateCcw className="h-4 w-4" /> Reset defaults
+          </button>
+        </div>
+
+        {fsrsMessage && (
+          <p className={`text-xs ${fsrsMessage.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
+            {fsrsMessage.text}
+          </p>
+        )}
       </section>
 
       <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>

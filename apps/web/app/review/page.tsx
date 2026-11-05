@@ -54,6 +54,7 @@ interface CardRow {
   reps: number
   stability: number
   due: string
+  previews?: Record<Grade, string>
 }
 interface DeckInfo {
   id: number
@@ -63,6 +64,7 @@ interface DeckInfo {
   total: number
 }
 interface PreReview {
+  id: number
   due: string
   stability: number
   difficulty: number
@@ -76,7 +78,10 @@ interface PreReview {
 }
 interface ReviewResponse {
   ok: boolean
+  card: Partial<CardRow>
   preReview: PreReview
+  revlogId: number
+  nextPreviews?: Record<Grade, string>
   intervalDays: number
   xp: number
   streak: { current: number; best: number }
@@ -119,7 +124,7 @@ function ReviewPageInner() {
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const session = useQuery<
-    { cards: CardRow[] },
+    { cards: CardRow[]; course: { id: number; title: string } | null },
     Error,
     { cards: CardRow[]; course: { id: number; title: string } | null }
   >({
@@ -128,7 +133,7 @@ function ReviewPageInner() {
       apiGet<{ cards: CardRow[]; course: { id: number; title: string } | null }>(
         `/api/review?deckId=${deckId ?? ''}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}`,
       ),
-    enabled: started && (deckId !== null || courseId !== null),
+    enabled: started,
   })
   // a mixed-practice link starts the session immediately
   useEffect(() => {
@@ -142,7 +147,15 @@ function ReviewPageInner() {
   const [energy, setEnergy] = useState(initialEnergy)
   const [results, setResults] = useState<SessionResult[]>([])
   const [undoStack, setUndoStack] = useState<
-    { card: CardRow; preReview: PreReview; wasMistake: boolean; requeuedAt: number | null }[]
+    {
+      card: CardRow
+      preReview: PreReview
+      revlogId: number
+      prevSr: SuccessiveState | undefined
+      wasMistake: boolean
+      requeuedAt: number | null
+      gradedIdx: number
+    }[]
   >([])
   const [typeinValue, setTypeinValue] = useState('')
   const [mcqPick, setMcqPick] = useState<number | null>(null)
@@ -151,11 +164,42 @@ function ReviewPageInner() {
   // correct recalls before the session lets it go
   const [srCriterion, setSrCriterion] = useState(DEFAULT_SR_CRITERION)
   const srMap = useRef(new Map<number, SuccessiveState>())
+  // blur-aware active recall stopwatch (auto-pauses while document.hidden, capped at 60_000 ms)
+  const cardShownAtRef = useRef<number>(Date.now())
+  const accumulatedMsRef = useRef<number>(0)
   // practice-engine exercise cards: the graded response from ExercisePractice
   // (the practice endpoint already recorded the review — the session only advances)
   const [exerciseResult, setExerciseResult] = useState<PracticeResponse | null>(null)
   const [finishedAt, setFinishedAt] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+
+  const resetRecallTimer = useCallback(() => {
+    accumulatedMsRef.current = 0
+    cardShownAtRef.current = typeof document !== 'undefined' && document.hidden ? 0 : Date.now()
+  }, [])
+
+  const readRecallTimeMs = useCallback(() => {
+    const activeSlice =
+      typeof document !== 'undefined' && (document.hidden || cardShownAtRef.current === 0)
+        ? 0
+        : Math.max(0, Date.now() - cardShownAtRef.current)
+    return Math.min(60_000, Math.max(200, Math.round(accumulatedMsRef.current + activeSlice)))
+  }, [])
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (cardShownAtRef.current > 0) {
+          accumulatedMsRef.current += Math.max(0, Date.now() - cardShownAtRef.current)
+          cardShownAtRef.current = 0
+        }
+      } else {
+        cardShownAtRef.current = Date.now()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
 
   useEffect(() => {
     if (session.data) {
@@ -169,8 +213,9 @@ function ReviewPageInner() {
       // a stale answer from a previous session must never unlock "Next card"
       // for the first exercise card of the new one
       setExerciseResult(null)
+      resetRecallTimer()
     }
-  }, [session.data])
+  }, [session.data, resetRecallTimer])
 
   const current = queue[idx]
 
@@ -205,26 +250,41 @@ function ReviewPageInner() {
     setTypeinValue('')
     setMcqPick(null)
     setClozeInput({})
-  }, [])
+    resetRecallTimer()
+  }, [resetRecallTimer])
 
   const gradeMutation = useMutation({
     mutationFn: async (payload: { cardId: number; grade: Grade; confidence: Confidence }) =>
       apiSend<ReviewResponse>('/api/review', 'POST', {
         ...payload,
-        timeMs: 5000,
+        timeMs: readRecallTimeMs(),
         tzOffset: new Date().getTimezoneOffset(),
       }),
     onSuccess: (data, variables) => {
-      if (!data.ok) return
+      if (!data.ok || !current) return
+      const prevSr = srMap.current.get(variables.cardId)
       const wasMistake = variables.grade === 1
       const sr = recordSr(variables.cardId, !wasMistake)
       // successive relearning: a correct recall still re-queues (without
       // draining energy) while the criterion is unmet
       const requeue = wasMistake || needsAnotherRecall(sr, srCriterion)
-      const requeuedAt = requeue ? requeueSpaced(current!) : null
+      const updatedCard: CardRow = {
+        ...current,
+        ...data.card,
+        previews: data.nextPreviews ?? current.previews,
+      }
+      const requeuedAt = requeue ? requeueSpaced(updatedCard) : null
       setUndoStack((s) => [
         ...s,
-        { card: current!, preReview: data.preReview, wasMistake, requeuedAt },
+        {
+          card: current,
+          preReview: data.preReview,
+          revlogId: data.revlogId,
+          prevSr,
+          wasMistake,
+          requeuedAt,
+          gradedIdx: idx,
+        },
       ])
       if (wasMistake) setEnergy((e) => applyMistake(e))
       setResults((r) => [
@@ -246,13 +306,15 @@ function ReviewPageInner() {
   })
 
   const undoMutation = useMutation({
-    mutationFn: async (payload: { cardId: number; preReview: PreReview }) =>
+    mutationFn: async (payload: { cardId: number; revlogId: number; preReview: PreReview }) =>
       apiSend<{ ok: boolean }>('/api/review/undo', 'POST', payload),
     onSuccess: (data) => {
       if (!data.ok || undoStack.length === 0) return
       const last = undoStack[undoStack.length - 1]!
       setUndoStack((s) => s.slice(0, -1))
       setResults((r) => r.slice(0, -1))
+      if (last.prevSr) srMap.current.set(last.card.id, last.prevSr)
+      else srMap.current.delete(last.card.id)
       if (last.wasMistake) setEnergy((e) => Math.min(MAX_ENERGY, e + 1))
       setQueue((q) => {
         const copy = [...q]
@@ -264,14 +326,20 @@ function ReviewPageInner() {
           copy[last.requeuedAt]?.id === last.card.id
         ) {
           copy.splice(last.requeuedAt, 1)
-        } else if (copy[copy.length - 1]?.id === last.card.id) {
+        } else if (last.requeuedAt !== null && copy[copy.length - 1]?.id === last.card.id) {
           copy.pop()
         }
-        copy.splice(Math.min(idx, copy.length), 0, last.card)
+        if (last.gradedIdx < copy.length) {
+          copy[last.gradedIdx] = last.card
+        } else {
+          copy.push(last.card)
+        }
         return copy
       })
+      setIdx(last.gradedIdx)
       resetCardState()
       setFinishedAt(null)
+      void qc.invalidateQueries({ queryKey: ['decks'] })
     },
   })
 
@@ -354,11 +422,14 @@ function ReviewPageInner() {
         if (revealed) commit(Number(e.key) as Grade)
       } else if (e.key === 'e') {
         e.preventDefault()
-        if (undoStack.length > 0)
+        if (undoStack.length > 0) {
+          const last = undoStack[undoStack.length - 1]!
           undoMutation.mutate({
-            cardId: undoStack[undoStack.length - 1]!.card.id,
-            preReview: undoStack[undoStack.length - 1]!.preReview,
+            cardId: last.card.id,
+            revlogId: last.revlogId,
+            preReview: last.preReview,
           })
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -389,6 +460,19 @@ function ReviewPageInner() {
           <div>
             <div className="label mb-2">Deck</div>
             <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setDeckId(null)}
+                className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  deckId === null
+                    ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
+                    : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-[#26262b] dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                }`}
+              >
+                📚 All decks
+                <span className="ml-2 text-xs text-neutral-500">
+                  {(decksData?.decks ?? []).reduce((acc, d) => acc + d.due, 0)} due
+                </span>
+              </button>
               {(decksData?.decks ?? []).map((d) => (
                 <button
                   key={d.id}
@@ -459,7 +543,11 @@ function ReviewPageInner() {
               </p>
             </div>
           </div>
-          <button className="btn" disabled={!deckId} onClick={() => setStarted(true)}>
+          <button
+            className="btn"
+            disabled={(decksData?.decks ?? []).length === 0}
+            onClick={() => setStarted(true)}
+          >
             <Zap className="h-4 w-4" /> Start session
           </button>
         </div>
@@ -579,16 +667,25 @@ function ReviewPageInner() {
                   <span className="text-xs opacity-70">space</span>
                 </button>
               ) : (
-                GRADES.map((g) => (
-                  <button
-                    key={g.grade}
-                    className={`btn ${g.color}`}
-                    onClick={() => commit(g.grade)}
-                    disabled={gradeMutation.isPending}
-                  >
-                    {g.label} <span className="text-xs opacity-70">{g.grade}</span>
-                  </button>
-                ))
+                GRADES.map((g) => {
+                  const nextLabel = current.previews?.[g.grade]
+                  return (
+                    <button
+                      key={g.grade}
+                      className={`btn ${g.color}`}
+                      onClick={() => commit(g.grade)}
+                      disabled={gradeMutation.isPending}
+                    >
+                      <span>{g.label}</span>
+                      {nextLabel && (
+                        <span className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-[11px] opacity-90">
+                          {nextLabel}
+                        </span>
+                      )}
+                      <span className="text-xs opacity-65">{g.grade}</span>
+                    </button>
+                  )
+                })
               )}
               <div className="ml-auto flex items-center gap-1 text-xs">
                 <span className="text-neutral-500">confidence</span>
@@ -616,7 +713,13 @@ function ReviewPageInner() {
           disabled={undoStack.length === 0 || undoMutation.isPending}
           onClick={() => {
             const last = undoStack[undoStack.length - 1]
-            if (last) undoMutation.mutate({ cardId: last.card.id, preReview: last.preReview })
+            if (last) {
+              undoMutation.mutate({
+                cardId: last.card.id,
+                revlogId: last.revlogId,
+                preReview: last.preReview,
+              })
+            }
           }}
         >
           <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>

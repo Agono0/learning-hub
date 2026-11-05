@@ -13,12 +13,13 @@
  *   mastery. The response includes the PRE-review card state so the client can
  *   keep an undo buffer (see /api/review/undo).
  */
-import { and, eq, lte, sql } from 'drizzle-orm'
+import { and, eq, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   db,
   cards,
   courses,
+  decks,
   executeReview,
   userSettings,
   type ReviewPayload,
@@ -27,7 +28,9 @@ import {
   buildSession,
   dayKey,
   interleaveBy,
+  previewGrades,
   type Confidence,
+  type Grade,
   type SessionMode,
 } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
@@ -48,9 +51,23 @@ const reviewBodySchema = z.object({
   tzOffset: z.number().int().min(-720).max(840).optional().default(0),
 })
 
-async function desiredRetention(): Promise<number> {
+async function globalFsrsConfig(): Promise<{
+  desiredRetention: number
+  fsrsWeights: number[] | null
+}> {
   const [settings] = await db.select().from(userSettings).limit(1)
-  return settings?.desiredRetention ?? 0.9
+  return {
+    desiredRetention: settings?.desiredRetention ?? 0.9,
+    fsrsWeights: settings?.fsrsWeights ?? null,
+  }
+}
+
+function toPreviewRecord(items: { grade: Grade; label: string }[]): Record<Grade, string> {
+  const out = { 1: '', 2: '', 3: '', 4: '' } as Record<Grade, string>
+  for (const item of items) {
+    out[item.grade] = item.label
+  }
+  return out
 }
 
 export async function GET(req: Request) {
@@ -87,7 +104,7 @@ export async function GET(req: Request) {
     .from(cards)
     .where(and(...filters, lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString())))
     .limit(1000)
-  // most recent revlog entry per card — hypercorrection signal
+  // most recent active revlog entry per card — hypercorrection signal (excludes undone reviews)
   const recent = await db.all<{
     card_id: number
     rating: number
@@ -96,7 +113,12 @@ export async function GET(req: Request) {
   }>(sql`
     SELECT r.card_id, r.rating, r.confidence, r.reviewed_at
     FROM revlog r
-    JOIN (SELECT max(id) AS id FROM revlog GROUP BY card_id) latest ON latest.id = r.id
+    JOIN (
+      SELECT max(id) AS id
+      FROM revlog
+      WHERE NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
+      GROUP BY card_id
+    ) latest ON latest.id = r.id
   `)
   const recentByCard = new Map(recent.map((r) => [r.card_id, r]))
 
@@ -140,12 +162,36 @@ export async function GET(req: Request) {
       })
     : ordered
 
+  const globalCfg = await globalFsrsConfig()
+  const deckIds = [...new Set(mixed.map((c) => c.deckId))]
+  const deckRows = deckIds.length
+    ? await db
+        .select({
+          id: decks.id,
+          desiredRetention: decks.desiredRetention,
+          fsrsWeights: decks.fsrsWeights,
+        })
+        .from(decks)
+        .where(inArray(decks.id, deckIds))
+    : []
+  const deckById = new Map(deckRows.map((d) => [d.id, d]))
+
+  const cardsWithPreviews = await Promise.all(
+    mixed.map(async (c) => {
+      const deckCfg = deckById.get(c.deckId)
+      const retention = deckCfg?.desiredRetention ?? globalCfg.desiredRetention
+      const weights = deckCfg?.fsrsWeights ?? globalCfg.fsrsWeights
+      const previews = toPreviewRecord(await previewGrades(c, retention, { now, weights }))
+      return { ...c, previews }
+    }),
+  )
+
   return Response.json({
     ok: true,
-    cards: mixed,
+    cards: cardsWithPreviews,
     mode: course ? 'cram' : mode,
     course: course ? { id: course.id, title: course.title } : null,
-    retention: await desiredRetention(),
+    retention: globalCfg.desiredRetention,
   })
 }
 
@@ -164,11 +210,25 @@ export const POST = withRoute(async (req: Request) => {
   // CardNotFoundError (→ 404 via withRoute) propagates if the card is missing.
   const result = await executeReview(payload)
 
+  const globalCfg = await globalFsrsConfig()
+  const [deckCfg] = await db
+    .select({ desiredRetention: decks.desiredRetention, fsrsWeights: decks.fsrsWeights })
+    .from(decks)
+    .where(eq(decks.id, result.card.deckId))
+    .limit(1)
+  const nextPreviews = toPreviewRecord(
+    await previewGrades(result.card, deckCfg?.desiredRetention ?? globalCfg.desiredRetention, {
+      now,
+      weights: deckCfg?.fsrsWeights ?? globalCfg.fsrsWeights,
+    }),
+  )
+
   return Response.json({
     ok: true,
     card: result.card,
     preReview: result.preReview, // full pre-review snapshot for the client undo buffer
     revlogId: result.revlog.id,
+    nextPreviews,
     due: result.card.due,
     intervalDays: result.card.scheduledDays,
     xp: result.xpEarned,
