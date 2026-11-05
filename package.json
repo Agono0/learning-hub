@@ -35,7 +35,8 @@
     "android:build": "node scripts/tauri-android.mjs build --apk",
     "web:tauri": "node scripts/tauri-web.mjs build",
     "preview:tauri": "node scripts/serve-static.mjs apps/web/.next-tauri 4173",
-    "new:feature": "node scripts/new-feature.mjs"
+    "new:feature": "node scripts/new-feature.mjs",
+    "docs:curriculum": "tsx scripts/gen-curriculum-docs.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
