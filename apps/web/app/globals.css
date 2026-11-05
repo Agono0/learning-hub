@@ -109,3 +109,19 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Long-form content (lesson theory, notes, AI output) — ui/Markdown ───── */
+.prose-hub { @apply space-y-3 text-[15px] leading-7 text-neutral-800 dark:text-neutral-200; }
+.prose-hub h1 { @apply text-xl font-bold tracking-tight; }
+.prose-hub h2 { @apply pt-2 text-lg font-semibold tracking-tight; }
+.prose-hub h3 { @apply pt-1 text-base font-semibold; }
+.prose-hub ul { @apply list-disc space-y-1 pl-5; }
+.prose-hub ol { @apply list-decimal space-y-1 pl-5; }
+.prose-hub a { @apply text-indigo-600 underline underline-offset-2 dark:text-indigo-300; }
+.prose-hub blockquote { @apply border-l-4 border-indigo-500/40 pl-3 text-neutral-600 dark:text-neutral-400; }
+.prose-hub code { @apply rounded bg-neutral-100 px-1 py-0.5 text-[13px] dark:bg-[#1e1e23]; }
+.prose-hub pre { @apply overflow-x-auto rounded-xl bg-neutral-100 p-3 text-[13px] leading-6 dark:bg-[#101014]; }
+.prose-hub pre code { @apply bg-transparent p-0; }
+.prose-hub table { @apply block overflow-x-auto text-sm; }
+.prose-hub th, .prose-hub td { @apply border border-neutral-200 px-2 py-1 dark:border-[#26262b]; }
+.prose-hub hr { @apply border-neutral-200 dark:border-[#26262b]; }
