@@ -28,6 +28,7 @@ import * as cards from '../server/handlers/cards/route'
 import * as commitments from '../server/handlers/commitments/route'
 import * as curriculumExam from '../server/handlers/curriculum/exam/route'
 import * as curriculumSkills from '../server/handlers/curriculum/skills/route'
+import * as curriculumGlossary from '../server/handlers/curriculum/glossary/route'
 import * as curriculum from '../server/handlers/curriculum/route'
 import * as dashboard from '../server/handlers/dashboard/route'
 import * as decksId from '../server/handlers/decks/[id]/route'
@@ -132,6 +133,7 @@ add('cards/bullet', cardsBullet)
 add('commitments', commitments)
 add('curriculum', curriculum)
 add('curriculum/exam', curriculumExam)
+add('curriculum/glossary', curriculumGlossary)
 add('curriculum/skills', curriculumSkills)
 add('dashboard', dashboard)
 add('decks', decks)

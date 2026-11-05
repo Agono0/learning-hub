@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { curriculumApi, curriculumKeys, type CourseOverview } from '@/lib/curriculum-api'
 import { useIdParam } from '@/lib/use-id-param'
-import { apiDownload } from '@/lib/transport'
+import { apiDownload, apiGet } from '@/lib/transport'
 import {
   Badge,
   Button,
@@ -409,6 +409,8 @@ function Course() {
         </Panel>
       </div>
 
+      <GlossaryPanel courseId={course.id} />
+
       <Panel title="Manage">
         <div className="flex flex-wrap gap-2">
           {course.lhcf && (
@@ -467,6 +469,54 @@ function Course() {
 
       <ImproveSheet courseId={course.id} open={improveOpen} onClose={() => setImproveOpen(false)} />
     </div>
+  )
+}
+
+/** Course glossary: key terms from every lesson, linked to lesson and card. */
+function GlossaryPanel({ courseId }: { courseId: number }) {
+  const { data } = useQuery<{
+    ok: boolean
+    entries: {
+      term: string
+      definition: string
+      lessonId: number
+      lessonTitle: string
+      cardId: number | null
+    }[]
+  }>({
+    queryKey: ['glossary', courseId],
+    queryFn: () => apiGet(`/api/curriculum/glossary?courseId=${courseId}`),
+  })
+  const entries = data?.entries ?? []
+  if (entries.length === 0) return null
+  return (
+    <Panel title={`Glossary — ${entries.length} key term${entries.length === 1 ? '' : 's'}`}>
+      <dl className="space-y-2">
+        {entries.map((e) => (
+          <div key={`${e.term}-${e.lessonId}`} className="text-sm">
+            <dt className="font-medium">
+              {e.term}
+              <span className="ml-2 text-xs font-normal text-neutral-500">
+                <Link href={`/courses/lesson?id=${e.lessonId}`} className="hover:underline">
+                  {e.lessonTitle}
+                </Link>
+                {e.cardId != null && (
+                  <>
+                    {' · '}
+                    <Link href="/decks" className="hover:underline">
+                      has a card →
+                    </Link>
+                  </>
+                )}
+              </span>
+            </dt>
+            <dd className="text-neutral-400">
+              <Markdown>{e.definition}</Markdown>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </Panel>
   )
 }
 
