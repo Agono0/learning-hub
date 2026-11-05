@@ -1,0 +1,152 @@
+# LHCF example — YAML flavour. Import it from Curriculum → Import, or:
+#   npm run cli -- curriculum import curricula/examples/sql-essentials.yaml
+lhcf: 1
+slug: sql-essentials
+title: SQL Essentials
+subtitle: Query any relational database with confidence
+emoji: 🗄️
+track: Data
+level: beginner
+language: en
+estHours: 6
+tags: [sql, databases, data]
+outcomes:
+  - Write SELECT queries that filter, sort and limit rows
+  - Combine tables with INNER and LEFT JOIN
+  - Summarise data with GROUP BY and aggregate functions
+generatedBy: hand-written (Learning HUB example)
+skills:
+  - { slug: select-basics, name: SELECT basics }
+  - { slug: filtering, name: Filtering with WHERE, requires: [select-basics] }
+  - { slug: joins, name: Joins, requires: [filtering] }
+  - { slug: aggregation, name: Aggregation, requires: [filtering] }
+modules:
+  - slug: querying
+    title: Querying one table
+    lessons:
+      - slug: select-from
+        title: SELECT and FROM
+        objective: Write a query that returns chosen columns from a table
+        estMinutes: 20
+        skills: [select-basics]
+        summary: Every query starts by saying which columns you want (SELECT) and where they live (FROM).
+        theory:
+          - heading: The shape of a query
+            body: |
+              ```sql
+              SELECT name, price
+              FROM products;
+              ```
+              `SELECT *` returns every column — handy for exploring, but name your columns in real code.
+        keyTerms:
+          - { term: Table, definition: A named set of rows that all share the same columns. }
+          - { term: Column, definition: "A named field with a type, e.g. price REAL." }
+        exercises:
+          - type: parsons
+            prompt: Arrange the query that lists every product's name.
+            language: sql
+            lines: [SELECT name, FROM products;]
+            distractors: [WHERE name;]
+          - type: typein
+            prompt: Which keyword names the table you read from?
+            answers: [FROM]
+        reflection:
+          - Why is `SELECT *` risky in application code?
+      - slug: where-order-limit
+        title: WHERE, ORDER BY and LIMIT
+        objective: Use WHERE, ORDER BY and LIMIT to answer a specific question
+        estMinutes: 25
+        skills: [filtering]
+        theory:
+          - body: |
+              `WHERE` keeps only rows matching a condition, `ORDER BY` sorts them and `LIMIT` caps how many come back:
+              ```sql
+              SELECT name, price FROM products
+              WHERE price < 10
+              ORDER BY price DESC
+              LIMIT 5;
+              ```
+        workedExamples:
+          - title: The three cheapest books
+            problem: "Table products(name, category, price). List the three cheapest books."
+            steps:
+              - "Filter to books: WHERE category = 'book'"
+              - "Sort cheapest first: ORDER BY price ASC"
+              - "Keep three: LIMIT 3"
+            answer: "SELECT name, price FROM products WHERE category = 'book' ORDER BY price ASC LIMIT 3;"
+        exercises:
+          - type: mcq
+            prompt: Which clause runs to filter rows BEFORE they are sorted?
+            options: [ORDER BY, WHERE, LIMIT]
+            answer: 1
+          - type: cloze
+            prompt: Complete the query that returns the 10 most expensive products.
+            text: "SELECT name FROM products ORDER BY price {{DESC}} LIMIT {{10}};"
+          - type: truefalse
+            prompt: "LIMIT 5 without ORDER BY always returns the same five rows."
+            answer: false
+            explanation: Without ORDER BY the database may return rows in any order.
+  - slug: combining
+    title: Combining and summarising
+    lessons:
+      - slug: joins
+        title: Joining tables
+        objective: Compare INNER JOIN and LEFT JOIN results on the same tables
+        estMinutes: 30
+        skills: [joins]
+        theory:
+          - body: |
+              `INNER JOIN` keeps only rows with a match in both tables. `LEFT JOIN` keeps every row from the left table and fills missing matches with `NULL`.
+        exercises:
+          - type: matching
+            prompt: Match the join to what it returns.
+            pairs:
+              - { left: INNER JOIN, right: Only rows that match in both tables }
+              - { left: LEFT JOIN, right: All left rows plus matches (or NULL) }
+          - type: freetext
+            prompt: You want every customer, including those with no orders. Which join do you use, and why?
+            rubric: [Chooses LEFT JOIN with customers on the left, Explains that unmatched customers are kept with NULLs]
+            modelAnswer: "customers LEFT JOIN orders — LEFT JOIN keeps all customers and shows NULL for those without orders."
+      - slug: group-by
+        title: GROUP BY and aggregates
+        objective: Calculate totals per group with GROUP BY
+        estMinutes: 25
+        skills: [aggregation]
+        theory:
+          - body: |
+              Aggregate functions (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) collapse many rows into one value. `GROUP BY` makes one result row per group; `HAVING` filters groups.
+        exercises:
+          - type: numeric
+            prompt: "Orders amounts for one customer: 10, 20, 30. What does AVG(amount) return?"
+            answer: 20
+          - type: multi
+            prompt: Which are aggregate functions?
+            options: [COUNT, WHERE, SUM, MAX]
+            answers: [0, 2, 3]
+projects:
+  - slug: shop-report
+    title: Shop sales report
+    description: Write the queries behind a small shop's weekly report.
+    skills: [filtering, joins, aggregation]
+    stages:
+      - slug: top-products
+        title: Top products
+        description: List the five best-selling products by quantity.
+        checklist: [Uses GROUP BY, Sorted descending, Exactly five rows]
+      - slug: customers-without-orders
+        title: Quiet customers
+        description: List customers who placed no orders this month.
+        checklist: [Uses LEFT JOIN, Filters on NULL]
+finalExam:
+  passScore: 0.75
+  exercises:
+    - type: mcq
+      prompt: Which clause filters groups after aggregation?
+      options: [WHERE, HAVING, ORDER BY]
+      answer: 1
+    - type: typein
+      prompt: Which join keeps all rows from the left table?
+      answers: [LEFT JOIN, left outer join, left join]
+    - type: truefalse
+      prompt: "SELECT * returns every column of the table."
+      answer: true
