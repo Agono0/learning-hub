@@ -1,0 +1,154 @@
+'use client'
+
+/**
+ * ⌘K / Ctrl+K command palette (M5): jump to any page and full-text search
+ * across notes, cards, lessons, highlights and ideas (FTS5 via /api/search,
+ * with an honest "no results" state). Mounted once in the AppShell.
+ */
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Command } from 'cmdk'
+import { useQuery } from '@tanstack/react-query'
+import { NAV } from './nav'
+import { apiGet } from '@/lib/transport'
+
+interface SearchHit {
+  kind: 'note' | 'card' | 'lesson' | 'highlight' | 'idea'
+  id: number
+  title: string
+  snippet: string
+  href: string
+}
+
+const KIND_LABEL: Record<SearchHit['kind'], string> = {
+  note: 'Notes',
+  card: 'Cards',
+  lesson: 'Lessons',
+  highlight: 'Highlights',
+  idea: 'Ideas',
+}
+
+export function CommandPalette() {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const toggle = useCallback(() => setOpen((o) => !o), [])
+
+  // global shortcut
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        toggle()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toggle])
+
+  // debounce the search query
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebounced(query.trim()), 200)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [query])
+
+  const { data, isFetching } = useQuery<{ hits: SearchHit[]; mode: 'fts5' | 'like' }>({
+    queryKey: ['search', debounced],
+    queryFn: () => apiGet(`/api/search?q=${encodeURIComponent(debounced)}`),
+    enabled: open && debounced.length > 0,
+  })
+
+  const go = (href: string) => {
+    setOpen(false)
+    setQuery('')
+    setDebounced('')
+    router.push(href)
+  }
+
+  return (
+    <Command.Dialog
+      open={open}
+      onOpenChange={setOpen}
+      label="Global command palette"
+      className="fixed inset-0 z-[60]"
+      shouldFilter={false} // server-side search; nav items filtered by cmdk is redundant here
+    >
+      <div className="fixed inset-0 bg-black/50" onMouseDown={() => setOpen(false)} aria-hidden />
+      <div className="fixed inset-x-4 top-[12dvh] mx-auto max-w-xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-[#26262b] dark:bg-[#141417]">
+        <Command.Input
+          autoFocus
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search or jump to… (⌘K)"
+          className="w-full border-b border-neutral-200 bg-transparent px-4 py-3 text-sm outline-none dark:border-[#26262b]"
+        />
+        <Command.List className="max-h-[50dvh] overflow-y-auto p-2">
+          <Command.Empty className="px-3 py-6 text-center text-sm text-neutral-500">
+            {isFetching ? 'Searching…' : debounced ? 'No matches — try fewer words.' : null}
+          </Command.Empty>
+
+          {(data?.hits.length ?? 0) > 0 && (
+            <Command.Group
+              heading={
+                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                  Results · {data!.mode === 'fts5' ? 'full-text' : 'substring'}
+                </span>
+              }
+            >
+              {data!.hits.map((hit) => (
+                <Command.Item
+                  key={`${hit.kind}-${hit.id}`}
+                  value={`${KIND_LABEL[hit.kind]} ${hit.title} ${hit.snippet}`}
+                  onSelect={() => go(hit.href)}
+                  className="cursor-pointer rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{hit.title}</span>
+                    {hit.snippet && hit.snippet !== hit.title && (
+                      <span className="block truncate text-xs text-neutral-500">{hit.snippet}</span>
+                    )}
+                  </span>
+                  <span className="ml-2 shrink-0 text-[10px] uppercase text-neutral-400">
+                    {KIND_LABEL[hit.kind]}
+                  </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+
+          {NAV.map((section) => (
+            <Command.Group
+              key={section.group}
+              heading={
+                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                  {section.group}
+                </span>
+              }
+            >
+              {section.items.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Command.Item
+                    key={item.href}
+                    value={`${item.label} ${section.group}`}
+                    onSelect={() => go(item.href)}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-neutral-400" />
+                    {item.label}
+                  </Command.Item>
+                )
+              })}
+            </Command.Group>
+          ))}
+        </Command.List>
+      </div>
+    </Command.Dialog>
+  )
+}

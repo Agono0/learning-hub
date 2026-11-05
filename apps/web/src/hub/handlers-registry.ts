@@ -38,6 +38,7 @@ import * as focusId from '../server/handlers/focus/[id]/route'
 import * as focus from '../server/handlers/focus/route'
 import * as friction from '../server/handlers/friction/route'
 import * as games from '../server/handlers/games/route'
+import * as search from '../server/handlers/search/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
 import * as graph from '../server/handlers/graph/route'
@@ -172,6 +173,7 @@ add('reading/highlights', readingHighlights)
 add('review', review)
 add('review/stats', reviewStats)
 add('review/undo', reviewUndo)
+add('search', search)
 add('settings', settings)
 add('streaks', streaks)
 add('study-plan', studyPlan)

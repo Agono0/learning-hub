@@ -47,7 +47,9 @@ const tempDbFile = path.join(tempDir, 'storage-test.db')
     fileMustExist: true,
   })
   const ddl = source
-    .prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'")
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%'",
+    )
     .all() as { sql: string }[]
   source.close()
   const target = new Database(tempDbFile)

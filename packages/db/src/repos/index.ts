@@ -5,3 +5,4 @@
  */
 export * from './curriculum'
 export * from './learning'
+export * from './search'

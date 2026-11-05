@@ -17,27 +17,42 @@ function createTestDb(): Database.Database {
   const sqlite = new Database(':memory:')
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
+  // Regular tables only — FTS5 shadow tables are created by the 003 migration
+  // (their internal _data/_idx/_content tables are reserved names that cannot
+  // be cloned here; the source-table triggers rebuild them from the restored
+  // rows).
   const ddls = getRawDb()
-    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL")
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
+    )
     .all() as { sql: string }[]
   for (const { sql } of ddls) sqlite.exec(sql)
   return sqlite
 }
 
 const TABLES = (db: Database.Database): string[] =>
-  (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[])
-    .map((r) => r.name)
+  (
+    db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .all() as { name: string }[]
+  ).map((r) => r.name)
 
 /** Seed a representative slice: content tables, FK chain, append-only events. */
 function seed(db: Database.Database): void {
-  db.prepare("INSERT INTO user_settings (id, theme, desired_retention, updated_at) VALUES ('default', 'dark', 0.9, '2026-01-01T00:00:00.000Z')").run()
-  db.prepare("INSERT INTO decks (id, name, description, created_at) VALUES (1, 'Backup Deck', 'seeded', '2026-01-01T00:00:00.000Z')").run()
+  db.prepare(
+    "INSERT INTO user_settings (id, theme, desired_retention, updated_at) VALUES ('default', 'dark', 0.9, '2026-01-01T00:00:00.000Z')",
+  ).run()
+  db.prepare(
+    "INSERT INTO decks (id, name, description, created_at) VALUES (1, 'Backup Deck', 'seeded', '2026-01-01T00:00:00.000Z')",
+  ).run()
   db.prepare(
     "INSERT INTO cards (id, deck_id, type, content, tags, due, created_at) VALUES (1, 1, 'basic', ?, ?, '2026-01-02T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
   ).run(JSON.stringify({ basic: { front: 'Q1', back: 'A1' } }), JSON.stringify(['geo']))
   db.prepare(
     "INSERT INTO cards (id, deck_id, type, content, tags, due, created_at) VALUES (2, 1, 'cloze', ?, '[]', '2026-01-03T00:00:00.000Z', '2026-01-01T00:00:00.000Z')",
-  ).run(JSON.stringify({ cloze: { text: 'The {{c1::sun}} is hot.', answers: ['sun'], mode: 'basic' } }))
+  ).run(
+    JSON.stringify({ cloze: { text: 'The {{c1::sun}} is hot.', answers: ['sun'], mode: 'basic' } }),
+  )
   // append-only events with meaningful ids
   db.prepare(
     "INSERT INTO revlog (id, card_id, rating, state, elapsed_days, scheduled_days, time_ms, confidence, reviewed_at) VALUES (1700000000001, 1, 3, 2, 1, 3, 4200, 1, '2026-01-02T00:00:00.000Z')",
@@ -49,12 +64,22 @@ function seed(db: Database.Database): void {
     "INSERT INTO elo_events (id, skill_id, rating_before, rating_after, outcome, created_at) VALUES (7, NULL, 1000, 1016, 1.0, '2026-01-02T00:00:00.000Z')",
   ).run()
   // FK chain track → course → unit → lesson, and habit_logs (FK without cascade)
-  db.prepare("INSERT INTO tracks (id, title, created_at) VALUES (1, 'Math', '2026-01-01T00:00:00.000Z')").run()
-  db.prepare("INSERT INTO courses (id, track_id, title, created_at) VALUES (1, 1, 'Algebra', '2026-01-01T00:00:00.000Z')").run()
+  db.prepare(
+    "INSERT INTO tracks (id, title, created_at) VALUES (1, 'Math', '2026-01-01T00:00:00.000Z')",
+  ).run()
+  db.prepare(
+    "INSERT INTO courses (id, track_id, title, created_at) VALUES (1, 1, 'Algebra', '2026-01-01T00:00:00.000Z')",
+  ).run()
   db.prepare("INSERT INTO units (id, course_id, title) VALUES (1, 1, 'Linear equations')").run()
-  db.prepare("INSERT INTO lessons (id, unit_id, title, type, created_at) VALUES (1, 1, 'Solve for x', 'concept', '2026-01-01T00:00:00.000Z')").run()
-  db.prepare("INSERT INTO habits (id, name, created_at) VALUES (1, 'Read 20 pages', '2026-01-01T00:00:00.000Z')").run()
-  db.prepare("INSERT INTO habit_logs (id, habit_id, date, created_at) VALUES (1, 1, '2026-01-02', '2026-01-02T00:00:00.000Z')").run()
+  db.prepare(
+    "INSERT INTO lessons (id, unit_id, title, type, created_at) VALUES (1, 1, 'Solve for x', 'concept', '2026-01-01T00:00:00.000Z')",
+  ).run()
+  db.prepare(
+    "INSERT INTO habits (id, name, created_at) VALUES (1, 'Read 20 pages', '2026-01-01T00:00:00.000Z')",
+  ).run()
+  db.prepare(
+    "INSERT INTO habit_logs (id, habit_id, date, created_at) VALUES (1, 1, '2026-01-02', '2026-01-02T00:00:00.000Z')",
+  ).run()
 }
 
 /** Snapshot every table as raw rows (independent of backupAll for comparison). */
@@ -78,7 +103,9 @@ describe('backupAll', () => {
     expect(backup.tables['cards']).toHaveLength(2)
     // JSON columns come back as their stored TEXT — lossless for reinsertion
     expect(backup.tables['cards']![0]).toMatchObject({ id: 1, deck_id: 1, type: 'basic' })
-    expect(backup.tables['cards']![0]!['content']).toBe(JSON.stringify({ basic: { front: 'Q1', back: 'A1' } }))
+    expect(backup.tables['cards']![0]!['content']).toBe(
+      JSON.stringify({ basic: { front: 'Q1', back: 'A1' } }),
+    )
     db.close()
   })
 
@@ -107,13 +134,21 @@ describe('restoreAll (round-trip)', () => {
     expect(rawSnapshot(target)).toEqual(expected)
 
     // append-only ids preserved explicitly
-    const revlogIds = (target.prepare('SELECT id FROM revlog ORDER BY id').all() as { id: number }[]).map((r) => r.id)
+    const revlogIds = (
+      target.prepare('SELECT id FROM revlog ORDER BY id').all() as { id: number }[]
+    ).map((r) => r.id)
     expect(revlogIds).toEqual([1700000000001])
     expect((target.prepare('SELECT id FROM xp_events').get() as { id: number }).id).toBe(101)
     expect((target.prepare('SELECT id FROM elo_events').get() as { id: number }).id).toBe(7)
     // AUTOINCREMENT counters continue after the restored max(id)
-    target.prepare("INSERT INTO xp_events (source, amount, created_at) VALUES ('review', 5, '2026-01-03T00:00:00.000Z')").run()
-    expect((target.prepare('SELECT max(id) as id FROM xp_events').get() as { id: number }).id).toBe(102)
+    target
+      .prepare(
+        "INSERT INTO xp_events (source, amount, created_at) VALUES ('review', 5, '2026-01-03T00:00:00.000Z')",
+      )
+      .run()
+    expect((target.prepare('SELECT max(id) as id FROM xp_events').get() as { id: number }).id).toBe(
+      102,
+    )
 
     source.close()
     target.close()
@@ -127,8 +162,14 @@ describe('restoreAll (round-trip)', () => {
     const target = createTestDb()
     seed(target)
     // corrupt the target
-    target.prepare("UPDATE cards SET content = '{\"basic\":{\"front\":\"WRONG\",\"back\":\"X\"}}' WHERE id = 1").run()
-    target.prepare("INSERT INTO decks (name, created_at) VALUES ('Extra Deck', '2026-01-04T00:00:00.000Z')").run()
+    target
+      .prepare('UPDATE cards SET content = \'{"basic":{"front":"WRONG","back":"X"}}\' WHERE id = 1')
+      .run()
+    target
+      .prepare(
+        "INSERT INTO decks (name, created_at) VALUES ('Extra Deck', '2026-01-04T00:00:00.000Z')",
+      )
+      .run()
 
     restoreAll(backup, target)
     expect(rawSnapshot(target)).toEqual(rawSnapshot(source))
@@ -140,7 +181,11 @@ describe('restoreAll (round-trip)', () => {
     const db = createTestDb()
     seed(db)
     const backup = backupAll(db)
-    const partial: BackupFile = { version: backup.version, exportedAt: backup.exportedAt, tables: { decks: backup.tables['decks']! } }
+    const partial: BackupFile = {
+      version: backup.version,
+      exportedAt: backup.exportedAt,
+      tables: { decks: backup.tables['decks']! },
+    }
     restoreAll(partial, db)
     expect(db.prepare('SELECT count(*) as c FROM cards').get() as { c: number }).toEqual({ c: 0 })
     expect(db.prepare('SELECT count(*) as c FROM revlog').get() as { c: number }).toEqual({ c: 0 })
@@ -151,11 +196,15 @@ describe('restoreAll (round-trip)', () => {
   it('rejects malformed envelopes, unknown tables and unknown columns (ValidationError)', () => {
     const db = createTestDb()
     expect(() => restoreAll({ version: 1, exportedAt: 'x' }, db)).toThrow(ValidationError)
-    expect(() => restoreAll({ version: 1, exportedAt: 'x', tables: { not_a_table: [] } }, db)).toThrow(/unknown table/)
-    expect(() => restoreAll(
-      { version: 1, exportedAt: 'x', tables: { decks: [{ id: 1, name: 'D', bogus_col: 1 }] } },
-      db,
-    )).toThrow(/unknown column/)
+    expect(() =>
+      restoreAll({ version: 1, exportedAt: 'x', tables: { not_a_table: [] } }, db),
+    ).toThrow(/unknown table/)
+    expect(() =>
+      restoreAll(
+        { version: 1, exportedAt: 'x', tables: { decks: [{ id: 1, name: 'D', bogus_col: 1 }] } },
+        db,
+      ),
+    ).toThrow(/unknown column/)
     db.close()
   })
 

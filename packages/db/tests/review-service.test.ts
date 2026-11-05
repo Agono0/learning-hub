@@ -17,7 +17,9 @@ function createTestDb() {
   sqlite.pragma('foreign_keys = ON')
 
   const ddls = getRawDb()
-    .prepare("SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL")
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
+    )
     .all('table')
     .map((r: any) => r.sql as string)
 
@@ -28,18 +30,22 @@ function createTestDb() {
   const db = drizzle(sqlite, { schema })
 
   // Seed default settings and deck
-  db.insert(schema.userSettings).values({
-    id: 'default',
-    desiredRetention: 0.9,
-    theme: 'system',
-    updatedAt: new Date().toISOString(),
-  }).run()
+  db.insert(schema.userSettings)
+    .values({
+      id: 'default',
+      desiredRetention: 0.9,
+      theme: 'system',
+      updatedAt: new Date().toISOString(),
+    })
+    .run()
 
-  db.insert(schema.decks).values({
-    id: 1,
-    name: 'Default Deck',
-    createdAt: new Date().toISOString(),
-  }).run()
+  db.insert(schema.decks)
+    .values({
+      id: 1,
+      name: 'Default Deck',
+      createdAt: new Date().toISOString(),
+    })
+    .run()
 
   return { sqlite, db }
 }
@@ -55,19 +61,22 @@ describe('canonical review-service', () => {
     const now = new Date('2026-11-04T12:00:00.000Z')
 
     // Create new card (state 0)
-    testDb.insert(schema.cards).values({
-      id: 1,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'What is SQLite?', back: 'Embedded database' },
-      due: now.toISOString(),
-      state: 0,
-      stability: 0,
-      difficulty: 0,
-      reps: 0,
-      lapses: 0,
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 1,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'What is SQLite?', back: 'Embedded database' },
+        due: now.toISOString(),
+        state: 0,
+        stability: 0,
+        difficulty: 0,
+        reps: 0,
+        lapses: 0,
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     const result = await executeReview(
       {
@@ -114,24 +123,30 @@ describe('canonical review-service', () => {
     const now = new Date('2026-11-04T12:00:00.000Z')
 
     // Pre-seed streak
-    testDb.insert(schema.streaks).values({
-      id: 1,
-      current: 10,
-      best: 15,
-      lastActiveDate: '2026-11-03',
-      freezes: 2,
-      weekendAmulet: false,
-      updatedAt: '2026-11-03T12:00:00.000Z',
-    }).run()
+    testDb
+      .insert(schema.streaks)
+      .values({
+        id: 1,
+        current: 10,
+        best: 15,
+        lastActiveDate: '2026-11-03',
+        freezes: 2,
+        weekendAmulet: false,
+        updatedAt: '2026-11-03T12:00:00.000Z',
+      })
+      .run()
 
-    testDb.insert(schema.cards).values({
-      id: 1,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'Q', back: 'A' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 1,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'Q', back: 'A' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     const result = await executeReview(
       { cardId: 1, grade: 3, confidence: 1, today: now },
@@ -154,24 +169,30 @@ describe('canonical review-service', () => {
     const now = new Date('2026-11-04T16:00:00.000Z')
 
     // Pre-seed streak with 0 freezes
-    testDb.insert(schema.streaks).values({
-      id: 1,
-      current: 10,
-      best: 15,
-      lastActiveDate: '2026-11-03',
-      freezes: 0,
-      weekendAmulet: false,
-      updatedAt: '2026-11-03T16:00:00.000Z',
-    }).run()
+    testDb
+      .insert(schema.streaks)
+      .values({
+        id: 1,
+        current: 10,
+        best: 15,
+        lastActiveDate: '2026-11-03',
+        freezes: 0,
+        weekendAmulet: false,
+        updatedAt: '2026-11-03T16:00:00.000Z',
+      })
+      .run()
 
-    testDb.insert(schema.cards).values({
-      id: 1,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'Q', back: 'A' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 1,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'Q', back: 'A' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     const result = await executeReview(
       { cardId: 1, grade: 3, confidence: 1, today: now },
@@ -189,24 +210,30 @@ describe('canonical review-service', () => {
     const now = new Date('2026-11-04T12:00:00.000Z')
 
     // Pre-seed broken streak (missed 5 days)
-    testDb.insert(schema.streaks).values({
-      id: 1,
-      current: 10,
-      best: 25,
-      lastActiveDate: '2026-10-25',
-      freezes: 0,
-      weekendAmulet: false,
-      updatedAt: '2026-10-25T12:00:00.000Z',
-    }).run()
+    testDb
+      .insert(schema.streaks)
+      .values({
+        id: 1,
+        current: 10,
+        best: 25,
+        lastActiveDate: '2026-10-25',
+        freezes: 0,
+        weekendAmulet: false,
+        updatedAt: '2026-10-25T12:00:00.000Z',
+      })
+      .run()
 
-    testDb.insert(schema.cards).values({
-      id: 1,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'Q', back: 'A' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 1,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'Q', back: 'A' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     const result = await executeReview(
       { cardId: 1, grade: 3, confidence: 1, today: now },
@@ -220,9 +247,9 @@ describe('canonical review-service', () => {
 
   it('T4: transaction atomicity: rolls back all tables on error', async () => {
     // Attempt review on non-existent card
-    await expect(
-      executeReview({ cardId: 9999, grade: 3 }, { db: testDb as any }),
-    ).rejects.toThrow(CardNotFoundError)
+    await expect(executeReview({ cardId: 9999, grade: 3 }, { db: testDb as any })).rejects.toThrow(
+      CardNotFoundError,
+    )
 
     // Verify zero mutations
     const revlogs = testDb.select().from(schema.revlog).all()
@@ -238,18 +265,21 @@ describe('canonical review-service', () => {
     const lastReview = new Date('2026-10-30T12:00:00.000Z') // 5 days ago
 
     // Mature card with stability = 5, difficulty = 5
-    testDb.insert(schema.cards).values({
-      id: 2,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'Q', back: 'A' },
-      due: now.toISOString(),
-      state: 2, // Review state
-      stability: 5.0,
-      difficulty: 5.0,
-      lastReview: lastReview.toISOString(),
-      createdAt: lastReview.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 2,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'Q', back: 'A' },
+        due: now.toISOString(),
+        state: 2, // Review state
+        stability: 5.0,
+        difficulty: 5.0,
+        lastReview: lastReview.toISOString(),
+        createdAt: lastReview.toISOString(),
+      })
+      .run()
 
     const result = await executeReview(
       { cardId: 2, grade: 3, confidence: 1, today: now },
@@ -271,31 +301,40 @@ describe('canonical review-service', () => {
   it('T6: DEF-005 skill mastery & Elo updates when card is linked to skillId', async () => {
     const now = new Date('2026-11-04T12:00:00.000Z')
 
-    testDb.insert(schema.skills).values({
-      id: 42,
-      name: 'Quantum Mechanics',
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.skills)
+      .values({
+        id: 42,
+        name: 'Quantum Mechanics',
+        createdAt: now.toISOString(),
+      })
+      .run()
 
-    testDb.insert(schema.mastery).values({
-      id: 1,
-      skillId: 42,
-      elo: 1000,
-      pKnown: 0.2,
-      attempts: 4,
-      correct: 3,
-      updatedAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.mastery)
+      .values({
+        id: 1,
+        skillId: 42,
+        elo: 1000,
+        pKnown: 0.2,
+        attempts: 4,
+        correct: 3,
+        updatedAt: now.toISOString(),
+      })
+      .run()
 
-    testDb.insert(schema.cards).values({
-      id: 3,
-      deckId: 1,
-      skillId: 42,
-      type: 'qa',
-      content: { front: 'Schrödinger eq', back: 'H psi = E psi' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 3,
+        deckId: 1,
+        skillId: 42,
+        type: 'qa',
+        content: { front: 'Schrödinger eq', back: 'H psi = E psi' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     const result = await executeReview(
       { cardId: 3, grade: 4, confidence: 1, today: now },
@@ -309,37 +348,51 @@ describe('canonical review-service', () => {
     expect(result.newElo).toBe(result.elo?.ratingAfter)
 
     // Check DB mastery
-    const updatedMastery = testDb.select().from(schema.mastery).where(eq(schema.mastery.skillId, 42)).get()
+    const updatedMastery = testDb
+      .select()
+      .from(schema.mastery)
+      .where(eq(schema.mastery.skillId, 42))
+      .get()
     expect(updatedMastery?.attempts).toBe(5)
     expect(updatedMastery?.correct).toBe(4)
     expect(updatedMastery?.elo).toBe(result.elo?.ratingAfter)
     expect(updatedMastery?.pKnown).toBeGreaterThan(0.2)
 
     // Check Elo events table
-    const events = testDb.select().from(schema.eloEvents).where(eq(schema.eloEvents.skillId, 42)).all()
+    const events = testDb
+      .select()
+      .from(schema.eloEvents)
+      .where(eq(schema.eloEvents.skillId, 42))
+      .all()
     expect(events).toHaveLength(1)
   })
 
   it('T7: executeBatchReview executes multiple cards atomically in a single transaction', async () => {
     const now = new Date('2026-11-04T12:00:00.000Z')
 
-    testDb.insert(schema.cards).values({
-      id: 10,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'C10', back: 'A10' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 10,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'C10', back: 'A10' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
-    testDb.insert(schema.cards).values({
-      id: 11,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'C11', back: 'A11' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 11,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'C11', back: 'A11' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     const results = await executeBatchReview(
       [
@@ -364,14 +417,17 @@ describe('canonical review-service', () => {
   it('T8: executeBatchReview rolls back all cards if any review fails in the batch', async () => {
     const now = new Date('2026-11-04T12:00:00.000Z')
 
-    testDb.insert(schema.cards).values({
-      id: 20,
-      deckId: 1,
-      type: 'qa',
-      content: { front: 'C20', back: 'A20' },
-      due: now.toISOString(),
-      createdAt: now.toISOString(),
-    }).run()
+    testDb
+      .insert(schema.cards)
+      .values({
+        id: 20,
+        deckId: 1,
+        type: 'qa',
+        content: { front: 'C20', back: 'A20' },
+        due: now.toISOString(),
+        createdAt: now.toISOString(),
+      })
+      .run()
 
     // Batch contains 1 valid card (20) and 1 non-existent card (999)
     await expect(
@@ -394,9 +450,9 @@ describe('canonical review-service', () => {
   })
 
   it('T9: rejects invalid inputs with ValidationError', async () => {
-    await expect(
-      executeReview({ cardId: 0, grade: 3 }, { db: testDb as any }),
-    ).rejects.toThrow(ValidationError)
+    await expect(executeReview({ cardId: 0, grade: 3 }, { db: testDb as any })).rejects.toThrow(
+      ValidationError,
+    )
 
     await expect(
       executeReview({ cardId: 1, grade: 5 as any }, { db: testDb as any }),

@@ -18,36 +18,44 @@ function createTestDb() {
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
   const ddls = getRawDb()
-    .prepare("SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL")
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
+    )
     .all('table')
     .map((r) => r.sql as string)
   for (const ddl of ddls) sqlite.exec(ddl)
 
   const db = drizzle(sqlite, { schema })
 
-  db.insert(schema.userSettings).values({
-    id: 'default',
-    desiredRetention: 0.9,
-    theme: 'system',
-    updatedAt: new Date().toISOString(),
-  }).run()
-  db.insert(schema.decks).values({ id: 1, name: 'Default Deck', createdAt: new Date().toISOString() }).run()
+  db.insert(schema.userSettings)
+    .values({
+      id: 'default',
+      desiredRetention: 0.9,
+      theme: 'system',
+      updatedAt: new Date().toISOString(),
+    })
+    .run()
+  db.insert(schema.decks)
+    .values({ id: 1, name: 'Default Deck', createdAt: new Date().toISOString() })
+    .run()
 
   const now = new Date('2026-11-04T12:00:00.000Z')
   for (const cardId of [1, 2]) {
-    db.insert(schema.cards).values({
-      id: cardId,
-      deckId: 1,
-      type: 'qa',
-      content: { front: `Front ${cardId}`, back: `Back ${cardId}` },
-      due: now.toISOString(),
-      state: 0,
-      stability: 0,
-      difficulty: 0,
-      reps: 0,
-      lapses: 0,
-      createdAt: now.toISOString(),
-    }).run()
+    db.insert(schema.cards)
+      .values({
+        id: cardId,
+        deckId: 1,
+        type: 'qa',
+        content: { front: `Front ${cardId}`, back: `Back ${cardId}` },
+        due: now.toISOString(),
+        state: 0,
+        stability: 0,
+        difficulty: 0,
+        reps: 0,
+        lapses: 0,
+        createdAt: now.toISOString(),
+      })
+      .run()
   }
   return db
 }
@@ -94,7 +102,10 @@ describe('review-service → event bus emissions', () => {
       eventBus.on('review.batch.completed', (p) => batches.push({ ...p })),
     )
 
-    await executeBatchReview([{ cardId: 1, grade: 2, confidence: 1 }], { db: testDb as never, now: new Date('2026-11-04T12:00:00.000Z') })
+    await executeBatchReview([{ cardId: 1, grade: 2, confidence: 1 }], {
+      db: testDb as never,
+      now: new Date('2026-11-04T12:00:00.000Z'),
+    })
     expect(completed.map((e) => e.cardId)).toEqual([1])
     expect(batches).toEqual([{ count: 1 }])
   })

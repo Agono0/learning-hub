@@ -12,9 +12,10 @@
  */
 import { baseline } from './001-baseline'
 import { curriculumV2 } from './002-curriculum-v2'
+import { ftsSearch } from './003-fts-search'
 import type { Migration } from './runner'
 
-export const MIGRATIONS: readonly Migration[] = [baseline, curriculumV2]
+export const MIGRATIONS: readonly Migration[] = [baseline, curriculumV2, ftsSearch]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
 export type { Migration, MigrationContext, MigrationReport } from './runner'

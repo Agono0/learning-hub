@@ -38,7 +38,9 @@ const repoDbFile = join(findRepoRoot(), 'data', 'learning-hub.db')
 {
   const source = new Database(repoDbFile, { readonly: true, fileMustExist: true })
   const ddl = source
-    .prepare("SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'")
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%'",
+    )
     .all() as { sql: string }[]
   source.close()
   const target = new Database(tempDbFile)
@@ -153,7 +155,10 @@ describe('quests (items 1, 3, 11)', () => {
 
     // exactly one quest XP event for the day
     const events = M.db.db.select().from(M.db.xpEvents).all()
-    const questXp = events.filter((e: { source: string; meta: unknown }) => e.source === 'quest' && (e.meta as { date: string }).date === date)
+    const questXp = events.filter(
+      (e: { source: string; meta: unknown }) =>
+        e.source === 'quest' && (e.meta as { date: string }).date === date,
+    )
     expect(questXp).toHaveLength(1)
   })
 
@@ -168,9 +173,17 @@ describe('settings (item 2)', () => {
     const bad = await M.settings.PUT(req('PUT', '/api/settings', { aiProvider: 'skynet' }))
     expect(bad.status).toBe(400)
 
-    const res = await M.settings.PUT(req('PUT', '/api/settings', { aiProvider: 'anthropic', desiredRetention: 0.99, sessionMinutes: 1000 }))
+    const res = await M.settings.PUT(
+      req('PUT', '/api/settings', {
+        aiProvider: 'anthropic',
+        desiredRetention: 0.99,
+        sessionMinutes: 1000,
+      }),
+    )
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { settings: { aiProvider: string; desiredRetention: number; sessionMinutes: number } }
+    const body = (await res.json()) as {
+      settings: { aiProvider: string; desiredRetention: number; sessionMinutes: number }
+    }
     expect(body.settings.aiProvider).toBe('anthropic')
     expect(body.settings.desiredRetention).toBe(0.97)
     expect(body.settings.sessionMinutes).toBe(180)
@@ -192,9 +205,15 @@ describe('settings (item 2)', () => {
   })
 
   it('stores canonical aiHeaders for custom-endpoint, masks them in GET, rejects invalid JSON', async () => {
-    const res = await M.settings.PUT(req('PUT', '/api/settings', { aiHeaders: '{"Authorization": "Bearer secret-123", "X-Tag": "t"}' }))
+    const res = await M.settings.PUT(
+      req('PUT', '/api/settings', {
+        aiHeaders: '{"Authorization": "Bearer secret-123", "X-Tag": "t"}',
+      }),
+    )
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { settings: { aiHeaders: string | null; hasHeaders: boolean } }
+    const body = (await res.json()) as {
+      settings: { aiHeaders: string | null; hasHeaders: boolean }
+    }
     expect(body.settings.aiHeaders).toBe('••••') // masked — values never round-trip to the client
     expect(body.settings.hasHeaders).toBe(true)
 
@@ -215,7 +234,15 @@ describe('settings (item 2)', () => {
 
 describe('streak dedupe (item 10)', () => {
   it('habit checkin pays XP once per day and records streak activity via updateStreakInTx', async () => {
-    const created = await M.habits.POST(post('/api/habits', { name: 'Read 20 pages', cue: 'after coffee', craving: 'calm', response: 'read', reward: 'tea' }))
+    const created = await M.habits.POST(
+      post('/api/habits', {
+        name: 'Read 20 pages',
+        cue: 'after coffee',
+        craving: 'calm',
+        response: 'read',
+        reward: 'tea',
+      }),
+    )
     expect(created.status).toBe(201)
     const { habit } = (await created.json()) as { habit: { id: number } }
 
@@ -240,23 +267,34 @@ describe('streak dedupe (item 10)', () => {
   })
 
   it('focus completion pays XP + streak once; re-completing does not pay again', async () => {
-    const started = await M.focus.POST(post('/api/focus', { plannedMinutes: 25, task: 'deep work' }))
+    const started = await M.focus.POST(
+      post('/api/focus', { plannedMinutes: 25, task: 'deep work' }),
+    )
     expect(started.status).toBe(201)
     const { session } = (await started.json()) as { session: { id: number; completed: boolean } }
     expect(session.completed).toBe(false)
 
-    const ended = await M.focusId.PATCH(req('PATCH', `/api/focus/${session.id}`, { completed: true, actualMinutes: 25.44, leaks: 2 }), {
-      params: Promise.resolve({ id: String(session.id) }),
-    })
+    const ended = await M.focusId.PATCH(
+      req('PATCH', `/api/focus/${session.id}`, { completed: true, actualMinutes: 25.44, leaks: 2 }),
+      {
+        params: Promise.resolve({ id: String(session.id) }),
+      },
+    )
     expect(ended.status).toBe(200)
-    const endBody = (await ended.json()) as { xpAwarded: number; session: { actualMinutes: number; completed: boolean } }
+    const endBody = (await ended.json()) as {
+      xpAwarded: number
+      session: { actualMinutes: number; completed: boolean }
+    }
     expect(endBody.xpAwarded).toBe(M.core.XP_REWARDS.focusSession)
     expect(endBody.session.completed).toBe(true)
     expect(endBody.session.actualMinutes).toBe(25.4)
 
-    const again = await M.focusId.PATCH(req('PATCH', `/api/focus/${session.id}`, { completed: true }), {
-      params: Promise.resolve({ id: String(session.id) }),
-    })
+    const again = await M.focusId.PATCH(
+      req('PATCH', `/api/focus/${session.id}`, { completed: true }),
+      {
+        params: Promise.resolve({ id: String(session.id) }),
+      },
+    )
     const againBody = (await again.json()) as { xpAwarded: number }
     expect(againBody.xpAwarded).toBe(0)
   })
@@ -278,23 +316,39 @@ describe('reading highlights (item 7)', () => {
   it('GET mode=resurface is read-only; POST { seenIds } is the explicit mutation', async () => {
     const [source] = M.db.db
       .insert(M.db.sources)
-      .values({ kind: 'paste', title: 'Deep Work', content: 'Focus is the new IQ. Deep work matters. ' })
+      .values({
+        kind: 'paste',
+        title: 'Deep Work',
+        content: 'Focus is the new IQ. Deep work matters. ',
+      })
       .returning()
       .all()
     const [h] = M.db.db
       .insert(M.db.highlights)
-      .values({ sourceId: source.id, text: 'Focus is the new IQ.', strength: 0.5, triaged: 0, lastReviewedAt: null })
+      .values({
+        sourceId: source.id,
+        text: 'Focus is the new IQ.',
+        strength: 0.5,
+        triaged: 0,
+        lastReviewedAt: null,
+      })
       .returning()
       .all()
 
-    const res = await M.highlights.GET(new Request('http://localhost/api/reading/highlights?mode=resurface&limit=10'))
+    const res = await M.highlights.GET(
+      new Request('http://localhost/api/reading/highlights?mode=resurface&limit=10'),
+    )
     expect(res.status).toBe(200)
     const body = (await res.json()) as { resurface: { id: number; sourceTitle: string | null }[] }
     expect(body.resurface.some((x) => x.id === h.id)).toBe(true)
     expect(body.resurface.find((x) => x.id === h.id)!.sourceTitle).toBe('Deep Work')
 
     // GET must NOT have nudged strength/lastReviewedAt
-    const afterGet = M.db.db.select().from(M.db.highlights).all().find((r: { id: number }) => r.id === h.id)
+    const afterGet = M.db.db
+      .select()
+      .from(M.db.highlights)
+      .all()
+      .find((r: { id: number }) => r.id === h.id)
     expect(afterGet.strength).toBe(0.5)
     expect(afterGet.lastReviewedAt).toBeNull()
 
@@ -303,7 +357,11 @@ describe('reading highlights (item 7)', () => {
     expect(seen.status).toBe(200)
     const seenBody = (await seen.json()) as { ok: boolean; seen: number[] }
     expect(seenBody.seen).toEqual([h.id])
-    const afterSeen = M.db.db.select().from(M.db.highlights).all().find((r: { id: number }) => r.id === h.id)
+    const afterSeen = M.db.db
+      .select()
+      .from(M.db.highlights)
+      .all()
+      .find((r: { id: number }) => r.id === h.id)
     expect(afterSeen.strength).toBeCloseTo(0.55)
     expect(afterSeen.lastReviewedAt).not.toBeNull()
   })
@@ -314,16 +372,26 @@ describe('journal/ai (item 6)', () => {
     const today = M.core.dayKey(new Date(), 0)
     const tomorrow = M.core.dayKey(new Date(Date.now() + 86_400_000), 0)
     // need at least one entry in the trailing week
-    M.db.db.insert(M.db.journalEntries).values({ date: today, mood: 4, smallWins: 'shipped the test suite' }).run()
+    M.db.db
+      .insert(M.db.journalEntries)
+      .values({ date: today, mood: 4, smallWins: 'shipped the test suite' })
+      .run()
 
-    fakeAI.client = { generateText: async () => 'You shipped a test suite — pattern: verification first. Tiny next action: write one more.' }
+    fakeAI.client = {
+      generateText: async () =>
+        'You shipped a test suite — pattern: verification first. Tiny next action: write one more.',
+    }
     const res = await M.journalAi.POST(post('/api/journal/ai', { date: tomorrow }))
     expect(res.status).toBe(200)
     const body = (await res.json()) as { ok: boolean; insight: string }
     expect(body.ok).toBe(true)
 
     // the unjournaled date now HAS a row carrying the insight
-    const entry = M.db.db.select().from(M.db.journalEntries).all().find((e: { date: string }) => e.date === tomorrow)
+    const entry = M.db.db
+      .select()
+      .from(M.db.journalEntries)
+      .all()
+      .find((e: { date: string }) => e.date === tomorrow)
     expect(entry).toBeDefined()
     expect(entry.aiInsight).toBe(body.insight)
 
@@ -331,7 +399,11 @@ describe('journal/ai (item 6)', () => {
     const res2 = await M.journalAi.POST(post('/api/journal/ai', { date: today }))
     const body2 = (await res2.json()) as { ok: boolean }
     expect(body2.ok).toBe(true)
-    const row = M.db.db.select().from(M.db.journalEntries).all().find((e: { date: string }) => e.date === today)
+    const row = M.db.db
+      .select()
+      .from(M.db.journalEntries)
+      .all()
+      .find((e: { date: string }) => e.date === today)
     expect(row.mood).toBe(4) // original fields intact
     expect(row.aiInsight).toBeTruthy()
   })
@@ -349,7 +421,11 @@ describe('journal/ai (item 6)', () => {
     expect(body.ok).toBe(true)
     expect(body.mode).toBe('manual')
     expect(body.insight).toContain('Reflection prompts')
-    const row = M.db.db.select().from(M.db.journalEntries).all().find((e: { date: string }) => e.date === today)
+    const row = M.db.db
+      .select()
+      .from(M.db.journalEntries)
+      .all()
+      .find((e: { date: string }) => e.date === today)
     expect(row.aiInsight).toBe(body.insight)
     fakeAI.provider = 'anthropic'
   })
@@ -358,14 +434,27 @@ describe('journal/ai (item 6)', () => {
     fakeAI.provider = 'none' // transport works with no provider — that's the point
     // discovery (no feature) — provider status + feature list
     const disco = await M.transport.GET(req('GET', '/api/ai/transport'))
-    const discoBody = (await disco.json()) as { provider: string; configured: boolean; features: { name: string }[] }
+    const discoBody = (await disco.json()) as {
+      provider: string
+      configured: boolean
+      features: { name: string }[]
+    }
     expect(discoBody.provider).toBe('none')
     expect(discoBody.configured).toBe(false)
     expect(discoBody.features.map((f) => f.name)).toContain('cloze-generator')
 
     // envelope for a JSON feature, built from params
-    const env = await M.transport.GET(req('GET', '/api/ai/transport?feature=cloze-generator&text=Spaced%20repetition%20schedules%20reviews%20at%20expanding%20intervals.'))
-    const envBody = (await env.json()) as { ok: boolean; envelope: { v: number; feature: string; system: string; prompt: string; schema?: string }; manual: { title: string } | null }
+    const env = await M.transport.GET(
+      req(
+        'GET',
+        '/api/ai/transport?feature=cloze-generator&text=Spaced%20repetition%20schedules%20reviews%20at%20expanding%20intervals.',
+      ),
+    )
+    const envBody = (await env.json()) as {
+      ok: boolean
+      envelope: { v: number; feature: string; system: string; prompt: string; schema?: string }
+      manual: { title: string } | null
+    }
     expect(envBody.ok).toBe(true)
     expect(envBody.envelope.v).toBe(1)
     expect(envBody.envelope.feature).toBe('cloze-generator')
@@ -378,20 +467,34 @@ describe('journal/ai (item 6)', () => {
     expect(bad.status).toBe(400)
 
     // text feature reply comes back as text
-    const text = await M.transport.POST(post('/api/ai/transport', { feature: 'tutor-grade', result: 'What do you notice about the pattern?' }))
+    const text = await M.transport.POST(
+      post('/api/ai/transport', {
+        feature: 'tutor-grade',
+        result: 'What do you notice about the pattern?',
+      }),
+    )
     const textBody = (await text.json()) as { ok: boolean; kind: string; result: string }
     expect(textBody.ok).toBe(true)
     expect(textBody.kind).toBe('text')
     expect(textBody.result).toContain('notice')
 
     // json feature: fenced reply validates; invalid reply → 400 descriptive
-    const fenced = '```json\n{"cards":[{"text":"Spaced repetition schedules reviews at [expanding] intervals","answers":["expanding"]}]}\n```'
-    const okJson = await M.transport.POST(post('/api/ai/transport', { feature: 'cloze-generator', result: fenced }))
-    const okBody = (await okJson.json()) as { ok: boolean; kind: string; data: { cards: unknown[] } }
+    const fenced =
+      '```json\n{"cards":[{"text":"Spaced repetition schedules reviews at [expanding] intervals","answers":["expanding"]}]}\n```'
+    const okJson = await M.transport.POST(
+      post('/api/ai/transport', { feature: 'cloze-generator', result: fenced }),
+    )
+    const okBody = (await okJson.json()) as {
+      ok: boolean
+      kind: string
+      data: { cards: unknown[] }
+    }
     expect(okBody.ok).toBe(true)
     expect(okBody.data.cards).toHaveLength(1)
 
-    const badJson = await M.transport.POST(post('/api/ai/transport', { feature: 'cloze-generator', result: 'not json at all' }))
+    const badJson = await M.transport.POST(
+      post('/api/ai/transport', { feature: 'cloze-generator', result: 'not json at all' }),
+    )
     expect(badJson.status).toBe(400)
     const badBody = (await badJson.json()) as { ok: boolean; error: string }
     expect(badBody.ok).toBe(false)
@@ -413,15 +516,29 @@ describe('AI error sanitization + transaction sweeps (items 8, 9)', () => {
 
   it('curriculum POST { manual } creates a course with zero AI involvement', async () => {
     fakeAI.client = null
-    const res = await M.curriculum.POST(post('/api/curriculum', {
-      manual: {
-        title: 'Manual Course',
-        description: 'built by hand',
-        units: [{ title: 'Unit 1', lessons: [{ title: 'Lesson 1', objective: 'Define a learning card', bloomVerb: 'define' }] }],
-      },
-    }))
+    const res = await M.curriculum.POST(
+      post('/api/curriculum', {
+        manual: {
+          title: 'Manual Course',
+          description: 'built by hand',
+          units: [
+            {
+              title: 'Unit 1',
+              lessons: [
+                { title: 'Lesson 1', objective: 'Define a learning card', bloomVerb: 'define' },
+              ],
+            },
+          ],
+        },
+      }),
+    )
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { ok: boolean; mode: string; unitIds: number[]; lessonIds: number[] }
+    const body = (await res.json()) as {
+      ok: boolean
+      mode: string
+      unitIds: number[]
+      lessonIds: number[]
+    }
     expect(body.ok).toBe(true)
     expect(body.mode).toBe('manual')
     expect(body.unitIds).toHaveLength(1)
@@ -437,15 +554,32 @@ describe('AI error sanitization + transaction sweeps (items 8, 9)', () => {
         units: [
           {
             title: 'Limits',
-            lessons: [{ title: 'Epsilon-delta', objective: 'Prove a limit from the definition', bloomVerb: 'prove' }],
+            lessons: [
+              {
+                title: 'Epsilon-delta',
+                objective: 'Prove a limit from the definition',
+                bloomVerb: 'prove',
+              },
+            ],
           },
         ],
-        skills: [{ name: 'limits', requires: [] }, { name: 'continuity', requires: ['limits'] }],
+        skills: [
+          { name: 'limits', requires: [] },
+          { name: 'continuity', requires: ['limits'] },
+        ],
       }),
     }
     const res = await M.curriculum.POST(post('/api/curriculum', { topic: 'Real Analysis' }))
     expect(res.status).toBe(200)
-    const body = (await res.json()) as { ok: boolean; trackId: number; courseId: number; unitIds: number[]; lessonIds: number[]; skillIds: number[]; edgeCount: number }
+    const body = (await res.json()) as {
+      ok: boolean
+      trackId: number
+      courseId: number
+      unitIds: number[]
+      lessonIds: number[]
+      skillIds: number[]
+      edgeCount: number
+    }
     expect(body.ok).toBe(true)
     expect(body.unitIds).toHaveLength(1)
     expect(body.lessonIds).toHaveLength(1)
@@ -458,7 +592,9 @@ describe('AI error sanitization + transaction sweeps (items 8, 9)', () => {
     const [deck] = M.db.db.insert(M.db.decks).values({ name: 'Smoke Deck' }).returning().all()
 
     fakeAI.client = null
-    const unconfigured = await M.aiGenerate.POST(post('/api/ai/generate', { kind: 'cloze', payload: { text: 'x', deckId: deck.id } }))
+    const unconfigured = await M.aiGenerate.POST(
+      post('/api/ai/generate', { kind: 'cloze', payload: { text: 'x', deckId: deck.id } }),
+    )
     expect(unconfigured.status).toBe(400)
     const unBody = (await unconfigured.json()) as { error: string; needsSetup: boolean }
     expect(unBody.needsSetup).toBe(true)
@@ -471,11 +607,20 @@ describe('AI error sanitization + transaction sweeps (items 8, 9)', () => {
         ],
       }),
     }
-    const res = await M.aiGenerate.POST(post('/api/ai/generate', { kind: 'cloze', payload: { text: 'Biology notes', deckId: deck.id } }))
+    const res = await M.aiGenerate.POST(
+      post('/api/ai/generate', {
+        kind: 'cloze',
+        payload: { text: 'Biology notes', deckId: deck.id },
+      }),
+    )
     expect(res.status).toBe(200)
     const body = (await res.json()) as { ok: boolean; cards: number[] }
     expect(body.cards).toHaveLength(2)
-    const deckCards = M.db.db.select().from(M.db.cards).all().filter((c: { deckId: number }) => c.deckId === deck.id)
+    const deckCards = M.db.db
+      .select()
+      .from(M.db.cards)
+      .all()
+      .filter((c: { deckId: number }) => c.deckId === deck.id)
     expect(deckCards).toHaveLength(2)
     expect(deckCards.every((c: { source: string }) => c.source === 'ai')).toBe(true)
   })
