@@ -49,3 +49,5 @@ export * from './weekly'
 
 // ── Study companions (M4) ──
 export * from './agenda'
+export * from './study-plan'
+export * from './ics'

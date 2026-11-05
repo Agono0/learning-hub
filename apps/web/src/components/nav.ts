@@ -51,6 +51,7 @@ export const NAV: NavGroup[] = [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard, primary: true },
       { href: '/review', label: 'Review', icon: Repeat2, primary: true },
       { href: '/courses', label: 'Courses', icon: GraduationCap, primary: true },
+      { href: '/planner', label: 'Planner', icon: CalendarRange },
       { href: '/decks', label: 'Decks & Cards', icon: Layers },
       { href: '/curriculum', label: 'Skills & exams', icon: Target },
       { href: '/reading', label: 'Reading', icon: BookOpen },

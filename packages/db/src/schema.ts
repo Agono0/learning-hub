@@ -903,6 +903,27 @@ export const chatSessions = table('chat_sessions', {
 // ─── Infrastructure ─────────────────────────────────────────────────────────
 
 /**
+ * One saved study plan (M4 planner): the computed weekly template is stored so
+ * it survives restarts and can be exported to calendar files. Regenerated
+ * (upserted) whenever the learner rebuilds the plan; there is no history.
+ */
+export const studyPlans = table('study_plans', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  /** minutes of study planned per week */
+  weeklyMinutes: integer('weekly_minutes').notNull(),
+  /** day of week rested (0=Sun … 6=Sat); null = no rest day */
+  restDay: integer('rest_day'),
+  /** the full weekly template: { weeks, blocks: [{day, minutes, courseId, label}] } */
+  plan: text('plan', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/**
  * Applied schema migrations (see ./migrations). Declared here so drizzle-kit
  * push keeps the table; the runner creates it with identical DDL.
  */
