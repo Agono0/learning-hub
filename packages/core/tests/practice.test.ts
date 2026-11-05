@@ -201,3 +201,26 @@ describe('properties', () => {
     )
   })
 })
+
+describe('exercise cards', () => {
+  it('validates exercise card content through validateCardContent', async () => {
+    const { validateCardContent } = await import('../src/cards')
+    const good = validateCardContent('exercise', {
+      type: 'truefalse',
+      prompt: 'Sky is blue',
+      answer: true,
+    })
+    expect(good.ok).toBe(true)
+    const bad = validateCardContent('exercise', { type: 'truefalse', prompt: '' })
+    expect(bad.ok).toBe(false)
+  })
+
+  it('renders every catalog exercise to a non-empty text front/back', async () => {
+    const { exerciseToText } = await import('../src/practice')
+    for (const info of EXERCISE_CATALOG) {
+      const t = exerciseToText(ex(info.example))
+      expect(t.front.length, info.type).toBeGreaterThan(0)
+      expect(t.back.length, info.type).toBeGreaterThan(0)
+    }
+  })
+})
