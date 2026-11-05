@@ -8,6 +8,7 @@ import {
   masteryLevel,
   applyReviewToMastery,
   examCountdownPlan,
+  optimalGapDays,
   CRAM_WARNING,
   buildMockExam,
   expressiveWritingPrompt,
@@ -26,14 +27,36 @@ const goodCourse = {
     {
       title: 'Definitions',
       lessons: [
-        { title: 'What is a group', objective: 'Define group, associativity, identity', bloomVerb: 'define', type: 'concept', cards: [{ format: 'basic', front: 'Define a group', back: 'A set with associative operation, identity, inverses' }] },
-        { title: 'Examples', objective: 'Classify common groups as abelian or not', bloomVerb: 'classify', cards: [] },
+        {
+          title: 'What is a group',
+          objective: 'Define group, associativity, identity',
+          bloomVerb: 'define',
+          type: 'concept',
+          cards: [
+            {
+              format: 'basic',
+              front: 'Define a group',
+              back: 'A set with associative operation, identity, inverses',
+            },
+          ],
+        },
+        {
+          title: 'Examples',
+          objective: 'Classify common groups as abelian or not',
+          bloomVerb: 'classify',
+          cards: [],
+        },
       ],
     },
     {
       title: 'Structure',
       lessons: [
-        { title: 'Cosets', objective: 'Compute the cosets of a subgroup', bloomVerb: 'compute', cards: [{ format: 'typein', question: 'How many cosets has A4 in S4?', answer: '2' }] },
+        {
+          title: 'Cosets',
+          objective: 'Compute the cosets of a subgroup',
+          bloomVerb: 'compute',
+          cards: [{ format: 'typein', question: 'How many cosets has A4 in S4?', answer: '2' }],
+        },
       ],
     },
   ],
@@ -58,7 +81,9 @@ describe('parseGeneratedCourse', () => {
       units: [
         {
           title: 'U',
-          lessons: [{ title: 'Learn about groups', objective: 'Learn about groups', bloomVerb: 'grok' }],
+          lessons: [
+            { title: 'Learn about groups', objective: 'Learn about groups', bloomVerb: 'grok' },
+          ],
         },
       ],
     }
@@ -76,7 +101,13 @@ describe('parseGeneratedCourse', () => {
       units: [
         {
           title: 'U',
-          lessons: [{ title: 'Compute cosets', objective: 'compute the cosets of a subgroup', bloomVerb: 'not-a-verb' }],
+          lessons: [
+            {
+              title: 'Compute cosets',
+              objective: 'compute the cosets of a subgroup',
+              bloomVerb: 'not-a-verb',
+            },
+          ],
         },
       ],
     }
@@ -126,9 +157,15 @@ describe('unlockedSkills (prerequisite DAG gating)', () => {
 
   it('unlock threshold follows unlockProbability ≥ threshold', () => {
     // unlockProbability(p) = (p - 0.5) / 0.45 → p = 0.82 gives ≈ 0.71 ≥ 0.7
-    const atThreshold = [{ skillId: 1, pKnown: 0.82 }, { skillId: 2, pKnown: 0.1 }]
+    const atThreshold = [
+      { skillId: 1, pKnown: 0.82 },
+      { skillId: 2, pKnown: 0.1 },
+    ]
     expect(unlockedSkills(skills, edges, atThreshold).has(2)).toBe(true)
-    const below = [{ skillId: 1, pKnown: 0.8 }, { skillId: 2, pKnown: 0.1 }]
+    const below = [
+      { skillId: 1, pKnown: 0.8 },
+      { skillId: 2, pKnown: 0.1 },
+    ]
     expect(unlockedSkills(skills, edges, below).has(2)).toBe(false)
     // custom stricter threshold
     expect(unlockedSkills(skills, edges, atThreshold, 0.9).has(2)).toBe(false)
@@ -227,6 +264,21 @@ describe('examCountdownPlan', () => {
     expect(last.daysUntilExam).toBe(0)
   })
 
+  it('includes the Cepeda optimal-gap window (10–20 % of the interval)', () => {
+    const plan = examCountdownPlan('2026-06-15T00:00:00.000Z', mastery, today)
+    expect(plan.optimalGap).toEqual({ minDays: 1, maxDays: 3, recommendedDays: 2 })
+    const cramPlan = examCountdownPlan('2026-06-05T00:00:00.000Z', mastery, today)
+    expect(cramPlan.optimalGap).toBeNull()
+  })
+
+  it('optimalGapDays scales with the retention interval and refuses short ones', () => {
+    expect(optimalGapDays(30)).toEqual({ minDays: 3, maxDays: 6, recommendedDays: 5 })
+    expect(optimalGapDays(365)!.recommendedDays).toBeGreaterThanOrEqual(37)
+    expect(optimalGapDays(2)).toBeNull()
+    expect(optimalGapDays(0)).toBeNull()
+    expect(optimalGapDays(NaN)).toBeNull()
+  })
+
   it('returns an empty plan once the exam has passed', () => {
     const plan = examCountdownPlan('2026-05-01T00:00:00.000Z', mastery, today)
     expect(plan.daysLeft).toBe(0)
@@ -237,11 +289,44 @@ describe('examCountdownPlan', () => {
 // ─── Mock exam construction ─────────────────────────────────────────────────
 
 const examCards: MockCard[] = [
-  { id: 1, type: 'basic', content: { basic: { front: 'Define group', back: 'Set + associative op + identity + inverses' } } },
-  { id: 2, type: 'cloze', content: { cloze: { text: 'A group has ____ operation', answers: ['an associative'], mode: 'basic' } } },
-  { id: 3, type: 'mcq', content: { mcq: { question: 'Which is a group under +?', options: ['N', 'Z', 'Q+'], correctIndex: 1 } } },
-  { id: 4, type: 'typein', content: { typein: { question: 'Order of S4?', acceptedAnswers: ['24'] } } },
-  { id: 5, type: 'matching', content: { matching: { pairs: [{ left: 'Z4', right: 'cyclic' }, { left: 'V4', right: 'klein' }] } } },
+  {
+    id: 1,
+    type: 'basic',
+    content: {
+      basic: { front: 'Define group', back: 'Set + associative op + identity + inverses' },
+    },
+  },
+  {
+    id: 2,
+    type: 'cloze',
+    content: {
+      cloze: { text: 'A group has ____ operation', answers: ['an associative'], mode: 'basic' },
+    },
+  },
+  {
+    id: 3,
+    type: 'mcq',
+    content: {
+      mcq: { question: 'Which is a group under +?', options: ['N', 'Z', 'Q+'], correctIndex: 1 },
+    },
+  },
+  {
+    id: 4,
+    type: 'typein',
+    content: { typein: { question: 'Order of S4?', acceptedAnswers: ['24'] } },
+  },
+  {
+    id: 5,
+    type: 'matching',
+    content: {
+      matching: {
+        pairs: [
+          { left: 'Z4', right: 'cyclic' },
+          { left: 'V4', right: 'klein' },
+        ],
+      },
+    },
+  },
 ]
 
 describe('buildMockExam', () => {
@@ -272,7 +357,10 @@ describe('buildMockExam', () => {
   })
 
   it('skips image-dependent formats safely', () => {
-    const exam = buildMockExam([{ id: 9, type: 'occlusion', content: { occlusion: { imageId: 1, rects: [] } } }], { minutes: 30 })
+    const exam = buildMockExam(
+      [{ id: 9, type: 'occlusion', content: { occlusion: { imageId: 1, rects: [] } } }],
+      { minutes: 30 },
+    )
     expect(exam.questions).toHaveLength(0)
   })
 })

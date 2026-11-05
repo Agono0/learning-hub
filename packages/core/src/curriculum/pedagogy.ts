@@ -286,6 +286,36 @@ export interface ExamCountdownPlan {
   cramWarning: boolean
   warning: string | null
   days: ExamDayPlan[]
+  /**
+   * Cepeda optimal-gap window (10–20 % of the retention interval, Cepeda et
+   * al. 2006/2008) — how far apart reviews for THIS exam should be. Null when
+   * the interval is too short to space (≤ 2 days; cram mode applies).
+   */
+  optimalGap: { minDays: number; maxDays: number; recommendedDays: number } | null
+}
+
+/**
+ * Optimal study gap for a retention interval (Cepeda 2006 meta + Cepeda 2008:
+ * spacing ≈ 10–20 % of the interval, e.g. exam in 30 days → review every 3–6
+ * days). Returns null for intervals too short to space.
+ */
+export function optimalGapDays(retentionDays: number): {
+  minDays: number
+  maxDays: number
+  recommendedDays: number
+} | null {
+  if (!Number.isFinite(retentionDays)) return null
+  const maxDays = Math.ceil(retentionDays * 0.2)
+  // below ~9 days the window collapses to "study daily" — cram territory
+  if (maxDays < 2) return null
+  return {
+    minDays: Math.max(1, Math.floor(retentionDays * 0.1)),
+    maxDays,
+    recommendedDays: Math.max(
+      2,
+      Math.round((Math.max(1, Math.floor(retentionDays * 0.1)) + maxDays) / 2),
+    ),
+  }
 }
 
 /**
@@ -332,6 +362,7 @@ export function examCountdownPlan(
     cramWarning,
     warning: cramWarning ? CRAM_WARNING : null,
     days,
+    optimalGap: optimalGapDays(daysLeft),
   }
 }
 

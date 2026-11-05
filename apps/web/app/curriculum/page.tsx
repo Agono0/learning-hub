@@ -66,6 +66,7 @@ interface Plan {
     mockExam: boolean
     expressiveWriting: boolean
   }[]
+  optimalGap: { minDays: number; maxDays: number; recommendedDays: number } | null
 }
 interface SourceRow {
   id: number
@@ -624,6 +625,16 @@ export default function CurriculumPage() {
                 <div className="text-sm">
                   Countdown: <strong>{plan.daysLeft} day(s)</strong>
                 </div>
+                {plan.optimalGap && (
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Cepeda window: space reviews every{' '}
+                    <strong>
+                      {plan.optimalGap.minDays}–{plan.optimalGap.maxDays}
+                    </strong>{' '}
+                    days (10–20% of the {plan.daysLeft}-day interval) — every{' '}
+                    {plan.optimalGap.recommendedDays} days is a good default.
+                  </p>
+                )}
                 <div className="mt-2 space-y-1">
                   {plan.days.slice(0, 7).map((d) => (
                     <div key={d.date} className="flex flex-wrap items-center gap-2 text-xs">
