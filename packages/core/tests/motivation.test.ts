@@ -107,6 +107,9 @@ describe('achievements', () => {
     'first_focus',
     'focus_600_minutes',
     'first_course',
+    'courses_3',
+    'first_certificate',
+    'exam_aced',
     'skill_mastered',
     'first_idea',
     'idea_evolved',
@@ -115,7 +118,7 @@ describe('achievements', () => {
     'palace_built',
   ]
 
-  it('has the full 15-milestone white-hat catalog', () => {
+  it('has the full 18-milestone white-hat catalog', () => {
     expect(ACHIEVEMENTS.map((a) => a.key)).toEqual(KEYS)
     for (const a of ACHIEVEMENTS) {
       expect(a.title.length).toBeGreaterThan(0)
@@ -138,6 +141,8 @@ describe('achievements', () => {
     journalEntries: 0,
     examsPrepped: 0,
     palacesBuilt: 0,
+    certificates: 0,
+    examsAced: 0,
   }
 
   it('nothing is unlocked at zero stats', () => {

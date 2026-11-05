@@ -114,6 +114,10 @@ export interface AchievementStats {
   journalEntries: number
   examsPrepped: number
   palacesBuilt: number
+  /** certificates issued (course finals passed) */
+  certificates: number
+  /** course exam attempts with score ≥ 0.8 */
+  examsAced: number
 }
 
 /** One achievement badge and its unlock predicate over AchievementStats. */
@@ -179,6 +183,24 @@ export const ACHIEVEMENTS: Achievement[] = [
     title: 'Course Complete',
     description: 'Finish your first course.',
     check: (s) => s.coursesCompleted >= 1,
+  },
+  {
+    key: 'courses_3',
+    title: 'Scholar',
+    description: 'Finish three courses. Compounding, curriculum by curriculum.',
+    check: (s) => s.coursesCompleted >= 3,
+  },
+  {
+    key: 'first_certificate',
+    title: 'Earned Proof',
+    description: 'Pass a course final and claim your first certificate.',
+    check: (s) => s.certificates >= 1,
+  },
+  {
+    key: 'exam_aced',
+    title: 'Sharpshooter',
+    description: 'Score 80%+ on a course exam.',
+    check: (s) => s.examsAced >= 1,
   },
   {
     key: 'skill_mastered',
@@ -320,7 +342,11 @@ export function validateWoopGoal(goal: WoopGoalInput): WoopValidation {
     }
   }
 
-  if (goal.dueDate != null && goal.dueDate.trim() !== '' && Number.isNaN(Date.parse(goal.dueDate))) {
+  if (
+    goal.dueDate != null &&
+    goal.dueDate.trim() !== '' &&
+    Number.isNaN(Date.parse(goal.dueDate))
+  ) {
     errors.push('Due date must be a valid date.')
   }
 

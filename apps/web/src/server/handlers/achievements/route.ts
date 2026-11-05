@@ -2,6 +2,8 @@ import { eq, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   achievements,
+  certificates,
+  courseExamAttempts,
   examDates,
   focusSessions,
   ideas,
@@ -90,6 +92,15 @@ export async function GET() {
     .select({ n: sql<number>`count(*)` })
     .from(palaces)
     .all()
+  const [certificateCount] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(certificates)
+    .all()
+  const [examsAced] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(courseExamAttempts)
+    .where(sql`${courseExamAttempts.score} >= 0.8`)
+    .all()
 
   const stats: AchievementStats = {
     totalReviews: reviewCount?.n ?? 0,
@@ -105,6 +116,8 @@ export async function GET() {
     journalEntries: journalCount?.n ?? 0,
     examsPrepped: examCount?.n ?? 0,
     palacesBuilt: palaceCount?.n ?? 0,
+    certificates: certificateCount?.n ?? 0,
+    examsAced: examsAced?.n ?? 0,
   }
 
   const unlockedNow = unlockedAchievementKeys(stats)
