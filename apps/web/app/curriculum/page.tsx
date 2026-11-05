@@ -55,6 +55,12 @@ interface Skill {
   dependants: number[]
   elo: number
 }
+interface Radar {
+  skills: { skillId: number; name: string; pKnown: number; attempts: number }[]
+  leeches: { cardId: number; lapses: number; preview: string | null }[]
+  overconfidentCards: number
+  summary: string
+}
 interface Plan {
   daysLeft: number
   cramWarning: boolean
@@ -93,9 +99,9 @@ export default function CurriculumPage() {
     queryKey: ['curriculum'],
     queryFn: () => apiGet<{ tracks: Track[] }>('/api/curriculum'),
   })
-  const { data: skillData } = useQuery<{ skills: Skill[] }>({
+  const { data: skillData } = useQuery<{ skills: Skill[]; radar: Radar }>({
     queryKey: ['skills'],
-    queryFn: () => apiGet<{ skills: Skill[] }>('/api/curriculum/skills'),
+    queryFn: () => apiGet<{ skills: Skill[]; radar: Radar }>('/api/curriculum/skills'),
   })
   const { data: examData } = useQuery<{
     exam: { id: number; title: string; date: string } | null
@@ -561,6 +567,57 @@ export default function CurriculumPage() {
               ))}
             </div>
           )}
+
+          {/* Weakness radar */}
+          {skillData?.radar &&
+            (skillData.radar.skills.length > 0 || skillData.radar.leeches.length > 0) && (
+              <div className="panel space-y-2">
+                <h2 className="text-sm font-semibold">Weakness radar</h2>
+                <p className="text-xs text-neutral-500">{skillData.radar.summary}</p>
+                {skillData.radar.skills.length > 0 && (
+                  <div className="space-y-1.5">
+                    {skillData.radar.skills.map((s) => (
+                      <div key={s.skillId} className="flex items-center gap-2 text-xs">
+                        <span className="w-40 min-w-0 flex-1 truncate">{s.name}</span>
+                        <div className="h-1.5 w-24 rounded-full bg-neutral-200 dark:bg-[#26262b]">
+                          <div
+                            className="h-full rounded-full bg-red-400"
+                            style={{ width: `${Math.round(s.pKnown * 100)}%` }}
+                          />
+                        </div>
+                        <span className="w-10 text-right tabular-nums text-neutral-500">
+                          {Math.round(s.pKnown * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {skillData.radar.leeches.length > 0 && (
+                  <div>
+                    <p className="label mt-2">Leeches — cards that keep slipping</p>
+                    <ul className="space-y-1 text-xs">
+                      {skillData.radar.leeches.map((l) => (
+                        <li key={l.cardId} className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate">
+                            {l.preview ?? `card #${l.cardId}`}
+                          </span>
+                          <span className="shrink-0 text-amber-400">×{l.lapses} lapses</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {skillData.radar.overconfidentCards > 0 && (
+                  <p className="text-xs text-amber-400">
+                    {skillData.radar.overconfidentCards} card(s) you marked “sure” but failed —{' '}
+                    <a href="/analytics" className="underline underline-offset-2">
+                      drill them on Analytics
+                    </a>
+                    .
+                  </p>
+                )}
+              </div>
+            )}
 
           {/* Skill tree */}
           <div className="panel">

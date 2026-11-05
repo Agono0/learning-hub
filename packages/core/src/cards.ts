@@ -303,6 +303,32 @@ export function pickBasicFront(
   return pool[k % pool.length]!
 }
 
+/**
+ * Short front-text preview of any card (weakness lists, lint panels, search
+ * results). Markdown markers stripped; truncated to ~90 chars.
+ */
+export function cardPreviewText(type: string, content: unknown): string | null {
+  const c = (content ?? {}) as Record<string, unknown>
+  const clean = (s: string | undefined) => s?.replace(/[#*`>]/g, '').slice(0, 90) ?? null
+  if (type === 'exercise') {
+    const ex = c.exercise as { prompt?: string } | undefined
+    return clean(ex?.prompt)
+  }
+  const basic = c.basic as { front?: string } | undefined
+  if (basic?.front) return clean(basic.front)
+  const cloze = c.cloze as { text?: string } | undefined
+  if (cloze?.text) return clean(cloze.text)
+  const mcq = c.mcq as { question?: string } | undefined
+  if (mcq?.question) return clean(mcq.question)
+  const typein = c.typein as { question?: string } | undefined
+  if (typein?.question) return clean(typein.question)
+  const proof = c.proof_step as { statement?: string } | undefined
+  if (proof?.statement) return clean(proof.statement)
+  const grammar = c.grammar as { sentence?: string } | undefined
+  if (grammar?.sentence) return clean(grammar.sentence)
+  return null
+}
+
 // ─── Interleaving ───────────────────────────────────────────────────────────
 
 function fisherYates<T>(items: T[], rng: () => number): T[] {

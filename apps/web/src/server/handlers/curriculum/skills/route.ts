@@ -1,11 +1,21 @@
 /**
- * /api/curriculum/skills — GET the skill tree with mastery + DAG unlock states.
+ * /api/curriculum/skills — GET the skill tree with mastery + DAG unlock states,
+ * plus the weakness radar (weakest skills, leeches, confident-wrong count).
  */
+import { and, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@learning-hub/db'
-import { masteryLevel, unlockedSkills, type MasteryInput } from '@learning-hub/core'
+import {
+  cardPreviewText,
+  masteryLevel,
+  unlockedSkills,
+  weaknessRadar,
+  type MasteryInput,
+} from '@learning-hub/core'
+
+const WEEK_MS = 7 * 86_400_000
 
 export async function GET() {
-  const { skills, skillEdges, mastery } = await import('@learning-hub/db')
+  const { cards, mastery, revlog, skills, skillEdges } = await import('@learning-hub/db')
   const skillRows = await db.select().from(skills)
   const edgeRows = await db.select().from(skillEdges)
   const masteryRows = await db.select().from(mastery)
@@ -38,5 +48,38 @@ export async function GET() {
       dependants: edgeRows.filter((e) => e.fromSkillId === s.id).map((e) => e.toSkillId),
     }
   })
-  return Response.json({ skills: out, edges: edgeRows })
+
+  // weakness radar: weakest skills + leeches + confident-wrong count
+  const leechRows = await db
+    .select({ id: cards.id, lapses: cards.lapses, type: cards.type, content: cards.content })
+    .from(cards)
+    .where(gte(cards.lapses, 8))
+    .limit(10)
+  const [overconfident] = await db
+    .select({ n: sql<number>`count(distinct ${revlog.cardId})` })
+    .from(revlog)
+    .where(
+      and(
+        eq(revlog.confidence, 1),
+        eq(revlog.rating, 1),
+        gte(revlog.reviewedAt, new Date(Date.now() - 4 * WEEK_MS).toISOString()),
+      ),
+    )
+  const radar = weaknessRadar({
+    skills: out.map((s) => ({
+      skillId: s.id,
+      name: s.name,
+      pKnown: s.pKnown,
+      attempts: s.attempts,
+      elo: s.elo,
+    })),
+    leeches: leechRows.map((c) => ({
+      cardId: c.id,
+      lapses: c.lapses,
+      preview: cardPreviewText(c.type, c.content),
+    })),
+    overconfidentCards: Number(overconfident?.n ?? 0),
+  })
+
+  return Response.json({ skills: out, edges: edgeRows, radar })
 }
