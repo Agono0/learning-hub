@@ -1,0 +1,6 @@
+/**
+ * Repositories — reusable, transactional queries shared by every host
+ * (web handlers, MCP tools, CLI, headless server). Put a query here as soon
+ * as a second caller needs it.
+ */
+export * from './curriculum'
