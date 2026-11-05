@@ -1,5 +1,5 @@
 /**
- * Language learning utilities (Agent A) — i+1 comprehensible-input checking,
+ * Language learning utilities — i+1 comprehensible-input checking,
  * grammar card building and digit chunking for number practice.
  * Pure module — safe for client bundles.
  */

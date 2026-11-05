@@ -1,5 +1,5 @@
 /**
- * Review session logic (Agent A) — session building with hypercorrection
+ * Review session logic — session building with hypercorrection
  * priority, the session energy system, worked-example fading for proofs and
  * Yerkes-Dodson difficulty tuning. Pure module — safe for client bundles.
  */

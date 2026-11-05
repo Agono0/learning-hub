@@ -119,6 +119,10 @@ navigation. Then replace the TODOs. Without the scaffolder, do these by hand:
     up(ctx) { ctx.addColumn('lessons', 'est_minutes', 'INTEGER') } }
   ```
   then append it to `MIGRATIONS` in `migrations/index.ts`.
+- **Non-drizzle objects** (FTS5 virtual tables, triggers, views): a migration using
+  `ctx.raw.exec` — see `migrations/003-fts-search.ts` for the idempotent pattern
+  (feature-detect, `IF NOT EXISTS`, backfill by DELETE+INSERT). Exclude such names from
+  DDL-cloning test helpers; backups whitelist drizzle tables already.
 - Put reusable queries in `packages/db/src/repos/<domain>.ts` so web, MCP and CLI share them.
 - Why it works this way: [docs/adr/0002](docs/adr/0002-versioned-idempotent-migrations.md).
 
@@ -163,7 +167,10 @@ for UI — check it at phone width. Report honestly what you did **not** verify.
 
 ## 7. Where to learn more
 
+Start from the [docs/README.md](docs/README.md) index, then:
 [ARCHITECTURE.md](ARCHITECTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md) ·
+[docs/learning-science.md](docs/learning-science.md) (every technique → code link) ·
+[docs/curriculum/](docs/curriculum/) (LHCF contract; regenerate with `npm run docs:curriculum`) ·
 [docs/native.md](docs/native.md) · [docs/adr/](docs/adr/README.md) ·
 [docs/ENGINE-REFERENCE.md](docs/ENGINE-REFERENCE.md) · [docs/TEST_INFRA.md](docs/TEST_INFRA.md) ·
 [docs/ai-providers.md](docs/ai-providers.md) · [docs/plugins.md](docs/plugins.md)

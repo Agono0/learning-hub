@@ -1,5 +1,5 @@
 /**
- * Card content utilities (Agent A) — cloze parsing/building, per-format zod
+ * Card content utilities — cloze parsing/building, per-format zod
  * validation, deck-fair interleaving and bullet→card regeneration.
  * Pure module (zod is the only dependency) — safe for client bundles.
  */

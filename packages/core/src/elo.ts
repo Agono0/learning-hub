@@ -2,7 +2,7 @@
  * Elo rating for learners and items (chess.com puzzle-rating pattern).
  * Verified formulas: expected E = 1/(1+10^((D-R)/400)); R += K·(outcome−E);
  * K decays with attempts for stability: K = K0/(1 + attempts/const).
- * Used by: review grading (Agent A), skill ladder (Agent B), curriculum gating (Agent C).
+ * Used by: review grading, skill ladder, curriculum gating.
  */
 
 export interface EloUpdate {
@@ -35,7 +35,13 @@ export function eloUpdate(
   const kItem = k0 / (1 + itemAttempts / decay)
   const ratingAfter = clamp(learnerRating + kLearner * (outcome - expected), 100, 3000)
   const itemDifficultyAfter = clamp(itemDifficulty + kItem * (expected - outcome), 100, 3000)
-  return { ratingBefore: learnerRating, ratingAfter, itemDifficultyBefore: itemDifficulty, itemDifficultyAfter: itemDifficultyAfter, expected }
+  return {
+    ratingBefore: learnerRating,
+    ratingAfter,
+    itemDifficultyBefore: itemDifficulty,
+    itemDifficultyAfter: itemDifficultyAfter,
+    expected,
+  }
 }
 
 /** chess.com-style streak bonus: +5 rating points per streak step, capped. */

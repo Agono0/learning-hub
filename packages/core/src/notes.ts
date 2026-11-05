@@ -1,5 +1,5 @@
 /**
- * Learning HUB — notes layer (Agent C).
+ * Learning HUB — notes layer.
  * Tana-style supertag templates, Zettelkasten backlinks, RemNote-style
  * bullet↔card sync planning, and [[wikilink]] parsing.
  * Pure logic — DB layer applies the plans.

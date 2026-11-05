@@ -1,5 +1,5 @@
 /**
- * Learning HUB — reading pipeline (Agent C).
+ * Learning HUB — reading pipeline.
  * SuperMemo-style incremental reading: daily fragment chunker, Readwise-style
  * highlight resurfacing, triage transitions, and the Ghostreader-style cloze
  * prompt (guardrailed to the provided text only).
@@ -39,7 +39,15 @@ export function nextFragment(source: ReadingSource, wordsPerDay = 800): ReadingF
   const words = source.content.split(/\s+/).filter(Boolean)
   const total = words.length
   if (total === 0) {
-    return { text: '', fromWord: 0, toWord: 0, words: 0, position: 100, nextPosition: 100, done: true }
+    return {
+      text: '',
+      fromWord: 0,
+      toWord: 0,
+      words: 0,
+      position: 100,
+      nextPosition: 100,
+      done: true,
+    }
   }
   const position = clampPct(source.position ?? 0)
   const fromWord = Math.min(total, Math.floor((position / 100) * total))
@@ -136,7 +144,11 @@ export function triageUpdate(
  * without triage — Readwise's passive resurfacing effect.
  */
 export function resurfaceSeen(h: HighlightRow, today: Date): TriageUpdate {
-  return { triaged: h.triaged, strength: Math.min(1, h.strength + 0.05), lastReviewedAt: today.toISOString() }
+  return {
+    triaged: h.triaged,
+    strength: Math.min(1, h.strength + 0.05),
+    lastReviewedAt: today.toISOString(),
+  }
 }
 
 // ─── Highlight extraction (heuristic, no AI needed) ─────────────────────────
@@ -153,9 +165,27 @@ export function extractHighlightCandidates(text: string, max = 10): string[] {
     .map((s) => s.trim())
     .filter((s) => s.length >= 30 && s.length <= 400)
   const CUES = [
-    'is defined as', 'means that', 'because', 'therefore', 'the key', 'in other words',
-    'the most', 'it turns out', 'research shows', 'we found', 'conclude', 'principle',
-    'important', 'never', 'always', 'first', 'discovered', 'proves', 'rule', 'percent', '%',
+    'is defined as',
+    'means that',
+    'because',
+    'therefore',
+    'the key',
+    'in other words',
+    'the most',
+    'it turns out',
+    'research shows',
+    'we found',
+    'conclude',
+    'principle',
+    'important',
+    'never',
+    'always',
+    'first',
+    'discovered',
+    'proves',
+    'rule',
+    'percent',
+    '%',
   ]
   const scored = sentences.map((s, i) => {
     const lower = s.toLowerCase()

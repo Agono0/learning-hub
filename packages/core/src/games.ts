@@ -1,5 +1,5 @@
 /**
- * Learning games (Agent A) — matching-pairs and category-mapping generation
+ * Learning games — matching-pairs and category-mapping generation
  * from card content. Pure module — safe for client bundles.
  */
 import type { CardContent, Grade } from './types'
@@ -120,7 +120,18 @@ export function generateMapping(
 ): MappingGame {
   const maxItems = opts.maxItems ?? 12
   const rng = opts.rng ?? Math.random
-  const SKIP_TAGS = new Set(['ai', 'cloze', 'mcq', 'typein', 'basic', 'proof-step', 'definition', 'theorem', 'lemma', 'exam'])
+  const SKIP_TAGS = new Set([
+    'ai',
+    'cloze',
+    'mcq',
+    'typein',
+    'basic',
+    'proof-step',
+    'definition',
+    'theorem',
+    'lemma',
+    'exam',
+  ])
   const byCategory = new Map<string, { cardId: number; label: string }[]>()
   for (const card of cards) {
     const sides = cardSides(card.content)
@@ -184,18 +195,22 @@ export function gradeForAccuracy(accuracy: number): Grade {
  * - Recall bonus: `XP_REWARDS.reviewRecall` (+5 XP) if grade >= 3 (Good/Easy)
  * - Speed bonus: +5 XP if accuracy >= 0.8 and average time per pair < 4 seconds
  */
-export function calculateMatchingXp(opts: {
-  pairs: number
-  accuracy: number
-  timeMs?: number
-}): { xp: number; speedBonus: boolean; base: number; recallBonus: number } {
+export function calculateMatchingXp(opts: { pairs: number; accuracy: number; timeMs?: number }): {
+  xp: number
+  speedBonus: boolean
+  base: number
+  recallBonus: number
+} {
   const safePairs = Number.isFinite(opts.pairs) && opts.pairs > 0 ? opts.pairs : 0
   const base = safePairs * XP_REWARDS.review
   const grade = gradeForAccuracy(opts.accuracy)
   const recallBonus = grade >= 3 ? XP_REWARDS.reviewRecall : 0
-  const timeMs = typeof opts.timeMs === 'number' && Number.isFinite(opts.timeMs) ? opts.timeMs : null
+  const timeMs =
+    typeof opts.timeMs === 'number' && Number.isFinite(opts.timeMs) ? opts.timeMs : null
   const avgTimePerPair = timeMs !== null && safePairs > 0 && timeMs >= 0 ? timeMs / safePairs : null
-  const speedBonus = Boolean(avgTimePerPair !== null && avgTimePerPair < 4000 && opts.accuracy >= 0.8)
+  const speedBonus = Boolean(
+    avgTimePerPair !== null && avgTimePerPair < 4000 && opts.accuracy >= 0.8,
+  )
   const speedXp = speedBonus ? 5 : 0
   return {
     xp: base + recallBonus + speedXp,
@@ -241,4 +256,3 @@ export function evaluateMatchingGame(opts: {
     speedBonus: xpInfo.speedBonus,
   }
 }
-

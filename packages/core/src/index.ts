@@ -1,8 +1,5 @@
 /**
- * Learning HUB — core barrel.
- * Shared pure-math modules below are implemented; subsystem modules are added
- * by their owning agent (append ONE export line under your anchor — do not
- * touch other agents' lines).
+ * Learning HUB — core barrel. One export line per module, grouped by domain.
  */
 export * from './types'
 export * from './elo'
@@ -10,7 +7,7 @@ export * from './bkt'
 export * from './xp'
 export * from './streaks'
 
-// ── Agent A (learning core) — append below ──
+// ── Learning core ──
 export * from './fsrs'
 export * from './cards'
 export * from './linter'
@@ -22,7 +19,7 @@ export * from './games'
 export * from './anki'
 export * from './anki-export'
 
-// ── Agent B (human systems) — append below ──
+// ── Human systems ──
 export * from './motivation'
 export * from './habits'
 export * from './focus'
@@ -31,7 +28,7 @@ export * from './quotes'
 export * from './physio'
 export * from './analytics'
 
-// ── Agent C (idea/AI/agent layer) — append below ──
+// ── Ideas / AI / agents ──
 export * from './ideas'
 export * from './notes'
 export * from './reading'

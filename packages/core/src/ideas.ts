@@ -1,5 +1,5 @@
 /**
- * Learning HUB — idea system (Agent C).
+ * Learning HUB — idea system.
  * Pure logic: SCAMPER lenses, combinatorial idea evolution, brainwriting merge,
  * incubator decay (ideas fade unless resurfaced), project promotion.
  * No DB, no I/O — callers own persistence.
@@ -21,43 +21,50 @@ export const scamperLenses: ScamperLens[] = [
     key: 'substitute',
     name: 'Substitute',
     emoji: '🔁',
-    prompt: 'What component, material, or step could be substituted? What would change if a person, process, or ingredient were swapped?',
+    prompt:
+      'What component, material, or step could be substituted? What would change if a person, process, or ingredient were swapped?',
   },
   {
     key: 'combine',
     name: 'Combine',
     emoji: '🧩',
-    prompt: 'What could be merged with this — another idea, function, or audience — to create something new?',
+    prompt:
+      'What could be merged with this — another idea, function, or audience — to create something new?',
   },
   {
     key: 'adapt',
     name: 'Adapt',
     emoji: '🪄',
-    prompt: 'What else is like this? What could you copy or borrow from another context, field, or era?',
+    prompt:
+      'What else is like this? What could you copy or borrow from another context, field, or era?',
   },
   {
     key: 'modify',
     name: 'Modify / Magnify / Minify',
     emoji: '🔍',
-    prompt: 'What could be amplified, shrunk, made faster, slower, bigger, smaller, stranger, or more extreme?',
+    prompt:
+      'What could be amplified, shrunk, made faster, slower, bigger, smaller, stranger, or more extreme?',
   },
   {
     key: 'put-to-other-use',
     name: 'Put to Other Use',
     emoji: '🎯',
-    prompt: 'Who else could use this, or what else could it do? What if it served a completely different audience or purpose?',
+    prompt:
+      'Who else could use this, or what else could it do? What if it served a completely different audience or purpose?',
   },
   {
     key: 'eliminate',
     name: 'Eliminate',
     emoji: '✂️',
-    prompt: 'What could be removed, simplified, split out, or done without? What is the smallest viable core?',
+    prompt:
+      'What could be removed, simplified, split out, or done without? What is the smallest viable core?',
   },
   {
     key: 'reverse',
     name: 'Reverse / Rearrange',
     emoji: '🔄',
-    prompt: 'What if the order, roles, or direction were reversed? What does the opposite of this idea look like?',
+    prompt:
+      'What if the order, roles, or direction were reversed? What does the opposite of this idea look like?',
   },
 ]
 
@@ -87,7 +94,10 @@ export interface IdeaSeed {
  * The AI (or a human) produces an offspring idea; callers then link it to both
  * parents with `parent-of` links (see DB idea_links).
  */
-export function evolveIdeas(ideaA: IdeaSeed, ideaB: IdeaSeed): {
+export function evolveIdeas(
+  ideaA: IdeaSeed,
+  ideaB: IdeaSeed,
+): {
   system: string
   prompt: string
   /** Fallback guidance when no AI is configured. */

@@ -1,5 +1,5 @@
 /**
- * Memory system helpers (Agent A) — the Major system, PAO chunking and
+ * Memory system helpers — the Major system, PAO chunking and
  * memory-palace walk ordering. Pure module — safe for client bundles.
  *
  * Major system digit→consonant map (standard mnemonic canon):

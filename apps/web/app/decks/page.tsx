@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Decks & Cards (Agent A): deck management, card browser with filters, a
+ * Decks & Cards: deck management, card browser with filters, a
  * full per-format card editor (incl. image-occlusion rect drawing with
  * normalized coords), Wozniak linter results panel on save, AI card
  * generation (degrades gracefully) and bulk paste import.

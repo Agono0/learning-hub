@@ -1,5 +1,5 @@
 /**
- * Learning HUB — AI media generation (Agent C).
+ * Learning HUB — AI media generation.
  * NotebookLM-style artifacts: a two-host podcast dialogue from a lesson
  * summary, and a FAQ/briefing study guide from any source.
  * Uses the AIClient from ai.ts; degrades gracefully when AI is unconfigured.

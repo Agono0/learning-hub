@@ -2,6 +2,58 @@
 
 All notable changes to Learning HUB are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+The expansion build: a curriculum you can import from any AI, a 12-type practice engine, the learning-science boosters, study companions, and the knowledge tools.
+
+### Curriculum v2 (LHCF)
+
+- **LHCF v1 format** — a public, versioned contract any AI can produce (JSON, YAML or Markdown), with a lenient normalizer (auto-repairs), plain-language validation with fixes, slug-keyed idempotent import and full-fidelity export. Generated docs stay current via a drift test (`npm run docs:curriculum`). See [`docs/curriculum/PROMPT.md`](docs/curriculum/PROMPT.md).
+- **Courses in the app** — catalog, import wizard (paste or drop a file, dry-run preview), course page with soft prerequisite locks, lesson player (retrieval-first key terms, worked examples, reflections), course exams, certificates.
+- **Agent surfaces** — MCP curriculum tools and `curriculum import|list|prompt` CLI commands, covered by E2E through both.
+
+### Practice engine
+
+- **12 exercise types** (`mcq multi truefalse numeric typein cloze ordering parsons matching categorize freetext code`) with pure server-side graders, typo-tolerant text matching, a sandboxed JS code runner, and a practice catalog that feeds the LHCF prompts. Exercises are `exercise`-format cards — one grading path (`executeReview`).
+
+### Review session
+
+- Exercise cards render and grade inside the daily review (the practice endpoint records them; no double grading).
+- **Successive relearning** (Rawson & Dunlosky 2011): a configurable retrieval criterion (1–4 correct recalls) with SPACED re-queue — a failed card repeats with at least one other card in between until the criterion is met.
+- Mixed practice: a course page button builds a whole-course session (cram semantics) interleaved across lessons.
+- Last-card mistakes now extend the session instead of dropping the retry.
+
+### Learning-science boosters
+
+- Zeigarnik "pick up where you left off" open loops on the dashboard.
+- Cornell-notes supertag that seeds the Pauk page layout.
+- Leitner box view (histogram + per-card chips) over the FSRS state.
+- Cepeda optimal-gap window (10–20 % of the retention interval) on the exam countdown plan.
+- Calibration trainer: the confident-wrong drill list on Analytics.
+- Dual-coding images on basic cards (attach, render, validate) and varied front phrasings (desirable-difficulty rotation per exposure).
+- The full technique catalog with origins, evidence and code links: [`docs/learning-science.md`](docs/learning-science.md).
+
+### Study companions
+
+- **Today agenda engine** — prioritized, honest ("everything done → rest consolidates it"), replaces the static daily loop.
+- **Study planner** — weekly template from real course progress + exam pressure, rest-day aware, exported as an `.ics` calendar file; new `study_plans` table.
+- **Weakness radar** — weakest skills (attempts-gated), leeches, confident-wrong count, on the Skills page.
+- **Learning-path recommendations** from the skill DAG (most downstream impact first).
+- **Notifications** — bell with a needs-attention list; opt-in Tauri-native reminders (once per day, dynamic plugin import).
+- Course-centric achievements: `courses_3`, `first_certificate`, `exam_aced`.
+
+### Knowledge tools
+
+- **Global search** — FTS5 across notes, cards, lessons, highlights and ideas (migration `003` with sync triggers + backfill, honest LIKE fallback), driven from a **⌘K / Ctrl+K command palette** (cmdk) that also jumps to any page.
+- **Glossary** — per-course key-term list linking each term to its lesson and to the card that tests it.
+- **Sentence mining** — text → cloze card drafts from notes, highlights or pasted material; AI when configured, an honest heuristic (longest load-bearing word) as the manual fallback; preview-then-save into any deck.
+- **Course mind map** — units → lessons → skills with the course's prerequisite chain, on the course page.
+
+### Internal
+
+- Migration runner gains `fts-search` (003); test DDL-cloning helpers exclude FTS internals (backups whitelist drizzle tables, so FTS never enters a backup).
+- Stale agent-name comments removed from headers; `docs/HANDOFF.md` retired into this changelog; docs indexed in [`docs/README.md`](docs/README.md).
+
 ## [0.1.0] — 2026-11-04
 
 The first open-source release: the full platform (26 systems), one overhaul of the core hardening/engine work, and the open-source packaging.

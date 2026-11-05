@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Games (Agent A): matching pairs built with dnd-kit (PointerSensor
+ * Games: matching pairs built with dnd-kit (PointerSensor
  * distance:5), a run timer, and score submission to /api/games which derives
  * a grade and runs the standard review pipeline on the played cards.
  *

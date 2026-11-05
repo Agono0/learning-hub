@@ -1,9 +1,18 @@
 /**
- * Server-side curriculum persistence (Agent C) — shared by
+ * Server-side curriculum persistence — shared by
  * /api/ai/generate (kind: 'course') and /api/curriculum (POST generate).
  */
 import { eq, inArray } from 'drizzle-orm'
-import { withTransaction, courses, lessons, mastery, skillEdges, skills, tracks, units } from '@learning-hub/db'
+import {
+  withTransaction,
+  courses,
+  lessons,
+  mastery,
+  skillEdges,
+  skills,
+  tracks,
+  units,
+} from '@learning-hub/db'
 import type { GeneratedCourse } from '@learning-hub/core'
 
 /** Ids created by insertGeneratedCourse (track/course/units/lessons/skills). */
@@ -25,17 +34,32 @@ export function insertGeneratedCourse(parsed: GeneratedCourse): InsertedCourseId
   return withTransaction((tx) => {
     const [track] = tx
       .insert(tracks)
-      .values({ title: parsed.title, description: parsed.description ?? null, emoji: parsed.emoji ?? '🎯' })
-      .returning().all()
+      .values({
+        title: parsed.title,
+        description: parsed.description ?? null,
+        emoji: parsed.emoji ?? '🎯',
+      })
+      .returning()
+      .all()
     const [course] = tx
       .insert(courses)
-      .values({ trackId: track!.id, title: parsed.title, description: parsed.description ?? null, order: 0 })
-      .returning().all()
+      .values({
+        trackId: track!.id,
+        title: parsed.title,
+        description: parsed.description ?? null,
+        order: 0,
+      })
+      .returning()
+      .all()
 
     const unitIds: number[] = []
     const lessonIds: number[] = []
     for (const [ui, unit] of parsed.units.entries()) {
-      const [u] = tx.insert(units).values({ courseId: course!.id, title: unit.title, order: ui }).returning().all()
+      const [u] = tx
+        .insert(units)
+        .values({ courseId: course!.id, title: unit.title, order: ui })
+        .returning()
+        .all()
       unitIds.push(u!.id)
       for (const [li, lesson] of unit.lessons.entries()) {
         const [l] = tx
@@ -49,7 +73,8 @@ export function insertGeneratedCourse(parsed: GeneratedCourse): InsertedCourseId
             content: { body: lesson.objective, quiz: lesson.cards },
             order: li,
           })
-          .returning().all()
+          .returning()
+          .all()
         lessonIds.push(l!.id)
       }
     }
@@ -63,7 +88,11 @@ export function insertGeneratedCourse(parsed: GeneratedCourse): InsertedCourseId
       if (existing) {
         id = existing.id
       } else {
-        const [created] = tx.insert(skills).values({ name: s.name, trackId: track!.id }).returning().all()
+        const [created] = tx
+          .insert(skills)
+          .values({ name: s.name, trackId: track!.id })
+          .returning()
+          .all()
         id = created!.id
       }
       skillIds.push(id)

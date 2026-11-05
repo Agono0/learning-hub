@@ -15,12 +15,15 @@ learning-HUB/
 │   │   ├── xp.ts / streaks.ts / motivation.ts / physio.ts
 │   │   ├── cards.ts / linter.ts   # 8 card formats + 20-Rules linter
 │   │   ├── curriculum.ts / review.ts / analytics.ts / games.ts / memory.ts / language.ts / ideas.ts / notes.ts / reading.ts / journal.ts / weekly.ts / habits.ts / focus.ts / media.ts
+│   │   ├── practice/               # 12 exercise types + pure graders + catalog
+│   │   ├── agenda.ts / study-plan.ts / ics.ts / weakness.ts / notifications.ts / sentence-mining.ts
 │   │   ├── anki.ts / anki-export.ts    # Anki import (.apkg/.txt) + export
 │   │   ├── ai.ts / ai/             # AIClient port, prompt library, manual modes
 │   │   ├── events.ts / plugin.ts / plugin-loader.ts   # ← the extension points
 │   │   └── types.ts        # zod-validated shared shapes
 │   ├── db/             # Persistence. Owns every transaction.
-│   │   ├── schema.ts       # 45 tables, JSON columns typed, append-only logs
+│   │   ├── schema.ts       # the tables (JSON columns typed, append-only logs)
+│   │   ├── migrations/     # versioned, idempotent (incl. 003 FTS5 search)
 │   │   ├── index.ts        # WAL pragmas, ensureSchema migrations, stat views
 │   │   ├── review-service.ts  # ← THE canonical review pipeline
 │   │   ├── transaction.ts  # withTransaction (BEGIN IMMEDIATE, sync-only)

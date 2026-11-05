@@ -1,5 +1,5 @@
 /**
- * FSRS-6 scheduling bridge (Agent A) — the canonical, pure layer between the
+ * FSRS-6 scheduling bridge — the canonical, pure layer between the
  * `cards` DB rows and ts-fsrs v6's `DefaultScheduler`.
  *
  * NO db import here: functions are pure; route handlers (apps/web) and the

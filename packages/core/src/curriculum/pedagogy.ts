@@ -1,5 +1,5 @@
 /**
- * Learning HUB — curriculum engine (Agent C).
+ * Learning HUB — curriculum engine.
  * Backward-design course generation + parsing, prerequisite-DAG gating on BKT
  * mastery, exam countdown planning, mock exam construction, and the Ramirez &
  * Beilock expressive-writing intervention. Pure logic + zod validation.

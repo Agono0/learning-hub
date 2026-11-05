@@ -1,5 +1,5 @@
 /**
- * Card quality linter (Agent A) — a selected subset of Piotr Wozniak's
+ * Card quality linter — a selected subset of Piotr Wozniak's
  * "20 Rules for Formulating Knowledge" as automated checks on CardContent.
  * Pure module — safe for client bundles.
  *

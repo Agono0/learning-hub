@@ -1,5 +1,5 @@
 /**
- * /api/cards/bullet — CONTRACT with the notes page (Agent C's UI posts here).
+ * /api/cards/bullet — CONTRACT with the notes page — the notes page posts here.
  * Turns a note bullet into a card (RemNote pattern) and links bullet→card.
  *
  * Body: { noteId, bulletId, content, deckId, format? }

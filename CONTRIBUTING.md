@@ -11,7 +11,7 @@ Requirements: **Node ≥ 22** (CI runs on Node 22), npm 11.
 ```bash
 git clone <your fork> && cd learning-HUB
 npm install
-npm run db:push    # create the SQLite schema at data/learning-hub.db
+npm run db:push    # create the SQLite schema at data/learning-hub.db (optional: ensureSchema self-creates)
 npm run db:seed    # quotes + achievements + defaults (idempotent)
 npm run dev        # http://localhost:3000
 ```
@@ -41,7 +41,7 @@ The E2E suite never touches your real database: each test file runs against a un
 | `tests/e2e` | Opaque-box E2E harness (API, CLI, MCP, DB) | Helpers spawn children as `node --import tsx <path>` — never bare `npx` (Windows-safe, works on Linux CI). |
 | `plugins/` | Loaded by every host at boot | `example-echo` is the reference. |
 
-`docs/` holds the living docs: [`ENGINE-REFERENCE.md`](docs/ENGINE-REFERENCE.md) (verified APIs), [`TEST_INFRA.md`](docs/TEST_INFRA.md) (E2E harness), [`PLAN-RESEARCH.md`](docs/PLAN-RESEARCH.md) (the science), [`ai-providers.md`](docs/ai-providers.md), [`plugins.md`](docs/plugins.md), [`api-server.md`](docs/api-server.md). Design rationale lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+`docs/` holds the living docs — start from the [index](docs/README.md): [`ENGINE-REFERENCE.md`](docs/ENGINE-REFERENCE.md) (verified APIs), [`TEST_INFRA.md`](docs/TEST_INFRA.md) (E2E harness), [`learning-science.md`](docs/learning-science.md) (technique → code map), [`PLAN-RESEARCH.md`](docs/PLAN-RESEARCH.md) (the science), [`ai-providers.md`](docs/ai-providers.md), [`plugins.md`](docs/plugins.md), [`api-server.md`](docs/api-server.md). Design rationale lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ## Code standards
 

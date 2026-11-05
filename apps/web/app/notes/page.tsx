@@ -3,7 +3,7 @@
 /**
  * Notes: list + markdown editor with toolbar, supertag picker (autofills
  * fields), backlinks panel, and the bullets list with "→ card" buttons that
- * call Agent A's contract: POST /api/cards/bullet {noteId,bulletId,content,deckId,format}.
+ * cards service contract: POST /api/cards/bullet {noteId,bulletId,content,deckId,format}.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -277,8 +277,7 @@ export default function NotesPage() {
               ))}
               {bulletToCard.isError && (
                 <p className="text-xs text-amber-500">
-                  Card service not reachable (Agent A&apos;s /api/cards/bullet may not be deployed
-                  yet).
+                  Card service not reachable (/api/cards/bullet may not be deployed yet).
                 </p>
               )}
             </div>

@@ -1,5 +1,5 @@
 /**
- * Math learning utilities (Agent A) — theorem → card decomposition and
+ * Math learning utilities — theorem → card decomposition and
  * problem-set interleaving. Pure module — safe for client bundles.
  */
 import type { CardContent, CardFormat } from './types'
@@ -70,8 +70,7 @@ export function theoremToCards(input: TheoremInput): CardSpec[] {
 
   const steps = input.proofSteps ?? []
   steps.forEach((_step, i) => {
-    const justification =
-      lemmas[i]?.name ?? (i === 0 ? 'hypothesis' : `step ${i}`)
+    const justification = lemmas[i]?.name ?? (i === 0 ? 'hypothesis' : `step ${i}`)
     specs.push({
       type: 'proof_step',
       content: {
