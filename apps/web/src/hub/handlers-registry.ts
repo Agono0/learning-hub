@@ -72,6 +72,16 @@ import * as review from '../server/handlers/review/route'
 import * as settings from '../server/handlers/settings/route'
 import * as streaks from '../server/handlers/streaks/route'
 import * as weekly from '../server/handlers/weekly/route'
+import * as curriculumImport from '../server/handlers/curriculum/import/route'
+import * as curriculumPrompt from '../server/handlers/curriculum/prompt/route'
+import * as curriculumCourses from '../server/handlers/curriculum/courses/route'
+import * as curriculumCourseId from '../server/handlers/curriculum/courses/[id]/route'
+import * as curriculumCourseExport from '../server/handlers/curriculum/courses/[id]/export/route'
+import * as curriculumCourseExam from '../server/handlers/curriculum/courses/[id]/exam/route'
+import * as curriculumCourseCertificate from '../server/handlers/curriculum/courses/[id]/certificate/route'
+import * as curriculumLessonId from '../server/handlers/curriculum/lessons/[id]/route'
+import * as curriculumPractice from '../server/handlers/curriculum/practice/route'
+import * as curriculumStageId from '../server/handlers/curriculum/stages/[id]/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -164,6 +174,16 @@ add('review/undo', reviewUndo)
 add('settings', settings)
 add('streaks', streaks)
 add('weekly', weekly)
+add('curriculum/import', curriculumImport)
+add('curriculum/prompt', curriculumPrompt)
+add('curriculum/courses', curriculumCourses)
+add('curriculum/courses/[id]', curriculumCourseId)
+add('curriculum/courses/[id]/export', curriculumCourseExport)
+add('curriculum/courses/[id]/exam', curriculumCourseExam)
+add('curriculum/courses/[id]/certificate', curriculumCourseCertificate)
+add('curriculum/lessons/[id]', curriculumLessonId)
+add('curriculum/practice', curriculumPractice)
+add('curriculum/stages/[id]', curriculumStageId)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
