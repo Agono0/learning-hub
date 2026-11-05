@@ -1,7 +1,8 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { cards, focusSessions, revlog } from '@learning-hub/db'
 import {
+  calibrationByCard,
   calibrationCurve,
   dayKey,
   focusLeakTrend,
@@ -28,7 +29,9 @@ export async function GET(req: Request) {
   // written by the review pipeline) against the actual outcomes
   const revlogRows = db
     .select({
+      cardId: revlog.cardId,
       rating: revlog.rating,
+      confidence: revlog.confidence,
       reviewedAt: revlog.reviewedAt,
       retrievability: revlog.retrievability,
     })
@@ -40,6 +43,43 @@ export async function GET(req: Request) {
     revlogRows.map((r) => ({ rating: r.rating })),
     revlogRows.map((r) => r.retrievability),
   )
+
+  // calibration TRAINER: per-card confidence vs correctness — the drill list
+  // is the confident-wrong set (hypercorrection targets). Preview text comes
+  // from the card content so the panel can name what to re-drill.
+  const cardStats = calibrationByCard(
+    revlogRows.map((r) => ({ cardId: r.cardId, confidence: r.confidence, rating: r.rating })),
+  )
+  const statById = new Map(cardStats.map((s) => [s.cardId, s]))
+  const drillCandidates = revlogRows
+    .filter((r) => r.confidence === 1 && r.rating === 1)
+    .map((r) => r.cardId)
+  const drillIds = [...new Set(drillCandidates)].slice(0, 10)
+  const previewRows =
+    drillIds.length > 0
+      ? db
+          .select({ id: cards.id, type: cards.type, content: cards.content, deckId: cards.deckId })
+          .from(cards)
+          .where(inArray(cards.id, drillIds))
+          .all()
+      : []
+  const previewById = new Map(previewRows.map((c) => [c.id, c]))
+  const calibrationTrainer = {
+    overconfidentTotal: cardStats.filter((s) => s.overconfident > 0).length,
+    reviewedCards: cardStats.length,
+    cards: drillIds
+      .map((id) => {
+        const card = previewById.get(id)
+        const text = card ? cardFrontPreview(card.type, card.content) : null
+        return {
+          cardId: id,
+          deckId: card?.deckId ?? null,
+          preview: text,
+          overconfident: statById.get(id)?.overconfident ?? 0,
+        }
+      })
+      .filter((c) => c.preview !== null),
+  }
 
   // heatmap of daily review volume
   const dailyReviewRows = db.all<DailyReviewsRow>(
@@ -92,6 +132,7 @@ export async function GET(req: Request) {
         : hasPredictions
           ? 'Buckets fill as reviews with logged retrievability predictions accumulate.'
           : 'No logged retrievability predictions yet — buckets fill as reviews record predictions.',
+    calibrationTrainer,
     heatmap,
     timeOfDay,
     learningScore: score,
@@ -99,4 +140,24 @@ export async function GET(req: Request) {
     trueRetention: { retentionPct, totalReviews: retentionRows[0]?.total ?? 0 },
     week: { start: weekAgo, reviews: weeklyReviews, focusMinutes: weeklyFocusMinutes },
   })
+}
+
+/** Short front-text preview of a card for the trainer panel. */
+function cardFrontPreview(type: string, content: unknown): string | null {
+  const c = (content ?? {}) as Record<string, unknown>
+  if (type === 'exercise') {
+    const ex = c.exercise as { prompt?: string } | undefined
+    return ex?.prompt?.replace(/[#*`>]/g, '').slice(0, 90) ?? null
+  }
+  const basic = c.basic as { front?: string } | undefined
+  if (basic?.front) return basic.front.replace(/[#*`>]/g, '').slice(0, 90)
+  const cloze = c.cloze as { text?: string } | undefined
+  if (cloze?.text) return cloze.text.replace(/[#*`>]/g, '').slice(0, 90)
+  const mcq = c.mcq as { question?: string } | undefined
+  if (mcq?.question) return mcq.question.replace(/[#*`>]/g, '').slice(0, 90)
+  const typein = c.typein as { question?: string } | undefined
+  if (typein?.question) return typein.question.replace(/[#*`>]/g, '').slice(0, 90)
+  const proof = c.proof_step as { statement?: string } | undefined
+  if (proof?.statement) return proof.statement.replace(/[#*`>]/g, '').slice(0, 90)
+  return null
 }

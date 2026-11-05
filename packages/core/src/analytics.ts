@@ -23,7 +23,11 @@ export interface ForecastCard {
  * Workload forecast: cards due on each of the next `days` days; anything
  * further out (or with an unparseable date) lands in the trailing 'later' bucket.
  */
-export function forecastHistogram(cards: ForecastCard[], days = 30, today: Date | string = new Date()): ForecastBucket[] {
+export function forecastHistogram(
+  cards: ForecastCard[],
+  days = 30,
+  today: Date | string = new Date(),
+): ForecastBucket[] {
   const n = Math.max(1, Math.floor(days))
   const start = Date.parse(dateKeyOf(today) + 'T00:00:00Z')
   const buckets = new Map<string, number>()
@@ -110,6 +114,44 @@ export function calibrationCurve(
   }))
 }
 
+// ─── Calibration trainer (per-card confidence vs correctness) ────────────────
+
+/** One confidence-vs-correctness stat block per card. */
+export interface CalibrationCardStat {
+  cardId: number
+  /** graded reviews with a confidence mark */
+  reviews: number
+  /** "sure" but failed (confidence = 1, rating = 1) — the hypercorrection set */
+  overconfident: number
+  /** "guessing" but correct (confidence = 0, rating ≥ 3) */
+  underconfident: number
+}
+
+/**
+ * Aggregate per-card confidence vs correctness from recent revlog rows —
+ * the data behind the calibration trainer. Overconfident cards are the drill
+ * list: confident errors are corrected best by an immediate retest
+ * (hypercorrection, Butterfield & Metcalfe 2001).
+ */
+export function calibrationByCard(
+  rows: { cardId: number; confidence: number; rating: number }[],
+): CalibrationCardStat[] {
+  const byCard = new Map<number, CalibrationCardStat>()
+  for (const r of rows) {
+    const stat = byCard.get(r.cardId) ?? {
+      cardId: r.cardId,
+      reviews: 0,
+      overconfident: 0,
+      underconfident: 0,
+    }
+    stat.reviews += 1
+    if (r.confidence === 1 && r.rating === 1) stat.overconfident += 1
+    if (r.confidence === 0 && r.rating >= 3) stat.underconfident += 1
+    byCard.set(r.cardId, stat)
+  }
+  return [...byCard.values()]
+}
+
 // ─── Heatmap ────────────────────────────────────────────────────────────────
 
 export interface HeatmapPoint {
@@ -167,7 +209,8 @@ export function timeOfDayPerformance(
   const offsetMinutes =
     typeof opts === 'number'
       ? opts * 60
-      : (opts?.timezoneOffsetMinutes ?? (opts?.timezoneOffsetHours != null ? opts.timezoneOffsetHours * 60 : 0))
+      : (opts?.timezoneOffsetMinutes ??
+        (opts?.timezoneOffsetHours != null ? opts.timezoneOffsetHours * 60 : 0))
 
   for (const r of reviews) {
     if (!r.reviewedAt) continue
@@ -216,7 +259,9 @@ export function learningScore(input: {
   const focus = clamp((Math.max(0, input.focusMinutes) / 120) * 100)
   const volume = clamp((Math.max(0, input.reviews) / 100) * 100)
   const weights = { retention: 0.4, focus: 0.3, volume: 0.3 }
-  const score = Math.round(retention * weights.retention + focus * weights.focus + volume * weights.volume)
+  const score = Math.round(
+    retention * weights.retention + focus * weights.focus + volume * weights.volume,
+  )
   return { score, components: { retention, focus, volume }, weights }
 }
 

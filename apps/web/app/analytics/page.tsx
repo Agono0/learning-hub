@@ -1,13 +1,23 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Route } from 'lucide-react'
+import { BarChart3, Route, Target } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 
 interface AnalyticsResponse {
   forecast: { date: string; count: number }[]
   calibration: { bucket: string; predicted: number | null; actual: number | null; n: number }[]
   calibrationNote: string | null
+  calibrationTrainer: {
+    overconfidentTotal: number
+    reviewedCards: number
+    cards: {
+      cardId: number
+      deckId: number | null
+      preview: string | null
+      overconfident: number
+    }[]
+  }
   heatmap: { date: string; count: number }[]
   timeOfDay: { hour: number; total: number; correct: number; rate: number | null }[]
   learningScore: { score: number; components: { retention: number; focus: number; volume: number } }
@@ -165,6 +175,37 @@ export default function AnalyticsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* calibration trainer — the confident-wrong drill list */}
+      <div className="panel space-y-2">
+        <p className="label">Calibration trainer — sure but wrong</p>
+        {d && d.calibrationTrainer.cards.length > 0 ? (
+          <>
+            <p className="text-xs text-neutral-500">
+              {d.calibrationTrainer.overconfidentTotal} card(s) you marked “sure” but failed.
+              Confident errors are corrected best by an immediate retest — drill them now (the
+              review session already retries confident-wrong cards first).
+            </p>
+            <ul className="space-y-1 text-sm">
+              {d.calibrationTrainer.cards.map((c) => (
+                <li key={c.cardId} className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate">{c.preview}</span>
+                  <span className="shrink-0 text-xs text-amber-400">×{c.overconfident}</span>
+                </li>
+              ))}
+            </ul>
+            <a href="/review" className="btn-ghost w-fit">
+              <Target className="h-4 w-4" /> Drill these in Review
+            </a>
+          </>
+        ) : (
+          <p className="text-xs text-neutral-500">
+            {d && d.calibrationTrainer.reviewedCards > 0
+              ? 'No confident-wrong answers recently — calibration looks healthy.'
+              : 'Answer some reviews (with the sure/unsure mark) and the drill list fills here.'}
+          </p>
+        )}
       </div>
 
       {/* time of day */}

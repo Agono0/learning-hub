@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calibrationByCard,
   calibrationCurve,
   focusLeakTrend,
   forecastHistogram,
@@ -49,7 +50,13 @@ describe('calibrationCurve', () => {
       { predictedRetrievability: 0.3, rating: 3 }, // below range → skipped
     ]
     const curve = calibrationCurve(reviews)
-    expect(curve.map((c) => c.bucket)).toEqual(['0.5-0.6', '0.6-0.7', '0.7-0.8', '0.8-0.9', '0.9-1.0'])
+    expect(curve.map((c) => c.bucket)).toEqual([
+      '0.5-0.6',
+      '0.6-0.7',
+      '0.7-0.8',
+      '0.8-0.9',
+      '0.9-1.0',
+    ])
     expect(curve[0].n).toBe(2)
     expect(curve[0].predicted).toBeCloseTo(0.565)
     expect(curve[0].actual).toBe(0) // both Again
@@ -58,6 +65,35 @@ describe('calibrationCurve', () => {
     expect(curve[4].actual).toBeCloseTo(0.5)
     expect(curve[3].n).toBe(0)
     expect(curve[3].predicted).toBeNull()
+  })
+
+  it('calibrationByCard splits confident-wrong from hesitant-right', () => {
+    const stats = calibrationByCard([
+      { cardId: 1, confidence: 1, rating: 1 }, // overconfident
+      { cardId: 1, confidence: 1, rating: 1 }, // again
+      { cardId: 1, confidence: 1, rating: 3 }, // normal correct
+      { cardId: 2, confidence: 0, rating: 3 }, // underconfident
+      { cardId: 2, confidence: 0, rating: 1 }, // honest fail — neither bucket
+      { cardId: 3, confidence: 0, rating: 4 }, // underconfident
+    ])
+    expect(stats.find((s) => s.cardId === 1)).toEqual({
+      cardId: 1,
+      reviews: 3,
+      overconfident: 2,
+      underconfident: 0,
+    })
+    expect(stats.find((s) => s.cardId === 2)).toEqual({
+      cardId: 2,
+      reviews: 2,
+      overconfident: 0,
+      underconfident: 1,
+    })
+    expect(stats.find((s) => s.cardId === 3)).toEqual({
+      cardId: 3,
+      reviews: 1,
+      overconfident: 0,
+      underconfident: 1,
+    })
   })
 
   it('p=1.0 lands in the last bucket', () => {
@@ -79,10 +115,7 @@ describe('calibrationCurve', () => {
   })
 
   it('per-review predictedRetrievability wins over the precomputed array', () => {
-    const reviews = [
-      { rating: 3, predictedRetrievability: 0.95 },
-      { rating: 3 },
-    ]
+    const reviews = [{ rating: 3, predictedRetrievability: 0.95 }, { rating: 3 }]
     const curve = calibrationCurve(reviews, [0.55, 0.75])
     expect(curve[4].n).toBe(1)
     expect(curve[4].predicted).toBeCloseTo(0.95)

@@ -206,10 +206,11 @@ Testing *is* studying: retrieval changes memory more than restudy.
 ### Successive relearning — Rawson & Dunlosky, 2011
 Recall correctly N times per session (with spacing between successes) before
 counting something learned — worth roughly a letter grade.
-- **In Learning HUB:** mistaken cards are re-queued within the session today
-  (`apps/web/app/review/page.tsx`); the explicit N-correct criterion is a
-  planned M3 item (core fold + session bookkeeping).
-- **Status:** 🚧 (criterion 📋 M3)
+- **In Learning HUB:** the review session re-queues failed cards with spacing
+  until the retrieval criterion (1–4, default 1) is met — the pure fold lives
+  in `packages/core/src/practice/successive-relearning.ts`, the session
+  bookkeeping in `apps/web/app/review/page.tsx` (criterion picker on setup).
+- **Status:** ✅
 
 ### Interleaving — Rohrer & Taylor 2007; Rohrer 2020
 Mixing problem types beats blocking them, even though it feels worse.
@@ -447,10 +448,10 @@ the learner's hands.
 | --- | --- |
 | Zeigarnik open loops on the dashboard | ✅ landed |
 | Cornell notes supertag | ✅ landed |
-| Leitner box view | M3 |
-| Cepeda optimal-gap exam scheduler | M3 |
-| Mixed practice per course | M3 |
-| Successive-relearning N-correct criterion | M3 |
+| Leitner box view | ✅ landed |
+| Cepeda optimal-gap exam scheduler | ✅ landed |
+| Mixed practice per course | ✅ landed |
+| Successive-relearning N-correct criterion | ✅ landed |
 | Calibration trainer | M3 |
 | Dual-coding images on basic/exercise cards | M3 |
 | Varied phrasings (desirable difficulty) | M3 |
