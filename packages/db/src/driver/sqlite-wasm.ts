@@ -219,23 +219,22 @@ function openSqliteWasmDatabase(
     const bytes = source instanceof Uint8Array ? source : new Uint8Array(source)
     const mem = new sqlite3.oo1.DB(':memory:', 'c', options?.vfs ?? null)
     if (bytes.byteLength > 0) {
-      // Give the deserialized image writable headroom: sqlite3_deserialize gets
-      // szDb = image size and szBuf = allocated buffer size, and space beyond
-      // szDb becomes free page space. Passing szDb === szBuf (as this spike
-      // originally did) leaves ZERO free pages, so any write after the
-      // deserialize — CREATE VIEW, INSERT, even CREATE INDEX — fails with
-      // SQLITE_FULL. Reserve a fixed slab plus ~10% of the image.
-      const headroom = 64 * 1024 + Math.ceil(bytes.byteLength / 10)
-      const buf = new Uint8Array(bytes.byteLength + headroom)
-      buf.set(bytes)
-      const p = sqlite3.wasm.allocFromTypedArray(buf)
+      // RESIZEABLE lets SQLite grow the in-memory image as it writes (any
+      // fixed headroom eventually fails with SQLITE_FULL — e.g. when opening
+      // creates indexes or a restore adds rows). It requires the buffer to come
+      // from sqlite3_malloc, which allocFromTypedArray uses; FREEONCLOSE hands
+      // ownership to SQLite so the memory is released with the connection.
+      const FREEONCLOSE = 1
+      const RESIZEABLE = 2
+      // Plain Uint8Array copy: the allocator rejects subclasses such as Node Buffer.
+      const p = sqlite3.wasm.allocFromTypedArray(new Uint8Array(bytes))
       const rc = sqlite3.capi.sqlite3_deserialize(
         mem.pointer,
         'main',
         p,
         bytes.byteLength,
-        buf.byteLength,
-        0,
+        bytes.byteLength,
+        FREEONCLOSE | RESIZEABLE,
       )
       if (rc !== 0) {
         mem.close()
