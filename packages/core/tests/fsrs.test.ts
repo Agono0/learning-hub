@@ -14,12 +14,16 @@ import {
   FSRS6_DEFAULT_FACTOR,
   fsrsToCardRow,
   leechCandidates,
+  leitnerBox,
+  leitnerHistogram,
   reviewCard,
 } from '../src/fsrs'
 
 const NOW = new Date('2026-11-04T12:00:00.000Z')
 
-function rowFor(overrides: Partial<Parameters<typeof cardRowToFsrs>[0]> = {}): Parameters<typeof cardRowToFsrs>[0] {
+function rowFor(
+  overrides: Partial<Parameters<typeof cardRowToFsrs>[0]> = {},
+): Parameters<typeof cardRowToFsrs>[0] {
   return {
     id: 1,
     due: '2026-11-03T12:00:00.000Z',
@@ -178,6 +182,34 @@ describe('fast-check scheduling properties', () => {
   })
 })
 
+describe('leitner box view', () => {
+  it('maps new/learning/relearning cards to box 1', () => {
+    for (const state of [0, 1, 3]) {
+      expect(leitnerBox({ state, stability: 50 })).toBe(1)
+    }
+  })
+
+  it('maps review cards by stability', () => {
+    expect(leitnerBox({ state: 2, stability: 0.5 })).toBe(2)
+    expect(leitnerBox({ state: 2, stability: 1 })).toBe(3)
+    expect(leitnerBox({ state: 2, stability: 9.9 })).toBe(3)
+    expect(leitnerBox({ state: 2, stability: 10 })).toBe(4)
+    expect(leitnerBox({ state: 2, stability: 100 })).toBe(5)
+  })
+
+  it('histogram counts per box, summing to the row count', () => {
+    const hist = leitnerHistogram([
+      { state: 0, stability: 0 },
+      { state: 2, stability: 2 },
+      { state: 2, stability: 50 },
+      { state: 2, stability: 365 },
+      { state: 2, stability: 365 },
+    ])
+    expect(hist).toEqual([1, 0, 1, 1, 2])
+    expect(hist.reduce((a, b) => a + b, 0)).toBe(5)
+  })
+})
+
 describe('queue helpers', () => {
   it('dueQueueSelector filters suspended/buried/future and sorts soonest first', () => {
     const rows = [
@@ -277,4 +309,3 @@ describe('calculateRetrievability (Addon 10)', () => {
     expect(revlogItem.retrievability).toBeCloseTo(0.9, 3)
   })
 })
-

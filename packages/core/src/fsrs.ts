@@ -284,6 +284,33 @@ export function leechCandidates<T extends { id: number; lapses: number }>(
 }
 
 /**
+ * Leitner box (1–5) as a VIEW over the FSRS state — the classic box model
+ * (Leitner 1972) as a mental picture of where a card stands:
+ *   box 1 new/learning · 2 young review (< 1 d stability) · 3 (< 10 d)
+ *   4 (< 100 d) · 5 mature (≥ 100 d). A lapse does not demote directly here —
+ *   FSRS stability already drops, which maps to the lower box.
+ */
+export function leitnerBox(row: {
+  state: number // 0 New 1 Learning 2 Review 3 Relearning
+  stability: number
+}): 1 | 2 | 3 | 4 | 5 {
+  if (row.state === 0 || row.state === 1 || row.state === 3) return 1
+  if (row.stability < 1) return 2
+  if (row.stability < 10) return 3
+  if (row.stability < 100) return 4
+  return 5
+}
+
+/** Histogram over rows: box (1–5) → count. */
+export function leitnerHistogram<T extends { state: number; stability: number }>(
+  rows: T[],
+): number[] {
+  const boxes = [0, 0, 0, 0, 0]
+  for (const r of rows) boxes[leitnerBox(r) - 1]! += 1
+  return boxes
+}
+
+/**
  * Format rotation (recognition → recall graduation): keep MCQs while the memory
  * is unstable (stability < 5 days), then graduate to cloze, then to typein
  * (maximum retrieval effort). Other formats are kept as-is.

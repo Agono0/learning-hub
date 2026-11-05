@@ -15,6 +15,7 @@ import { FilePlus2, Layers, Pencil, Plus, Sparkles, Trash2, Upload, Wand2, X } f
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import type { LintResult } from '@learning-hub/core/linter'
 import { parseCloze, validateCardContent } from '@learning-hub/core/cards'
+import { leitnerBox, leitnerHistogram } from '@learning-hub/core/fsrs'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 
@@ -37,6 +38,7 @@ interface CardRow {
   state: number
   reps: number
   lapses: number
+  stability: number
   due: string
   suspended: boolean
 }
@@ -58,6 +60,27 @@ const FORMATS: CardFormat[] = [
   'proof_step',
   'grammar',
 ]
+
+const BOX_LABEL = ['new/learning', 'young', 'young', 'mature', 'mature'] as const
+const BOX_TONE = [
+  'bg-neutral-300 text-neutral-700 dark:bg-[#26262b] dark:text-neutral-400',
+  'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+  'bg-amber-500/30 text-amber-700 dark:text-amber-300',
+  'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+  'bg-emerald-500/40 text-emerald-800 dark:text-emerald-200',
+] as const
+
+/** Leitner box chip: the box number, tinted by maturity. */
+function BoxChip({ box }: { box: 1 | 2 | 3 | 4 | 5 }) {
+  return (
+    <span
+      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-bold ${BOX_TONE[box - 1]}`}
+      title={`Leitner box ${box} (${BOX_LABEL[box - 1]})`}
+    >
+      {box}
+    </span>
+  )
+}
 
 export default function DecksPage() {
   const qc = useQueryClient()
@@ -199,9 +222,30 @@ export default function DecksPage() {
             {cards.data?.cards.length ?? 0} cards
           </span>
         </div>
+        {(cards.data?.cards.length ?? 0) > 0 && (
+          <div
+            className="flex flex-wrap gap-2"
+            title="Leitner boxes: 1 new/learning · 2–3 young · 4–5 mature (Leitner 1972, as a view over FSRS state)"
+          >
+            {leitnerHistogram(cards.data?.cards ?? []).map((count, i) => (
+              <span
+                key={i}
+                className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs ${
+                  count === 0
+                    ? 'border-neutral-200 text-neutral-400 dark:border-[#26262b]'
+                    : 'border-neutral-300 text-neutral-600 dark:border-[#3a3a42] dark:text-neutral-300'
+                }`}
+              >
+                box {i + 1}
+                <span className="font-semibold">{count}</span>
+              </span>
+            ))}
+          </div>
+        )}
         <div className="divide-y divide-neutral-100 dark:divide-[#1e1e23]">
           {(cards.data?.cards ?? []).map((card) => (
             <div key={card.id} className="flex items-center gap-3 py-2 text-sm">
+              <BoxChip box={leitnerBox(card)} />
               <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:bg-[#1a1a1f]">
                 {card.type}
               </span>
