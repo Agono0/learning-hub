@@ -11,9 +11,10 @@
  * See AGENTS.md → "Change the database".
  */
 import { baseline } from './001-baseline'
+import { curriculumV2 } from './002-curriculum-v2'
 import type { Migration } from './runner'
 
-export const MIGRATIONS: readonly Migration[] = [baseline]
+export const MIGRATIONS: readonly Migration[] = [baseline, curriculumV2]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
 export type { Migration, MigrationContext, MigrationReport } from './runner'
