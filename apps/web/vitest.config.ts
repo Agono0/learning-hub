@@ -6,15 +6,22 @@ const here = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   resolve: {
-    alias: {
-      // mirror apps/web/tsconfig.json paths so route modules resolve in vitest
-      '@learning-hub/core/media': resolve(here, '../../packages/core/src/media.ts'),
-      '@learning-hub/core/ai': resolve(here, '../../packages/core/src/ai.ts'),
-      '@learning-hub/core/anki': resolve(here, '../../packages/core/src/anki.ts'),
-      '@learning-hub/core': resolve(here, '../../packages/core/src/index.ts'),
-      '@learning-hub/db': resolve(here, '../../packages/db/src/index.ts'),
-      '@': resolve(here, 'src'),
-    },
+    // mirror apps/web/tsconfig.json paths so route modules resolve in vitest.
+    // Regex aliases first: any @learning-hub/core/<domain> subpath works
+    // without listing it here (same rules as vitest.e2e.config.mjs).
+    alias: [
+      {
+        find: /^@learning-hub\/core\/(.*)$/,
+        replacement: resolve(here, '../../packages/core/src/$1'),
+      },
+      {
+        find: '@learning-hub/core',
+        replacement: resolve(here, '../../packages/core/src/index.ts'),
+      },
+      { find: /^@learning-hub\/db\/(.*)$/, replacement: resolve(here, '../../packages/db/src/$1') },
+      { find: '@learning-hub/db', replacement: resolve(here, '../../packages/db/src/index.ts') },
+      { find: /^@\/(.*)$/, replacement: resolve(here, 'src/$1') },
+    ],
   },
   test: {
     include: ['tests/**/*.test.ts'],
