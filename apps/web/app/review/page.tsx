@@ -8,7 +8,8 @@
  * CLIENT component — imports core via SUBPATHS only (never the barrel: it
  * drags ai.ts/better-sqlite3 into the client bundle).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowRight,
@@ -86,8 +87,20 @@ const GRADES: { grade: Grade; label: string; color: string }[] = [
   { grade: 4, label: 'Easy', color: 'bg-emerald-600 hover:bg-emerald-500' },
 ]
 
+/** useSearchParams needs a Suspense boundary in the static (Tauri) export. */
 export default function ReviewPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReviewPageInner />
+    </Suspense>
+  )
+}
+
+function ReviewPageInner() {
   const qc = useQueryClient()
+  // ?courseId=<id> → mixed practice across the whole course (auto-starts)
+  const courseIdParam = useSearchParams().get('courseId')
+  const courseId = courseIdParam ? Number(courseIdParam) : null
   const [deckId, setDeckId] = useState<number | null>(null)
   const [mode, setMode] = useState<'normal' | 'pretest' | 'cram'>('normal')
   const [limit, setLimit] = useState(20)
@@ -97,14 +110,22 @@ export default function ReviewPage() {
     queryKey: ['decks'],
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
-  const session = useQuery<{ cards: CardRow[] }>({
-    queryKey: ['review-session', deckId, limit, mode],
+  const session = useQuery<
+    { cards: CardRow[] },
+    Error,
+    { cards: CardRow[]; course: { id: number; title: string } | null }
+  >({
+    queryKey: ['review-session', deckId, courseId, limit, mode],
     queryFn: () =>
-      apiGet<{ cards: CardRow[] }>(
-        `/api/review?deckId=${deckId ?? ''}&limit=${limit}&mode=${mode}`,
+      apiGet<{ cards: CardRow[]; course: { id: number; title: string } | null }>(
+        `/api/review?deckId=${deckId ?? ''}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}`,
       ),
-    enabled: started && deckId !== null,
+    enabled: started && (deckId !== null || courseId !== null),
   })
+  // a mixed-practice link starts the session immediately
+  useEffect(() => {
+    if (courseId !== null && !Number.isNaN(courseId)) setStarted(true)
+  }, [courseId])
 
   const [queue, setQueue] = useState<CardRow[]>([])
   const [idx, setIdx] = useState(0)
@@ -409,7 +430,14 @@ export default function ReviewPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Review</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {session.data?.course ? 'Mixed practice' : 'Review'}
+          </h1>
+          {session.data?.course && (
+            <p className="text-xs text-neutral-500">{session.data.course.title}</p>
+          )}
+        </div>
         <div className="flex items-center gap-3 text-sm text-neutral-500">
           <span>
             {idx + 1} / {queue.length}

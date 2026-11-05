@@ -34,6 +34,7 @@ beforeAll(async () => {
   H.lesson = await import('@/server/handlers/curriculum/lessons/[id]/route')
   H.practice = await import('@/server/handlers/curriculum/practice/route')
   H.stage = await import('@/server/handlers/curriculum/stages/[id]/route')
+  H.review = await import('@/server/handlers/review/route')
 })
 
 let courseId = 0
@@ -226,6 +227,37 @@ describe('curriculum API', () => {
       preview: { slug: 'sql-essentials', updatesExisting: true },
     })
     expect(reimport.warnings).toEqual([])
+  })
+
+  it('builds a mixed-practice session across lessons via ?courseId=', async () => {
+    const imported = await (
+      await H.importRoute.POST(
+        new Request(url('/x'), json({ text: example('javascript-functions.json') })),
+      )
+    ).json()
+    const mixedCourseId = imported.report.courseId as number
+
+    const res = await H.review.GET(
+      new Request(url(`/api/review?courseId=${mixedCourseId}&limit=100&mode=normal`)),
+    )
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.course).toMatchObject({ id: mixedCourseId, title: 'JavaScript Functions' })
+    expect(body.mode).toBe('cram')
+    expect(body.cards.length).toBeGreaterThan(0)
+    // interleaved: the first two cards come from DIFFERENT lessons when the
+    // course has multiple lessons with cards
+    const lessons = body.cards
+      .map((c: { sourceKey: string | null }) => (c.sourceKey ?? '').split('/')[1] ?? '')
+      .filter(Boolean)
+    expect(new Set(lessons).size).toBeGreaterThan(1)
+    expect(lessons[0]).not.toBe(lessons[1])
+
+    // unknown courseId → empty session, no crash
+    const missing = await (
+      await H.review.GET(new Request(url('/api/review?courseId=999999')))
+    ).json()
+    expect(missing).toMatchObject({ ok: true, cards: [], course: null })
   })
 
   it('builds an improve-prompt from the exported course, then deletes the course', async () => {

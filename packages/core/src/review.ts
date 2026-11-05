@@ -45,20 +45,20 @@ function overdueDays(row: SessionRow, asOf: Date): number {
 }
 
 /**
- * Round-robin merge across decks that PRESERVES each deck's internal order —
- * unlike `interleaveQueue` (the shuffling standalone utility), the priority
- * order computed by the caller (overdue-ness, stability, recency) must survive
- * the merge. Only the deck alternation is introduced.
+ * Round-robin merge across groups that PRESERVES each group's internal order —
+ * the priority order computed by the caller (overdue-ness, stability, recency)
+ * must survive the merge; only the group alternation is introduced.
  */
-function roundRobinByDeck(rows: SessionRow[]): SessionRow[] {
-  const byDeck = new Map<number, SessionRow[]>()
+export function interleaveBy<T>(rows: T[], keyOf: (row: T) => string | number): T[] {
+  const byKey = new Map<string | number, T[]>()
   for (const r of rows) {
-    const q = byDeck.get(r.deckId) ?? []
+    const k = keyOf(r)
+    const q = byKey.get(k) ?? []
     q.push(r)
-    byDeck.set(r.deckId, q)
+    byKey.set(k, q)
   }
-  const queues = Array.from(byDeck.values())
-  const out: SessionRow[] = []
+  const queues = Array.from(byKey.values())
+  const out: T[] = []
   while (queues.some((q) => q.length > 0)) {
     for (const q of queues) {
       const next = q.shift()
@@ -66,6 +66,10 @@ function roundRobinByDeck(rows: SessionRow[]): SessionRow[] {
     }
   }
   return out
+}
+
+function roundRobinByDeck(rows: SessionRow[]): SessionRow[] {
+  return interleaveBy(rows, (r) => r.deckId)
 }
 
 /**
@@ -95,7 +99,9 @@ export function buildSession({
 
   const hyper = available
     .filter(isConfidentWrong)
-    .sort((a, b) => (b.recentRevlog?.reviewedAt ?? '').localeCompare(a.recentRevlog?.reviewedAt ?? ''))
+    .sort((a, b) =>
+      (b.recentRevlog?.reviewedAt ?? '').localeCompare(a.recentRevlog?.reviewedAt ?? ''),
+    )
   const rest = available.filter((r) => !isConfidentWrong(r))
 
   let orderedRest: SessionRow[]
@@ -150,10 +156,30 @@ export interface FadePolicy {
 }
 
 const FADE_POLICIES: FadePolicy[] = [
-  { level: 0, label: 'worked example', visibleFraction: 1, description: 'Study the fully worked proof.' },
-  { level: 1, label: 'completion problem', visibleFraction: 2 / 3, description: 'Most steps shown — fill in the last third.' },
-  { level: 2, label: 'faded example', visibleFraction: 1 / 3, description: 'Only the opening steps are shown.' },
-  { level: 3, label: 'full problem', visibleFraction: 0, description: 'Reproduce the whole proof yourself.' },
+  {
+    level: 0,
+    label: 'worked example',
+    visibleFraction: 1,
+    description: 'Study the fully worked proof.',
+  },
+  {
+    level: 1,
+    label: 'completion problem',
+    visibleFraction: 2 / 3,
+    description: 'Most steps shown — fill in the last third.',
+  },
+  {
+    level: 2,
+    label: 'faded example',
+    visibleFraction: 1 / 3,
+    description: 'Only the opening steps are shown.',
+  },
+  {
+    level: 3,
+    label: 'full problem',
+    visibleFraction: 0,
+    description: 'Reproduce the whole proof yourself.',
+  },
 ]
 
 /** Fade policy for a proof_step ladder level (clamped to 0..3). */

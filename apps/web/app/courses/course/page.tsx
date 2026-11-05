@@ -22,6 +22,7 @@ import {
   Hammer,
   Lock,
   Play,
+  Shuffle,
   Sparkles,
   Trash2,
 } from 'lucide-react'
@@ -231,6 +232,13 @@ function Course() {
             {next.title}
           </Link>
         )}
+        <Link
+          href={`/review?courseId=${course.id}`}
+          className="btn-ghost mt-2 w-full justify-center"
+          title="Interleave exercises from every lesson of this course (Rohrer: mixed practice)"
+        >
+          <Shuffle className="h-4 w-4" /> Mixed practice
+        </Link>
       </Panel>
 
       {course.description && (

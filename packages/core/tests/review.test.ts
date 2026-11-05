@@ -9,6 +9,7 @@ import {
   applyMistake,
   buildSession,
   initialEnergy,
+  interleaveBy,
   refillEnergy,
   stepsToShow,
   workedExampleFade,
@@ -36,7 +37,12 @@ describe('buildSession — normal mode', () => {
   it('puts confident-wrong cards first (hypercorrection)', () => {
     const rows = [
       row({ id: 1, deckId: 1, due: '2026-10-01T00:00:00Z' }), // most overdue
-      row({ id: 2, deckId: 1, due: '2026-11-01T00:00:00Z', recentRevlog: { rating: 1, confidence: 1, reviewedAt: '2026-11-04T10:00:00Z' } }),
+      row({
+        id: 2,
+        deckId: 1,
+        due: '2026-11-01T00:00:00Z',
+        recentRevlog: { rating: 1, confidence: 1, reviewedAt: '2026-11-04T10:00:00Z' },
+      }),
       row({ id: 3, deckId: 1, due: '2026-11-02T00:00:00Z' }),
     ]
     const session = buildSession({ rows, limit: 10, mode: 'normal', asOf: AS_OF })
@@ -47,7 +53,11 @@ describe('buildSession — normal mode', () => {
   it('unsure-wrong cards are NOT hypercorrection priority', () => {
     const rows = [
       row({ id: 1, due: '2026-11-01T00:00:00Z' }),
-      row({ id: 2, due: '2026-11-02T00:00:00Z', recentRevlog: { rating: 1, confidence: 0, reviewedAt: '2026-11-04T10:00:00Z' } }),
+      row({
+        id: 2,
+        due: '2026-11-02T00:00:00Z',
+        recentRevlog: { rating: 1, confidence: 0, reviewedAt: '2026-11-04T10:00:00Z' },
+      }),
     ]
     const session = buildSession({ rows, limit: 10, mode: 'normal', asOf: AS_OF })
     expect(session[0]?.id).toBe(1) // regular ordering
@@ -71,8 +81,12 @@ describe('buildSession — normal mode', () => {
 
   it('respects the limit and interleaves decks', () => {
     const rows = [
-      ...Array.from({ length: 6 }, (_, i) => row({ id: i, deckId: 1, due: '2026-11-01T00:00:00Z' })),
-      ...Array.from({ length: 6 }, (_, i) => row({ id: 100 + i, deckId: 2, due: '2026-11-02T00:00:00Z' })),
+      ...Array.from({ length: 6 }, (_, i) =>
+        row({ id: i, deckId: 1, due: '2026-11-01T00:00:00Z' }),
+      ),
+      ...Array.from({ length: 6 }, (_, i) =>
+        row({ id: 100 + i, deckId: 2, due: '2026-11-02T00:00:00Z' }),
+      ),
     ]
     const session = buildSession({ rows, limit: 8, mode: 'normal', asOf: AS_OF })
     expect(session).toHaveLength(8)
@@ -114,7 +128,12 @@ describe('buildSession — pretest and cram modes', () => {
   it('cram still leads with hypercorrection', () => {
     const rows = [
       row({ id: 1, stability: 30, due: '2026-12-01T00:00:00Z' }),
-      row({ id: 2, stability: 2, due: '2026-12-02T00:00:00Z', recentRevlog: { rating: 1, confidence: 1, reviewedAt: '2026-11-04T10:00:00Z' } }),
+      row({
+        id: 2,
+        stability: 2,
+        due: '2026-12-02T00:00:00Z',
+        recentRevlog: { rating: 1, confidence: 1, reviewedAt: '2026-11-04T10:00:00Z' },
+      }),
     ]
     const session = buildSession({ rows, limit: 10, mode: 'cram', asOf: AS_OF })
     expect(session[0]?.id).toBe(2)
@@ -171,5 +190,24 @@ describe('adjustDifficulty (Yerkes-Dodson)', () => {
   it('slow answers prevent the harder suggestion even at high accuracy', () => {
     const out = adjustDifficulty({ recentAccuracy: 0.95, recentAvgTime: 45000 })
     expect(out.suggestion).toBe('keep')
+  })
+})
+
+describe('interleaveBy — order-preserving round-robin', () => {
+  it('alternates groups while keeping each group\u2019s internal order', () => {
+    const rows = [
+      { id: 1, lesson: 'a' },
+      { id: 2, lesson: 'a' },
+      { id: 3, lesson: 'b' },
+      { id: 4, lesson: 'a' },
+      { id: 5, lesson: 'b' },
+    ]
+    expect(interleaveBy(rows, (r) => r.lesson).map((r) => r.id)).toEqual([1, 3, 2, 5, 4])
+  })
+
+  it('keeps the whole list intact (same elements)', () => {
+    const rows = Array.from({ length: 9 }, (_, i) => ({ id: i, g: i % 3 }))
+    const out = interleaveBy(rows, (r) => r.g)
+    expect([...out].sort((a, b) => a.id - b.id)).toEqual(rows)
   })
 })

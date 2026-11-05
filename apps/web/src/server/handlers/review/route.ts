@@ -1,9 +1,12 @@
 /**
  * /api/review — the review pipeline.
  *
- * GET { deckId?, limit, mode } → build a session via `buildSession` (core/review)
- *   from candidate cards joined with each card's most recent revlog entry
- *   (hypercorrection input).
+ * GET { deckId?, courseId?, limit, mode } → build a session via `buildSession`
+ *   (core/review) from candidate cards joined with each card's most recent
+ *   revlog entry (hypercorrection input). With `courseId`, the session covers
+ *   the whole course deck regardless of due dates (cram semantics) and is
+ *   interleaved across LESSONS (round-robin that preserves the weak-first
+ *   priority within each lesson) — Rohrer's mixed practice.
  * POST { cardId, grade, confidence, timeMs? } → ONE canonical executeReview()
  *   call (packages/db/review-service): an atomic BEGIN IMMEDIATE transaction
  *   covering cards UPDATE + append-only revlog + xp_events + streak + Elo/BKT
@@ -12,8 +15,21 @@
  */
 import { and, eq, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, cards, executeReview, userSettings, type ReviewPayload } from '@learning-hub/db'
-import { buildSession, dayKey, type Confidence, type SessionMode } from '@learning-hub/core'
+import {
+  db,
+  cards,
+  courses,
+  executeReview,
+  userSettings,
+  type ReviewPayload,
+} from '@learning-hub/db'
+import {
+  buildSession,
+  dayKey,
+  interleaveBy,
+  type Confidence,
+  type SessionMode,
+} from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
 const DAY_MS = 86_400_000
@@ -40,19 +56,37 @@ async function desiredRetention(): Promise<number> {
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const deckId = url.searchParams.get('deckId')
+  const courseId = url.searchParams.get('courseId')
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100)
   const mode = (url.searchParams.get('mode') ?? 'normal') as SessionMode
   const now = new Date()
 
   const filters = [eq(cards.suspended, false)]
-  if (deckId) filters.push(eq(cards.deckId, Number(deckId)))
+
+  // Mixed practice: a whole-course session ignores due dates (cram semantics)
+  // and interleaves lessons — course cards live in the course's own deck.
+  let course: { id: number; title: string; slug: string | null; deckId: number | null } | null =
+    null
+  if (courseId) {
+    const [row] = await db
+      .select({ id: courses.id, title: courses.title, slug: courses.slug, deckId: courses.deckId })
+      .from(courses)
+      .where(eq(courses.id, Number(courseId)))
+      .limit(1)
+    if (!row || row.deckId == null) {
+      return Response.json({ ok: true, cards: [], mode, course: null })
+    }
+    course = row
+    filters.push(eq(cards.deckId, row.deckId))
+  } else if (deckId) {
+    filters.push(eq(cards.deckId, Number(deckId)))
+  }
   // candidates: everything due or newer (buildSession filters precisely per mode)
   const candidateRows = await db
     .select()
     .from(cards)
     .where(and(...filters, lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString())))
     .limit(1000)
-
   // most recent revlog entry per card — hypercorrection signal
   const recent = await db.all<{
     card_id: number
@@ -85,7 +119,7 @@ export async function GET(req: Request) {
         : null,
     })),
     limit,
-    mode,
+    mode: course ? 'cram' : mode, // mixed practice ignores due dates
     asOf: now,
   })
 
@@ -96,7 +130,23 @@ export async function GET(req: Request) {
     .map((r) => sessionCards.find((c) => c.id === r.id))
     .filter((c) => c !== undefined)
 
-  return Response.json({ ok: true, cards: ordered, mode, retention: await desiredRetention() })
+  // Mixed practice: alternate lessons while keeping the per-lesson priority
+  // (weak-first) intact. sourceKey is `lhcf:<course>/<lesson>/<n>` for course
+  // cards; anything else stays a single group.
+  const mixed = course
+    ? interleaveBy(ordered, (c) => {
+        const parts = (c.sourceKey ?? '').split('/')
+        return parts.length >= 2 && parts[0]!.startsWith('lhcf:') ? parts[1]! : ''
+      })
+    : ordered
+
+  return Response.json({
+    ok: true,
+    cards: mixed,
+    mode: course ? 'cram' : mode,
+    course: course ? { id: course.id, title: course.title } : null,
+    retention: await desiredRetention(),
+  })
 }
 
 export const POST = withRoute(async (req: Request) => {
