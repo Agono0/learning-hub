@@ -580,3 +580,23 @@ describe('(f) 1000-row insert perf sanity', () => {
     wa.close()
   })
 })
+
+describe('deserialized images grow without SQLITE_FULL (RESIZEABLE)', () => {
+  it('writes far beyond the original image size', async () => {
+    await initSqliteWasm()
+    const file = path.join(os.tmpdir(), `lh-grow-${process.pid}.db`)
+    const seed = new Database(file)
+    seed.exec('CREATE TABLE t (id INTEGER PRIMARY KEY, body TEXT)')
+    seed.close()
+    const db = createSqliteWasmDb(fs.readFileSync(file))
+    try {
+      const insert = db.prepare('INSERT INTO t (body) VALUES (?)')
+      // ~2 MB into an image that started at a few KB (old fixed headroom: ~64 KB)
+      for (let i = 0; i < 2000; i++) insert.run('x'.repeat(1000))
+      expect((db.prepare('SELECT count(*) AS c FROM t').get() as { c: number }).c).toBe(2000)
+    } finally {
+      db.close()
+      fs.rmSync(file, { force: true })
+    }
+  })
+})
