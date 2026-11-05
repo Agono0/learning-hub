@@ -65,7 +65,9 @@ function fullTableDdl(): string[] {
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL",
       )
       .all() as { sql: string }[]
-  ).map((r) => r.sql)
+  )
+    // initDb's migration runner creates schema_migrations itself → idempotent DDL
+    .map((r) => r.sql.replace(/^CREATE TABLE (?!IF NOT EXISTS)/i, 'CREATE TABLE IF NOT EXISTS '))
   return ddlCache
 }
 
