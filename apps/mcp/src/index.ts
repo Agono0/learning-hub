@@ -3,7 +3,9 @@
  *
  * Tools: idea_create, idea_search, idea_connect, idea_evolve, idea_list_inbox,
  *        note_create, note_search, review_log, review_stats, goal_woop,
- *        goal_list, focus_summary, quote_random, card_generate
+ *        goal_list, focus_summary, quote_random, card_generate,
+ *        curriculum_prompt, curriculum_import, curriculum_list, curriculum_course,
+ *        curriculum_next, curriculum_export (./tools/curriculum)
  * Resources: idea://{id}, note://{id}, graph://overview
  *
  * Windows client config (claude_desktop_config.json / .mcp.json):
@@ -13,6 +15,8 @@
  */
 import { and, desc, eq, like, lte, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { json, tool, type RegisteredTool } from './tool-kit'
+import { curriculumTools } from './tools/curriculum'
 import {
   CardNotFoundError,
   cards,
@@ -58,10 +62,6 @@ async function aiClientOrNull(): Promise<AIClient | null> {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function json(value: unknown) {
-  return { content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }] }
-}
-
 async function findOrCreateDeck(name: string): Promise<number> {
   const [existing] = await db.select().from(decks).where(eq(decks.name, name)).limit(1)
   if (existing) return existing.id
@@ -72,7 +72,10 @@ async function findOrCreateDeck(name: string): Promise<number> {
 /** Basic card split — no AI needed: "Q:/A:" pairs, "front :: back", or "front | back". */
 function parseBasicCards(text: string): { front: string; back: string }[] {
   const out: { front: string; back: string }[] = []
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
   let pendingQ: string | null = null
   for (const line of lines) {
     const qMatch = line.match(/^(?:Q|question)\d*\s*[:.)]\s*(.+)$/i)
@@ -107,28 +110,6 @@ function parseBasicCards(text: string): { front: string; back: string }[] {
 // registry at boot, so the loop — not this array — is the single registration
 // path. With zero plugins installed the server behaves exactly as before.
 
-/** Registry entry shape: identical to core's McpToolContribution contract. */
-type RegisteredTool = McpToolContribution
-
-/**
- * Declare a tool: ties the zod raw shape to the handler's parsed-args type so
- * built-ins keep full typing while conforming to the registry shape (where the
- * handler receives the already-validated args object).
- */
-function tool<S extends z.ZodRawShape>(
-  name: string,
-  description: string,
-  inputSchema: S,
-  handler: (args: z.output<z.ZodObject<S>>) => McpToolResult | Promise<McpToolResult>,
-): RegisteredTool {
-  return {
-    name,
-    description,
-    inputSchema,
-    handler: (args) => handler(args as z.output<z.ZodObject<S>>),
-  }
-}
-
 const builtinTools: RegisteredTool[] = [
   // ── Ideas ──
   tool(
@@ -140,7 +121,10 @@ const builtinTools: RegisteredTool[] = [
       tags: z.array(z.string()).optional(),
     },
     async ({ title, content, tags }) => {
-      const [idea] = await db.insert(ideas).values({ title, content: content ?? '', tags: tags ?? [] }).returning()
+      const [idea] = await db
+        .insert(ideas)
+        .values({ title, content: content ?? '', tags: tags ?? [] })
+        .returning()
       return json({ ok: true, idea })
     },
   ),
@@ -165,11 +149,16 @@ const builtinTools: RegisteredTool[] = [
     {
       fromId: z.number().int(),
       toId: z.number().int(),
-      type: z.enum(['related', 'supports', 'contradicts', 'refines', 'parent-of']).default('related'),
+      type: z
+        .enum(['related', 'supports', 'contradicts', 'refines', 'parent-of'])
+        .default('related'),
       context: z.string().optional().describe('WHY they are connected'),
     },
     async ({ fromId, toId, type, context }) => {
-      const [link] = await db.insert(ideaLinks).values({ fromIdeaId: fromId, toIdeaId: toId, type, context }).returning()
+      const [link] = await db
+        .insert(ideaLinks)
+        .values({ fromIdeaId: fromId, toIdeaId: toId, type, context })
+        .returning()
       return json({ ok: true, link })
     },
   ),
@@ -210,29 +199,45 @@ const builtinTools: RegisteredTool[] = [
       }
       const [offspring] = await db
         .insert(ideas)
-        .values({ title: offspringTitle, content: offspringContent, stage: 'seed', tags: ['hybrid'] })
+        .values({
+          title: offspringTitle,
+          content: offspringContent,
+          stage: 'seed',
+          tags: ['hybrid'],
+        })
         .returning()
       await db.insert(ideaLinks).values([
-        { fromIdeaId: a.id, toIdeaId: offspring!.id, type: 'parent-of', context: 'evolution parent A' },
-        { fromIdeaId: b.id, toIdeaId: offspring!.id, type: 'parent-of', context: 'evolution parent B' },
+        {
+          fromIdeaId: a.id,
+          toIdeaId: offspring!.id,
+          type: 'parent-of',
+          context: 'evolution parent A',
+        },
+        {
+          fromIdeaId: b.id,
+          toIdeaId: offspring!.id,
+          type: 'parent-of',
+          context: 'evolution parent B',
+        },
       ])
       return json({ ok: true, mode, offspring, parents: [a.id, b.id] })
     },
   ),
-  tool(
-    'idea_list_inbox',
-    'List ideas still in the inbox (stage: seed).',
-    {},
-    async () => {
-      const rows = await db.select().from(ideas).where(eq(ideas.stage, 'seed')).orderBy(desc(ideas.createdAt)).limit(50)
-      return json({ count: rows.length, ideas: rows })
-    },
-  ),
+  tool('idea_list_inbox', 'List ideas still in the inbox (stage: seed).', {}, async () => {
+    const rows = await db
+      .select()
+      .from(ideas)
+      .where(eq(ideas.stage, 'seed'))
+      .orderBy(desc(ideas.createdAt))
+      .limit(50)
+    return json({ count: rows.length, ideas: rows })
+  }),
 
   // ── Notes ──
   tool(
     'note_create',
-    'Create a note; [[wikilinks]] to existing notes become note_links. Optional supertag: ' + Object.keys(SUPERTAG_TEMPLATES).join(', '),
+    'Create a note; [[wikilinks]] to existing notes become note_links. Optional supertag: ' +
+      Object.keys(SUPERTAG_TEMPLATES).join(', '),
     {
       title: z.string().min(1),
       content: z.string().default(''),
@@ -247,7 +252,9 @@ const builtinTools: RegisteredTool[] = [
       for (const target of targets) {
         const [hit] = await db.select().from(notes).where(eq(notes.title, target)).limit(1)
         if (hit && hit.id !== note!.id) {
-          await db.insert(noteLinks).values({ fromNoteId: note!.id, toNoteId: hit.id, type: 'related' })
+          await db
+            .insert(noteLinks)
+            .values({ fromNoteId: note!.id, toNoteId: hit.id, type: 'related' })
           linked.push({ target, noteId: hit.id })
         } else {
           unresolved.push(target)
@@ -342,19 +349,17 @@ const builtinTools: RegisteredTool[] = [
       ifThenPlan: z.string().optional().describe('If <obstacle>, then I will <action>'),
     },
     async ({ wish, outcome, obstacle, ifThenPlan }) => {
-      const [goal] = await db.insert(goals).values({ wish, outcome, obstacle, ifThenPlan }).returning()
+      const [goal] = await db
+        .insert(goals)
+        .values({ wish, outcome, obstacle, ifThenPlan })
+        .returning()
       return json({ ok: true, goal })
     },
   ),
-  tool(
-    'goal_list',
-    'List goals with status and progress.',
-    {},
-    async () => {
-      const rows = await db.select().from(goals).orderBy(desc(goals.createdAt)).limit(50)
-      return json({ count: rows.length, goals: rows })
-    },
-  ),
+  tool('goal_list', 'List goals with status and progress.', {}, async () => {
+    const rows = await db.select().from(goals).orderBy(desc(goals.createdAt)).limit(50)
+    return json({ count: rows.length, goals: rows })
+  }),
 
   // ── Focus ──
   tool(
@@ -362,35 +367,51 @@ const builtinTools: RegisteredTool[] = [
     'Recent focus sessions plus friction (distraction) stats.',
     {},
     async () => {
-      const sessions = await db.select().from(focusSessions).orderBy(desc(focusSessions.startedAt)).limit(10)
+      const sessions = await db
+        .select()
+        .from(focusSessions)
+        .orderBy(desc(focusSessions.startedAt))
+        .limit(10)
       const completed = sessions.filter((s) => s.completed)
       const friction = await db
-        .select({ trigger: frictionEvents.trigger, count: sql<number>`count(*)`, proceeded: sql<number>`sum(CASE WHEN proceeded THEN 1 ELSE 0 END)` })
+        .select({
+          trigger: frictionEvents.trigger,
+          count: sql<number>`count(*)`,
+          proceeded: sql<number>`sum(CASE WHEN proceeded THEN 1 ELSE 0 END)`,
+        })
         .from(frictionEvents)
         .groupBy(frictionEvents.trigger)
       const totalLeakMinutes = sessions.reduce((acc, s) => acc + (s.leaks ?? 0), 0)
       return json({
         recentSessions: sessions.map((s) => ({
-          id: s.id, startedAt: s.startedAt, plannedMinutes: s.plannedMinutes,
-          actualMinutes: s.actualMinutes, completed: s.completed, task: s.task, leaks: s.leaks,
+          id: s.id,
+          startedAt: s.startedAt,
+          plannedMinutes: s.plannedMinutes,
+          actualMinutes: s.actualMinutes,
+          completed: s.completed,
+          task: s.task,
+          leaks: s.leaks,
         })),
         completedRate: sessions.length ? completed.length / sessions.length : null,
         totalLeaks: totalLeakMinutes,
-        frictionByTrigger: friction.map((f) => ({ trigger: f.trigger, count: Number(f.count), proceeded: Number(f.proceeded ?? 0) })),
+        frictionByTrigger: friction.map((f) => ({
+          trigger: f.trigger,
+          count: Number(f.count),
+          proceeded: Number(f.proceeded ?? 0),
+        })),
       })
     },
   ),
 
   // ── Quotes ──
-  tool(
-    'quote_random',
-    'A random motivational quote (with its context).',
-    {},
-    async () => {
-      const [quote] = await db.select().from(quotes).orderBy(sql`random()`).limit(1)
-      return json({ quote: quote ?? null })
-    },
-  ),
+  tool('quote_random', 'A random motivational quote (with its context).', {}, async () => {
+    const [quote] = await db
+      .select()
+      .from(quotes)
+      .orderBy(sql`random()`)
+      .limit(1)
+    return json({ quote: quote ?? null })
+  }),
 
   // ── Cards ──
   tool(
@@ -437,11 +458,17 @@ async function main() {
   const plugins = await loadPlugins(['plugins'])
   const { mcpTools: pluginTools } = getPluginContributions()
   if (plugins.length > 0) {
-    console.error(`[mcp] loaded ${plugins.length} plugin(s): ${plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(', ')}`)
+    console.error(
+      `[mcp] loaded ${plugins.length} plugin(s): ${plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(', ')}`,
+    )
   }
 
-  for (const registered of builtinTools) {
-    server.registerTool(registered.name, { description: registered.description, inputSchema: registered.inputSchema }, registered.handler)
+  for (const registered of [...builtinTools, ...curriculumTools]) {
+    server.registerTool(
+      registered.name,
+      { description: registered.description, inputSchema: registered.inputSchema },
+      registered.handler,
+    )
   }
 
   // Plugin tools are isolated: a throwing handler returns an MCP error result
@@ -456,7 +483,15 @@ async function main() {
         } catch (err) {
           console.error(`[mcp] plugin tool "${contributed.name}" failed:`, err)
           return {
-            content: [{ type: 'text', text: JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }) }],
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  ok: false,
+                  error: err instanceof Error ? err.message : String(err),
+                }),
+              },
+            ],
             isError: true,
           }
         }
@@ -473,8 +508,19 @@ async function main() {
       const ideaId = Number(id)
       const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId)).limit(1)
       if (!idea) return { contents: [{ uri: uri.href, text: `Idea ${ideaId} not found` }] }
-      const links = await db.select().from(ideaLinks).where(or(eq(ideaLinks.fromIdeaId, ideaId), eq(ideaLinks.toIdeaId, ideaId)))
-      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify({ idea, links }, null, 2) }] }
+      const links = await db
+        .select()
+        .from(ideaLinks)
+        .where(or(eq(ideaLinks.fromIdeaId, ideaId), eq(ideaLinks.toIdeaId, ideaId)))
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ idea, links }, null, 2),
+          },
+        ],
+      }
     },
   )
 
@@ -486,15 +532,29 @@ async function main() {
       const noteId = Number(id)
       const [note] = await db.select().from(notes).where(eq(notes.id, noteId)).limit(1)
       if (!note) return { contents: [{ uri: uri.href, text: `Note ${noteId} not found` }] }
-      const links = await db.select().from(noteLinks).where(or(eq(noteLinks.fromNoteId, noteId), eq(noteLinks.toNoteId, noteId)))
-      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify({ note, links }, null, 2) }] }
+      const links = await db
+        .select()
+        .from(noteLinks)
+        .where(or(eq(noteLinks.fromNoteId, noteId), eq(noteLinks.toNoteId, noteId)))
+      return {
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify({ note, links }, null, 2),
+          },
+        ],
+      }
     },
   )
 
   server.registerResource(
     'graph-overview',
     'graph://overview',
-    { title: 'Graph overview', description: 'Counts per node type and the most connected notes/ideas' },
+    {
+      title: 'Graph overview',
+      description: 'Counts per node type and the most connected notes/ideas',
+    },
     async (uri) => {
       const [noteCount] = await db.select({ n: sql<number>`count(*)` }).from(notes)
       const [ideaCount] = await db.select({ n: sql<number>`count(*)` }).from(ideas)
@@ -504,30 +564,53 @@ async function main() {
       const topNotes = await db
         .select({ id: notes.id, title: notes.title, links: sql<number>`count(note_links.id)` })
         .from(notes)
-        .leftJoin(noteLinks, or(eq(noteLinks.fromNoteId, notes.id), eq(noteLinks.toNoteId, notes.id)))
+        .leftJoin(
+          noteLinks,
+          or(eq(noteLinks.fromNoteId, notes.id), eq(noteLinks.toNoteId, notes.id)),
+        )
         .groupBy(notes.id, notes.title)
         .orderBy(desc(sql`count(note_links.id)`))
         .limit(5)
       const topIdeas = await db
         .select({ id: ideas.id, title: ideas.title, links: sql<number>`count(idea_links.id)` })
         .from(ideas)
-        .leftJoin(ideaLinks, or(eq(ideaLinks.fromIdeaId, ideas.id), eq(ideaLinks.toIdeaId, ideas.id)))
+        .leftJoin(
+          ideaLinks,
+          or(eq(ideaLinks.fromIdeaId, ideas.id), eq(ideaLinks.toIdeaId, ideas.id)),
+        )
         .groupBy(ideas.id, ideas.title)
         .orderBy(desc(sql`count(idea_links.id)`))
         .limit(5)
       return {
-        contents: [{
-          uri: uri.href,
-          mimeType: 'application/json',
-          text: JSON.stringify({
-            counts: {
-              notes: Number(noteCount?.n ?? 0), ideas: Number(ideaCount?.n ?? 0), cards: Number(cardCount?.n ?? 0),
-              noteLinks: Number(noteLinkCount?.n ?? 0), ideaLinks: Number(ideaLinkCount?.n ?? 0),
-            },
-            topNotes: topNotes.map((r) => ({ id: r.id, title: r.title, links: Number(r.links) })),
-            topIdeas: topIdeas.map((r) => ({ id: r.id, title: r.title, links: Number(r.links) })),
-          }, null, 2),
-        }],
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: 'application/json',
+            text: JSON.stringify(
+              {
+                counts: {
+                  notes: Number(noteCount?.n ?? 0),
+                  ideas: Number(ideaCount?.n ?? 0),
+                  cards: Number(cardCount?.n ?? 0),
+                  noteLinks: Number(noteLinkCount?.n ?? 0),
+                  ideaLinks: Number(ideaLinkCount?.n ?? 0),
+                },
+                topNotes: topNotes.map((r) => ({
+                  id: r.id,
+                  title: r.title,
+                  links: Number(r.links),
+                })),
+                topIdeas: topIdeas.map((r) => ({
+                  id: r.id,
+                  title: r.title,
+                  links: Number(r.links),
+                })),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
       }
     },
   )
