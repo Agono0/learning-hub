@@ -1,18 +1,16 @@
 /**
- * Browser-safe schema bootstrap for the hub worker.
+ * Runtime DDL generated from `schema.ts` — so BOTH drivers create any
+ * missing table on open, without `drizzle-kit push` (a Node CLI that cannot
+ * run in the native apps' webview, and that users forget after updating).
  *
- * `packages/db`'s ensureSchema()/ensureViews() only PATCH an existing schema —
- * the tables themselves come from `drizzle-kit push`, a Node CLI that cannot
- * run inside a webview. A fresh Tauri install therefore has no tables, and
- * initDb() would even fail to create the derived views (CREATE VIEW validates
- * its FROM tables in SQLite).
- *
- * This module closes that gap WITHOUT touching packages/db: it regenerates
- * CREATE TABLE/INDEX statements from the drizzle schema at runtime via
+ * CREATE TABLE/INDEX statements are regenerated from the drizzle schema via
  * drizzle-orm's `getTableConfig` (the same source drizzle-kit uses), so the
- * DDL can never drift from `packages/db/src/schema.ts`. Statements are all
- * `IF NOT EXISTS`, making the bootstrap a cheap no-op on an already-pushed
- * database (the worker runs it before initDb every boot).
+ * DDL can never drift from `schema.ts`. Everything is `IF NOT EXISTS`:
+ * a no-op on an up-to-date database.
+ *
+ * Tables and indexes are applied separately (see ensureSchema in ./index):
+ * tables → migrations (add missing columns) → indexes, because a new index may
+ * reference a column that only a migration adds to an existing table.
  *
  * DDL parity with drizzle-kit push (verified against data/learning-hub.db):
  * - type map: Integer/Boolean → integer, Real → real, Blob → blob, else text
@@ -23,9 +21,9 @@
  */
 import { getTableName, is, Table } from 'drizzle-orm'
 import { getTableConfig } from 'drizzle-orm/sqlite-core'
-import * as schemaModule from '@learning-hub/db'
+import * as schemaModule from './schema'
 
-/** Anything with exec() — the RawSqliteHandle surface the worker has. */
+/** Anything with exec() — the RawSqliteHandle surface both drivers have. */
 interface ExecOnly {
   exec(sql: string): void
 }
@@ -152,24 +150,26 @@ function schemaTables(): Table[] {
   return tables
 }
 
-/**
- * All DDL statements for the schema, in safe order (tables then indexes;
- * FKs are not validated by CREATE TABLE, so table order does not matter).
- */
-export function workerSchemaSql(): string[] {
-  const tables = schemaTables()
-  const statements: string[] = []
-  for (const table of tables) statements.push(createTableSql(table))
-  for (const table of tables) statements.push(...createIndexSql(table))
-  return statements
+/** CREATE TABLE IF NOT EXISTS for every schema table. */
+export function schemaTableSql(): string[] {
+  return schemaTables().map(createTableSql)
 }
 
-/**
- * Apply the schema to a raw wasm handle — idempotent (all IF NOT EXISTS).
- * Returns the number of statements executed (useful for tests/first-run logs).
- */
-export function ensureWorkerSchema(raw: ExecOnly): number {
-  const statements = workerSchemaSql()
+/** CREATE [UNIQUE] INDEX IF NOT EXISTS for every schema index. */
+export function schemaIndexSql(): string[] {
+  return schemaTables().flatMap(createIndexSql)
+}
+
+/** Create any missing table (idempotent). Returns statements executed. */
+export function ensureSchemaTables(raw: ExecOnly): number {
+  const statements = schemaTableSql()
+  for (const sql of statements) raw.exec(sql)
+  return statements.length
+}
+
+/** Create any missing index (idempotent). Run AFTER migrations. */
+export function ensureSchemaIndexes(raw: ExecOnly): number {
+  const statements = schemaIndexSql()
   for (const sql of statements) raw.exec(sql)
   return statements.length
 }

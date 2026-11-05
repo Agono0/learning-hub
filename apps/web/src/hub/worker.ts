@@ -9,19 +9,15 @@
  * exists on the driver, but `DbInitOptions` never forwards it — and the
  * opfs-sahpool VFS additionally must be INSTALLED first (it locks the pool's
  * SyncAccessHandles at install time, so sqlite-wasm does not auto-register
- * it). Since packages/db is off-limits for this stage, the worker does the
- * wiring itself, using only exported packages/db + driver APIs:
+ * it). So the worker does the wiring itself, using exported packages/db +
+ * driver APIs:
  *
  *   1. `initSqliteWasm()` then `installOpfsSAHPoolVfs({ name: 'opfs-sahpool' })`
  *      and `sqlite3_vfs_register(<pool>, 1)` — the pool becomes the DEFAULT
  *      VFS, which is exactly what `initDb`'s `vfs ?? null` resolves to.
- *   2. Pre-seed the schema: initDb's ensureViews() would fail on a table-less
- *      database (CREATE VIEW validates its FROM tables) and drizzle-kit push
- *      is a Node CLI — so the worker applies the browser-safe DDL from
- *      ./schema-ddl through a throwaway connection first (all IF NOT EXISTS:
- *      a no-op on an already-pushed DB).
- *   3. `initDb({ driver: 'sqlite-wasm', path })` — opens through the pool,
- *      ensureSchema/ensureViews patch + verify, drizzle is wired.
+ *   2. `initDb({ driver: 'sqlite-wasm', path })` — opens through the pool and
+ *      brings the database up to schema.ts (missing tables from runtime DDL,
+ *      versioned migrations, indexes, views), then wires drizzle.
  *
  * Everything written through opfs-sahpool persists immediately (crash-safe);
  * `dispose` (sent by the main thread on pagehide) additionally CLOSES the
@@ -37,10 +33,9 @@
  */
 /// <reference lib="webworker" />
 import { getRawDb, initDb } from '@learning-hub/db'
-import { createSqliteWasmDb, initSqliteWasm } from '@learning-hub/db/src/driver/sqlite-wasm'
+import { initSqliteWasm } from '@learning-hub/db/src/driver/sqlite-wasm'
 import { matchRoute } from './handlers-registry'
 import type { HubFromWorker, HubInitMessage, HubRequestMessage, HubToWorker } from './protocol'
-import { ensureWorkerSchema } from './schema-ddl'
 import { ensurePluginsLoaded } from '@/lib/plugins'
 import { setNetworkFetch } from '@learning-hub/ai-adapters'
 import { createBridgedFetch, type NetBridge } from './net-bridge'
@@ -113,18 +108,11 @@ async function boot(msg: HubInitMessage): Promise<void> {
     }
   }
 
-  // 2. Schema bootstrap for fresh databases (idempotent on existing ones).
-  const probe = createSqliteWasmDb(dbPath, { vfs: poolActive ? vfs : undefined })
-  try {
-    ensureWorkerSchema(probe)
-  } finally {
-    probe.close()
-  }
-
-  // 3. Open through the standard initDb path (ensureSchema + ensureViews run).
+  // 2. Open through the standard initDb path: it creates missing tables from
+  //    schema.ts, runs migrations, then indexes + views (packages/db).
   await initDb({ driver: 'sqlite-wasm', path: dbPath })
 
-  // 4. Bundled plugins (none yet — the loader scans a plugins/ dir that does
+  // 3. Bundled plugins (none yet — the loader scans a plugins/ dir that does
   //    not exist inside a worker; any failure is non-fatal).
   try {
     await ensurePluginsLoaded()

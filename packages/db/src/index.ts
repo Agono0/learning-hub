@@ -28,6 +28,7 @@ import type Database from 'better-sqlite3'
 import * as schema from './schema'
 import { resolveDbPath, resolveImagesDir } from './paths'
 import { MIGRATIONS, runMigrations } from './migrations'
+import { ensureSchemaIndexes, ensureSchemaTables } from './schema-ddl'
 
 // ─── Driver-agnostic raw handle contract ────────────────────────────────────
 
@@ -185,12 +186,17 @@ function ensureCascadeForeignKeys(sqlite: RawSqliteHandle, tableNames: Set<strin
 }
 
 /**
- * Bring an existing database up to `schema.ts`: versioned migrations (see
- * ./migrations — idempotent, recorded in schema_migrations), then the
- * one-time ON DELETE CASCADE table rebuilds.
+ * Bring any database — fresh or old, either driver — up to `schema.ts`:
+ *   1. create missing tables (runtime DDL from the schema, ./schema-ddl)
+ *   2. versioned migrations: add missing columns to existing tables (./migrations)
+ *   3. create missing indexes (after 2 — new indexes may need new columns)
+ *   4. one-time ON DELETE CASCADE table rebuilds
+ * Every step is idempotent, so this runs on every open.
  */
 function ensureSchema(sqlite: RawSqliteHandle) {
+  ensureSchemaTables(sqlite)
   runMigrations(sqlite, MIGRATIONS)
+  ensureSchemaIndexes(sqlite)
   const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
     name: string
   }[]
