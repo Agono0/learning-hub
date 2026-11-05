@@ -500,6 +500,10 @@ function FormatEditor({
           value={v.back}
           onChange={(e) => patch('basic', { ...v, back: e.target.value })}
         />
+        <BasicImageAttach
+          imageId={v.imageId}
+          onChange={(imageId) => patch('basic', { ...v, imageId })}
+        />
       </div>
     )
   }
@@ -878,6 +882,89 @@ function OcclusionEditor({
           ))}
         </>
       )}
+    </div>
+  )
+}
+
+// ─── Dual-coding image attach (basic cards) ─────────────────────────────────
+
+/**
+ * Attach a picture to a basic card's front (dual coding, Paivio): upload via
+ * the shared /api/images endpoint, preview, remove.
+ */
+function BasicImageAttach({
+  imageId,
+  onChange,
+}: {
+  imageId: number | undefined
+  onChange: (imageId: number | undefined) => void
+}) {
+  const fileRef = useRef<HTMLInputElement | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const upload = async (file: File) => {
+    setUploading(true)
+    setError(null)
+    const form = new FormData()
+    form.set('file', file)
+    try {
+      const data = await apiUpload<{ ok?: boolean; id?: number; error?: string }>(
+        '/api/images',
+        form,
+      )
+      if (data.ok && data.id) onChange(data.id)
+      else setError(data.error ?? 'upload failed')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void upload(f)
+            e.target.value = ''
+          }}
+        />
+        <button
+          type="button"
+          className="btn-ghost text-xs"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+        >
+          <Upload className="h-3.5 w-3.5" /> {imageId ? 'Replace image' : 'Attach image'}
+        </button>
+        {imageId != null && (
+          <button
+            type="button"
+            className="btn-ghost text-xs text-red-400"
+            onClick={() => onChange(undefined)}
+          >
+            <X className="h-3.5 w-3.5" /> Remove
+          </button>
+        )}
+        <span className="text-xs text-neutral-500">
+          {uploading ? 'uploading…' : 'dual coding — picture + words'}
+        </span>
+      </div>
+      {imageId != null && (
+        <img
+          src={`/api/images/${imageId}`}
+          alt="card image"
+          className="max-h-40 rounded-lg border border-neutral-200 dark:border-[#26262b]"
+        />
+      )}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   )
 }

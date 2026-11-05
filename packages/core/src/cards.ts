@@ -210,7 +210,12 @@ const rectSchema = z.object({
 })
 
 const contentSchemas = {
-  basic: z.object({ front: z.string().min(1), back: z.string().min(1) }),
+  basic: z.object({
+    front: z.string().min(1),
+    back: z.string().min(1),
+    // dual coding (Paivio): optional image shown with the card front
+    imageId: z.number().int().min(1).optional(),
+  }),
   cloze: z.object({
     text: z
       .string()

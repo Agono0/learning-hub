@@ -685,6 +685,14 @@ function CardFront(props: {
   if (content.basic) {
     return (
       <div className="space-y-4">
+        {/* dual coding: the image is part of the prompt, never the answer */}
+        {content.basic.imageId != null && (
+          <img
+            src={`/api/images/${content.basic.imageId}`}
+            alt=""
+            className="max-h-56 rounded-lg border border-neutral-200 dark:border-[#26262b]"
+          />
+        )}
         <div className="text-xl font-medium">{content.basic.front}</div>
         {revealed && (
           <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-[#26262b]">

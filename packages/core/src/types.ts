@@ -29,7 +29,12 @@ export interface Rect {
 
 /** Per-format card payload stored as JSON in `cards.content` (one key set). */
 export type CardContent = {
-  basic?: { front: string; back: string }
+  basic?: {
+    front: string
+    back: string
+    /** Dual-coding image (Paivio) — optional; references the `images` table. */
+    imageId?: number
+  }
   cloze?: {
     text: string
     answers: string[]
