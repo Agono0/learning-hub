@@ -504,6 +504,27 @@ function FormatEditor({
           imageId={v.imageId}
           onChange={(imageId) => patch('basic', { ...v, imageId })}
         />
+        <div>
+          <textarea
+            className="input min-h-[56px] text-sm"
+            placeholder={
+              'Alternate phrasings — one per line (optional).\nEach review shows the next phrasing so recall can\u2019t key on the wording.'
+            }
+            value={(v.variants ?? []).join('\n')}
+            onChange={(e) => {
+              const variants = e.target.value
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+              patch('basic', { ...v, variants: variants.length ? variants : undefined })
+            }}
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            {(v.variants?.length ?? 0) > 0
+              ? `${v.variants!.length} alternate phrasing(s) — rotations every review`
+              : 'desirable difficulty: vary how the question is asked'}
+          </p>
+        </div>
       </div>
     )
   }

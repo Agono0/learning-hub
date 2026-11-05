@@ -34,6 +34,11 @@ export type CardContent = {
     back: string
     /** Dual-coding image (Paivio) — optional; references the `images` table. */
     imageId?: number
+    /**
+     * Alternate front phrasings (desirable difficulty, Bjork): each exposure
+     * rotates the phrasing so retrieval can't key on surface form.
+     */
+    variants?: string[]
   }
   cloze?: {
     text: string

@@ -215,6 +215,8 @@ const contentSchemas = {
     back: z.string().min(1),
     // dual coding (Paivio): optional image shown with the card front
     imageId: z.number().int().min(1).optional(),
+    // desirable difficulty (Bjork): alternate phrasings, rotated per exposure
+    variants: z.array(z.string().min(1)).max(5).optional(),
   }),
   cloze: z.object({
     text: z
@@ -285,6 +287,20 @@ export function validateCardContent(format: CardFormat, content: unknown): Valid
     data: null,
     errors: result.error.issues.map((i) => `${i.path.join('.') || format}: ${i.message}`),
   }
+}
+
+/**
+ * Front text for this exposure (desirable difficulty, Bjork): rotate through
+ * the primary front and its alternate phrasings by review count, so retrieval
+ * can't key on one surface form. Deterministic — no RNG, stable per reps.
+ */
+export function pickBasicFront(
+  basic: { front: string; variants?: string[] },
+  reps: number,
+): string {
+  const pool = [basic.front, ...(basic.variants ?? [])]
+  const k = Math.max(0, Math.floor(reps))
+  return pool[k % pool.length]!
 }
 
 // ─── Interleaving ───────────────────────────────────────────────────────────

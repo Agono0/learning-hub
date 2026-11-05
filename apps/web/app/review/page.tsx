@@ -25,7 +25,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
-import { clozeSegments, isCardAnswerCorrect } from '@learning-hub/core/cards'
+import { clozeSegments, isCardAnswerCorrect, pickBasicFront } from '@learning-hub/core/cards'
 import {
   applyMistake,
   initialEnergy,
@@ -683,6 +683,8 @@ function CardFront(props: {
   const content = card.content
 
   if (content.basic) {
+    // desirable difficulty: rotate front phrasings across exposures
+    const front = pickBasicFront(content.basic, card.reps)
     return (
       <div className="space-y-4">
         {/* dual coding: the image is part of the prompt, never the answer */}
@@ -693,7 +695,7 @@ function CardFront(props: {
             className="max-h-56 rounded-lg border border-neutral-200 dark:border-[#26262b]"
           />
         )}
-        <div className="text-xl font-medium">{content.basic.front}</div>
+        <div className="text-xl font-medium">{front}</div>
         {revealed && (
           <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-[#26262b]">
             {content.basic.back}

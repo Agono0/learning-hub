@@ -13,6 +13,7 @@ import {
   isCardAnswerCorrect,
   normalizeAnswer,
   parseCloze,
+  pickBasicFront,
   stripBulletMarker,
   syncBulletCard,
   validateCardContent,
@@ -76,6 +77,21 @@ describe('buildCloze', () => {
 
   it('throws when an answer is missing', () => {
     expect(() => buildCloze('abc', [{ answer: 'zzz' }])).toThrow(/not found/)
+  })
+})
+
+describe('pickBasicFront (varied phrasings)', () => {
+  it('rotates front and variants deterministically by reps', () => {
+    const basic = { front: 'Q1', variants: ['Q2', 'Q3'] }
+    expect(pickBasicFront(basic, 0)).toBe('Q1')
+    expect(pickBasicFront(basic, 1)).toBe('Q2')
+    expect(pickBasicFront(basic, 2)).toBe('Q3')
+    expect(pickBasicFront(basic, 3)).toBe('Q1')
+  })
+
+  it('falls back to the front without variants and guards negative reps', () => {
+    expect(pickBasicFront({ front: 'Q' }, 7)).toBe('Q')
+    expect(pickBasicFront({ front: 'Q', variants: ['V'] }, -3)).toBe('Q')
   })
 })
 
