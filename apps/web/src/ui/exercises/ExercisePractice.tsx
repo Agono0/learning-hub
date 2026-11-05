@@ -45,7 +45,7 @@ const TYPE_LABEL: Record<Exercise['type'], string> = {
 /** Days until a due date, phrased calmly ("tomorrow", "in 4 days"). */
 function dueLabel(iso: string): string {
   const days = Math.round((new Date(iso).getTime() - Date.now()) / 86_400_000)
-  if (days <= 0) return 'again soon'
+  if (days <= 0) return 'later today'
   if (days === 1) return 'tomorrow'
   return `in ${days} days`
 }
@@ -197,9 +197,12 @@ export function ExercisePractice({
               </span>
             )}
           </div>
-          {result?.feedback.map((f, i) => (
-            <p key={i}>{f}</p>
-          ))}
+          {/* the header already says "Correct" — don't repeat a bare "Correct." line */}
+          {result?.feedback
+            .filter((f) => f !== 'Correct.')
+            .map((f, i) => (
+              <p key={i}>{f}</p>
+            ))}
           {response.explanation && (
             <Markdown className="border-t border-black/5 pt-2 dark:border-white/10">
               {response.explanation}
