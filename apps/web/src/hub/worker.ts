@@ -42,6 +42,8 @@ import { matchRoute } from './handlers-registry'
 import type { HubFromWorker, HubInitMessage, HubRequestMessage, HubToWorker } from './protocol'
 import { ensureWorkerSchema } from './schema-ddl'
 import { ensurePluginsLoaded } from '@/lib/plugins'
+import { setNetworkFetch } from '@learning-hub/ai-adapters'
+import { createBridgedFetch, type NetBridge } from './net-bridge'
 
 /** DedicatedWorkerGlobalScope with the protocol's typed postMessage. */
 const ctx = self as unknown as {
@@ -50,6 +52,9 @@ const ctx = self as unknown as {
 }
 
 let ready = false
+
+/** Outbound network bridge — installed on init when the host runs native HTTP. */
+let netBridge: NetBridge | null = null
 
 /** Raw capi surface of the wasm module the worker needs (pool install). */
 interface WasmModuleWithPool {
@@ -69,6 +74,12 @@ interface WasmModuleWithPool {
  */
 async function boot(msg: HubInitMessage): Promise<void> {
   const dbPath = msg.dbPath || '/learning-hub.db'
+
+  // 0. AI provider traffic → main thread → tauri-plugin-http (no webview CORS).
+  if (msg.nativeNet) {
+    netBridge = createBridgedFetch((message, transfer) => ctx.postMessage(message, transfer))
+    setNetworkFetch(netBridge.fetch)
+  }
   const vfs = msg.vfs || 'opfs-sahpool'
 
   // 1. Install the OPFS pool VFS and make it the DEFAULT (see file comment).
@@ -256,6 +267,15 @@ ctx.addEventListener('message', (event) => {
   }
   if (msg?.type === 'request') {
     void serveRequest(msg)
+    return
+  }
+  if (
+    msg?.type === 'net-head' ||
+    msg?.type === 'net-chunk' ||
+    msg?.type === 'net-end' ||
+    msg?.type === 'net-error'
+  ) {
+    netBridge?.handle(msg)
     return
   }
   if (msg?.type === 'dispose') {

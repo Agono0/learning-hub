@@ -16,6 +16,15 @@ html, body {
   height: 100%;
 }
 
+html {
+  /* app-like feel inside the native shells: no grey tap flash, no rubber-band
+     page bounce, no accidental text-size inflation on Android */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
 body {
   @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-[#0a0a0b] dark:text-neutral-100;
 }
@@ -58,3 +67,45 @@ body {
   50% { transform: scale(1.15); opacity: 1 }
 }
 .breathe { animation: breathe 8s ease-in-out infinite; }
+
+/* ── Touch & small-screen ergonomics ─────────────────────────────────────── */
+
+/* Comfortable touch targets wherever the primary pointer is a finger. */
+@media (pointer: coarse) {
+  .btn, .btn-ghost { min-height: 44px; padding-inline: 0.875rem; }
+  .input { min-height: 44px; font-size: 16px; }
+  select.input { font-size: 16px; }
+}
+
+/* Wide content (tables, code, long rows) scrolls inside itself, never the page. */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.panel table { min-width: 100%; }
+@media (max-width: 767px) {
+  /* Page titles: phone-sized, and title rows let their action buttons drop
+     below the title instead of crushing it into a narrow column. */
+  main h1 { font-size: 1.375rem; line-height: 1.3; }
+  main h1.text-3xl { font-size: 1.75rem; }
+  main .flex.justify-between:has(> h1),
+  main .flex.justify-between:has(> div > h1),
+  main .flex.justify-between:has(> header > h1) { flex-wrap: wrap; row-gap: 0.75rem; }
+  .btn, .btn-ghost { white-space: nowrap; }
+  .panel:has(> table), .panel:has(> div > table) { overflow-x: auto; }
+  pre, .katex-display { overflow-x: auto; max-width: 100%; }
+  img, video, canvas, svg { max-width: 100%; }
+}
+
+/* Bottom sheet motion (MoreSheet). */
+@keyframes sheet-up { from { transform: translateY(100%) } to { transform: translateY(0) } }
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+.sheet-panel { animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.sheet-backdrop { animation: fade-in 0.2s ease-out both; }
+
+/* Calm by default: honor the OS reduced-motion setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

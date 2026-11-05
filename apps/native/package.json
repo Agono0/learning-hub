@@ -1,0 +1,16 @@
+{
+  "name": "@learning-hub/native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Learning HUB native shell (Tauri 2): Windows + Android from the single apps/web codebase",
+  "license": "MIT",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "android:init": "tauri android init",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build --apk",
+    "icons": "tauri icon icon.svg"
+  }
+}

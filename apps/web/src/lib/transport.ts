@@ -27,9 +27,19 @@ import type {
   HubToWorker,
 } from '@/hub/protocol'
 import { serializeFormBody, serializeJsonBody, takeTransferables } from '@/hub/protocol'
+import { handleNetMessage } from './net-host'
 
 /** True inside a Tauri webview (worker RPC); false in a plain browser (HTTP). */
 export const isTauri: boolean = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+/**
+ * True when /api is served by the in-webview hub worker instead of HTTP: any
+ * Tauri runtime, or any build of the static-export target (which ships no
+ * API routes — so the same bundle also runs in a plain Chromium for testing).
+ */
+export const usesHubWorker: boolean =
+  typeof window !== 'undefined' &&
+  (isTauri || process.env.NEXT_PUBLIC_LEARNING_HUB_TARGET === 'tauri')
 
 /** OPFS-scoped database path handed to the hub worker on init. */
 const HUB_DB_PATH = '/learning-hub.db'
@@ -105,7 +115,12 @@ function expectBytes(res: HubTunnelResponse): { bytes: ArrayBuffer; filename: st
   }
   const disposition = res.headers['content-disposition'] ?? ''
   const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition)
-  return { bytes: res.bodyBytes ?? new ArrayBuffer(0), filename: match?.[1] ?? null }
+  const bytes =
+    res.bodyBytes ??
+    (res.bodyText !== undefined
+      ? (new TextEncoder().encode(res.bodyText).buffer as ArrayBuffer)
+      : new ArrayBuffer(0))
+  return { bytes, filename: match?.[1] ?? null }
 }
 
 /** Map a browser fetch Response into the shared tunnel shape. */
@@ -214,6 +229,9 @@ function failWorker(worker: Worker, error: Error): void {
 function handleWorkerMessage(worker: Worker, message: HubFromWorker): void {
   // Typed lifecycle/stream frames (checked first: stream-end also has status).
   if ('type' in message) {
+    // Outbound network bridge (AI providers) — executed natively, streamed back.
+    if (handleNetMessage(message, (reply, transfer) => worker.postMessage(reply, transfer ?? [])))
+      return
     switch (message.type) {
       case 'ready': {
         if (workerPhase?.phase === 'starting' && workerPhase.worker === worker) {
@@ -319,7 +337,12 @@ function getWorker(): Promise<Worker> {
 
   const boot = promiseWithResolvers<Worker>()
   workerPhase = { phase: 'starting', worker, waiters: [boot] }
-  const init: HubInitMessage = { type: 'init', dbPath: HUB_DB_PATH, vfs: 'opfs-sahpool' }
+  const init: HubInitMessage = {
+    type: 'init',
+    dbPath: HUB_DB_PATH,
+    vfs: 'opfs-sahpool',
+    nativeNet: isTauri,
+  }
   worker.postMessage(init, takeTransferables(init))
   return boot.promise
 }
@@ -379,7 +402,7 @@ export async function apiGet<T>(
   query?: Record<string, string | number | undefined>,
 ): Promise<T> {
   const search = buildSearch(query)
-  if (isTauri) {
+  if (usesHubWorker) {
     const { cleanPath, search: q } = splitPath(path)
     return expectJson<T>(
       await workerRequest({
@@ -407,7 +430,7 @@ export async function apiSend<T>(
   if (!SEND_METHODS.includes(method)) {
     throw new Error(`apiSend: unsupported method ${method} — use apiGet/apiUpload/apiStream`)
   }
-  if (isTauri) {
+  if (usesHubWorker) {
     const wire = body === undefined ? undefined : serializeJsonBody(body)
     const { cleanPath, search } = splitPath(path)
     return expectJson<T>(
@@ -435,7 +458,7 @@ export async function apiSend<T>(
  * untouched (boundary included).
  */
 export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
-  if (isTauri) {
+  if (usesHubWorker) {
     const body = (await serializeFormBody(form)).body
     const { cleanPath, search } = splitPath(path)
     return expectJson<T>(
@@ -458,7 +481,7 @@ export async function apiStream(
   onChunk: (text: string) => void,
   onSessionId?: (v: string) => void,
 ): Promise<void> {
-  if (isTauri) {
+  if (usesHubWorker) {
     const { cleanPath, search } = splitPath(path)
     await workerRequest({
       method: 'POST',
@@ -504,26 +527,33 @@ export async function apiStream(
  * user cancelled the save dialog.
  */
 export async function apiDownload(path: string, fallbackName = 'download'): Promise<string | null> {
-  if (isTauri) {
+  // 1. Fetch the bytes through whichever transport serves /api.
+  let res: HubTunnelResponse
+  if (usesHubWorker) {
     const { cleanPath, search } = splitPath(path)
-    const res = await workerRequest({ method: 'GET', path: cleanPath, search, headers: {} })
-    const { bytes, filename } = expectBytes(res)
+    res = await workerRequest({ method: 'GET', path: cleanPath, search, headers: {} })
+  } else {
+    res = await tunnelFromFetch(await fetch(path))
+  }
+  const { bytes, filename } = expectBytes(res)
+  const name = filename ?? fallbackName
+
+  // 2. Save them the native way for the runtime.
+  if (isTauri) {
     // Dynamic imports keep the native plugin chunks out of browser bundles.
     const [{ save }, fs] = await Promise.all([
       import('@tauri-apps/plugin-dialog'),
       import('@tauri-apps/plugin-fs'),
     ])
-    const target = await save({ defaultPath: filename ?? fallbackName })
+    const target = await save({ defaultPath: name })
     if (!target) return null
     await fs.writeFile(target, new Uint8Array(bytes))
     return target
   }
-  const { bytes, filename } = expectBytes(await tunnelFromFetch(await fetch(path)))
-  const blob = new Blob([bytes])
-  const url = URL.createObjectURL(blob)
+  const url = URL.createObjectURL(new Blob([bytes]))
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = filename ?? fallbackName
+  anchor.download = name
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
@@ -539,7 +569,7 @@ export async function apiDownload(path: string, fallbackName = 'download'): Prom
  * responses are re-assembled from stream frames into the body.
  */
 export async function hubFetch(path: string, init?: RequestInit): Promise<Response> {
-  if (!isTauri) return fetch(path, init)
+  if (!usesHubWorker) return fetch(path, init)
 
   const method = (init?.method ?? 'GET').toUpperCase()
   const headers: Record<string, string> = {}

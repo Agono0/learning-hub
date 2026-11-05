@@ -277,7 +277,11 @@ async function createNodeSourceStorage(): Promise<PluginSourceStorage> {
     async read(source: PluginSource): Promise<unknown> {
       // Fully dynamic specifier (file URL) — never statically analyzable, so
       // no bundler can rewrite it; the host runtime (tsx/Node) executes it natively.
-      return import(/* @vite-ignore */ url.pathToFileURL(source.id).href)
+      return import(
+        /* @vite-ignore */ /* turbopackIgnore: true */ /* webpackIgnore: true */ url.pathToFileURL(
+          source.id,
+        ).href
+      )
     },
   }
 }

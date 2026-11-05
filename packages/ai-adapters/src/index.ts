@@ -18,6 +18,13 @@ registerBuiltinProviders()
 registerCustomEndpoint()
 
 // Public surface for tree-shakeable manual registration (no side effects).
-export { anthropicFactory, openaiFactory, openaiCompatibleFactory, ollamaFactory, registerBuiltinProviders } from './providers'
+export {
+  anthropicFactory,
+  openaiFactory,
+  openaiCompatibleFactory,
+  ollamaFactory,
+  registerBuiltinProviders,
+} from './providers'
 export { customEndpointFactory, registerCustomEndpoint } from './custom-endpoint'
 export { makeSdkClient } from './sdk-client'
+export { networkFetch, setNetworkFetch } from './network'

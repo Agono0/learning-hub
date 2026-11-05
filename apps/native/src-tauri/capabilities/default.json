@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions shared by every platform. Keep this minimal: the backend runs in the webview, so the shell only needs save dialogs, writing the file the user picked, outbound HTTP for the user's configured AI provider, notifications and logging.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "dialog:allow-save",
+    "fs:allow-write-file",
+    "notification:default",
+    "log:default",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://*:*" }, { "url": "http://*:*" }]
+    }
+  ]
+}

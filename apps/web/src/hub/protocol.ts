@@ -36,6 +36,12 @@ export interface HubInitMessage {
    * database already exists or no pool VFS is active.
    */
   bytes?: ArrayBuffer
+  /**
+   * Route the worker's outbound network traffic (AI providers) through the
+   * main thread — which uses tauri-plugin-http — instead of the worker's own
+   * CORS-bound fetch. Set by the Tauri runtime; plain browsers omit it.
+   */
+  nativeNet?: boolean
 }
 
 /** Serve one HTTP-shaped request. */
@@ -56,7 +62,51 @@ export interface HubDisposeMessage {
   type: 'dispose'
 }
 
-export type HubToWorker = HubInitMessage | HubRequestMessage | HubDisposeMessage
+// ─── Outbound network bridge (worker → main → native HTTP → worker) ─────────
+// Tauri IPC is unreachable from a Web Worker, so the worker's fetch for AI
+// providers is proxied: net-request → (main runs it natively) → net-head →
+// n × net-chunk → net-end, or net-error. Ids are a separate counter owned by
+// the worker. The worker may send net-abort at any time.
+
+export interface HubNetRequestMessage {
+  type: 'net-request'
+  id: number
+  url: string
+  method: string
+  headers: Record<string, string>
+  body?: ArrayBuffer
+}
+export interface HubNetAbortMessage {
+  type: 'net-abort'
+  id: number
+}
+export interface HubNetHeadMessage {
+  type: 'net-head'
+  id: number
+  status: number
+  statusText: string
+  headers: Record<string, string>
+}
+export interface HubNetChunkMessage {
+  type: 'net-chunk'
+  id: number
+  bytes: ArrayBuffer
+}
+export interface HubNetEndMessage {
+  type: 'net-end'
+  id: number
+}
+export interface HubNetErrorMessage {
+  type: 'net-error'
+  id: number
+  message: string
+}
+
+export type HubNetToWorker =
+  HubNetHeadMessage | HubNetChunkMessage | HubNetEndMessage | HubNetErrorMessage
+export type HubNetFromWorker = HubNetRequestMessage | HubNetAbortMessage
+
+export type HubToWorker = HubInitMessage | HubRequestMessage | HubDisposeMessage | HubNetToWorker
 
 // ─── Request bodies ─────────────────────────────────────────────────────────
 
@@ -142,6 +192,7 @@ export type HubFromWorker =
   | HubStreamChunkMessage
   | HubStreamEndMessage
   | HubErrorMessage
+  | HubNetFromWorker
 
 // ─── Serialization helpers ──────────────────────────────────────────────────
 

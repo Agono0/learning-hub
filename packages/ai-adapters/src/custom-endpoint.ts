@@ -12,6 +12,7 @@ import { z, type ZodType } from 'zod'
 import { buildAIEnvelope, parseAIEnvelopeResult, registerAIProvider } from '@learning-hub/core/ai'
 import type { AISettings } from '@learning-hub/core/types'
 import type { AIClient, AIClientFactory } from '@learning-hub/core/ai'
+import { networkFetch } from './network'
 
 const REQUEST_TIMEOUT_MS = 120_000
 
@@ -33,10 +34,14 @@ interface CustomEndpointResult {
 }
 
 /** POST the envelope, return the parsed { result } body. */
-async function callEndpoint(url: string, headers: Record<string, string>, envelope: unknown): Promise<string | object> {
+async function callEndpoint(
+  url: string,
+  headers: Record<string, string>,
+  envelope: unknown,
+): Promise<string | object> {
   let res: Response
   try {
-    res = await fetch(url, {
+    res = await networkFetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(envelope),
@@ -46,7 +51,9 @@ async function callEndpoint(url: string, headers: Record<string, string>, envelo
     throw new Error(`custom-endpoint request failed: ${errText(e)}`)
   }
   if (!res.ok) {
-    throw new Error(`custom-endpoint responded with HTTP ${res.status} (the response body is not shown to the client)`)
+    throw new Error(
+      `custom-endpoint responded with HTTP ${res.status} (the response body is not shown to the client)`,
+    )
   }
   let body: unknown
   try {
@@ -56,7 +63,9 @@ async function callEndpoint(url: string, headers: Record<string, string>, envelo
   }
   const result = (body as Partial<CustomEndpointResult> | null)?.result
   if (typeof result !== 'string' && typeof result !== 'object') {
-    throw new Error('custom-endpoint response must be {"result": string | object} — "result" is missing or not a string/object')
+    throw new Error(
+      'custom-endpoint response must be {"result": string | object} — "result" is missing or not a string/object',
+    )
   }
   return result
 }
@@ -71,23 +80,39 @@ async function callEndpoint(url: string, headers: Record<string, string>, envelo
 export const customEndpointFactory: AIClientFactory = (settings: AISettings): AIClient => {
   const url = settings.baseUrl?.trim()
   if (!url || !/^https?:\/\//i.test(url)) {
-    throw new Error('custom-endpoint provider requires an http(s) Base URL in Settings — the URL that accepts the AI envelope POST (see docs/ai-providers.md).')
+    throw new Error(
+      'custom-endpoint provider requires an http(s) Base URL in Settings — the URL that accepts the AI envelope POST (see docs/ai-providers.md).',
+    )
   }
-  const headers: Record<string, string> = { 'content-type': 'application/json', ...(settings.headers ?? {}) }
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    ...(settings.headers ?? {}),
+  }
 
   return {
     /** POST the envelope; the string result is fence-stripped + zod-validated, object results validated directly. */
-    async generateJSON<T>({ schema, system, prompt }: { schema: ZodType<T>; system?: string; prompt: string }): Promise<T> {
+    async generateJSON<T>({
+      schema,
+      system,
+      prompt,
+    }: {
+      schema: ZodType<T>
+      system?: string
+      prompt: string
+    }): Promise<T> {
       const envelope = buildAIEnvelope('adhoc', {
         system: system ?? '',
         prompt,
         schemaDescription: jsonSchemaOf(schema),
       })
       const result = await callEndpoint(url, headers, envelope)
-      if (typeof result === 'string') return parseAIEnvelopeResult('custom-endpoint', result, schema)
+      if (typeof result === 'string')
+        return parseAIEnvelopeResult('custom-endpoint', result, schema)
       const parsed = schema.safeParse(result)
       if (!parsed.success) {
-        const issues = parsed.error.issues.map((i) => `${i.path.map(String).join('.') || '(root)'}: ${i.message}`).join('; ')
+        const issues = parsed.error.issues
+          .map((i) => `${i.path.map(String).join('.') || '(root)'}: ${i.message}`)
+          .join('; ')
         throw new Error(`custom-endpoint result does not match the expected schema — ${issues}`)
       }
       return parsed.data
@@ -95,7 +120,11 @@ export const customEndpointFactory: AIClientFactory = (settings: AISettings): AI
 
     /** POST the envelope; the reply's `result` (string) is returned verbatim. */
     async generateText({ system, prompt }: { system?: string; prompt: string }): Promise<string> {
-      const result = await callEndpoint(url, headers, buildAIEnvelope('adhoc', { system: system ?? '', prompt }))
+      const result = await callEndpoint(
+        url,
+        headers,
+        buildAIEnvelope('adhoc', { system: system ?? '', prompt }),
+      )
       return typeof result === 'string' ? result : JSON.stringify(result)
     },
   }
