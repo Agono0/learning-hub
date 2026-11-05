@@ -46,3 +46,6 @@ export * from './plugin-loader'
 
 // ── Weekly review report ──
 export * from './weekly'
+
+// ── Study companions (M4) ──
+export * from './agenda'

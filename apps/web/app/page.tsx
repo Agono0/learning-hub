@@ -155,14 +155,30 @@ export default function DashboardPage() {
 
         <div className="panel">
           <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            The Daily Loop
+            Today's agenda
           </div>
-          <ol className="mt-3 space-y-1.5 text-sm text-neutral-400">
-            <li>1 · Review due cards</li>
-            <li>2 · One lesson or teach-back</li>
-            <li>3 · One focus block</li>
-            <li>4 · Log a small win</li>
-          </ol>
+          {d.agenda.length > 0 ? (
+            <ol className="mt-3 space-y-1.5 text-sm text-neutral-400">
+              {d.agenda.map((item, i) => (
+                <li key={item.kind + item.href}>
+                  <Link
+                    href={item.href}
+                    className="flex items-baseline gap-2 rounded px-1 py-0.5 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+                  >
+                    <span className="text-neutral-600 dark:text-neutral-500">{i + 1} ·</span>
+                    <span className="min-w-0 flex-1">
+                      {item.title}
+                      {item.detail && <span className="text-neutral-500"> · {item.detail}</span>}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-3 text-sm text-neutral-500">
+              Everything done for today — rest consolidates it.
+            </p>
+          )}
           <div className="mt-4 flex gap-2">
             <Link href="/review" className="btn-ghost">
               <Repeat2 className="h-4 w-4" /> Review

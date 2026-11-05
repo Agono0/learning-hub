@@ -13,6 +13,8 @@ import {
   cards,
   courses,
   examDates,
+  focusSessions,
+  journalEntries,
   lessonProgress,
   lessons,
   quests,
@@ -21,7 +23,7 @@ import {
   units,
   xpEvents,
 } from '@learning-hub/db'
-import { dayKey } from '@learning-hub/core'
+import { buildAgenda, dayKey, FOCUS_TARGET_MINUTES, type AgendaItem } from '@learning-hub/core'
 import { withRoute } from '@/lib/api'
 
 /** One unfinished thing the dashboard invites the learner back to. */
@@ -54,6 +56,8 @@ export interface DashboardData {
   freshStart: boolean
   dateKey: string
   openLoops: OpenLoop[]
+  /** prioritized "do this next" list (packages/core/src/agenda.ts) */
+  agenda: AgendaItem[]
 }
 
 function isFreshStartMoment(d: Date): boolean {
@@ -137,6 +141,39 @@ export const GET = withRoute(async (): Promise<Response> => {
     })),
   ]
 
+  // Today agenda facts beyond the loops above: focus minutes and the journal.
+  const [focusRow] = await db
+    .select({ minutes: sql<number>`coalesce(sum(${focusSessions.actualMinutes}), 0)` })
+    .from(focusSessions)
+    .where(
+      and(
+        gte(focusSessions.startedAt, `${today}T00:00:00.000Z`),
+        eq(focusSessions.completed, true),
+      ),
+    )
+  const [journalRow] = await db
+    .select({ id: journalEntries.id })
+    .from(journalEntries)
+    .where(eq(journalEntries.date, today))
+    .limit(1)
+
+  const examDaysLeft = (iso: string) =>
+    Math.ceil((new Date(`${iso}T23:59:59.000Z`).getTime() - now.getTime()) / 86_400_000)
+
+  const agenda: AgendaItem[] = buildAgenda({
+    dueCount: Number(dueCount ?? 0),
+    exams: upcomingExams.map((e) => ({ title: e.title, daysLeft: examDaysLeft(e.date) })),
+    inProgressLessons: inProgress.map((l) => ({
+      lessonId: l.lessonId,
+      title: l.lessonTitle,
+      courseTitle: l.courseTitle,
+    })),
+    focusMinutesToday: Math.round(Number(focusRow?.minutes ?? 0)),
+    focusTargetMinutes: FOCUS_TARGET_MINUTES,
+    quest: todayQuest ? { title: 'daily quest', completed: todayQuest.completed } : null,
+    journalDoneToday: journalRow != null,
+  })
+
   const payload: DashboardData = {
     dueCount: Number(dueCount ?? 0),
     streak: streakRow ?? {
@@ -153,6 +190,7 @@ export const GET = withRoute(async (): Promise<Response> => {
     freshStart: isFreshStartMoment(now),
     dateKey: today,
     openLoops,
+    agenda,
   }
   return Response.json(payload)
 })
