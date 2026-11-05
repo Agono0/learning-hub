@@ -5,6 +5,7 @@ import {
   CourseParseError,
   generateCoursePrompt,
   unlockedSkills,
+  recommendNextSkills,
   masteryLevel,
   applyReviewToMastery,
   examCountdownPlan,
@@ -190,6 +191,41 @@ describe('unlockedSkills (prerequisite DAG gating)', () => {
     // skill 2 unlocked (prereq 1 mastered); skill 4 unlocked (prereq 1 mastered);
     // skill 3 needs prereq 2 which has no mastery row → treated as pKnown 0.1 → locked
     expect(unlocked).toEqual(new Set([1, 2, 4]))
+  })
+})
+
+describe('recommendNextSkills', () => {
+  it('ranks unlocked, unmastered skills by downstream impact', () => {
+    // skill 1 mastered → 2 and 4 unlocked; 2 unlocks 3 (impact), so it leads
+    const recs = recommendNextSkills(
+      [
+        { id: 1, name: 'one' },
+        { id: 2, name: 'two' },
+        { id: 3, name: 'three' },
+        { id: 4, name: 'four' },
+      ],
+      edges,
+      [{ skillId: 1, pKnown: 0.95, attempts: 10 }],
+    )
+    expect(recs.map((r) => r.skillId)).toEqual([2, 4])
+    expect(recs[0]).toMatchObject({ unlocks: 1 })
+    expect(recs[0].reason).toContain('unlock')
+  })
+
+  it('skips mastered skills and empty DAGs gracefully', () => {
+    const recs = recommendNextSkills(
+      [
+        { id: 1, name: 'one' },
+        { id: 2, name: 'two' },
+      ],
+      edges,
+      [
+        { skillId: 1, pKnown: 0.95, attempts: 10 },
+        { skillId: 2, pKnown: 0.95, attempts: 10 },
+        { skillId: 4, pKnown: 0.95, attempts: 10 },
+      ],
+    )
+    expect(recs).toEqual([])
   })
 })
 

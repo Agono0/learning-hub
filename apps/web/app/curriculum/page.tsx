@@ -61,6 +61,13 @@ interface Radar {
   overconfidentCards: number
   summary: string
 }
+interface Rec {
+  skillId: number
+  name: string
+  pKnown: number
+  unlocks: number
+  reason: string
+}
 interface Plan {
   daysLeft: number
   cramWarning: boolean
@@ -99,9 +106,10 @@ export default function CurriculumPage() {
     queryKey: ['curriculum'],
     queryFn: () => apiGet<{ tracks: Track[] }>('/api/curriculum'),
   })
-  const { data: skillData } = useQuery<{ skills: Skill[]; radar: Radar }>({
+  const { data: skillData } = useQuery<{ skills: Skill[]; radar: Radar; recommendations: Rec[] }>({
     queryKey: ['skills'],
-    queryFn: () => apiGet<{ skills: Skill[]; radar: Radar }>('/api/curriculum/skills'),
+    queryFn: () =>
+      apiGet<{ skills: Skill[]; radar: Radar; recommendations: Rec[] }>('/api/curriculum/skills'),
   })
   const { data: examData } = useQuery<{
     exam: { id: number; title: string; date: string } | null
@@ -565,6 +573,21 @@ export default function CurriculumPage() {
                   ))}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Learning-path recommendations (skill DAG) */}
+          {skillData?.recommendations && skillData.recommendations.length > 0 && (
+            <div className="panel space-y-2">
+              <h2 className="text-sm font-semibold">Study next</h2>
+              <ul className="space-y-1.5 text-sm">
+                {skillData.recommendations.map((r) => (
+                  <li key={r.skillId} className="flex items-baseline gap-2">
+                    <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
+                    <span className="text-xs text-neutral-500">{r.reason}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

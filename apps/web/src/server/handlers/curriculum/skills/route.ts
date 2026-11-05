@@ -1,12 +1,13 @@
 /**
  * /api/curriculum/skills — GET the skill tree with mastery + DAG unlock states,
- * plus the weakness radar (weakest skills, leeches, confident-wrong count).
+ * plus the weakness radar and learning-path recommendations.
  */
 import { and, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@learning-hub/db'
 import {
   cardPreviewText,
   masteryLevel,
+  recommendNextSkills,
   unlockedSkills,
   weaknessRadar,
   type MasteryInput,
@@ -19,16 +20,13 @@ export async function GET() {
   const skillRows = await db.select().from(skills)
   const edgeRows = await db.select().from(skillEdges)
   const masteryRows = await db.select().from(mastery)
+  const masteryInputs = masteryRows.map((m): MasteryInput => ({
+    skillId: m.skillId,
+    pKnown: m.pKnown,
+    attempts: m.attempts,
+  }))
   const pBySkill = new Map(masteryRows.map((m) => [m.skillId, m]))
-  const unlocked = unlockedSkills(
-    skillRows,
-    edgeRows,
-    masteryRows.map((m): MasteryInput => ({
-      skillId: m.skillId,
-      pKnown: m.pKnown,
-      attempts: m.attempts,
-    })),
-  )
+  const unlocked = unlockedSkills(skillRows, edgeRows, masteryInputs)
   const out = skillRows.map((s) => {
     const m = pBySkill.get(s.id)
     const level = masteryLevel(m?.pKnown ?? 0.1, m?.attempts ?? 0)
@@ -81,5 +79,8 @@ export async function GET() {
     overconfidentCards: Number(overconfident?.n ?? 0),
   })
 
-  return Response.json({ skills: out, edges: edgeRows, radar })
+  // learning-path recommendations: unlocked, unmastered, most-downstream first
+  const recommendations = recommendNextSkills(skillRows, edgeRows, masteryInputs)
+
+  return Response.json({ skills: out, edges: edgeRows, radar, recommendations })
 }

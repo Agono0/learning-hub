@@ -266,6 +266,54 @@ export const CRAM_WARNING =
   'and sleep tonight — sleep consolidates what you retrieve today. Do NOT pull an all-nighter: it trades ' +
   'tomorrow\u2019s recall for tonight\u2019s anxiety.'
 
+// ─── Learning-path recommendations (skill DAG) ──────────────────────────────
+
+/** One "study this next" recommendation. */
+export interface SkillRecommendation {
+  skillId: number
+  name: string
+  pKnown: number
+  /** how many skills this one unlocks (directly) — impact of finishing it */
+  unlocks: number
+  reason: string
+}
+
+/**
+ * What to study next, from the prerequisite DAG: among UNLOCKED but not-yet-
+ * mastered skills, rank by downstream impact (how many skills they unlock)
+ * then by current mastery (lowest first). Pure — the handler supplies rows.
+ */
+export function recommendNextSkills(
+  skillRows: { id: number; name: string }[],
+  edges: SkillEdgeInput[],
+  masteryRows: MasteryInput[],
+  threshold = 0.7,
+): SkillRecommendation[] {
+  const unlocked = unlockedSkills(skillRows, edges, masteryRows, threshold)
+  const pBySkill = new Map(masteryRows.map((m) => [m.skillId, m.pKnown]))
+  const directDependants = new Map<number, number>()
+  for (const e of edges) {
+    directDependants.set(e.fromSkillId, (directDependants.get(e.fromSkillId) ?? 0) + 1)
+  }
+  const candidates = skillRows
+    .filter((s) => unlocked.has(s.id))
+    .map((s) => {
+      const pKnown = pBySkill.get(s.id) ?? 0.1
+      const unlocks = directDependants.get(s.id) ?? 0
+      const reason =
+        pKnown < threshold
+          ? unlocks > 0
+            ? `${unlocks} skill${unlocks === 1 ? '' : 's'} unlock${unlocks === 1 ? 's' : ''} once this is mastered`
+            : 'unlocked, not yet mastered'
+          : 'mastered — keep it fresh with reviews'
+      return { skillId: s.id, name: s.name, pKnown, unlocks, reason }
+    })
+    .filter((s) => s.pKnown < threshold)
+    .sort((a, b) => b.unlocks - a.unlocks || a.pKnown - b.pKnown)
+    .slice(0, 3)
+  return candidates
+}
+
 /** Skill mastery snapshot feeding the exam countdown planner. */
 export interface ExamSkillMastery extends MasteryInput {
   name?: string
