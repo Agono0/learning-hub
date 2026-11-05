@@ -33,6 +33,7 @@ import {
   workedExampleFade,
 } from '@learning-hub/core/review'
 import { apiGet, apiSend } from '@/lib/transport'
+import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 
 interface CardRow {
   id: number
@@ -117,6 +118,9 @@ export default function ReviewPage() {
   const [typeinValue, setTypeinValue] = useState('')
   const [mcqPick, setMcqPick] = useState<number | null>(null)
   const [clozeInput, setClozeInput] = useState<Record<number, string>>({})
+  // practice-engine exercise cards: the graded response from ExercisePractice
+  // (the practice endpoint already recorded the review — the session only advances)
+  const [exerciseResult, setExerciseResult] = useState<PracticeResponse | null>(null)
   const [finishedAt, setFinishedAt] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
@@ -128,6 +132,9 @@ export default function ReviewPage() {
       setUndoStack([])
       setEnergy(initialEnergy())
       setFinishedAt(null)
+      // a stale answer from a previous session must never unlock "Next card"
+      // for the first exercise card of the new one
+      setExerciseResult(null)
     }
   }, [session.data])
 
@@ -162,11 +169,13 @@ export default function ReviewPage() {
           xp: data.xp,
         },
       ])
-      // Again → re-learn within this session (once)
+      // Again → re-learn within this session (once per mistake). The re-queued
+      // copy extends the queue, so a mistake on the LAST card must also extend
+      // the end check — otherwise the retry is silently dropped.
       if (wasMistake) setQueue((q) => [...q, current!])
       resetCardState()
       void qc.invalidateQueries({ queryKey: ['decks'] })
-      if (idx + 1 >= queue.length) setFinishedAt(Date.now())
+      if (idx + 1 >= queue.length + (wasMistake ? 1 : 0)) setFinishedAt(Date.now())
       else setIdx((i) => i + 1)
     },
   })
@@ -200,12 +209,41 @@ export default function ReviewPage() {
     [current, gradeMutation, confidence],
   )
 
+  // Practice-engine exercise cards are graded AND recorded by the practice
+  // endpoint (same executeReview pipeline) — the session only advances here,
+  // mirroring gradeMutation's bookkeeping (no undo: there is no preReview).
+  const advanceAfterExercise = useCallback(() => {
+    if (!current || !exerciseResult) return
+    const { result, review } = exerciseResult
+    const wasMistake = !result.pending && result.grade === 1
+    if (wasMistake) {
+      setEnergy((e) => applyMistake(e))
+      setQueue((q) => [...q, current])
+    }
+    if (review) {
+      const intervalDays = Math.max(
+        0,
+        Math.round((new Date(review.due).getTime() - Date.now()) / 86_400_000),
+      )
+      setResults((r) => [
+        ...r,
+        { cardId: current.id, grade: result.grade, intervalDays, xp: review.xpEarned },
+      ])
+    }
+    setExerciseResult(null)
+    resetCardState()
+    void qc.invalidateQueries({ queryKey: ['decks'] })
+    if (idx + 1 >= queue.length + (wasMistake ? 1 : 0)) setFinishedAt(Date.now())
+    else setIdx((i) => i + 1)
+  }, [current, exerciseResult, idx, queue.length, resetCardState])
+
   const reveal = useCallback(() => setRevealed(true), [])
 
   // keyboard: 1-4 grade · space reveal/Good · e undo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!current) return
+      if (current.type === 'exercise') return // the exercise owns its own controls
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Enter') {
           e.preventDefault()
@@ -345,6 +383,7 @@ export default function ReviewPage() {
                 setStarted(false)
                 setFinishedAt(null)
                 setResults([])
+                setExerciseResult(null)
               }}
             >
               <RotateCcw className="h-4 w-4" /> New session
@@ -392,51 +431,70 @@ export default function ReviewPage() {
           </span>
         </div>
 
-        <CardFront
-          card={current}
-          revealed={revealed}
-          typeinValue={typeinValue}
-          setTypeinValue={setTypeinValue}
-          mcqPick={mcqPick}
-          setMcqPick={setMcqPick}
-          clozeInput={clozeInput}
-          setClozeInput={setClozeInput}
-          inputRef={inputRef}
-        />
-
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          {!revealed ? (
-            <button className="btn" onClick={reveal}>
-              <Eye className="h-4 w-4" /> Reveal <span className="text-xs opacity-70">space</span>
-            </button>
-          ) : (
-            GRADES.map((g) => (
-              <button
-                key={g.grade}
-                className={`btn ${g.color}`}
-                onClick={() => commit(g.grade)}
-                disabled={gradeMutation.isPending}
-              >
-                {g.label} <span className="text-xs opacity-70">{g.grade}</span>
+        {current.type === 'exercise' && current.content.exercise ? (
+          <div className="space-y-3">
+            <ExercisePractice
+              key={`${current.id}-${idx}`}
+              cardId={current.id}
+              exercise={current.content.exercise}
+              onAnswered={setExerciseResult}
+            />
+            {exerciseResult && (
+              <button className="btn" onClick={advanceAfterExercise}>
+                Next card <ArrowRight className="h-4 w-4" />
               </button>
-            ))
-          )}
-          <div className="ml-auto flex items-center gap-1 text-xs">
-            <span className="text-neutral-500">confidence</span>
-            <button
-              onClick={() => setConfidence(1)}
-              className={`rounded px-2 py-1 ${confidence === 1 ? 'bg-emerald-600/20 text-emerald-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
-            >
-              <Check className="inline h-3 w-3" /> sure
-            </button>
-            <button
-              onClick={() => setConfidence(0)}
-              className={`rounded px-2 py-1 ${confidence === 0 ? 'bg-amber-600/20 text-amber-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
-            >
-              <X className="inline h-3 w-3" /> unsure
-            </button>
+            )}
           </div>
-        </div>
+        ) : (
+          <>
+            <CardFront
+              card={current}
+              revealed={revealed}
+              typeinValue={typeinValue}
+              setTypeinValue={setTypeinValue}
+              mcqPick={mcqPick}
+              setMcqPick={setMcqPick}
+              clozeInput={clozeInput}
+              setClozeInput={setClozeInput}
+              inputRef={inputRef}
+            />
+
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {!revealed ? (
+                <button className="btn" onClick={reveal}>
+                  <Eye className="h-4 w-4" /> Reveal{' '}
+                  <span className="text-xs opacity-70">space</span>
+                </button>
+              ) : (
+                GRADES.map((g) => (
+                  <button
+                    key={g.grade}
+                    className={`btn ${g.color}`}
+                    onClick={() => commit(g.grade)}
+                    disabled={gradeMutation.isPending}
+                  >
+                    {g.label} <span className="text-xs opacity-70">{g.grade}</span>
+                  </button>
+                ))
+              )}
+              <div className="ml-auto flex items-center gap-1 text-xs">
+                <span className="text-neutral-500">confidence</span>
+                <button
+                  onClick={() => setConfidence(1)}
+                  className={`rounded px-2 py-1 ${confidence === 1 ? 'bg-emerald-600/20 text-emerald-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+                >
+                  <Check className="inline h-3 w-3" /> sure
+                </button>
+                <button
+                  onClick={() => setConfidence(0)}
+                  className={`rounded px-2 py-1 ${confidence === 0 ? 'bg-amber-600/20 text-amber-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+                >
+                  <X className="inline h-3 w-3" /> unsure
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-2 text-xs text-neutral-500">
@@ -450,7 +508,7 @@ export default function ReviewPage() {
         >
           <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
         </button>
-        <span>keys: 1-4 grade · space reveal/Good · e undo</span>
+        {current.type !== 'exercise' && <span>keys: 1-4 grade · space reveal/Good · e undo</span>}
         <button
           className="btn-ghost ml-auto"
           onClick={() => {
