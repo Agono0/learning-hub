@@ -34,7 +34,8 @@
     "android:dev": "node scripts/tauri-android.mjs dev",
     "android:build": "node scripts/tauri-android.mjs build --apk",
     "web:tauri": "node scripts/tauri-web.mjs build",
-    "preview:tauri": "node scripts/serve-static.mjs apps/web/.next-tauri 4173"
+    "preview:tauri": "node scripts/serve-static.mjs apps/web/.next-tauri 4173",
+    "new:feature": "node scripts/new-feature.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
