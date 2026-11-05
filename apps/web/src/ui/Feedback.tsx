@@ -98,3 +98,13 @@ export function Callout({
     </div>
   )
 }
+
+/** Calm loading placeholder block (replaces blank `return null` states). */
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden
+      className={cx('animate-pulse rounded-xl bg-neutral-200/80 dark:bg-[#1b1b20]', className)}
+    />
+  )
+}

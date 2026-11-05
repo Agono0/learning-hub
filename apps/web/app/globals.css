@@ -122,6 +122,10 @@ body {
 .prose-hub code { @apply rounded bg-neutral-100 px-1 py-0.5 text-[13px] dark:bg-[#1e1e23]; }
 .prose-hub pre { @apply overflow-x-auto rounded-xl bg-neutral-100 p-3 text-[13px] leading-6 dark:bg-[#101014]; }
 .prose-hub pre code { @apply bg-transparent p-0; }
-.prose-hub table { @apply block overflow-x-auto text-sm; }
-.prose-hub th, .prose-hub td { @apply border border-neutral-200 px-2 py-1 dark:border-[#26262b]; }
+.prose-hub table { @apply block w-full overflow-x-auto border-collapse text-sm; }
+.prose-hub th { @apply border border-neutral-200 bg-neutral-100/80 px-2.5 py-1.5 text-left font-semibold dark:border-[#26262b] dark:bg-[#1a1a1f]; }
+.prose-hub td { @apply border border-neutral-200 px-2.5 py-1.5 dark:border-[#26262b]; }
+.prose-hub ul:has(> li > input[type="checkbox"]) { @apply list-none pl-1; }
+.prose-hub input[type="checkbox"] { @apply mr-2 rounded accent-indigo-600; }
+.prose-hub del { @apply text-neutral-400 line-through; }
 .prose-hub hr { @apply border-neutral-200 dark:border-[#26262b]; }

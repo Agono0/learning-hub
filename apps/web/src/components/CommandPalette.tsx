@@ -28,6 +28,15 @@ const KIND_LABEL: Record<SearchHit['kind'], string> = {
   idea: 'Ideas',
 }
 
+const OPEN_PALETTE_EVENT = 'lh:open-command-palette'
+
+/** Open the global ⌘K command palette from any button (mobile/tablet/sidebar). */
+export function openCommandPalette(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(OPEN_PALETTE_EVENT))
+  }
+}
+
 export function CommandPalette() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -37,7 +46,7 @@ export function CommandPalette() {
 
   const toggle = useCallback(() => setOpen((o) => !o), [])
 
-  // global shortcut
+  // global shortcut + imperative button trigger
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -45,8 +54,13 @@ export function CommandPalette() {
         toggle()
       }
     }
+    const onOpen = () => setOpen(true)
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener(OPEN_PALETTE_EVENT, onOpen)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener(OPEN_PALETTE_EVENT, onOpen)
+    }
   }, [toggle])
 
   // debounce the search query

@@ -230,6 +230,29 @@ describe('settings (item 2)', () => {
     const badValue = await M.settings.PUT(req('PUT', '/api/settings', { aiHeaders: '{"A": 1}' }))
     expect(badValue.status).toBe(400)
   })
+
+  it('persists theme (including system), onboardingCompleted, and sidebarCollapsedGroups', async () => {
+    const res = await M.settings.PUT(
+      req('PUT', '/api/settings', {
+        theme: 'system',
+        onboardingCompleted: true,
+        sidebarCollapsedGroups: ['Explore', 'Discipline'],
+      }),
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      settings: {
+        theme: string
+        onboardingCompleted: boolean
+        sidebarCollapsedGroups: string[]
+        isEmptyWorkspace: boolean
+      }
+    }
+    expect(body.settings.theme).toBe('system')
+    expect(body.settings.onboardingCompleted).toBe(true)
+    expect(body.settings.sidebarCollapsedGroups).toEqual(['Explore', 'Discipline'])
+    expect(typeof body.settings.isEmptyWorkspace).toBe('boolean')
+  })
 })
 
 describe('streak dedupe (item 10)', () => {

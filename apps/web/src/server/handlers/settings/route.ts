@@ -7,7 +7,7 @@
  */
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, userSettings } from '@learning-hub/db'
+import { cards, courses, db, userSettings } from '@learning-hub/db'
 import { fsrsWeightsSchema, getAIClient, type AIProvider } from '@learning-hub/core'
 import '@/lib/ai'
 import { ApiError, readJson, withRoute } from '@/lib/api'
@@ -33,6 +33,8 @@ const putSettingsSchema = z.object({
   fsrsWeights: fsrsWeightsSchema.nullable().optional(),
   sessionMinutes: z.number().optional(),
   theme: z.enum(['dark', 'light', 'system']).optional(),
+  onboardingCompleted: z.boolean().optional(),
+  sidebarCollapsedGroups: z.array(z.string().max(80)).max(20).nullable().optional(),
 })
 
 const testSettingsSchema = z.object({
@@ -83,8 +85,15 @@ async function getRow() {
   return created!
 }
 
+async function isWorkspaceEmpty(): Promise<boolean> {
+  const [anyCourse] = await db.select({ id: courses.id }).from(courses).limit(1)
+  if (anyCourse) return false
+  const [anyCard] = await db.select({ id: cards.id }).from(cards).limit(1)
+  return !anyCard
+}
+
 export async function GET() {
-  const row = await getRow()
+  const [row, empty] = await Promise.all([getRow(), isWorkspaceEmpty()])
   return Response.json({
     settings: {
       ...row,
@@ -93,6 +102,7 @@ export async function GET() {
       aiHeaders: row.aiHeaders ? '••••' : null, // values masked; the UI keeps them unless edited
       hasHeaders: Boolean(row.aiHeaders),
       hasCustomWeights: Array.isArray(row.fsrsWeights) && row.fsrsWeights.length === 21,
+      isEmptyWorkspace: empty,
     },
   })
 }
@@ -118,8 +128,11 @@ export const PUT = withRoute(async (req: Request) => {
   if (body.sessionMinutes !== undefined)
     patch.sessionMinutes = Math.max(5, Math.min(180, Math.round(body.sessionMinutes)))
   if (body.theme !== undefined) patch.theme = body.theme
+  if (body.onboardingCompleted !== undefined) patch.onboardingCompleted = body.onboardingCompleted
+  if (body.sidebarCollapsedGroups !== undefined)
+    patch.sidebarCollapsedGroups = body.sidebarCollapsedGroups
   await db.update(userSettings).set(patch).where(eq(userSettings.id, row.id))
-  const updated = await getRow()
+  const [updated, empty] = await Promise.all([getRow(), isWorkspaceEmpty()])
   return Response.json({
     ok: true,
     settings: {
@@ -129,6 +142,7 @@ export const PUT = withRoute(async (req: Request) => {
       aiHeaders: updated.aiHeaders ? '••••' : null,
       hasHeaders: Boolean(updated.aiHeaders),
       hasCustomWeights: Array.isArray(updated.fsrsWeights) && updated.fsrsWeights.length === 21,
+      isEmptyWorkspace: empty,
     },
   })
 })

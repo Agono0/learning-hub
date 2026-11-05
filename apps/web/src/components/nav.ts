@@ -41,26 +41,30 @@ export interface NavItem {
 
 export interface NavGroup {
   group: string
+  /** Secondary groups start collapsed in the desktop sidebar for a calmer first view. */
+  defaultCollapsed?: boolean
   items: NavItem[]
 }
 
 export const NAV: NavGroup[] = [
   {
     group: 'Learn',
+    defaultCollapsed: false,
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard, primary: true },
       { href: '/review', label: 'Review', icon: Repeat2, primary: true },
       { href: '/courses', label: 'Courses', icon: GraduationCap, primary: true },
-      { href: '/planner', label: 'Planner', icon: CalendarRange },
-      { href: '/decks', label: 'Decks & Cards', icon: Layers },
-      { href: '/curriculum', label: 'Skills & exams', icon: Target },
       { href: '/reading', label: 'Reading', icon: BookOpen },
+      { href: '/decks', label: 'Decks & Cards', icon: Layers },
+      { href: '/planner', label: 'Planner', icon: CalendarRange },
+      { href: '/curriculum', label: 'Skills & exams', icon: Target },
       { href: '/tutor', label: 'Tutor', icon: MessageCircleQuestion },
       { href: '/feynman', label: 'Feynman', icon: NotebookPen },
     ],
   },
   {
     group: 'Explore',
+    defaultCollapsed: true,
     items: [
       { href: '/notes', label: 'Notes', icon: PenTool },
       { href: '/graph', label: 'Graph', icon: Network },
@@ -71,6 +75,7 @@ export const NAV: NavGroup[] = [
   },
   {
     group: 'Discipline',
+    defaultCollapsed: true,
     items: [
       { href: '/focus', label: 'Focus', icon: Timer, primary: true },
       { href: '/habits', label: 'Habits', icon: CalendarCheck },
@@ -82,6 +87,7 @@ export const NAV: NavGroup[] = [
   },
   {
     group: 'Create & Analyze',
+    defaultCollapsed: true,
     items: [
       { href: '/ideas', label: 'Ideas', icon: Lightbulb },
       { href: '/quotes', label: 'Quotes', icon: Quote },
@@ -91,6 +97,10 @@ export const NAV: NavGroup[] = [
     ],
   },
 ]
+
+export const DEFAULT_COLLAPSED_GROUPS: string[] = NAV.filter((g) => g.defaultCollapsed).map(
+  (g) => g.group,
+)
 
 export const ALL_NAV_ITEMS: NavItem[] = NAV.flatMap((g) => g.items)
 export const PRIMARY_NAV_ITEMS: NavItem[] = ALL_NAV_ITEMS.filter((i) => i.primary)

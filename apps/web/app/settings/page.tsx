@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
+import { Monitor, Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
 import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
+import {
+  applyThemePreference,
+  normalizeThemePreference,
+  type ThemePreference,
+} from '@/components/ThemeSync'
 import { apiGet, apiSend } from '@/lib/transport'
 
 const PROVIDERS: {
@@ -120,7 +125,7 @@ export default function SettingsPage() {
   const [headers, setHeaders] = useState('')
   const [retention, setRetention] = useState(0.9)
   const [sessionMinutes, setSessionMinutes] = useState(25)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [theme, setTheme] = useState<ThemePreference>('dark')
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [weightsDraft, setWeightsDraft] = useState('')
   const [rescheduleOnSave, setRescheduleOnSave] = useState(false)
@@ -133,7 +138,7 @@ export default function SettingsPage() {
     setBaseUrl(s.aiBaseUrl ?? '')
     setRetention(s.desiredRetention)
     setSessionMinutes(s.sessionMinutes)
-    setTheme(s.theme === 'light' ? 'light' : 'dark')
+    setTheme(normalizeThemePreference(s.theme))
     setWeightsDraft(
       s.fsrsWeights && s.fsrsWeights.length === 21
         ? s.fsrsWeights.map((w) => Number(w.toFixed(4))).join(', ')
@@ -199,7 +204,7 @@ export default function SettingsPage() {
   })
 
   const save = useMutation({
-    mutationFn: () =>
+    mutationFn: (overrideTheme?: ThemePreference) =>
       apiSend('/api/settings', 'PUT', {
         aiProvider: provider,
         aiModel: model,
@@ -208,7 +213,7 @@ export default function SettingsPage() {
         aiHeaders: headers,
         desiredRetention: retention,
         sessionMinutes,
-        theme,
+        theme: overrideTheme ?? theme,
       }),
     onSuccess: () => {
       setApiKey('')
@@ -242,11 +247,10 @@ export default function SettingsPage() {
       ),
   })
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark'
+  const selectTheme = (next: ThemePreference) => {
     setTheme(next)
-    document.documentElement.classList.toggle('dark', next === 'dark')
-    save.mutate()
+    applyThemePreference(next)
+    save.mutate(next)
   }
 
   const meta = PROVIDERS.find((p) => p.key === provider) ?? PROVIDERS[0]!
@@ -395,17 +399,45 @@ export default function SettingsPage() {
             className="w-full accent-indigo-500"
           />
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="label">Theme</div>
             <div className="text-sm text-neutral-500">
-              Dark is the default (and the best at night).
+              Dark, Light, or follow your OS color scheme automatically.
             </div>
           </div>
-          <button className="btn-ghost" onClick={toggleTheme}>
-            {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            {theme === 'dark' ? 'Dark' : 'Light'}
-          </button>
+          <div
+            role="group"
+            aria-label="Theme preference"
+            className="inline-flex rounded-xl border border-neutral-200 bg-neutral-100/70 p-1 dark:border-[#26262b] dark:bg-[#101014]"
+          >
+            {(
+              [
+                { key: 'dark', label: 'Dark', icon: Moon },
+                { key: 'light', label: 'Light', icon: Sun },
+                { key: 'system', label: 'System', icon: Monitor },
+              ] as const
+            ).map((opt) => {
+              const Icon = opt.icon
+              const active = theme === opt.key
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => selectTheme(opt.key)}
+                  aria-pressed={active}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? 'bg-white text-indigo-600 shadow-xs dark:bg-[#1e1e23] dark:text-indigo-300'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {opt.label}
+                </button>
+              )
+            })}
+          </div>
         </div>
       </section>
 
@@ -524,7 +556,7 @@ export default function SettingsPage() {
         )}
       </section>
 
-      <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>
+      <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save settings'}
       </button>
       {save.isSuccess && <span className="text-sm text-emerald-500">Saved.</span>}

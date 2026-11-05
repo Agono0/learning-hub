@@ -14,19 +14,50 @@ import {
   Zap,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { Skeleton, useToast } from '@/ui'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 export default function DashboardPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const { data: d } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
   })
   const seedQuotesMutation = useMutation({
     mutationFn: () => apiSend('/api/starter', 'POST', { seedCore: true }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['dashboard'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      toast({
+        title: 'Curated quotes & Major/PAO mnemonics loaded',
+        tone: 'success',
+      })
+    },
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
-  if (!d) return null
+  if (!d) {
+    return (
+      <div className="space-y-5" aria-busy="true" aria-label="Loading dashboard">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-36" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+          <Skeleton className="h-11 w-44" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Skeleton className="h-44" />
+          <Skeleton className="h-44" />
+        </div>
+      </div>
+    )
+  }
   const level = levelFromXp(d.xpTotal)
   const progress = levelProgress(d.xpTotal)
   const questDone = d.quest?.completed ?? false

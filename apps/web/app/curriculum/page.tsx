@@ -14,6 +14,7 @@ import { BLOOM_VERBS, CRAM_WARNING, EXPRESSIVE_WRITING_PROMPT } from '@learning-
 import type { MockExam } from '@learning-hub/core/curriculum'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
+import { useToast } from '@/ui'
 
 interface Lesson {
   id: number
@@ -98,6 +99,7 @@ interface BuilderUnit {
 
 export default function CurriculumPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const { data: aiStatus } = useAiStatus()
   const aiConfigured = aiStatus?.configured === true
   const [preferManual, setPreferManual] = useState(false) // user toggle when AI is available
@@ -171,8 +173,9 @@ export default function CurriculumPage() {
       void qc.invalidateQueries({ queryKey: ['skills'] })
       setGenOpen(false)
       setCourseId(r.courseId)
+      toast({ title: 'Course generated', tone: 'success' })
     },
-    onError: (e) => window.alert(e.message),
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
 
   // Manual (non-AI) course creation — { manual: GeneratedCourse } on the same
@@ -212,8 +215,9 @@ export default function CurriculumPage() {
       void qc.invalidateQueries({ queryKey: ['skills'] })
       setGenOpen(false)
       setCourseId(r.courseId)
+      toast({ title: 'Course created', tone: 'success' })
     },
-    onError: (e) => window.alert(e.message),
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
 
   const builderValid =
@@ -260,8 +264,9 @@ export default function CurriculumPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['exam'] })
       setExamTitle('')
+      toast({ title: 'Exam target saved', tone: 'success' })
     },
-    onError: (e) => window.alert(e.message),
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
 
   const startMock = useMutation({
@@ -279,7 +284,7 @@ export default function CurriculumPage() {
       return body as { exam: MockExam }
     },
     onSuccess: (r) => setMock(r.exam),
-    onError: (e) => window.alert(e.message),
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
 
   const submitMock = useMutation({
@@ -314,8 +319,9 @@ export default function CurriculumPage() {
       setMock(null)
       setStartedAt(null)
       setAnswers({})
+      toast({ title: 'Mock exam graded', tone: 'success' })
     },
-    onError: (e) => window.alert(e.message),
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
 
   const elapsedMin = startedAt ? Math.floor((Date.now() - startedAt) / 60_000) : 0

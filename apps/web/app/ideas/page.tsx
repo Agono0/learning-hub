@@ -14,6 +14,7 @@ import { brainwritingMerge, scamperLenses, scamperPrompt } from '@learning-hub/c
 import type { IdeaStage } from '@learning-hub/core/types'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
+import { useToast } from '@/ui'
 
 interface Idea {
   id: number
@@ -43,6 +44,7 @@ const STAGE_LABEL: Record<IdeaStage, string> = {
 
 export default function IdeasPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const { data: aiStatus } = useAiStatus()
   const manual = aiStatus?.configured === false
   const { data } = useQuery<{ ideas: Idea[]; links: IdeaLink[] }>({
@@ -91,9 +93,11 @@ export default function IdeasPage() {
       setSelected([])
       invalidate()
       setLensPrompt(null)
-      window.alert(
-        `Offspring created (${r.mode === 'ai' ? 'AI hybrid' : 'manual merge'}): ${r.offspring.title}`,
-      )
+      toast({
+        title: `Offspring created (${r.mode === 'ai' ? 'AI hybrid' : 'manual merge'})`,
+        description: r.offspring.title,
+        tone: 'success',
+      })
     },
     onError: (e) => setError(e.message),
   })
