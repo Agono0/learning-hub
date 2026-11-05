@@ -6,8 +6,9 @@
  * Lessons whose prerequisites you haven't mastered yet are marked
  * "recommended later" — never blocked.
  */
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -411,6 +412,8 @@ function Course() {
 
       <GlossaryPanel courseId={course.id} />
 
+      <CourseMindMap courseId={course.id} />
+
       <Panel title="Manage">
         <div className="flex flex-wrap gap-2">
           {course.lhcf && (
@@ -525,5 +528,93 @@ export default function CoursePage() {
     <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
       <Course />
     </Suspense>
+  )
+}
+
+/** Node kinds in the course mind map. */
+interface MindNode {
+  id: string
+  kind: 'course' | 'unit' | 'lesson' | 'skill' | 'note' | 'idea' | 'card'
+  label: string
+  refId: number
+  completed?: boolean
+}
+interface MindEdge {
+  source: string
+  target: string
+  type: string
+}
+
+const MIND_COLOR: Record<string, string> = {
+  course: '#818cf8',
+  unit: '#a5b4fc',
+  lesson: '#34d399',
+  skill: '#fbbf24',
+}
+
+/**
+ * Course mind map (M5): units → lessons → skills with prerequisite edges
+ * between the course's own skills. Same force renderer as the Graph page,
+ * scoped to this course.
+ */
+function CourseMindMap({ courseId }: { courseId: number }) {
+  const [open, setOpen] = useState(false)
+  const { data } = useQuery<{ nodes: MindNode[]; edges: MindEdge[] }>({
+    queryKey: ['mindmap', courseId],
+    queryFn: () => apiGet(`/api/graph?courseId=${courseId}`),
+    enabled: open,
+  })
+
+  return (
+    <Panel
+      title="Mind map"
+      actions={
+        <Button variant="ghost" onClick={() => setOpen((o) => !o)}>
+          {open ? 'Hide map' : 'Show map'}
+        </Button>
+      }
+    >
+      {open && (data?.nodes.length ?? 0) > 0 && (
+        <MindMapGraph nodes={data!.nodes} edges={data!.edges} />
+      )}
+      {open && data && data.nodes.length === 0 && (
+        <p className="text-sm text-neutral-500">No lessons to map yet.</p>
+      )}
+      {!open && (
+        <p className="text-xs text-neutral-500">
+          Modules → lessons → skills, with the prerequisite chain between skills.
+        </p>
+      )}
+    </Panel>
+  )
+}
+
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
+
+function MindMapGraph({ nodes, edges }: { nodes: MindNode[]; edges: MindEdge[] }) {
+  const graph = useMemo(
+    () => ({
+      nodes: nodes.map((n) => ({ ...n })),
+      links: edges.map((e) => ({ ...e, source: String(e.source), target: String(e.target) })),
+    }),
+    [nodes, edges],
+  )
+  return (
+    <div className="h-[420px] overflow-hidden rounded-xl border border-neutral-200 dark:border-[#26262b]">
+      <ForceGraph2D
+        graphData={graph}
+        nodeLabel="label"
+        nodeColor={(n: object) => MIND_COLOR[(n as MindNode).kind] ?? '#94a3b8'}
+        nodeVal={(n: object) =>
+          (n as MindNode).kind === 'course' ? 8 : (n as MindNode).kind === 'unit' ? 5 : 3
+        }
+        linkColor={(e: object) =>
+          (e as MindEdge).type === 'prereq' ? 'rgba(251,191,36,0.5)' : 'rgba(140,140,160,0.3)'
+        }
+        linkDirectionalArrowLength={3}
+        width={860}
+        height={410}
+      />
+    </div>
   )
 }
