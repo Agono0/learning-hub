@@ -26,6 +26,7 @@ import type {
   SourceKind,
   XPSource,
 } from '@learning-hub/core'
+import type { LhcfCourse, LhcfLesson } from '@learning-hub/core/curriculum'
 
 // ─── Content ────────────────────────────────────────────────────────────────
 
@@ -111,6 +112,8 @@ export const cards = table(
     tags: text('tags', { mode: 'json' }).$type<string[]>().notNull().default([]),
     source: text('source'), // where it came from (pdf, ai, manual…)
     skillId: integer('skill_id'), // curriculum link
+    /** Stable origin key, e.g. `lhcf:<course>/<lesson>/<n>` — re-imports update the card in place (keeping FSRS state). */
+    sourceKey: text('source_key'),
     suspended: integer('suspended', { mode: 'boolean' }).notNull().default(false),
     buryUntil: text('bury_until'), // sibling burying
     // ── FSRS-6 memory state (ts-fsrs Card serialized) ──
@@ -133,6 +136,7 @@ export const cards = table(
     index('cards_deck_idx').on(t.deckId),
     index('cards_state_idx').on(t.state),
     index('cards_suspended_due_idx').on(t.suspended, t.due),
+    uniqueIndex('cards_source_key_idx').on(t.sourceKey),
   ],
 )
 
@@ -253,15 +257,21 @@ export const highlights = table(
 
 // ─── Curriculum ─────────────────────────────────────────────────────────────
 
-export const tracks = table('tracks', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  title: text('title').notNull(),
-  description: text('description'),
-  emoji: text('emoji').default('🎯'),
-  createdAt: text('created_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-})
+/** Catalog groups of courses (e.g. "Data"); `slug` makes imports idempotent. */
+export const tracks = table(
+  'tracks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    slug: text('slug'), // LHCF track key (slugified track name); null for legacy rows
+    title: text('title').notNull(),
+    description: text('description'),
+    emoji: text('emoji').default('🎯'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('tracks_slug_idx').on(t.slug)],
+)
 
 /** Curriculum tree: courses group units inside a track. */
 export const courses = table(
@@ -274,11 +284,23 @@ export const courses = table(
     title: text('title').notNull(),
     description: text('description'),
     order: integer('order').notNull().default(0),
+    // ── LHCF (null for legacy / hand-built courses) ──
+    slug: text('slug'), // upsert key: re-importing the same slug updates in place
+    subtitle: text('subtitle'),
+    emoji: text('emoji'),
+    level: text('level'), // beginner|intermediate|advanced
+    language: text('language'),
+    estHours: real('est_hours'),
+    /** The full validated LHCF document — exact export + fields without columns. */
+    spec: text('spec', { mode: 'json' }).$type<LhcfCourse>(),
+    /** Deck holding this course's exercise cards. */
+    deckId: integer('deck_id'),
+    updatedAt: text('updated_at'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
   },
-  (t) => [index('courses_track_idx').on(t.trackId)],
+  (t) => [index('courses_track_idx').on(t.trackId), uniqueIndex('courses_slug_idx').on(t.slug)],
 )
 
 /** Curriculum tree: units group lessons inside a course. */
@@ -291,6 +313,8 @@ export const units = table(
       .references(() => courses.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     order: integer('order').notNull().default(0),
+    slug: text('slug'), // LHCF module slug (unique within its course)
+    description: text('description'),
   },
   (t) => [index('units_course_idx').on(t.courseId)],
 )
@@ -307,20 +331,33 @@ export const lessons = table(
     type: text('type').notNull().default('concept'), // concept|reading|video|exercise|quiz|project|capstone
     objective: text('objective'), // measurable, one Bloom verb
     bloomVerb: text('bloom_verb'),
-    content: text('content', { mode: 'json' }).$type<{
-      body: string
-      cardIds?: number[]
-      quiz?: unknown
-    }>(),
+    content: text('content', { mode: 'json' }).$type<LessonContent>(),
     skillId: integer('skill_id'),
     order: integer('order').notNull().default(0),
     completedAt: text('completed_at'),
+    slug: text('slug'), // LHCF lesson slug (unique within its course)
+    estMinutes: integer('est_minutes'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
   },
   (t) => [index('lessons_unit_idx').on(t.unitId)],
 )
+
+/**
+ * Lesson payload. Legacy lessons only have `body`; LHCF lessons carry their
+ * full study material. `cardIds` are the lesson's exercise cards, in order.
+ */
+export type LessonContent = {
+  body: string
+  cardIds?: number[]
+  quiz?: unknown
+} & Partial<
+  Pick<
+    LhcfLesson,
+    'summary' | 'theory' | 'workedExamples' | 'keyTerms' | 'resources' | 'reflection' | 'skills'
+  >
+>
 
 /** Skill-tree nodes; each gets its own BKT + Elo mastery row. */
 export const skills = table(
@@ -381,6 +418,94 @@ export const examDates = table('exam_dates', {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 })
+
+/**
+ * Per-lesson study progress (Coursera-style "in progress / completed").
+ * `lessons.completedAt` is kept in sync for older readers (quests, achievements).
+ */
+export const lessonProgress = table(
+  'lesson_progress',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    lessonId: integer('lesson_id')
+      .notNull()
+      .references(() => lessons.id, { onDelete: 'cascade' }),
+    status: text('status').$type<'in_progress' | 'completed'>().notNull().default('in_progress'),
+    startedAt: text('started_at').notNull(),
+    completedAt: text('completed_at'),
+    timeSpentSec: integer('time_spent_sec').notNull().default(0),
+    /** Exercises answered in this lesson (all attempts) and how many fully correct. */
+    attempts: integer('attempts').notNull().default(0),
+    correct: integer('correct').notNull().default(0),
+    /** Latest self-explanation answers (reflection prompts), in order. */
+    reflections: text('reflections', { mode: 'json' }).$type<string[]>(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('lesson_progress_lesson_idx').on(t.lessonId)],
+)
+
+/** Hyperskill-style project stages of an LHCF course (one row per stage). */
+export const courseProjectStages = table(
+  'course_project_stages',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    courseId: integer('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    projectSlug: text('project_slug').notNull(),
+    projectTitle: text('project_title').notNull(),
+    stageSlug: text('stage_slug').notNull(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    checklist: text('checklist', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    /** Ticked checklist items (parallel to `checklist`). */
+    checked: text('checked', { mode: 'json' }).$type<boolean[]>().notNull().default([]),
+    order: integer('order').notNull().default(0),
+    completedAt: text('completed_at'),
+  },
+  (t) => [
+    index('course_project_stages_course_idx').on(t.courseId),
+    uniqueIndex('course_project_stages_key_idx').on(t.courseId, t.projectSlug, t.stageSlug),
+  ],
+)
+
+/** Final-exam attempts of an LHCF course (append-only). */
+export const courseExamAttempts = table(
+  'course_exam_attempts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    courseId: integer('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    /** 0..1 fraction of points earned. */
+    score: real('score').notNull(),
+    passed: integer('passed', { mode: 'boolean' }).notNull(),
+    /** Per-question score, in exam order. */
+    results: text('results', { mode: 'json' }).$type<number[]>().notNull().default([]),
+    takenAt: text('taken_at').notNull(),
+  },
+  (t) => [index('course_exam_attempts_course_idx').on(t.courseId)],
+)
+
+/** Issued course certificates (one per course; re-issue keeps the code). */
+export const certificates = table(
+  'certificates',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    courseId: integer('course_id')
+      .notNull()
+      .references(() => courses.id, { onDelete: 'cascade' }),
+    /** Short human-checkable code printed on the certificate. */
+    code: text('code').notNull(),
+    issuedAt: text('issued_at').notNull(),
+    /** What was achieved at issue time (title, hours, exam score…). */
+    snapshot: text('snapshot', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
+  },
+  (t) => [
+    uniqueIndex('certificates_course_idx').on(t.courseId),
+    uniqueIndex('certificates_code_idx').on(t.code),
+  ],
+)
 
 /** Concrete projects with milestones, optionally promoted from ideas. */
 export const projects = table('projects', {
