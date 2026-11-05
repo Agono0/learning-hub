@@ -6,3 +6,4 @@
  * - ./curriculum/lhcf      LHCF — the portable curriculum format (schema, parsers, prompts)
  */
 export * from './curriculum/pedagogy'
+export * from './curriculum/lhcf/index'
