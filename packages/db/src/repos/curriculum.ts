@@ -497,3 +497,20 @@ export function exportCurriculum(courseId: number, database?: LearningHubDB): Lh
     } as LhcfCourse
   }, database)
 }
+
+/**
+ * Delete a course and its exercise deck. Lessons, progress, stages, exam
+ * attempts and the certificate cascade with the course; the deck's cards go
+ * with the deck. The review log is append-only and has no FK to cards, so
+ * review history (and true-retention stats) survive. Skills are shared across
+ * courses and are kept. Returns false when the course does not exist.
+ */
+export function deleteCourse(courseId: number, database?: LearningHubDB): boolean {
+  return withTransaction((tx) => {
+    const course = tx.select().from(courses).where(eq(courses.id, courseId)).get()
+    if (!course) return false
+    tx.delete(courses).where(eq(courses.id, courseId)).run()
+    if (course.deckId !== null) tx.delete(decks).where(eq(decks.id, course.deckId)).run()
+    return true
+  }, database)
+}

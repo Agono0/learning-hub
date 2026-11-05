@@ -178,3 +178,20 @@ describe('exportCurriculum', () => {
     expect(exportCurriculum(999_999, db)).toBeNull()
   })
 })
+
+describe('deleteCourse', () => {
+  it('removes the course, its lessons and deck cards but keeps shared skills', async () => {
+    const { deleteCourse } = await import('../src/repos')
+    const { decks } = await import('../src/schema')
+    const { courseId, deckId } = importCurriculum(example('learning-how-to-learn.md'), db)
+    const skillsBefore = db.select().from(skills).all().length
+    expect(deleteCourse(courseId, db)).toBe(true)
+    expect(db.select().from(courses).where(eq(courses.id, courseId)).get()).toBeUndefined()
+    expect(db.select().from(decks).where(eq(decks.id, deckId)).get()).toBeUndefined()
+    expect(
+      db.select().from(cards).where(like(cards.sourceKey, 'lhcf:learning-how-to-learn/%')).all(),
+    ).toHaveLength(0)
+    expect(db.select().from(skills).all().length).toBe(skillsBefore)
+    expect(deleteCourse(courseId, db)).toBe(false)
+  })
+})
