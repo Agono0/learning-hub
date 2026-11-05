@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bold, Heading, Link2, List, Save } from 'lucide-react'
 // subpath import (NOT the barrel) — keeps the client bundle free of the AI/db graph
-import { SUPERTAG_TEMPLATES } from '@learning-hub/core/notes'
+import { SUPERTAG_TEMPLATES, cornellLayout } from '@learning-hub/core/notes'
 import type { SupertagKey } from '@learning-hub/core/notes'
 import { apiGet, apiSend } from '@/lib/transport'
 
@@ -112,6 +112,10 @@ export default function NotesPage() {
   const applySupertag = (key: SupertagKey) => {
     setSupertag(key)
     setFields((f) => ({ ...SUPERTAG_TEMPLATES[key].fields, ...f }))
+    // Cornell: seed the page layout on an empty note (cues/notes/summary)
+    if (key === 'CORNELL') {
+      setContent((c) => (c.trim() ? c : cornellLayout()))
+    }
   }
 
   const wrapSelection = (before: string, after = before) => {

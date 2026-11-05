@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   SUPERTAG_TEMPLATES,
+  cornellLayout,
   extractBacklinks,
   parseBullets,
   bulletSyncPlan,
@@ -8,14 +9,30 @@ import {
 } from '../src/notes'
 
 describe('supertag templates', () => {
-  it('defines the five templates, each with fields', () => {
+  it('defines the six templates, each with fields', () => {
     const keys = Object.keys(SUPERTAG_TEMPLATES)
-    expect(keys).toEqual(expect.arrayContaining(['BIBLIDEF', 'DEFINITION', 'THEOREM', 'PERSON', 'BOOK']))
-    expect(keys).toHaveLength(5)
+    expect(keys).toEqual(
+      expect.arrayContaining(['BIBLIDEF', 'DEFINITION', 'THEOREM', 'PERSON', 'BOOK', 'CORNELL']),
+    )
+    expect(keys).toHaveLength(6)
     for (const t of Object.values(SUPERTAG_TEMPLATES)) {
       expect(Object.keys(t.fields).length).toBeGreaterThan(0)
     }
     expect(SUPERTAG_TEMPLATES.THEOREM!.fields.statement).toBeTruthy()
+  })
+})
+
+describe('cornellLayout', () => {
+  it('seeds the Pauk page: notes area, cue column, summary block', () => {
+    const md = cornellLayout('Fourier series')
+    expect(md).toContain('## Fourier series')
+    expect(md).toContain('### Notes')
+    expect(md).toContain('### Cues')
+    expect(md).toContain('### Summary')
+  })
+
+  it('falls back to a generic topic heading', () => {
+    expect(cornellLayout()).toContain('## Topic')
   })
 })
 
@@ -40,14 +57,19 @@ describe('extractBacklinks', () => {
 
   it('returns [] for notes without backlinks and tolerates missing titles', () => {
     expect(extractBacklinks(notes, links, 99)).toEqual([])
-    const orphan = extractBacklinks([{ id: 7, title: 'ghost' }], [{ fromNoteId: 404, toNoteId: 7 }], 7)
+    const orphan = extractBacklinks(
+      [{ id: 7, title: 'ghost' }],
+      [{ fromNoteId: 404, toNoteId: 7 }],
+      7,
+    )
     expect(orphan[0]!.fromTitle).toContain('404')
   })
 })
 
 describe('wikilinkParse', () => {
   it('extracts unique targets in order', () => {
-    const content = 'See [[Group theory]] and [[Group theory|groups]], also [[Cosets]].\nNested [[Lagrange theorem]] ref.'
+    const content =
+      'See [[Group theory]] and [[Group theory|groups]], also [[Cosets]].\nNested [[Lagrange theorem]] ref.'
     expect(wikilinkParse(content)).toEqual(['Group theory', 'Cosets', 'Lagrange theorem'])
   })
 

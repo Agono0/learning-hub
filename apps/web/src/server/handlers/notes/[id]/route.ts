@@ -11,7 +11,10 @@ import { readJson, withRoute } from '@/lib/api'
 const patchNoteSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
-  supertag: z.enum(['BIBLIDEF', 'DEFINITION', 'THEOREM', 'PERSON', 'BOOK']).nullable().optional(),
+  supertag: z
+    .enum(['BIBLIDEF', 'DEFINITION', 'THEOREM', 'PERSON', 'BOOK', 'CORNELL'])
+    .nullable()
+    .optional(),
   fields: z.record(z.string(), z.string()).nullable().optional(),
   status: z.enum(['inbox', 'project', 'area', 'resource', 'archive']).optional(),
 })

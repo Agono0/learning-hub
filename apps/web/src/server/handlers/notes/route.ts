@@ -11,7 +11,7 @@ import { readJson, withRoute } from '@/lib/api'
 const createNoteSchema = z.object({
   title: z.string().trim().min(1, 'title required'),
   content: z.string().optional(),
-  supertag: z.enum(['BIBLIDEF', 'DEFINITION', 'THEOREM', 'PERSON', 'BOOK']).optional(),
+  supertag: z.enum(['BIBLIDEF', 'DEFINITION', 'THEOREM', 'PERSON', 'BOOK', 'CORNELL']).optional(),
   fields: z.record(z.string(), z.string()).optional(),
   status: z.enum(['inbox', 'project', 'area', 'resource', 'archive']).optional(),
   deckId: z.number().int().positive().optional(),

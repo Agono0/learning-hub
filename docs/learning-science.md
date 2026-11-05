@@ -101,10 +101,10 @@ Survey → Question → Read → Recite → Review for textbook study.
 
 ### Cornell notes — Walter Pauk, Cornell, 1940s
 Page split into cues / notes / summary; cues drive later self-testing.
-- **In Learning HUB:** notes system with supertag templates
-  (`packages/core/src/notes.ts`, `SUPERTAG_TEMPLATES`) — a `CORNELL` supertag
-  is a planned M3 item (the template picker already autofills fields).
-- **Status:** 📋 M3
+- **In Learning HUB:** the `CORNELL` supertag seeds the page layout
+  (notes area, cue column, summary block) — `cornellLayout` in
+  `packages/core/src/notes.ts`, picker on `apps/web/app/notes/`.
+- **Status:** ✅
 
 ### Chunking — George Miller, 1956
 "The magical number seven, plus or minus two": working memory holds
@@ -445,8 +445,8 @@ the learner's hands.
 
 | Item | Milestone |
 | --- | --- |
-| Zeigarnik open loops on the dashboard | M3 |
-| Cornell notes supertag | M3 |
+| Zeigarnik open loops on the dashboard | ✅ landed |
+| Cornell notes supertag | ✅ landed |
 | Leitner box view | M3 |
 | Cepeda optimal-gap exam scheduler | M3 |
 | Mixed practice per course | M3 |

@@ -7,7 +7,7 @@
 
 // ─── Supertag templates ─────────────────────────────────────────────────────
 
-export type SupertagKey = 'BIBLIDEF' | 'DEFINITION' | 'THEOREM' | 'PERSON' | 'BOOK'
+export type SupertagKey = 'BIBLIDEF' | 'DEFINITION' | 'THEOREM' | 'PERSON' | 'BOOK' | 'CORNELL'
 
 /** Tana-style typed note template: fields with placeholder hints. */
 export interface SupertagTemplate {
@@ -77,6 +77,42 @@ export const SUPERTAG_TEMPLATES: Record<SupertagKey, SupertagTemplate> = {
       rating: '1-5 (after finishing)',
     },
   },
+  CORNELL: {
+    key: 'CORNELL',
+    name: 'Cornell notes',
+    emoji: '🗒️',
+    // Walter Pauk's page layout: cues on the left drive later self-testing,
+    // the summary line forces compression at the bottom.
+    fields: {
+      topic: 'Lecture / chapter / source this page covers',
+      cues: 'Questions and key terms (written AFTER the notes — they drive recall)',
+      summary: 'The page in 2–3 sentences, in your own words',
+    },
+  },
+}
+
+/**
+ * The Cornell page as markdown: a notes area, a cue column rendered as
+ * questions to self-test against, and a summary block (Pauk, *How to Study
+ * in College*). Inserted as the note's content when the supertag is applied.
+ */
+export function cornellLayout(topic = ''): string {
+  return [
+    topic ? `## ${topic}` : '## Topic',
+    '',
+    '### Notes',
+    '',
+    '- ',
+    '',
+    '### Cues (cover the notes, answer these)',
+    '',
+    '- ?',
+    '',
+    '### Summary',
+    '',
+    '> ',
+    '',
+  ].join('\n')
 }
 
 // ─── Backlinks (Zettelkasten) ───────────────────────────────────────────────
@@ -184,7 +220,9 @@ export function bulletSyncPlan(bulletRows: BulletRow[], noteContent: string): Bu
       continue
     }
     // No exact match: is this a reworded version of a row near the same position?
-    const nearRow = bulletRows.find((r) => Math.abs((r.position ?? 0) - i) <= 1 && rowNorm.has(r.id))
+    const nearRow = bulletRows.find(
+      (r) => Math.abs((r.position ?? 0) - i) <= 1 && rowNorm.has(r.id),
+    )
     if (nearRow) {
       plan.update.push({ id: nearRow.id, content: p.content })
       rowNorm.delete(nearRow.id)
@@ -194,7 +232,8 @@ export function bulletSyncPlan(bulletRows: BulletRow[], noteContent: string): Bu
   }
 
   for (const r of bulletRows) {
-    if (rowNorm.has(r.id)) plan.remove.push({ id: r.id, content: r.content, cardId: r.cardId ?? null })
+    if (rowNorm.has(r.id))
+      plan.remove.push({ id: r.id, content: r.content, cardId: r.cardId ?? null })
   }
   return plan
 }
