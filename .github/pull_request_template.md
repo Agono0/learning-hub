@@ -26,6 +26,12 @@ Closes #
 - [ ] Inputs crossing a trust boundary (HTTP body/query, MCP args, plugin/AI replies) are zod-validated
 - [ ] Multi-row writes go through `withTransaction` or the canonical review service
 - [ ] AI features degrade gracefully: manual mode exists (if applicable)
+- [ ] UI talks to the backend only through `@/lib/transport` (no raw `fetch`) and uses `@/ui` components
+- [ ] Handlers stay runtime-neutral (no static `node:*` imports) — they also run in the native apps
+- [ ] New API routes are registered in `apps/web/src/hub/handlers-registry.ts` (or scaffolded via `npm run new:feature`)
+- [ ] Schema changes: `schema.ts` updated **and** a migration added in `packages/db/src/migrations/`
+- [ ] Commits are atomic and follow Conventional Commits (enforced by commitlint)
+- [ ] Followed `AGENTS.md` (humans too — it is the project's operating manual)
 
 ## Tests
 
