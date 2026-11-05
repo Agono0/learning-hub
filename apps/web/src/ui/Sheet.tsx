@@ -20,11 +20,17 @@ export interface SheetProps {
  */
 export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
   const panel = useRef<HTMLDivElement | null>(null)
+  // Latest onClose without re-running the open effect: callers pass inline
+  // arrows, and re-running would steal focus from inputs on every keystroke.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  })
 
   useEffect(() => {
     if (!open) return
     const opener = document.activeElement as HTMLElement | null
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCloseRef.current()
     document.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -34,7 +40,7 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       document.body.style.overflow = prevOverflow
       opener?.focus?.()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (
