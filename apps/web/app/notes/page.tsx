@@ -7,11 +7,12 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bold, Heading, Link2, List, Save } from 'lucide-react'
+import { Bold, Heading, Link2, List, Pickaxe, Save } from 'lucide-react'
 // subpath import (NOT the barrel) — keeps the client bundle free of the AI/db graph
 import { SUPERTAG_TEMPLATES, cornellLayout } from '@learning-hub/core/notes'
 import type { SupertagKey } from '@learning-hub/core/notes'
 import { apiGet, apiSend } from '@/lib/transport'
+import { CardMinerSheet } from '@/components/CardMinerSheet'
 
 interface Note {
   id: number
@@ -55,6 +56,8 @@ export default function NotesPage() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [supertag, setSupertag] = useState<SupertagKey | ''>('')
+  // card miner: null = closed; string = the text to mine ('' = paste area)
+  const [mineText, setMineText] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -181,6 +184,20 @@ export default function NotesPage() {
                 >
                   <List className="h-4 w-4" />
                 </button>
+                <button
+                  className="btn-ghost"
+                  title="Mine cards from this note"
+                  onClick={() => setMineText(content)}
+                >
+                  <Pickaxe className="h-4 w-4" />
+                </button>
+                <button
+                  className="btn-ghost"
+                  title="Paste text and mine cards"
+                  onClick={() => setMineText('')}
+                >
+                  <Pickaxe className="h-4 w-4 opacity-50" />
+                </button>
                 <select
                   className="input ml-auto w-40 text-xs"
                   value={supertag}
@@ -286,6 +303,12 @@ export default function NotesPage() {
           ))}
         </div>
       </aside>
+
+      <CardMinerSheet
+        open={mineText !== null}
+        initialText={mineText ?? ''}
+        onClose={() => setMineText(null)}
+      />
     </div>
   )
 }

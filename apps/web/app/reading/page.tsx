@@ -9,6 +9,7 @@ import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Highlighter, Sparkles, Trash2, Upload } from 'lucide-react'
 import { useAiStatus } from '@/components/TransportPanel'
+import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 
 interface Source {
@@ -80,6 +81,7 @@ export default function ReadingPage() {
   const [selected, setSelected] = useState('')
   const [triageQueue, setTriageQueue] = useState<Highlight[]>([])
   const [ghostResult, setGhostResult] = useState<string | null>(null)
+  const [mineText, setMineText] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const invalidate = () => {
@@ -388,6 +390,9 @@ export default function ReadingPage() {
                         >
                           Keep
                         </button>
+                        <button className="btn-ghost text-xs" onClick={() => setMineText(h.text)}>
+                          → cards
+                        </button>
                         <button
                           className="btn-ghost text-xs text-red-400"
                           onClick={() => {
@@ -411,6 +416,12 @@ export default function ReadingPage() {
                       className={`h-2 w-2 rounded-full ${h.triaged === 1 ? 'bg-emerald-500' : h.triaged === 2 ? 'bg-red-500' : 'bg-neutral-400'}`}
                     />
                     <span className="flex-1 truncate text-neutral-300">{h.text}</span>
+                    <button
+                      className="btn-ghost px-2 py-1 text-xs"
+                      onClick={() => setMineText(h.text)}
+                    >
+                      → cards
+                    </button>
                     <span className="text-[10px] text-neutral-500">
                       strength {Math.round(h.strength * 100)}
                     </span>
@@ -428,6 +439,12 @@ export default function ReadingPage() {
           )}
         </section>
       </div>
+
+      <CardMinerSheet
+        open={mineText !== null}
+        initialText={mineText ?? ''}
+        onClose={() => setMineText(null)}
+      />
     </div>
   )
 }

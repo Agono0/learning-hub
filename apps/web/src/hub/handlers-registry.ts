@@ -23,6 +23,7 @@ import * as backup from '../server/handlers/backup/route'
 import * as canvasId from '../server/handlers/canvas/[id]/route'
 import * as canvas from '../server/handlers/canvas/route'
 import * as cardsBullet from '../server/handlers/cards/bullet/route'
+import * as cardsFromText from '../server/handlers/cards/from-text/route'
 import * as cardsId from '../server/handlers/cards/[id]/route'
 import * as cards from '../server/handlers/cards/route'
 import * as commitments from '../server/handlers/commitments/route'
@@ -130,6 +131,7 @@ add('canvas/[id]', canvasId)
 add('cards', cards)
 add('cards/[id]', cardsId)
 add('cards/bullet', cardsBullet)
+add('cards/from-text', cardsFromText)
 add('commitments', commitments)
 add('curriculum', curriculum)
 add('curriculum/exam', curriculumExam)
