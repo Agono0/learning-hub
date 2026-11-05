@@ -58,6 +58,16 @@ newest NDK under `ANDROID_HOME`, and a JDK Gradle can run on (Android Studio's
 bundled JBR, or `ANDROID_JAVA_HOME`). Very new JDKs (27+) fail inside Gradle
 with *Unsupported class file major version*.
 
+## CI
+
+- `ci.yml` (every push/PR): tests, the web build **and** the native web bundle
+  (`npm run web:tauri`) — catches native-only breakage cheaply.
+- `native.yml` (push to `main`, `v*` tags, manual): full Windows installer and
+  Android APK builds, uploaded as workflow artifacts.
+
+Release signing is not configured yet: the APK is unsigned and the Windows
+installer is not code-signed (SmartScreen will warn). Both need your own keys.
+
 ## Rules that keep it working
 
 - **UI never calls `fetch` directly** — always `@/lib/transport`.
@@ -65,6 +75,7 @@ with *Unsupported class file major version*.
   `tests/hub-registry.test.ts` fails otherwise.
 - **Handlers stay runtime-neutral**: no static `node:*` imports; Node-only work
   goes behind a dynamic import or an injected port (see `src/server/storage.ts`).
+  ESLint enforces this for `src/server/handlers`, `src/hub` and `src/lib`.
 - **Don't change the webview origin** (`useHttpsScheme`, `identifier`): OPFS
   data is scoped to it, so changing either orphans every user's database.
 - **Responsive by default**: navigation comes from `src/components/nav.ts`

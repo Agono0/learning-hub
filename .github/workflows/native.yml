@@ -1,0 +1,84 @@
+name: Native apps
+
+# Builds the Windows installer and the Android APK from the single apps/web
+# codebase on every push to main (and on version tags / manual runs), so each
+# change is proven to ship on both platforms. Tests live in ci.yml.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows (NSIS + MSI)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - run: npm ci
+
+      - name: Build installers
+        run: npm run app:build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: learning-hub-windows
+          path: |
+            apps/native/src-tauri/target/release/bundle/nsis/*.exe
+            apps/native/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  android:
+    name: Android (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Gradle cannot run on very new JDKs; 21 is the supported LTS.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - run: npm ci
+
+      - name: Build APK
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: npm run android:build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: learning-hub-android
+          path: apps/native/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error

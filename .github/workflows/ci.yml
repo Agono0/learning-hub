@@ -50,3 +50,8 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # The bundle the Windows/Android apps ship (static export + hub worker).
+      # Fast, and catches anything that only breaks the native build.
+      - name: Build native web bundle
+        run: npm run web:tauri

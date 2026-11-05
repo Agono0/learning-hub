@@ -11,6 +11,10 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/.next/**',
+      '**/.next-tauri/**',
+      'apps/web/public/vendor/**',
+      'apps/native/src-tauri/target/**',
+      'apps/native/src-tauri/gen/**',
       'data/**',
       '.agents/**',
       '.zcode/**',
@@ -34,6 +38,36 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': [
         'warn',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' },
+      ],
+    },
+  },
+  // Code that also runs inside the native apps' webview worker must not
+  // STATICALLY import Node-only modules: the Tauri build aliases them to stubs
+  // (src/platform/shims), so they would compile and then fail on-device.
+  // Use a dynamic import() behind a runtime check, or an injected port.
+  {
+    files: [
+      'apps/web/src/server/handlers/**/*.ts',
+      'apps/web/src/hub/**/*.ts',
+      'apps/web/src/lib/**/*.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['node:*'],
+              message:
+                'Runs in the native webview — use a dynamic import() behind a runtime check (see docs/native.md).',
+            },
+            {
+              group: ['fs', 'fs/*', 'path', 'os', 'child_process', 'better-sqlite3'],
+              message:
+                'Node-only module — not available in the native webview (see docs/native.md).',
+            },
+          ],
+        },
       ],
     },
   },
