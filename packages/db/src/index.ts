@@ -27,6 +27,7 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type Database from 'better-sqlite3'
 import * as schema from './schema'
 import { resolveDbPath, resolveImagesDir } from './paths'
+import { MIGRATIONS, runMigrations } from './migrations'
 
 // ─── Driver-agnostic raw handle contract ────────────────────────────────────
 
@@ -184,56 +185,17 @@ function ensureCascadeForeignKeys(sqlite: RawSqliteHandle, tableNames: Set<strin
 }
 
 /**
- * Ensure schema additions (columns, indexes) are applied idempotently to on-disk database.
+ * Bring an existing database up to `schema.ts`: versioned migrations (see
+ * ./migrations — idempotent, recorded in schema_migrations), then the
+ * one-time ON DELETE CASCADE table rebuilds.
  */
 function ensureSchema(sqlite: RawSqliteHandle) {
+  runMigrations(sqlite, MIGRATIONS)
   const tables = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
     name: string
   }[]
-  const tableNames = new Set(tables.map((t) => t.name))
-  if (tableNames.has('revlog')) {
-    const revlogCols = sqlite.pragma('table_info(revlog)') as { name: string }[]
-    if (!revlogCols.some((c) => c.name === 'retrievability')) {
-      sqlite.exec('ALTER TABLE revlog ADD COLUMN retrievability REAL;')
-    }
-  }
-  if (tableNames.has('user_settings')) {
-    // ai_headers backs the 'custom-endpoint' AI provider (extra HTTP headers as JSON)
-    const settingsCols = sqlite.pragma('table_info(user_settings)') as { name: string }[]
-    if (!settingsCols.some((c) => c.name === 'ai_headers')) {
-      sqlite.exec('ALTER TABLE user_settings ADD COLUMN ai_headers TEXT;')
-    }
-  }
-  if (tableNames.has('images')) {
-    // data stores base64-encoded image bytes (uploads persisted in the DB itself)
-    const imageCols = sqlite.pragma('table_info(images)') as { name: string }[]
-    if (!imageCols.some((c) => c.name === 'data')) {
-      try {
-        sqlite.exec('ALTER TABLE images ADD COLUMN data TEXT;')
-      } catch (err) {
-        // Multiple processes may race the same one-time migration on a shared
-        // DB file; the winner adds the column, losers re-verify and continue.
-        const after = sqlite.pragma('table_info(images)') as { name: string }[]
-        if (!after.some((c) => c.name === 'data')) throw err
-      }
-    }
-  }
-
   // Idempotently migrate foreign keys to ON DELETE CASCADE
-  ensureCascadeForeignKeys(sqlite, tableNames)
-
-  if (tableNames.has('cards')) {
-    sqlite.exec('CREATE INDEX IF NOT EXISTS cards_suspended_due_idx ON cards(suspended, due);')
-  }
-  if (tableNames.has('courses')) {
-    sqlite.exec('CREATE INDEX IF NOT EXISTS courses_track_idx ON courses(track_id);')
-  }
-  if (tableNames.has('units')) {
-    sqlite.exec('CREATE INDEX IF NOT EXISTS units_course_idx ON units(course_id);')
-  }
-  if (tableNames.has('lessons')) {
-    sqlite.exec('CREATE INDEX IF NOT EXISTS lessons_unit_idx ON lessons(unit_id);')
-  }
+  ensureCascadeForeignKeys(sqlite, new Set(tables.map((t) => t.name)))
 }
 
 /**

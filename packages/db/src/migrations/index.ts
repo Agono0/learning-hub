@@ -1,0 +1,19 @@
+/**
+ * The ordered migration registry. To change the schema of EXISTING databases:
+ *
+ * 1. Edit `schema.ts` (the source of truth — fresh databases get it directly).
+ * 2. Add `NNN-short-name.ts` here exporting a {@link Migration} whose steps
+ *    bring older databases up to that schema, using only the idempotent
+ *    helpers (`addColumn`, `createIndex`, …).
+ * 3. Append it to {@link MIGRATIONS} — never reorder, renumber or edit a
+ *    migration that has shipped.
+ *
+ * See AGENTS.md → "Change the database".
+ */
+import { baseline } from './001-baseline'
+import type { Migration } from './runner'
+
+export const MIGRATIONS: readonly Migration[] = [baseline]
+
+export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
+export type { Migration, MigrationContext, MigrationReport } from './runner'

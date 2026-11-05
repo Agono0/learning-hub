@@ -775,4 +775,16 @@ export const chatSessions = table('chat_sessions', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
+// ─── Infrastructure ─────────────────────────────────────────────────────────
+
+/**
+ * Applied schema migrations (see ./migrations). Declared here so drizzle-kit
+ * push keeps the table; the runner creates it with identical DDL.
+ */
+export const schemaMigrations = table('schema_migrations', {
+  id: integer('id').primaryKey(),
+  name: text('name').notNull(),
+  appliedAt: text('applied_at').notNull(),
+})
+
 // ─── Derived views (append-only stats — never mutate) ──────────────────────
