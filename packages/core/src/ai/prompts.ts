@@ -135,7 +135,11 @@ Rules:
 Return ONLY the JSON structure requested.`
 
 /** User prompt for course generation (topic or PDF text + requested depth). */
-export function courseGeneratorPrompt(opts: { topic?: string; pdfText?: string; depth?: string }): string {
+export function courseGeneratorPrompt(opts: {
+  topic?: string
+  pdfText?: string
+  depth?: string
+}): string {
   const depth = opts.depth ?? 'standard'
   const source = opts.pdfText
     ? `Source text (generate the course FROM this material, in its scope):\n"""\n${opts.pdfText.slice(0, 24000)}\n"""`
@@ -183,4 +187,36 @@ export function coachPrompt(weekly: Record<string, number | string | null>): str
   return `Weekly metrics:\n${Object.entries(weekly)
     .map(([k, v]) => `- ${k}: ${v ?? 'no data'}`)
     .join('\n')}`
+}
+
+/**
+ * FREETEXT_RUBRIC_SYSTEM — optional rubric coach for freetext practice exercises.
+ * Evaluates a learner's written explanation strictly against the provided rubric
+ * criteria after the learner has already generated their own answer.
+ */
+export const FREETEXT_RUBRIC_SYSTEM = `You evaluate a learner's written response against an explicit rubric.
+
+Rules:
+1. Evaluate ONLY against the numbered rubric criteria provided — do not penalize style, grammar, or unrequested details.
+2. Return \`criteriaMet\`: a boolean array of the EXACT same length and order as the rubric list (\`true\` only when the learner clearly expressed the idea, even in different words).
+3. Set \`score\` to the fraction of criteria met (between 0 and 1).
+4. Write concise, constructive \`feedback\` (under 90 words): affirm what was accurate and state the single highest-leverage missing point without fluff.
+Return ONLY JSON matching: { "criteriaMet": boolean[], "score": number, "feedback": string }.`
+
+/** Build the user prompt for `freetext-rubric` evaluation. */
+export function freetextRubricPrompt(opts: {
+  prompt: string
+  rubric: string[]
+  learnerAnswer: string
+  modelAnswer?: string
+}): string {
+  const criteriaList = opts.rubric.map((item, i) => `${i + 1}. ${item}`).join('\n')
+  return [
+    `Exercise prompt:\n${opts.prompt}`,
+    `Rubric criteria (${opts.rubric.length} items):\n${criteriaList}`,
+    opts.modelAnswer ? `Reference model answer:\n${opts.modelAnswer}` : null,
+    `Learner's written answer:\n"""\n${opts.learnerAnswer.slice(0, 6000)}\n"""`,
+  ]
+    .filter(Boolean)
+    .join('\n\n')
 }

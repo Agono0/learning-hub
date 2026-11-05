@@ -103,6 +103,7 @@ beforeAll(async () => {
   M.journalAi = await import('../app/api/journal/ai/route')
   M.curriculum = await import('../app/api/curriculum/route')
   M.aiGenerate = await import('../app/api/ai/generate/route')
+  M.aiRubric = await import('../app/api/ai/rubric/route')
   M.transport = await import('../app/api/ai/transport/route')
   M.decks = await import('../app/api/decks/route')
 })
@@ -667,5 +668,106 @@ describe('decks (item 1)', () => {
     expect(dup.status).toBe(409)
     const blank = await M.decks.POST(post('/api/decks', { name: '   ' }))
     expect(blank.status).toBe(400)
+  })
+})
+
+describe('google provider & ai/rubric (milestone 5)', () => {
+  it('settings PUT accepts google provider and gemini-2.5-flash model', async () => {
+    const putRes = await M.settings.PUT(
+      req('PUT', '/api/settings', {
+        aiProvider: 'google',
+        aiModel: 'gemini-2.5-flash',
+      }),
+    )
+    expect(putRes.status).toBe(200)
+    const getRes = await M.settings.GET()
+    const body = (await getRes.json()) as {
+      settings: { aiProvider: string; aiModel: string }
+    }
+    expect(body.settings.aiProvider).toBe('google')
+    expect(body.settings.aiModel).toBe('gemini-2.5-flash')
+  })
+
+  it('POST /api/ai/rubric returns manualHint when unconfigured and structured rubric coaching when configured', async () => {
+    const rubricPayload = {
+      prompt: 'Explain why retrieval practice beats passive rereading.',
+      rubric: [
+        'Mentions active reconstruction from memory',
+        'Notes calibration against illusions of competence',
+      ],
+      learnerAnswer: 'Recalling from memory strengthens retrieval cues and exposes gaps.',
+    }
+
+    fakeAI.client = null
+    const unconfigured = await M.aiRubric.POST(post('/api/ai/rubric', rubricPayload))
+    expect(unconfigured.status).toBe(400)
+    const unBody = (await unconfigured.json()) as {
+      ok: boolean
+      needsSetup: boolean
+      manualHint: string
+    }
+    expect(unBody.ok).toBe(false)
+    expect(unBody.needsSetup).toBe(true)
+    expect(unBody.manualHint).toContain('manual')
+
+    fakeAI.client = {
+      generateJSON: async () => ({
+        criteriaMet: [true, true],
+        score: 1,
+        feedback: 'Both core mechanisms are clearly articulated.',
+      }),
+    }
+    const configured = await M.aiRubric.POST(post('/api/ai/rubric', rubricPayload))
+    expect(configured.status).toBe(200)
+    const okBody = (await configured.json()) as {
+      ok: boolean
+      criteriaMet: boolean[]
+      score: number
+      feedback: string
+    }
+    expect(okBody.ok).toBe(true)
+    expect(okBody.criteriaMet).toEqual([true, true])
+    expect(okBody.score).toBe(1)
+    expect(okBody.feedback).toContain('articulated')
+
+    // Copy-envelope transport prompt + parse roundtrip for provider-less learners (Hard Rule #9)
+    const promptRes = await M.transport.POST(
+      post('/api/ai/transport', {
+        feature: 'freetext-rubric',
+        params: {
+          question: rubricPayload.prompt,
+          rubric: rubricPayload.rubric.join(' || '),
+          answer: rubricPayload.learnerAnswer,
+        },
+      }),
+    )
+    expect(promptRes.status).toBe(200)
+    const promptBody = (await promptRes.json()) as {
+      ok: boolean
+      envelope: { feature: string; prompt: string }
+      manual: { feature: string } | null
+    }
+    expect(promptBody.ok).toBe(true)
+    expect(promptBody.envelope.feature).toBe('freetext-rubric')
+    expect(promptBody.envelope.prompt).toContain('retrieval practice')
+    expect(promptBody.manual?.feature).toBe('freetext-rubric')
+
+    const parseRes = await M.transport.POST(
+      post('/api/ai/transport', {
+        feature: 'freetext-rubric',
+        result: JSON.stringify({
+          criteriaMet: [true, false],
+          score: 0.5,
+          feedback: 'Good explanation of reconstruction; mention metacognitive calibration.',
+        }),
+      }),
+    )
+    expect(parseRes.status).toBe(200)
+    const parseBody = (await parseRes.json()) as {
+      ok: boolean
+      data: { criteriaMet: boolean[]; score: number; feedback: string }
+    }
+    expect(parseBody.ok).toBe(true)
+    expect(parseBody.data.criteriaMet).toEqual([true, false])
   })
 })

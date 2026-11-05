@@ -16,6 +16,7 @@ import { ApiError, readJson, withRoute } from '@/lib/api'
 const aiProviderSchema = z.enum([
   'anthropic',
   'openai',
+  'google',
   'openai-compatible',
   'ollama',
   'custom-endpoint',

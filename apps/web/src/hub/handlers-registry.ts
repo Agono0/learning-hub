@@ -17,6 +17,7 @@ import * as achievements from '../server/handlers/achievements/route'
 import * as aiChat from '../server/handlers/ai/chat/route'
 import * as aiFeynmanGrade from '../server/handlers/ai/feynman/grade/route'
 import * as aiGenerate from '../server/handlers/ai/generate/route'
+import * as aiRubric from '../server/handlers/ai/rubric/route'
 import * as aiTransport from '../server/handlers/ai/transport/route'
 import * as analytics from '../server/handlers/analytics/route'
 import * as backup from '../server/handlers/backup/route'
@@ -128,6 +129,7 @@ add('achievements', achievements)
 add('ai/chat', aiChat)
 add('ai/feynman/grade', aiFeynmanGrade)
 add('ai/generate', aiGenerate)
+add('ai/rubric', aiRubric)
 add('ai/transport', aiTransport)
 add('analytics', analytics)
 add('backup', backup)

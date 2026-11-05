@@ -47,4 +47,23 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(res.exitCode).toBe(0)
     expect(res.stdout).toContain('—') // Author delimiter
   })
+
+  it('runs search, fsrs, starter, and sync status commands cleanly', async () => {
+    const searchRes = await runCli(['search', 'Spaced Repetition'], getActiveDbPath())
+    expect(searchRes.exitCode).toBe(0)
+    expect(searchRes.stdout).toContain('SEARCH')
+
+    const fsrsRes = await runCli(['fsrs', 'status'], getActiveDbPath())
+    expect(fsrsRes.exitCode).toBe(0)
+    expect(fsrsRes.stdout).toContain('FSRS-6 STATUS')
+
+    const starterRes = await runCli(['starter', 'list'], getActiveDbPath())
+    expect(starterRes.exitCode).toBe(0)
+    expect(starterRes.stdout).toContain('STARTER LIBRARY')
+    expect(starterRes.stdout).toContain('sql-essentials')
+
+    const syncRes = await runCli(['sync', 'status'], getActiveDbPath())
+    expect(syncRes.exitCode).toBe(0)
+    expect(syncRes.stdout).toContain('CLOUD SYNC')
+  })
 })

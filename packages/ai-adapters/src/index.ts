@@ -20,6 +20,7 @@ registerCustomEndpoint()
 // Public surface for tree-shakeable manual registration (no side effects).
 export {
   anthropicFactory,
+  googleFactory,
   openaiFactory,
   openaiCompatibleFactory,
   ollamaFactory,

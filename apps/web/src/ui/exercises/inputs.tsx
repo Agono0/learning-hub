@@ -10,7 +10,7 @@
  * screen-reader friendly.
  */
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, Play, XCircle } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Play, Sparkles, XCircle } from 'lucide-react'
 import {
   clozeBlanks,
   type AnswerOf,
@@ -18,9 +18,11 @@ import {
   type ExerciseOf,
   type ExerciseType,
 } from '@learning-hub/core/practice'
+import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
+import { apiSend } from '@/lib/transport'
 import { Markdown } from '../Markdown'
 import { cx } from '../cx'
-import { canRunLanguage, runJavaScriptTests, type CodeRunResult } from './code-runner'
+import { canRunLanguage, isSqlLanguage, runCodeTests, type CodeRunResult } from './code-runner'
 import { seedFrom, shuffledIndices } from './shuffle'
 
 /** Any answer value (per-type shapes from the core contract). */
@@ -414,13 +416,56 @@ function CategorizeInput({ exercise, value, onChange, disabled }: InputProps<'ca
  * answer and tick what you covered — that self-assessment becomes the score.
  */
 function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'freetext'>) {
+  const { data: aiStatus } = useAiStatus()
+  const aiConfigured = aiStatus?.configured === true
   const [revealed, setRevealed] = useState(value?.score !== undefined)
   const [ticks, setTicks] = useState<boolean[]>(exercise.rubric.map(() => false))
+  const [coachBusy, setCoachBusy] = useState(false)
+  const [coachFeedback, setCoachFeedback] = useState<string | null>(null)
+  const [coachError, setCoachError] = useState<string | null>(null)
+  const [showPromptTransport, setShowPromptTransport] = useState(false)
   const text = value?.text ?? ''
   const setScore = (next: boolean[]) => {
     setTicks(next)
     onChange({ text, score: next.filter(Boolean).length / next.length })
   }
+
+  const applyCoachResult = (raw: { criteriaMet?: boolean[]; feedback?: string }) => {
+    const nextTicks = exercise.rubric.map((_, idx) => Boolean(raw.criteriaMet?.[idx]))
+    setTicks(nextTicks)
+    onChange({ text, score: nextTicks.filter(Boolean).length / nextTicks.length })
+    if (raw.feedback) setCoachFeedback(raw.feedback)
+  }
+
+  const askRubricCoach = async () => {
+    setCoachBusy(true)
+    setCoachError(null)
+    try {
+      const res = await apiSend<{
+        ok: boolean
+        criteriaMet?: boolean[]
+        feedback?: string
+        error?: string
+        needsSetup?: boolean
+      }>('/api/ai/rubric', 'POST', {
+        prompt: exercise.prompt,
+        rubric: exercise.rubric,
+        learnerAnswer: text,
+        modelAnswer: exercise.modelAnswer,
+      })
+      if (!res.ok) {
+        if (res.needsSetup) setShowPromptTransport(true)
+        setCoachError(res.error ?? 'Rubric coach unavailable')
+        return
+      }
+      applyCoachResult(res)
+    } catch (e) {
+      setCoachError(e instanceof Error ? e.message : 'Rubric coach request failed')
+    } finally {
+      setCoachBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <label className="block">
@@ -446,8 +491,33 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
           I’m done — show the rubric
         </button>
       ) : (
-        <div className="space-y-2 rounded-xl bg-neutral-50 p-3 dark:bg-[#141417]">
-          <div className="label">Tick every point your answer covers</div>
+        <div className="space-y-2.5 rounded-xl bg-neutral-50 p-3 dark:bg-[#141417]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="label">Tick every point your answer covers</div>
+            {!disabled && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {aiConfigured && (
+                  <button
+                    type="button"
+                    disabled={coachBusy}
+                    onClick={() => void askRubricCoach()}
+                    className="btn-ghost py-1 text-xs"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                    {coachBusy ? 'Evaluating…' : 'Ask AI Rubric Coach'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPromptTransport((s) => !s)}
+                  className="btn-ghost py-1 text-xs text-neutral-500"
+                >
+                  {showPromptTransport ? 'Hide copy/paste prompt' : 'Copy/paste AI prompt'}
+                </button>
+              </div>
+            )}
+          </div>
+
           {exercise.rubric.map((point, i) => (
             <label key={i} className="flex items-start gap-2 text-sm">
               <input
@@ -460,6 +530,31 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
               {point}
             </label>
           ))}
+
+          {coachFeedback && (
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-600/10 px-3 py-2 text-xs text-indigo-900 dark:text-indigo-200">
+              <span className="font-semibold">Coach feedback: </span>
+              {coachFeedback}
+            </div>
+          )}
+          {coachError && <p className="text-xs text-amber-500">{coachError}</p>}
+
+          {showPromptTransport && !disabled && (
+            <TransportPanel
+              feature="freetext-rubric"
+              params={{
+                question: exercise.prompt,
+                rubric: exercise.rubric.join(' || '),
+                answer: text,
+                modelAnswer: exercise.modelAnswer,
+              }}
+              onValidated={(data) => {
+                applyCoachResult(data as { criteriaMet?: boolean[]; feedback?: string })
+                setShowPromptTransport(false)
+              }}
+            />
+          )}
+
           {exercise.modelAnswer && (
             <details className="text-sm">
               <summary className="cursor-pointer text-indigo-600 dark:text-indigo-300">
@@ -474,17 +569,21 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
   )
 }
 
-/** Code: write, run the tests in a sandboxed worker, submit the result (or self-check vs the solution). */
+/** Code: write, run the tests in a sandboxed worker / SQLite WASM, submit the result (or self-check vs the solution). */
 function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) {
   const [run, setRun] = useState<CodeRunResult | null>(null)
   const [running, setRunning] = useState(false)
   const [showSolution, setShowSolution] = useState(false)
   const source = value?.source ?? exercise.starter ?? ''
+  const sqlMode = isSqlLanguage(exercise.language)
   const runnable = canRunLanguage(exercise.language) && (exercise.tests?.length ?? 0) > 0
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="label mb-1 block">{exercise.language}</span>
+        <span className="label mb-1 block">
+          {exercise.language}
+          {sqlMode && runnable ? ' · Live SQLite Sandbox' : ''}
+        </span>
         <textarea
           className="input min-h-44 font-mono text-[13px] leading-6"
           spellCheck={false}
@@ -514,28 +613,78 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
             disabled={disabled || running}
             onClick={async () => {
               setRunning(true)
-              const result = await runJavaScriptTests(source, exercise.tests!)
+              const result = await runCodeTests(exercise.language, source, exercise.tests!)
               setRunning(false)
               setRun(result)
               onChange({ source, passed: result.passed, total: result.total })
             }}
           >
-            <Play className="h-4 w-4" /> {running ? 'Running…' : 'Run tests'}
+            <Play className="h-4 w-4" />{' '}
+            {running ? 'Running…' : sqlMode ? 'Run SQL query' : 'Run tests'}
           </button>
           {run && (
-            <div className="space-y-1 text-sm" aria-live="polite">
+            <div className="space-y-2 text-sm" aria-live="polite">
               {run.error && <p className="text-rose-500">{run.error}</p>}
               {run.results.map((r, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  {r.passed ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                  ) : (
-                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                <div key={i} className="space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    {r.passed ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    ) : (
+                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                    )}
+                    <code className="text-[12px]">
+                      {r.call} → {r.error ? `error: ${r.error}` : JSON.stringify(r.actual)}
+                      {!r.passed && !r.error && ` (expected ${JSON.stringify(r.expected)})`}
+                    </code>
+                  </div>
+                  {r.columns && r.columns.length > 0 && r.rows && (
+                    <div className="scroll-x rounded-lg border border-neutral-200 dark:border-[#26262b]">
+                      <table className="w-full text-left font-mono text-xs">
+                        <thead className="bg-neutral-100/80 dark:bg-[#1a1a1f]">
+                          <tr>
+                            {r.columns.map((col, ci) => (
+                              <th
+                                key={ci}
+                                className="border-b border-neutral-200 px-2.5 py-1 font-semibold dark:border-[#26262b]"
+                              >
+                                {col}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {r.rows.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={r.columns.length}
+                                className="px-2.5 py-1.5 text-neutral-500"
+                              >
+                                (0 rows returned)
+                              </td>
+                            </tr>
+                          ) : (
+                            r.rows.slice(0, 20).map((row, ri) => (
+                              <tr
+                                key={ri}
+                                className="border-b border-neutral-100 last:border-none dark:border-[#1f1f24]"
+                              >
+                                {row.map((cell, ci) => (
+                                  <td key={ci} className="px-2.5 py-1">
+                                    {cell === null ? (
+                                      <span className="italic text-neutral-400">NULL</span>
+                                    ) : (
+                                      String(cell)
+                                    )}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                  <code className="text-[12px]">
-                    {r.call} → {r.error ? `error: ${r.error}` : JSON.stringify(r.actual)}
-                    {!r.passed && !r.error && ` (expected ${JSON.stringify(r.expected)})`}
-                  </code>
                 </div>
               ))}
             </div>

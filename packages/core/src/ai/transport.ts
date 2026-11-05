@@ -20,6 +20,7 @@ import {
   COUNCIL_PERSONAS,
   FEYNMAN_GRADER,
   FEYNMAN_STUDENT,
+  FREETEXT_RUBRIC_SYSTEM,
   SOCRATIC_SYSTEM,
 } from './prompts'
 
@@ -113,6 +114,13 @@ export const coachSuggestionsSchema = z.object({
       }),
     )
     .length(3),
+})
+
+/** Freetext rubric coach result: per-criterion boolean ticks + 0..1 score + concise feedback. */
+export const freetextRubricResultSchema = z.object({
+  criteriaMet: z.array(z.boolean()).min(1),
+  score: z.number().min(0).max(1),
+  feedback: z.string().min(1),
 })
 
 const councilSystem = (key: 'optimist' | 'skeptic' | 'domain-expert' | 'devils-advocate'): string =>
@@ -213,6 +221,14 @@ export const AI_FEATURES: Record<string, AIFeatureDef> = {
     system: BRAINWRITE_SYSTEM,
     schemaDescription: '{"ideas": [string, string, string, string, string, string]}',
     schema: brainwriteIdeasSchema as ZodType<unknown>,
+  },
+  'freetext-rubric': {
+    name: 'freetext-rubric',
+    title: 'Freetext rubric coach',
+    kind: 'json',
+    system: FREETEXT_RUBRIC_SYSTEM,
+    schemaDescription: '{"criteriaMet": [boolean, ...], "score": number 0..1, "feedback": string}',
+    schema: freetextRubricResultSchema as ZodType<unknown>,
   },
 }
 

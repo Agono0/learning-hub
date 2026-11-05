@@ -4,6 +4,7 @@
  * core itself no longer knows any of this exists (it only sees the registry).
  */
 import { createAnthropic } from '@ai-sdk/anthropic'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { defaultModelFor, registerAIProvider } from '@learning-hub/core/ai'
@@ -41,7 +42,18 @@ export const openaiFactory: AIClientFactory = (settings) => {
   )
 }
 
-/** Any OpenAI-compatible endpoint (LM Studio, vLLM, OpenRouter, …) via @ai-sdk/openai. */
+/** Google Gemini via the AI SDK (@ai-sdk/google). Supports AI Studio free tier API keys. */
+export const googleFactory: AIClientFactory = (settings) => {
+  return makeSdkClient(
+    createGoogleGenerativeAI({
+      apiKey: settings.apiKey,
+      baseURL: settings.baseUrl || undefined,
+      fetch: networkFetch,
+    })(resolveModel(settings, 'google')),
+  )
+}
+
+/** Any OpenAI-compatible endpoint (LM Studio, vLLM, OpenRouter, Groq, DeepSeek, …) via @ai-sdk/openai. */
 export const openaiCompatibleFactory: AIClientFactory = (settings) => {
   return makeSdkClient(
     createOpenAI({ apiKey: settings.apiKey, baseURL: settings.baseUrl, fetch: networkFetch }).chat(
@@ -61,10 +73,11 @@ export const ollamaFactory: AIClientFactory = (settings) => {
   )
 }
 
-/** Register all four SDK providers (called at package import time via index.ts). */
+/** Register all SDK providers (called at package import time via index.ts). */
 export function registerBuiltinProviders(): void {
   registerAIProvider('anthropic', anthropicFactory)
   registerAIProvider('openai', openaiFactory)
+  registerAIProvider('google', googleFactory)
   registerAIProvider('openai-compatible', openaiCompatibleFactory)
   registerAIProvider('ollama', ollamaFactory)
 }

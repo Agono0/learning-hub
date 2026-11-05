@@ -110,7 +110,8 @@ implementation.
 | ------------------- | ---------------------------------------- | ----------------------------------------------- |
 | `anthropic`         | API key                                  | `claude-sonnet-4-5`                             |
 | `openai`            | API key                                  | `gpt-4o-mini`                                   |
-| `openai-compatible` | API key + base URL                       | — (endpoint-specific, set it)                   |
+| `google`            | API key (AI Studio free tier supported)  | `gemini-2.5-flash`                              |
+| `openai-compatible` | API key + base URL                       | — (endpoint-specific, e.g. Groq / OpenRouter)   |
 | `ollama`            | base URL (default `http://localhost:11434/v1`) | `llama3.1`                                 |
 | `custom-endpoint`   | base URL (+ optional headers JSON)       | — (not sent; free-form label)                   |
 | `none`              | nothing — **the default**                | —                                               |
@@ -118,7 +119,7 @@ implementation.
 Registration is a side effect of importing the package:
 
 ```ts
-import '@learning-hub/ai-adapters' // registers all five providers
+import '@learning-hub/ai-adapters' // registers all built-in providers
 ```
 
 ## 4. Prompt transport — "bring your own AI", fully offline
@@ -155,6 +156,7 @@ Features and params:
 | `council-domain-expert`    | text | `ideaId`                             |
 | `council-devils-advocate`  | text | `ideaId`                             |
 | `brainwrite`               | json | `topic`, `ideas` (newline/`\|`-separated) |
+| `freetext-rubric`          | json | `question`, `rubric` (`\|\|`-separated), `answer`, `modelAnswer?` |
 
 ## 5. Manual modes (provider `none`, the default)
 

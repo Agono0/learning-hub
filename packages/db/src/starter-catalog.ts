@@ -1094,7 +1094,7 @@ const STARTER_COURSE_INPUTS: readonly LhcfCourseInput[] = [
                 prompt:
                   'Given table `books(id INTEGER, title TEXT, pages INTEGER, read_at TEXT)`, write a SQL `SELECT` returning `title` for unread books (`read_at IS NULL`) with `pages >= 200`, ordered by `pages DESC`.',
                 starter:
-                  '-- Schema seeded automatically in SQL sandbox:\n-- CREATE TABLE books(id INTEGER, title TEXT, pages INTEGER, read_at TEXT);\nSELECT title\nFROM books\nWHERE read_at IS NULL AND pages >= 200\nORDER BY pages DESC;\n',
+                  '-- Schema seeded automatically in SQL sandbox:\n-- CREATE TABLE books(id INTEGER, title TEXT, pages INTEGER, read_at TEXT);\nSELECT title\nFROM books\n-- filter unread books (read_at IS NULL) with pages >= 200, ordered by pages DESC\n',
                 solution:
                   'SELECT title FROM books WHERE read_at IS NULL AND pages >= 200 ORDER BY pages DESC;',
                 tests: [

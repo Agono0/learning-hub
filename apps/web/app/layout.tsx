@@ -6,6 +6,11 @@ import { AppShell } from '@/components/AppShell'
 export const metadata: Metadata = {
   title: 'Learning HUB',
   description: 'The research-backed self-learning system',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
 }
 
 /** Edge-to-edge on Android/notched devices; the shell pads with safe-area insets. */

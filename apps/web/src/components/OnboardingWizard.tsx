@@ -119,7 +119,7 @@ export function OnboardingWizard() {
       })
       if (selectedSlugs.length > 0 || seedCore) {
         await apiSend('/api/starter', 'POST', {
-          slugs: selectedSlugs,
+          courseSlugs: selectedSlugs,
           seedCore,
         })
       }

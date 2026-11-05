@@ -21,33 +21,55 @@ const schema = z.object({ name: z.string(), count: z.number().int() })
 describe('buildAIEnvelope', () => {
   it('builds a versioned envelope with feature, system, prompt', () => {
     const env = buildAIEnvelope('cloze-generator', { system: 'SYS', prompt: 'PROMPT' })
-    expect(env).toEqual({ v: ENVELOPE_VERSION, feature: 'cloze-generator', system: 'SYS', prompt: 'PROMPT' })
+    expect(env).toEqual({
+      v: ENVELOPE_VERSION,
+      feature: 'cloze-generator',
+      system: 'SYS',
+      prompt: 'PROMPT',
+    })
     expect(ENVELOPE_VERSION).toBe(1)
   })
 
   it('includes the schema description only when given', () => {
-    const withSchema = buildAIEnvelope('f', { system: 's', prompt: 'p', schemaDescription: '{"cards":[]}' })
+    const withSchema = buildAIEnvelope('f', {
+      system: 's',
+      prompt: 'p',
+      schemaDescription: '{"cards":[]}',
+    })
     expect(withSchema.schema).toBe('{"cards":[]}')
     const without = buildAIEnvelope('f', { system: 's', prompt: 'p' })
     expect('schema' in without).toBe(false)
   })
 
   it('rejects an empty feature name', () => {
-    expect(() => buildAIEnvelope('', { system: 's', prompt: 'p' })).toThrowError(/feature name is required/)
+    expect(() => buildAIEnvelope('', { system: 's', prompt: 'p' })).toThrowError(
+      /feature name is required/,
+    )
   })
 
   it('round-trips through a simulated chatbot reply', () => {
-    const env = buildAIEnvelope('brainwrite', { system: 'SYS', prompt: 'PROMPT', schemaDescription: '{"ideas":[…]}' })
+    const env = buildAIEnvelope('brainwrite', {
+      system: 'SYS',
+      prompt: 'PROMPT',
+      schemaDescription: '{"ideas":[…]}',
+    })
     // the user pastes env into a chatbot; the chatbot's reply comes back as text
     const reply = 'Sure! Here is the JSON:\n```json\n{"ideas":["one","two"]}\n```'
-    const parsed = parseAIEnvelopeResult(env.feature, reply, z.object({ ideas: z.array(z.string()).min(1) }))
+    const parsed = parseAIEnvelopeResult(
+      env.feature,
+      reply,
+      z.object({ ideas: z.array(z.string()).min(1) }),
+    )
     expect(parsed).toEqual({ ideas: ['one', 'two'] })
   })
 })
 
 describe('parseAIEnvelopeResult', () => {
   it('parses plain JSON', () => {
-    expect(parseAIEnvelopeResult('f', '{"name":"a","count":1}', schema)).toEqual({ name: 'a', count: 1 })
+    expect(parseAIEnvelopeResult('f', '{"name":"a","count":1}', schema)).toEqual({
+      name: 'a',
+      count: 1,
+    })
   })
 
   it('parses fenced JSON (```json … ``` with surrounding whitespace)', () => {
@@ -56,11 +78,15 @@ describe('parseAIEnvelopeResult', () => {
   })
 
   it('parses fenced JSON without a language tag', () => {
-    expect(parseAIEnvelopeResult('f', '```\n{"name":"c","count":3}\n```', schema)).toEqual({ name: 'c', count: 3 })
+    expect(parseAIEnvelopeResult('f', '```\n{"name":"c","count":3}\n```', schema)).toEqual({
+      name: 'c',
+      count: 3,
+    })
   })
 
   it('parses prose-wrapped JSON (the model chatted around the answer)', () => {
-    const prose = 'Here is my grading of your teach-back. I hope it helps!\n\n{"name":"d","count":4}\n\nLet me know if you want more detail.'
+    const prose =
+      'Here is my grading of your teach-back. I hope it helps!\n\n{"name":"d","count":4}\n\nLet me know if you want more detail.'
     expect(parseAIEnvelopeResult('f', prose, schema)).toEqual({ name: 'd', count: 4 })
   })
 
@@ -71,17 +97,26 @@ describe('parseAIEnvelopeResult', () => {
 
   it('handles braces inside strings when finding the balanced block', () => {
     const tricky = 'prefix {"name":"a { weird } name","count":5} suffix'
-    expect(parseAIEnvelopeResult('f', tricky, schema)).toEqual({ name: 'a { weird } name', count: 5 })
+    expect(parseAIEnvelopeResult('f', tricky, schema)).toEqual({
+      name: 'a { weird } name',
+      count: 5,
+    })
   })
 
   it('throws a descriptive error on non-JSON text', () => {
-    expect(() => parseAIEnvelopeResult('f', 'no json at all here', schema)).toThrowError(/No JSON found/)
+    expect(() => parseAIEnvelopeResult('f', 'no json at all here', schema)).toThrowError(
+      /No JSON found/,
+    )
     expect(() => parseAIEnvelopeResult('f', '', schema)).toThrowError(/result was empty/)
   })
 
   it('throws a descriptive error naming the feature and issue on schema violations', () => {
     try {
-      parseAIEnvelopeResult('feynman-grader', '{"coverage": 200}', z.object({ coverage: z.number().int().min(0).max(100) }))
+      parseAIEnvelopeResult(
+        'feynman-grader',
+        '{"coverage": 200}',
+        z.object({ coverage: z.number().int().min(0).max(100) }),
+      )
       expect.unreachable('should have thrown')
     } catch (e) {
       expect((e as Error).message).toContain('feynman-grader')
@@ -118,12 +153,26 @@ describe('extractJson', () => {
 describe('AI feature registry', () => {
   it('exposes the prompt-transport feature set with the right kinds', () => {
     const names = listAIFeatures()
-    for (const expected of ['tutor-grade', 'feynman-student', 'feynman-grader', 'course-generator', 'cloze-generator', 'coach', 'council-optimist', 'council-skeptic', 'council-domain-expert', 'council-devils-advocate', 'brainwrite']) {
+    for (const expected of [
+      'tutor-grade',
+      'feynman-student',
+      'feynman-grader',
+      'course-generator',
+      'cloze-generator',
+      'coach',
+      'council-optimist',
+      'council-skeptic',
+      'council-domain-expert',
+      'council-devils-advocate',
+      'brainwrite',
+      'freetext-rubric',
+    ]) {
       expect(names).toContain(expected)
     }
     expect(AI_FEATURES['tutor-grade']!.kind).toBe('text')
     expect(AI_FEATURES['feynman-grader']!.kind).toBe('json')
     expect(AI_FEATURES['brainwrite']!.kind).toBe('json')
+    expect(AI_FEATURES['freetext-rubric']!.kind).toBe('json')
   })
 
   it('JSON features always carry a zod schema + schema description; text features never do', () => {

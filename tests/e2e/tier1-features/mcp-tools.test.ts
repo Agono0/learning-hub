@@ -28,6 +28,10 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(toolNames).toContain('focus_summary')
     expect(toolNames).toContain('quote_random')
     expect(toolNames).toContain('card_generate')
+    expect(toolNames).toContain('search')
+    expect(toolNames).toContain('fsrs_optimize')
+    expect(toolNames).toContain('starter_install')
+    expect(toolNames).toContain('cloud_sync')
   })
 
   it('captures and searches ideas via idea_create and idea_search', async () => {
@@ -86,5 +90,24 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(res.quote).toBeDefined()
     expect(res.quote.text).toBeDefined()
     expect(res.quote.author).toBeDefined()
+  })
+
+  it('executes search, fsrs_optimize, starter_install, and cloud_sync tools', async () => {
+    const searchRes = await client.callTool('search', { query: 'Hebbian', limit: 10 })
+    expect(searchRes.ok).toBe(true)
+    expect(searchRes.count).toBeGreaterThanOrEqual(1)
+
+    const fsrsRes = await client.callTool('fsrs_optimize', { mode: 'status' })
+    expect(fsrsRes.ok).toBe(true)
+    expect(typeof fsrsRes.desiredRetention).toBe('number')
+
+    const starterRes = await client.callTool('starter_install', { action: 'list' })
+    expect(starterRes.ok).toBe(true)
+    expect(Array.isArray(starterRes.courses)).toBe(true)
+    expect(starterRes.courses.length).toBeGreaterThanOrEqual(3)
+
+    const syncRes = await client.callTool('cloud_sync', { action: 'status' })
+    expect(syncRes.ok).toBe(true)
+    expect(syncRes.sync.provider).toBeDefined()
   })
 })

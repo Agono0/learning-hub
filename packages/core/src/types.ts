@@ -143,7 +143,7 @@ export type IdeaLinkType = 'related' | 'supports' | 'contradicts' | 'refines' | 
  * default — every AI surface then shows its manual alternative.
  */
 export type AIProvider =
-  'anthropic' | 'openai' | 'openai-compatible' | 'ollama' | 'custom-endpoint' | 'none'
+  'anthropic' | 'openai' | 'google' | 'openai-compatible' | 'ollama' | 'custom-endpoint' | 'none'
 
 /** User-configured AI provider connection (Settings page). */
 export interface AISettings {

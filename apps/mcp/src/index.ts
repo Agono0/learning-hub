@@ -22,15 +22,22 @@ import {
   cards,
   db,
   decks,
+  executeCloudSync,
   executeReview,
   focusSessions,
   frictionEvents,
+  getFsrsStatus,
+  getStarterCatalogStatus,
+  getSyncConfig,
   goals,
   ideas,
   ideaLinks,
+  installStarterPack,
   notes,
   noteLinks,
+  optimizeAndPersistFsrs,
   quotes,
+  searchAll,
 } from '@learning-hub/db'
 import {
   evolveIdeas,
@@ -40,15 +47,13 @@ import {
   manualHybrid,
   SUPERTAG_TEMPLATES,
   wikilinkParse,
-  type McpToolContribution,
-  type McpToolResult,
   type AIClient,
   type Grade,
 } from '@learning-hub/core'
-// registers the built-in AI providers (anthropic/openai/openai-compatible/
+// registers the built-in AI providers (anthropic/openai/google/openai-compatible/
 // ollama/custom-endpoint) into core's registry — without this only 'none'
 // exists and idea_evolve always runs its manual merge
-import '@learning-hub/ai-adapters'
+import { networkFetch } from '@learning-hub/ai-adapters'
 
 /** Registry-backed client from settings; null on 'none' or registration/usage errors (manual fallback). */
 async function aiClientOrNull(): Promise<AIClient | null> {
@@ -442,6 +447,73 @@ const builtinTools: RegisteredTool[] = [
         created.push(card!.id)
       }
       return json({ ok: true, deckId, created: created.length, skipped: skipped, cardIds: created })
+    },
+  ),
+
+  // ── Search, FSRS-6 Optimizer, Starter Library & Cloud Sync ──
+  tool(
+    'search',
+    'Full-text search (FTS5 with LIKE fallback) across notes, cards, lessons, highlights, and ideas.',
+    {
+      query: z.string().min(1).describe('Search query'),
+      limit: z.number().int().min(1).max(100).default(24),
+    },
+    async ({ query, limit }) => {
+      const result = searchAll(db, query, limit)
+      return json({ ok: true, count: result.hits.length, ...result })
+    },
+  ),
+  tool(
+    'fsrs_optimize',
+    'Inspect FSRS-6 Log-Loss/RMSE calibration or optimize/reset personalized 21-parameter FSRS-6 weights globally or per deck.',
+    {
+      mode: z.enum(['status', 'optimize', 'reset']).default('status'),
+      deckId: z.number().int().positive().optional(),
+      reschedule: z.boolean().default(false),
+    },
+    async ({ mode, deckId, reschedule }) => {
+      if (mode === 'status') {
+        return json({ ok: true, ...getFsrsStatus({ deckId }) })
+      }
+      const res = await optimizeAndPersistFsrs({ mode, deckId, reschedule })
+      return json({ ok: true, ...res })
+    },
+  ),
+  tool(
+    'starter_install',
+    'List or install built-in offline starter courses (learning-how-to-learn, javascript-functions, sql-essentials) and curated quotes/mnemonics.',
+    {
+      action: z.enum(['list', 'install']).default('list'),
+      courseSlugs: z.array(z.string()).optional(),
+      seedCore: z.boolean().default(true),
+    },
+    async ({ action, courseSlugs, seedCore }) => {
+      if (action === 'list') {
+        return json({ ok: true, ...getStarterCatalogStatus() })
+      }
+      const res = installStarterPack({ courseSlugs, seedCore })
+      return json({ ok: true, ...res })
+    },
+  ),
+  tool(
+    'cloud_sync',
+    'Inspect masked Cloud Sync status or run non-destructive Smart Merge sync (Dropbox, GitHub, Google Drive, WebDAV).',
+    {
+      action: z.enum(['status', 'test', 'pull', 'push', 'sync']).default('status'),
+    },
+    async ({ action }) => {
+      if (action === 'status') {
+        return json({ ok: true, sync: getSyncConfig({ maskSecrets: true }) })
+      }
+      try {
+        const res = await executeCloudSync({ action, fetchFn: networkFetch })
+        return json({ ...res, sync: getSyncConfig({ maskSecrets: true }) })
+      } catch (err) {
+        return json({
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      }
     },
   ),
 ]

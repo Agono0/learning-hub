@@ -16,8 +16,10 @@ const providers = new Map<string, AIClientFactory>()
 
 /** Register (or replace) a provider factory under the given name. */
 export function registerAIProvider(name: string, factory: AIClientFactory): void {
-  if (!name || typeof name !== 'string') throw new Error('registerAIProvider: provider name must be a non-empty string')
-  if (typeof factory !== 'function') throw new Error(`registerAIProvider("${name}"): factory must be a function`)
+  if (!name || typeof name !== 'string')
+    throw new Error('registerAIProvider: provider name must be a non-empty string')
+  if (typeof factory !== 'function')
+    throw new Error(`registerAIProvider("${name}"): factory must be a function`)
   providers.set(name, factory)
 }
 
@@ -62,6 +64,7 @@ export function getAIClient(settings: AISettings): AIClient | null {
 export const DEFAULT_MODELS: Record<Exclude<AIProvider, 'none'>, string> = {
   anthropic: 'claude-sonnet-4-5',
   openai: 'gpt-4o-mini',
+  google: 'gemini-2.5-flash',
   'openai-compatible': '',
   ollama: 'llama3.1',
   'custom-endpoint': '',

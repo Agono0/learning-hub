@@ -10,7 +10,8 @@ npm workspaces: `packages/*` + `apps/*`.
 learning-HUB/
 ├── packages/
 │   ├── core/           # Pure domain logic. No I/O. No AI SDK. No app imports.
-│   │   ├── fsrs.ts         # ts-fsrs 6 wrapper (FSRS-6, desired retention 0.9)
+│   │   ├── fsrs.ts / fsrs-optimizer.ts # ts-fsrs 6 wrapper + 21-param MAP optimizer + Reschedule
+│   │   ├── sync-crypto.ts / ingest.ts  # Web Crypto AES-256-GCM E2EE + EPUB/HTML/YouTube/SQ3R ingest
 │   │   ├── bkt.ts / elo.ts # Bayesian Knowledge Tracing + Puzzle-Elo
 │   │   ├── xp.ts / streaks.ts / motivation.ts / physio.ts
 │   │   ├── cards.ts / linter.ts   # 8 card formats + 20-Rules linter
@@ -27,10 +28,11 @@ learning-HUB/
 │   │   ├── index.ts        # WAL pragmas, ensureSchema migrations, stat views
 │   │   ├── review-service.ts  # ← THE canonical review pipeline
 │   │   ├── transaction.ts  # withTransaction (BEGIN IMMEDIATE, sync-only)
-│   │   ├── backup.ts       # live snapshot + JSON archive + restore
+│   │   ├── backup.ts / sync.ts / cloud-sync.ts # non-destructive Smart Merge + Dropbox/GitHub/GDrive/WebDAV
+│   │   ├── starter-catalog.ts # runtime-neutral starter courses, quotes & Major/PAO mnemonics
 │   │   └── paths.ts        # $LEARNING_HUB_DB or walk-up → data/learning-hub.db
 │   └── ai-adapters/    # The ONLY package that imports ai / @ai-sdk/*
-│                       # anthropic · openai · openai-compatible · ollama · custom-endpoint
+│                       # anthropic · openai · google · openai-compatible · ollama · custom-endpoint
 ├── apps/
 │   ├── web/            # Next.js 16 App Router (React 19, Tailwind 4, TanStack Query, zustand)
 │   │   ├── app/api/**/route.ts  # REST route handlers (zod boundary, withRoute)

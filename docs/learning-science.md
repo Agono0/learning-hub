@@ -98,11 +98,12 @@ Performance peaks at moderate arousal; the optimum drops as tasks get harder.
 
 ### SQ3R — Francis Robinson, 1946
 Survey → Question → Read → Recite → Review for textbook study.
-- **In Learning HUB:** the reading engine already paginates into daily
-  fragments with resurfaced highlights (`packages/core/src/reading.ts`,
-  `nextFragment`, `resurfaceHighlights`) — the SQ3R step mode on the reading
-  page is a planned M5-adjacent item.
-- **Status:** 📋
+- **In Learning HUB:** daily reading fragments + resurfaced highlights
+  (`packages/core/src/reading.ts`) AND full 5-step guided SQ3R mode
+  (`extractSurveyHeadings` in `packages/core/src/ingest.ts`, persistent
+  `sq3r_sessions` via `apps/web/src/server/handlers/reading/sq3r/route.ts`,
+  closed-book Recite, and 1-click FSRS card minting on `apps/web/app/reading/page.tsx`).
+- **Status:** ✅
 
 ### Cornell notes — Walter Pauk, Cornell, 1940s
 Page split into cues / notes / summary; cues drive later self-testing.

@@ -31,6 +31,15 @@ const PROVIDERS: {
     hint: 'AI features are off. Everything still works — generation features show manual alternatives (or the copy-envelope / paste-result transport) instead.',
   },
   {
+    key: 'google',
+    label: 'Google Gemini',
+    needsKey: true,
+    needsBaseUrl: false,
+    needsHeaders: false,
+    modelPlaceholder: 'gemini-2.5-flash',
+    hint: 'Generous free tier available via Google AI Studio (aistudio.google.com/apikey).',
+  },
+  {
     key: 'anthropic',
     label: 'Anthropic',
     needsKey: true,
@@ -297,6 +306,57 @@ export default function SettingsPage() {
               .
             </p>
           )}
+        </div>
+
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-[#26262b] dark:bg-[#101014]">
+          <div className="label mb-1.5">1-Click Free &amp; Local Presets</div>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              {
+                label: 'Gemini 2.5 Flash (Free Tier)',
+                provider: 'google' as AIProvider,
+                model: 'gemini-2.5-flash',
+                baseUrl: '',
+              },
+              {
+                label: 'Groq Llama 3.3 (Free Tier)',
+                provider: 'openai-compatible' as AIProvider,
+                model: 'llama-3.3-70b-versatile',
+                baseUrl: 'https://api.groq.com/openai/v1',
+              },
+              {
+                label: 'OpenRouter (Free Models)',
+                provider: 'openai-compatible' as AIProvider,
+                model: 'meta-llama/llama-3.3-70b-instruct:free',
+                baseUrl: 'https://openrouter.ai/api/v1',
+              },
+              {
+                label: 'DeepSeek Chat',
+                provider: 'openai-compatible' as AIProvider,
+                model: 'deepseek-chat',
+                baseUrl: 'https://api.deepseek.com/v1',
+              },
+              {
+                label: 'Ollama Local (Offline)',
+                provider: 'ollama' as AIProvider,
+                model: 'llama3.1',
+                baseUrl: 'http://localhost:11434/v1',
+              },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  setProvider(preset.provider)
+                  setModel(preset.model)
+                  setBaseUrl(preset.baseUrl)
+                }}
+                className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-[#26262b] dark:bg-[#18181d] dark:text-neutral-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

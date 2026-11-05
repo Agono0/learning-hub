@@ -20,7 +20,8 @@ import {
 function fakeClient(tag: string): AIClient {
   return {
     generateText: async () => tag,
-    generateJSON: async <T,>({ schema }: { schema: import('zod').ZodType<T> }) => (schema as unknown as { parse: (v: unknown) => T }).parse({ tag }),
+    generateJSON: async <T>({ schema }: { schema: import('zod').ZodType<T> }) =>
+      (schema as unknown as { parse: (v: unknown) => T }).parse({ tag }),
   }
 }
 
@@ -46,8 +47,12 @@ describe('AI registry', () => {
   })
 
   it('throws a DESCRIPTIVE error for unregistered providers (names the fix + registered set)', () => {
-    expect(() => getAIProvider('no-such-provider', { provider: 'none', model: '' })).toThrowError(/no-such-provider.*registerAIProvider|registerAIProvider.*no-such-provider/)
-    expect(() => getAIProvider('no-such-provider', { provider: 'none', model: '' })).toThrowError(/@learning-hub\/ai-adapters/)
+    expect(() => getAIProvider('no-such-provider', { provider: 'none', model: '' })).toThrowError(
+      /no-such-provider.*registerAIProvider|registerAIProvider.*no-such-provider/,
+    )
+    expect(() => getAIProvider('no-such-provider', { provider: 'none', model: '' })).toThrowError(
+      /@learning-hub\/ai-adapters/,
+    )
   })
 
   it('lists providers with none first, in registration order', () => {
@@ -73,17 +78,22 @@ describe('AI registry', () => {
   it('unregisterAIProvider removes a registration', () => {
     registerAIProvider('gone', () => fakeClient('gone'))
     unregisterAIProvider('gone')
-    expect(() => getAIProvider('gone', { provider: 'none', model: '' })).toThrowError(/not registered/)
+    expect(() => getAIProvider('gone', { provider: 'none', model: '' })).toThrowError(
+      /not registered/,
+    )
   })
 
   it('rejects invalid registrations loudly', () => {
     expect(() => registerAIProvider('', () => fakeClient(''))).toThrowError(/non-empty string/)
-    expect(() => registerAIProvider('bad-factory', undefined as never)).toThrowError(/factory must be a function/)
+    expect(() => registerAIProvider('bad-factory', undefined as never)).toThrowError(
+      /factory must be a function/,
+    )
   })
 
   it('defaults models: known defaults for hosted providers, blank for endpoint-defined ones', () => {
     expect(defaultModelFor('anthropic')).toBe('claude-sonnet-4-5')
     expect(defaultModelFor('openai')).toBe('gpt-4o-mini')
+    expect(defaultModelFor('google')).toBe('gemini-2.5-flash')
     expect(defaultModelFor('ollama')).toBe('llama3.1')
     // endpoint-defined providers have NO silent default — a wrong model id 404s
     expect(defaultModelFor('openai-compatible')).toBe('')

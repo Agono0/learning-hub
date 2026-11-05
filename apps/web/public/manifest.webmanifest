@@ -1,0 +1,19 @@
+{
+  "name": "Learning HUB",
+  "short_name": "Learning HUB",
+  "description": "Research-backed self-learning system: FSRS-6 spaced repetition, interactive courses, active reading, and notes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0b",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

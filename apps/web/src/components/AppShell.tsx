@@ -55,7 +55,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
 interface SyncSummary {
   provider: 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
   lastSyncedAt: string | null
-  lastStatus: string | null
+  lastSyncRevision: string | null
 }
 
 function useQuickCloudSync() {

@@ -20,6 +20,7 @@ import {
   clozeGeneratorPrompt,
   coachPrompt,
   courseGeneratorPrompt,
+  freetextRubricPrompt,
   getAIFeature,
   getManualMode,
   listAIFeatures,
@@ -128,6 +129,18 @@ async function buildPrompt(
         .map((s) => s.trim())
         .filter(Boolean)
       return brainwritePrompt(text('topic') || '(topic in my reply)', userIdeas)
+    }
+    case 'freetext-rubric': {
+      const rubric = text('rubric')
+        .split(/\r?\n|\|\|/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      return freetextRubricPrompt({
+        prompt: text('question') || '(exercise prompt)',
+        rubric: rubric.length > 0 ? rubric : ['Covers core mechanism accurately'],
+        learnerAnswer: text('answer') || '(paste learner response)',
+        modelAnswer: text('modelAnswer') || undefined,
+      })
     }
     default:
       return text('prompt') || '(fill in your content in the reply)'

@@ -23,13 +23,18 @@ export interface ManualMode {
    * Self-assessment rubric entries (Feynman grader): the user fills these in
    * themselves — same shape the AI grader would return.
    */
-  rubric?: { key: 'coverage' | 'misconceptions' | 'gaps' | 'suggestedCards'; label: string; hint: string }[]
+  rubric?: {
+    key: 'coverage' | 'misconceptions' | 'gaps' | 'suggestedCards'
+    label: string
+    hint: string
+  }[]
 }
 
 const TUTOR_SELF_EXPLAIN: ManualMode = {
   feature: 'tutor-grade',
   title: 'Self-explain mode',
-  summary: 'The Socratic ladder becomes self-questioning: you play the tutor, and the retrieval effect still applies.',
+  summary:
+    'The Socratic ladder becomes self-questioning: you play the tutor, and the retrieval effect still applies.',
   steps: [
     '1 · RESTATE — write the problem/question in your own words. If you cannot, that IS the gap — go back to the source first.',
     '2 · INVENTORY — list everything you already know that connects to this. Prior knowledge is the hook new knowledge hangs on.',
@@ -47,7 +52,8 @@ const TUTOR_SELF_EXPLAIN: ManualMode = {
 const FEYNMAN_STUDENT_MANUAL: ManualMode = {
   feature: 'feynman-student',
   title: 'Teach a real 12-year-old',
-  summary: 'The confused-student interviewer becomes a human (or a rubber duck) — the protégé effect is stronger with a live audience.',
+  summary:
+    'The confused-student interviewer becomes a human (or a rubber duck) — the protégé effect is stronger with a live audience.',
   steps: [
     'Pick a real listener: a friend, a family member, or a rubber duck with strict rules.',
     'Explain the concept in plain words, no jargon — every fancy term must be replaced with an everyday one.',
@@ -60,7 +66,8 @@ const FEYNMAN_STUDENT_MANUAL: ManualMode = {
 const FEYNMAN_GRADER_MANUAL: ManualMode = {
   feature: 'feynman-grader',
   title: 'Self-assessment rubric',
-  summary: 'Grade your own teach-back against the same rubric the AI grader uses — honesty here is the retrieval practice.',
+  summary:
+    'Grade your own teach-back against the same rubric the AI grader uses — honesty here is the retrieval practice.',
   steps: [
     'Re-read (or recall) your teach-back transcript.',
     'Fill the rubric below yourself — grade substance, not style; empty sections are valid.',
@@ -93,7 +100,8 @@ const FEYNMAN_GRADER_MANUAL: ManualMode = {
 const COURSE_MANUAL: ManualMode = {
   feature: 'course-generator',
   title: 'Manual curriculum builder',
-  summary: 'Build the course yourself with backward design — the AI path automates exactly these steps.',
+  summary:
+    'Build the course yourself with backward design — the AI path automates exactly these steps.',
   steps: [
     'START FROM THE END — write the exam-level question you want to be able to answer when the course is done.',
     'LIST SKILLS — name 3–7 skills that question requires, and draw prerequisite arrows between them (DAG, no cycles).',
@@ -107,7 +115,8 @@ const COURSE_MANUAL: ManualMode = {
 const CLOZE_MANUAL: ManualMode = {
   feature: 'cloze-generator',
   title: 'Hand-made cloze cards',
-  summary: 'The AI only deletes load-bearing words — do the same by hand; the deletion choice is itself retrieval practice.',
+  summary:
+    'The AI only deletes load-bearing words — do the same by hand; the deletion choice is itself retrieval practice.',
   steps: [
     'Pick a sentence from your notes that carries ONE distinct idea.',
     'Delete the most conceptually load-bearing term — a definition’s term, a number, a name, a causal link — and replace it with "____".',
@@ -120,7 +129,8 @@ const CLOZE_MANUAL: ManualMode = {
 const COACH_MANUAL: ManualMode = {
   feature: 'coach',
   title: 'Weekly self-review prompts',
-  summary: 'Answer these from your weekly numbers — the coach only ever reflects the metrics back at you.',
+  summary:
+    'Answer these from your weekly numbers — the coach only ever reflects the metrics back at you.',
   steps: [
     'Read your weekly stats first (reviews, retention, focus minutes, XP, streak, missed days) — the numbers are the evidence.',
     'SUGGESTION 1 — name the metric that moved the most and ONE concrete behaviour change for next week.',
@@ -135,7 +145,8 @@ const COUNCIL_MANUALS: Record<string, ManualMode> = {
   'council-optimist': {
     feature: 'council-optimist',
     title: 'Play the Optimist yourself',
-    summary: 'Answer the Optimist’s prompt in writing — or paste it into any chatbot via the copy-envelope box.',
+    summary:
+      'Answer the Optimist’s prompt in writing — or paste it into any chatbot via the copy-envelope box.',
     steps: [
       'Copy the envelope below into any chatbot, or answer on paper.',
       'Find the genuine upside: the strongest version of the idea, who it serves, why now, and the cheapest first experiment that could prove it.',
@@ -177,13 +188,26 @@ const COUNCIL_MANUALS: Record<string, ManualMode> = {
 const BRAINWRITE_MANUAL: ManualMode = {
   feature: 'brainwrite',
   title: 'Brainwriting 6-3-5, by hand',
-  summary: 'The original 1948 method needs no AI: 6 people (or 3 timed rounds alone) write ideas, then the merge dedupes.',
+  summary:
+    'The original 1948 method needs no AI: 6 people (or 3 timed rounds alone) write ideas, then the merge dedupes.',
   steps: [
     'Write the topic at the top of a sheet; list your existing ideas so you can steer clear of them.',
     'Round 1 — 3 new ideas in 5 minutes. Different ANGLES, not paraphrases: remote analogies, constraint-flips, adjacent fields.',
     'Round 2 — pass the sheet (or switch columns): build on someone else’s line in a different direction.',
     'Round 3 — one more pass, each idea one punchy sentence, no numbering.',
     'Paste the AI-participant output (or your rounds) into the "paste result" box — the same >0.85 near-duplicate merge runs on it.',
+  ],
+}
+
+const FREETEXT_RUBRIC_MANUAL: ManualMode = {
+  feature: 'freetext-rubric',
+  title: 'Self-grade against the checklist',
+  summary:
+    'Compare your written explanation directly against each rubric criterion — self-scoring after retrieval builds metacognitive calibration (Dunlosky & Rawson 2012).',
+  steps: [
+    'Read your written answer aloud or line by line before looking at the model answer.',
+    'Tick each rubric checkbox ONLY if your written text explicitly states that mechanism or distinction (not "I meant to say that").',
+    'Open the reference model answer, spot any subtle nuance you missed, and submit your honest self-check.',
   ],
 }
 
@@ -200,6 +224,7 @@ export const MANUAL_MODES: Record<string, ManualMode> = {
   'council-domain-expert': COUNCIL_MANUALS['council-domain-expert']!,
   'council-devils-advocate': COUNCIL_MANUALS['council-devils-advocate']!,
   brainwrite: BRAINWRITE_MANUAL,
+  'freetext-rubric': FREETEXT_RUBRIC_MANUAL,
 }
 
 /** The manual mode for a feature, or null for an unknown feature name. */
@@ -213,7 +238,9 @@ export function assertEveryFeatureHasManualMode(): string[] {
 }
 
 /** Convenience: the manual mode plus the feature's system prompt in one lookup. */
-export function getManualModeWithPrompt(feature: string): { mode: ManualMode; system: string } | null {
+export function getManualModeWithPrompt(
+  feature: string,
+): { mode: ManualMode; system: string } | null {
   const mode = getManualMode(feature)
   const def = getAIFeature(feature)
   if (!mode || !def) return null

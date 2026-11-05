@@ -4,6 +4,14 @@ All notable changes to Learning HUB are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Full-Spectrum Upgrade (FSRS-6 Optimizer, Free E2EE Cloud Sync, Multi-Format Reading & SQL Sandbox)
+
+- **FSRS-6 Weight Optimizer, Per-Deck Presets & Append-Only Undo** — pure 21-parameter MAP coordinate-descent optimizer + Log-Loss/RMSE calibration evaluator (`packages/core/src/fsrs-optimizer.ts`), per-deck `desired_retention` and `fsrs_weights` overrides, append-only `revlog_undos` history preservation, blur-aware 60s-capped recall timer, and live `<10m · 2d · 6d · 15d` interval badges on review grade buttons.
+- **Non-Destructive Smart Merge & Free Cloud Sync** — `mergeBackup()` (`packages/db/src/sync.ts`) union-merges append-only logs, replays FSRS history on concurrent reviews via `rescheduleCardHistory`, applies `updated_at` LWW + tombstones, and strictly strips device-local secrets (`ai_api_key`, `ai_headers`, `sync_configs`). Runtime-neutral adapters over `networkFetch` for **Dropbox**, **GitHub (Secret Gist / Private Repo)**, **Google Drive**, and **WebDAV**, with optional Web Crypto `AES-256-GCM` (`PBKDF2-SHA256`, 210k iterations) passphrase E2EE.
+- **Multi-Format Reading, SQ3R Mode & In-App Starter Library** — ingest **PDF**, **EPUB** (`fflate`), **Web Articles**, **YouTube Captions**, and **Markdown/TXT/Paste**; 5-step guided **SQ3R** reading workflow with closed-book Recite and 1-click FSRS flashcard minting; built-in offline Starter Library (`learning-how-to-learn`, `javascript-functions`, `sql-essentials`, 70+ quotes, Major/PAO mnemonics) for zero-CLI setup on Windows/Android OPFS.
+- **Calm Navigation, Onboarding Wizard, Live Themes & UI Sweep** — progressive collapsible sidebar preserving all 25 routes, visible mobile/desktop Search (`⌘K`) and 1-click Cloud Sync controls, skippable 2-minute First-Run Onboarding Wizard, live Dark/Light/System theme sync with anti-FOUC initialization, `remark-gfm` Markdown tables/tasklists, shared `Toast` notifications (zero `window.alert`/`window.prompt`), and calm loading skeletons.
+- **Google Gemini Adapter, Live SQL Sandbox, AI Rubric Coach & MCP/CLI Parity** — `@ai-sdk/google` (`gemini-2.5-flash`) + 1-click free/local presets (Gemini, Groq, OpenRouter, DeepSeek, Ollama); live in-memory `sqlite-wasm` SQL sandbox with result-table rendering for `code` (`sql`) exercises; optional `freetext-rubric` AI Rubric Coach + manual `<TransportPanel>` fallback; static PWA `manifest.webmanifest`; and `search`, `fsrs_optimize`, `starter_install`, and `cloud_sync` across MCP and CLI.
+
 The expansion build: a curriculum you can import from any AI, a 12-type practice engine, the learning-science boosters, study companions, and the knowledge tools.
 
 ### Curriculum v2 (LHCF)

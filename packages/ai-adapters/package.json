@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.96",
+    "@ai-sdk/google": "^4.0.112",
     "@ai-sdk/openai": "^4.0.108",
     "@ai-sdk/openai-compatible": "^3.0.84",
     "@learning-hub/core": "*",
