@@ -23,7 +23,14 @@ import {
   units,
   xpEvents,
 } from '@learning-hub/db'
-import { buildAgenda, dayKey, FOCUS_TARGET_MINUTES, type AgendaItem } from '@learning-hub/core'
+import {
+  buildAgenda,
+  buildNotifications,
+  dayKey,
+  FOCUS_TARGET_MINUTES,
+  type AgendaItem,
+  type NotificationItem,
+} from '@learning-hub/core'
 import { withRoute } from '@/lib/api'
 
 /** One unfinished thing the dashboard invites the learner back to. */
@@ -58,6 +65,8 @@ export interface DashboardData {
   openLoops: OpenLoop[]
   /** prioritized "do this next" list (packages/core/src/agenda.ts) */
   agenda: AgendaItem[]
+  /** needs-attention list for the bell (packages/core/src/notifications.ts) */
+  notifications: NotificationItem[]
 }
 
 function isFreshStartMoment(d: Date): boolean {
@@ -174,6 +183,18 @@ export const GET = withRoute(async (): Promise<Response> => {
     journalDoneToday: journalRow != null,
   })
 
+  const streakState = {
+    current: streakRow?.current ?? 0,
+    lastActiveDate: streakRow?.lastActiveDate ?? null,
+  }
+  const notifications: NotificationItem[] = buildNotifications({
+    dueCount: Number(dueCount ?? 0),
+    exams: upcomingExams.map((e) => ({ title: e.title, daysLeft: examDaysLeft(e.date) })),
+    streak: streakState,
+    today,
+    openLessons: inProgress.map((l) => ({ lessonId: l.lessonId, title: l.lessonTitle })),
+  })
+
   const payload: DashboardData = {
     dueCount: Number(dueCount ?? 0),
     streak: streakRow ?? {
@@ -191,6 +212,7 @@ export const GET = withRoute(async (): Promise<Response> => {
     dateKey: today,
     openLoops,
     agenda,
+    notifications,
   }
   return Response.json(payload)
 })

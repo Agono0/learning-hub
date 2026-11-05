@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Menu, X } from 'lucide-react'
 import { NAV, PRIMARY_NAV_ITEMS, isActive } from './nav'
+import { NotificationBell } from './NotificationBell'
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
@@ -38,8 +39,9 @@ function Brand({ compact = false }: { compact?: boolean }) {
 function Sidebar({ pathname }: { pathname: string | null }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-[#26262b] dark:bg-[#0e0e11]/90">
-      <div className="px-4 py-4">
+      <div className="flex items-center justify-between px-4 py-4">
         <Brand />
+        <NotificationBell />
       </div>
       <nav aria-label="Main" className="flex-1 space-y-4 overflow-y-auto px-2 pb-6">
         {NAV.map((section) => (
@@ -200,6 +202,9 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
       <header className="sticky top-0 z-30 flex print:hidden items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/85">
         <Brand compact />
         <span className="text-sm font-semibold tracking-tight">Learning HUB</span>
+        <span className="ml-auto">
+          <NotificationBell />
+        </span>
       </header>
 
       <nav
