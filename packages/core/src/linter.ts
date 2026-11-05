@@ -16,6 +16,7 @@
  *  W19 priority stamp      — untagged cards can't take part in priority queues
  */
 import type { CardContent, CardFormat } from './types'
+import { exerciseToText } from './practice/to-text'
 import { clozeSegments } from './cards'
 
 /** One linter finding: Wozniak rule id, severity, message, optional fix. */
@@ -52,7 +53,10 @@ function words(text: string): string[] {
 
 /** Normalized form used for interference detection: lowercase alphanumerics only. */
 export function normalizeForCompare(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 }
 
 /** Sørensen–Dice coefficient over character bigrams (0..1). */
@@ -76,7 +80,7 @@ export function diceSimilarity(a: string, b: string): number {
     const other = mb.get(gram)
     if (other) overlap += Math.min(count, other)
   }
-  const total = (sa.length - 1 + sb.length - 1) || 1
+  const total = sa.length - 1 + sb.length - 1 || 1
   return (2 * overlap) / total
 }
 
@@ -93,6 +97,7 @@ export function cardFrontText(content: CardContent): string {
   if (content.cloze) return content.cloze.text.replace(/\{\{c\d+::.*?\}\}/g, '___')
   if (content.grammar) return content.grammar.sentence
   if (content.proof_step) return content.proof_step.theorem
+  if (content.exercise) return content.exercise.prompt
   return ''
 }
 
@@ -103,6 +108,7 @@ function cardAnswerText(content: CardContent): string {
   if (content.cloze) return content.cloze.answers.join(', ')
   if (content.grammar) return content.grammar.target
   if (content.proof_step) return content.proof_step.justification
+  if (content.exercise) return exerciseToText(content.exercise).back
   return ''
 }
 
@@ -110,25 +116,98 @@ function cardAnswerText(content: CardContent): string {
 
 /** Concrete-noun lexicon for the imagery suggestion (kept small and curated). */
 const CONCRETE_NOUNS = new Set([
-  'apple','bridge','castle','cathedral','cell','compass','crystal','dolphin','engine','enzyme',
-  'forest','fountain','glacier','guitar','hammer','harbor','helicopter','island','jungle','kitchen',
-  'lantern','lighthouse','machine','meadow','microscope','mirror','mitochondrion','mountain','neuron','ocean',
-  'orchard','organism','piano','pirate','planet','pyramid','river','rocket','sailboat','ship',
-  'skeleton','stadium','sword','temple','tower','train','tree','valley','village','volcano',
-  'waterfall','whale','windmill','wolf',
+  'apple',
+  'bridge',
+  'castle',
+  'cathedral',
+  'cell',
+  'compass',
+  'crystal',
+  'dolphin',
+  'engine',
+  'enzyme',
+  'forest',
+  'fountain',
+  'glacier',
+  'guitar',
+  'hammer',
+  'harbor',
+  'helicopter',
+  'island',
+  'jungle',
+  'kitchen',
+  'lantern',
+  'lighthouse',
+  'machine',
+  'meadow',
+  'microscope',
+  'mirror',
+  'mitochondrion',
+  'mountain',
+  'neuron',
+  'ocean',
+  'orchard',
+  'organism',
+  'piano',
+  'pirate',
+  'planet',
+  'pyramid',
+  'river',
+  'rocket',
+  'sailboat',
+  'ship',
+  'skeleton',
+  'stadium',
+  'sword',
+  'temple',
+  'tower',
+  'train',
+  'tree',
+  'valley',
+  'village',
+  'volcano',
+  'waterfall',
+  'whale',
+  'windmill',
+  'wolf',
 ])
 
-const BARE_PRONOUNS = new Set(['it', 'its', 'they', 'them', 'their', 'this', 'that', 'these', 'those', 'he', 'she', 'his', 'her'])
+const BARE_PRONOUNS = new Set([
+  'it',
+  'its',
+  'they',
+  'them',
+  'their',
+  'this',
+  'that',
+  'these',
+  'those',
+  'he',
+  'she',
+  'his',
+  'her',
+])
 
 const RELATIVE_TIME_WORDS = new Set([
-  'current', 'currently', 'latest', 'recent', 'recently', 'now', 'today', 'newest', 'presently', 'modern',
+  'current',
+  'currently',
+  'latest',
+  'recent',
+  'recently',
+  'now',
+  'today',
+  'newest',
+  'presently',
+  'modern',
 ])
 
 function countQuestions(front: string): number {
   const explicit = (front.match(/\?/g) ?? []).length
   if (explicit > 0) return explicit
   // no "?" — count imperative/question sentences
-  return words(front).length === 0 ? 0 : front.split(QUESTION_SPLIT).filter((s) => s.trim().length > 0).length
+  return words(front).length === 0
+    ? 0
+    : front.split(QUESTION_SPLIT).filter((s) => s.trim().length > 0).length
 }
 
 function splitItems(answer: string): string[] {
@@ -177,7 +256,8 @@ export function lintCard(card: LintCardInput, siblings: LintCardInput[] = []): L
       ruleId: 'W3-answer-length',
       severity: 'warn',
       message: `Answer is ${answerWordCount} words long — long answers defeat active recall.`,
-      suggestion: 'Reduce to the core fact (ideally a single word or number) and move the rest into more cards.',
+      suggestion:
+        'Reduce to the core fact (ideally a single word or number) and move the rest into more cards.',
     })
   }
 
@@ -193,7 +273,8 @@ export function lintCard(card: LintCardInput, siblings: LintCardInput[] = []): L
           ruleId: 'W6-interference',
           severity: 'warn',
           message: `Near-duplicate of card ${sibling.id ?? 'sibling'} (${Math.round(similarity * 100)}% similar) — interference risk.`,
-          suggestion: 'Differentiate the two cards explicitly (different angle, different cue) or delete one.',
+          suggestion:
+            'Differentiate the two cards explicitly (different angle, different cue) or delete one.',
         })
         break
       }
@@ -211,13 +292,17 @@ export function lintCard(card: LintCardInput, siblings: LintCardInput[] = []): L
   }
 
   // W10 — imagery suggestion for concrete nouns
-  const singleAnswer = answer.trim().toLowerCase().replace(/[^a-z-]/g, '')
+  const singleAnswer = answer
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z-]/g, '')
   if (CONCRETE_NOUNS.has(singleAnswer)) {
     results.push({
       ruleId: 'W10-imagery',
       severity: 'info',
       message: `"${singleAnswer}" is a concrete noun — attach a vivid mental image.`,
-      suggestion: 'Picture the object in a specific, exaggerated scene (memory palace locus works well).',
+      suggestion:
+        'Picture the object in a specific, exaggerated scene (memory palace locus works well).',
     })
   }
 
@@ -233,14 +318,17 @@ export function lintCard(card: LintCardInput, siblings: LintCardInput[] = []): L
 
   // W14 — context cues: bare pronouns without domain context
   if (front) {
-    const bare = words(front.toLowerCase().replace(/[^a-z\s]/g, '')).filter((w) => BARE_PRONOUNS.has(w))
+    const bare = words(front.toLowerCase().replace(/[^a-z\s]/g, '')).filter((w) =>
+      BARE_PRONOUNS.has(w),
+    )
     const hasContext = /:|in |for |according to|per /.test(front)
     if (bare.length > 0 && !hasContext) {
       results.push({
         ruleId: 'W14-context-cue',
         severity: 'warn',
         message: `Question relies on bare pronouns ("${bare.join('", "')}") with no domain context.`,
-        suggestion: 'Prefix the domain, e.g. "In calculus: ..." — context cues prevent wrong-thread recall.',
+        suggestion:
+          'Prefix the domain, e.g. "In calculus: ..." — context cues prevent wrong-thread recall.',
       })
     }
   }
@@ -274,7 +362,9 @@ export function lintDeck(cards: LintCardInput[]): LintDeckEntry[] {
   return cards.map((card) => {
     const siblings = cards.filter(
       (c) =>
-        c.deckId !== undefined && c.deckId !== null && c.deckId === card.deckId &&
+        c.deckId !== undefined &&
+        c.deckId !== null &&
+        c.deckId === card.deckId &&
         !(c.id !== undefined && card.id !== undefined && c.id === card.id),
     )
     return { cardId: card.id ?? -1, results: lintCard(card, siblings) }

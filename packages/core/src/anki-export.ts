@@ -14,6 +14,7 @@
 import { z } from 'zod'
 import { validateCardContent } from './cards'
 import type { CardContent, CardFormat } from './types'
+import { exerciseToText } from './practice/to-text'
 
 /** A card to export: DB rows already match this shape. */
 export interface DeckExportCard {
@@ -74,10 +75,14 @@ export function formatAnkiTxt(deck: DeckExportInput): string {
     } else if (card.content.basic) {
       lines.push(
         quoteAnkiField(card.content.basic.front, TAB) +
-        TAB +
-        quoteAnkiField(card.content.basic.back, TAB) +
-        tags,
+          TAB +
+          quoteAnkiField(card.content.basic.back, TAB) +
+          tags,
       )
+    } else if (card.content.exercise) {
+      // Practice exercises export as Basic notes (text front/back — lossy).
+      const { front, back } = exerciseToText(card.content.exercise)
+      lines.push(quoteAnkiField(front, TAB) + TAB + quoteAnkiField(back, TAB) + tags)
     }
     // other formats: not representable in Anki plain text — skipped
   }

@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { bktUpdate, unlockProbability } from './bkt'
 import { dateKeyOf } from './streaks'
 import { masteryLevelFor, type MasteryLevel, type CardContent, type CardFormat } from './types'
+import { exerciseToText } from './practice/to-text'
 
 const DAY_MS = 86_400_000
 
@@ -15,17 +16,57 @@ const DAY_MS = 86_400_000
 
 export const BLOOM_VERBS = [
   // remember
-  'define', 'list', 'name', 'recall', 'state', 'identify', 'label',
+  'define',
+  'list',
+  'name',
+  'recall',
+  'state',
+  'identify',
+  'label',
   // understand
-  'explain', 'describe', 'summarize', 'paraphrase', 'classify', 'compare', 'contrast', 'illustrate',
+  'explain',
+  'describe',
+  'summarize',
+  'paraphrase',
+  'classify',
+  'compare',
+  'contrast',
+  'illustrate',
   // apply
-  'apply', 'compute', 'solve', 'use', 'demonstrate', 'implement', 'calculate', 'sketch',
+  'apply',
+  'compute',
+  'solve',
+  'use',
+  'demonstrate',
+  'implement',
+  'calculate',
+  'sketch',
   // analyze
-  'analyze', 'derive', 'differentiate', 'deconstruct', 'diagnose', 'examine', 'prove', 'verify',
+  'analyze',
+  'derive',
+  'differentiate',
+  'deconstruct',
+  'diagnose',
+  'examine',
+  'prove',
+  'verify',
   // evaluate
-  'evaluate', 'critique', 'justify', 'assess', 'judge', 'validate', 'refute',
+  'evaluate',
+  'critique',
+  'justify',
+  'assess',
+  'judge',
+  'validate',
+  'refute',
   // create
-  'design', 'construct', 'create', 'formulate', 'propose', 'write', 'build', 'compose',
+  'design',
+  'construct',
+  'create',
+  'formulate',
+  'propose',
+  'write',
+  'build',
+  'compose',
 ] as const
 
 /** Any measurable Bloom-taxonomy verb allowed in a lesson objective. */
@@ -125,7 +166,9 @@ export function parseGeneratedCourse(json: unknown): GeneratedCourse {
         if (isBloomVerb(first)) {
           lesson.bloomVerb = first
         } else {
-          issues.push(`unit ${ui + 1} lesson ${li + 1} "${lesson.title}": bloomVerb "${lesson.bloomVerb}" is not a measurable Bloom verb`)
+          issues.push(
+            `unit ${ui + 1} lesson ${li + 1} "${lesson.title}": bloomVerb "${lesson.bloomVerb}" is not a measurable Bloom verb`,
+          )
         }
       }
     }
@@ -207,10 +250,7 @@ export interface MasteryState {
 }
 
 /** Apply one review outcome to a mastery row via BKT (pure — caller persists). */
-export function applyReviewToMastery(
-  row: MasteryState,
-  correct: boolean,
-): MasteryState {
+export function applyReviewToMastery(row: MasteryState, correct: boolean): MasteryState {
   return {
     pKnown: bktUpdate(row.pKnown, correct),
     attempts: row.attempts + 1,
@@ -264,9 +304,7 @@ export function examCountdownPlan(
   const msLeft = exam.getTime() - today.getTime()
   const daysLeft = Math.max(0, Math.ceil(msLeft / DAY_MS))
   const cramWarning = daysLeft < 7 && daysLeft >= 0
-  const ordered = [...skillMastery].sort(
-    (a, b) => a.pKnown - b.pKnown || a.skillId - b.skillId,
-  )
+  const ordered = [...skillMastery].sort((a, b) => a.pKnown - b.pKnown || a.skillId - b.skillId)
   const days: ExamDayPlan[] = []
   for (let d = 1; d <= daysLeft; d++) {
     const date = new Date(today.getTime() + d * DAY_MS)
@@ -340,6 +378,7 @@ const FORMAT_MINUTES: Record<string, number> = {
   grammar: 1.25,
   matching: 1.5,
   occlusion: 1,
+  exercise: 2,
 }
 
 function questionFromCard(card: MockCard, formatMatch: boolean): MockQuestion | null {
@@ -364,7 +403,12 @@ function questionFromCard(card: MockCard, formatMatch: boolean): MockQuestion | 
       }
     case 'typein':
       if (!c.typein) return null
-      return { ...base, format: 'typein', prompt: c.typein.question, answers: c.typein.acceptedAnswers }
+      return {
+        ...base,
+        format: 'typein',
+        prompt: c.typein.question,
+        answers: c.typein.acceptedAnswers,
+      }
     case 'proof_step':
       if (!c.proof_step) return null
       return {
@@ -378,7 +422,9 @@ function questionFromCard(card: MockCard, formatMatch: boolean): MockQuestion | 
       return {
         ...base,
         format: 'grammar',
-        prompt: c.grammar.sentence.replace(c.grammar.target, '____') + (c.grammar.translation ? `\n(${c.grammar.translation})` : ''),
+        prompt:
+          c.grammar.sentence.replace(c.grammar.target, '____') +
+          (c.grammar.translation ? `\n(${c.grammar.translation})` : ''),
         answers: [c.grammar.target],
       }
     case 'matching': {
@@ -390,6 +436,13 @@ function questionFromCard(card: MockCard, formatMatch: boolean): MockQuestion | 
         prompt: `Match each item:\n${c.matching.pairs.map((p, i) => `${i + 1}. ${p.left}`).join('\n')}`,
         answers: c.matching.pairs.map((p) => `${p.left} → ${p.right}`),
       }
+    }
+    case 'exercise': {
+      if (!c.exercise) return null
+      // Only exercises with short exact answers fit an exam paper.
+      const t = exerciseToText(c.exercise)
+      if (t.answers.length === 0) return null
+      return { ...base, format: 'exercise', prompt: t.front, answers: t.answers }
     }
     case 'occlusion':
       return null // image-based — not exam-paper friendly
@@ -453,7 +506,10 @@ export interface BackwardDesignSkeleton {
  * learning plan. The AI (or the learner) fills in content; the structure here
  * enforces "design the assessment before the lessons".
  */
-export function backwardDesign(opts: { outcomeVerb: string; topic: string }): BackwardDesignSkeleton {
+export function backwardDesign(opts: {
+  outcomeVerb: string
+  topic: string
+}): BackwardDesignSkeleton {
   const verb = opts.outcomeVerb.trim().toLowerCase()
   const topic = opts.topic.trim()
   return {
@@ -487,11 +543,31 @@ export function backwardDesign(opts: { outcomeVerb: string; topic: string }): Ba
       ],
     },
     stage3: [
-      { title: `${topic}: core vocabulary`, objective: `Define the key terms of ${topic}`, bloomVerb: 'define' },
-      { title: `${topic}: the mechanism`, objective: `Explain how ${topic} works`, bloomVerb: 'explain' },
-      { title: `${topic}: worked applications`, objective: `Apply ${topic} to standard problems`, bloomVerb: 'apply' },
-      { title: `${topic}: transfer and edge cases`, objective: `Apply ${topic} to a novel situation`, bloomVerb: 'apply' },
-      { title: `${topic}: critique`, objective: `Critique a flawed use of ${topic}`, bloomVerb: 'critique' },
+      {
+        title: `${topic}: core vocabulary`,
+        objective: `Define the key terms of ${topic}`,
+        bloomVerb: 'define',
+      },
+      {
+        title: `${topic}: the mechanism`,
+        objective: `Explain how ${topic} works`,
+        bloomVerb: 'explain',
+      },
+      {
+        title: `${topic}: worked applications`,
+        objective: `Apply ${topic} to standard problems`,
+        bloomVerb: 'apply',
+      },
+      {
+        title: `${topic}: transfer and edge cases`,
+        objective: `Apply ${topic} to a novel situation`,
+        bloomVerb: 'apply',
+      },
+      {
+        title: `${topic}: critique`,
+        objective: `Critique a flawed use of ${topic}`,
+        bloomVerb: 'critique',
+      },
     ],
   }
 }
