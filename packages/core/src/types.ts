@@ -3,34 +3,53 @@
  * This file is the CONTRACT between all subsystems. Change deliberately.
  */
 
+import type { Exercise } from './practice/schema'
+
 // ─── Card content (stored as JSON in cards.content) ────────────────────────
 
 export type CardFormat =
-  | 'basic'       // Q&A
-  | 'cloze'       // fill-in-the-blank (basic | typein | enumeration variants)
-  | 'mcq'         // stepwise multiple choice: question first, options revealed after commit
-  | 'typein'      // type the answer — max retrieval effort
-  | 'occlusion'   // image occlusion: normalized 0-1 rects over an image
-  | 'proof_step'  // math: "which lemma justifies step k" / fill-in-proof-step
-  | 'grammar'     // language: example-sentence cloze of a grammar pattern
-  | 'matching'    // pair-matching set (used by games; also schedulable)
+  | 'basic' // Q&A
+  | 'cloze' // fill-in-the-blank (basic | typein | enumeration variants)
+  | 'mcq' // stepwise multiple choice: question first, options revealed after commit
+  | 'typein' // type the answer — max retrieval effort
+  | 'occlusion' // image occlusion: normalized 0-1 rects over an image
+  | 'proof_step' // math: "which lemma justifies step k" / fill-in-proof-step
+  | 'grammar' // language: example-sentence cloze of a grammar pattern
+  | 'matching' // pair-matching set (used by games; also schedulable)
+  | 'exercise' // any practice-engine exercise (12 types) — see ./practice
 
 /** Normalized 0-1 rectangle (image occlusion regions). */
 export interface Rect {
   /** normalized 0-1 coordinates — resize-proof (Anki's model) */
-  x: number; y: number; w: number; h: number
+  x: number
+  y: number
+  w: number
+  h: number
 }
 
 /** Per-format card payload stored as JSON in `cards.content` (one key set). */
 export type CardContent = {
-  basic?:      { front: string; back: string }
-  cloze?:      { text: string; answers: string[]; mode: 'basic' | 'typein' | 'enumeration'; hint?: string }
-  mcq?:        { question: string; options: string[]; correctIndex: number; rationale?: string }
-  typein?:     { question: string; acceptedAnswers: string[] }
-  occlusion?:  { imageId: number; rects: (Rect & { id: string; label?: string })[] }
-  proof_step?: { theorem: string; proofSteps: string[]; stepIndex: number; justification: string; sourceLemma?: string }
-  grammar?:    { sentence: string; pattern: string; target: string; translation?: string }
-  matching?:   { pairs: { left: string; right: string }[] }
+  basic?: { front: string; back: string }
+  cloze?: {
+    text: string
+    answers: string[]
+    mode: 'basic' | 'typein' | 'enumeration'
+    hint?: string
+  }
+  mcq?: { question: string; options: string[]; correctIndex: number; rationale?: string }
+  typein?: { question: string; acceptedAnswers: string[] }
+  occlusion?: { imageId: number; rects: (Rect & { id: string; label?: string })[] }
+  proof_step?: {
+    theorem: string
+    proofSteps: string[]
+    stepIndex: number
+    justification: string
+    sourceLemma?: string
+  }
+  grammar?: { sentence: string; pattern: string; target: string; translation?: string }
+  matching?: { pairs: { left: string; right: string }[] }
+  /** Practice-engine exercise; graded by gradeExercise, scheduled like any card. */
+  exercise?: Exercise
 }
 
 // ─── Reviews ────────────────────────────────────────────────────────────────
@@ -52,10 +71,10 @@ export interface ReviewInput {
 // ─── Knowledge tracing ─────────────────────────────────────────────────────
 
 export interface BKTParams {
-  pInit: number   // P(L0) initial knowledge
+  pInit: number // P(L0) initial knowledge
   pTransit: number // P(T) learning transition
-  pGuess: number  // P(G) slip → lucky guess
-  pSlip: number   // P(S) knew → mistake
+  pGuess: number // P(G) slip → lucky guess
+  pSlip: number // P(S) knew → mistake
 }
 
 /** Khan-style mastery ladder label for a skill. */
@@ -68,8 +87,15 @@ export interface MasteryLevel {
 // ─── Motivation ────────────────────────────────────────────────────────────
 
 export type XPSource =
-  | 'review' | 'lesson' | 'teachback' | 'quest' | 'focus'
-  | 'habit' | 'achievement' | 'journal' | 'idea'
+  | 'review'
+  | 'lesson'
+  | 'teachback'
+  | 'quest'
+  | 'focus'
+  | 'habit'
+  | 'achievement'
+  | 'journal'
+  | 'idea'
 
 /** One daily quest with its progress toward the target. */
 export interface QuestItem {
@@ -106,7 +132,8 @@ export type IdeaLinkType = 'related' | 'supports' | 'contradicts' | 'refines' | 
  * envelope to a user-configured URL (see docs/ai-providers.md); 'none' is the
  * default — every AI surface then shows its manual alternative.
  */
-export type AIProvider = 'anthropic' | 'openai' | 'openai-compatible' | 'ollama' | 'custom-endpoint' | 'none'
+export type AIProvider =
+  'anthropic' | 'openai' | 'openai-compatible' | 'ollama' | 'custom-endpoint' | 'none'
 
 /** User-configured AI provider connection (Settings page). */
 export interface AISettings {

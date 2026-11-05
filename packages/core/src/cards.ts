@@ -5,13 +5,13 @@
  */
 import { z } from 'zod'
 import type { CardContent, CardFormat } from './types'
+import { exerciseSchema } from './practice/schema'
 
 // ─── Cloze ──────────────────────────────────────────────────────────────────
 
 /** A rendered cloze segment: plain text or a blank. */
 export type ClozeSegment =
-  | { kind: 'text'; text: string }
-  | { kind: 'blank'; index: number; answer: string; hint?: string }
+  { kind: 'text'; text: string } | { kind: 'blank'; index: number; answer: string; hint?: string }
 
 const CLOZE_MARKER = /\{\{c(\d+)::(.*?)\}\}/g
 
@@ -126,7 +126,9 @@ export function evaluateClozeAnswer(
   input: string | string[] | Record<number, string>,
 ): ClozeEvaluationResult {
   const segments = clozeSegments(cloze.text)
-  const blanks = segments.filter((s): s is Extract<ClozeSegment, { kind: 'blank' }> => s.kind === 'blank')
+  const blanks = segments.filter(
+    (s): s is Extract<ClozeSegment, { kind: 'blank' }> => s.kind === 'blank',
+  )
 
   // Deduplicate by index (e.g. multiple {{c1::...}} in one card)
   const uniqueBlanks = new Map<number, string>()
@@ -186,7 +188,8 @@ export function isCardAnswerCorrect(
   input: string | string[] | Record<number, string>,
 ): boolean {
   if (content.typein) {
-    const textInput = typeof input === 'string' ? input : (Array.isArray(input) ? (input[0] ?? '') : (input[1] ?? ''))
+    const textInput =
+      typeof input === 'string' ? input : Array.isArray(input) ? (input[0] ?? '') : (input[1] ?? '')
     return evaluateTypeinAnswer(content.typein, textInput)
   }
   if (content.cloze) {
@@ -209,7 +212,10 @@ const rectSchema = z.object({
 const contentSchemas = {
   basic: z.object({ front: z.string().min(1), back: z.string().min(1) }),
   cloze: z.object({
-    text: z.string().min(1).refine((t) => /\{\{c\d+::.*?\}\}/.test(t), 'text must contain {{cN::answer}} markers'),
+    text: z
+      .string()
+      .min(1)
+      .refine((t) => /\{\{c\d+::.*?\}\}/.test(t), 'text must contain {{cN::answer}} markers'),
     answers: z.array(z.string().min(1)).min(1),
     mode: z.enum(['basic', 'typein', 'enumeration']),
     hint: z.string().optional(),
@@ -248,10 +254,13 @@ const contentSchemas = {
   matching: z.object({
     pairs: z.array(z.object({ left: z.string().min(1), right: z.string().min(1) })).min(2),
   }),
+  // Any practice-engine exercise (mcq, numeric, code, …) — one schedulable card each.
+  exercise: exerciseSchema,
 }
 
 /** Result of card-content validation (wrapped CardContent or issue strings). */
-export type ValidatedContent = { ok: true; data: CardContent; errors: [] } | { ok: false; data: null; errors: string[] }
+export type ValidatedContent =
+  { ok: true; data: CardContent; errors: [] } | { ok: false; data: null; errors: string[] }
 
 /** Validate card content for a format; returns zod issue strings on failure. */
 export function validateCardContent(format: CardFormat, content: unknown): ValidatedContent {
@@ -347,16 +356,27 @@ export function syncBulletCard(
   }
   const qaMatch = text.match(QA_MULTILINE_RE) ?? text.match(QA_SINGLELINE_RE)
   if (qaMatch) {
-    return { cardId, type: 'basic', content: { basic: { front: qaMatch[1]!.trim(), back: qaMatch[2]!.trim() } } }
+    return {
+      cardId,
+      type: 'basic',
+      content: { basic: { front: qaMatch[1]!.trim(), back: qaMatch[2]!.trim() } },
+    }
   }
-  const sepIndex = text.includes('::') ? text.indexOf('::') : text.includes(' | ') ? text.indexOf(' | ') : -1
+  const sepIndex = text.includes('::')
+    ? text.indexOf('::')
+    : text.includes(' | ')
+      ? text.indexOf(' | ')
+      : -1
   if (sepIndex !== -1) {
     const sepLen = text.startsWith('::', sepIndex) ? 2 : 3
     return {
       cardId,
       type: 'basic',
       content: {
-        basic: { front: text.slice(0, sepIndex).trim(), back: text.slice(sepIndex + sepLen).trim() },
+        basic: {
+          front: text.slice(0, sepIndex).trim(),
+          back: text.slice(sepIndex + sepLen).trim(),
+        },
       },
     }
   }
