@@ -87,7 +87,10 @@ export const POST = withRoute(async (req: Request) => {
     try {
       const timestamp = Date.now()
       const challenge = identityChallenge(updatedIdentity.userId, timestamp)
-      const signature = await signIdentityPayload(updatedIdentity.privKey, challenge)
+      const signature = await signIdentityPayload(
+        updatedIdentity.privKey,
+        identitySigningPayload(challenge, updatedIdentity.alias),
+      )
       const res = await fetch(`${getDefaultOnlineServer()}/api/v1/auth/register-key`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

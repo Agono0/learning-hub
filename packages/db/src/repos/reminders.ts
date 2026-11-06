@@ -19,10 +19,14 @@ import { getDb, type LearningHubDB } from '../index'
 import {
   cards,
   courses,
+  examDates,
   focusSessions,
+  frictionEvents,
+  ideas,
   reminderClicks,
   reminderLog,
   revlog,
+  pushSubscriptions,
   userSettings,
   xpEvents,
 } from '../schema'
@@ -156,6 +160,60 @@ export function collectUserFacts(database?: LearningHubDB): UserFacts {
     .all()
     .map((c) => ({ kind: (c.kind ?? 'daily_review') as ReminderKind, clickedAt: c.clickedAt }))
 
+  // 9. Idea resurfacing (M18): the most decayed, still-seeded idea.
+  let resurfaceIdeaTitle: string | null = null
+  let resurfaceIdeaId: number | null = null
+  try {
+    const candidate = conn
+      .select({ id: ideas.id, title: ideas.title, decayScore: ideas.decayScore })
+      .from(ideas)
+      .orderBy(desc(ideas.decayScore))
+      .limit(1)
+      .get()
+    if (candidate && (candidate.decayScore ?? 0) > 0.4) {
+      resurfaceIdeaTitle = candidate.title
+      resurfaceIdeaId = candidate.id
+    }
+  } catch {
+    /* ideas table optional */
+  }
+
+  // 10. Friction days in the last 7 (M18): how many days had a caught distraction.
+  let frictionDaysLast7 = 0
+  try {
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const [frictionRow] = conn
+      .select({ days: sql<number>`count(distinct substr(${frictionEvents.createdAt}, 1, 10))` })
+      .from(frictionEvents)
+      .where(gte(frictionEvents.createdAt, weekAgo))
+      .all()
+    frictionDaysLast7 = frictionRow?.days ?? 0
+  } catch {
+    /* friction events optional */
+  }
+
+  // 11. Next exam countdown (M18).
+  let nextExamTitle: string | null = null
+  let nextExamDays: number | null = null
+  try {
+    const exam = conn
+      .select({ title: examDates.title, date: examDates.date })
+      .from(examDates)
+      .where(gte(examDates.date, now.toISOString().slice(0, 10)))
+      .orderBy(examDates.date)
+      .limit(1)
+      .get()
+    if (exam) {
+      nextExamTitle = exam.title
+      nextExamDays = Math.max(
+        0,
+        Math.round((new Date(exam.date + 'T00:00:00Z').getTime() - now.getTime()) / 86_400_000),
+      )
+    }
+  } catch {
+    /* exams optional */
+  }
+
   return {
     now,
     dueReviewsCount,
@@ -167,6 +225,11 @@ export function collectUserFacts(database?: LearningHubDB): UserFacts {
     untouchedCourseTitle,
     sentToday,
     clickedToday,
+    resurfaceIdeaTitle,
+    resurfaceIdeaId,
+    frictionDaysLast7,
+    nextExamTitle,
+    nextExamDays,
   }
 }
 
@@ -222,4 +285,42 @@ export function listRecentReminderLogs(
 ): (typeof reminderLog.$inferSelect)[] {
   const conn = database ?? getDb()
   return conn.select().from(reminderLog).orderBy(desc(reminderLog.id)).limit(limit).all()
+}
+
+// ── Web-push subscriptions (M18) ─────────────────────────────────────────────
+
+export interface PushSubscriptionInput {
+  endpoint: string
+  keys: Record<string, string>
+}
+
+/** Stores/refreshes a browser push subscription (endpoint is the unique key). */
+export function savePushSubscription(sub: PushSubscriptionInput): void {
+  const conn = getDb()
+  conn
+    .insert(pushSubscriptions)
+    .values({ endpoint: sub.endpoint, keysJson: sub.keys, createdAt: new Date().toISOString() })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: { keysJson: sub.keys },
+    })
+    .run()
+}
+
+export function deletePushSubscription(endpoint: string): boolean {
+  const conn = getDb()
+  const result = conn
+    .delete(pushSubscriptions)
+    .where(eq(pushSubscriptions.endpoint, endpoint))
+    .run()
+  return result.changes > 0
+}
+
+export function listPushSubscriptions(database?: LearningHubDB): PushSubscriptionInput[] {
+  const conn = database ?? getDb()
+  const rows = conn
+    .select({ endpoint: pushSubscriptions.endpoint, keysJson: pushSubscriptions.keysJson })
+    .from(pushSubscriptions)
+    .all()
+  return rows.map((r) => ({ endpoint: r.endpoint, keys: r.keysJson }))
 }

@@ -21,6 +21,21 @@ export function ensureEnginesLoaded(): void {
   if (started) return
   started = true
 
+  // Streak guardian (web side): a broken streak pings the local notification
+  // channel when available — the streak-guardian plugin handles CLI/MCP hosts.
+  eventBus.on('streak.broken', () => {
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('Learning HUB — streak lost', {
+          body: 'Tomorrow is day one. One card is enough to start again.',
+          icon: '/icon-192.png',
+        })
+      }
+    } catch {
+      /* notifications optional */
+    }
+  })
+
   eventBus.on('review.completed', ({ xpEarned }) => {
     try {
       if (xpEarned <= 0) return

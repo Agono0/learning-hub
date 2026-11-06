@@ -46,14 +46,30 @@ describe('Cloudflare Worker endpoints', () => {
     expect(data.worker).toBe('learning-hub-engagement')
   })
 
-  it('registers device key', async () => {
+  it('registers device key (signed challenge required)', async () => {
+    // M18: the worker verifies an ECDSA P-256 signature over the challenge.
+    const {
+      generateIdentityKeyPair,
+      identityChallenge,
+      identitySigningPayload,
+      signIdentityPayload,
+    } = await import('@learning-hub/core')
+    const pair = await generateIdentityKeyPair()
+    const challenge = identityChallenge('usr_curie', 1730000000000)
+    const signature = await signIdentityPayload(
+      pair.privateKey,
+      identitySigningPayload(challenge, 'Curie'),
+    )
+
     const res = await worker.fetch(
       new Request('http://worker.local/api/v1/auth/register-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pubkey: '0123456789abcdef0123456789abcdef',
+          pubkey: pair.publicKey,
           alias: 'Curie',
+          challenge,
+          signature,
         }),
       }),
       fakeEnv,
@@ -62,6 +78,22 @@ describe('Cloudflare Worker endpoints', () => {
     const data = (await res.json()) as any
     expect(data.ok).toBe(true)
     expect(data.alias).toBe('Curie')
+
+    // A tampered signature must be rejected with 401.
+    const bad = await worker.fetch(
+      new Request('http://worker.local/api/v1/auth/register-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pubkey: pair.publicKey,
+          alias: 'Impostor',
+          challenge,
+          signature,
+        }),
+      }),
+      fakeEnv,
+    )
+    expect(bad.status).toBe(401)
     expect(data.userId.startsWith('usr_')).toBe(true)
   })
 

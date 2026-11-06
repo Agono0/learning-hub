@@ -1158,7 +1158,8 @@ describe('max focus mode (milestone 6)', () => {
     expect(identPostBody.ok).toBe(true)
     expect(identPostBody.identity.mode).toBe('device_key')
     expect(identPostBody.identity.alias).toBe('AdaExplorer')
-    expect(identPostBody.identity.pubKey?.startsWith('pk_')).toBe(true)
+    // M18: real ECDSA P-256 SPKI public key (base64), not a pk_ placeholder.
+    expect((identPostBody.identity.pubKey ?? '').length).toBeGreaterThan(60)
 
     // 2. Study Rooms
     const roomPostRes = await M.onlineRooms.POST(

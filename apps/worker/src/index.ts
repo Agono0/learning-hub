@@ -82,11 +82,14 @@ export default {
             false,
             ['verify'],
           )
+          // The signed payload binds challenge + alias: a signature is only
+          // valid for exactly this alias (no replay under another name).
+          const signingPayload = `${body.challenge}|${body.alias}`
           const ok = await crypto.subtle.verify(
             { name: 'ECDSA', hash: 'SHA-256' },
             cryptoKey,
             sigRaw.buffer,
-            new TextEncoder().encode(body.challenge),
+            new TextEncoder().encode(signingPayload),
           )
           if (!ok) return jsonResponse({ error: 'signature verification failed' }, 401)
         } catch {

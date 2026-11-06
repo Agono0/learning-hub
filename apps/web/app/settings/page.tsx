@@ -29,6 +29,7 @@ import {
 } from '@/components/ThemeSync'
 import { deliverNotification } from '@/platform/reminders'
 import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
+import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 
 const PROVIDERS: {
@@ -474,6 +475,8 @@ export default function SettingsPage() {
       </section>
 
       <SemanticIndexPanel />
+
+      <PushSettingsPanel />
 
       <section className="panel space-y-4">
         <div>

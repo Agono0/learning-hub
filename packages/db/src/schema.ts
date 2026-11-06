@@ -1023,6 +1023,19 @@ export const chatSessions = table('chat_sessions', {
  * it survives restarts and can be exported to calendar files. Regenerated
  * (upserted) whenever the learner rebuilds the plan; there is no history.
  */
+/**
+ * Web-push subscriptions (migration 020): browser push endpoints for the
+ * reminder engine. One row per browser subscription; endpoints are unique.
+ */
+export const pushSubscriptions = table('push_subscriptions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  endpoint: text('endpoint').notNull().unique(),
+  keysJson: text('keys_json', { mode: 'json' }).$type<Record<string, string>>().notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
 export const studyPlans = table('study_plans', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   /** minutes of study planned per week */

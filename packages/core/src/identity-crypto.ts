@@ -98,3 +98,12 @@ export async function verifyIdentityPayload(
 export function identityChallenge(userId: string, timestamp: number): string {
   return `lh-identity:v1:${userId}:${timestamp}`
 }
+
+/**
+ * The exact string that gets signed for a registration: the challenge PLUS the
+ * alias, so a valid signature is only reusable for that one alias (an
+ * impostor can't replay it under a different name).
+ */
+export function identitySigningPayload(challenge: string, alias: string): string {
+  return `${challenge}|${alias}`
+}

@@ -150,7 +150,8 @@ describe('reminders domain logic', () => {
       expect(parsed.quietStart).toBe('22:00')
       expect(parsed.quietEnd).toBe('08:00')
       expect(parsed.dailyCap).toBe(3)
-      expect(parsed.allowedKinds).toHaveLength(4)
+      // M18 added idea_resurface, friction_checkin, exam_countdown (additive)
+      expect(parsed.allowedKinds).toHaveLength(7)
     })
 
     it('rejects invalid time formats', () => {

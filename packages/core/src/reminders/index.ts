@@ -15,6 +15,10 @@ export const REMINDER_KINDS = [
   'streak_saver',
   'break_reminder',
   'curriculum_nudge',
+  // M18 additions — additive, existing installs opt in via settings.
+  'idea_resurface',
+  'friction_checkin',
+  'exam_countdown',
 ] as const
 
 export type ReminderKind = (typeof REMINDER_KINDS)[number]
@@ -52,6 +56,14 @@ export interface UserFacts {
   continuousFocusMinutes: number
   untouchedCourseDays?: number
   untouchedCourseTitle?: string | null
+  /** Idea-resurfacing: the single most decayed idea title, if one is due. */
+  resurfaceIdeaTitle?: string | null
+  resurfaceIdeaId?: number | null
+  /** Friction: distinct days with a caught distraction in the last 7 days. */
+  frictionDaysLast7?: number
+  /** Exam countdown: next exam within N days. */
+  nextExamTitle?: string | null
+  nextExamDays?: number | null
   sentToday: Array<{ kind: ReminderKind; sentAt: string }>
   clickedToday?: Array<{ kind: ReminderKind; clickedAt: string }>
 }
@@ -165,6 +177,47 @@ export function planReminders(facts: UserFacts, settings: ReminderSettings): Rem
       body: `Pick up where you left off in "${facts.untouchedCourseTitle}".`,
       actionUrl: '/curriculum',
       priority: 2,
+    })
+  }
+
+  // 5. Idea Resurfacing (Priority 2) — decayed idea due to be revisited
+  if (allowedKindsSet.has('idea_resurface') && facts.resurfaceIdeaTitle) {
+    candidates.push({
+      kind: 'idea_resurface',
+      title: 'An Idea Is Ripening',
+      body: `"${facts.resurfaceIdeaTitle}" has been resting long enough — revisit it while it is fresh again.`,
+      actionUrl: '/ideas',
+      priority: 2,
+    })
+  }
+
+  // 6. Friction Check-in (Priority 1) — repeated distraction days invite a chat
+  if (allowedKindsSet.has('friction_checkin') && (facts.frictionDaysLast7 ?? 0) >= 3) {
+    candidates.push({
+      kind: 'friction_checkin',
+      title: 'What Keeps Interrupting You?',
+      body: `${facts.frictionDaysLast7} of the last 7 days had caught distractions. Two minutes of reflection beats another blocked tab.`,
+      actionUrl: '/focus',
+      priority: 1,
+    })
+  }
+
+  // 7. Exam Countdown (Priority 3) — exam within 14 days
+  if (
+    allowedKindsSet.has('exam_countdown') &&
+    facts.nextExamTitle != null &&
+    facts.nextExamDays != null &&
+    facts.nextExamDays <= 14
+  ) {
+    candidates.push({
+      kind: 'exam_countdown',
+      title:
+        facts.nextExamDays <= 3
+          ? `${facts.nextExamTitle} is ${facts.nextExamDays === 0 ? 'TODAY' : `in ${facts.nextExamDays} day${facts.nextExamDays === 1 ? '' : 's'}`}`
+          : `${facts.nextExamDays} days to ${facts.nextExamTitle}`,
+      body: 'The optimal-gap window says spaced practice now beats cramming later.',
+      actionUrl: '/curriculum',
+      priority: 3,
     })
   }
 

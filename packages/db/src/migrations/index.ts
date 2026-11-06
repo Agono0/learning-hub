@@ -29,6 +29,7 @@ import { forestWorldEconomy } from './016-forest-world-economy'
 import { companionDecor } from './017-companion-decor'
 import { ftsOmni } from './018-fts-omni'
 import { embeddingsOmni } from './019-embeddings-omni'
+import { pushSubscriptions } from './020-push-subscriptions'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -51,6 +52,7 @@ export const MIGRATIONS: readonly Migration[] = [
   companionDecor,
   ftsOmni,
   embeddingsOmni,
+  pushSubscriptions,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

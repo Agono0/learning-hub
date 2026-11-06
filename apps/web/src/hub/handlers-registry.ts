@@ -66,6 +66,8 @@ import * as timeline from '../server/handlers/timeline/route'
 import * as onlineRaids from '../server/handlers/online/raids/route'
 import * as socialFriendsSync from '../server/handlers/social/leaderboard/sync/route'
 import * as pluginContributions from '../server/handlers/plugins/contributions/route'
+import * as calendar from '../server/handlers/calendar/route'
+import * as push from '../server/handlers/push/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
 import * as graph from '../server/handlers/graph/route'
@@ -273,6 +275,8 @@ add('timeline', timeline)
 add('online/raids', onlineRaids)
 add('social/leaderboard/sync', socialFriendsSync)
 add('plugins/contributions', pluginContributions)
+add('calendar.ics', calendar)
+add('push', push)
 add('settings', settings)
 add('share/export', shareExport)
 add('share/import', shareImport)
