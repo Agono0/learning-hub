@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
 import { clozeSegments, isCardAnswerCorrect, pickBasicFront } from '@learning-hub/core/cards'
+import { hapticLight, hapticHeavy } from '@/platform/haptics'
 import {
   applyMistake,
   initialEnergy,
@@ -295,6 +296,9 @@ function ReviewPageInner() {
       }),
     onSuccess: (data, variables) => {
       if (!data.ok || !current) return
+      // Haptic texture: a heavy beat for misses (attention), light for passes.
+      if (variables.grade === 1) hapticHeavy()
+      else hapticLight()
       const prevSr = srMap.current.get(variables.cardId)
       const wasMistake = variables.grade === 1
       const sr = recordSr(variables.cardId, !wasMistake)

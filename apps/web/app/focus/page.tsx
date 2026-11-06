@@ -29,6 +29,7 @@ import {
 } from '@learning-hub/core/src/focus'
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
+import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
 import { useToast } from '@/ui'
 import { WorldCanvas } from '@/ui/WorldCanvas'
 import Link from 'next/link'
@@ -264,6 +265,8 @@ export default function FocusPage() {
   // ── Max Focus Mutations ──
   const startMaxSessionMutation = useMutation({
     mutationFn: async () => {
+      // Mobile presentation: fullscreen + keep-screen-awake for the session.
+      void requestFocusPresentation()
       const res = await apiSend<{ ok: boolean; session: FocusSession; lock: FocusLockData }>(
         '/api/focus/max',
         'POST',
@@ -315,6 +318,7 @@ export default function FocusPage() {
         action: 'request',
       }),
     onSuccess: () => {
+      void releaseFocusPresentation()
       toast({
         title: 'Exit Cooldown Started',
         description: 'Take 60 seconds to reflect before breaking your focus.',
