@@ -264,7 +264,7 @@ export class WorldSceneManager {
 
       this.audioCtx = new AudioCtxClass()
       if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume()
+        this.audioCtx.resume().catch(() => {})
       }
 
       // Procedural calming ambient audio generator
@@ -318,8 +318,11 @@ export class WorldSceneManager {
     })
     this.soundSourceNodes = []
     if (this.audioCtx) {
-      this.audioCtx.close().catch(() => {})
+      const ctx = this.audioCtx
       this.audioCtx = null
+      if (ctx.state !== 'closed') {
+        ctx.close().catch(() => {})
+      }
     }
   }
 

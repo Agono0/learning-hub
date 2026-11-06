@@ -86,8 +86,8 @@ export default function WorldPage() {
     let mounted = true
     async function loadData() {
       try {
-        const stateRes = await apiGet<WorldState & { ok: boolean }>('world/state')
-        const marketRes = await apiGet<{ catalog: MarketItem[]; ok: boolean }>('world/market')
+        const stateRes = await apiGet<WorldState & { ok: boolean }>('/api/world/state')
+        const marketRes = await apiGet<{ catalog: MarketItem[]; ok: boolean }>('/api/world/market')
         if (mounted && stateRes && stateRes.ok) {
           setWorldState(stateRes)
           setSelectedTheme(stateRes.settings.timerTheme)
@@ -154,7 +154,7 @@ export default function WorldPage() {
         coinsAwarded: number
         balance: number
         reason: string
-      }>('world/verify/focus', 'POST', {
+      }>('/api/world/verify/focus', 'POST', {
         plannedMinutes,
         actualSeconds: plannedMinutes * 60,
         heartbeatsCount: Math.max(1, heartbeats),
@@ -163,13 +163,13 @@ export default function WorldPage() {
 
       // 2. Plant a tree in the 3D forest
       const treeSpecies = worldState?.avatar.unlockedTrees[0] || 'tree_oak'
-      await apiSend('world/plots', 'POST', {
+      await apiSend('/api/world/plots', 'POST', {
         treeType: treeSpecies,
         durationMinutes: plannedMinutes,
       })
 
       // 3. Refresh world state
-      const stateRes = await apiGet<WorldState & { ok: boolean }>('world/state')
+      const stateRes = await apiGet<WorldState & { ok: boolean }>('/api/world/state')
       if (stateRes && stateRes.ok) {
         setWorldState(stateRes)
       }
@@ -210,7 +210,7 @@ export default function WorldPage() {
         balance: number
         avatar: WorldState['avatar']
         error?: string
-      }>('world/market', 'POST', { itemId })
+      }>('/api/world/market', 'POST', { itemId })
 
       if (res && res.ok && worldState) {
         setWorldState({
@@ -227,7 +227,7 @@ export default function WorldPage() {
   async function handleEquipCharacter(charId: string) {
     try {
       const res = await apiSend<{ ok: boolean; avatar: WorldState['avatar'] }>(
-        'world/avatar',
+        '/api/world/avatar',
         'POST',
         { characterId: charId },
       )
@@ -242,7 +242,7 @@ export default function WorldPage() {
   async function handleEquipAccessory(slot: 'head' | 'hand', accessoryId: string | null) {
     try {
       const res = await apiSend<{ ok: boolean; avatar: WorldState['avatar'] }>(
-        'world/avatar',
+        '/api/world/avatar',
         'POST',
         {
           ...(slot === 'head' ? { equippedHead: accessoryId } : { equippedHand: accessoryId }),
@@ -261,7 +261,7 @@ export default function WorldPage() {
     if (canvasRef.current) {
       canvasRef.current.setTimerTheme(theme)
     }
-    apiSend('world/settings', 'POST', { timerTheme: theme }).catch(() => {})
+    apiSend('/api/world/settings', 'POST', { timerTheme: theme }).catch(() => {})
   }
 
   async function handleChangeViewMode(mode: typeof viewMode) {
@@ -269,7 +269,7 @@ export default function WorldPage() {
     if (canvasRef.current) {
       canvasRef.current.setViewMode(mode)
     }
-    apiSend('world/settings', 'POST', { viewMode: mode }).catch(() => {})
+    apiSend('/api/world/settings', 'POST', { viewMode: mode }).catch(() => {})
   }
 
   const formatTime = (secs: number) => {
