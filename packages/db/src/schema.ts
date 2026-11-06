@@ -1286,6 +1286,31 @@ export const cardEmbeddings = table(
   (t) => [index('card_embeddings_model_idx').on(t.model)],
 )
 
+/**
+ * Omniverse embeddings (migration 019): one vector per (kind, refId) across
+ * every knowledge surface — notes, cards, lessons, highlights, journal, ideas…
+ * Vectors are produced on-device (MiniLM via transformers.js) and never leave
+ * the machine; the table is a cache, safe to rebuild at any time.
+ */
+export const embeddings = table(
+  'embeddings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    kind: text('kind').notNull(),
+    refId: integer('ref_id').notNull(),
+    dim: integer('dim').notNull(),
+    vector: text('vector', { mode: 'json' }).$type<number[]>().notNull(),
+    model: text('model').notNull().default('all-MiniLM-L6-v2'),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('embeddings_kind_ref_idx').on(t.kind, t.refId),
+    index('embeddings_kind_model_idx').on(t.kind, t.model),
+  ],
+)
+
 // ─── Adaptive Knowledge Graph & Anki Sync (M13) ──────────────────────────────
 
 export const conceptDependencies = table(

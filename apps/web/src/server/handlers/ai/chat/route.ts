@@ -17,7 +17,7 @@
  */
 import { z } from 'zod'
 import { eq, like, or, sql } from 'drizzle-orm'
-import { db, chatSessions, notes } from '@learning-hub/db'
+import { db, chatSessions, lessons, notes } from '@learning-hub/db'
 import {
   FEYNMAN_STUDENT,
   SOCRATIC_SYSTEM,
@@ -141,6 +141,24 @@ export const POST = withRoute(async (req: Request) => {
     if (body.contextType === 'note' && body.contextId) {
       const [note] = await db.select().from(notes).where(eq(notes.id, body.contextId)).limit(1)
       if (note) snippets.push(`[${note.title}] ${note.content.slice(0, 600)}`)
+    }
+    if (body.contextType === 'lesson' && body.contextId) {
+      const [lesson] = await db
+        .select()
+        .from(lessons)
+        .where(eq(lessons.id, body.contextId))
+        .limit(1)
+      if (lesson) {
+        const bodyText = (() => {
+          try {
+            const parsed = lesson.content as { body?: string } | null
+            return typeof parsed?.body === 'string' ? parsed.body : ''
+          } catch {
+            return ''
+          }
+        })()
+        snippets.push(`[${lesson.title}] ${bodyText.slice(0, 800)}`)
+      }
     }
     if (q) {
       const words = q.split(' ')

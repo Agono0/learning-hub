@@ -213,6 +213,17 @@ const FREETEXT_RUBRIC_MANUAL: ManualMode = {
 
 /** Manual modes keyed by feature name (every transport feature has one). */
 export const MANUAL_MODES: Record<string, ManualMode> = {
+  'tutor-session-summary': {
+    feature: 'tutor-session-summary',
+    title: 'Self-review the transcript',
+    summary:
+      'Read your own tutor transcript and mark the moments you stumbled — those are your gaps.',
+    steps: [
+      'Re-read the transcript and list every question you could not answer (or answered wrong) — those are your GAPS.',
+      'List what you answered confidently — that is your UNDERSTOOD set.',
+      'Write one card per gap: the question on the front, the answer the tutor eventually revealed on the back.',
+    ],
+  },
   'nl-search': {
     feature: 'nl-search',
     title: 'Keyword split search',

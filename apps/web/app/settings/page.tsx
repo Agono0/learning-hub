@@ -28,6 +28,7 @@ import {
   type ThemePreference,
 } from '@/components/ThemeSync'
 import { deliverNotification } from '@/platform/reminders'
+import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 
 const PROVIDERS: {
@@ -471,6 +472,8 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      <SemanticIndexPanel />
 
       <section className="panel space-y-4">
         <div>

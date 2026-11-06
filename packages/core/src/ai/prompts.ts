@@ -230,3 +230,13 @@ Prefer few kinds when the question clearly targets one collection (e.g. "what di
 export function nlSearchPrompt(question: string): string {
   return `Learner question: """${question.slice(0, 800)}"""`
 }
+
+/** TUTOR_SUMMARY_SYSTEM — turns a Socratic session into gaps + starter cards. */
+export const TUTOR_SUMMARY_SYSTEM = `You summarize a Socratic tutoring transcript for a self-learner. Identify (1) the concepts the learner UNDERSTOOD, (2) the GAPS the learner could not answer or answered wrong, (3) 2-5 minimal starter flashcards for the gaps. Cards must be atomic: one fact each; the answer must be short. Return ONLY JSON: { "summary": string (under 80 words), "understood": string[], "gaps": string[], "cards": [{"front": string, "back": string}] }`
+
+/** Build the user prompt for `tutor-session-summary`. */
+export function tutorSummaryPrompt(transcript: string): string {
+  return `Tutoring transcript:
+"""${transcript.slice(0, 8000)}
+"""`
+}

@@ -12,6 +12,7 @@ import { Bold, Heading, Link2, List, Pickaxe, Save } from 'lucide-react'
 import { SUPERTAG_TEMPLATES, cornellLayout } from '@learning-hub/core/notes'
 import type { SupertagKey } from '@learning-hub/core/notes'
 import { apiGet, apiSend } from '@/lib/transport'
+import { RelatedPanel } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 
 interface Note {
@@ -300,6 +301,9 @@ export default function NotesPage() {
               {b.fromTitle} <span className="text-neutral-500">({b.type})</span>
             </button>
           ))}
+        </div>
+        <div className="panel">
+          {activeId != null && <RelatedPanel kind="note" refId={activeId} />}
         </div>
       </aside>
 

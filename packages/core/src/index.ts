@@ -30,6 +30,7 @@ export * from './focus-lock'
 export * from './journal'
 export * from './quotes'
 export * from './physio'
+export * from './insights'
 export * from './analytics'
 
 // ── Ideas / AI / agents ──

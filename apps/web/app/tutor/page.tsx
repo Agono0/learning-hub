@@ -12,11 +12,11 @@
  * who have an external chatbot.
  */
 import { useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Lightbulb, Send, Settings2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { History, Lightbulb, Save, Send, Settings2, Sparkles } from 'lucide-react'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import type { ManualModeInfo } from '@/components/TransportPanel'
-import { apiGet, apiStream } from '@/lib/transport'
+import { apiGet, apiSend, apiStream } from '@/lib/transport'
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -55,6 +55,27 @@ interface NoteRow {
   title: string
 }
 
+interface SessionRow {
+  id: number
+  title: string
+  contextType: string | null
+  contextId: number | null
+  hintsUsed: number | null
+  createdAt: string
+}
+
+interface SessionSummary {
+  summary: string
+  understood: string[]
+  gaps: string[]
+  cards: { front: string; back: string }[]
+}
+
+interface DeckRow {
+  id: number
+  name: string
+}
+
 /** The self-explain manual mode comes from the transport endpoint (same source the docs use). */
 function useManualMode(feature: string, enabled: boolean) {
   return useQuery<{ manual: ManualModeInfo | null }>({
@@ -78,7 +99,12 @@ export default function TutorPage() {
   const [error, setError] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<number | null>(null)
   const [scratchpad, setScratchpad] = useState('')
+  const [summary, setSummary] = useState<(SessionSummary & { usedAI: boolean }) | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryDeck, setSummaryDeck] = useState<number | null>(null)
+  const [sessionsOpen, setSessionsOpen] = useState(false)
   const streamBoxRef = useRef<HTMLDivElement>(null)
+  const queryClient = useQueryClient()
 
   const { data: aiStatus } = useAiStatus()
   const manual = aiStatus?.configured === false // provider 'none' → self-explain mode
@@ -87,6 +113,48 @@ export default function TutorPage() {
   const { data: notesData } = useQuery<{ notes: NoteRow[] }>({
     queryKey: ['notes-for-tutor'],
     queryFn: () => apiGet<{ notes: NoteRow[] }>('/api/notes'),
+  })
+
+  interface LessonOpt {
+    id: number
+    title: string
+    course: string
+  }
+  const { data: lessonsData } = useQuery<{ lessons: LessonOpt[] }>({
+    queryKey: ['curriculum-tree-for-tutor'],
+    queryFn: async () => {
+      const tree = await apiGet<{
+        tracks: Array<{
+          courses: Array<{
+            title?: string
+            units: Array<{ lessons: Array<{ id: number; title: string }> }>
+          }>
+        }>
+      }>('/api/curriculum')
+      const lessons: LessonOpt[] = []
+      for (const track of tree.tracks ?? []) {
+        for (const course of track.courses ?? []) {
+          for (const unit of course.units ?? []) {
+            for (const lesson of unit.lessons ?? []) {
+              lessons.push({ id: lesson.id, title: lesson.title, course: course.title ?? '' })
+            }
+          }
+        }
+      }
+      return { lessons }
+    },
+    staleTime: 60_000,
+  })
+
+  const { data: decksData } = useQuery<{ decks: DeckRow[] }>({
+    queryKey: ['decks-for-tutor'],
+    queryFn: () => apiGet<{ decks: DeckRow[] }>('/api/decks'),
+  })
+
+  const { data: sessionsData, refetch: refetchSessions } = useQuery<{ sessions: SessionRow[] }>({
+    queryKey: ['tutor-sessions'],
+    queryFn: () => apiGet<{ sessions: SessionRow[] }>('/api/ai/chat/sessions'),
+    enabled: sessionsOpen,
   })
 
   const send = async (text: string) => {
@@ -123,6 +191,75 @@ export default function TutorPage() {
     }
   }
 
+  const loadSession = async (id: number) => {
+    setError(null)
+    setSummary(null)
+    try {
+      const res = await apiGet<{
+        ok: boolean
+        session: {
+          id: number
+          contextType: string | null
+          contextId: number | null
+          messages: Msg[]
+        }
+      }>(`/api/ai/chat/sessions?id=${id}`)
+      setSessionId(res.session.id)
+      setContextType((res.session.contextType as 'note' | 'lesson' | null) ?? null)
+      setContextId(res.session.contextId)
+      setMessages(
+        (res.session.messages ?? []).filter(
+          (m) => m && (m.role === 'user' || m.role === 'assistant'),
+        ),
+      )
+      setAttempts(1)
+      setLadderStep(1)
+      setSessionsOpen(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const runSummary = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) throw new Error('Start a session first')
+      setSummaryLoading(true)
+      return apiSend<SessionSummary & { ok: boolean; usedAI: boolean; needsSetup?: boolean }>(
+        '/api/ai/chat/summary',
+        'POST',
+        { sessionId },
+      )
+    },
+    onSuccess: (data) => {
+      setSummary({
+        summary: data.summary,
+        understood: data.understood ?? [],
+        gaps: data.gaps ?? [],
+        cards: data.cards ?? [],
+        usedAI: data.usedAI,
+      })
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+    onSettled: () => setSummaryLoading(false),
+  })
+
+  const saveSummaryCards = useMutation({
+    mutationFn: async () => {
+      if (!summaryDeck || !summary) throw new Error('Pick a deck first')
+      const items = summary.cards.map((c) => ({
+        type: 'basic',
+        content: { basic: { front: c.front, back: c.back } },
+        tags: ['tutor', 'gap'],
+      }))
+      return apiSend('/api/cards?bulk=1', 'PUT', { deckId: summaryDeck, items })
+    },
+    onSuccess: () => {
+      setSummary(null)
+      void queryClient.invalidateQueries({ queryKey: ['decks'] })
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+  })
+
   const climbLadder = (idx: number) => {
     setLadderStep(Math.max(ladderStep, idx + 1))
     void send(LADDER[idx]!.prompt)
@@ -154,9 +291,7 @@ export default function TutorPage() {
             >
               <option value="">No context</option>
               <option value="note">A note</option>
-              <option value="lesson" disabled>
-                A lesson (pick from Curriculum)
-              </option>
+              <option value="lesson">A lesson</option>
             </select>
             {contextType === 'note' && (
               <select
@@ -168,6 +303,20 @@ export default function TutorPage() {
                 {(notesData?.notes ?? []).map((n) => (
                   <option key={n.id} value={n.id}>
                     {n.title}
+                  </option>
+                ))}
+              </select>
+            )}
+            {contextType === 'lesson' && (
+              <select
+                className="input w-52"
+                value={contextId ?? ''}
+                onChange={(e) => setContextId(Number(e.target.value) || null)}
+              >
+                <option value="">Pick lesson…</option>
+                {(lessonsData?.lessons ?? []).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.course ? `${l.course} — ${l.title}` : l.title}
                   </option>
                 ))}
               </select>
@@ -253,6 +402,134 @@ export default function TutorPage() {
               <Send className="h-4 w-4" />
             </button>
           </form>
+        </div>
+      )}
+
+      {!manual && sessionId != null && messages.length >= 2 && (
+        <div className="panel space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <Sparkles className="h-3.5 w-3.5" /> Session summary &amp; gap cards
+            </div>
+            <button
+              type="button"
+              className="btn text-xs"
+              disabled={summaryLoading}
+              onClick={() => runSummary.mutate()}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {summaryLoading ? 'Summarizing…' : 'Summarize session'}
+            </button>
+          </div>
+
+          {summary && (
+            <div className="space-y-3 text-sm">
+              <p className="text-neutral-600 dark:text-neutral-300">{summary.summary}</p>
+              {summary.gaps.length > 0 && (
+                <div>
+                  <div className="label mb-1">Gaps</div>
+                  <ul className="list-disc space-y-0.5 pl-5 text-xs">
+                    {summary.gaps.map((g, i) => (
+                      <li key={i}>{g}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {summary.understood.length > 0 && (
+                <div>
+                  <div className="label mb-1">Understood</div>
+                  <ul className="list-disc space-y-0.5 pl-5 text-xs text-neutral-500">
+                    {summary.understood.map((g, i) => (
+                      <li key={i}>{g}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {summary.cards.length > 0 && (
+                <div className="space-y-2">
+                  <div className="label">{summary.cards.length} starter cards</div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {summary.cards.map((c, i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg border border-neutral-200 p-2 text-xs dark:border-(--hub-border)"
+                      >
+                        <span className="block font-medium">{c.front}</span>
+                        <span className="text-neutral-500">{c.back}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      className="input w-48"
+                      value={summaryDeck ?? ''}
+                      onChange={(e) => setSummaryDeck(Number(e.target.value) || null)}
+                      aria-label="Deck to save cards into"
+                    >
+                      <option value="">Save to deck…</option>
+                      {(decksData?.decks ?? []).map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn text-xs"
+                      disabled={!summaryDeck || saveSummaryCards.isPending}
+                      onClick={() => saveSummaryCards.mutate()}
+                    >
+                      <Save className="h-3.5 w-3.5" /> Save {summary.cards.length} cards
+                    </button>
+                    {!summary.usedAI && (
+                      <span className="text-[11px] text-neutral-400">
+                        (no provider — add one in Settings for AI gap detection)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!manual && (
+        <div className="panel">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+            onClick={() => setSessionsOpen((v) => !v)}
+          >
+            <History className="h-3.5 w-3.5" /> Past sessions
+            {sessionId != null && (
+              <span className="ml-1 normal-case text-neutral-400">(session #{sessionId})</span>
+            )}
+            <span className="ml-auto">{sessionsOpen ? '−' : '+'}</span>
+          </button>
+          {sessionsOpen && (
+            <ul className="mt-2 space-y-1">
+              {(sessionsData?.sessions ?? []).map((s2) => (
+                <li key={s2.id}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+                    onClick={() => void loadSession(s2.id)}
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {s2.title || `Session ${s2.id}`}
+                    </span>
+                    <span className="ml-2 shrink-0 text-[10px] text-neutral-400">
+                      {new Date(s2.createdAt).toLocaleDateString()}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {(sessionsData?.sessions ?? []).length === 0 && (
+                <li className="px-2 py-1 text-xs text-neutral-400">No past sessions yet.</li>
+              )}
+            </ul>
+          )}
         </div>
       )}
 

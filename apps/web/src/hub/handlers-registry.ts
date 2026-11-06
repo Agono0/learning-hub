@@ -15,6 +15,8 @@
  */
 import * as achievements from '../server/handlers/achievements/route'
 import * as aiChat from '../server/handlers/ai/chat/route'
+import * as aiChatSessions from '../server/handlers/ai/chat/sessions/route'
+import * as aiChatSummary from '../server/handlers/ai/chat/summary/route'
 import * as aiFeynmanGrade from '../server/handlers/ai/feynman/grade/route'
 import * as aiGenerate from '../server/handlers/ai/generate/route'
 import * as aiRubric from '../server/handlers/ai/rubric/route'
@@ -44,6 +46,7 @@ import * as decksId from '../server/handlers/decks/[id]/route'
 import * as decks from '../server/handlers/decks/route'
 import * as distractions from '../server/handlers/distractions/route'
 import * as embeddingsSearch from '../server/handlers/embeddings/search/route'
+import * as embeddingsIndex from '../server/handlers/embeddings/index/route'
 import * as exportRoute from '../server/handlers/export/route'
 import * as focusAllowlistsId from '../server/handlers/focus/allowlists/[id]/route'
 import * as focusAllowlists from '../server/handlers/focus/allowlists/route'
@@ -58,6 +61,7 @@ import * as gamesBoss from '../server/handlers/games/boss/route'
 import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
 import * as searchNl from '../server/handlers/search/nl/route'
+import * as insights from '../server/handlers/insights/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
 import * as graph from '../server/handlers/graph/route'
@@ -168,6 +172,8 @@ function add(path: string, mod: Record<string, unknown>): void {
 
 add('achievements', achievements)
 add('ai/chat', aiChat)
+add('ai/chat/sessions', aiChatSessions)
+add('ai/chat/summary', aiChatSummary)
 add('ai/feynman/grade', aiFeynmanGrade)
 add('ai/generate', aiGenerate)
 add('ai/rubric', aiRubric)
@@ -197,6 +203,7 @@ add('decks', decks)
 add('decks/[id]', decksId)
 add('distractions', distractions)
 add('embeddings/search', embeddingsSearch)
+add('embeddings/index', embeddingsIndex)
 add('export', exportRoute)
 add('focus', focus)
 add('focus/[id]', focusId)
@@ -257,6 +264,7 @@ add('review/stats', reviewStats)
 add('review/undo', reviewUndo)
 add('search', search)
 add('search/nl', searchNl)
+add('insights', insights)
 add('settings', settings)
 add('share/export', shareExport)
 add('share/import', shareImport)

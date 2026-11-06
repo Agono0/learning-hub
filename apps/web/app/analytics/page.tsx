@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Route, Target } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { InsightsSection } from '@/components/InsightsSection'
 
 interface AnalyticsResponse {
   forecast: { date: string; count: number }[]
@@ -53,6 +54,8 @@ export default function AnalyticsPage() {
           Everything computed from your real revlog, focus and physio data.
         </p>
       </header>
+
+      <InsightsSection />
 
       {/* true retention + learning score */}
       <div className="grid gap-4 sm:grid-cols-2">

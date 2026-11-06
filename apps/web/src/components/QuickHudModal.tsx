@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Brain, Check, Command, Eye, Inbox, Layout, Search, Sparkles, X, Zap } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { getEmbeddingEngine } from '@/lib/embeddings-client'
 
 export type HudStyle = 'spotlight' | 'tray' | 'palette'
 
@@ -40,6 +41,7 @@ export function QuickHudModal() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SemanticResult[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [searchHint, setSearchHint] = useState<string | null>(null)
 
   const captureInputRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -150,9 +152,22 @@ export function QuickHudModal() {
     e.preventDefault()
     if (!searchQuery.trim()) return
     setSearchLoading(true)
+    setSearchHint(null)
 
-    // Generate dummy unit-norm vector representation for search demonstration
-    const queryVector = Array.from({ length: 64 }, (_, i) => Math.sin(searchQuery.length + i))
+    // Real on-device embedding (MiniLM via transformers.js) — same engine the
+    // Settings index builder uses.
+    const engine = await getEmbeddingEngine()
+    if (!engine.ready) {
+      setSearchHint('Semantic model unavailable on this device — build the index from Settings.')
+      setSearchLoading(false)
+      return
+    }
+    const [queryVector] = await engine.embed([searchQuery])
+    if (!queryVector) {
+      setSearchHint('Embedding failed — try again.')
+      setSearchLoading(false)
+      return
+    }
     try {
       const res = await apiSend<{ ok: boolean; matches: SemanticResult[] }>(
         '/api/embeddings/search',
@@ -402,6 +417,7 @@ export function QuickHudModal() {
                 </button>
               </form>
 
+              {searchHint && <p className="px-2 py-1 text-xs text-neutral-400">{searchHint}</p>}
               {searchResults.length > 0 && (
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                   {searchResults.map((m) => (

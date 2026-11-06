@@ -23,6 +23,7 @@ import {
   FREETEXT_RUBRIC_SYSTEM,
   NL_SEARCH_SYSTEM,
   SOCRATIC_SYSTEM,
+  TUTOR_SUMMARY_SYSTEM,
 } from './prompts'
 
 /** Current envelope version — bump when the wire format changes. */
@@ -104,6 +105,14 @@ export const clozeCardsSchema = z.object({
     .min(1),
 })
 
+/** Tutor session summary: what was understood, what wasn't, starter cards. */
+export const tutorSessionSummarySchema = z.object({
+  summary: z.string().min(1),
+  understood: z.array(z.string()).default([]),
+  gaps: z.array(z.string()).default([]),
+  cards: z.array(z.object({ front: z.string().min(1), back: z.string().min(1) })).default([]),
+})
+
 /** NL search plan: keyword queries + the collections worth searching. */
 export const nlSearchPlanSchema = z.object({
   queries: z.array(z.string().min(1).max(80)).min(1).max(4),
@@ -149,6 +158,15 @@ export interface AIFeatureDef {
 
 /** The transport feature set (feature name → definition). */
 export const AI_FEATURES: Record<string, AIFeatureDef> = {
+  'tutor-session-summary': {
+    name: 'tutor-session-summary',
+    title: 'Tutor session summary',
+    kind: 'json',
+    system: TUTOR_SUMMARY_SYSTEM,
+    schemaDescription:
+      '{"summary": string, "understood": string[], "gaps": string[], "cards": [{"front": string, "back": string}]}',
+    schema: tutorSessionSummarySchema as ZodType<unknown>,
+  },
   'nl-search': {
     name: 'nl-search',
     title: 'Natural-language search planner',
