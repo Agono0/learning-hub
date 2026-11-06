@@ -43,6 +43,7 @@ import {
 } from '@learning-hub/core/practice'
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
+import { InkPad } from '@/ui'
 
 interface CardRow {
   id: number
@@ -926,6 +927,10 @@ function CardFront(props: {
     return <OcclusionView card={card} revealed={revealed} />
   }
 
+  if (content.sketch) {
+    return <SketchView card={card} revealed={revealed} />
+  }
+
   if (content.proof_step) {
     const ps = content.proof_step
     const fade = workedExampleFade(1) // completion-problem level by default
@@ -1022,6 +1027,10 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
   const occ = card.content.occlusion
   const [size, setSize] = useState<{ w: number; h: number } | null>(null)
   if (!occ) return null
+
+  const mode = occ.mode ?? 'hide-all-guess-one'
+  const activeId = occ.activeRectId
+
   return (
     <div className="space-y-2">
       <div
@@ -1038,24 +1047,46 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
           }}
         />
         {/* overlays are positioned in normalized 0-1 coords — resize-proof */}
-        {occ.rects.map((rect) => (
-          <div
-            key={rect.id}
-            className={`absolute rounded-sm border ${revealed ? 'border-indigo-400 bg-indigo-500/25' : 'border-neutral-500 bg-neutral-700'}`}
-            style={{
-              left: `${rect.x * 100}%`,
-              top: `${rect.y * 100}%`,
-              width: `${rect.w * 100}%`,
-              height: `${rect.h * 100}%`,
-            }}
-          >
-            {revealed && rect.label && (
-              <span className="absolute inset-0 grid place-items-center text-xs font-medium text-white drop-shadow">
-                {rect.label}
-              </span>
-            )}
-          </div>
-        ))}
+        {occ.rects.map((rect) => {
+          const isTarget = !activeId || activeId === rect.id
+          const isMasked = mode === 'hide-all-guess-one' ? true : isTarget
+          const isEllipse = rect.shape === 'ellipse'
+
+          let overlayStyle = ''
+          if (!isMasked) {
+            // Unmasked helper label in hide-one-guess-one mode
+            overlayStyle = 'border border-neutral-600/30 bg-black/30'
+          } else if (!revealed) {
+            // Masked before reveal
+            overlayStyle = isTarget
+              ? 'border-2 border-cyan-400 bg-cyan-600/70 shadow-lg shadow-cyan-500/20 animate-pulse'
+              : 'border border-amber-600/80 bg-amber-800/80'
+          } else {
+            // Revealed
+            overlayStyle = isTarget
+              ? 'border-2 border-emerald-400 bg-emerald-500/30'
+              : 'border border-indigo-400/60 bg-indigo-500/20'
+          }
+
+          return (
+            <div
+              key={rect.id}
+              className={`absolute transition-colors ${isEllipse ? 'rounded-full' : 'rounded'} ${overlayStyle}`}
+              style={{
+                left: `${rect.x * 100}%`,
+                top: `${rect.y * 100}%`,
+                width: `${rect.w * 100}%`,
+                height: `${rect.h * 100}%`,
+              }}
+            >
+              {(revealed || !isMasked) && rect.label && (
+                <span className="absolute inset-0 grid place-items-center text-xs font-semibold text-white drop-shadow">
+                  {rect.label}
+                </span>
+              )}
+            </div>
+          )
+        })}
         {size === null && (
           <div className="absolute inset-0 grid place-items-center text-xs text-neutral-500">
             loading image…
@@ -1063,7 +1094,69 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
         )}
       </div>
       {!revealed && (
-        <div className="text-center text-xs text-neutral-500">reveal to show the labels</div>
+        <div className="text-center text-xs text-neutral-400">
+          {mode === 'hide-all-guess-one'
+            ? 'Identify the highlighted blue region'
+            : 'Identify the occluded region'}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Sketch-from-memory card view with InkPad and solution reveal. */
+function SketchView({ card, revealed }: { card: CardRow; revealed: boolean }) {
+  const sketch = card.content.sketch
+  if (!sketch) return null
+
+  return (
+    <div className="space-y-4">
+      <div className="text-base font-medium text-neutral-100">{sketch.prompt}</div>
+
+      <div className="space-y-1.5">
+        <div className="text-xs text-neutral-400">Draw or write your answer:</div>
+        <InkPad
+          height={220}
+          readOnly={revealed}
+          onChange={(url) => {
+            void apiSend('/api/review/attempt-image', 'POST', {
+              cardId: card.id,
+              imageData: url,
+            })
+          }}
+        />
+      </div>
+
+      {revealed && (
+        <div className="rounded-xl border border-neutral-700/80 bg-neutral-900/80 p-4 space-y-3">
+          <div className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <Check className="h-4 w-4" />
+            Reference Solution
+          </div>
+
+          {sketch.referenceImageId && (
+            <img
+              src={`/api/images/${sketch.referenceImageId}`}
+              alt="Reference solution"
+              className="max-h-60 rounded-lg mx-auto border border-neutral-800"
+            />
+          )}
+
+          {sketch.referenceText && (
+            <p className="text-sm text-neutral-200 leading-relaxed">{sketch.referenceText}</p>
+          )}
+
+          {sketch.rubric && sketch.rubric.length > 0 && (
+            <div className="space-y-1 pt-1">
+              <div className="text-xs font-medium text-neutral-400">Recall check:</div>
+              <ul className="list-disc pl-5 text-xs text-neutral-300 space-y-0.5">
+                {sketch.rubric.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

@@ -89,6 +89,7 @@ export const NAV: NavGroup[] = [
     group: 'Create & Analyze',
     defaultCollapsed: true,
     items: [
+      { href: '/mindmap', label: 'Mind Map', icon: Network },
       { href: '/ideas', label: 'Ideas', icon: Lightbulb },
       { href: '/quotes', label: 'Quotes', icon: Quote },
       { href: '/analytics', label: 'Analytics', icon: Route },

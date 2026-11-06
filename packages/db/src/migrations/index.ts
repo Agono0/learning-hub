@@ -18,6 +18,7 @@ import { syncAndOnboarding } from './005-sync-and-onboarding'
 import { sq3rReading } from './006-sq3r-reading'
 import { maxFocus } from './007-max-focus'
 import { reminders } from './008-reminders'
+import { visualLearning } from './009-visual-learning'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -29,6 +30,7 @@ export const MIGRATIONS: readonly Migration[] = [
   sq3rReading,
   maxFocus,
   reminders,
+  visualLearning,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

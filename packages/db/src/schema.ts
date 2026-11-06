@@ -1123,3 +1123,34 @@ export const reminderClicks = table(
   },
   (t) => [index('reminder_clicks_clicked_at_idx').on(t.clickedAt)],
 )
+
+/** Mind-map diagrams: nodes and edges with hierarchical and radial coordinates. */
+export const mindmaps = table('mindmaps', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  nodesJson: text('nodes_json').notNull(),
+  edgesJson: text('edges_json').notNull().default('[]'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** Append-only storage for handwriting / sketch attempts during review. */
+export const cardAttemptImages = table(
+  'card_attempt_images',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cardId: integer('card_id')
+      .notNull()
+      .references(() => cards.id),
+    reviewId: integer('review_id'),
+    imageData: text('image_data').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('card_attempt_images_card_id_idx').on(t.cardId)],
+)

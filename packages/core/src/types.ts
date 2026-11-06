@@ -13,6 +13,7 @@ export type CardFormat =
   | 'mcq' // stepwise multiple choice: question first, options revealed after commit
   | 'typein' // type the answer — max retrieval effort
   | 'occlusion' // image occlusion: normalized 0-1 rects over an image
+  | 'sketch' // draw from memory: prompt + reference diagram/rubric
   | 'proof_step' // math: "which lemma justifies step k" / fill-in-proof-step
   | 'grammar' // language: example-sentence cloze of a grammar pattern
   | 'matching' // pair-matching set (used by games; also schedulable)
@@ -25,6 +26,7 @@ export interface Rect {
   y: number
   w: number
   h: number
+  shape?: 'rect' | 'ellipse'
 }
 
 /** Per-format card payload stored as JSON in `cards.content` (one key set). */
@@ -48,7 +50,20 @@ export type CardContent = {
   }
   mcq?: { question: string; options: string[]; correctIndex: number; rationale?: string }
   typein?: { question: string; acceptedAnswers: string[] }
-  occlusion?: { imageId: number; rects: (Rect & { id: string; label?: string })[] }
+  occlusion?: {
+    imageId: number
+    rects: (Rect & { id: string; label?: string })[]
+    mode?: 'hide-all-guess-one' | 'hide-one-guess-one'
+    activeRectId?: string
+    groupId?: string
+  }
+  sketch?: {
+    prompt: string
+    referenceImageId?: number
+    referenceImageUrl?: string
+    referenceText?: string
+    rubric?: string[]
+  }
   proof_step?: {
     theorem: string
     proofSteps: string[]

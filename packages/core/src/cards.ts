@@ -207,6 +207,7 @@ const rectSchema = z.object({
   w: z.number().min(0).max(1),
   h: z.number().min(0).max(1),
   label: z.string().optional(),
+  shape: z.enum(['rect', 'ellipse']).optional().default('rect'),
 })
 
 const contentSchemas = {
@@ -242,6 +243,19 @@ const contentSchemas = {
   occlusion: z.object({
     imageId: z.number().int().min(1),
     rects: z.array(rectSchema).min(1),
+    mode: z
+      .enum(['hide-all-guess-one', 'hide-one-guess-one'])
+      .optional()
+      .default('hide-all-guess-one'),
+    activeRectId: z.string().optional(),
+    groupId: z.string().optional(),
+  }),
+  sketch: z.object({
+    prompt: z.string().min(1),
+    referenceImageId: z.number().int().min(1).optional(),
+    referenceImageUrl: z.string().optional(),
+    referenceText: z.string().optional(),
+    rubric: z.array(z.string().min(1)).optional(),
   }),
   proof_step: z
     .object({
@@ -322,6 +336,8 @@ export function cardPreviewText(type: string, content: unknown): string | null {
   if (mcq?.question) return clean(mcq.question)
   const typein = c.typein as { question?: string } | undefined
   if (typein?.question) return clean(typein.question)
+  const sketch = c.sketch as { prompt?: string } | undefined
+  if (sketch?.prompt) return clean(sketch.prompt)
   const proof = c.proof_step as { statement?: string } | undefined
   if (proof?.statement) return clean(proof.statement)
   const grammar = c.grammar as { sentence?: string } | undefined

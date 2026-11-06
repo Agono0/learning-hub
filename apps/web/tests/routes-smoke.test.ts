@@ -113,6 +113,11 @@ beforeAll(async () => {
   M.remindersPlan = await import('../app/api/reminders/plan/route')
   M.remindersLog = await import('../app/api/reminders/log/route')
   M.remindersClick = await import('../app/api/reminders/click/route')
+  M.cardsOcclusion = await import('../app/api/cards/occlusion/route')
+  M.mindmaps = await import('../app/api/mindmaps/route')
+  M.mindmapsId = (await import('../app/api/mindmaps/[id]/route')) as any
+  M.mindmapsIdCards = (await import('../app/api/mindmaps/[id]/cards/route')) as any
+  M.reviewAttemptImage = await import('../app/api/review/attempt-image/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -916,5 +921,99 @@ describe('max focus mode (milestone 6)', () => {
     expect(setBody.ok).toBe(true)
     expect(setBody.settings.remindersQuietStart).toBe('23:00')
     expect(setBody.settings.remindersDailyCap).toBe(5)
+  })
+
+  it('handles visual learning: batch occlusion, mindmaps, and sketch attempts', async () => {
+    // 1. Create a test deck
+    const deckRes = await M.decks.POST(post('/api/decks', { name: 'Visual Anatomy Deck' }))
+    expect([200, 201]).toContain(deckRes.status)
+    const deckBody = (await deckRes.json()) as { ok: boolean; deck: { id: number } }
+    const deckId = deckBody.deck.id
+
+    // 2. Batch create occlusion cards
+    const occRes = await M.cardsOcclusion.POST(
+      post('/api/cards/occlusion', {
+        deckId,
+        imageId: 1,
+        mode: 'hide-all-guess-one',
+        rects: [
+          { id: 'r1', x: 0.1, y: 0.1, w: 0.2, h: 0.2, label: 'Hippocampus' },
+          { id: 'r2', x: 0.4, y: 0.4, w: 0.2, h: 0.2, label: 'Amygdala', shape: 'ellipse' },
+        ],
+      }),
+    )
+    expect(occRes.status).toBe(200)
+    const occBody = (await occRes.json()) as { ok: boolean; count: number; cards: any[] }
+    expect(occBody.ok).toBe(true)
+    expect(occBody.count).toBe(2)
+    const cardId = occBody.cards[0]!.id
+
+    // 3. Create a mindmap
+    const mmRes = await M.mindmaps.POST(
+      post('/api/mindmaps', {
+        title: 'Cognitive Biases',
+        nodesJson: JSON.stringify([
+          { id: 'root', text: 'Cognitive Biases', x: 500, y: 400, parentId: null },
+          {
+            id: 'n1',
+            text: 'Anchoring: Over-relying on first info',
+            x: 650,
+            y: 400,
+            parentId: 'root',
+          },
+          {
+            id: 'n2',
+            text: 'Confirmation: Seeking affirming evidence',
+            x: 350,
+            y: 400,
+            parentId: 'root',
+          },
+        ]),
+      }),
+    )
+    expect(mmRes.status).toBe(200)
+    const mmBody = (await mmRes.json()) as { ok: boolean; mindmap: { id: number } }
+    expect(mmBody.ok).toBe(true)
+    const mmId = mmBody.mindmap.id
+
+    // 4. List mindmaps and get single
+    const listRes = await M.mindmaps.GET()
+    expect(listRes.status).toBe(200)
+    const listBody = (await listRes.json()) as { ok: boolean; mindmaps: any[] }
+    expect(listBody.mindmaps.some((m) => m.id === mmId)).toBe(true)
+
+    const getRes = await M.mindmapsId.GET(req('GET', `/api/mindmaps/${mmId}`), {
+      params: { id: String(mmId) },
+    })
+    expect(getRes.status).toBe(200)
+
+    // 5. Generate flashcards from mindmap
+    const genRes = await M.mindmapsIdCards.POST(post(`/api/mindmaps/${mmId}/cards`, { deckId }), {
+      params: { id: String(mmId) },
+    })
+    expect(genRes.status).toBe(200)
+    const genBody = (await genRes.json()) as { ok: boolean; importedCount: number }
+    expect(genBody.ok).toBe(true)
+    expect(genBody.importedCount).toBeGreaterThan(0)
+
+    // 6. Record and retrieve sketch attempt image
+    const attemptRes = await M.reviewAttemptImage.POST(
+      post('/api/review/attempt-image', {
+        cardId,
+        imageData:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      }),
+    )
+    expect(attemptRes.status).toBe(200)
+    const attemptBody = (await attemptRes.json()) as { ok: boolean; logged: { id: number } }
+    expect(attemptBody.logged.id).toBeGreaterThan(0)
+
+    const getAttemptRes = await M.reviewAttemptImage.GET(
+      req('GET', `/api/review/attempt-image?cardId=${cardId}`),
+    )
+    expect(getAttemptRes.status).toBe(200)
+    const getAttemptBody = (await getAttemptRes.json()) as { ok: boolean; attempt: any }
+    expect(getAttemptBody.attempt).toBeDefined()
+    expect(getAttemptBody.attempt.cardId).toBe(cardId)
   })
 })

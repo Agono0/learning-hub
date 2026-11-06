@@ -18,6 +18,7 @@ export * from './memory'
 export * from './games'
 export * from './anki'
 export * from './anki-export'
+export * from './visual'
 
 // ── Human systems ──
 export * from './motivation'

@@ -26,6 +26,7 @@ import * as canvas from '../server/handlers/canvas/route'
 import * as cardsBullet from '../server/handlers/cards/bullet/route'
 import * as cardsFromText from '../server/handlers/cards/from-text/route'
 import * as cardsId from '../server/handlers/cards/[id]/route'
+import * as cardsOcclusion from '../server/handlers/cards/occlusion/route'
 import * as cards from '../server/handlers/cards/route'
 import * as commitments from '../server/handlers/commitments/route'
 import * as curriculumExam from '../server/handlers/curriculum/exam/route'
@@ -65,6 +66,9 @@ import * as importRoute from '../server/handlers/import/route'
 import * as journalAi from '../server/handlers/journal/ai/route'
 import * as journalWeekly from '../server/handlers/journal/weekly/route'
 import * as journal from '../server/handlers/journal/route'
+import * as mindmapsIdCards from '../server/handlers/mindmaps/[id]/cards/route'
+import * as mindmapsId from '../server/handlers/mindmaps/[id]/route'
+import * as mindmaps from '../server/handlers/mindmaps/route'
 import * as notesId from '../server/handlers/notes/[id]/route'
 import * as notes from '../server/handlers/notes/route'
 import * as onboardingDetox from '../server/handlers/onboarding/detox/route'
@@ -81,6 +85,7 @@ import * as reading from '../server/handlers/reading/route'
 import * as remindersClick from '../server/handlers/reminders/click/route'
 import * as remindersLog from '../server/handlers/reminders/log/route'
 import * as remindersPlan from '../server/handlers/reminders/plan/route'
+import * as reviewAttemptImage from '../server/handlers/review/attempt-image/route'
 import * as reviewStats from '../server/handlers/review/stats/route'
 import * as reviewUndo from '../server/handlers/review/undo/route'
 import * as review from '../server/handlers/review/route'
@@ -147,6 +152,7 @@ add('cards', cards)
 add('cards/[id]', cardsId)
 add('cards/bullet', cardsBullet)
 add('cards/from-text', cardsFromText)
+add('cards/occlusion', cardsOcclusion)
 add('commitments', commitments)
 add('curriculum', curriculum)
 add('curriculum/exam', curriculumExam)
@@ -184,6 +190,9 @@ add('import', importRoute)
 add('journal', journal)
 add('journal/ai', journalAi)
 add('journal/weekly', journalWeekly)
+add('mindmaps', mindmaps)
+add('mindmaps/[id]', mindmapsId)
+add('mindmaps/[id]/cards', mindmapsIdCards)
 add('notes', notes)
 add('notes/[id]', notesId)
 add('onboarding/detox', onboardingDetox)
@@ -201,6 +210,7 @@ add('reminders/click', remindersClick)
 add('reminders/log', remindersLog)
 add('reminders/plan', remindersPlan)
 add('review', review)
+add('review/attempt-image', reviewAttemptImage)
 add('review/stats', reviewStats)
 add('review/undo', reviewUndo)
 add('search', search)

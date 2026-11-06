@@ -9,9 +9,9 @@ import {
 import { normalizeThemePreference } from '../src/components/ThemeSync'
 
 describe('navigation model & theme helpers', () => {
-  it('preserves all 25 routes across the 4 canonical scaffolder groups', () => {
+  it('preserves all routes across the 4 canonical scaffolder groups', () => {
     expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
-    expect(ALL_NAV_ITEMS).toHaveLength(25)
+    expect(ALL_NAV_ITEMS).toHaveLength(26)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })
