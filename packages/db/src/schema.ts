@@ -1324,3 +1324,73 @@ export const ankiSyncMappings = table(
   },
   (t) => [index('anki_mappings_note_idx').on(t.ankiNoteId)],
 )
+
+// ─── Multiplayer Guilds, 1v1 Duels & Seasonal Progression (M14) ─────────────
+
+export const guilds = table(
+  'guilds',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull().unique(),
+    tag: text('tag').notNull(),
+    description: text('description'),
+    totalXp: integer('total_xp').notNull().default(0),
+    level: integer('level').notNull().default(1),
+    avatarEmoji: text('avatar_emoji').notNull().default('🛡️'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('guilds_total_xp_idx').on(t.totalXp)],
+)
+
+export const guildMembers = table(
+  'guild_members',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    guildId: integer('guild_id')
+      .notNull()
+      .references(() => guilds.id, { onDelete: 'cascade' }),
+    alias: text('alias').notNull(),
+    role: text('role').$type<'leader' | 'officer' | 'member'>().notNull().default('member'),
+    xpContributed: integer('xp_contributed').notNull().default(0),
+    joinedAt: text('joined_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('guild_members_guild_idx').on(t.guildId),
+    index('guild_members_alias_idx').on(t.alias),
+  ],
+)
+
+export const seasonalProgress = table(
+  'seasonal_progress',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    seasonId: text('season_id').notNull().default('season-1'),
+    seasonXp: integer('season_xp').notNull().default(0),
+    tier: integer('tier').notNull().default(0),
+    claimedRewards: text('claimed_rewards', { mode: 'json' }).$type<number[]>().default([]),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('seasonal_progress_season_idx').on(t.seasonId)],
+)
+
+export const reviewDuels = table(
+  'review_duels',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    player1Alias: text('player1_alias').notNull(),
+    player2Alias: text('player2_alias').notNull(),
+    winnerAlias: text('winner_alias'),
+    player1Score: integer('player1_score').notNull().default(0),
+    player2Score: integer('player2_score').notNull().default(0),
+    completedAt: text('completed_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('review_duels_completed_idx').on(t.completedAt)],
+)

@@ -41,7 +41,7 @@ import { BOSS_ROSTER, type BossProfile } from '@learning-hub/core/boss'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Button, PageHeader, Panel, ProgressBar, Tabs, TextField } from '@/ui'
 
-type GameTab = 'matching' | 'boss' | 'social'
+type GameTab = 'matching' | 'boss' | 'duels' | 'social'
 
 interface DeckInfo {
   id: number
@@ -127,12 +127,14 @@ export default function GamesPage() {
         items={[
           { key: 'matching', label: 'Matching Pairs', icon: <Brain className="h-4 w-4" /> },
           { key: 'boss', label: 'Boss Battle', icon: <Swords className="h-4 w-4" /> },
+          { key: 'duels', label: '1v1 Review Duels', icon: <Flame className="h-4 w-4" /> },
           { key: 'social', label: 'Friend Leaderboard', icon: <Users className="h-4 w-4" /> },
         ]}
       />
 
       {activeTab === 'matching' && <MatchingGameSection />}
       {activeTab === 'boss' && <BossBattleSection />}
+      {activeTab === 'duels' && <DuelsArenaSection />}
       {activeTab === 'social' && <SocialLeaderboardSection />}
     </div>
   )
@@ -782,6 +784,254 @@ function SocialLeaderboardSection() {
               ))}
             </tbody>
           </table>
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* 4. 1v1 Review Duels Arena                                                 */
+/* ========================================================================= */
+
+interface DuelRecord {
+  id: number
+  player1Alias: string
+  player2Alias: string
+  winnerAlias: string | null
+  player1Score: number
+  player2Score: number
+  completedAt: string
+}
+
+function DuelsArenaSection() {
+  const qc = useQueryClient()
+  const [inMatch, setInMatch] = useState(false)
+  const [round, setRound] = useState(1)
+  const [playerScore, setPlayerScore] = useState(0)
+  const [botScore, setBotScore] = useState(0)
+  const [matchDone, setMatchDone] = useState(false)
+  const [winner, setWinner] = useState<string | null>(null)
+  const [eloDelta, setEloDelta] = useState<number | null>(null)
+
+  // Current round question
+  const SAMPLE_DUEL_PROMPTS = [
+    {
+      q: 'Primary excitatory neurotransmitter in the mammalian brain?',
+      a: 'Glutamate',
+      options: ['GABA', 'Glutamate', 'Serotonin', 'Dopamine'],
+    },
+    {
+      q: 'What is the powerhouse organelle of the eukaryotic cell?',
+      a: 'Mitochondria',
+      options: ['Ribosome', 'Mitochondria', 'Golgi', 'Nucleus'],
+    },
+    {
+      q: 'Spaced repetition algorithm optimized by Learning HUB?',
+      a: 'FSRS-6',
+      options: ['SM-2', 'FSRS-6', 'Anki-Classic', 'Leitner'],
+    },
+    {
+      q: 'Loss function used to optimize binary classification in ML?',
+      a: 'Binary Cross-Entropy',
+      options: ['Mean Squared Error', 'Binary Cross-Entropy', 'Hinge Loss', 'Huber Loss'],
+    },
+    {
+      q: 'Brain structure essential for memory consolidation and spatial navigation?',
+      a: 'Hippocampus',
+      options: ['Amygdala', 'Hippocampus', 'Cerebellum', 'Thalamus'],
+    },
+  ]
+
+  const currentPrompt = SAMPLE_DUEL_PROMPTS[(round - 1) % SAMPLE_DUEL_PROMPTS.length]!
+
+  const duelsQuery = useQuery<{ ok: boolean; duels: DuelRecord[] }>({
+    queryKey: ['duels-recent'],
+    queryFn: () => apiGet<{ ok: boolean; duels: DuelRecord[] }>('/api/social/duels'),
+  })
+
+  const submitDuelMutation = useMutation({
+    mutationFn: (data: {
+      player1Alias: string
+      player2Alias: string
+      winnerAlias?: string
+      player1Score: number
+      player2Score: number
+    }) => apiSend('/api/social/duels', 'POST', data),
+    onSuccess: (data: any) => {
+      if (data.ok && data.eloUpdates) {
+        setEloDelta(data.eloUpdates.player1.next - data.eloUpdates.player1.previous)
+      }
+      void qc.invalidateQueries({ queryKey: ['duels-recent'] })
+    },
+  })
+
+  const startNewDuel = () => {
+    setInMatch(true)
+    setRound(1)
+    setPlayerScore(0)
+    setBotScore(0)
+    setMatchDone(false)
+    setWinner(null)
+    setEloDelta(null)
+  }
+
+  const handlePickOption = (option: string) => {
+    const isCorrect = option === currentPrompt.a
+    const pts = isCorrect ? 130 : 0
+    const newPlayerScore = playerScore + pts
+
+    // Simulated opponent answer (70% accuracy)
+    const botCorrect = Math.random() < 0.75
+    const botPts = botCorrect ? Math.floor(100 + Math.random() * 40) : 0
+    const newBotScore = botScore + botPts
+
+    setPlayerScore(newPlayerScore)
+    setBotScore(newBotScore)
+
+    if (round >= 5) {
+      setInMatch(false)
+      setMatchDone(true)
+      const matchWinner =
+        newPlayerScore > newBotScore
+          ? 'You'
+          : newPlayerScore < newBotScore
+            ? 'Ada Lovelace (Bot)'
+            : 'Tie'
+      setWinner(matchWinner)
+
+      submitDuelMutation.mutate({
+        player1Alias: 'You',
+        player2Alias: 'Ada Lovelace (Bot)',
+        winnerAlias: matchWinner === 'Tie' ? undefined : matchWinner,
+        player1Score: newPlayerScore,
+        player2Score: newBotScore,
+      })
+    } else {
+      setRound((r) => r + 1)
+    }
+  }
+
+  const recentDuels = duelsQuery.data?.duels ?? []
+
+  return (
+    <div className="space-y-6">
+      <Panel className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">1v1 Rapid-Recall Arena</h2>
+            <p className="text-xs text-neutral-400">
+              Engage in fast 5-round recall duels. Correct answers earn points, with instant speed
+              bonuses for rapid responses.
+            </p>
+          </div>
+          {!inMatch && (
+            <Button onClick={startNewDuel}>
+              <Flame className="h-4 w-4 text-amber-400" /> Start 1v1 Duel
+            </Button>
+          )}
+        </div>
+
+        {/* Active Duel Arena */}
+        {inMatch && (
+          <div className="rounded-xl border border-indigo-500/40 bg-indigo-950/20 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase text-indigo-400">
+                Round {round} of 5
+              </span>
+              <div className="flex items-center gap-4 text-sm font-bold">
+                <span className="text-emerald-400">You: {playerScore}</span>
+                <span className="text-neutral-500">vs</span>
+                <span className="text-rose-400">Ada (Bot): {botScore}</span>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4 space-y-3">
+              <div className="text-base font-medium text-neutral-100">{currentPrompt.q}</div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                {currentPrompt.options.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => handlePickOption(opt)}
+                    className="rounded-lg border border-neutral-700/80 bg-neutral-800/80 p-3 text-left text-xs font-medium text-neutral-200 hover:border-indigo-500 hover:bg-indigo-600/20 transition-all"
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Duel Result Celebration */}
+        {matchDone && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-5 text-center space-y-3">
+            <div className="text-2xl font-bold flex items-center justify-center gap-2">
+              <Trophy className="h-7 w-7 text-amber-400" />
+              <span>{winner === 'You' ? 'Victory!' : winner === 'Tie' ? 'Draw!' : 'Defeat!'}</span>
+            </div>
+            <p className="text-xs text-neutral-300">
+              Final score: <strong className="text-emerald-400">{playerScore}</strong> vs{' '}
+              <strong className="text-rose-400">{botScore}</strong>
+            </p>
+            {eloDelta !== null && (
+              <Badge tone={eloDelta >= 0 ? 'success' : 'neutral'}>
+                {eloDelta >= 0 ? `+${eloDelta}` : eloDelta} Elo Rating
+              </Badge>
+            )}
+            <div className="pt-2">
+              <Button onClick={startNewDuel}>Rematch</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Match History Table */}
+        <div className="pt-2 space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            Recent Match History ({recentDuels.length})
+          </h3>
+          {recentDuels.length === 0 ? (
+            <div className="rounded-lg border border-neutral-800 p-6 text-center text-xs text-neutral-500">
+              No recent duels recorded. Start a 1v1 duel above to test your recall speed.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-neutral-800 text-neutral-500">
+                    <th className="pb-2 font-medium">Match</th>
+                    <th className="pb-2 font-medium">Score</th>
+                    <th className="pb-2 font-medium">Winner</th>
+                    <th className="pb-2 font-medium text-right">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800/60">
+                  {recentDuels.map((d) => (
+                    <tr key={d.id} className="py-2.5">
+                      <td className="py-2.5 font-medium">
+                        {d.player1Alias} vs {d.player2Alias}
+                      </td>
+                      <td className="py-2.5 text-neutral-400 font-mono">
+                        {d.player1Score} - {d.player2Score}
+                      </td>
+                      <td className="py-2.5">
+                        <Badge tone={d.winnerAlias === 'You' ? 'success' : 'neutral'}>
+                          {d.winnerAlias ?? 'Draw'}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 text-right text-neutral-500">
+                        {new Date(d.completedAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </Panel>
     </div>

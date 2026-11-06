@@ -21,10 +21,12 @@ import {
   Radio,
   RefreshCw,
   Send,
+  Shield,
   Swords,
   Timer,
   UserCheck,
   Users,
+  Zap,
 } from 'lucide-react'
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import {
@@ -37,7 +39,7 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { OnlineSocket } from '@/lib/online-socket'
 import { Badge, Button, PageHeader, Panel, ProgressBar, SelectField, Tabs, TextField } from '@/ui'
 
-type OnlineTab = 'rooms' | 'raids' | 'library' | 'buddies'
+type OnlineTab = 'rooms' | 'raids' | 'guilds' | 'library' | 'buddies'
 
 interface IdentityResponse {
   ok: boolean
@@ -103,6 +105,7 @@ export default function OnlinePage() {
         items={[
           { key: 'rooms', label: 'Study Rooms', icon: <Radio className="h-4 w-4" /> },
           { key: 'raids', label: 'Party Raids', icon: <Swords className="h-4 w-4" /> },
+          { key: 'guilds', label: 'Study Clans', icon: <Shield className="h-4 w-4" /> },
           { key: 'library', label: 'Community Library', icon: <BookOpen className="h-4 w-4" /> },
           { key: 'buddies', label: 'Buddies & Inbox', icon: <Users className="h-4 w-4" /> },
         ]}
@@ -110,6 +113,7 @@ export default function OnlinePage() {
 
       {activeTab === 'rooms' && <StudyRoomsSection identity={identity} />}
       {activeTab === 'raids' && <PartyRaidsSection identity={identity} />}
+      {activeTab === 'guilds' && <GuildsSection identity={identity} />}
       {activeTab === 'library' && <CommunityLibrarySection />}
       {activeTab === 'buddies' && <BuddiesInboxSection identity={identity} />}
     </div>
@@ -853,6 +857,246 @@ function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }
           </div>
         )}
       </Panel>
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* 5. Study Clans & Guild Houses (Pooled Clan XP & Level Perks)              */
+/* ========================================================================= */
+
+interface GuildItem {
+  id: number
+  name: string
+  tag: string
+  description?: string
+  totalXp: number
+  level: number
+  avatarEmoji: string
+}
+
+function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }) {
+  const qc = useQueryClient()
+  const [selectedGuildId, setSelectedGuildId] = useState<number | null>(null)
+  const [name, setName] = useState('')
+  const [tag, setTag] = useState('')
+  const [description, setDescription] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+
+  const guildsQuery = useQuery<{ ok: boolean; guilds: GuildItem[] }>({
+    queryKey: ['guilds-list'],
+    queryFn: () => apiGet<{ ok: boolean; guilds: GuildItem[] }>('/api/social/guilds'),
+  })
+
+  const guildDetailQuery = useQuery<{
+    ok: boolean
+    guild: GuildItem
+    members: Array<{ id: number; alias: string; role: string; xpContributed: number }>
+  }>({
+    queryKey: ['guild-detail', selectedGuildId],
+    queryFn: () => apiGet(`/api/social/guilds?id=${selectedGuildId}`),
+    enabled: selectedGuildId !== null,
+  })
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      apiSend('/api/social/guilds', 'POST', {
+        action: 'create',
+        name: name.trim(),
+        tag: tag.trim().toUpperCase(),
+        description: description.trim() || undefined,
+        leaderAlias: identity?.alias || 'Leader',
+      }),
+    onSuccess: () => {
+      setName('')
+      setTag('')
+      setDescription('')
+      setShowCreate(false)
+      void qc.invalidateQueries({ queryKey: ['guilds-list'] })
+    },
+  })
+
+  const joinMutation = useMutation({
+    mutationFn: (guildId: number) =>
+      apiSend('/api/social/guilds', 'POST', {
+        action: 'join',
+        guildId,
+        alias: identity?.alias || 'Learner',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['guilds-list'] })
+      void qc.invalidateQueries({ queryKey: ['guild-detail'] })
+    },
+  })
+
+  const contributeMutation = useMutation({
+    mutationFn: (guildId: number) =>
+      apiSend('/api/social/guilds', 'POST', {
+        action: 'contribute',
+        guildId,
+        alias: identity?.alias || 'Learner',
+        xp: 100,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['guilds-list'] })
+      void qc.invalidateQueries({ queryKey: ['guild-detail'] })
+    },
+  })
+
+  const guilds = guildsQuery.data?.guilds ?? []
+
+  return (
+    <div className="space-y-6">
+      <Panel className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Study Clans & Guild Houses</h2>
+            <p className="text-xs text-neutral-400">
+              Form or join a study clan. Pool recall XP to level up your clan and unlock
+              collaborative study perks.
+            </p>
+          </div>
+          <Button onClick={() => setShowCreate(!showCreate)}>
+            <Plus className="h-4 w-4" /> {showCreate ? 'Close Form' : 'Found New Clan'}
+          </Button>
+        </div>
+
+        {showCreate && (
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              Found a Study Clan
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Clan Name"
+                placeholder="e.g. Oxford Scholars"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <TextField
+                label="Clan Tag (2-6 letters)"
+                placeholder="e.g. OXF"
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+              />
+            </div>
+            <TextField
+              label="Mission Description"
+              placeholder="Daily deliberate recall practice in STEM & literature"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <Button
+              disabled={!name.trim() || !tag.trim() || createMutation.isPending}
+              onClick={() => createMutation.mutate()}
+            >
+              Found Clan
+            </Button>
+          </div>
+        )}
+
+        {/* Guilds List */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-2">
+          {guilds.map((g) => (
+            <div
+              key={g.id}
+              onClick={() => setSelectedGuildId(g.id)}
+              className={`rounded-xl border p-4 cursor-pointer transition-all ${
+                selectedGuildId === g.id
+                  ? 'border-indigo-500 bg-indigo-500/10'
+                  : 'border-neutral-800 bg-neutral-900/40 hover:border-neutral-700'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">{g.avatarEmoji}</span>
+                  <div>
+                    <div className="font-semibold text-sm flex items-center gap-1.5">
+                      <span>{g.name}</span>
+                      <span className="rounded bg-neutral-800 px-1.5 py-0.2 text-[10px] text-neutral-400 font-mono">
+                        [{g.tag}]
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-neutral-400">Level {g.level} Clan</div>
+                  </div>
+                </div>
+                <Badge tone="accent">+{g.level * 2}% XP</Badge>
+              </div>
+
+              {g.description && (
+                <p className="mt-2 text-xs text-neutral-400 line-clamp-2">{g.description}</p>
+              )}
+
+              <div className="mt-3 flex items-center justify-between text-[11px] text-neutral-500">
+                <span>{g.totalXp.toLocaleString()} Total XP</span>
+                <span className="text-indigo-400">View Roster →</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {/* Selected Guild Detail Modal / Banner */}
+      {selectedGuildId && guildDetailQuery.data?.guild && (
+        <Panel className="space-y-4 border-indigo-500/40 bg-indigo-950/10">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">{guildDetailQuery.data.guild.avatarEmoji}</span>
+              <div>
+                <div className="text-lg font-bold flex items-center gap-2">
+                  <span>{guildDetailQuery.data.guild.name}</span>
+                  <Badge tone="accent">[{guildDetailQuery.data.guild.tag}]</Badge>
+                </div>
+                <p className="text-xs text-neutral-400">
+                  Level {guildDetailQuery.data.guild.level} Clan ·{' '}
+                  {guildDetailQuery.data.guild.totalXp} Cumulative Study XP
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => contributeMutation.mutate(selectedGuildId)}
+                disabled={contributeMutation.isPending}
+              >
+                <Zap className="h-3.5 w-3.5 text-amber-400" /> Contribute 100 XP
+              </Button>
+              <Button
+                onClick={() => joinMutation.mutate(selectedGuildId)}
+                disabled={joinMutation.isPending}
+              >
+                <Shield className="h-3.5 w-3.5" /> Join Clan
+              </Button>
+            </div>
+          </div>
+
+          {/* Members Table */}
+          <div className="pt-2 space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              Clan Roster ({guildDetailQuery.data.members?.length ?? 0} Scholars)
+            </h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(guildDetailQuery.data.members ?? []).map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 p-2.5 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-neutral-200">{m.alias}</span>
+                    <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400 uppercase">
+                      {m.role}
+                    </span>
+                  </div>
+                  <span className="text-indigo-400 font-mono text-[11px]">
+                    {m.xpContributed.toLocaleString()} XP
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+      )}
     </div>
   )
 }

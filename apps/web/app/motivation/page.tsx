@@ -2,7 +2,17 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, CheckCircle2, Flame, Lock, ScrollText, Sparkles, Target } from 'lucide-react'
+import {
+  Award,
+  Check,
+  CheckCircle2,
+  Flame,
+  Lock,
+  ScrollText,
+  Sparkles,
+  Target,
+  Trophy,
+} from 'lucide-react'
 import { isFreshStartMoment } from '@learning-hub/core/src/motivation'
 import { apiGet, apiSend } from '@/lib/transport'
 
@@ -456,6 +466,156 @@ export default function MotivationPage() {
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* ── 30-Tier Seasonal Study Pass ── */}
+      <SeasonalStudyPassSection />
+    </div>
+  )
+}
+
+interface SeasonTierItem {
+  tier: number
+  xpThreshold: number
+  rewardName: string
+  rewardType: string
+}
+
+function SeasonalStudyPassSection() {
+  const qc = useQueryClient()
+  const seasonQuery = useQuery<{
+    ok: boolean
+    seasonId: string
+    progress: {
+      seasonXp: number
+      tier: number
+      currentTier: number
+      nextTierXp: number
+      percentToNext: number
+      claimedRewards: number[]
+    }
+    tiers: SeasonTierItem[]
+  }>({
+    queryKey: ['season-progress'],
+    queryFn: () => apiGet('/api/social/seasons'),
+  })
+
+  const claimMutation = useMutation({
+    mutationFn: (tier: number) =>
+      apiSend('/api/social/seasons', 'POST', {
+        action: 'claim_reward',
+        tier,
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['season-progress'] })
+    },
+  })
+
+  const data = seasonQuery.data
+  const currentTier = data?.progress.currentTier ?? 0
+  const seasonXp = data?.progress.seasonXp ?? 0
+  const percentToNext = data?.progress.percentToNext ?? 0
+  const claimed = data?.progress.claimedRewards ?? []
+  const tiers = data?.tiers ?? []
+
+  return (
+    <div className="panel space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+            <Trophy className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">Season 1: Dawn of Mastery</h2>
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+                Tier {currentTier} of 30
+              </span>
+            </div>
+            <p className="text-xs text-neutral-400">
+              Earn study XP across reviews, lessons & focus sessions to unlock exclusive themes,
+              sound packs, and perks.
+            </p>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-sm font-bold text-amber-400">
+            {seasonXp.toLocaleString()} Season XP
+          </div>
+          <div className="text-[11px] text-neutral-500">
+            {percentToNext}% toward Tier {currentTier + 1}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="h-2 w-full rounded-full bg-neutral-800 overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-amber-500 to-indigo-500 transition-all duration-500"
+          style={{ width: `${percentToNext}%` }}
+        />
+      </div>
+
+      {/* 30-Tier Roadmap Carousel / Scroll */}
+      <div className="space-y-2 pt-2">
+        <div className="flex justify-between items-center text-xs text-neutral-400">
+          <span className="font-semibold uppercase tracking-wider text-[11px]">
+            30-Tier Reward Track
+          </span>
+          <span className="text-[11px] text-neutral-500">Scroll horizontally to view tiers →</span>
+        </div>
+
+        <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scroll-smooth">
+          {tiers.map((t) => {
+            const isUnlocked = currentTier >= t.tier
+            const isClaimed = claimed.includes(t.tier)
+            return (
+              <div
+                key={t.tier}
+                className={`flex-none w-44 rounded-xl border p-3.5 flex flex-col justify-between transition-all ${
+                  isClaimed
+                    ? 'border-emerald-500/30 bg-emerald-950/10 text-neutral-300'
+                    : isUnlocked
+                      ? 'border-amber-500/40 bg-amber-950/20 text-neutral-100 shadow-md'
+                      : 'border-neutral-800 bg-neutral-900/40 opacity-60 text-neutral-400'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                    <span className="font-semibold">Tier {t.tier}</span>
+                    <span className="font-mono">{t.xpThreshold} XP</span>
+                  </div>
+                  <div className="mt-2 text-xs font-semibold leading-tight">{t.rewardName}</div>
+                  <div className="text-[10px] text-neutral-500 uppercase tracking-wider mt-0.5">
+                    {t.rewardType.replace('_', ' ')}
+                  </div>
+                </div>
+
+                <div className="pt-3">
+                  {isClaimed ? (
+                    <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                      <Check className="h-3.5 w-3.5" /> Claimed
+                    </span>
+                  ) : isUnlocked ? (
+                    <button
+                      type="button"
+                      disabled={claimMutation.isPending}
+                      onClick={() => claimMutation.mutate(t.tier)}
+                      className="w-full rounded-lg bg-amber-500 py-1 text-xs font-semibold text-neutral-950 hover:bg-amber-400 transition-colors"
+                    >
+                      Claim Reward
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+                      <Lock className="h-3 w-3" /> Locked
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

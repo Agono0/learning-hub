@@ -136,6 +136,9 @@ beforeAll(async () => {
   M.graphDeps = await import('../app/api/curriculum/graph/dependencies/route')
   M.graphRemedial = await import('../app/api/curriculum/graph/remedial/route')
   M.ankiConnect = await import('../app/api/anki/connect/route')
+  M.socialGuilds = await import('../app/api/social/guilds/route')
+  M.socialDuels = await import('../app/api/social/duels/route')
+  M.socialSeasons = await import('../app/api/social/seasons/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1412,5 +1415,106 @@ describe('max focus mode (milestone 6)', () => {
     const ankiGetBody = (await ankiGetRes.json()) as { ok: boolean; count: number }
     expect(ankiGetBody.ok).toBe(true)
     expect(ankiGetBody.count).toBeGreaterThan(0)
+  })
+
+  it('multiplayer guilds, 1v1 duels & seasonal study pass routes', async () => {
+    // 1. Guilds: create clan, list clans, contribute pooled XP
+    const createGuildRes = await M.socialGuilds.POST(
+      post('/api/social/guilds', {
+        action: 'create',
+        name: 'Curie Laboratory',
+        tag: 'CURIE',
+        description: 'Deliberate chemistry & radiation physics recall',
+        leaderAlias: 'Marie',
+      }),
+    )
+    expect(createGuildRes.status).toBe(200)
+    const createGuildBody = (await createGuildRes.json()) as {
+      ok: boolean
+      guild: { id: number; name: string }
+    }
+    expect(createGuildBody.ok).toBe(true)
+    const guildId = createGuildBody.guild.id
+
+    const listGuildsRes = await M.socialGuilds.GET(req('GET', '/api/social/guilds'))
+    expect(listGuildsRes.status).toBe(200)
+    const listGuildsBody = (await listGuildsRes.json()) as { ok: boolean; guilds: any[] }
+    expect(listGuildsBody.ok).toBe(true)
+    expect(listGuildsBody.guilds.some((g) => g.id === guildId)).toBe(true)
+
+    const contributeRes = await M.socialGuilds.POST(
+      post('/api/social/guilds', {
+        action: 'contribute',
+        guildId,
+        alias: 'Marie',
+        xp: 1500,
+      }),
+    )
+    expect(contributeRes.status).toBe(200)
+    const contributeBody = (await contributeRes.json()) as {
+      ok: boolean
+      guild: { level: number; totalXp: number }
+    }
+    expect(contributeBody.ok).toBe(true)
+    expect(contributeBody.guild.totalXp).toBeGreaterThanOrEqual(1500)
+    expect(contributeBody.guild.level).toBeGreaterThanOrEqual(2)
+
+    // 2. 1v1 Duels: record duel outcome & recalculate Elo
+    const duelPostRes = await M.socialDuels.POST(
+      post('/api/social/duels', {
+        player1Alias: 'LearnerAlice',
+        player2Alias: 'Ada Lovelace (Bot)',
+        winnerAlias: 'LearnerAlice',
+        player1Score: 650,
+        player2Score: 500,
+        player1CurrentElo: 1200,
+        player2CurrentElo: 1200,
+      }),
+    )
+    expect(duelPostRes.status).toBe(200)
+    const duelPostBody = (await duelPostRes.json()) as {
+      ok: boolean
+      duel: { id: number }
+      eloUpdates: { player1: { next: number }; player2: { next: number } }
+    }
+    expect(duelPostBody.ok).toBe(true)
+    expect(duelPostBody.eloUpdates.player1.next).toBe(1216)
+    expect(duelPostBody.eloUpdates.player2.next).toBe(1184)
+
+    const duelsGetRes = await M.socialDuels.GET(req('GET', '/api/social/duels'))
+    expect(duelsGetRes.status).toBe(200)
+    const duelsGetBody = (await duelsGetRes.json()) as { ok: boolean; duels: any[] }
+    expect(duelsGetBody.ok).toBe(true)
+    expect(duelsGetBody.duels.some((d) => d.id === duelPostBody.duel.id)).toBe(true)
+
+    // 3. Seasonal Study Pass: status, progress, reward claim
+    const seasonsGetRes = await M.socialSeasons.GET(req('GET', '/api/social/seasons'))
+    expect(seasonsGetRes.status).toBe(200)
+    const seasonsGetBody = (await seasonsGetRes.json()) as {
+      ok: boolean
+      tiers: any[]
+      progress: any
+    }
+    expect(seasonsGetBody.ok).toBe(true)
+    expect(seasonsGetBody.tiers.length).toBe(30)
+
+    const addXpRes = await M.socialSeasons.POST(
+      post('/api/social/seasons', { action: 'add_xp', xp: 550 }),
+    )
+    expect(addXpRes.status).toBe(200)
+    const addXpBody = (await addXpRes.json()) as { ok: boolean; progress: { currentTier: number } }
+    expect(addXpBody.ok).toBe(true)
+    expect(addXpBody.progress.currentTier).toBeGreaterThanOrEqual(5)
+
+    const claimRes = await M.socialSeasons.POST(
+      post('/api/social/seasons', { action: 'claim_reward', tier: 5 }),
+    )
+    expect(claimRes.status).toBe(200)
+    const claimBody = (await claimRes.json()) as {
+      ok: boolean
+      progress: { claimedRewards: number[] }
+    }
+    expect(claimBody.ok).toBe(true)
+    expect(claimBody.progress.claimedRewards).toContain(5)
   })
 })

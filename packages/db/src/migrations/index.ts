@@ -24,6 +24,7 @@ import { online } from './011-online'
 import { audioVoice } from './012-audio-voice'
 import { powerTools } from './013-power-tools'
 import { knowledgeGraph } from './014-knowledge-graph'
+import { guildsSeasons } from './015-guilds-seasons'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -41,6 +42,7 @@ export const MIGRATIONS: readonly Migration[] = [
   audioVoice,
   powerTools,
   knowledgeGraph,
+  guildsSeasons,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

@@ -106,7 +106,10 @@ import * as review from '../server/handlers/review/route'
 import * as settings from '../server/handlers/settings/route'
 import * as shareExport from '../server/handlers/share/export/route'
 import * as shareImport from '../server/handlers/share/import/route'
+import * as socialDuels from '../server/handlers/social/duels/route'
+import * as socialGuilds from '../server/handlers/social/guilds/route'
 import * as socialLeaderboard from '../server/handlers/social/leaderboard/route'
+import * as socialSeasons from '../server/handlers/social/seasons/route'
 import * as starter from '../server/handlers/starter/route'
 import * as streaks from '../server/handlers/streaks/route'
 import * as studyPlan from '../server/handlers/study-plan/route'
@@ -248,7 +251,10 @@ add('search', search)
 add('settings', settings)
 add('share/export', shareExport)
 add('share/import', shareImport)
+add('social/duels', socialDuels)
+add('social/guilds', socialGuilds)
 add('social/leaderboard', socialLeaderboard)
+add('social/seasons', socialSeasons)
 add('starter', starter)
 add('streaks', streaks)
 add('study-plan', studyPlan)
