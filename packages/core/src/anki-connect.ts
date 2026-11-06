@@ -1,1 +1,1 @@
-export * from './anki-connect/index.js'
+export * from './anki-connect/index'

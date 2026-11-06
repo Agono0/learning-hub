@@ -1,1 +1,1 @@
-export * from './embeddings/index.js'
+export * from './embeddings/index'

@@ -1,1 +1,1 @@
-export * from './world/index.js'
+export * from './world/index'
