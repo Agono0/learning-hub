@@ -115,7 +115,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-2 shadow-xl dark:border-[#26262b] dark:bg-[#141417]">
+        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-2 shadow-xl dark:border-(--hub-border) dark:bg-(--hub-panel)">
           <div className="flex items-center justify-between px-2 pb-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
               Needs attention

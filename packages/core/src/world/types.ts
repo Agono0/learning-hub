@@ -106,7 +106,7 @@ export const worldSettingsSchema = z.object({
   viewMode: worldViewModeSchema.default('hybrid'),
   timerTheme: worldTimerThemeSchema.default('tree'),
   integrationMode: worldIntegrationModeSchema.default('dedicated'),
-  soundscape: worldSoundscapeSchema.default('birds'),
+  soundscape: worldSoundscapeSchema.default('none'),
   lowPolyQuality: z.enum(['high', 'medium', 'low']).default('high'),
 })
 

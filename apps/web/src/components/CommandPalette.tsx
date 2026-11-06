@@ -94,13 +94,13 @@ export function CommandPalette() {
       shouldFilter={false} // server-side search; nav items filtered by cmdk is redundant here
     >
       <div className="fixed inset-0 bg-black/50" onMouseDown={() => setOpen(false)} aria-hidden />
-      <div className="fixed inset-x-4 top-[12dvh] mx-auto max-w-xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-[#26262b] dark:bg-[#141417]">
+      <div className="fixed inset-x-4 top-[12dvh] mx-auto max-w-xl overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-(--hub-border) dark:bg-(--hub-panel)">
         <Command.Input
           autoFocus
           value={query}
           onValueChange={setQuery}
           placeholder="Search or jump to… (⌘K)"
-          className="w-full border-b border-neutral-200 bg-transparent px-4 py-3 text-sm outline-none dark:border-[#26262b]"
+          className="w-full border-b border-neutral-200 bg-transparent px-4 py-3 text-sm outline-none dark:border-(--hub-border)"
         />
         <Command.List className="max-h-[50dvh] overflow-y-auto p-2">
           <Command.Empty className="px-3 py-6 text-center text-sm text-neutral-500">

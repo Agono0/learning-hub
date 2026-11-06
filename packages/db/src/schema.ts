@@ -1485,7 +1485,7 @@ export const userWorldSettings = table('user_world_settings', {
   viewMode: text('view_mode').notNull().default('hybrid'),
   timerTheme: text('timer_theme').notNull().default('tree'),
   integrationMode: text('integration_mode').notNull().default('dedicated'),
-  soundscape: text('soundscape').notNull().default('birds'),
+  soundscape: text('soundscape').notNull().default('none'),
   lowPolyQuality: text('low_poly_quality').notNull().default('high'),
   updatedAt: text('updated_at')
     .notNull()

@@ -367,7 +367,7 @@ export function getWorldSettings(userId = 'default'): WorldSettingsRow {
         viewMode: 'hybrid',
         timerTheme: 'tree',
         integrationMode: 'dedicated',
-        soundscape: 'birds',
+        soundscape: 'none',
         lowPolyQuality: 'high',
         updatedAt: now,
       })

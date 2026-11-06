@@ -117,7 +117,7 @@ export function TransportPanel({
   const t = info.data
 
   return (
-    <div className="space-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]">
+    <div className="space-y-2 rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)">
       <div className="flex flex-wrap items-center gap-2">
         <span className="label mb-0">Prompt transport — {t.title}</span>
         <button
@@ -139,7 +139,7 @@ export function TransportPanel({
         )}
       </div>
 
-      <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-[#101014] dark:text-neutral-300">
+      <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300">
         {t.envelope.system}
         {'\n\n── user ──\n'}
         {t.envelope.prompt}

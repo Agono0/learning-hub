@@ -195,7 +195,7 @@ export function OnboardingWizard() {
             <span
               key={n}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
-                n <= step ? 'bg-indigo-600' : 'bg-neutral-200 dark:bg-[#26262b]'
+                n <= step ? 'bg-indigo-600' : 'bg-neutral-200 dark:bg-(--hub-border)'
               }`}
             />
           ))}
@@ -232,7 +232,7 @@ export function OnboardingWizard() {
                       className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-[#26262b] dark:hover:bg-[#1a1a1f]'
+                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -262,7 +262,7 @@ export function OnboardingWizard() {
                       className={`rounded-xl border p-3 text-left transition-colors ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-[#26262b] dark:hover:bg-[#1a1a1f]'
+                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
                       }`}
                     >
                       <div className="text-sm font-semibold">{opt.label}</div>
@@ -292,7 +292,7 @@ export function OnboardingWizard() {
                     className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
                       checked
                         ? 'border-indigo-500 bg-indigo-600/10'
-                        : 'border-neutral-200 hover:bg-neutral-50 dark:border-[#26262b] dark:hover:bg-[#1a1a1f]'
+                        : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
                     }`}
                   >
                     <span
@@ -316,7 +316,7 @@ export function OnboardingWizard() {
               })}
             </div>
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-neutral-200 px-3 py-2.5 text-xs dark:border-[#26262b]">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-neutral-200 px-3 py-2.5 text-xs dark:border-(--hub-border)">
               <input
                 type="checkbox"
                 checked={seedCore}
@@ -337,7 +337,7 @@ export function OnboardingWizard() {
               You&apos;re all set! Learning HUB never requires a subscription or server account:
             </p>
             <div className="space-y-2.5">
-              <div className="rounded-xl border border-neutral-200 p-3 dark:border-[#26262b]">
+              <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <GraduationCap className="h-4 w-4 text-indigo-500" />
                   AI is optional (Manual Mode + Free Tiers built in)
@@ -355,7 +355,7 @@ export function OnboardingWizard() {
                   .
                 </p>
               </div>
-              <div className="rounded-xl border border-neutral-200 p-3 dark:border-[#26262b]">
+              <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Cloud className="h-4 w-4 text-indigo-500" />
                   Free E2EE Multi-Device Sync
@@ -373,11 +373,11 @@ export function OnboardingWizard() {
                   .
                 </p>
               </div>
-              <div className="rounded-xl border border-neutral-200 p-3 dark:border-[#26262b]">
+              <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <BookOpen className="h-4 w-4 text-indigo-500" />
                   Tip: Press{' '}
-                  <kbd className="rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] dark:bg-[#26262b]">
+                  <kbd className="rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] dark:bg-(--hub-border)">
                     ⌘K
                   </kbd>{' '}
                   anytime

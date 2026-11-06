@@ -4,6 +4,14 @@ All notable changes to Learning HUB are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Forest World 2.0 (Visual Overhaul, Marketplace Companions & Dynamic Themes)
+
+- **3D visual overhaul** — filmic ACES tone mapping, three-point light rig (hemisphere bounce + shadow-casting sun + fill), shader gradient sky dome, drifting clouds, exponential-feel fog, vertex-colored terrain (grass noise fields + cliff strata), a shimmering pond with wooden dock and reeds, glowing path lanterns, instanced flowers/grass tufts/mushrooms, subtle bloom on emissives (high quality), and orbit-camera controls (drag to rotate, scroll to zoom) in diorama mode. Trees sway in the wind via a shared vertex-shader injection; willow droops, sakura glows, crystal pines refract.
+- **Marketplace companions & decor** — 8 low-poly pets (cat, turtle, fox, moon bunny, owl, axolotl, grove spirit, ember dragonling) that follow the scholar with per-species locomotion (walk/hop/fly/drift), and 8 island structures (lantern, bench, wishing well, study tent, windmill with turning sails, zen pavilion, focus monument, scholar's archway) that spawn at deterministic island spots via `getDecorPlacement()` in core — no placement storage needed.
+- **Item preview portal** — every marketplace card opens a live 3D turntable on a collector's pedestal: studio three-point lighting, rarity glow ring, drag-to-spin with flick momentum, category-filtered shop with rarity-styled cards.
+- **Dynamic themes** — six color palettes (Calm default, Forest, Ocean, Sunset, Blossom, Midnight) re-skin the entire app through runtime CSS variables (`@theme inline` + `color-mix` ramps + `--hub-*` dark surfaces) and drive the 3D world's mood (Calm → soft morning … Midnight → starlit night with fireflies). Pre-paint init script prevents flashes; picker lives in Settings → Color palette.
+- **Silent by default** — the world no longer auto-plays a constant oscillator tone (it read as a buzz); the birds soundscape is now occasional two-note warbles with silence between, opt-in via the sound toggle.
+
 ### Full-Spectrum Upgrade (FSRS-6 Optimizer, Free E2EE Cloud Sync, Multi-Format Reading & SQL Sandbox)
 
 - **FSRS-6 Weight Optimizer, Per-Deck Presets & Append-Only Undo** — pure 21-parameter MAP coordinate-descent optimizer + Log-Loss/RMSE calibration evaluator (`packages/core/src/fsrs-optimizer.ts`), per-deck `desired_retention` and `fsrs_weights` overrides, append-only `revlog_undos` history preservation, blur-aware 60s-capped recall timer, and live `<10m · 2d · 6d · 15d` interval badges on review grade buttons.

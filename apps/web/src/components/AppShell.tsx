@@ -163,7 +163,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-[#26262b] dark:bg-[#0e0e11]/90">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <Brand />
         <NotificationBell />
@@ -174,13 +174,13 @@ function Sidebar({ pathname }: { pathname: string | null }) {
           type="button"
           onClick={openCommandPalette}
           aria-label="Search or jump to page (Command K)"
-          className="flex w-full items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-500 transition-colors hover:border-neutral-300 hover:text-neutral-800 dark:border-[#26262b] dark:bg-[#141418] dark:hover:border-neutral-700 dark:hover:text-neutral-200"
+          className="flex w-full items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-500 transition-colors hover:border-neutral-300 hover:text-neutral-800 dark:border-(--hub-border) dark:bg-[#141418] dark:hover:border-neutral-700 dark:hover:text-neutral-200"
         >
           <span className="flex items-center gap-1.5">
             <Search className="h-3.5 w-3.5" />
             Search…
           </span>
-          <kbd className="rounded bg-neutral-200/80 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-[#232329] dark:text-neutral-400">
+          <kbd className="rounded bg-neutral-200/80 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-(--hub-border) dark:text-neutral-400">
             ⌘K
           </kbd>
         </button>
@@ -201,7 +201,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
                 <span>{section.group}</span>
                 <span className="flex items-center gap-1">
                   {isGroupCollapsed && (
-                    <span className="rounded-full bg-neutral-200/70 px-1.5 text-[9px] tabular-nums text-neutral-500 dark:bg-[#222228]">
+                    <span className="rounded-full bg-neutral-200/70 px-1.5 text-[9px] tabular-nums text-neutral-500 dark:bg-(--hub-border)">
                       {section.items.length}
                     </span>
                   )}
@@ -240,7 +240,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
         })}
       </nav>
 
-      <div className="flex items-center justify-between gap-1 border-t border-neutral-200 px-2.5 py-2.5 dark:border-[#26262b]">
+      <div className="flex items-center justify-between gap-1 border-t border-neutral-200 px-2.5 py-2.5 dark:border-(--hub-border)">
         <button
           type="button"
           onClick={sync.trigger}
@@ -284,7 +284,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
 function Rail({ pathname }: { pathname: string | null }) {
   const sync = useQuickCloudSync()
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 hidden w-16 print:hidden flex-col items-center border-r border-neutral-200 bg-white/80 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:flex lg:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/90">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-16 print:hidden flex-col items-center border-r border-neutral-200 bg-white/80 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:flex lg:hidden dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <Brand compact />
       <div className="mt-2 flex flex-col items-center gap-1">
         <button
@@ -320,7 +320,7 @@ function Rail({ pathname }: { pathname: string | null }) {
       >
         {NAV.map((section, i) => (
           <div key={section.group} className="flex w-full flex-col items-center gap-1">
-            {i > 0 && <div className="my-1 h-px w-8 bg-neutral-200 dark:bg-[#26262b]" />}
+            {i > 0 && <div className="my-1 h-px w-8 bg-neutral-200 dark:bg-(--hub-border)" />}
             {section.items.map((item) => {
               const active = isActive(pathname, item.href)
               const Icon = item.icon
@@ -373,7 +373,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
         className="sheet-backdrop absolute inset-0 bg-black/50"
         onClick={onClose}
       />
-      <div className="sheet-panel absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-neutral-200 bg-white pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-[#26262b] dark:bg-[#121215]">
+      <div className="sheet-panel absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-neutral-200 bg-white pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-(--hub-border) dark:bg-(--hub-sunken)">
         <div className="sticky top-0 flex items-center justify-between bg-inherit px-4 pb-2 pt-3">
           <div
             className="mx-auto h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700"
@@ -394,7 +394,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
               onClose()
               openCommandPalette()
             }}
-            className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 dark:border-[#26262b] dark:bg-[#1a1a1f]"
+            className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 dark:border-(--hub-border) dark:bg-(--hub-panel-2)"
           >
             <Search className="h-4 w-4" />
             Search notes, cards, lessons…
@@ -419,7 +419,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
                       className={`flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-xs transition-colors ${
                         active
                           ? 'bg-indigo-600/15 font-medium text-indigo-600 dark:text-indigo-300'
-                          : 'bg-neutral-100 text-neutral-700 active:bg-neutral-200 dark:bg-[#1a1a1f] dark:text-neutral-300 dark:active:bg-[#232329]'
+                          : 'bg-neutral-100 text-neutral-700 active:bg-neutral-200 dark:bg-(--hub-panel-2) dark:text-neutral-300 dark:active:bg-[#232329]'
                       }`}
                     >
                       <Icon className="h-5 w-5" />
@@ -447,7 +447,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex print:hidden items-center gap-2.5 border-b border-neutral-200 bg-white/85 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/85">
+      <header className="sticky top-0 z-30 flex print:hidden items-center gap-2.5 border-b border-neutral-200 bg-white/85 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur md:hidden dark:border-(--hub-border) dark:bg-(--hub-sunken)/85">
         <Brand compact />
         <span className="text-sm font-semibold tracking-tight">Learning HUB</span>
         <span className="ml-auto flex items-center gap-1">
@@ -481,7 +481,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 print:hidden border-t border-neutral-200 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-[#26262b] dark:bg-[#0e0e11]/92"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 print:hidden border-t border-neutral-200 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-(--hub-border) dark:bg-(--hub-sunken)/92"
       >
         {PRIMARY_NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href)
