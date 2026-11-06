@@ -1251,3 +1251,37 @@ export const audioSessions = table('audio_sessions', {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 })
+
+// ─── Desktop & Mobile Power Tools (M12) ───────────────────────────────────────
+
+export const quickCaptures = table(
+  'quick_captures',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    text: text('text').notNull(),
+    sourceUrl: text('source_url'),
+    sourceTitle: text('source_title'),
+    tags: text('tags', { mode: 'json' }).$type<string[]>(),
+    processed: integer('processed', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('quick_captures_processed_idx').on(t.processed)],
+)
+
+export const cardEmbeddings = table(
+  'card_embeddings',
+  {
+    cardId: integer('card_id')
+      .primaryKey()
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    embedding: text('embedding', { mode: 'json' }).$type<number[]>().notNull(),
+    model: text('model').notNull().default('all-MiniLM-L6-v2'),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('card_embeddings_model_idx').on(t.model)],
+)

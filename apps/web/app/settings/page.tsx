@@ -2,7 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Globe, Monitor, Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
+import {
+  Bell,
+  Command,
+  Globe,
+  Layout,
+  Monitor,
+  Moon,
+  RotateCcw,
+  Smartphone,
+  Sparkles,
+  Sun,
+  Wand2,
+} from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
 import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
 import {
@@ -774,6 +786,9 @@ export default function SettingsPage() {
       {/* ── Online Identity & Privacy ── */}
       <OnlineIdentitySection />
 
+      {/* ── Desktop & Mobile Power Tools ── */}
+      <PowerToolsSection />
+
       <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save settings'}
       </button>
@@ -964,6 +979,73 @@ function OnlineIdentitySection() {
             {saveMutation.isPending ? 'Saving…' : 'Update Online Identity'}
           </button>
           {savedMsg && <span className="text-xs text-emerald-400">Identity updated!</span>}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function PowerToolsSection() {
+  const [hudStyle, setHudStyle] = useState<'spotlight' | 'tray' | 'palette'>('spotlight')
+
+  return (
+    <section className="panel space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Command className="h-4 w-4 text-indigo-400" /> Desktop & Mobile Power Tools
+        </h2>
+        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-400">
+          HUD & Embeddings Ready
+        </span>
+      </div>
+
+      <p className="text-xs text-neutral-400">
+        Global hotkey{' '}
+        <kbd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200">
+          Ctrl+Shift+Space
+        </kbd>{' '}
+        opens the Quick-HUD from anywhere on desktop for instant micro-reviews and quick inbox
+        capture.
+      </p>
+
+      <div className="grid gap-3 pt-2 sm:grid-cols-2">
+        <div>
+          <label className="label mb-1.5 block">Quick-HUD Presentation Style</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'spotlight' as const, label: 'Spotlight', desc: 'Centered modal' },
+              { id: 'tray' as const, label: 'Tray Widget', desc: 'Bottom corner' },
+              { id: 'palette' as const, label: 'Palette', desc: 'Top command bar' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setHudStyle(opt.id)}
+                className={`rounded-lg border p-2 text-center text-xs transition-all ${
+                  hudStyle === opt.id
+                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300 font-medium'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                <div>{opt.label}</div>
+                <div className="text-[10px] text-neutral-500">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-end space-y-2">
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-quick-hud'))}
+            className="btn-ghost flex items-center justify-center gap-2 text-xs py-2 border border-indigo-500/30 text-indigo-300"
+          >
+            <Layout className="h-3.5 w-3.5" /> Test Open Quick-HUD
+          </button>
+          <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+            <Smartphone className="h-3.5 w-3.5" />
+            <span>Android Home-Screen review glance widget receiver configured.</span>
+          </div>
         </div>
       </div>
     </section>

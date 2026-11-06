@@ -130,6 +130,9 @@ beforeAll(async () => {
   M.audioDigest = await import('../app/api/audio/digest/route')
   M.audioGrade = await import('../app/api/audio/grade/route')
   M.audioSessions = await import('../app/api/audio/sessions/route')
+  M.hudQuickReview = await import('../app/api/hud/quick-review/route')
+  M.hudCapture = await import('../app/api/hud/capture/route')
+  M.embeddingsSearch = await import('../app/api/embeddings/search/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1271,5 +1274,60 @@ describe('max focus mode (milestone 6)', () => {
     const sessionGetBody = (await sessionGetRes.json()) as { ok: boolean; sessions: any[] }
     expect(sessionGetBody.ok).toBe(true)
     expect(sessionGetBody.sessions.some((s) => s.id === sessionPostBody.session.id)).toBe(true)
+  })
+
+  it('power tools routes: quick-review due cards, quick-capture thoughts & vector embedding search', async () => {
+    // 1. HUD quick-review cards
+    const hudRes = await M.hudQuickReview.GET(req('GET', '/api/hud/quick-review?limit=3'))
+    expect(hudRes.status).toBe(200)
+    const hudBody = (await hudRes.json()) as { ok: boolean; cards: any[] }
+    expect(hudBody.ok).toBe(true)
+    expect(Array.isArray(hudBody.cards)).toBe(true)
+
+    // 2. HUD quick-capture POST, GET, PATCH, DELETE
+    const capturePost = await M.hudCapture.POST(
+      post('/api/hud/capture', {
+        text: 'Important research finding on neuroplasticity and spaced retrieval',
+        sourceUrl: 'https://example.com/neuroplasticity',
+        tags: ['neuro', 'memory'],
+      }),
+    )
+    expect(capturePost.status).toBe(200)
+    const capturePostBody = (await capturePost.json()) as {
+      ok: boolean
+      capture: { id: number; text: string }
+    }
+    expect(capturePostBody.ok).toBe(true)
+    expect(capturePostBody.capture.id).toBeGreaterThan(0)
+    const captureId = capturePostBody.capture.id
+
+    const captureGet = await M.hudCapture.GET(req('GET', '/api/hud/capture'))
+    expect(captureGet.status).toBe(200)
+    const captureGetBody = (await captureGet.json()) as { ok: boolean; captures: any[] }
+    expect(captureGetBody.ok).toBe(true)
+    expect(captureGetBody.captures.some((c) => c.id === captureId)).toBe(true)
+
+    const capturePatch = await M.hudCapture.PATCH(
+      post('/api/hud/capture', { id: captureId, processed: true }),
+    )
+    expect(capturePatch.status).toBe(200)
+
+    const captureDelete = await M.hudCapture.DELETE(
+      req('DELETE', `/api/hud/capture?id=${captureId}`),
+    )
+    expect(captureDelete.status).toBe(200)
+
+    // 3. Vector embedding search
+    const searchRes = await M.embeddingsSearch.POST(
+      post('/api/embeddings/search', {
+        queryVector: [0.1, 0.5, 0.8, -0.2],
+        topK: 5,
+        minScore: -1,
+      }),
+    )
+    expect(searchRes.status).toBe(200)
+    const searchBody = (await searchRes.json()) as { ok: boolean; matches: any[] }
+    expect(searchBody.ok).toBe(true)
+    expect(Array.isArray(searchBody.matches)).toBe(true)
   })
 })

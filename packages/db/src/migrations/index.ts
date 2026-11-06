@@ -22,6 +22,7 @@ import { visualLearning } from './009-visual-learning'
 import { social } from './010-social'
 import { online } from './011-online'
 import { audioVoice } from './012-audio-voice'
+import { powerTools } from './013-power-tools'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -37,6 +38,7 @@ export const MIGRATIONS: readonly Migration[] = [
   social,
   online,
   audioVoice,
+  powerTools,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

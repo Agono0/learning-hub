@@ -50,10 +50,11 @@ pub fn run() {
             };
 
             let open_i = MenuItem::with_id(app, "open", "Open Learning HUB", true, None::<&str>)?;
+            let hud_i = MenuItem::with_id(app, "hud", "Quick-HUD (Ctrl+Shift+Space)", true, None::<&str>)?;
             let reviews_i = MenuItem::with_id(app, "reviews", "Today's Reviews", true, None::<&str>)?;
             let focus_i = MenuItem::with_id(app, "focus", "Quick Focus", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open_i, &reviews_i, &focus_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[&open_i, &hud_i, &reviews_i, &focus_i, &quit_i])?;
 
             let mut tray_builder = TrayIconBuilder::new()
                 .menu(&menu)
@@ -64,6 +65,14 @@ pub fn run() {
                             let _ = window.show();
                             let _ = window.unminimize();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "hud" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                            let _ = window.eval("window.dispatchEvent(new CustomEvent('toggle-quick-hud'));");
                         }
                     }
                     "reviews" => {

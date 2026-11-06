@@ -40,6 +40,7 @@ import * as dashboard from '../server/handlers/dashboard/route'
 import * as decksId from '../server/handlers/decks/[id]/route'
 import * as decks from '../server/handlers/decks/route'
 import * as distractions from '../server/handlers/distractions/route'
+import * as embeddingsSearch from '../server/handlers/embeddings/search/route'
 import * as exportRoute from '../server/handlers/export/route'
 import * as focusAllowlistsId from '../server/handlers/focus/allowlists/[id]/route'
 import * as focusAllowlists from '../server/handlers/focus/allowlists/route'
@@ -59,6 +60,8 @@ import * as graph from '../server/handlers/graph/route'
 import * as habitsCheckin from '../server/handlers/habits/checkin/route'
 import * as habitsId from '../server/handlers/habits/[id]/route'
 import * as habits from '../server/handlers/habits/route'
+import * as hudCapture from '../server/handlers/hud/capture/route'
+import * as hudQuickReview from '../server/handlers/hud/quick-review/route'
 import * as ideasBrainwrite from '../server/handlers/ideas/brainwrite/route'
 import * as ideasCouncil from '../server/handlers/ideas/council/route'
 import * as ideasEvolve from '../server/handlers/ideas/evolve/route'
@@ -176,6 +179,7 @@ add('dashboard', dashboard)
 add('decks', decks)
 add('decks/[id]', decksId)
 add('distractions', distractions)
+add('embeddings/search', embeddingsSearch)
 add('export', exportRoute)
 add('focus', focus)
 add('focus/[id]', focusId)
@@ -194,6 +198,8 @@ add('graph', graph)
 add('habits', habits)
 add('habits/checkin', habitsCheckin)
 add('habits/[id]', habitsId)
+add('hud/capture', hudCapture)
+add('hud/quick-review', hudQuickReview)
 add('ideas', ideas)
 add('ideas/[id]', ideasId)
 add('ideas/brainwrite', ideasBrainwrite)
