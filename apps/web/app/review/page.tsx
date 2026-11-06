@@ -25,9 +25,11 @@ import {
   Undo2,
   X,
   Zap,
+  Volume2,
 } from 'lucide-react'
 import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
 import { clozeSegments, isCardAnswerCorrect, pickBasicFront } from '@learning-hub/core/cards'
+import { isSpeechAvailable, speak } from '@/lib/speech'
 import { hapticLight, hapticHeavy } from '@/platform/haptics'
 import {
   applyMistake,
@@ -989,7 +991,20 @@ function CardFront(props: {
             className="max-h-56 rounded-lg border border-neutral-200 dark:border-(--hub-border)"
           />
         )}
-        <div className="text-xl font-medium">{front}</div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-xl font-medium">{front}</div>
+          {isSpeechAvailable() && (
+            <button
+              type="button"
+              className="btn-ghost shrink-0 border p-2"
+              aria-label="Read card aloud"
+              title="Read aloud"
+              onClick={() => speak(front)}
+            >
+              <Volume2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
         {revealed && (
           <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-(--hub-border)">
             {content.basic.back}

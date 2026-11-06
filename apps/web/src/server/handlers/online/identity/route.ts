@@ -11,7 +11,12 @@ import {
   updateOnlinePrefs,
 } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
-import { generateIdentityKeyPair, identityChallenge, signIdentityPayload } from '@learning-hub/core'
+import {
+  generateIdentityKeyPair,
+  identityChallenge,
+  identitySigningPayload,
+  signIdentityPayload,
+} from '@learning-hub/core'
 
 const updateIdentitySchema = z.object({
   mode: z.enum(['device_key', 'magic_link', 'offline']).optional(),

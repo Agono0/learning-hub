@@ -4,6 +4,16 @@ All notable changes to Learning HUB are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### M18 "Omniscient" — All-in-One Max-Out
+
+- **Search Everything** — FTS5 across 17 knowledge surfaces (12 new: journal, quotes, reading sources, projects, mindmaps, canvases, palaces, goals, habits, quick captures, SQ3R, tutor chats) + a full-screen `/search` page with kind filters + an AI `nl-search` planner that turns a question into keyword queries (manual mode: keyword split).
+- **Intelligence & Insight** — real on-device embeddings (MiniLM via transformers.js, nothing leaves the machine) over cards/notes/lessons/highlights/journal with a Settings index builder, "Related content" panels, HUD semantic search powered by the real model (dummy `sin()` vectors removed); a cross-metric insights engine (sleep/exercise/mood × retention) with honest small-N labels; Tutor 2.0 (lesson context, past sessions, AI session summary → gap cards with bulk save).
+- **Event engine & cohesion** — all 10 lifecycle events now emit (6 were dead); guild XP bridge distributes committed review XP; unified activity timeline on the dashboard; streak.broken fires a local notification.
+- **Offline & platform** — production service worker (app shell + API cache + offline page), PNG icon set + installable manifest, haptic grading on native, fullscreen + wake-lock during Max Focus, web-push subscription plumbing (Settings panel + `push_subscriptions` table).
+- **Real online** — raids connect to the actual Cloudflare Durable Object WebSocket (offline mode is now explicitly labelled), ECDSA P-256 device identity with signed-challenge registration (worker verifies; imposters 401), friend leaderboard gist sync (`updateFriendSync` finally has callers), `npm run worker:deploy`.
+- **Surfaces & ecosystem** — reorderable dashboard widget registry with Activity/Insights widgets; ⌘K command actions (start review/focus, capture via HUD) + plugin-contributed actions/widgets via `ctx.paletteActions`/`ctx.dashboardWidgets`; four first-party plugins (`pomodoro-soundscape`, `anki-bridge`, `card-linter`, `streak-guardian`); Canvas pan/zoom; per-card read-aloud (TTS).
+- **Reach** — live `/api/calendar.ics` feed (exams + study plan + due forecast), three new reminder kinds (idea resurfacing, friction check-in, exam countdown) with db-backed facts, and a schedulable weekly digest (`npm run digest -w @learning-hub/server`) posting to webhooks + push.
+
 ### Forest World 2.0 (Visual Overhaul, Marketplace Companions & Dynamic Themes)
 
 - **3D visual overhaul** — filmic ACES tone mapping, three-point light rig (hemisphere bounce + shadow-casting sun + fill), shader gradient sky dome, drifting clouds, exponential-feel fog, vertex-colored terrain (grass noise fields + cliff strata), a shimmering pond with wooden dock and reeds, glowing path lanterns, instanced flowers/grass tufts/mushrooms, subtle bloom on emissives (high quality), and orbit-camera controls (drag to rotate, scroll to zoom) in diorama mode. Trees sway in the wind via a shared vertex-shader injection; willow droops, sakura glows, crystal pines refract.
