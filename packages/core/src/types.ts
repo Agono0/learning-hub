@@ -121,6 +121,7 @@ export type XPSource =
   | 'achievement'
   | 'journal'
   | 'idea'
+  | 'boss'
 
 /** One daily quest with its progress toward the target. */
 export interface QuestItem {

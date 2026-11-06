@@ -118,6 +118,11 @@ beforeAll(async () => {
   M.mindmapsId = (await import('../app/api/mindmaps/[id]/route')) as any
   M.mindmapsIdCards = (await import('../app/api/mindmaps/[id]/cards/route')) as any
   M.reviewAttemptImage = await import('../app/api/review/attempt-image/route')
+  M.cards = await import('../app/api/cards/route')
+  M.boss = await import('../app/api/games/boss/route')
+  M.shareExport = await import('../app/api/share/export/route')
+  M.shareImport = await import('../app/api/share/import/route')
+  M.leaderboard = await import('../app/api/social/leaderboard/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1015,5 +1020,94 @@ describe('max focus mode (milestone 6)', () => {
     const getAttemptBody = (await getAttemptRes.json()) as { ok: boolean; attempt: any }
     expect(getAttemptBody.attempt).toBeDefined()
     expect(getAttemptBody.attempt.cardId).toBe(cardId)
+  })
+
+  it('handles Milestone 9: boss battles, deck sharing envelopes and decentralized friend leaderboard', async () => {
+    // 1. Boss battles
+    const bossGetRes = await M.boss.GET()
+    expect(bossGetRes.status).toBe(200)
+    const bossGetBody = (await bossGetRes.json()) as { ok: boolean; roster: any[] }
+    expect(bossGetBody.ok).toBe(true)
+    expect(bossGetBody.roster.length).toBeGreaterThanOrEqual(3)
+
+    const bossStartRes = await M.boss.POST(
+      post('/api/games/boss', { action: 'start', bossKey: 'chronos' }),
+    )
+    expect(bossStartRes.status).toBe(200)
+    const bossStartBody = (await bossStartRes.json()) as { ok: boolean; battle: any }
+    expect(bossStartBody.ok).toBe(true)
+    expect(bossStartBody.battle.bossKey).toBe('chronos')
+    expect(bossStartBody.battle.currentHp).toBe(200)
+
+    const bossSyncRes = await M.boss.POST(post('/api/games/boss', { action: 'sync' }))
+    expect(bossSyncRes.status).toBe(200)
+
+    // 2. Share envelope export & import
+    const deckRes = await M.decks.POST(post('/api/decks', { name: 'Social Share Deck' }))
+    expect([200, 201]).toContain(deckRes.status)
+    const deckBody = (await deckRes.json()) as { deck: { id: number } }
+    const shareDeckId = deckBody.deck.id
+
+    const cardRes = await M.cards.POST(
+      post('/api/cards', {
+        deckId: shareDeckId,
+        type: 'basic',
+        content: {
+          front: 'Capital of France?',
+          back: 'Paris',
+        },
+      }),
+    )
+    expect([200, 201]).toContain(cardRes.status)
+
+    const exportRes = await M.shareExport.POST(
+      post('/api/share/export', { type: 'deck', id: shareDeckId }),
+    )
+    expect(exportRes.status).toBe(200)
+    const exportBody = (await exportRes.json()) as {
+      ok: boolean
+      shareString: string
+      envelope: any
+    }
+    expect(exportBody.ok).toBe(true)
+    expect(exportBody.shareString.startsWith('LH1_')).toBe(true)
+
+    const importRes = await M.shareImport.POST(
+      post('/api/share/import', { payload: exportBody.shareString }),
+    )
+    expect(importRes.status).toBe(200)
+    const importBody = (await importRes.json()) as {
+      ok: boolean
+      deckId: number
+      importedCount: number
+    }
+    expect(importBody.ok).toBe(true)
+    expect(importBody.deckId).toBeGreaterThan(0)
+    expect(importBody.importedCount).toBe(1)
+
+    // 3. Decentralized Gist Friends Leaderboard
+    const lbGetRes = await M.leaderboard.GET()
+    expect(lbGetRes.status).toBe(200)
+    const lbGetBody = (await lbGetRes.json()) as { ok: boolean; user: any; friends: any[] }
+    expect(lbGetBody.ok).toBe(true)
+    expect(lbGetBody.user.schema).toBe('lh-stats/v1')
+
+    const addFriendRes = await M.leaderboard.POST(
+      post('/api/social/leaderboard', {
+        alias: 'LearnerBob',
+        gistUrl: 'https://gist.githubusercontent.com/bob/12345/raw/stats.json',
+      }),
+    )
+    expect(addFriendRes.status).toBe(200)
+    const addFriendBody = (await addFriendRes.json()) as { ok: boolean; friend: { id: number } }
+    expect(addFriendBody.ok).toBe(true)
+    const friendId = addFriendBody.friend.id
+
+    const deleteFriendRes = await M.leaderboard.DELETE(
+      req('DELETE', `/api/social/leaderboard?id=${friendId}`),
+    )
+    expect(deleteFriendRes.status).toBe(200)
+    const deleteFriendBody = (await deleteFriendRes.json()) as { ok: boolean }
+    expect(deleteFriendBody.ok).toBe(true)
   })
 })

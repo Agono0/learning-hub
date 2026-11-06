@@ -47,6 +47,7 @@ import * as focusMax from '../server/handlers/focus/max/route'
 import * as focus from '../server/handlers/focus/route'
 import * as friction from '../server/handlers/friction/route'
 import * as fsrsOptimize from '../server/handlers/fsrs/optimize/route'
+import * as gamesBoss from '../server/handlers/games/boss/route'
 import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
@@ -90,6 +91,9 @@ import * as reviewStats from '../server/handlers/review/stats/route'
 import * as reviewUndo from '../server/handlers/review/undo/route'
 import * as review from '../server/handlers/review/route'
 import * as settings from '../server/handlers/settings/route'
+import * as shareExport from '../server/handlers/share/export/route'
+import * as shareImport from '../server/handlers/share/import/route'
+import * as socialLeaderboard from '../server/handlers/social/leaderboard/route'
 import * as starter from '../server/handlers/starter/route'
 import * as streaks from '../server/handlers/streaks/route'
 import * as studyPlan from '../server/handlers/study-plan/route'
@@ -173,6 +177,7 @@ add('focus/max/exit', focusMaxExit)
 add('friction', friction)
 add('fsrs/optimize', fsrsOptimize)
 add('games', games)
+add('games/boss', gamesBoss)
 add('goals', goals)
 add('goals/[id]', goalsId)
 add('graph', graph)
@@ -215,6 +220,9 @@ add('review/stats', reviewStats)
 add('review/undo', reviewUndo)
 add('search', search)
 add('settings', settings)
+add('share/export', shareExport)
+add('share/import', shareImport)
+add('social/leaderboard', socialLeaderboard)
 add('starter', starter)
 add('streaks', streaks)
 add('study-plan', studyPlan)

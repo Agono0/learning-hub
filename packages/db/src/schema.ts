@@ -1154,3 +1154,35 @@ export const cardAttemptImages = table(
   },
   (t) => [index('card_attempt_images_card_id_idx').on(t.cardId)],
 )
+
+/** Solo boss encounters whose progress and damage derive from revlog. */
+export const bossBattles = table('boss_battles', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  bossKey: text('boss_key').notNull(),
+  bossName: text('boss_name').notNull(),
+  maxHp: integer('max_hp').notNull(),
+  currentHp: integer('current_hp').notNull(),
+  playerHp: integer('player_hp').notNull().default(100),
+  status: text('status').notNull().default('active'), // active | victory | defeat
+  startedAt: text('started_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  endedAt: text('ended_at'),
+  revlogStartId: integer('revlog_start_id').notNull(),
+})
+
+/** Decentralized friend connections via public Gists. */
+export const friends = table(
+  'friends',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    alias: text('alias').notNull(),
+    gistUrl: text('gist_url').notNull(),
+    lastSyncedAt: text('last_synced_at'),
+    lastDataJson: text('last_data_json'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('friends_gist_url_idx').on(t.gistUrl)],
+)

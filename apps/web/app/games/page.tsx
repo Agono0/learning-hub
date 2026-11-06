@@ -1,13 +1,12 @@
 'use client'
 
 /**
- * Games: matching pairs built with dnd-kit (PointerSensor
- * distance:5), a run timer, and score submission to /api/games which derives
- * a grade and runs the standard review pipeline on the played cards.
+ * Games: matching pairs built with dnd-kit, Solo Boss Battles derived
+ * from spaced repetition review log, and decentralized Gist friend leaderboard.
  *
  * CLIENT component — core imports via SUBPATHS only (never the barrel).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   DndContext,
@@ -19,9 +18,30 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core'
-import { Brain, PartyPopper, RotateCcw, Timer, Trophy } from 'lucide-react'
+import {
+  Brain,
+  Check,
+  Copy,
+  Flame,
+  Heart,
+  PartyPopper,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Shield,
+  Sparkles,
+  Swords,
+  Timer,
+  Trash2,
+  Trophy,
+  Users,
+} from 'lucide-react'
 import { evaluateMatchingGame } from '@learning-hub/core/games'
+import { BOSS_ROSTER, type BossProfile } from '@learning-hub/core/boss'
 import { apiGet, apiSend } from '@/lib/transport'
+import { Badge, Button, PageHeader, Panel, ProgressBar, Tabs, TextField } from '@/ui'
+
+type GameTab = 'matching' | 'boss' | 'social'
 
 interface DeckInfo {
   id: number
@@ -49,7 +69,80 @@ interface GameResult {
   error?: string
 }
 
+interface BossBattleState {
+  id: number
+  bossKey: string
+  bossName: string
+  currentHp: number
+  maxHp: number
+  playerHp: number
+  playerMaxHp: number
+  status: 'active' | 'victory' | 'defeat'
+  turnHistory: Array<{
+    turn: number
+    playerDamage: number
+    bossDamage: number
+    isCrit?: boolean
+    description: string
+  }>
+}
+
+interface FriendStatsData {
+  v: number
+  schema: string
+  username: string
+  streak: number
+  weeklyXp: number
+  totalReviews: number
+  level: number
+  updatedAt: string
+}
+
+interface SocialResponse {
+  ok: boolean
+  user: FriendStatsData
+  friends: Array<{
+    id: number
+    alias: string
+    gistUrl: string
+    lastSyncedAt: string | null
+    stats: FriendStatsData | null
+  }>
+}
+
 export default function GamesPage() {
+  const [activeTab, setActiveTab] = useState<GameTab>('matching')
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Games & Challenges"
+        subtitle="Turn memory review into rapid matching games, solo RPG boss battles, and decentralized friendly competition."
+      />
+
+      <Tabs<GameTab>
+        label="Game modes"
+        value={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'matching', label: 'Matching Pairs', icon: <Brain className="h-4 w-4" /> },
+          { key: 'boss', label: 'Boss Battle', icon: <Swords className="h-4 w-4" /> },
+          { key: 'social', label: 'Friend Leaderboard', icon: <Users className="h-4 w-4" /> },
+        ]}
+      />
+
+      {activeTab === 'matching' && <MatchingGameSection />}
+      {activeTab === 'boss' && <BossBattleSection />}
+      {activeTab === 'social' && <SocialLeaderboardSection />}
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* Matching Pairs Game                                                       */
+/* ========================================================================= */
+
+function MatchingGameSection() {
   const qc = useQueryClient()
   const [deckId, setDeckId] = useState<number | null>(null)
 
@@ -65,28 +158,24 @@ export default function GamesPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-        <Brain className="h-5 w-5" /> Games
-      </h1>
-
-      <div className="panel">
+      <Panel>
         <div className="label mb-2">Choose a deck to play its cards</div>
         <div className="flex flex-wrap gap-2">
           {(decks.data?.decks ?? []).map((d) => (
             <button
               key={d.id}
               onClick={() => setDeckId(d.id)}
-              className={`rounded-lg border px-3 py-2 text-sm ${
+              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                 deckId === d.id
-                  ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                  : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300'
+                  ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300 font-medium'
+                  : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               {d.emoji} {d.name}
             </button>
           ))}
         </div>
-      </div>
+      </Panel>
 
       {deckId !== null && game.data?.pairs && (
         <MatchingBoard
@@ -97,9 +186,9 @@ export default function GamesPage() {
         />
       )}
       {deckId !== null && game.data && game.data.pairs.length === 0 && (
-        <div className="panel text-sm text-neutral-500">
+        <Panel className="text-sm text-neutral-500">
           No playable (textual) cards in this deck — matching needs basic/cloze/mcq/typein cards.
-        </div>
+        </Panel>
       )}
     </div>
   )
@@ -134,8 +223,6 @@ function MatchingBoard({
 
   const submit = useMutation({
     mutationFn: async () => {
-      // grade the round through the shared core evaluator: attempts are
-      // pairs + misses, so the server derives a real accuracy instead of 1.0
       const evaluation = evaluateMatchingGame({
         pairs: game.pairs.length,
         misses,
@@ -167,7 +254,6 @@ function MatchingBoard({
     else if (slotId !== null) setMisses((n) => n + 1)
   }
 
-  // board score comes from the same core evaluator that grades the submission
   const evaluation = evaluateMatchingGame({
     pairs: game.pairs.length,
     misses,
@@ -177,7 +263,7 @@ function MatchingBoard({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-      <div className="panel space-y-4">
+      <Panel className="space-y-4">
         <div className="flex items-center gap-4 text-sm">
           <span className="flex items-center gap-1 text-neutral-400">
             <Timer className="h-4 w-4" /> {seconds}s
@@ -196,7 +282,7 @@ function MatchingBoard({
         </div>
 
         {done ? (
-          <div className="celebrate space-y-3 py-6 text-center">
+          <div className="space-y-3 py-6 text-center">
             <PartyPopper className="mx-auto h-10 w-10 text-amber-400" />
             <div className="text-lg font-bold">
               Board cleared in {seconds}s — score {score}%
@@ -210,8 +296,8 @@ function MatchingBoard({
                 · +{posted.xp} XP · streak {posted.streak?.current}
               </div>
             )}
-            <button
-              className="btn mx-auto"
+            <Button
+              className="mx-auto"
               onClick={() => {
                 setMatched({})
                 setMisses(0)
@@ -221,7 +307,7 @@ function MatchingBoard({
               }}
             >
               <RotateCcw className="h-4 w-4" /> Play again
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -243,7 +329,7 @@ function MatchingBoard({
             </div>
           </div>
         )}
-      </div>
+      </Panel>
     </DndContext>
   )
 }
@@ -283,6 +369,421 @@ function Chip({ pair, matched }: { pair: MatchingPair; matched: boolean }) {
       }`}
     >
       {pair.right}
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* Solo Boss Battles Section                                                 */
+/* ========================================================================= */
+
+function BossBattleSection() {
+  const qc = useQueryClient()
+  const bossQuery = useQuery<{
+    ok: boolean
+    active: BossBattleState | null
+    roster: BossProfile[]
+  }>({
+    queryKey: ['boss-battle'],
+    queryFn: () => apiGet('/api/games/boss'),
+  })
+
+  const startMutation = useMutation({
+    mutationFn: (bossKey: string) =>
+      apiSend('/api/games/boss', 'POST', { action: 'start', bossKey }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['boss-battle'] })
+    },
+  })
+
+  const syncMutation = useMutation({
+    mutationFn: () => apiSend('/api/games/boss', 'POST', { action: 'sync' }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['boss-battle'] })
+    },
+  })
+
+  const active = bossQuery.data?.active
+  const roster = bossQuery.data?.roster ?? Object.values(BOSS_ROSTER)
+
+  return (
+    <div className="space-y-6">
+      {active && (
+        <Panel className="space-y-4 border-indigo-500/30">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-3xl">{BOSS_ROSTER[active.bossKey]?.avatar ?? '⚔️'}</span>
+                <div>
+                  <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+                    {active.bossName}
+                  </h2>
+                  <p className="text-xs text-neutral-500">
+                    {BOSS_ROSTER[active.bossKey]?.title ?? 'Legendary Boss'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Badge
+                tone={
+                  active.status === 'victory'
+                    ? 'success'
+                    : active.status === 'defeat'
+                      ? 'danger'
+                      : 'neutral'
+                }
+              >
+                {active.status.toUpperCase()}
+              </Badge>
+              {active.status === 'active' && (
+                <Button
+                  variant="primary"
+                  onClick={() => syncMutation.mutate()}
+                  disabled={syncMutation.isPending}
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`}
+                  />
+                  Sync Review Damage
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+              <div className="flex justify-between text-xs font-medium text-red-400">
+                <span className="flex items-center gap-1">
+                  <Swords className="h-3.5 w-3.5" /> Boss Health
+                </span>
+                <span>
+                  {active.currentHp} / {active.maxHp} HP
+                </span>
+              </div>
+              <ProgressBar
+                value={Math.max(0, active.currentHp) / (active.maxHp || 1)}
+                className="[&>div]:bg-red-500"
+              />
+            </div>
+
+            <div className="space-y-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <div className="flex justify-between text-xs font-medium text-emerald-400">
+                <span className="flex items-center gap-1">
+                  <Heart className="h-3.5 w-3.5" /> Your Health
+                </span>
+                <span>
+                  {active.playerHp} / {active.playerMaxHp} HP
+                </span>
+              </div>
+              <ProgressBar
+                value={Math.max(0, active.playerHp) / (active.playerMaxHp || 1)}
+                className="[&>div]:bg-emerald-500"
+              />
+            </div>
+          </div>
+
+          {active.status === 'active' ? (
+            <p className="text-xs text-neutral-400">
+              💡 Review cards normally in the Study tab. Correct answers (Good/Easy) deal damage and
+              trigger critical strikes. Incorrect answers (Again) leave you open to boss
+              counterattacks!
+            </p>
+          ) : active.status === 'victory' ? (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+              <Sparkles className="mx-auto h-8 w-8 text-amber-400" />
+              <div className="mt-1 font-bold text-amber-300">
+                Victory! You vanquished {active.bossName}!
+              </div>
+              <p className="text-xs text-neutral-400 mt-1">
+                Your spaced repetition mastery prevailed against the forces of forgetting.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center">
+              <Shield className="mx-auto h-8 w-8 text-red-400" />
+              <div className="mt-1 font-bold text-red-300">Defeat! You were overwhelmed!</div>
+              <p className="text-xs text-neutral-400 mt-1">
+                Review your weak cards and challenge the boss again.
+              </p>
+            </div>
+          )}
+
+          {active.turnHistory && active.turnHistory.length > 0 && (
+            <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+              <div className="label">Recent Combat Turns</div>
+              <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1 text-xs text-neutral-400">
+                {active.turnHistory
+                  .slice(-5)
+                  .reverse()
+                  .map((t, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded bg-neutral-100 p-2 dark:bg-[#18181b]"
+                    >
+                      <span>
+                        Turn {t.turn}: {t.description}
+                      </span>
+                      <span className="font-mono text-emerald-400">
+                        -{t.playerDamage} HP {t.isCrit ? '💥 CRIT' : ''}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </Panel>
+      )}
+
+      <div>
+        <h3 className="mb-3 text-lg font-bold tracking-tight">
+          {active?.status === 'active' ? 'Boss Roster' : 'Choose Your Boss Challenge'}
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {roster.map((boss) => (
+            <Panel key={boss.key} className="flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{boss.avatar}</span>
+                  <div>
+                    <div className="font-bold">{boss.name}</div>
+                    <div className="text-xs text-neutral-500">{boss.title}</div>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-neutral-400 leading-relaxed">{boss.description}</p>
+                <div className="mt-3 flex items-center justify-between text-xs text-neutral-400">
+                  <span>
+                    HP: <strong className="text-red-400">{boss.maxHp}</strong>
+                  </span>
+                  <span>
+                    XP: <strong className="text-amber-400">+{boss.rewardXp}</strong>
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant={
+                  active?.bossKey === boss.key && active.status === 'active' ? 'ghost' : 'primary'
+                }
+                disabled={
+                  startMutation.isPending ||
+                  (active?.bossKey === boss.key && active.status === 'active')
+                }
+                onClick={() => startMutation.mutate(boss.key)}
+              >
+                {active?.bossKey === boss.key && active.status === 'active'
+                  ? 'Currently Fighting'
+                  : 'Challenge Boss'}
+              </Button>
+            </Panel>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* Decentralized Gist Friends Leaderboard                                    */
+/* ========================================================================= */
+
+function SocialLeaderboardSection() {
+  const qc = useQueryClient()
+  const [alias, setAlias] = useState('')
+  const [gistUrl, setGistUrl] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const socialQuery = useQuery<SocialResponse>({
+    queryKey: ['social-leaderboard'],
+    queryFn: () => apiGet('/api/social/leaderboard'),
+  })
+
+  const addFriendMutation = useMutation({
+    mutationFn: (data: { alias: string; gistUrl: string }) =>
+      apiSend('/api/social/leaderboard', 'POST', data),
+    onSuccess: () => {
+      setAlias('')
+      setGistUrl('')
+      void qc.invalidateQueries({ queryKey: ['social-leaderboard'] })
+    },
+  })
+
+  const deleteFriendMutation = useMutation({
+    mutationFn: (id: number) => apiSend(`/api/social/leaderboard?id=${id}`, 'DELETE'),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['social-leaderboard'] })
+    },
+  })
+
+  const userStats = socialQuery.data?.user
+  const friends = socialQuery.data?.friends ?? []
+
+  // Combine user stats + friend stats for ranking
+  const leaderboardEntries = [
+    {
+      id: 0,
+      name: 'You',
+      isSelf: true,
+      xp: userStats?.weeklyXp ?? 0,
+      streak: userStats?.streak ?? 0,
+      reviews: userStats?.totalReviews ?? 0,
+      level: userStats?.level ?? 1,
+    },
+    ...friends.map((f) => ({
+      id: f.id,
+      name: f.alias,
+      isSelf: false,
+      xp: f.stats?.weeklyXp ?? 0,
+      streak: f.stats?.streak ?? 0,
+      reviews: f.stats?.totalReviews ?? 0,
+      level: f.stats?.level ?? 1,
+    })),
+  ].sort((a, b) => b.xp - a.xp)
+
+  const handleCopyStats = () => {
+    if (!userStats) return
+    void navigator.clipboard.writeText(JSON.stringify(userStats, null, 2))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* User Stats Card */}
+      <Panel className="space-y-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h3 className="font-bold text-neutral-900 dark:text-neutral-100">
+              Decentralized Friends & Gist Sync
+            </h3>
+            <p className="text-xs text-neutral-500">
+              No central server required. Share your signed study stats envelope via a GitHub Gist
+              URL with friends.
+            </p>
+          </div>
+
+          <Button variant="ghost" onClick={handleCopyStats} disabled={!userStats}>
+            {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copied Stats JSON!' : 'Copy Gist Payload'}
+          </Button>
+        </div>
+
+        {userStats && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+              <div className="label">Weekly XP</div>
+              <div className="text-xl font-bold text-amber-400">{userStats.weeklyXp}</div>
+            </div>
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+              <div className="label">Current Streak</div>
+              <div className="text-xl font-bold text-orange-400 flex items-center gap-1">
+                <Flame className="h-4 w-4" /> {userStats.streak}d
+              </div>
+            </div>
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+              <div className="label">Cards Reviewed</div>
+              <div className="text-xl font-bold text-indigo-400">{userStats.totalReviews}</div>
+            </div>
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+              <div className="label">Learner Level</div>
+              <div className="text-xl font-bold text-emerald-400">Lv. {userStats.level}</div>
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      {/* Add Friend Form */}
+      <Panel className="space-y-3">
+        <h4 className="font-bold text-sm">Add a Friend via Gist</h4>
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!alias.trim() || !gistUrl.trim()) return
+            addFriendMutation.mutate({ alias: alias.trim(), gistUrl: gistUrl.trim() })
+          }}
+        >
+          <TextField
+            label="Friend Alias"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            placeholder="e.g. Alice"
+          />
+          <TextField
+            label="Raw Gist / JSON URL"
+            value={gistUrl}
+            onChange={(e) => setGistUrl(e.target.value)}
+            placeholder="https://gist.githubusercontent.com/.../raw"
+          />
+          <div className="flex items-end">
+            <Button
+              variant="primary"
+              className="w-full"
+              disabled={!alias.trim() || !gistUrl.trim() || addFriendMutation.isPending}
+            >
+              <Plus className="h-4 w-4" /> Add Friend
+            </Button>
+          </div>
+        </form>
+      </Panel>
+
+      {/* Leaderboard Table */}
+      <Panel className="space-y-3">
+        <h4 className="font-bold text-sm">Friends Leaderboard</h4>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200 text-xs text-neutral-500 dark:border-[#26262b]">
+                <th className="pb-2 font-medium">Rank</th>
+                <th className="pb-2 font-medium">Learner</th>
+                <th className="pb-2 font-medium">Streak</th>
+                <th className="pb-2 font-medium">Reviews</th>
+                <th className="pb-2 font-medium">XP</th>
+                <th className="pb-2 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-[#26262b]">
+              {leaderboardEntries.map((entry, idx) => (
+                <tr
+                  key={entry.id + entry.name}
+                  className={entry.isSelf ? 'bg-indigo-500/5 font-medium' : ''}
+                >
+                  <td className="py-2.5">
+                    {idx === 0 ? (
+                      <span className="text-amber-400 font-bold">🥇 1</span>
+                    ) : idx === 1 ? (
+                      <span className="text-neutral-400 font-bold">🥈 2</span>
+                    ) : idx === 2 ? (
+                      <span className="text-amber-700 font-bold">🥉 3</span>
+                    ) : (
+                      <span className="text-neutral-500">#{idx + 1}</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 flex items-center gap-1.5">
+                    <span>{entry.name}</span>
+                    {entry.isSelf && <Badge tone="accent">You</Badge>}
+                  </td>
+                  <td className="py-2.5 text-neutral-400">{entry.streak}d</td>
+                  <td className="py-2.5 text-neutral-400">{entry.reviews}</td>
+                  <td className="py-2.5 font-bold text-amber-400">{entry.xp} XP</td>
+                  <td className="py-2.5 text-right">
+                    {!entry.isSelf && (
+                      <button
+                        title="Remove friend"
+                        onClick={() => deleteFriendMutation.mutate(entry.id)}
+                        className="text-neutral-500 hover:text-red-400 transition-colors p-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </div>
   )
 }
