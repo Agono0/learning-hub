@@ -1405,6 +1405,7 @@ export const userAvatars = table(
     characterId: text('character_id').notNull().default('char_apprentice'),
     equippedHead: text('equipped_head'),
     equippedHand: text('equipped_hand'),
+    equippedCompanion: text('equipped_companion'),
     equippedSkin: text('equipped_skin').notNull().default('default'),
     unlockedCharacters: text('unlocked_characters', { mode: 'json' })
       .$type<string[]>()

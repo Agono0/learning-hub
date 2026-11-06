@@ -9,6 +9,7 @@ const avatarUpdateSchema = z.object({
   characterId: z.string().optional(),
   equippedHead: z.string().nullable().optional(),
   equippedHand: z.string().nullable().optional(),
+  equippedCompanion: z.string().nullable().optional(),
   equippedSkin: z.string().optional(),
 })
 
@@ -46,10 +47,18 @@ export const POST = withRoute(async (req: Request) => {
     )
   }
 
+  if (body.equippedCompanion && !current.unlockedItems.includes(body.equippedCompanion)) {
+    return Response.json(
+      { ok: false, error: `Companion ${body.equippedCompanion} is not unlocked` },
+      { status: 400 },
+    )
+  }
+
   const updated = updateUserAvatar('default', {
     ...(body.characterId ? { characterId: body.characterId } : {}),
     ...(body.equippedHead !== undefined ? { equippedHead: body.equippedHead } : {}),
     ...(body.equippedHand !== undefined ? { equippedHand: body.equippedHand } : {}),
+    ...(body.equippedCompanion !== undefined ? { equippedCompanion: body.equippedCompanion } : {}),
     ...(body.equippedSkin ? { equippedSkin: body.equippedSkin } : {}),
   })
 

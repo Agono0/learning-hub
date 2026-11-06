@@ -28,6 +28,7 @@ export interface UserAvatarRow {
   characterId: string
   equippedHead: string | null
   equippedHand: string | null
+  equippedCompanion: string | null
   equippedSkin: string
   unlockedCharacters: string[]
   unlockedItems: string[]
@@ -47,6 +48,7 @@ export function getUserAvatar(userId = 'default'): UserAvatarRow {
         characterId: 'char_apprentice',
         equippedHead: null,
         equippedHand: null,
+        equippedCompanion: null,
         equippedSkin: 'default',
         unlockedCharacters: ['char_apprentice'],
         unlockedItems: [],
@@ -279,11 +281,17 @@ export function purchaseMarketItem(
 
   const avatar = getUserAvatar(userId)
 
+  // Timer themes ship as free defaults — they are never purchased.
+  if (item.category === 'timer_theme') {
+    throw new Error(`Item ${item.name} cannot be purchased`)
+  }
+
   // Check if already unlocked
   if (
     (item.category === 'character' && avatar.unlockedCharacters.includes(itemId)) ||
-    (item.category === 'accessory' && avatar.unlockedItems.includes(itemId)) ||
-    (item.category === 'tree' && avatar.unlockedTrees.includes(itemId))
+    (item.category === 'tree' && avatar.unlockedTrees.includes(itemId)) ||
+    (['accessory', 'companion', 'decor'].includes(item.category) &&
+      avatar.unlockedItems.includes(itemId))
   ) {
     throw new Error(`Item ${item.name} is already unlocked`)
   }
@@ -297,14 +305,18 @@ export function purchaseMarketItem(
       referenceId: itemId,
     })
 
-    // Update avatar unlocked arrays
+    // Update avatar unlocked arrays. Accessories, companions and decor all live
+    // in `unlocked_items`; only characters and tree species get dedicated arrays.
     const unlockedChars = [...avatar.unlockedCharacters]
     const unlockedAccessories = [...avatar.unlockedItems]
     const unlockedTreeSpecies = [...avatar.unlockedTrees]
 
     if (item.category === 'character' && !unlockedChars.includes(itemId)) {
       unlockedChars.push(itemId)
-    } else if (item.category === 'accessory' && !unlockedAccessories.includes(itemId)) {
+    } else if (
+      ['accessory', 'companion', 'decor'].includes(item.category) &&
+      !unlockedAccessories.includes(itemId)
+    ) {
       unlockedAccessories.push(itemId)
     } else if (item.category === 'tree' && !unlockedTreeSpecies.includes(itemId)) {
       unlockedTreeSpecies.push(itemId)

@@ -110,6 +110,32 @@ describe('3D World & Economy Repositories', () => {
     expect(() => purchaseMarketItem('head_straw_hat', userId)).toThrow('already unlocked')
   })
 
+  it('purchases companions and decor into unlocked items and equips a companion', () => {
+    const userId = 'companion-user-' + Math.random().toString(36).slice(2)
+    recordCoinTransaction({
+      userId,
+      amount: 1000,
+      reason: 'welcome_bonus',
+    })
+
+    const fox = purchaseMarketItem('comp_fox', userId)
+    expect(fox.avatar.unlockedItems).toContain('comp_fox')
+    expect(fox.avatar.equippedCompanion).toBeNull()
+
+    const bench = purchaseMarketItem('decor_bench', userId)
+    expect(bench.avatar.unlockedItems).toContain('decor_bench')
+
+    // Equip the companion
+    updateUserAvatar(userId, { equippedCompanion: 'comp_fox' })
+    expect(getUserAvatar(userId).equippedCompanion).toBe('comp_fox')
+
+    // Timer themes are free defaults and must never be purchasable
+    expect(() => purchaseMarketItem('timer_crystal', userId)).toThrow('cannot be purchased')
+
+    // Insufficient balance blocks further purchases
+    expect(() => purchaseMarketItem('comp_dragonling', userId)).toThrow('Insufficient study coins')
+  })
+
   it('persists and updates world and timer view settings', () => {
     const userId = 'settings-user-' + Math.random().toString(36).slice(2)
     const settings = getWorldSettings(userId)

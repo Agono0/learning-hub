@@ -26,6 +26,7 @@ import { powerTools } from './013-power-tools'
 import { knowledgeGraph } from './014-knowledge-graph'
 import { guildsSeasons } from './015-guilds-seasons'
 import { forestWorldEconomy } from './016-forest-world-economy'
+import { companionDecor } from './017-companion-decor'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -45,6 +46,7 @@ export const MIGRATIONS: readonly Migration[] = [
   knowledgeGraph,
   guildsSeasons,
   forestWorldEconomy,
+  companionDecor,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
