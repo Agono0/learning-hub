@@ -7,6 +7,8 @@ export const avatarCustomizationSchema = z.object({
   characterId: z.string().default('char_apprentice'),
   equippedHead: z.string().nullable().default(null),
   equippedHand: z.string().nullable().default(null),
+  /** Active companion id (e.g. 'comp_fox') that walks beside the scholar in the 3D world. */
+  equippedCompanion: z.string().nullable().default(null),
   equippedSkin: z.string().default('default'),
   unlockedCharacters: z.array(z.string()).default(['char_apprentice']),
   unlockedItems: z.array(z.string()).default([]),
@@ -15,7 +17,14 @@ export const avatarCustomizationSchema = z.object({
 
 export type AvatarCustomization = z.infer<typeof avatarCustomizationSchema>
 
-export const marketItemCategorySchema = z.enum(['character', 'accessory', 'tree', 'timer_theme'])
+export const marketItemCategorySchema = z.enum([
+  'character',
+  'accessory',
+  'tree',
+  'timer_theme',
+  'companion',
+  'decor',
+])
 export type MarketItemCategory = z.infer<typeof marketItemCategorySchema>
 
 export const marketItemRaritySchema = z.enum(['common', 'rare', 'epic', 'legendary'])

@@ -5,6 +5,7 @@ import {
   calculateHourglassProgress,
   calculateTreeGrowth,
   computeLedgerSignature,
+  getDecorPlacement,
   marketItemSchema,
   sha256Hex,
   verifyFocusSessionForCoins,
@@ -185,6 +186,41 @@ describe('Core World & Economy Engine', () => {
       expect(hgStart.bottomSandRatio).toBe(0)
       expect(hgEnd.topSandRatio).toBe(0)
       expect(hgEnd.bottomSandRatio).toBe(1)
+    })
+
+    it('includes companion and decor categories with unique ids', () => {
+      const ids = new Set(DEFAULT_MARKET_CATALOG.map((i) => i.id))
+      expect(ids.size).toBe(DEFAULT_MARKET_CATALOG.length)
+      for (const category of ['companion', 'decor'] as const) {
+        const items = DEFAULT_MARKET_CATALOG.filter((i) => i.category === category)
+        expect(items.length).toBeGreaterThanOrEqual(6)
+        for (const item of items) {
+          expect(item.isDefault).toBe(false)
+          expect(item.priceCoins).toBeGreaterThan(0)
+        }
+      }
+    })
+
+    it('places decor deterministically on the island ring, clear of protected zones', () => {
+      const decorIds = DEFAULT_MARKET_CATALOG.filter((i) => i.category === 'decor').map((i) => i.id)
+      const placements = decorIds.map((id) => ({ id, ...getDecorPlacement(id) }))
+
+      for (const p of placements) {
+        expect(getDecorPlacement(p.id)).toEqual({ x: p.x, z: p.z, rotationY: p.rotationY })
+        const dist = Math.sqrt(p.x * p.x + p.z * p.z)
+        expect(dist).toBeGreaterThanOrEqual(6) // clear of the pedestal
+        expect(dist).toBeLessThanOrEqual(19) // inside the grass radius
+      }
+
+      // No two decor items may collide with each other.
+      for (let i = 0; i < placements.length; i++) {
+        for (let j = i + 1; j < placements.length; j++) {
+          const a = placements[i]
+          const b = placements[j]
+          const d = Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2)
+          expect(d).toBeGreaterThan(2)
+        }
+      }
     })
   })
 })

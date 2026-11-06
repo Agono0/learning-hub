@@ -112,3 +112,51 @@ export function calculateHourglassProgress(progress: number): HourglassSpec {
     particleRate: p >= 1 ? 0 : 1,
   }
 }
+
+export interface DecorPlacement {
+  x: number
+  z: number
+  /** Facing angle in radians, biased toward the island center. */
+  rotationY: number
+}
+
+/**
+ * Deterministically places a decor structure on the island ring.
+ *
+ * Same item id → same spot on every device (no storage needed): the angle comes
+ * from a hash of the id, the radius from a secondary hash. Placements avoid the
+ * central pedestal (r < 6) and the stepping-stone corridor (|x| < 2.5, z > 0),
+ * and stay inside the grass radius (r ≤ 19).
+ */
+export function getDecorPlacement(itemId: string): DecorPlacement {
+  // FNV-1a style double hash — stable across JS engines (int32 arithmetic only).
+  let h1 = 0x811c9dc5 | 0
+  let h2 = 0x9e3779b9 | 0
+  for (let i = 0; i < itemId.length; i++) {
+    h1 = Math.imul(h1 ^ itemId.charCodeAt(i), 16777619) | 0
+    h2 = Math.imul(h2 + itemId.charCodeAt(i) * (i + 7), 2246822519) | 0
+  }
+  const angle = (((h1 % 360) + 360) % 360) / 360
+  const radius = 8.5 + ((((h2 % 100) + 100) % 100) / 100) * 10 // 8.5 .. 18.5
+
+  let x = Math.cos(angle * Math.PI * 2) * radius
+  let z = Math.sin(angle * Math.PI * 2) * radius
+
+  // Nudge out of the protected zones (deterministic spiral search).
+  const protectedZone = (px: number, pz: number): boolean =>
+    Math.sqrt(px * px + pz * pz) < 6 || (Math.abs(px) < 2.5 && pz > 0)
+  for (let step = 0; step < 64 && protectedZone(x, z); step++) {
+    const a = (angle + step * 0.11) * Math.PI * 2
+    const r = Math.min(19, radius + step * 0.15)
+    x = Math.cos(a) * r
+    z = Math.sin(a) * r
+  }
+
+  // Face the island center (structures look inviting from the pedestal).
+  const rotationY = Math.atan2(-x, -z)
+  return {
+    x: Math.round(x * 100) / 100,
+    z: Math.round(z * 100) / 100,
+    rotationY: Math.round(rotationY * 1000) / 1000,
+  }
+}
