@@ -21,3 +21,4 @@ See [C:/Users/pc/.gemini/antigravity/brain/481c7aa1-7449-4cdd-9a8c-eaf819d2a001/
 | 9 | Online features | **All 6**: live study rooms, realtime party boss raids, global + friends leaderboards, public deck/course library, moderated room chat, accountability buddies |
 | 10 | Identity | **Multiple options**: anonymous device keypair (default), **email magic link** (recovery/multi-device), and **codes** (room codes, party codes, invite codes; anyone with the code can join) |
 | 11 | Build order | M6 Focus → M7 Reminders → M8 Visual → M9 Serverless social → M10 Cloudflare online |
+

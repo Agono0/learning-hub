@@ -41,3 +41,4 @@ CREATE TABLE IF NOT EXISTS reports (
 
 CREATE INDEX IF NOT EXISTS idx_stats_weekly_xp ON public_stats (weekly_xp DESC);
 CREATE INDEX IF NOT EXISTS idx_library_type ON community_library (type);
+

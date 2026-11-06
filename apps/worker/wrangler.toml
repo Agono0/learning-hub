@@ -19,3 +19,4 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_classes = ["StudyRoom", "BossRaid"]
+
