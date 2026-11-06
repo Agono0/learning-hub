@@ -36,6 +36,17 @@ const putSettingsSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']).optional(),
   onboardingCompleted: z.boolean().optional(),
   sidebarCollapsedGroups: z.array(z.string().max(80)).max(20).nullable().optional(),
+  remindersEnabled: z.boolean().optional(),
+  remindersQuietStart: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  remindersQuietEnd: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+  remindersDailyCap: z.number().int().min(1).max(10).optional(),
+  remindersKinds: z.array(z.string()).optional(),
 })
 
 const testSettingsSchema = z.object({
@@ -132,6 +143,11 @@ export const PUT = withRoute(async (req: Request) => {
   if (body.onboardingCompleted !== undefined) patch.onboardingCompleted = body.onboardingCompleted
   if (body.sidebarCollapsedGroups !== undefined)
     patch.sidebarCollapsedGroups = body.sidebarCollapsedGroups
+  if (body.remindersEnabled !== undefined) patch.remindersEnabled = body.remindersEnabled
+  if (body.remindersQuietStart !== undefined) patch.remindersQuietStart = body.remindersQuietStart
+  if (body.remindersQuietEnd !== undefined) patch.remindersQuietEnd = body.remindersQuietEnd
+  if (body.remindersDailyCap !== undefined) patch.remindersDailyCap = body.remindersDailyCap
+  if (body.remindersKinds !== undefined) patch.remindersKinds = body.remindersKinds
   await db.update(userSettings).set(patch).where(eq(userSettings.id, row.id))
   const [updated, empty] = await Promise.all([getRow(), isWorkspaceEmpty()])
   return Response.json({

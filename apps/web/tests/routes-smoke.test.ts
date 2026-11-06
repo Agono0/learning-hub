@@ -110,6 +110,9 @@ beforeAll(async () => {
   M.focusMaxExit = await import('../app/api/focus/max/exit/route')
   M.focusAllowlists = await import('../app/api/focus/allowlists/route')
   M.focusBridge = await import('../app/api/focus/bridge/route')
+  M.remindersPlan = await import('../app/api/reminders/plan/route')
+  M.remindersLog = await import('../app/api/reminders/log/route')
+  M.remindersClick = await import('../app/api/reminders/click/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -846,5 +849,72 @@ describe('max focus mode (milestone 6)', () => {
       post('/api/focus/bridge', { action: 'heartbeat', extensionId: 'lh-ext-1' }),
     )
     expect(hbRes.status).toBe(200)
+  })
+
+  it('plans, logs, clicks, and configures calm reminders', async () => {
+    // 1. Plan candidate reminders
+    const planRes = await M.remindersPlan.GET()
+    expect(planRes.status).toBe(200)
+    const planBody = (await planRes.json()) as {
+      ok: boolean
+      settings: any
+      facts: any
+      candidates: any[]
+    }
+    expect(planBody.ok).toBe(true)
+    expect(planBody.settings).toBeDefined()
+    expect(planBody.settings.dailyCap).toBe(3)
+    expect(Array.isArray(planBody.candidates)).toBe(true)
+
+    // 2. Log a sent reminder
+    const logRes = await M.remindersLog.POST(
+      post('/api/reminders/log', {
+        kind: 'daily_review',
+        title: 'Spaced Repetition Due',
+        body: 'You have 5 cards ready for review.',
+        actionUrl: '/review',
+      }),
+    )
+    expect(logRes.status).toBe(200)
+    const logBody = (await logRes.json()) as { ok: boolean; logged: { id: number; kind: string } }
+    expect(logBody.ok).toBe(true)
+    expect(logBody.logged.id).toBeGreaterThan(0)
+    expect(logBody.logged.kind).toBe('daily_review')
+
+    // 3. List recent reminder logs
+    const listRes = await M.remindersLog.GET(req('GET', '/api/reminders/log?limit=10'))
+    expect(listRes.status).toBe(200)
+    const listBody = (await listRes.json()) as { ok: boolean; logs: any[] }
+    expect(listBody.ok).toBe(true)
+    expect(listBody.logs.some((l) => l.id === logBody.logged.id)).toBe(true)
+
+    // 4. Click a reminder
+    const clickRes = await M.remindersClick.POST(
+      post('/api/reminders/click', {
+        reminderLogId: logBody.logged.id,
+        kind: 'daily_review',
+        actionUrl: '/review',
+      }),
+    )
+    expect(clickRes.status).toBe(200)
+    const clickBody = (await clickRes.json()) as { ok: boolean; clicked: { id: number } }
+    expect(clickBody.ok).toBe(true)
+    expect(clickBody.clicked.id).toBeGreaterThan(0)
+
+    // 5. Update reminder settings via PUT /api/settings
+    const setRes = await M.settings.PUT(
+      req('PUT', '/api/settings', {
+        remindersEnabled: true,
+        remindersQuietStart: '23:00',
+        remindersQuietEnd: '07:00',
+        remindersDailyCap: 5,
+        remindersKinds: ['daily_review', 'streak_saver'],
+      }),
+    )
+    expect(setRes.status).toBe(200)
+    const setBody = (await setRes.json()) as { ok: boolean; settings: any }
+    expect(setBody.ok).toBe(true)
+    expect(setBody.settings.remindersQuietStart).toBe('23:00')
+    expect(setBody.settings.remindersDailyCap).toBe(5)
   })
 })

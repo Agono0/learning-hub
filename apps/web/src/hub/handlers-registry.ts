@@ -78,6 +78,9 @@ import * as readingIngest from '../server/handlers/reading/ingest/route'
 import * as readingSq3r from '../server/handlers/reading/sq3r/route'
 import * as readingId from '../server/handlers/reading/[id]/route'
 import * as reading from '../server/handlers/reading/route'
+import * as remindersClick from '../server/handlers/reminders/click/route'
+import * as remindersLog from '../server/handlers/reminders/log/route'
+import * as remindersPlan from '../server/handlers/reminders/plan/route'
 import * as reviewStats from '../server/handlers/review/stats/route'
 import * as reviewUndo from '../server/handlers/review/undo/route'
 import * as review from '../server/handlers/review/route'
@@ -194,6 +197,9 @@ add('reading/[id]', readingId)
 add('reading/highlights', readingHighlights)
 add('reading/ingest', readingIngest)
 add('reading/sq3r', readingSq3r)
+add('reminders/click', remindersClick)
+add('reminders/log', remindersLog)
+add('reminders/plan', remindersPlan)
 add('review', review)
 add('review/stats', reviewStats)
 add('review/undo', reviewUndo)

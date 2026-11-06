@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Monitor, Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
+import { Bell, Monitor, Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
 import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
 import {
@@ -10,6 +10,7 @@ import {
   normalizeThemePreference,
   type ThemePreference,
 } from '@/components/ThemeSync'
+import { deliverNotification } from '@/platform/reminders'
 import { apiGet, apiSend } from '@/lib/transport'
 
 const PROVIDERS: {
@@ -99,6 +100,11 @@ interface SettingsRow {
   hasCustomWeights?: boolean
   sessionMinutes: number
   theme: string
+  remindersEnabled?: boolean
+  remindersQuietStart?: string
+  remindersQuietEnd?: string
+  remindersDailyCap?: number
+  remindersKinds?: string[]
 }
 
 interface FsrsEval {
@@ -139,6 +145,17 @@ export default function SettingsPage() {
   const [weightsDraft, setWeightsDraft] = useState('')
   const [rescheduleOnSave, setRescheduleOnSave] = useState(false)
   const [fsrsMessage, setFsrsMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [remindersEnabled, setRemindersEnabled] = useState(true)
+  const [remindersQuietStart, setRemindersQuietStart] = useState('22:00')
+  const [remindersQuietEnd, setRemindersQuietEnd] = useState('08:00')
+  const [remindersDailyCap, setRemindersDailyCap] = useState(3)
+  const [remindersKinds, setRemindersKinds] = useState<string[]>([
+    'daily_review',
+    'streak_saver',
+    'break_reminder',
+    'curriculum_nudge',
+  ])
+  const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null)
 
   useEffect(() => {
     if (!s) return
@@ -153,6 +170,11 @@ export default function SettingsPage() {
         ? s.fsrsWeights.map((w) => Number(w.toFixed(4))).join(', ')
         : FSRS6_DEFAULT_WEIGHTS.join(', '),
     )
+    if (s.remindersEnabled !== undefined) setRemindersEnabled(s.remindersEnabled)
+    if (s.remindersQuietStart) setRemindersQuietStart(s.remindersQuietStart)
+    if (s.remindersQuietEnd) setRemindersQuietEnd(s.remindersQuietEnd)
+    if (s.remindersDailyCap) setRemindersDailyCap(s.remindersDailyCap)
+    if (Array.isArray(s.remindersKinds)) setRemindersKinds(s.remindersKinds)
   }, [s])
 
   const fsrsAction = useMutation({
@@ -223,6 +245,11 @@ export default function SettingsPage() {
         desiredRetention: retention,
         sessionMinutes,
         theme: overrideTheme ?? theme,
+        remindersEnabled,
+        remindersQuietStart,
+        remindersQuietEnd,
+        remindersDailyCap,
+        remindersKinds,
       }),
     onSuccess: () => {
       setApiKey('')
@@ -613,6 +640,134 @@ export default function SettingsPage() {
           <p className={`text-xs ${fsrsMessage.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
             {fsrsMessage.text}
           </p>
+        )}
+      </section>
+
+      <section className="panel space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="label flex items-center gap-2">
+              <Bell className="h-4 w-4 text-indigo-400" />
+              Reminders &amp; Push Notifications
+            </div>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              Calm, respectful desktop &amp; push reminders (Tauri &amp; Web Notifications). Strict
+              quiet hours, daily cap, and anti-nag spacing.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+            <input
+              type="checkbox"
+              checked={remindersEnabled}
+              onChange={(e) => setRemindersEnabled(e.target.checked)}
+              className="accent-indigo-500"
+            />
+            {remindersEnabled ? 'Enabled' : 'Disabled'}
+          </label>
+        </div>
+
+        {remindersEnabled && (
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label mb-1 block">Quiet hours start (do not disturb)</label>
+                <input
+                  type="time"
+                  className="input"
+                  value={remindersQuietStart}
+                  onChange={(e) => setRemindersQuietStart(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label mb-1 block">Quiet hours end</label>
+                <input
+                  type="time"
+                  className="input"
+                  value={remindersQuietEnd}
+                  onChange={(e) => setRemindersQuietEnd(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs text-neutral-400 mb-1">
+                <span>Daily reminder limit</span>
+                <span className="font-semibold text-neutral-200">{remindersDailyCap} / day</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={remindersDailyCap}
+                onChange={(e) => setRemindersDailyCap(Number(e.target.value))}
+                className="w-full accent-indigo-500"
+              />
+              <p className="text-[11px] text-neutral-500 mt-1">
+                Maximum notifications dispatched in a single calendar day across all triggers.
+              </p>
+            </div>
+
+            <div>
+              <label className="label mb-2 block">Active reminder triggers</label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
+                {[
+                  { id: 'daily_review', label: 'Spaced repetition reviews due' },
+                  { id: 'streak_saver', label: 'Streak saver (evening warning)' },
+                  { id: 'break_reminder', label: 'Focus break (after 50m work)' },
+                  { id: 'curriculum_nudge', label: 'Curriculum nudge (2+ days dormant)' },
+                ].map((kind) => {
+                  const checked = remindersKinds.includes(kind.id)
+                  return (
+                    <label
+                      key={kind.id}
+                      className="flex items-center gap-2 cursor-pointer text-neutral-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setRemindersKinds([...remindersKinds, kind.id])
+                          } else {
+                            setRemindersKinds(remindersKinds.filter((k) => k !== kind.id))
+                          }
+                        }}
+                        className="accent-indigo-500"
+                      />
+                      {kind.label}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                onClick={async () => {
+                  setTestNotifMsg('Sending test notification…')
+                  const ok = await deliverNotification({
+                    kind: 'daily_review',
+                    title: 'Learning HUB Reminder',
+                    body: 'Test notification delivered successfully. Spaced repetition protects your memory curve.',
+                    actionUrl: '/settings',
+                    priority: 1,
+                  })
+                  if (ok) {
+                    setTestNotifMsg('Test notification dispatched!')
+                  } else {
+                    setTestNotifMsg(
+                      'Notification blocked or not supported. Check system permissions.',
+                    )
+                  }
+                }}
+              >
+                Send test notification
+              </button>
+              {testNotifMsg && <span className="text-xs text-neutral-400">{testNotifMsg}</span>}
+            </div>
+          </div>
         )}
       </section>
 

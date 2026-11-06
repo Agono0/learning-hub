@@ -974,6 +974,14 @@ export const userSettings = table('user_settings', {
   onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' })
     .notNull()
     .default(false),
+  remindersEnabled: integer('reminders_enabled', { mode: 'boolean' }).notNull().default(true),
+  remindersQuietStart: text('reminders_quiet_start').notNull().default('22:00'),
+  remindersQuietEnd: text('reminders_quiet_end').notNull().default('08:00'),
+  remindersDailyCap: integer('reminders_daily_cap').notNull().default(3),
+  remindersKinds: text('reminders_kinds', { mode: 'json' })
+    .$type<string[]>()
+    .notNull()
+    .default(['daily_review', 'streak_saver', 'break_reminder', 'curriculum_nudge']),
   sidebarCollapsedGroups: text('sidebar_collapsed_groups', { mode: 'json' }).$type<string[]>(),
   updatedAt: text('updated_at')
     .notNull()
@@ -1079,3 +1087,39 @@ export const syncConfigs = table('sync_configs', {
 })
 
 // ─── Derived views (append-only stats — never mutate) ──────────────────────
+
+/**
+ * Append-only log of dispatched push/desktop/tray notifications.
+ * Never edit or delete rows (Rule 8: append-only tables stay append-only).
+ */
+export const reminderLog = table(
+  'reminder_log',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    kind: text('kind').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    actionUrl: text('action_url'),
+    sentAt: text('sent_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('reminder_log_sent_at_idx').on(t.sentAt)],
+)
+
+/**
+ * Append-only log of user interactions / clicks on reminders.
+ */
+export const reminderClicks = table(
+  'reminder_clicks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    reminderLogId: integer('reminder_log_id').references(() => reminderLog.id),
+    kind: text('kind'),
+    actionUrl: text('action_url'),
+    clickedAt: text('clicked_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('reminder_clicks_clicked_at_idx').on(t.clickedAt)],
+)

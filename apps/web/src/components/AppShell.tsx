@@ -32,6 +32,7 @@ import { NotificationBell } from './NotificationBell'
 import { CommandPalette, openCommandPalette } from './CommandPalette'
 import { OnboardingWizard } from './OnboardingWizard'
 import { apiGet, apiSend } from '@/lib/transport'
+import { initReminderScheduler } from '@/platform/reminders'
 import { useToast } from '@/ui'
 
 const COLLAPSED_STORAGE_KEY = 'lh-sidebar-collapsed'
@@ -519,6 +520,12 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+
+  useEffect(() => {
+    const teardown = initReminderScheduler()
+    return teardown
+  }, [])
+
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
       <Sidebar pathname={pathname} />
