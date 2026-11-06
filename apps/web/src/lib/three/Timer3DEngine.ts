@@ -58,7 +58,7 @@ export function createHourglassTimer(): Timer3DInstance {
 
   // Frame pillars and brass caps
   const capGeo = new THREE.CylinderGeometry(1.6, 1.6, 0.25, 8)
-  const brassMat = new THREE.MeshLambertMaterial({ color: 0xd97706, flatShading: true })
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, flatShading: true })
   const topCap = new THREE.Mesh(capGeo, brassMat)
   topCap.position.y = 2.6
   const bottomCap = new THREE.Mesh(capGeo, brassMat)
@@ -75,7 +75,7 @@ export function createHourglassTimer(): Timer3DInstance {
   }
 
   // Translucent glass bulbs
-  const glassMat = new THREE.MeshLambertMaterial({
+  const glassMat = new THREE.MeshStandardMaterial({
     color: 0x93c5fd,
     transparent: true,
     opacity: 0.35,
@@ -90,7 +90,7 @@ export function createHourglassTimer(): Timer3DInstance {
   root.add(bottomBulb)
 
   // Sand meshes
-  const sandMat = new THREE.MeshLambertMaterial({ color: 0xfbbf24, flatShading: true })
+  const sandMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, flatShading: true })
   const topSand = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.1, 8), sandMat)
   topSand.position.y = 1.9
   topSand.rotation.x = Math.PI
@@ -133,7 +133,7 @@ export function createCampfireTimer(): Timer3DInstance {
   const root = new THREE.Group()
 
   // Ring of 8 hearth stones
-  const stoneMat = new THREE.MeshLambertMaterial({ color: 0x64748b, flatShading: true })
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x64748b, flatShading: true })
   for (let i = 0; i < 8; i++) {
     const angle = (i / 8) * Math.PI * 2
     const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35, 0), stoneMat)
@@ -143,7 +143,7 @@ export function createCampfireTimer(): Timer3DInstance {
   }
 
   // 4 crossed wood logs
-  const logMat = new THREE.MeshLambertMaterial({ color: 0x5a3d28, flatShading: true })
+  const logMat = new THREE.MeshStandardMaterial({ color: 0x5a3d28, flatShading: true })
   for (let i = 0; i < 4; i++) {
     const angle = (i / 4) * Math.PI
     const log = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 2.2, 6), logMat)
@@ -221,9 +221,9 @@ export function createCampfireTimer(): Timer3DInstance {
 export function createClockworkTimer(): Timer3DInstance {
   const root = new THREE.Group()
 
-  const brassMat = new THREE.MeshLambertMaterial({ color: 0xb45309, flatShading: true })
-  const goldMat = new THREE.MeshLambertMaterial({ color: 0xf59e0b, flatShading: true })
-  const steelMat = new THREE.MeshLambertMaterial({ color: 0x475569, flatShading: true })
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xb45309, flatShading: true })
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, flatShading: true })
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, flatShading: true })
 
   // Outer circular clock body
   const bodyGeo = new THREE.CylinderGeometry(1.6, 1.6, 0.4, 16)
@@ -290,14 +290,14 @@ export function createCrystalTimer(): Timer3DInstance {
 
   // Engraved pedestal
   const pedGeo = new THREE.CylinderGeometry(1.2, 1.4, 0.5, 6)
-  const pedMat = new THREE.MeshLambertMaterial({ color: 0x334155, flatShading: true })
+  const pedMat = new THREE.MeshStandardMaterial({ color: 0x334155, flatShading: true })
   const pedestal = new THREE.Mesh(pedGeo, pedMat)
   pedestal.position.y = 0.25
   root.add(pedestal)
 
   // Central floating crystal (Octahedron / Bipyramid)
   const crystalGeo = new THREE.OctahedronGeometry(1.1, 0)
-  const crystalMat = new THREE.MeshLambertMaterial({
+  const crystalMat = new THREE.MeshStandardMaterial({
     color: 0x38bdf8,
     emissive: 0x0284c7,
     emissiveIntensity: 0.4,

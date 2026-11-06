@@ -56,10 +56,10 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
     robeColor = parseHexColor(options.robeColor, robeColor)
   }
 
-  const robeMat = new THREE.MeshLambertMaterial({ color: robeColor, flatShading: true })
-  const skinMat = new THREE.MeshLambertMaterial({ color: skinColor, flatShading: true })
-  const hairMat = new THREE.MeshLambertMaterial({ color: hairColor, flatShading: true })
-  const darkMat = new THREE.MeshLambertMaterial({ color: 0x1e293b, flatShading: true })
+  const robeMat = new THREE.MeshStandardMaterial({ color: robeColor, flatShading: true })
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, flatShading: true })
+  const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, flatShading: true })
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, flatShading: true })
 
   // 1. Torso / Robe
   const bodyGeo = new THREE.ConeGeometry(0.7, 1.4, 6)
@@ -116,12 +116,12 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
     if (options.headAccessory === 'head_straw_hat') {
       const brim = new THREE.Mesh(
         new THREE.CylinderGeometry(0.85, 0.85, 0.05, 8),
-        new THREE.MeshLambertMaterial({ color: 0xeab308, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0xeab308, flatShading: true }),
       )
       brim.position.y = 1.95
       const crown = new THREE.Mesh(
         new THREE.ConeGeometry(0.45, 0.35, 6),
-        new THREE.MeshLambertMaterial({ color: 0xca8a04, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0xca8a04, flatShading: true }),
       )
       crown.position.y = 2.15
       rootGroup.add(brim)
@@ -138,7 +138,7 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
       const hoodGeo = new THREE.ConeGeometry(0.65, 0.7, 6)
       const hood = new THREE.Mesh(
         hoodGeo,
-        new THREE.MeshLambertMaterial({ color: 0x312e81, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0x312e81, flatShading: true }),
       )
       hood.position.set(0, 2.05, -0.1)
       hood.rotation.x = -0.2
@@ -146,7 +146,7 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
     } else if (options.headAccessory === 'head_crown') {
       const wreath = new THREE.Mesh(
         new THREE.TorusGeometry(0.42, 0.06, 4, 8),
-        new THREE.MeshLambertMaterial({ color: 0xf59e0b, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, flatShading: true }),
       )
       wreath.position.set(0, 2.0, 0)
       wreath.rotation.x = Math.PI / 2
@@ -160,7 +160,7 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
       const lanternGroup = new THREE.Group()
       const cage = new THREE.Mesh(
         new THREE.CylinderGeometry(0.15, 0.15, 0.3, 6),
-        new THREE.MeshLambertMaterial({ color: 0x334155, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0x334155, flatShading: true }),
       )
       const core = new THREE.Mesh(
         new THREE.DodecahedronGeometry(0.08),
@@ -178,7 +178,7 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
     } else if (options.handAccessory === 'hand_book') {
       const book = new THREE.Mesh(
         new THREE.BoxGeometry(0.25, 0.35, 0.08),
-        new THREE.MeshLambertMaterial({ color: 0x991b1b, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0x991b1b, flatShading: true }),
       )
       book.position.set(-0.6, 0.9, 0.2)
       book.rotation.set(0.4, 0.3, -0.2)
@@ -187,11 +187,11 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
       const staffGroup = new THREE.Group()
       const pole = new THREE.Mesh(
         new THREE.CylinderGeometry(0.04, 0.04, 1.8, 5),
-        new THREE.MeshLambertMaterial({ color: 0x78350f, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, flatShading: true }),
       )
       const gem = new THREE.Mesh(
         new THREE.OctahedronGeometry(0.15),
-        new THREE.MeshLambertMaterial({ color: 0x38bdf8, emissive: 0x0284c7, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, flatShading: true }),
       )
       gem.position.y = 0.95
       staffGroup.add(pole)
@@ -201,7 +201,7 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
     } else if (options.handAccessory === 'hand_quill') {
       const quill = new THREE.Mesh(
         new THREE.ConeGeometry(0.06, 0.45, 4),
-        new THREE.MeshLambertMaterial({ color: 0xf8fafc, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, flatShading: true }),
       )
       quill.position.set(0.6, 0.9, 0.2)
       quill.rotation.set(-0.6, 0.2, 0.2)

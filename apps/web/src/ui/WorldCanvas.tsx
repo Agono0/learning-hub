@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { WorldSceneManager } from '@/lib/three/SceneManager'
+import { WorldSceneManager, type WorldQuality } from '@/lib/three/SceneManager'
 
 export interface WorldCanvasHandle {
   setProgress: (progress: number) => void
@@ -13,6 +13,10 @@ export interface WorldCanvasHandle {
     handAccessory?: string | null,
     robeColor?: string,
   ) => void
+  setCompanion: (companionId: string | null) => void
+  setUnlockedDecor: (itemIds: string[]) => void
+  setMood: (moodId: string) => void
+  setQuality: (quality: WorldQuality) => void
   setPlantedPlots: (
     plots: Array<{ treeType: string; posX: number; posZ: number; growthStage?: string }>,
   ) => void
@@ -25,14 +29,20 @@ export interface WorldCanvasProps {
   characterId?: string
   equippedHead?: string | null
   equippedHand?: string | null
+  equippedCompanion?: string | null
   equippedSkin?: string
   soundscape?: 'none' | 'birds' | 'rain' | 'fire' | 'wind'
+  lowPolyQuality?: WorldQuality
+  /** App palette id — drives the world's sky/light mood (WorldMood.ts). */
+  mood?: string
   plantedPlots?: Array<{
     treeType: string
     posX: number
     posZ: number
     growthStage?: string
   }>
+  /** Unlocked `decor_*` marketplace item ids rendered on the island. */
+  unlockedDecor?: string[]
   progress?: number // 0..1
 }
 
@@ -54,9 +64,13 @@ export const WorldCanvas = React.forwardRef<WorldCanvasHandle, WorldCanvasProps>
           characterId: props.characterId ?? 'char_apprentice',
           equippedHead: props.equippedHead,
           equippedHand: props.equippedHand,
+          equippedCompanion: props.equippedCompanion,
           equippedSkin: props.equippedSkin,
           soundscape: props.soundscape ?? 'birds',
+          lowPolyQuality: props.lowPolyQuality,
+          mood: props.mood,
           plantedPlots: props.plantedPlots,
+          unlockedDecor: props.unlockedDecor,
         })
         managerRef.current = mgr
 
@@ -109,6 +123,18 @@ export const WorldCanvas = React.forwardRef<WorldCanvasHandle, WorldCanvasProps>
     }, [props.plantedPlots])
 
     useEffect(() => {
+      if (managerRef.current && props.mood) {
+        managerRef.current.setMood(props.mood)
+      }
+    }, [props.mood])
+
+    useEffect(() => {
+      if (managerRef.current && props.unlockedDecor) {
+        managerRef.current.setUnlockedDecor(props.unlockedDecor)
+      }
+    }, [props.unlockedDecor])
+
+    useEffect(() => {
       if (managerRef.current && props.characterId) {
         managerRef.current.setCharacter(
           props.characterId,
@@ -119,11 +145,21 @@ export const WorldCanvas = React.forwardRef<WorldCanvasHandle, WorldCanvasProps>
       }
     }, [props.characterId, props.equippedHead, props.equippedHand, props.equippedSkin])
 
+    useEffect(() => {
+      if (managerRef.current) {
+        managerRef.current.setCompanion(props.equippedCompanion ?? null)
+      }
+    }, [props.equippedCompanion])
+
     useImperativeHandle(ref, () => ({
       setProgress: (p: number) => managerRef.current?.setProgress(p),
       setTimerTheme: (t: string) => managerRef.current?.setTimerTheme(t),
       setViewMode: (m: 'diorama' | 'third_person' | 'hybrid') => managerRef.current?.setViewMode(m),
       setCharacter: (c, head, hand, skin) => managerRef.current?.setCharacter(c, head, hand, skin),
+      setCompanion: (id) => managerRef.current?.setCompanion(id),
+      setUnlockedDecor: (ids) => managerRef.current?.setUnlockedDecor(ids),
+      setMood: (moodId: string) => managerRef.current?.setMood(moodId),
+      setQuality: (q: WorldQuality) => managerRef.current?.setQuality(q),
       setPlantedPlots: (plots) => managerRef.current?.setPlantedPlots(plots),
     }))
 

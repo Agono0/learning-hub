@@ -1,7 +1,17 @@
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
+import { getDecorPlacement } from '@learning-hub/core/world'
 import { createLowPolyTerrain } from './LowPolyTerrain'
-import { createLowPolyTree } from './LowPolyTree'
+import { createLowPolyTree, updateTreeWind } from './LowPolyTree'
 import { createLowPolyCharacter, type CharacterInstance } from './LowPolyCharacter'
+import { createLowPolyCompanion, type CompanionInstance } from './LowPolyCompanion'
+import { createLowPolyDecor, type DecorInstance } from './LowPolyDecor'
+import { createAtmosphere, type Atmosphere } from './WorldAtmosphere'
+import { resolveWorldMood, type WorldMoodPreset } from './WorldMood'
 import {
   createCampfireTimer,
   createClockworkTimer,
@@ -11,6 +21,8 @@ import {
   type Timer3DInstance,
 } from './Timer3DEngine'
 
+export type WorldQuality = 'high' | 'medium' | 'low'
+
 export interface SceneConfig {
   canvas: HTMLCanvasElement
   viewMode: 'diorama' | 'third_person' | 'hybrid'
@@ -18,14 +30,34 @@ export interface SceneConfig {
   characterId: string
   equippedHead?: string | null
   equippedHand?: string | null
+  equippedCompanion?: string | null
   equippedSkin?: string
   soundscape?: 'none' | 'birds' | 'rain' | 'fire' | 'wind'
+  lowPolyQuality?: WorldQuality
+  /** App palette id → world atmosphere preset (see WorldMood). */
+  mood?: string
   plantedPlots?: Array<{
     treeType: string
     posX: number
     posZ: number
     growthStage?: string
   }>
+  /** Unlocked decor item ids — each adorns a deterministic spot on the island. */
+  unlockedDecor?: string[]
+}
+
+interface QualityProfile {
+  pixelRatio: number
+  shadowMapSize: number
+  bloom: boolean
+  clouds: number
+  fireflies: number
+}
+
+const QUALITY_PROFILES: Record<WorldQuality, QualityProfile> = {
+  high: { pixelRatio: 2, shadowMapSize: 2048, bloom: true, clouds: 7, fireflies: 44 },
+  medium: { pixelRatio: 1.5, shadowMapSize: 1024, bloom: false, clouds: 4, fireflies: 24 },
+  low: { pixelRatio: 1, shadowMapSize: 512, bloom: false, clouds: 2, fireflies: 0 },
 }
 
 export class WorldSceneManager {
@@ -35,12 +67,27 @@ export class WorldSceneManager {
   private clock: THREE.Clock
   private animationFrameId: number | null = null
 
+  private composer: EffectComposer | null = null
+  private bloomPass: UnrealBloomPass | null = null
+  private controls: OrbitControls
+
   private character: CharacterInstance | null = null
+  private companion: CompanionInstance | null = null
   private activeTimer: Timer3DInstance | null = null
   private plantedTreesGroup = new THREE.Group()
+  private decorGroup = new THREE.Group()
+  private decorInstances: DecorInstance[] = []
+  private atmosphere: Atmosphere
+
+  private hemiLight: THREE.HemisphereLight
+  private sunLight: THREE.DirectionalLight
+  private fillLight: THREE.DirectionalLight
+  private ambientLight: THREE.AmbientLight
+
+  private quality: WorldQuality
+  private mood: WorldMoodPreset
 
   private viewMode: 'diorama' | 'third_person' | 'hybrid' = 'hybrid'
-  private currentCameraPos = new THREE.Vector3(18, 16, 18)
   private targetCameraPos = new THREE.Vector3(18, 16, 18)
   private lookAtTarget = new THREE.Vector3(0, 1.5, 0)
 
@@ -55,79 +102,140 @@ export class WorldSceneManager {
 
   constructor(private config: SceneConfig) {
     this.viewMode = config.viewMode
+    this.quality = config.lowPolyQuality ?? 'high'
+    this.mood = resolveWorldMood(config.mood)
+    const profile = QUALITY_PROFILES[this.quality]
 
-    // 1. Renderer
+    // 1. Renderer — filmic tone mapping + linear-space lighting make the same
+    // geometry read as a painted diorama instead of a flat cartoon.
     this.renderer = new THREE.WebGLRenderer({
       canvas: config.canvas,
       antialias: true,
-      alpha: true,
+      alpha: false,
       powerPreference: 'high-performance',
     })
     this.renderer.setSize(config.canvas.clientWidth, config.canvas.clientHeight, false)
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, profile.pixelRatio))
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = this.mood.exposure
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
-    // 2. Scene
+    // 2. Scene + fog
     this.scene = new THREE.Scene()
-    this.scene.background = new THREE.Color(0xdbeafe) // calm sky blue
+    this.scene.background = new THREE.Color(this.mood.fogColor)
+    this.scene.fog = new THREE.Fog(this.mood.fogColor, this.mood.fogNear, this.mood.fogFar)
 
     // 3. Camera
     this.camera = new THREE.PerspectiveCamera(
       45,
       config.canvas.clientWidth / Math.max(1, config.canvas.clientHeight),
       0.1,
-      200,
+      400,
     )
     this.updateCameraTarget()
     this.camera.position.copy(this.targetCameraPos)
 
-    // 4. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65)
-    this.scene.add(ambientLight)
+    // 4. Light rig: hemisphere bounce + shadow-casting sun + cool fill.
+    this.ambientLight = new THREE.AmbientLight(0xffffff, this.mood.ambientIntensity)
+    this.hemiLight = new THREE.HemisphereLight(
+      this.mood.hemiSky,
+      this.mood.hemiGround,
+      this.mood.hemiIntensity,
+    )
+    this.sunLight = new THREE.DirectionalLight(this.mood.sunColor, this.mood.sunIntensity)
+    this.sunLight.position.set(...this.mood.sunPosition)
+    this.sunLight.castShadow = this.quality !== 'low'
+    this.sunLight.shadow.mapSize.set(profile.shadowMapSize, profile.shadowMapSize)
+    this.sunLight.shadow.camera.near = 0.5
+    this.sunLight.shadow.camera.far = 120
+    this.sunLight.shadow.camera.left = -28
+    this.sunLight.shadow.camera.right = 28
+    this.sunLight.shadow.camera.top = 28
+    this.sunLight.shadow.camera.bottom = -28
+    this.sunLight.shadow.bias = -0.0004
+    this.sunLight.shadow.normalBias = 0.03
+    this.fillLight = new THREE.DirectionalLight(0xbcd4f0, 0.35)
+    this.fillLight.position.set(-18, 14, -20)
+    this.scene.add(
+      this.ambientLight,
+      this.hemiLight,
+      this.sunLight,
+      this.sunLight.target,
+      this.fillLight,
+    )
 
-    const sunLight = new THREE.DirectionalLight(0xfef08a, 1.2)
-    sunLight.position.set(20, 30, 15)
-    sunLight.castShadow = true
-    sunLight.shadow.mapSize.width = 1024
-    sunLight.shadow.mapSize.height = 1024
-    sunLight.shadow.camera.near = 0.5
-    sunLight.shadow.camera.far = 80
-    sunLight.shadow.camera.left = -25
-    sunLight.shadow.camera.right = 25
-    sunLight.shadow.camera.top = 25
-    sunLight.shadow.camera.bottom = -25
-    this.scene.add(sunLight)
+    // 5. Atmosphere: sky dome, clouds, stars, fireflies.
+    this.atmosphere = createAtmosphere(profile.clouds, profile.fireflies)
+    this.atmosphere.applyMood(this.mood)
+    this.scene.add(this.atmosphere.group)
 
-    // 5. Terrain
-    const terrain = createLowPolyTerrain()
-    this.scene.add(terrain)
+    // 6. Terrain
+    const terrain = createLowPolyTerrain({ quality: this.quality })
+    this.scene.add(terrain.group)
+    this.terrainUpdate = terrain.update
 
-    // 6. Planted Trees Group
-    this.scene.add(this.plantedTreesGroup)
+    // 7. Planted trees + decor groups
+    this.scene.add(this.plantedTreesGroup, this.decorGroup)
     if (config.plantedPlots) {
       this.setPlantedPlots(config.plantedPlots)
     }
+    if (config.unlockedDecor?.length) {
+      this.setUnlockedDecor(config.unlockedDecor)
+    }
 
-    // 7. Character
+    // 8. Character + companion
     this.setCharacter(
       config.characterId,
       config.equippedHead,
       config.equippedHand,
       config.equippedSkin,
     )
+    if (config.equippedCompanion) {
+      this.setCompanion(config.equippedCompanion)
+    }
 
-    // 8. Timer
+    // 9. Timer
     this.setTimerTheme(config.timerTheme)
 
-    // 9. Input & Resizing
+    // 10. Camera controls (orbit in diorama/hybrid; WASD drives third-person)
+    this.controls = new OrbitControls(this.camera, config.canvas)
+    this.controls.enableDamping = true
+    this.controls.dampingFactor = 0.06
+    this.controls.minDistance = 7
+    this.controls.maxDistance = 70
+    this.controls.maxPolarAngle = Math.PI * 0.49
+    this.controls.enablePan = false
+    this.controls.target.copy(this.lookAtTarget)
+    this.controls.enabled = this.viewMode !== 'third_person'
+
+    // 11. Post-processing: gentle bloom so emissive things (fireflies, runes,
+    // crystals, campfire) actually glow. Disabled below high quality.
+    if (profile.bloom) {
+      this.composer = new EffectComposer(this.renderer)
+      this.composer.addPass(new RenderPass(this.scene, this.camera))
+      this.bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(config.canvas.clientWidth, config.canvas.clientHeight),
+        0.32, // strength — subtle, never blurry
+        0.55, // radius
+        0.82, // threshold — only bright emissives bloom
+      )
+      this.composer.addPass(this.bloomPass)
+      this.composer.addPass(new OutputPass())
+      this.composer.setSize(config.canvas.clientWidth, config.canvas.clientHeight)
+      this.composer.setPixelRatio(this.renderer.getPixelRatio())
+    }
+
+    // 12. Input, audio, loop
     this.clock = new THREE.Clock()
     this.bindEvents()
     this.startSoundscape(config.soundscape ?? 'birds')
 
-    // Start loop
     this.renderLoop()
   }
+
+  private terrainUpdate: (elapsed: number) => void = () => {}
 
   public setProgress(progress: number) {
     if (this.activeTimer) {
@@ -187,6 +295,36 @@ export class WorldSceneManager {
     this.scene.add(this.character.group)
   }
 
+  public setCompanion(companionId: string | null) {
+    if (this.companion) {
+      this.scene.remove(this.companion.group)
+      this.companion.dispose()
+      this.companion = null
+    }
+    if (!companionId) return
+    this.companion = createLowPolyCompanion({ companionId })
+    this.scene.add(this.companion.group)
+  }
+
+  /** Spawns unlocked decor structures at their deterministic island spots. */
+  public setUnlockedDecor(itemIds: string[]) {
+    for (const d of this.decorInstances) {
+      this.decorGroup.remove(d.group)
+      d.dispose()
+    }
+    this.decorInstances = []
+
+    for (const itemId of itemIds) {
+      if (!itemId.startsWith('decor_')) continue
+      const placement = getDecorPlacement(itemId)
+      const decor = createLowPolyDecor(itemId)
+      decor.group.position.set(placement.x, 0.3, placement.z)
+      decor.group.rotation.y = placement.rotationY
+      this.decorGroup.add(decor.group)
+      this.decorInstances.push(decor)
+    }
+  }
+
   public setPlantedPlots(
     plots: Array<{ treeType: string; posX: number; posZ: number; growthStage?: string }>,
   ) {
@@ -206,7 +344,47 @@ export class WorldSceneManager {
 
   public setViewMode(mode: 'diorama' | 'third_person' | 'hybrid') {
     this.viewMode = mode
+    this.controls.enabled = mode !== 'third_person'
+    if (mode !== 'third_person') {
+      // Re-center the orbit on the pedestal when returning to diorama.
+      this.controls.target.set(0, 1.5, 0)
+    }
     this.updateCameraTarget()
+  }
+
+  /** Re-skins the whole atmosphere + light rig for an app palette mood. */
+  public setMood(moodId: string) {
+    this.mood = resolveWorldMood(moodId)
+    const m = this.mood
+
+    this.atmosphere.applyMood(m)
+    ;(this.scene.background as THREE.Color).setHex(m.fogColor)
+    if (this.scene.fog instanceof THREE.Fog) {
+      this.scene.fog.color.setHex(m.fogColor)
+      this.scene.fog.near = m.fogNear
+      this.scene.fog.far = m.fogFar
+    }
+    this.sunLight.color.setHex(m.sunColor)
+    this.sunLight.intensity = m.sunIntensity
+    this.sunLight.position.set(...m.sunPosition)
+    this.hemiLight.color.setHex(m.hemiSky)
+    this.hemiLight.groundColor.setHex(m.hemiGround)
+    this.hemiLight.intensity = m.hemiIntensity
+    this.ambientLight.intensity = m.ambientIntensity
+    this.renderer.toneMappingExposure = m.exposure
+  }
+
+  public setQuality(quality: WorldQuality) {
+    this.quality = quality
+    const profile = QUALITY_PROFILES[quality]
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, profile.pixelRatio))
+    this.composer?.setPixelRatio(this.renderer.getPixelRatio())
+    this.sunLight.castShadow = quality !== 'low'
+    if (this.sunLight.shadow.mapSize.width !== profile.shadowMapSize) {
+      this.sunLight.shadow.mapSize.set(profile.shadowMapSize, profile.shadowMapSize)
+      this.sunLight.shadow.map?.dispose()
+      this.sunLight.shadow.map = null
+    }
   }
 
   private updateCameraTarget() {
@@ -220,7 +398,7 @@ export class WorldSceneManager {
       this.targetCameraPos.copy(this.charPosition).add(offset)
       this.lookAtTarget.set(this.charPosition.x, this.charPosition.y + 1.2, this.charPosition.z)
     } else {
-      // Diorama / Isometric view
+      // Diorama / Isometric view (OrbitControls own the camera from here)
       this.targetCameraPos.set(18, 16, 18)
       this.lookAtTarget.set(0, 1.5, 0)
     }
@@ -250,6 +428,7 @@ export class WorldSceneManager {
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height, false)
+    this.composer?.setSize(width, height)
   }
 
   public startSoundscape(type: 'none' | 'birds' | 'rain' | 'fire' | 'wind') {
@@ -330,6 +509,7 @@ export class WorldSceneManager {
     this.animationFrameId = requestAnimationFrame(this.renderLoop)
 
     const delta = Math.min(this.clock.getDelta(), 0.1)
+    const elapsed = this.clock.elapsedTime
 
     // Character WASD navigation in Third-Person mode
     let isMoving = false
@@ -372,19 +552,37 @@ export class WorldSceneManager {
       this.updateCameraTarget()
     }
 
-    // Smooth camera interpolation
-    this.camera.position.lerp(this.targetCameraPos, 0.05)
-    this.camera.lookAt(this.lookAtTarget)
+    // Camera: OrbitControls own the camera in diorama modes; the follow-cam
+    // lerps in third-person.
+    if (this.viewMode === 'third_person') {
+      this.camera.position.lerp(this.targetCameraPos, 0.05)
+      this.camera.lookAt(this.lookAtTarget)
+    } else {
+      this.controls.update()
+    }
 
     // Update animations
+    updateTreeWind(elapsed)
+    this.terrainUpdate(elapsed)
+    this.atmosphere.update(delta, elapsed)
     if (this.character) {
       this.character.update(delta, isMoving)
+    }
+    if (this.companion) {
+      this.companion.update(delta, this.charPosition, this.charRotation, isMoving)
     }
     if (this.activeTimer) {
       this.activeTimer.update(delta)
     }
+    for (const decor of this.decorInstances) {
+      decor.update?.(delta, elapsed)
+    }
 
-    this.renderer.render(this.scene, this.camera)
+    if (this.composer) {
+      this.composer.render()
+    } else {
+      this.renderer.render(this.scene, this.camera)
+    }
   }
 
   public dispose() {
@@ -395,11 +593,16 @@ export class WorldSceneManager {
 
     this.cleanupListeners()
     this.stopSoundscape()
+    this.controls.dispose()
 
     if (this.activeTimer) {
       this.activeTimer.dispose()
     }
+    for (const d of this.decorInstances) d.dispose()
+    this.atmosphere.dispose()
+    if (this.companion) this.companion.dispose()
 
+    this.composer?.dispose()
     this.renderer.dispose()
   }
 }
