@@ -1,1 +1,1 @@
-export * from './guilds/index'
+export * from './guilds/index.js'

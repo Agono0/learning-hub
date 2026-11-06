@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@learning-hub/core": "workspace:*",
+    "@learning-hub/core": "*",
     "zod": "^3.24.2"
   },
   "devDependencies": {

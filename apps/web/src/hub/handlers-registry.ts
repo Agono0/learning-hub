@@ -115,6 +115,13 @@ import * as streaks from '../server/handlers/streaks/route'
 import * as studyPlan from '../server/handlers/study-plan/route'
 import * as sync from '../server/handlers/sync/route'
 import * as weekly from '../server/handlers/weekly/route'
+import * as worldState from '../server/handlers/world/state/route'
+import * as worldMarket from '../server/handlers/world/market/route'
+import * as worldAvatar from '../server/handlers/world/avatar/route'
+import * as worldPlots from '../server/handlers/world/plots/route'
+import * as worldVerifyReview from '../server/handlers/world/verify/review/route'
+import * as worldVerifyFocus from '../server/handlers/world/verify/focus/route'
+import * as worldSettings from '../server/handlers/world/settings/route'
 import * as curriculumImport from '../server/handlers/curriculum/import/route'
 import * as curriculumPrompt from '../server/handlers/curriculum/prompt/route'
 import * as curriculumCourses from '../server/handlers/curriculum/courses/route'
@@ -270,6 +277,13 @@ add('curriculum/courses/[id]/certificate', curriculumCourseCertificate)
 add('curriculum/lessons/[id]', curriculumLessonId)
 add('curriculum/practice', curriculumPractice)
 add('curriculum/stages/[id]', curriculumStageId)
+add('world/state', worldState)
+add('world/market', worldMarket)
+add('world/avatar', worldAvatar)
+add('world/plots', worldPlots)
+add('world/verify/review', worldVerifyReview)
+add('world/verify/focus', worldVerifyFocus)
+add('world/settings', worldSettings)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

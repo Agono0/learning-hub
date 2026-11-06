@@ -8,6 +8,7 @@ import {
   Brain,
   CalendarCheck,
   CalendarRange,
+  Compass,
   DatabaseBackup,
   Dumbbell,
   Flame,
@@ -73,6 +74,7 @@ export const NAV: NavGroup[] = [
       { href: '/palace', label: 'Palace', icon: Map },
       { href: '/games', label: 'Games', icon: Brain },
       { href: '/online', label: 'Online Hub', icon: Globe },
+      { href: '/world', label: '3D World', icon: Compass },
     ],
   },
   {

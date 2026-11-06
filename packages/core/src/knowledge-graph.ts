@@ -1,1 +1,1 @@
-export * from './knowledge-graph/index'
+export * from './knowledge-graph/index.js'

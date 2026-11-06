@@ -25,6 +25,7 @@ import { audioVoice } from './012-audio-voice'
 import { powerTools } from './013-power-tools'
 import { knowledgeGraph } from './014-knowledge-graph'
 import { guildsSeasons } from './015-guilds-seasons'
+import { forestWorldEconomy } from './016-forest-world-economy'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -43,6 +44,7 @@ export const MIGRATIONS: readonly Migration[] = [
   powerTools,
   knowledgeGraph,
   guildsSeasons,
+  forestWorldEconomy,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

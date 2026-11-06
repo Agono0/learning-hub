@@ -14,6 +14,7 @@ import {
   Smartphone,
   Sparkles,
   Sun,
+  TreePine,
   Wand2,
 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
@@ -793,6 +794,9 @@ export default function SettingsPage() {
       {/* ── AnkiConnect Live Sync (M13) ── */}
       <AnkiConnectSection />
 
+      {/* ── 3D Forest World & Timers (M16) ── */}
+      <WorldSettingsSection />
+
       <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save settings'}
       </button>
@@ -1160,6 +1164,211 @@ function AnkiConnectSection() {
           </span>
           {testStatus && <span className="text-xs text-neutral-300">{testStatus}</span>}
         </div>
+      </div>
+    </section>
+  )
+}
+
+function WorldSettingsSection() {
+  const [viewMode, setViewMode] = useState<'hybrid' | 'diorama' | 'third_person'>('hybrid')
+  const [timerTheme, setTimerTheme] = useState<
+    'tree' | 'hourglass' | 'campfire' | 'clockwork' | 'crystal'
+  >('tree')
+  const [integrationMode, setIntegrationMode] = useState<
+    'dedicated' | 'focus_embedded' | 'hud_modal'
+  >('dedicated')
+  const [soundscape, setSoundscape] = useState<'birds' | 'rain' | 'fire' | 'wind' | 'none'>('birds')
+  const [saved, setSaved] = useState(false)
+
+  const settingsQuery = useQuery<{
+    ok: boolean
+    settings: {
+      viewMode: 'hybrid' | 'diorama' | 'third_person'
+      timerTheme: 'tree' | 'hourglass' | 'campfire' | 'clockwork' | 'crystal'
+      integrationMode: 'dedicated' | 'focus_embedded' | 'hud_modal'
+      soundscape: 'birds' | 'rain' | 'fire' | 'wind' | 'none'
+    }
+  }>({
+    queryKey: ['world-settings'],
+    queryFn: () => apiGet('/api/world/settings'),
+  })
+
+  useEffect(() => {
+    if (settingsQuery.data?.settings) {
+      const s = settingsQuery.data.settings
+      setViewMode(s.viewMode)
+      setTimerTheme(s.timerTheme)
+      setIntegrationMode(s.integrationMode)
+      setSoundscape(s.soundscape)
+    }
+  }, [settingsQuery.data])
+
+  const saveSettings = async (patch: Record<string, string>) => {
+    try {
+      await apiSend('/api/world/settings', 'POST', patch)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error('Failed to save 3D world settings:', err)
+    }
+  }
+
+  return (
+    <section className="panel space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <TreePine className="h-4 w-4 text-emerald-400" /> 3D Forest of Focus & Timers
+        </h2>
+        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+          Three.js Low-Poly
+        </span>
+      </div>
+
+      <p className="text-xs text-neutral-400">
+        Configure camera presentation, default 3D visual timer themes, and ambient soundscapes.
+      </p>
+
+      <div className="space-y-4 pt-2">
+        <div>
+          <label className="label mb-1.5 block">Camera & Control Mode</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[
+              {
+                id: 'hybrid',
+                title: 'Auto-Switch (Hybrid)',
+                desc: 'Isometric Diorama during focus, Third-Person when exploring.',
+              },
+              {
+                id: 'diorama',
+                title: 'Isometric Diorama',
+                desc: 'Calm fixed-angle orbit view with smooth zoom and zero distraction.',
+              },
+              {
+                id: 'third_person',
+                title: 'Third-Person Explorer',
+                desc: 'Follow camera with WASD / touch character traversal across the island.',
+              },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  setViewMode(opt.id as typeof viewMode)
+                  void saveSettings({ viewMode: opt.id })
+                }}
+                className={`rounded-lg border p-3 text-left transition-all ${
+                  viewMode === opt.id
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
+                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label mb-1.5 block">Default 3D Timer Theme</label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {[
+              { id: 'tree', label: 'Growing Tree' },
+              { id: 'hourglass', label: 'Hourglass' },
+              { id: 'campfire', label: 'Campfire' },
+              { id: 'clockwork', label: 'Clockwork' },
+              { id: 'crystal', label: 'Mystic Crystal' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setTimerTheme(t.id as typeof timerTheme)
+                  void saveSettings({ timerTheme: t.id })
+                }}
+                className={`rounded-lg border p-2 text-center text-xs transition-all ${
+                  timerTheme === t.id
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-semibold'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label mb-1.5 block">Integration Surface</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[
+              {
+                id: 'dedicated',
+                title: 'Dedicated Page (/world)',
+                desc: 'Full-screen 3D world with interactive marketplace.',
+              },
+              {
+                id: 'focus_embedded',
+                title: 'Embedded in /focus',
+                desc: 'Embeds 3D timer directly inside the focus timer page.',
+              },
+              {
+                id: 'hud_modal',
+                title: 'Global HUD Launcher',
+                desc: 'Available as a floating popup modal across all screens.',
+              },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  setIntegrationMode(opt.id as typeof integrationMode)
+                  void saveSettings({ integrationMode: opt.id })
+                }}
+                className={`rounded-lg border p-3 text-left transition-all ${
+                  integrationMode === opt.id
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
+                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label mb-1.5 block">Ambient Nature Soundscape</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'birds', label: 'Forest Birds' },
+              { id: 'rain', label: 'Gentle Rain' },
+              { id: 'fire', label: 'Campfire Embers' },
+              { id: 'none', label: 'Muted (Off)' },
+            ].map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  setSoundscape(s.id as typeof soundscape)
+                  void saveSettings({ soundscape: s.id })
+                }}
+                className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${
+                  soundscape === s.id
+                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-semibold'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {saved && (
+          <span className="text-xs text-emerald-400 font-medium">3D preferences saved.</span>
+        )}
       </div>
     </section>
   )

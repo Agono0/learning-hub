@@ -1394,3 +1394,99 @@ export const reviewDuels = table(
   },
   (t) => [index('review_duels_completed_idx').on(t.completedAt)],
 )
+
+// ─── 3D Low-Poly World & Verified Study Coin Economy (M16) ────────────────
+
+export const userAvatars = table(
+  'user_avatars',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().default('default').unique(),
+    characterId: text('character_id').notNull().default('char_apprentice'),
+    equippedHead: text('equipped_head'),
+    equippedHand: text('equipped_hand'),
+    equippedSkin: text('equipped_skin').notNull().default('default'),
+    unlockedCharacters: text('unlocked_characters', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default(['char_apprentice']),
+    unlockedItems: text('unlocked_items', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    unlockedTrees: text('unlocked_trees', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default(['tree_oak', 'tree_pine']),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('user_avatars_user_idx').on(t.userId)],
+)
+
+export const forestPlots = table(
+  'forest_plots',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().default('default'),
+    treeType: text('tree_type').notNull().default('tree_oak'),
+    growthStage: text('growth_stage').notNull().default('mature'),
+    posX: real('pos_x').notNull().default(0),
+    posY: real('pos_y').notNull().default(0),
+    posZ: real('pos_z').notNull().default(0),
+    focusSessionId: text('focus_session_id'),
+    durationMinutes: integer('duration_minutes').notNull().default(25),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('forest_plots_user_idx').on(t.userId),
+    index('forest_plots_created_idx').on(t.createdAt),
+  ],
+)
+
+export const studyCoinLedger = table(
+  'study_coin_ledger',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().default('default'),
+    amount: integer('amount').notNull(),
+    balanceAfter: integer('balance_after').notNull(),
+    reason: text('reason').notNull(),
+    referenceId: text('reference_id'),
+    signature: text('signature').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('study_coin_ledger_user_idx').on(t.userId),
+    index('study_coin_ledger_created_idx').on(t.createdAt),
+  ],
+)
+
+export const marketItems = table(
+  'market_items',
+  {
+    id: text('id').primaryKey(),
+    category: text('category').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    priceCoins: integer('price_coins').notNull(),
+    rarity: text('rarity').notNull().default('common'),
+    previewProps: text('preview_props', { mode: 'json' }).$type<Record<string, unknown>>(),
+    isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  },
+  (t) => [index('market_items_category_idx').on(t.category)],
+)
+
+export const userWorldSettings = table('user_world_settings', {
+  userId: text('user_id').primaryKey(),
+  viewMode: text('view_mode').notNull().default('hybrid'),
+  timerTheme: text('timer_theme').notNull().default('tree'),
+  integrationMode: text('integration_mode').notNull().default('dedicated'),
+  soundscape: text('soundscape').notNull().default('birds'),
+  lowPolyQuality: text('low_poly_quality').notNull().default('high'),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})

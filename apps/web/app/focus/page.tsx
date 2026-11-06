@@ -13,6 +13,7 @@ import {
   Shield,
   ShieldAlert,
   Timer,
+  TreePine,
   X,
   XCircle,
 } from 'lucide-react'
@@ -29,6 +30,8 @@ import {
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { useToast } from '@/ui'
+import { WorldCanvas } from '@/ui/WorldCanvas'
+import Link from 'next/link'
 
 interface FocusSession {
   id: number
@@ -124,6 +127,7 @@ export default function FocusPage() {
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [leaks, setLeaks] = useState(0)
   const [xpToast, setXpToast] = useState<string | null>(null)
+  const [show3DMode, setShow3DMode] = useState(false)
   const running = session !== null
 
   const startedAtMs = useRef<number | null>(null)
@@ -599,7 +603,40 @@ export default function FocusPage() {
 
           {running && (
             <div className="panel space-y-4 text-center">
-              <p className="label">{session?.task ?? 'Focus session'}</p>
+              <div className="flex items-center justify-between">
+                <p className="label">{session?.task ?? 'Focus session'}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn-ghost border border-emerald-500/30 text-emerald-400 text-xs py-1 px-2.5 flex items-center"
+                    onClick={() => setShow3DMode(!show3DMode)}
+                  >
+                    <TreePine className="h-3.5 w-3.5 mr-1" />
+                    {show3DMode ? '2D Calm' : '3D Forest'}
+                  </button>
+                  <Link
+                    href="/world"
+                    className="btn-ghost border border-neutral-200 dark:border-[#26262b] text-neutral-400 text-xs py-1 px-2.5"
+                  >
+                    3D Sanctuary →
+                  </Link>
+                </div>
+              </div>
+
+              {show3DMode && (
+                <div className="w-full h-64 rounded-2xl overflow-hidden border border-emerald-900/30 bg-slate-950">
+                  <WorldCanvas
+                    viewMode="diorama"
+                    timerTheme="tree"
+                    progress={
+                      session && session.plannedMinutes > 0
+                        ? Math.max(0, Math.min(1, 1 - secondsLeft / (session.plannedMinutes * 60)))
+                        : 0
+                    }
+                  />
+                </div>
+              )}
+
               <div className="text-6xl font-bold tabular-nums tracking-tight">
                 {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
               </div>

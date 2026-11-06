@@ -139,6 +139,13 @@ beforeAll(async () => {
   M.socialGuilds = await import('../app/api/social/guilds/route')
   M.socialDuels = await import('../app/api/social/duels/route')
   M.socialSeasons = await import('../app/api/social/seasons/route')
+  M.worldState = await import('../app/api/world/state/route')
+  M.worldMarket = await import('../app/api/world/market/route')
+  M.worldAvatar = await import('../app/api/world/avatar/route')
+  M.worldPlots = await import('../app/api/world/plots/route')
+  M.worldVerifyReview = await import('../app/api/world/verify/review/route')
+  M.worldVerifyFocus = await import('../app/api/world/verify/focus/route')
+  M.worldSettings = await import('../app/api/world/settings/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1516,5 +1523,107 @@ describe('max focus mode (milestone 6)', () => {
     }
     expect(claimBody.ok).toBe(true)
     expect(claimBody.progress.claimedRewards).toContain(5)
+  })
+
+  it('3D Low-Poly World, Verified Study Coins & Timers (M16)', async () => {
+    // 1. World State
+    const stateRes = await M.worldState.GET(req('GET', '/api/world/state'))
+    expect(stateRes.status).toBe(200)
+    const stateBody = (await stateRes.json()) as {
+      ok: boolean
+      avatar: { characterId: string }
+      balance: number
+      plots: any[]
+      settings: { viewMode: string }
+    }
+    expect(stateBody.ok).toBe(true)
+    expect(stateBody.avatar.characterId).toBeDefined()
+
+    // 2. Verified Review study coin minting
+    const reviewRes = await M.worldVerifyReview.POST(
+      post('/api/world/verify/review', {
+        cardId: 101,
+        elapsedMs: 2500,
+        rating: 3,
+      }),
+    )
+    expect(reviewRes.status).toBe(200)
+    const reviewBody = (await reviewRes.json()) as {
+      ok: boolean
+      valid: boolean
+      coinsAwarded: number
+      balance: number
+    }
+    expect(reviewBody.ok).toBe(true)
+    expect(reviewBody.valid).toBe(true)
+    expect(reviewBody.coinsAwarded).toBe(2)
+
+    // 3. Verified Focus Block study coin minting
+    const focusRes = await M.worldVerifyFocus.POST(
+      post('/api/world/verify/focus', {
+        plannedMinutes: 25,
+        actualSeconds: 1500,
+        heartbeatsCount: 20,
+        completedWithoutExit: true,
+      }),
+    )
+    expect(focusRes.status).toBe(200)
+    const focusBody = (await focusRes.json()) as {
+      ok: boolean
+      valid: boolean
+      coinsAwarded: number
+      balance: number
+    }
+    expect(focusBody.ok).toBe(true)
+    expect(focusBody.valid).toBe(true)
+    expect(focusBody.coinsAwarded).toBe(30)
+
+    // 4. Plant a tree plot
+    const plotRes = await M.worldPlots.POST(
+      post('/api/world/plots', {
+        treeType: 'tree_oak',
+        durationMinutes: 25,
+      }),
+    )
+    expect(plotRes.status).toBe(200)
+    const plotBody = (await plotRes.json()) as { ok: boolean; plot: { treeType: string } }
+    expect(plotBody.ok).toBe(true)
+    expect(plotBody.plot.treeType).toBe('tree_oak')
+
+    // 5. Market catalog and purchase
+    const marketRes = await M.worldMarket.GET(req('GET', '/api/world/market'))
+    expect(marketRes.status).toBe(200)
+    const marketBody = (await marketRes.json()) as { ok: boolean; catalog: any[] }
+    expect(marketBody.ok).toBe(true)
+    expect(marketBody.catalog.length).toBeGreaterThan(5)
+
+    // Purchase quill (80 coins)
+    const buyRes = await M.worldMarket.POST(post('/api/world/market', { itemId: 'hand_quill' }))
+    expect(buyRes.status).toBe(200)
+    const buyBody = (await buyRes.json()) as { ok: boolean; avatar: { unlockedItems: string[] } }
+    expect(buyBody.ok).toBe(true)
+    expect(buyBody.avatar.unlockedItems).toContain('hand_quill')
+
+    // 6. Equip item on avatar
+    const equipRes = await M.worldAvatar.POST(
+      post('/api/world/avatar', { equippedHand: 'hand_quill' }),
+    )
+    expect(equipRes.status).toBe(200)
+    const equipBody = (await equipRes.json()) as { ok: boolean; avatar: { equippedHand: string } }
+    expect(equipBody.ok).toBe(true)
+    expect(equipBody.avatar.equippedHand).toBe('hand_quill')
+
+    // 7. Update world settings
+    const settingsRes = await M.worldSettings.POST(
+      post('/api/world/settings', { timerTheme: 'hourglass', viewMode: 'diorama' }),
+    )
+    expect(settingsRes.status).toBe(200)
+    const settingsBody = (await settingsRes.json()) as {
+      ok: boolean
+      settings: { timerTheme: string; viewMode: string }
+    }
+    expect(settingsBody.ok).toBe(true)
+    expect(settingsBody.settings.timerTheme).toBe('hourglass')
+    expect(settingsBody.settings.viewMode).toBe('diorama')
   })
 })

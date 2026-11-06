@@ -58,6 +58,7 @@ const APPEND_ONLY_TABLES = new Set([
   'elo_events',
   'friction_events',
   'course_exam_attempts',
+  'study_coin_ledger',
 ])
 
 const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs', 'focus_bridge'])
@@ -193,6 +194,16 @@ export function computeRecordNaturalKey(
       return `trig:${str(row['trigger'])}:at:${str(row['created_at'])}:ref:${str(row['reflection'])}`
     case 'course_exam_attempts':
       return `course:${str(row['course_id'])}:at:${str(row['taken_at'])}:score:${str(row['score'])}`
+    case 'study_coin_ledger':
+      return `sig:${str(row['signature'])}`
+    case 'user_avatars':
+      return `u:${str(row['user_id'])}`
+    case 'user_world_settings':
+      return `u:${str(row['user_id'])}`
+    case 'market_items':
+      return `id:${str(row['id'])}`
+    case 'forest_plots':
+      return `u:${str(row['user_id'])}:tree:${str(row['tree_type'])}:at:${str(row['created_at'])}`
     default:
       return null
   }
@@ -436,12 +447,14 @@ export async function mergeBackup(
 
       const tableInfo = database.pragma(`table_info("${table}")`) as {
         name: string
+        type: string
         pk: number
       }[]
       const columns = tableInfo.map((c) => c.name)
       const columnSet = new Set(columns)
-      const pkCols = tableInfo.filter((c) => c.pk > 0).map((c) => c.name)
-      const singleIntPk = pkCols.length === 1 && pkCols[0] === 'id'
+      const pkCols = tableInfo.filter((c) => c.pk > 0)
+      const singleIntPk =
+        pkCols.length === 1 && pkCols[0]!.name === 'id' && /INT/i.test(pkCols[0]!.type)
 
       // Validate columns upfront
       for (const r of incomingRows) {
