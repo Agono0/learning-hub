@@ -1,13 +1,15 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Coins,
   Compass,
   Flame,
   Hourglass,
+  Landmark,
   Maximize2,
   Minimize2,
+  PawPrint,
   Pause,
   Play,
   RotateCcw,
@@ -21,12 +23,14 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, EmptyState, PageHeader, Panel, Tabs } from '@/ui'
 import { WorldCanvas, type WorldCanvasHandle } from '@/ui/WorldCanvas'
+import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
 
 interface WorldState {
   avatar: {
     characterId: string
     equippedHead: string | null
     equippedHand: string | null
+    equippedCompanion: string | null
     equippedSkin: string
     unlockedCharacters: string[]
     unlockedItems: string[]
@@ -54,7 +58,7 @@ interface WorldState {
 
 interface MarketItem {
   id: string
-  category: 'character' | 'accessory' | 'tree' | 'timer_theme'
+  category: 'character' | 'accessory' | 'tree' | 'timer_theme' | 'companion' | 'decor'
   name: string
   description: string
   priceCoins: number
@@ -62,11 +66,48 @@ interface MarketItem {
   isDefault: boolean
 }
 
+const CATEGORY_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'character', label: 'Scholars' },
+  { key: 'companion', label: 'Companions' },
+  { key: 'accessory', label: 'Gear' },
+  { key: 'tree', label: 'Trees' },
+  { key: 'decor', label: 'Decor' },
+  { key: 'timer_theme', label: 'Timers' },
+] as const
+
+const CATEGORY_ICON: Record<MarketItem['category'], typeof User> = {
+  character: User,
+  companion: PawPrint,
+  accessory: ShoppingBag,
+  tree: TreePine,
+  decor: Landmark,
+  timer_theme: Hourglass,
+}
+
+/** Rarity-tinted card glow — echoes the 3D preview pedestal ring. */
+const RARITY_CARD: Record<MarketItem['rarity'], string> = {
+  common: 'border-slate-700/60 hover:border-slate-500',
+  rare: 'border-sky-500/30 hover:border-sky-400/60',
+  epic: 'border-purple-500/30 hover:border-purple-400/60',
+  legendary: 'border-amber-500/30 hover:border-amber-400/60',
+}
+
+const RARITY_THUMB: Record<MarketItem['rarity'], string> = {
+  common: 'from-slate-700/40 to-slate-900 text-slate-300',
+  rare: 'from-sky-600/25 to-slate-900 text-sky-300',
+  epic: 'from-purple-600/25 to-slate-900 text-purple-300',
+  legendary: 'from-amber-500/25 to-slate-900 text-amber-300',
+}
+
 export default function WorldPage() {
   const [activeTab, setActiveTab] = useState<'world' | 'market' | 'plots'>('world')
   const [worldState, setWorldState] = useState<WorldState | null>(null)
   const [catalog, setCatalog] = useState<MarketItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [categoryFilter, setCategoryFilter] =
+    useState<(typeof CATEGORY_FILTERS)[number]['key']>('all')
+  const [previewItem, setPreviewItem] = useState<MarketItem | null>(null)
 
   // Timer state
   const [plannedMinutes, setPlannedMinutes] = useState(25)
@@ -145,6 +186,11 @@ export default function WorldPage() {
       canvasRef.current.setProgress(progress)
     }
   }, [progress])
+
+  const unlockedDecor = useMemo(
+    () => worldState?.avatar.unlockedItems.filter((id) => id.startsWith('decor_')) ?? [],
+    [worldState?.avatar.unlockedItems],
+  )
 
   async function handleSessionComplete() {
     try {
@@ -239,6 +285,21 @@ export default function WorldPage() {
     }
   }
 
+  async function handleEquipCompanion(companionId: string | null) {
+    try {
+      const res = await apiSend<{ ok: boolean; avatar: WorldState['avatar'] }>(
+        '/api/world/avatar',
+        'POST',
+        { equippedCompanion: companionId },
+      )
+      if (res && res.ok && worldState) {
+        setWorldState({ ...worldState, avatar: res.avatar })
+      }
+    } catch (err) {
+      console.error('Failed to equip companion:', err)
+    }
+  }
+
   async function handleEquipAccessory(slot: 'head' | 'hand', accessoryId: string | null) {
     try {
       const res = await apiSend<{ ok: boolean; avatar: WorldState['avatar'] }>(
@@ -253,6 +314,16 @@ export default function WorldPage() {
       }
     } catch (err) {
       console.error('Failed to equip accessory:', err)
+    }
+  }
+
+  /** Dispatch an equip action based on the item's category. */
+  async function handleEquipItem(item: MarketItem) {
+    if (item.category === 'character') return handleEquipCharacter(item.id)
+    if (item.category === 'companion') return handleEquipCompanion(item.id)
+    if (item.category === 'accessory') {
+      const slot = item.id.startsWith('head_') ? 'head' : 'hand'
+      return handleEquipAccessory(slot, item.id)
     }
   }
 
@@ -271,6 +342,29 @@ export default function WorldPage() {
     }
     apiSend('/api/world/settings', 'POST', { viewMode: mode }).catch(() => {})
   }
+
+  const isItemUnlocked = (item: MarketItem): boolean =>
+    Boolean(
+      item.isDefault ||
+      (item.category === 'character' && worldState?.avatar.unlockedCharacters.includes(item.id)) ||
+      ((item.category === 'accessory' ||
+        item.category === 'companion' ||
+        item.category === 'decor') &&
+        worldState?.avatar.unlockedItems.includes(item.id)) ||
+      (item.category === 'tree' && worldState?.avatar.unlockedTrees.includes(item.id)),
+    )
+
+  const isItemEquipped = (item: MarketItem): boolean =>
+    Boolean(
+      (item.category === 'character' && worldState?.avatar.characterId === item.id) ||
+      (item.category === 'companion' && worldState?.avatar.equippedCompanion === item.id) ||
+      (item.category === 'accessory' &&
+        (worldState?.avatar.equippedHead === item.id ||
+          worldState?.avatar.equippedHand === item.id)),
+    )
+
+  const filteredCatalog =
+    categoryFilter === 'all' ? catalog : catalog.filter((i) => i.category === categoryFilter)
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60)
@@ -326,9 +420,12 @@ export default function WorldPage() {
               characterId={worldState?.avatar.characterId}
               equippedHead={worldState?.avatar.equippedHead}
               equippedHand={worldState?.avatar.equippedHand}
+              equippedCompanion={worldState?.avatar.equippedCompanion}
               equippedSkin={worldState?.avatar.equippedSkin}
               soundscape={soundscape}
+              lowPolyQuality={worldState?.settings.lowPolyQuality ?? 'high'}
               plantedPlots={worldState?.plots}
+              unlockedDecor={unlockedDecor}
               progress={progress}
             />
 
@@ -351,7 +448,7 @@ export default function WorldPage() {
                   ) : (
                     <Minimize2 className="w-3.5 h-3.5 mr-1" />
                   )}
-                  {viewMode === 'diorama' ? 'Third-Person (WASD)' : 'Isometric Diorama'}
+                  {viewMode === 'diorama' ? 'Third-Person (WASD)' : 'Orbit Diorama'}
                 </button>
                 <button
                   onClick={() => setSoundscape(soundscape === 'none' ? 'birds' : 'none')}
@@ -503,6 +600,20 @@ export default function WorldPage() {
                       : 'None'}
                   </span>
                 </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Companion:</span>
+                  {worldState?.avatar.equippedCompanion ? (
+                    <button
+                      className="font-semibold text-emerald-300 capitalize hover:text-emerald-200"
+                      onClick={() => handleEquipCompanion(null)}
+                      title="Dismiss companion"
+                    >
+                      {worldState.avatar.equippedCompanion.replace('comp_', '')} ×
+                    </button>
+                  ) : (
+                    <span className="font-semibold text-slate-200 capitalize">None</span>
+                  )}
+                </div>
                 <button
                   className="btn-ghost border border-slate-700 text-xs w-full py-2 mt-2 flex items-center justify-center rounded-lg"
                   onClick={() => setActiveTab('market')}
@@ -516,82 +627,106 @@ export default function WorldPage() {
       )}
 
       {activeTab === 'market' && (
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* Category filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            {CATEGORY_FILTERS.map((f) => {
+              const count =
+                f.key === 'all'
+                  ? catalog.length
+                  : catalog.filter((i) => i.category === f.key).length
+              const active = categoryFilter === f.key
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setCategoryFilter(f.key)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                    active
+                      ? 'bg-emerald-600 text-white border-emerald-500 font-semibold'
+                      : 'btn-ghost border-slate-700 text-slate-300'
+                  }`}
+                >
+                  {f.label}
+                  <span className={`ml-1.5 ${active ? 'text-emerald-100' : 'text-slate-500'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {catalog.map((item) => {
-              const isUnlocked =
-                item.isDefault ||
-                (item.category === 'character' &&
-                  worldState?.avatar.unlockedCharacters.includes(item.id)) ||
-                (item.category === 'accessory' &&
-                  worldState?.avatar.unlockedItems.includes(item.id)) ||
-                (item.category === 'tree' && worldState?.avatar.unlockedTrees.includes(item.id))
-
-              const isEquipped =
-                (item.category === 'character' && worldState?.avatar.characterId === item.id) ||
-                (item.category === 'accessory' &&
-                  (worldState?.avatar.equippedHead === item.id ||
-                    worldState?.avatar.equippedHand === item.id))
-
+            {filteredCatalog.map((item) => {
+              const Icon = CATEGORY_ICON[item.category] ?? Sparkles
+              const isUnlocked = isItemUnlocked(item)
+              const isEquipped = isItemEquipped(item)
               const canAfford = (worldState?.balance ?? 0) >= item.priceCoins
 
               return (
                 <div
                   key={item.id}
-                  className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-4 shadow-sm"
+                  className={`bg-slate-900 border ${RARITY_CARD[item.rarity]} rounded-2xl overflow-hidden flex flex-col shadow-sm transition-colors`}
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        {item.category}
-                      </span>
-                      <Badge
-                        tone={
-                          item.rarity === 'legendary'
-                            ? 'warning'
-                            : item.rarity === 'epic'
-                              ? 'danger'
-                              : 'neutral'
-                        }
-                      >
-                        {item.rarity}
-                      </Badge>
-                    </div>
-                    <h3 className="font-semibold text-base text-slate-100">{item.name}</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">{item.description}</p>
-                  </div>
+                  {/* Thumbnail — tap to open the 3D preview portal */}
+                  <button
+                    onClick={() => setPreviewItem(item)}
+                    className={`relative h-28 w-full bg-gradient-to-br ${RARITY_THUMB[item.rarity]} flex items-center justify-center group cursor-pointer`}
+                    aria-label={`Preview ${item.name} in 3D`}
+                  >
+                    <Icon className="w-10 h-10 opacity-70 group-hover:scale-110 transition-transform" />
+                    <span className="absolute bottom-2 right-2 text-[10px] uppercase tracking-wider font-bold opacity-80 bg-slate-950/60 px-1.5 py-0.5 rounded">
+                      {item.rarity}
+                    </span>
+                    <span className="absolute bottom-2 left-2 text-[10px] uppercase tracking-wider font-bold opacity-80 bg-slate-950/60 px-1.5 py-0.5 rounded">
+                      {item.category.replace('_', ' ')}
+                    </span>
+                  </button>
 
-                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm">
-                      <Coins className="w-4 h-4" />
-                      {item.priceCoins === 0 ? 'Free' : item.priceCoins}
+                  <div className="p-4 flex flex-col justify-between flex-1 space-y-3">
+                    <div className="space-y-1.5">
+                      <h3 className="font-semibold text-sm text-slate-100">{item.name}</h3>
+                      <p className="text-xs text-slate-400 leading-relaxed">{item.description}</p>
                     </div>
 
-                    {isEquipped ? (
-                      <Badge tone="success">Equipped</Badge>
-                    ) : isUnlocked ? (
-                      <button
-                        className="btn-ghost border border-slate-700 text-xs px-3 py-1.5 rounded-lg"
-                        onClick={() => {
-                          if (item.category === 'character') {
-                            handleEquipCharacter(item.id)
-                          } else if (item.category === 'accessory') {
-                            const slot = item.id.startsWith('head_') ? 'head' : 'hand'
-                            handleEquipAccessory(slot, item.id)
-                          }
-                        }}
-                      >
-                        Equip
-                      </button>
-                    ) : (
-                      <button
-                        disabled={!canAfford}
-                        onClick={() => handlePurchase(item.id)}
-                        className="btn text-xs bg-amber-600 hover:bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
-                      >
-                        Buy for {item.priceCoins} Coins
-                      </button>
-                    )}
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm">
+                        <Coins className="w-4 h-4" />
+                        {item.priceCoins === 0 ? 'Free' : item.priceCoins}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setPreviewItem(item)}
+                          className="btn-ghost border border-slate-700 text-xs px-2.5 py-1.5 rounded-lg"
+                        >
+                          Preview
+                        </button>
+                        {isEquipped ? (
+                          <Badge tone="success">Equipped</Badge>
+                        ) : isUnlocked ? (
+                          item.category !== 'tree' &&
+                          item.category !== 'decor' &&
+                          item.category !== 'timer_theme' ? (
+                            <button
+                              className="btn-ghost border border-slate-700 text-xs px-3 py-1.5 rounded-lg"
+                              onClick={() => handleEquipItem(item)}
+                            >
+                              Equip
+                            </button>
+                          ) : (
+                            <Badge tone="neutral">Owned</Badge>
+                          )
+                        ) : (
+                          <button
+                            disabled={!canAfford}
+                            onClick={() => handlePurchase(item.id)}
+                            className="btn text-xs bg-amber-600 hover:bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+                          >
+                            Buy
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )
@@ -634,6 +769,19 @@ export default function WorldPage() {
           )}
         </div>
       )}
+
+      <ItemPreviewModal
+        item={previewItem}
+        onClose={() => setPreviewItem(null)}
+        isUnlocked={previewItem ? isItemUnlocked(previewItem) : false}
+        isEquipped={previewItem ? isItemEquipped(previewItem) : false}
+        canAfford={previewItem ? (worldState?.balance ?? 0) >= previewItem.priceCoins : false}
+        onBuy={(itemId) => handlePurchase(itemId)}
+        onEquip={(itemId) => {
+          const item = catalog.find((c) => c.id === itemId)
+          if (item) void handleEquipItem(item)
+        }}
+      />
     </div>
   )
 }
