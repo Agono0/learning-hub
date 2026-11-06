@@ -212,3 +212,27 @@ export function listRecentDuels(limit = 10) {
   const db = getDb()
   return db.select().from(reviewDuels).orderBy(desc(reviewDuels.completedAt)).limit(limit).all()
 }
+
+export interface GuildMembershipRow {
+  guildId: number
+  alias: string
+  role: string
+  xpContributed: number
+}
+
+/** The caller's guild membership (their alias), or null when guildless. */
+export function getMyGuildMembership(alias: string): GuildMembershipRow | null {
+  const db = getDb()
+  const row = db
+    .select({
+      guildId: guildMembers.guildId,
+      alias: guildMembers.alias,
+      role: guildMembers.role,
+      xpContributed: guildMembers.xpContributed,
+    })
+    .from(guildMembers)
+    .where(eq(guildMembers.alias, alias))
+    .limit(1)
+    .get()
+  return row ?? null
+}

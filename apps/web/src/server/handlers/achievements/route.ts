@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
+import { eventBus } from '@learning-hub/core'
 import { db } from '@/lib/db'
 import {
   achievements,
@@ -140,6 +141,8 @@ export async function GET() {
         .values({ source: 'achievement', amount: XP_REWARDS.achievement, meta: { key } })
         .run()
       newlyUnlocked.push(key)
+      // Fact after the write: the badge is unlocked (listeners: plugins, sounds…).
+      eventBus.emit('achievement.unlocked', { achievementId: key })
     }
   }
 

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { eventBus } from '@learning-hub/core'
 import { habitLogs, habits, xpEvents, withTransaction, updateStreakInTx } from '@learning-hub/db'
 import { XP_REWARDS, dayKey } from '@learning-hub/core'
 import { readJson, tzOffsetSchema, withRoute } from '@/lib/api'
@@ -52,6 +53,9 @@ export const POST = withRoute(async (req: Request) => {
 
   if ('notFound' in result) return Response.json({ error: 'Habit not found' }, { status: 404 })
   if (result.alreadyDone) return Response.json({ ok: true, alreadyDone: true, date: result.date })
+
+  // Fact after the commit: the habit was checked off for `result.date`.
+  eventBus.emit('habit.checked', { habitId: body.habitId })
   return Response.json(
     { ok: true, alreadyDone: false, date: result.date, xpAwarded: result.xpAwarded },
     { status: 201 },

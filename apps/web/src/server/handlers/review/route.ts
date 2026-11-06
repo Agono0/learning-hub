@@ -34,6 +34,7 @@ import {
   type SessionMode,
 } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
+import { ensureEnginesLoaded } from '@/server/engine'
 
 const DAY_MS = 86_400_000
 
@@ -196,6 +197,7 @@ export async function GET(req: Request) {
 }
 
 export const POST = withRoute(async (req: Request) => {
+  ensureEnginesLoaded()
   const body = await readJson(req, reviewBodySchema)
   const payload: ReviewPayload = {
     cardId: body.cardId,

@@ -11,7 +11,9 @@ import { normalizeThemePreference } from '../src/components/ThemeSync'
 describe('navigation model & theme helpers', () => {
   it('preserves all routes across the 4 canonical scaffolder groups', () => {
     expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
-    expect(ALL_NAV_ITEMS).toHaveLength(28)
+    // 29: the canonical set plus /search (Search Everything, M18)
+    expect(ALL_NAV_ITEMS).toHaveLength(29)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/search')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })

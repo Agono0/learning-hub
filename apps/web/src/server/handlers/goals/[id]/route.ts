@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { eventBus } from '@learning-hub/core'
 import { goals } from '@learning-hub/db'
 import { validateWoopGoal } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
@@ -60,6 +61,12 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     )
 
   const [row] = db.update(goals).set(next).where(eq(goals.id, goalId)).returning().all()
+
+  // Fact after the write: a WOOP goal reached `done` for the first time.
+  if (row && existing.status !== 'done' && row.status === 'done') {
+    eventBus.emit('goal.completed', { goalId: row.id })
+  }
+
   return Response.json({ goal: row })
 })
 

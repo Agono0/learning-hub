@@ -399,6 +399,10 @@ export async function executeBatchReview(
     }
   }
 
+  // Streak state before the batch — used to publish streak events (updated /
+  // broken) after the commit. A break is any decrease of `current`.
+  const prevStreak = database.select().from(streaks).limit(1).get() ?? null
+
   // 3. Synchronous Atomic Transaction Execution
   const results = withTransaction((tx) => {
     const results: ReviewResult[] = []
@@ -426,6 +430,19 @@ export async function executeBatchReview(
       xpEarned: results[i]!.xpEarned,
     })
   }
+
+  // Streak facts (first result's streak is the committed row state).
+  const streakNow = results[0]!.streak
+  if (prevStreak && streakNow.current < prevStreak.current) {
+    eventBus.emit('streak.broken', {})
+  } else if (
+    !prevStreak ||
+    streakNow.current !== prevStreak.current ||
+    streakNow.best !== prevStreak.best
+  ) {
+    eventBus.emit('streak.updated', { current: streakNow.current, best: streakNow.best })
+  }
+
   eventBus.emit('review.batch.completed', { count: results.length })
 
   return results

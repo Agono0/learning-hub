@@ -5,6 +5,7 @@
 import { and, eq, desc, inArray, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, cards, withTransaction } from '@learning-hub/db'
+import { eventBus } from '@learning-hub/core'
 import { lintCard, validateCardContent, type LintResult } from '@learning-hub/core'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
@@ -98,6 +99,8 @@ export const POST = withRoute(async (req: Request) => {
     })
     .returning()
 
+  eventBus.emit('card.created', { deckId: body.deckId, count: 1 })
+
   // Wozniak lint against same-deck siblings (informational, never blocks)
   const siblings = await db
     .select()
@@ -154,6 +157,10 @@ export const PUT = withRoute(async (req: Request) => {
       created.push(card!.id)
     }
   })
+
+  if (created.length > 0) {
+    eventBus.emit('card.created', { deckId: body.deckId, count: created.length })
+  }
 
   return Response.json(
     { ok: true, created: created.length, cardIds: created, rejected },
