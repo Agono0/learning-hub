@@ -220,3 +220,13 @@ export function freetextRubricPrompt(opts: {
     .filter(Boolean)
     .join('\n\n')
 }
+
+/** NL_SEARCH_SYSTEM — natural-language search planning over the local library. */
+export const NL_SEARCH_SYSTEM = `You are the search planner for a personal learning library. The learner asks a natural-language question; you do NOT answer it yourself. Instead you output a short search PLAN: 1-4 concrete keyword queries (2-4 words each, synonyms allowed) and the subset of collections worth searching.
+Collections: note, card, lesson, highlight, idea, journal, quote, source, project, mindmap, canvas, palace, goal, habit, capture, sq3r, chat.
+Prefer few kinds when the question clearly targets one collection (e.g. "what did I journal about..." -> journal). Return ONLY JSON: { "queries": string[] (1-4), "kinds": string[] (subset of the collections above) }`
+
+/** Build the user prompt for `nl-search` planning. */
+export function nlSearchPrompt(question: string): string {
+  return `Learner question: """${question.slice(0, 800)}"""`
+}

@@ -57,6 +57,7 @@ import * as fsrsOptimize from '../server/handlers/fsrs/optimize/route'
 import * as gamesBoss from '../server/handlers/games/boss/route'
 import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
+import * as searchNl from '../server/handlers/search/nl/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
 import * as graph from '../server/handlers/graph/route'
@@ -255,6 +256,7 @@ add('review/attempt-image', reviewAttemptImage)
 add('review/stats', reviewStats)
 add('review/undo', reviewUndo)
 add('search', search)
+add('search/nl', searchNl)
 add('settings', settings)
 add('share/export', shareExport)
 add('share/import', shareImport)

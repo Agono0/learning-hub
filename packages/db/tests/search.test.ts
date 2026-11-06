@@ -48,6 +48,19 @@ describe('fts search', () => {
     expect(tables).toContain('fts_lessons')
     expect(tables).toContain('fts_highlights')
     expect(tables).toContain('fts_ideas')
+    // 018 omniverse kinds
+    expect(tables).toContain('fts_journal')
+    expect(tables).toContain('fts_quotes')
+    expect(tables).toContain('fts_sources')
+    expect(tables).toContain('fts_projects')
+    expect(tables).toContain('fts_mindmaps')
+    expect(tables).toContain('fts_canvases')
+    expect(tables).toContain('fts_palaces')
+    expect(tables).toContain('fts_goals')
+    expect(tables).toContain('fts_habits')
+    expect(tables).toContain('fts_captures')
+    expect(tables).toContain('fts_sq3r')
+    expect(tables).toContain('fts_chats')
   })
 
   it('indexes notes on insert and finds them (trigger sync)', async () => {
@@ -91,6 +104,85 @@ describe('fts search', () => {
       '"fourier"* OR "fast"* OR "transform"*',
     )
     expect(ftsExpression('  ')).toBe('')
+  })
+
+  it('searches the 018 omniverse kinds via their triggers', async () => {
+    const {
+      journalEntries,
+      quotes,
+      sources,
+      projects,
+      mindmaps,
+      canvases,
+      palaces,
+      goals,
+      habits,
+      quickCaptures,
+      sq3rSessions,
+      chatSessions,
+    } = await import('../src/index')
+
+    await db.insert(journalEntries).values({
+      date: '2026-01-15',
+      mood: 4,
+      smallWins: 'hippocampus notes finished',
+      gratitude: '',
+      worryDump: '',
+    })
+    await db.insert(quotes).values({ text: 'We are what we repeatedly do.', author: 'Aristotle' })
+    await db.insert(sources).values({
+      kind: 'article',
+      title: 'Spaced repetition deep dive',
+      url: 'https://example.com/srs',
+      content: 'Expanding intervals beat cramming.',
+    })
+    await db.insert(projects).values({ title: 'Thesis on memory consolidation' })
+    await db.insert(mindmaps).values({
+      title: 'Neuroplasticity map',
+      nodesJson: '[]',
+      edgesJson: '[]',
+    })
+    await db.insert(canvases).values({ title: 'Thesis storyboard', items: '[]', edges: '[]' })
+    await db.insert(palaces).values({ name: 'Childhood home', description: 'Method of loci route' })
+    await db.insert(goals).values({ wish: 'Read 30 books this year' })
+    await db.insert(habits).values({ name: 'Morning pages', cue: 'wake up' })
+    await db.insert(quickCaptures).values({ text: 'idea: hippocampus pun for memory palace' })
+    await db.insert(sq3rSessions).values({
+      sourceId: 1,
+      surveyHeadings: 'consolidation sections',
+      questions: 'how does sleep consolidate memory?',
+      reciteNotes: '',
+      completedSteps: '[]',
+    })
+    await db.insert(chatSessions).values({
+      kind: 'tutor',
+      title: 'long-term potentiation chat',
+      messages: '[]',
+    })
+
+    const res = searchAll(db, 'hippocampus')
+    expect(res.mode).toBe('fts5')
+    expect(res.hits.filter((h) => h.kind === 'journal').length).toBeGreaterThan(0)
+    expect(res.hits.filter((h) => h.kind === 'capture').length).toBeGreaterThan(0)
+
+    for (const [query, kind] of [
+      ['aristotle', 'quote'],
+      ['cramming', 'source'],
+      ['consolidation', 'project'],
+      ['neuroplasticity', 'mindmap'],
+      ['storyboard', 'canvas'],
+      ['loci', 'palace'],
+      ['30 books', 'goal'],
+      ['morning pages', 'habit'],
+      ['potentiation', 'chat'],
+      ['sleep consolidate', 'sq3r'],
+    ] as const) {
+      const r = searchAll(db, query)
+      expect(
+        r.hits.some((h) => h.kind === kind),
+        `expected ${kind} hit for "${query}" (got: ${r.hits.map((h) => h.kind).join(',')})`,
+      ).toBe(true)
+    }
   })
 })
 

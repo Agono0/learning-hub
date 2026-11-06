@@ -1,13 +1,52 @@
 /**
- * Global search (M5): FTS5 across notes, cards, lessons, highlights and ideas
- * with a graceful LIKE fallback when FTS5 is unavailable (e.g. a wasm build
- * compiled without it). Read-only — the shadow tables are maintained by the
- * migration's triggers (003-fts-search).
+ * Global search: FTS5 across the whole knowledge base — notes, cards, lessons,
+ * highlights, ideas (migration 003) plus journal entries, quotes, reading
+ * sources, projects, mindmaps, canvases, memory palaces, WOOP goals, habits,
+ * quick captures, SQ3R sessions and tutor/feynman chats (migration 018) — with
+ * a graceful LIKE fallback when FTS5 is unavailable (e.g. a wasm build compiled
+ * without it). Read-only — the shadow tables are maintained by migrations.
  */
 import { sql } from 'drizzle-orm'
 import type { LearningHubDB } from '../index'
 
-export type SearchKind = 'note' | 'card' | 'lesson' | 'highlight' | 'idea'
+export type SearchKind =
+  | 'note'
+  | 'card'
+  | 'lesson'
+  | 'highlight'
+  | 'idea'
+  | 'journal'
+  | 'quote'
+  | 'source'
+  | 'project'
+  | 'mindmap'
+  | 'canvas'
+  | 'palace'
+  | 'goal'
+  | 'habit'
+  | 'capture'
+  | 'sq3r'
+  | 'chat'
+
+export const SEARCH_KINDS: readonly SearchKind[] = [
+  'note',
+  'card',
+  'lesson',
+  'highlight',
+  'idea',
+  'journal',
+  'quote',
+  'source',
+  'project',
+  'mindmap',
+  'canvas',
+  'palace',
+  'goal',
+  'habit',
+  'capture',
+  'sq3r',
+  'chat',
+]
 
 export interface SearchHit {
   kind: SearchKind
@@ -25,6 +64,157 @@ export interface SearchResult {
 }
 
 const PER_KIND = 8
+
+/** Per-kind source query (id + title), FTS join and LIKE fallback, deep link. */
+interface KindSpec {
+  kind: SearchKind
+  fts: string
+  /** title + WHERE columns for the LIKE fallback */
+  like: (like: string) => ReturnType<typeof sql>
+  title: ReturnType<typeof sql>
+  href: (id: number) => string
+}
+
+const SPECS: KindSpec[] = [
+  {
+    kind: 'note',
+    fts: 'fts_notes',
+    like: (like) =>
+      sql`SELECT id, title FROM notes WHERE title LIKE ${like} OR content LIKE ${like}`,
+    title: sql`SELECT id, title FROM notes`,
+    href: () => '/notes',
+  },
+  {
+    kind: 'card',
+    fts: 'fts_cards',
+    like: (like) =>
+      sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'), coalesce(json_extract(content, '$.mcq.question'), coalesce(json_extract(content, '$.cloze.text'), '?'))), 1, 80) AS title FROM cards WHERE content LIKE ${like} OR coalesce(tags, '') LIKE ${like}`,
+    title: sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'),
+          coalesce(json_extract(content, '$.mcq.question'),
+          coalesce(json_extract(content, '$.cloze.text'), 'card'))), 1, 80) AS title FROM cards`,
+    href: () => '/decks',
+  },
+  {
+    kind: 'lesson',
+    fts: 'fts_lessons',
+    like: (like) =>
+      sql`SELECT id, title FROM lessons WHERE title LIKE ${like} OR content LIKE ${like}`,
+    title: sql`SELECT id, title FROM lessons`,
+    href: (id) => `/courses/lesson?id=${id}`,
+  },
+  {
+    kind: 'highlight',
+    fts: 'fts_highlights',
+    like: (like) =>
+      sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM highlights WHERE text LIKE ${like} OR note LIKE ${like}`,
+    title: sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM highlights`,
+    href: () => '/reading',
+  },
+  {
+    kind: 'idea',
+    fts: 'fts_ideas',
+    like: (like) =>
+      sql`SELECT id, title FROM ideas WHERE title LIKE ${like} OR content LIKE ${like}`,
+    title: sql`SELECT id, title FROM ideas`,
+    href: () => '/ideas',
+  },
+  {
+    kind: 'journal',
+    fts: 'fts_journal',
+    like: (like) =>
+      sql`SELECT id, 'Journal — ' || date AS title FROM journal_entries WHERE coalesce(small_wins, '') || ' ' || coalesce(gratitude, '') || ' ' || coalesce(worry_dump, '') LIKE ${like}`,
+    title: sql`SELECT id, 'Journal — ' || date AS title FROM journal_entries`,
+    href: () => '/journal',
+  },
+  {
+    kind: 'quote',
+    fts: 'fts_quotes',
+    like: (like) =>
+      sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM quotes WHERE text LIKE ${like} OR author LIKE ${like} OR coalesce(context, '') LIKE ${like}`,
+    title: sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM quotes`,
+    href: () => '/quotes',
+  },
+  {
+    kind: 'source',
+    fts: 'fts_sources',
+    like: (like) =>
+      sql`SELECT id, title FROM sources WHERE title LIKE ${like} OR content LIKE ${like}`,
+    title: sql`SELECT id, title FROM sources`,
+    href: () => '/reading',
+  },
+  {
+    kind: 'project',
+    fts: 'fts_projects',
+    like: (like) =>
+      sql`SELECT id, title FROM projects WHERE title LIKE ${like} OR coalesce(description, '') LIKE ${like}`,
+    title: sql`SELECT id, title FROM projects`,
+    href: () => '/courses',
+  },
+  {
+    kind: 'mindmap',
+    fts: 'fts_mindmaps',
+    like: (like) =>
+      sql`SELECT id, title FROM mindmaps WHERE title LIKE ${like} OR coalesce(nodes_json, '') LIKE ${like}`,
+    title: sql`SELECT id, title FROM mindmaps`,
+    href: () => '/mindmap',
+  },
+  {
+    kind: 'canvas',
+    fts: 'fts_canvases',
+    like: (like) =>
+      sql`SELECT id, title FROM canvases WHERE title LIKE ${like} OR coalesce(items, '') LIKE ${like}`,
+    title: sql`SELECT id, title FROM canvases`,
+    href: () => '/canvas',
+  },
+  {
+    kind: 'palace',
+    fts: 'fts_palaces',
+    like: (like) =>
+      sql`SELECT id, name AS title FROM palaces WHERE name LIKE ${like} OR coalesce(description, '') LIKE ${like}`,
+    title: sql`SELECT id, name AS title FROM palaces`,
+    href: () => '/palace',
+  },
+  {
+    kind: 'goal',
+    fts: 'fts_goals',
+    like: (like) =>
+      sql`SELECT id, substr(coalesce(wish, ''), 1, 80) AS title FROM goals WHERE wish LIKE ${like} OR coalesce(outcome, '') LIKE ${like} OR coalesce(obstacle, '') LIKE ${like} OR coalesce(if_then_plan, '') LIKE ${like}`,
+    title: sql`SELECT id, substr(coalesce(wish, ''), 1, 80) AS title FROM goals`,
+    href: () => '/motivation',
+  },
+  {
+    kind: 'habit',
+    fts: 'fts_habits',
+    like: (like) =>
+      sql`SELECT id, name AS title FROM habits WHERE name LIKE ${like} OR coalesce(cue, '') LIKE ${like} OR coalesce(response, '') LIKE ${like}`,
+    title: sql`SELECT id, name AS title FROM habits`,
+    href: () => '/habits',
+  },
+  {
+    kind: 'capture',
+    fts: 'fts_captures',
+    like: (like) =>
+      sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM quick_captures WHERE text LIKE ${like} OR coalesce(tags, '') LIKE ${like} OR coalesce(source_title, '') LIKE ${like}`,
+    title: sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM quick_captures`,
+    href: () => '/',
+  },
+  {
+    kind: 'sq3r',
+    fts: 'fts_sq3r',
+    like: (like) =>
+      sql`SELECT id, substr(coalesce(nullif(questions, ''), 'SQ3R session'), 1, 80) AS title FROM sq3r_sessions WHERE coalesce(questions, '') LIKE ${like} OR coalesce(survey_headings, '') LIKE ${like} OR coalesce(recite_notes, '') LIKE ${like}`,
+    title: sql`SELECT id, substr(coalesce(nullif(questions, ''), 'SQ3R session'), 1, 80) AS title FROM sq3r_sessions`,
+    href: () => '/reading',
+  },
+  {
+    kind: 'chat',
+    fts: 'fts_chats',
+    like: (like) =>
+      sql`SELECT id, coalesce(nullif(title, ''), kind) AS title FROM chat_sessions WHERE coalesce(title, '') LIKE ${like} OR coalesce(messages, '') LIKE ${like}`,
+    title: sql`SELECT id, coalesce(nullif(title, ''), kind) AS title FROM chat_sessions`,
+    href: () => '/tutor',
+  },
+]
 
 /** Build an OR-of-prefix-terms MATCH expression; empty for no tokens. */
 export function ftsExpression(query: string): string {
@@ -55,88 +245,46 @@ export function searchAll(db: LearningHubDB, query: string, limit = 24): SearchR
     const match = ftsExpression(q)
     if (!match) return { hits: [], mode: 'fts5' }
     const hits: SearchHit[] = []
-    const collect = (kind: SearchKind, ftsTable: string, joinSql: ReturnType<typeof sql>): void => {
+    for (const spec of SPECS) {
+      // Only query kinds whose shadow table actually exists (older databases
+      // created before migration 018 pre-apply still work mid-migration).
+      const exists = db.all<{ name: string }>(
+        sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${spec.fts}`,
+      )
+      if (exists.length === 0) continue
       const rows = db.all<{ id: number; title: string; snippet: string }>(
         sql`SELECT s.id AS id, s.title AS title,
-              snippet(${sql.raw(ftsTable)}, 1, '', '', '…', 12) AS snippet
-            FROM ${sql.raw(ftsTable)} f
-            JOIN (${joinSql}) s ON s.id = f.ref
-            WHERE ${sql.raw(ftsTable)} MATCH ${match}
+              snippet(${sql.raw(spec.fts)}, 1, '', '', '…', 12) AS snippet
+            FROM ${sql.raw(spec.fts)} f
+            JOIN (${spec.title}) s ON s.id = f.ref
+            WHERE ${sql.raw(spec.fts)} MATCH ${match}
             LIMIT ${PER_KIND}`,
       )
       for (const r of rows)
-        hits.push({ kind, id: r.id, title: r.title, snippet: r.snippet, href: hrefFor(kind, r.id) })
+        hits.push({
+          kind: spec.kind,
+          id: r.id,
+          title: r.title,
+          snippet: r.snippet,
+          href: spec.href(r.id),
+        })
     }
-    collect('note', 'fts_notes', sql`SELECT id, title FROM notes`)
-    collect(
-      'card',
-      'fts_cards',
-      sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'),
-            coalesce(json_extract(content, '$.mcq.question'),
-            coalesce(json_extract(content, '$.cloze.text'), 'card'))), 1, 80) AS title FROM cards`,
-    )
-    collect('lesson', 'fts_lessons', sql`SELECT id, title FROM lessons`)
-    collect(
-      'highlight',
-      'fts_highlights',
-      sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM highlights`,
-    )
-    collect('idea', 'fts_ideas', sql`SELECT id, title FROM ideas`)
     return { hits: hits.slice(0, limit), mode: 'fts5' }
   }
 
-  // LIKE fallback — substring match, same surfaces
+  // LIKE fallback — substring match over the same surfaces
   const like = `%${q.replace(/[%_]/g, '')}%`
   const hits: SearchHit[] = []
-  const push = (kind: SearchKind, rows: { id: number; title: string }[]) => {
+  for (const spec of SPECS) {
+    const rows = db.all<{ id: number; title: string }>(spec.like(like))
     for (const r of rows)
-      hits.push({ kind, id: r.id, title: r.title, snippet: r.title, href: hrefFor(kind, r.id) })
+      hits.push({
+        kind: spec.kind,
+        id: r.id,
+        title: r.title,
+        snippet: r.title,
+        href: spec.href(r.id),
+      })
   }
-  push(
-    'note',
-    db.all<{ id: number; title: string }>(
-      sql`SELECT id, title FROM notes WHERE title LIKE ${like} OR content LIKE ${like} LIMIT ${PER_KIND}`,
-    ),
-  )
-  push(
-    'card',
-    db.all<{ id: number; title: string }>(
-      sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'), coalesce(json_extract(content, '$.mcq.question'), coalesce(json_extract(content, '$.cloze.text'), '?'))), 1, 80) AS title FROM cards WHERE content LIKE ${like} OR coalesce(tags, '') LIKE ${like} LIMIT ${PER_KIND}`,
-    ),
-  )
-  push(
-    'lesson',
-    db.all<{ id: number; title: string }>(
-      sql`SELECT id, title FROM lessons WHERE title LIKE ${like} OR content LIKE ${like} LIMIT ${PER_KIND}`,
-    ),
-  )
-  push(
-    'highlight',
-    db.all<{ id: number; title: string }>(
-      sql`SELECT id, substr(coalesce(text, ''), 1, 80) AS title FROM highlights WHERE text LIKE ${like} OR note LIKE ${like} LIMIT ${PER_KIND}`,
-    ),
-  )
-  push(
-    'idea',
-    db.all<{ id: number; title: string }>(
-      sql`SELECT id, title FROM ideas WHERE title LIKE ${like} OR content LIKE ${like} LIMIT ${PER_KIND}`,
-    ),
-  )
   return { hits: hits.slice(0, limit), mode: 'like' }
-}
-
-/** Palette deep links per hit kind. */
-function hrefFor(kind: SearchKind, id: number): string {
-  switch (kind) {
-    case 'note':
-      return '/notes'
-    case 'card':
-      return '/decks'
-    case 'lesson':
-      return `/courses/lesson?id=${id}`
-    case 'highlight':
-      return '/reading'
-    case 'idea':
-      return '/ideas'
-  }
 }

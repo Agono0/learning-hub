@@ -26,6 +26,7 @@ import {
   Quote,
   Repeat2,
   Route,
+  Search as SearchIcon,
   Settings,
   Sparkles,
   Target,
@@ -68,6 +69,7 @@ export const NAV: NavGroup[] = [
     group: 'Explore',
     defaultCollapsed: true,
     items: [
+      { href: '/search', label: 'Search', icon: SearchIcon },
       { href: '/notes', label: 'Notes', icon: PenTool },
       { href: '/graph', label: 'Graph', icon: Network },
       { href: '/canvas', label: 'Canvas', icon: Images },

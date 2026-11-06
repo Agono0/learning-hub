@@ -21,6 +21,7 @@ import {
   FEYNMAN_GRADER,
   FEYNMAN_STUDENT,
   FREETEXT_RUBRIC_SYSTEM,
+  NL_SEARCH_SYSTEM,
   SOCRATIC_SYSTEM,
 } from './prompts'
 
@@ -103,6 +104,12 @@ export const clozeCardsSchema = z.object({
     .min(1),
 })
 
+/** NL search plan: keyword queries + the collections worth searching. */
+export const nlSearchPlanSchema = z.object({
+  queries: z.array(z.string().min(1).max(80)).min(1).max(4),
+  kinds: z.array(z.string().min(1).max(24)).min(1).max(17),
+})
+
 /** Coach weekly-review result: exactly 3 evidence-based suggestions. */
 export const coachSuggestionsSchema = z.object({
   suggestions: z
@@ -142,6 +149,15 @@ export interface AIFeatureDef {
 
 /** The transport feature set (feature name → definition). */
 export const AI_FEATURES: Record<string, AIFeatureDef> = {
+  'nl-search': {
+    name: 'nl-search',
+    title: 'Natural-language search planner',
+    kind: 'json',
+    system: NL_SEARCH_SYSTEM,
+    schemaDescription:
+      '{"queries": string[] (1-4 keyword queries), "kinds": string[] (subset of: note, card, lesson, highlight, idea, journal, quote, source, project, mindmap, canvas, palace, goal, habit, capture, sq3r, chat)}',
+    schema: nlSearchPlanSchema as ZodType<unknown>,
+  },
   'tutor-grade': {
     name: 'tutor-grade',
     title: 'Socratic tutor',

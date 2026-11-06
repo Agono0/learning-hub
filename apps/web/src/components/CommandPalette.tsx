@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
+import { Search as SearchIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { NAV } from './nav'
 import { apiGet } from '@/lib/transport'
@@ -106,6 +107,25 @@ export function CommandPalette() {
           <Command.Empty className="px-3 py-6 text-center text-sm text-neutral-500">
             {isFetching ? 'Searching…' : debounced ? 'No matches — try fewer words.' : null}
           </Command.Empty>
+
+          {debounced && (
+            <Command.Group
+              heading={
+                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                  Search
+                </span>
+              }
+            >
+              <Command.Item
+                value={`search everything ${debounced}`}
+                onSelect={() => go(`/search?q=${encodeURIComponent(debounced)}`)}
+                className="cursor-pointer rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <SearchIcon className="h-4 w-4 shrink-0 text-neutral-400" />
+                Search everything for “{debounced}”
+              </Command.Item>
+            </Command.Group>
+          )}
 
           {(data?.hits.length ?? 0) > 0 && (
             <Command.Group

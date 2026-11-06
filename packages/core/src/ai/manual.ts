@@ -213,6 +213,17 @@ const FREETEXT_RUBRIC_MANUAL: ManualMode = {
 
 /** Manual modes keyed by feature name (every transport feature has one). */
 export const MANUAL_MODES: Record<string, ManualMode> = {
+  'nl-search': {
+    feature: 'nl-search',
+    title: 'Keyword split search',
+    summary:
+      'No planner needed: your question is split into its meaningful words and searched across every collection at once.',
+    steps: [
+      'Open Search (or press ⌘K) and paste the key nouns of your question — drop filler like "what", "did", "about".',
+      'Skim the grouped results; use the kind chips to narrow to one collection.',
+      'No hits? Try one synonym per concept — the full-text index matches prefixes automatically.',
+    ],
+  },
   'tutor-grade': TUTOR_SELF_EXPLAIN,
   'feynman-student': FEYNMAN_STUDENT_MANUAL,
   'feynman-grader': FEYNMAN_GRADER_MANUAL,
