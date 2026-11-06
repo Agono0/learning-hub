@@ -1,0 +1,21 @@
+{
+  "name": "@learning-hub/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Learning HUB — Companion browser extension for Max Focus Mode",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@learning-hub/core": "*"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.308",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  }
+}

@@ -2061,6 +2061,8 @@ name = "learning-hub"
 version = "0.1.0"
 dependencies = [
  "log",
+ "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -2071,6 +2073,7 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-single-instance",
  "tauri-plugin-window-state",
+ "windows",
 ]
 
 [[package]]

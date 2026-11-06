@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Learning HUB — Max Focus Enforcer",
+  "version": "0.1.0",
+  "description": "Enforces website allowlists and friction gates during deep learning sessions in Learning HUB.",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Learning HUB Focus"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

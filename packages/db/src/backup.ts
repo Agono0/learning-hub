@@ -110,7 +110,7 @@ export function backupAll(database: RawSqliteHandle = getRawDb()): BackupFile {
     tables: {},
   }
   for (const name of topologicalOrder(database, presentTables(database))) {
-    if (name === 'sync_configs') {
+    if (name === 'sync_configs' || name === 'focus_bridge') {
       // Device-local credentials NEVER leave the device in backups or cloud sync
       out.tables[name] = []
       continue

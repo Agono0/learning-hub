@@ -822,9 +822,48 @@ export const focusSessions = table(
     completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
     mood: integer('mood'),
     notes: text('notes'),
+    mode: text('mode').notNull().default('standard'), // standard|max
+    lockedUntil: text('locked_until'),
+    allowlistId: integer('allowlist_id'),
+    allowSnapshot: text('allow_snapshot', { mode: 'json' }).$type<{
+      domains: string[]
+      apps: string[]
+    }>(),
+    exitRequestedAt: text('exit_requested_at'),
+    endedEarly: integer('ended_early', { mode: 'boolean' }).notNull().default(false),
   },
   (t) => [index('focus_started_idx').on(t.startedAt)],
 )
+
+/** User-defined allowlists for Max Focus sessions. */
+export const focusAllowlists = table(
+  'focus_allowlists',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    domains: text('domains', { mode: 'json' }).$type<string[]>().notNull(),
+    apps: text('apps', { mode: 'json' }).$type<string[]>().notNull(),
+    isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('focus_allowlist_name_idx').on(t.name)],
+)
+
+/** Device-local bridge credentials for the companion focus extension (stripped from sync/backup). */
+export const focusBridge = table('focus_bridge', {
+  id: text('id').primaryKey().default('default'),
+  pairingToken: text('pairing_token').notNull(),
+  extensionId: text('extension_id'),
+  lastHeartbeatAt: text('last_heartbeat_at'),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
 
 /** Friction-gate telemetry: trigger, delay, reflection text and outcome. */
 export const frictionEvents = table('friction_events', {

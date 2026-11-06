@@ -6,9 +6,16 @@
 //! Rust only provides what a webview cannot: native dialogs, file writes,
 //! notifications, haptics, logging and window management.
 
+mod focus;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            focus::focus_lock_apply,
+            focus::focus_lock_release,
+            focus::focus_lock_status,
+        ])
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)

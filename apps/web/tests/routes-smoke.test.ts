@@ -106,6 +106,10 @@ beforeAll(async () => {
   M.aiRubric = await import('../app/api/ai/rubric/route')
   M.transport = await import('../app/api/ai/transport/route')
   M.decks = await import('../app/api/decks/route')
+  M.focusMax = await import('../app/api/focus/max/route')
+  M.focusMaxExit = await import('../app/api/focus/max/exit/route')
+  M.focusAllowlists = await import('../app/api/focus/allowlists/route')
+  M.focusBridge = await import('../app/api/focus/bridge/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -769,5 +773,78 @@ describe('google provider & ai/rubric (milestone 5)', () => {
     }
     expect(parseBody.ok).toBe(true)
     expect(parseBody.data.criteriaMet).toEqual([true, false])
+  })
+})
+
+describe('max focus mode (milestone 6)', () => {
+  it('enforces single-session lock, 60s cooldown exit gate, and allowlist presets', async () => {
+    // 1. Check initial status
+    const statusRes = await M.focusMax.GET()
+    expect(statusRes.status).toBe(200)
+
+    // 2. Start Max Focus
+    const startRes = await M.focusMax.POST(
+      post('/api/focus/max', {
+        minutes: 25,
+        task: 'Mastering FSRS',
+        extraDomains: ['learninghub.local'],
+      }),
+    )
+    expect(startRes.status).toBe(201)
+    const startBody = (await startRes.json()) as {
+      ok: boolean
+      session: { id: number; mode: string }
+      lock: { active: boolean; endsAt: string }
+    }
+    expect(startBody.ok).toBe(true)
+    expect(startBody.session.mode).toBe('max')
+    expect(startBody.lock.active).toBe(true)
+
+    // 3. Second start conflicts (409)
+    const secondStart = await M.focusMax.POST(post('/api/focus/max', { minutes: 15 }))
+    expect(secondStart.status).toBe(409)
+
+    // 4. Request early exit -> kicks off 60s cooldown
+    const reqExit = await M.focusMaxExit.POST(post('/api/focus/max/exit', { action: 'request' }))
+    expect(reqExit.status).toBe(200)
+    const reqExitBody = (await reqExit.json()) as {
+      ok: boolean
+      lock: { exitState: string; cooldownRemainingSec: number }
+    }
+    expect(reqExitBody.lock.exitState).toBe('cooldown')
+    expect(reqExitBody.lock.cooldownRemainingSec).toBeGreaterThan(0)
+
+    // 5. Confirming early fails (400)
+    const earlyConfirm = await M.focusMaxExit.POST(
+      post('/api/focus/max/exit', {
+        action: 'confirm',
+        reflection: 'I was tempted by notifications on my phone.',
+      }),
+    )
+    expect(earlyConfirm.status).toBe(400)
+
+    // 6. Cancel early exit
+    const cancelRes = await M.focusMaxExit.POST(post('/api/focus/max/exit', { action: 'cancel' }))
+    expect(cancelRes.status).toBe(200)
+    const cancelBody = (await cancelRes.json()) as { lock: { exitState: string } }
+    expect(cancelBody.lock.exitState).toBe('locked')
+
+    // 7. Allowlist presets & bridge heartbeat
+    const allowlistsRes = await M.focusAllowlists.GET()
+    expect(allowlistsRes.status).toBe(200)
+    const allowBody = (await allowlistsRes.json()) as { ok: boolean; allowlists: any[] }
+    expect(allowBody.ok).toBe(true)
+    expect(allowBody.allowlists.length).toBeGreaterThanOrEqual(1)
+
+    const bridgeRes = await M.focusBridge.GET()
+    expect(bridgeRes.status).toBe(200)
+    const bridgeBody = (await bridgeRes.json()) as { ok: boolean; pairingToken: string }
+    expect(bridgeBody.ok).toBe(true)
+    expect(bridgeBody.pairingToken).toBeTruthy()
+
+    const hbRes = await M.focusBridge.POST(
+      post('/api/focus/bridge', { action: 'heartbeat', extensionId: 'lh-ext-1' }),
+    )
+    expect(hbRes.status).toBe(200)
   })
 })

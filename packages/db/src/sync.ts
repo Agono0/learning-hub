@@ -60,7 +60,7 @@ const APPEND_ONLY_TABLES = new Set([
   'course_exam_attempts',
 ])
 
-const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs'])
+const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs', 'focus_bridge'])
 
 function str(val: unknown): string {
   if (val === null || val === undefined) return ''

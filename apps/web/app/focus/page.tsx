@@ -2,7 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Phone, Shield, Timer, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  Globe,
+  Monitor,
+  Phone,
+  Plus,
+  Shield,
+  ShieldAlert,
+  Timer,
+  X,
+  XCircle,
+} from 'lucide-react'
 import {
   BREATH_SECONDS,
   FRICTION_PROMPT,
@@ -15,6 +28,7 @@ import {
 } from '@learning-hub/core/src/focus'
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
+import { useToast } from '@/ui'
 
 interface FocusSession {
   id: number
@@ -26,12 +40,48 @@ interface FocusSession {
   task: string | null
   leaks: number
   completed: boolean
+  mode?: string
+  lockedUntil?: string | null
+  exitRequestedAt?: string | null
 }
 
 interface DetoxState {
   steps: { id: string; label: string; detail: string }[]
   state: Record<string, boolean>
   done: boolean
+}
+
+interface FocusLockData {
+  active: boolean
+  sessionId: number | null
+  mode: 'standard' | 'max'
+  endsAt: string | null
+  lockedUntil: string | null
+  exitRequestedAt: string | null
+  exitState: 'none' | 'locked' | 'cooldown' | 'can_confirm' | 'ended'
+  cooldownRemainingSec: number
+  allowlist: {
+    domains: string[]
+    apps: string[]
+  }
+  lastHeartbeatAt: string | null
+  task: string | null
+}
+
+interface AllowlistPreset {
+  id: number
+  name: string
+  domains: string[]
+  apps: string[]
+  isDefault: boolean
+}
+
+interface BridgeInfo {
+  ok: boolean
+  pairingToken: string
+  lastHeartbeatAt: string | null
+  extensionId?: string | null
+  loopbackPort: number
 }
 
 const BREATH_LABELS = ['Breathe in…', 'Hold…', 'Breathe out…'] as const
@@ -42,14 +92,32 @@ function breathLabel(cycleSecond: number): string {
   return BREATH_LABELS[2]
 }
 
+const isTauriDesktop =
+  typeof window !== 'undefined' &&
+  Boolean((window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__)
+
 export default function FocusPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
 
-  // ── session starter state ──
+  const [activeTab, setActiveTab] = useState<'standard' | 'max'>('standard')
+
+  // ── standard session starter state ──
   const [minutes, setMinutes] = useState(25)
   const [task, setTask] = useState('')
   const [protocol, setProtocol] = useState<Record<string, boolean>>({})
   const finishLine = useMemo(() => finishTimeVisibility(new Date(), minutes), [minutes])
+
+  // ── Max Focus state ──
+  const [maxMinutes, setMaxMinutes] = useState(45)
+  const [maxTask, setMaxTask] = useState('')
+  const [selectedPresetId, setSelectedPresetId] = useState<number | undefined>()
+  const [extraDomains, setExtraDomains] = useState<string[]>([])
+  const [extraApps, setExtraApps] = useState<string[]>([])
+  const [newDomain, setNewDomain] = useState('')
+  const [newApp, setNewApp] = useState('')
+  const [earlyExitReflection, setEarlyExitReflection] = useState('')
+  const [copiedToken, setCopiedToken] = useState(false)
 
   // ── running session state ──
   const [session, setSession] = useState<FocusSession | null>(null)
@@ -58,21 +126,44 @@ export default function FocusPage() {
   const [xpToast, setXpToast] = useState<string | null>(null)
   const running = session !== null
 
-  // ── wall-clock countdown anchors: the interval derives secondsLeft from
-  // these instead of decrementing state, so it stays armed for the whole
-  // session (no per-second teardown), never drifts, and throttled background
-  // tabs snap back to the true remaining time on the next tick ──
   const startedAtMs = useRef<number | null>(null)
   const endTimeRef = useRef<number | null>(null)
   const leaksRef = useRef(0)
   const endingRef = useRef(false)
 
-  // ── friction gate state (pure core reducer drives the UI) ──
+  // ── friction gate state ──
   const [gate, setGate] = useState<FrictionGate | null>(null)
   const [reflectionText, setReflectionText] = useState('')
   const gateStartedAt = useRef<number>(0)
 
-  // ── honest leak counting: Page Visibility API ──
+  // ── Max Focus query & status ──
+  const maxLock = useQuery<{ ok: boolean; lock: FocusLockData }>({
+    queryKey: ['focus-max-lock'],
+    queryFn: () => apiGet('/api/focus/max'),
+    refetchInterval: (query) => (query.state.data?.lock?.active ? 2000 : 10000),
+  })
+
+  const allowlists = useQuery<{ ok: boolean; allowlists: AllowlistPreset[] }>({
+    queryKey: ['focus-allowlists'],
+    queryFn: () => apiGet('/api/focus/allowlists'),
+  })
+
+  const bridge = useQuery<BridgeInfo>({
+    queryKey: ['focus-bridge'],
+    queryFn: () => apiGet('/api/focus/bridge'),
+  })
+
+  const activeLock = maxLock.data?.lock
+  const isMaxFocusActive = Boolean(activeLock?.active && activeLock?.mode === 'max')
+
+  // Auto-switch to Max Focus tab if an active Max Focus lock exists
+  useEffect(() => {
+    if (isMaxFocusActive && activeTab !== 'max') {
+      setActiveTab('max')
+    }
+  }, [isMaxFocusActive, activeTab])
+
+  // Honest leak counting via Page Visibility
   useEffect(() => {
     if (!running) return
     const onVisibility = () => {
@@ -85,7 +176,6 @@ export default function FocusPage() {
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [running])
 
-  /** Arm the countdown anchors from wall-clock time; `startedMs` overrides for restored sessions. */
   const armTimer = useCallback((plannedMinutes: number, startedMs?: number) => {
     const startedAt = startedMs ?? Date.now()
     startedAtMs.current = startedAt
@@ -99,7 +189,6 @@ export default function FocusPage() {
     async (completed: boolean, leakCount: number) => {
       if (!session || endingRef.current) return
       endingRef.current = true
-      // actual time derives from the wall-clock anchor, not per-second state
       const startedAt = startedAtMs.current
       const spentMinutes = startedAt !== null ? (Date.now() - startedAt) / 60_000 : 0
       const actualMinutes = Math.max(1, Math.round(spentMinutes * 10) / 10)
@@ -125,15 +214,12 @@ export default function FocusPage() {
         setGate(null)
         setReflectionText('')
         void qc.invalidateQueries({ queryKey: ['focus'] })
+        void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
       }
     },
     [session, task, qc],
   )
 
-  // timer: ONE interval per session, armed only when the session starts/ends —
-  // not re-created every second. Completion runs in the tick body, never
-  // inside a state updater, so StrictMode's double-invoked updaters cannot
-  // end the session twice (endingRef guards the async PATCH as well).
   useEffect(() => {
     if (!running) return
     const tick = () => {
@@ -148,7 +234,6 @@ export default function FocusPage() {
     return () => clearInterval(t)
   }, [running, endSession])
 
-  // gate tick — 1/s drives countdown AND breathing through the same reducer
   useEffect(() => {
     if (!gate) return
     const t = setInterval(() => {
@@ -169,6 +254,118 @@ export default function FocusPage() {
       armTimer(minutes)
       setLeaks(0)
       leaksRef.current = 0
+    },
+  })
+
+  // ── Max Focus Mutations ──
+  const startMaxSessionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiSend<{ ok: boolean; session: FocusSession; lock: FocusLockData }>(
+        '/api/focus/max',
+        'POST',
+        {
+          minutes: maxMinutes,
+          allowlistId: selectedPresetId,
+          extraDomains: extraDomains.length > 0 ? extraDomains : undefined,
+          extraApps: extraApps.length > 0 ? extraApps : undefined,
+          task: maxTask.trim() || undefined,
+        },
+      )
+
+      // Invoke native Windows watchdog if on Tauri
+      if (isTauriDesktop) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core')
+          await invoke('focus_lock_apply', {
+            payload: {
+              ends_at: res.lock.endsAt,
+              apps: res.lock.allowlist.apps,
+              domains: res.lock.allowlist.domains,
+              token: bridge.data?.pairingToken ?? '',
+              strict: false,
+            },
+          })
+        } catch (err) {
+          console.warn('Native focus watchdog apply note:', err)
+        }
+      }
+      return res
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Max Focus Engaged',
+        description: `Locked for ${maxMinutes} minutes. Distractions shielded.`,
+        tone: 'success',
+      })
+      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
+      void qc.invalidateQueries({ queryKey: ['focus'] })
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, tone: 'danger' })
+    },
+  })
+
+  const requestEarlyExitMutation = useMutation({
+    mutationFn: () =>
+      apiSend<{ ok: boolean; lock: FocusLockData }>('/api/focus/max/exit', 'POST', {
+        action: 'request',
+      }),
+    onSuccess: () => {
+      toast({
+        title: 'Exit Cooldown Started',
+        description: 'Take 60 seconds to reflect before breaking your focus.',
+        tone: 'warning',
+      })
+      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, tone: 'danger' })
+    },
+  })
+
+  const confirmEarlyExitMutation = useMutation({
+    mutationFn: async (reflection: string) => {
+      const res = await apiSend<{ ok: boolean; session: FocusSession; lock: FocusLockData }>(
+        '/api/focus/max/exit',
+        'POST',
+        { action: 'confirm', reflection },
+      )
+      if (isTauriDesktop) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core')
+          await invoke('focus_lock_release', { token: bridge.data?.pairingToken ?? '' })
+        } catch {}
+      }
+      return res
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Max Focus Session Ended',
+        description: 'Session ended early. Reflection recorded in friction log.',
+        tone: 'neutral',
+      })
+      setEarlyExitReflection('')
+      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
+      void qc.invalidateQueries({ queryKey: ['focus'] })
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, tone: 'danger' })
+    },
+  })
+
+  const cancelEarlyExitMutation = useMutation({
+    mutationFn: () =>
+      apiSend<{ ok: boolean; lock: FocusLockData }>('/api/focus/max/exit', 'POST', {
+        action: 'cancel',
+      }),
+    onSuccess: () => {
+      toast({
+        title: 'Impulse Resisted!',
+        description: 'Great choice staying with your focus. Timer restored.',
+        tone: 'success',
+      })
+      setEarlyExitReflection('')
+      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
     },
   })
 
@@ -206,10 +403,9 @@ export default function FocusPage() {
         delaySec,
       })
     } catch {
-      /* friction log is best-effort */
+      /* best-effort */
     }
     if (proceeded) {
-      // resume the running session after the deliberate pause
       setTimeout(() => setGate(null), 600)
     } else {
       await endSession(false, leaksRef.current)
@@ -225,15 +421,12 @@ export default function FocusPage() {
     queryFn: () => apiGet<DetoxState>('/api/onboarding/detox'),
   })
 
-  // ── restore a running session after a reload: GET /api/focus reports the
-  // unfinished session as `running` — re-anchor the countdown to its real
-  // startedAt and resume exactly where it left off (handled once per load) ──
   const restoredRef = useRef<number | null>(null)
   useEffect(() => {
     const r = history.data?.running
     if (!r || restoredRef.current !== null) return
     restoredRef.current = r.id
-    if (session) return // a live local session already owns the countdown
+    if (session) return
     setSession(r)
     setTask(r.task ?? '')
     armTimer(r.plannedMinutes, new Date(r.startedAt).getTime())
@@ -248,21 +441,73 @@ export default function FocusPage() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['detox'] }),
   })
 
+  const addDomain = () => {
+    const trimmed = newDomain.trim().toLowerCase()
+    if (!trimmed) return
+    if (!extraDomains.includes(trimmed)) {
+      setExtraDomains((prev) => [...prev, trimmed])
+    }
+    setNewDomain('')
+  }
+
+  const addApp = () => {
+    const trimmed = newApp.trim()
+    if (!trimmed) return
+    if (!extraApps.includes(trimmed)) {
+      setExtraApps((prev) => [...prev, trimmed])
+    }
+    setNewApp('')
+  }
+
+  const copyToken = () => {
+    if (!bridge.data?.pairingToken) return
+    void navigator.clipboard.writeText(bridge.data.pairingToken)
+    setCopiedToken(true)
+    setTimeout(() => setCopiedToken(false), 2000)
+  }
+
   const mm = Math.floor(secondsLeft / 60)
   const ss = secondsLeft % 60
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Timer className="h-6 w-6 text-indigo-400" /> Focus
+            <Timer className="h-6 w-6 text-indigo-400" /> Focus Studio
           </h1>
           <p className="text-sm text-neutral-500">
-            Protected sessions, honest leak counting, and the friction gate.
+            Protected deep work, honest leak tracking, and precommitment Ulysses contracts.
           </p>
         </div>
-        <Shield className="h-8 w-8 text-indigo-500/40" />
+        <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-[#26262b] dark:bg-[#141417]">
+          <button
+            type="button"
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              activeTab === 'standard'
+                ? 'bg-white shadow text-neutral-900 dark:bg-[#202025] dark:text-white'
+                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+            }`}
+            onClick={() => setActiveTab('standard')}
+          >
+            Standard Focus
+          </button>
+          <button
+            type="button"
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              activeTab === 'max'
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+            }`}
+            onClick={() => setActiveTab('max')}
+          >
+            <Shield className="h-3.5 w-3.5" />
+            Max Focus Mode
+            {isMaxFocusActive && (
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </button>
+        </div>
       </header>
 
       {xpToast && (
@@ -271,180 +516,518 @@ export default function FocusPage() {
         </div>
       )}
 
-      {/* ── session starter ── */}
-      {!running && (
-        <div className="panel space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {POMODORO_PRESETS.map((p) => (
-              <button
-                key={p.id}
-                className={`btn-ghost border ${minutes === p.focus ? 'border-indigo-500 text-indigo-400' : 'border-neutral-200 dark:border-[#26262b]'}`}
-                onClick={() => setMinutes(p.focus)}
-              >
-                {p.label} {p.focus}/{p.breakMinutes}
-              </button>
-            ))}
-            <label className="ml-auto flex items-center gap-2 text-sm text-neutral-500">
-              custom
-              <input
-                type="number"
-                min={5}
-                max={180}
-                className="input w-20"
-                value={minutes}
-                onChange={(e) =>
-                  setMinutes(Math.min(180, Math.max(5, Number(e.target.value) || 5)))
-                }
-              />
-              min
-            </label>
-          </div>
-
-          <input
-            className="input"
-            placeholder="One task only (task-player mode): what will you finish?"
-            value={task}
-            onChange={(e) => setTask(e.target.value)}
-          />
-
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-emerald-400" aria-live="polite">
-              {finishLine}
-            </p>
-            <button
-              className="btn"
-              onClick={() => startSession.mutate()}
-              disabled={startSession.isPending}
-            >
-              <Timer className="h-4 w-4" /> Start session
-            </button>
-          </div>
-
-          {/* phone protocol (Ward 2017) */}
-          <div className="rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]">
-            <p className="label mb-2 flex items-center gap-2">
-              <Phone className="h-3.5 w-3.5" /> Pre-session phone protocol
-            </p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
-              {phoneProtocolChecklist.map((item) => (
-                <label
-                  key={item.id}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300"
-                >
+      {/* ─── TAB 1: STANDARD FOCUS ────────────────────────────────────────── */}
+      {activeTab === 'standard' && (
+        <>
+          {!running && (
+            <div className="panel space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {POMODORO_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`btn-ghost border ${
+                      minutes === p.focus
+                        ? 'border-indigo-500 text-indigo-400'
+                        : 'border-neutral-200 dark:border-[#26262b]'
+                    }`}
+                    onClick={() => setMinutes(p.focus)}
+                  >
+                    {p.label} {p.focus}/{p.breakMinutes}
+                  </button>
+                ))}
+                <label className="ml-auto flex items-center gap-2 text-sm text-neutral-500">
+                  custom
                   <input
-                    type="checkbox"
-                    checked={protocol[item.id] === true}
-                    onChange={(e) => setProtocol((p) => ({ ...p, [item.id]: e.target.checked }))}
-                    className="h-4 w-4 accent-indigo-500"
+                    type="number"
+                    min={5}
+                    max={180}
+                    className="input w-20"
+                    value={minutes}
+                    onChange={(e) =>
+                      setMinutes(Math.min(180, Math.max(5, Number(e.target.value) || 5)))
+                    }
                   />
-                  {item.label}
+                  min
                 </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── running session ── */}
-      {running && (
-        <div className="panel space-y-4 text-center">
-          <p className="label">{session?.task ?? 'Focus session'}</p>
-          <div className="text-6xl font-bold tabular-nums tracking-tight">
-            {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
-          </div>
-          <div className="flex items-center justify-center gap-6 text-sm text-neutral-500">
-            <span>
-              tab switches:{' '}
-              <span className={leaks > 0 ? 'font-semibold text-amber-400' : ''}>{leaks}</span>{' '}
-              (honest count via Page Visibility)
-            </span>
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <button
-              className="btn-ghost border border-neutral-200 dark:border-[#26262b]"
-              onClick={() => armGate('break_focus')}
-            >
-              End early → friction gate
-            </button>
-            <button
-              className="btn-ghost border border-amber-500/40 text-amber-500"
-              onClick={() => armGate('relapse')}
-            >
-              Log relapse → friction gate
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── friction gate: FULL-SCREEN modal ── */}
-      {gate && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-6 text-center backdrop-blur">
-          {gate.state.phase === 'countdown' && (
-            <div className="space-y-4">
-              <p className="text-lg text-neutral-300">
-                {gate.state.trigger === 'relapse' ? 'Before you go back…' : 'Ending early?'}
-              </p>
-              <div className="text-8xl font-bold tabular-nums">{gate.state.secondsLeft}</div>
-              <p className="max-w-sm text-sm text-neutral-500">
-                The gate is not a punishment — it separates the impulse from the action.{' '}
-                {FRICTION_PROMPT.split('.')[0]} in a moment.
-              </p>
-            </div>
-          )}
-
-          {gate.state.phase === 'breathing' && (
-            <div className="space-y-6">
-              <p className="text-lg text-neutral-300">
-                Breath {gate.state.breathNumber} of 3 — 4-7-8
-              </p>
-              <div className="breathe mx-auto grid h-40 w-40 place-items-center rounded-full bg-indigo-500/20 text-xl font-semibold text-indigo-200">
-                {breathLabel(gate.state.cycleSecond ?? 0)}
               </div>
-            </div>
-          )}
 
-          {gate.state.phase === 'reflection' && (
-            <div className="w-full max-w-md space-y-4">
-              <p className="text-lg font-medium text-neutral-200">{FRICTION_PROMPT}</p>
-              <textarea
-                className="input min-h-32"
-                placeholder="Write it — a concrete next action inside the app."
-                value={reflectionText}
-                onChange={(e) => setReflectionText(e.target.value)}
-                autoFocus
+              <input
+                className="input"
+                placeholder="One task only (task-player mode): what will you finish?"
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
               />
-              <div className="flex items-center justify-center gap-3">
+
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-emerald-400" aria-live="polite">
+                  {finishLine}
+                </p>
                 <button
                   className="btn"
-                  disabled={reflectionText.trim() === ''}
-                  onClick={() => void finishGate(true)}
+                  onClick={() => startSession.mutate()}
+                  disabled={startSession.isPending}
                 >
-                  <CheckCircle2 className="h-4 w-4" /> I will do that instead — proceed
-                </button>
-                <button
-                  className="btn-ghost text-neutral-400"
-                  onClick={() => void finishGate(false)}
-                >
-                  <XCircle className="h-4 w-4" /> Abort the session
+                  <Timer className="h-4 w-4" /> Start session
                 </button>
               </div>
-              <p className="text-xs text-neutral-600">
-                Proceeding requires a written reflection — that is the whole point.
-              </p>
+
+              <div className="rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]">
+                <p className="label mb-2 flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5" /> Pre-session phone protocol
+                </p>
+                <div className="grid gap-1.5 sm:grid-cols-2">
+                  {phoneProtocolChecklist.map((item) => (
+                    <label
+                      key={item.id}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={protocol[item.id] === true}
+                        onChange={(e) =>
+                          setProtocol((p) => ({ ...p, [item.id]: e.target.checked }))
+                        }
+                        className="h-4 w-4 accent-indigo-500"
+                      />
+                      {item.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
-          {gate.state.phase === 'outcome' && (
-            <p className="text-xl text-neutral-300">
-              {gate.state.outcome === 'proceeded'
-                ? 'Good choice. Resuming…'
-                : 'Session closed. No guilt — fresh start framing.'}
-            </p>
+          {running && (
+            <div className="panel space-y-4 text-center">
+              <p className="label">{session?.task ?? 'Focus session'}</p>
+              <div className="text-6xl font-bold tabular-nums tracking-tight">
+                {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
+              </div>
+              <div className="flex items-center justify-center gap-6 text-sm text-neutral-500">
+                <span>
+                  tab switches:{' '}
+                  <span className={leaks > 0 ? 'font-semibold text-amber-400' : ''}>{leaks}</span>{' '}
+                  (honest count via Page Visibility)
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  className="btn-ghost border border-neutral-200 dark:border-[#26262b]"
+                  onClick={() => armGate('break_focus')}
+                >
+                  End early → friction gate
+                </button>
+                <button
+                  className="btn-ghost border border-amber-500/40 text-amber-500"
+                  onClick={() => armGate('relapse')}
+                >
+                  Log relapse → friction gate
+                </button>
+              </div>
+            </div>
+          )}
+
+          {gate && (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-6 text-center backdrop-blur">
+              {gate.state.phase === 'countdown' && (
+                <div className="space-y-4">
+                  <p className="text-lg text-neutral-300">
+                    {gate.state.trigger === 'relapse' ? 'Before you go back…' : 'Ending early?'}
+                  </p>
+                  <div className="text-8xl font-bold tabular-nums">{gate.state.secondsLeft}</div>
+                  <p className="max-w-sm text-sm text-neutral-500">
+                    The gate is not a punishment — it separates the impulse from the action.{' '}
+                    {FRICTION_PROMPT.split('.')[0]} in a moment.
+                  </p>
+                </div>
+              )}
+
+              {gate.state.phase === 'breathing' && (
+                <div className="space-y-6">
+                  <p className="text-lg text-neutral-300">
+                    Breath {gate.state.breathNumber} of 3 — 4-7-8
+                  </p>
+                  <div className="breathe mx-auto grid h-40 w-40 place-items-center rounded-full bg-indigo-500/20 text-xl font-semibold text-indigo-200">
+                    {breathLabel(gate.state.cycleSecond ?? 0)}
+                  </div>
+                </div>
+              )}
+
+              {gate.state.phase === 'reflection' && (
+                <div className="w-full max-w-md space-y-4">
+                  <p className="text-lg font-medium text-neutral-200">{FRICTION_PROMPT}</p>
+                  <textarea
+                    className="input min-h-32"
+                    placeholder="Write it — a concrete next action inside the app."
+                    value={reflectionText}
+                    onChange={(e) => setReflectionText(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      className="btn"
+                      disabled={reflectionText.trim() === ''}
+                      onClick={() => void finishGate(true)}
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> I will do that instead — proceed
+                    </button>
+                    <button
+                      className="btn-ghost text-neutral-400"
+                      onClick={() => void finishGate(false)}
+                    >
+                      <XCircle className="h-4 w-4" /> Abort the session
+                    </button>
+                  </div>
+                  <p className="text-xs text-neutral-600">
+                    Proceeding requires a written reflection — that is the whole point.
+                  </p>
+                </div>
+              )}
+
+              {gate.state.phase === 'outcome' && (
+                <p className="text-xl text-neutral-300">
+                  {gate.state.outcome === 'proceeded'
+                    ? 'Good choice. Resuming…'
+                    : 'Session closed. No guilt — fresh start framing.'}
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ─── TAB 2: MAX FOCUS MODE (BRAIN MAXXING) ────────────────────────── */}
+      {activeTab === 'max' && (
+        <div className="space-y-4">
+          {isMaxFocusActive && activeLock ? (
+            /* Active Max Focus Screen */
+            <div className="panel space-y-6 border-indigo-500/40 bg-gradient-to-b from-indigo-950/20 to-neutral-900/40 p-6 text-center">
+              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-semibold text-indigo-400">
+                <Shield className="h-4 w-4" />
+                Max Focus Lockdown Active
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">
+                  {activeLock.task || 'Deep Learning Lockdown'}
+                </h2>
+                <p className="text-sm text-neutral-400 mt-1">
+                  Committed until {new Date(activeLock.endsAt ?? '').toLocaleTimeString()}
+                </p>
+              </div>
+
+              {/* Allowlist Snapshot Notice */}
+              <div className="mx-auto max-w-lg rounded-xl border border-neutral-800 bg-neutral-950/60 p-3.5 text-left text-xs">
+                <div className="font-semibold text-neutral-300 mb-1 flex items-center gap-1.5">
+                  <Globe className="h-3.5 w-3.5 text-indigo-400" />
+                  Allowed Destinations:
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="rounded bg-indigo-950 px-2 py-0.5 text-indigo-300 border border-indigo-800">
+                    All of YouTube (learn & research)
+                  </span>
+                  {activeLock.allowlist.domains
+                    .filter(
+                      (d) =>
+                        !d.includes('youtube') &&
+                        !d.includes('youtu.be') &&
+                        !d.includes('ytimg') &&
+                        !d.includes('googlevideo'),
+                    )
+                    .map((d) => (
+                      <span key={d} className="rounded bg-neutral-800 px-2 py-0.5 text-neutral-300">
+                        {d}
+                      </span>
+                    ))}
+                  {activeLock.allowlist.apps.map((a) => (
+                    <span
+                      key={a}
+                      className="rounded bg-emerald-950 px-2 py-0.5 text-emerald-300 border border-emerald-800"
+                    >
+                      app: {a}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Early Exit Gate State Machine */}
+              {activeLock.exitState === 'locked' && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    className="btn-ghost border border-rose-500/30 text-rose-400 hover:bg-rose-950/20 text-xs"
+                    onClick={() => requestEarlyExitMutation.mutate()}
+                    disabled={requestEarlyExitMutation.isPending}
+                  >
+                    Request Early Exit (Initiates 60s reflection delay)
+                  </button>
+                </div>
+              )}
+
+              {activeLock.exitState === 'cooldown' && (
+                <div className="mx-auto max-w-md space-y-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 text-left">
+                  <div className="flex items-center gap-2 text-amber-300 font-semibold text-sm">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Early Exit Cooldown: {activeLock.cooldownRemainingSec}s remaining
+                  </div>
+                  <p className="text-xs text-neutral-400">
+                    Take a slow breath. Ulysses contracts separate sudden impulses from deliberate
+                    actions. Why do you want to break focus?
+                  </p>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+                    <div
+                      className="h-full bg-amber-400 transition-all duration-1000"
+                      style={{
+                        width: `${Math.max(0, 100 - (activeLock.cooldownRemainingSec / 60) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn w-full text-xs font-semibold"
+                    onClick={() => cancelEarlyExitMutation.mutate()}
+                  >
+                    Resist Impulse & Return to Flow
+                  </button>
+                </div>
+              )}
+
+              {activeLock.exitState === 'can_confirm' && (
+                <div className="mx-auto max-w-md space-y-3 rounded-xl border border-rose-500/40 bg-rose-950/20 p-4 text-left">
+                  <div className="flex items-center gap-2 text-rose-300 font-semibold text-sm">
+                    <ShieldAlert className="h-4 w-4 shrink-0" />
+                    Cooldown Complete — State Your Reflection
+                  </div>
+                  <p className="text-xs text-neutral-400">
+                    Type at least 20 characters explaining the reason for ending early. It will be
+                    logged to your friction history.
+                  </p>
+                  <textarea
+                    className="input min-h-24 w-full text-xs font-mono"
+                    placeholder="Why are you breaking focus? (minimum 20 chars)"
+                    value={earlyExitReflection}
+                    onChange={(e) => setEarlyExitReflection(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="btn-danger flex-1 text-xs"
+                      disabled={
+                        earlyExitReflection.trim().length < 20 || confirmEarlyExitMutation.isPending
+                      }
+                      onClick={() => confirmEarlyExitMutation.mutate(earlyExitReflection.trim())}
+                    >
+                      Confirm Early Exit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost text-xs"
+                      onClick={() => cancelEarlyExitMutation.mutate()}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Max Focus Session Configurator */
+            <div className="space-y-4">
+              <div className="panel space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-indigo-600/20 p-2 text-indigo-400">
+                    <Shield className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-neutral-100">
+                      Precommitment Ulysses Lockdown
+                    </h2>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      Chrome opens only allowlisted domains and learning video on YouTube. Windows
+                      watchdog minimizes all other desktop apps.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Duration Picker */}
+                <div>
+                  <label className="label mb-1.5 block">Committed Duration</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[15, 25, 45, 60, 90, 120].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition ${
+                          maxMinutes === m
+                            ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
+                            : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 dark:border-[#26262b]'
+                        }`}
+                        onClick={() => setMaxMinutes(m)}
+                      >
+                        {m} min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Task Input */}
+                <div>
+                  <label className="label mb-1.5 block">Dedicated Study Task</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. Master Neural Network Backprop & Math Exercises"
+                    value={maxTask}
+                    onChange={(e) => setMaxTask(e.target.value)}
+                  />
+                </div>
+
+                {/* Allowlist Preset Picker */}
+                <div>
+                  <label className="label mb-1.5 block">Allowlist Preset</label>
+                  <select
+                    className="input text-xs"
+                    value={selectedPresetId ?? ''}
+                    onChange={(e) =>
+                      setSelectedPresetId(e.target.value ? Number(e.target.value) : undefined)
+                    }
+                  >
+                    {allowlists.data?.allowlists.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.domains.length} domains, {p.apps.length} apps)
+                        {p.isDefault ? ' — Default' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Extra Domains */}
+                <div>
+                  <label className="label mb-1.5 block">Extra Allowed Websites</label>
+                  <div className="flex gap-2">
+                    <input
+                      className="input text-xs"
+                      placeholder="e.g. github.com, stackoverflow.com"
+                      value={newDomain}
+                      onChange={(e) => setNewDomain(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDomain())}
+                    />
+                    <button type="button" className="btn-ghost text-xs" onClick={addDomain}>
+                      <Plus className="h-3.5 w-3.5" /> Add
+                    </button>
+                  </div>
+                  {extraDomains.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {extraDomains.map((d) => (
+                        <span
+                          key={d}
+                          className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
+                        >
+                          {d}
+                          <button
+                            type="button"
+                            onClick={() => setExtraDomains(extraDomains.filter((x) => x !== d))}
+                          >
+                            <X className="h-3 w-3 hover:text-rose-400" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Extra Apps */}
+                <div>
+                  <label className="label mb-1.5 block">
+                    Extra Allowed Desktop Apps (Windows only)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      className="input text-xs"
+                      placeholder="e.g. Code.exe, Anki.exe"
+                      value={newApp}
+                      onChange={(e) => setNewApp(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addApp())}
+                    />
+                    <button type="button" className="btn-ghost text-xs" onClick={addApp}>
+                      <Plus className="h-3.5 w-3.5" /> Add
+                    </button>
+                  </div>
+                  {extraApps.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {extraApps.map((a) => (
+                        <span
+                          key={a}
+                          className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
+                        >
+                          {a}
+                          <button
+                            type="button"
+                            onClick={() => setExtraApps(extraApps.filter((x) => x !== a))}
+                          >
+                            <X className="h-3 w-3 hover:text-rose-400" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Start Button */}
+                <button
+                  type="button"
+                  className="btn w-full py-2.5 text-sm font-bold shadow-lg"
+                  disabled={startMaxSessionMutation.isPending}
+                  onClick={() => startMaxSessionMutation.mutate()}
+                >
+                  <Shield className="h-4 w-4 mr-1.5" />
+                  Engage Max Focus ({maxMinutes} min)
+                </button>
+              </div>
+
+              {/* Companion Chrome Extension Bridge Card */}
+              <div className="panel space-y-3 border-neutral-800 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-neutral-200 flex items-center gap-2">
+                    <Monitor className="h-4 w-4 text-indigo-400" />
+                    Chrome Extension Companion Status
+                  </div>
+                  {bridge.data?.lastHeartbeatAt ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950 px-2 py-0.5 text-[11px] text-emerald-400 border border-emerald-800">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Extension Connected
+                    </span>
+                  ) : (
+                    <span className="text-neutral-500 text-[11px]">
+                      Awaiting Extension Heartbeat
+                    </span>
+                  )}
+                </div>
+                <p className="text-neutral-400 text-[11px] leading-relaxed">
+                  Install the Learning HUB companion extension in Chrome from{' '}
+                  <code className="text-neutral-300 bg-neutral-800 px-1 py-0.5 rounded">
+                    apps/extension/dist
+                  </code>
+                  . Paste this pairing token into the extension popup:
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="password"
+                    readOnly
+                    className="input text-xs font-mono"
+                    value={bridge.data?.pairingToken ?? 'Loading token…'}
+                  />
+                  <button type="button" className="btn-ghost shrink-0 text-xs" onClick={copyToken}>
+                    <Copy className="h-3.5 w-3.5 mr-1" />
+                    {copiedToken ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
 
-      {/* ── session history ── */}
+      {/* ─── SESSION HISTORY (Shared) ─────────────────────────────────────── */}
       <div className="panel">
         <p className="label mb-3">Session history</p>
         {history.isLoading ? (
@@ -458,7 +1041,12 @@ export default function FocusPage() {
             {history.data?.sessions.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-neutral-700 dark:text-neutral-200">
+                  <p className="truncate text-neutral-700 dark:text-neutral-200 flex items-center gap-2">
+                    {s.mode === 'max' && (
+                      <span className="rounded bg-indigo-950 px-1.5 py-0.2 text-[10px] font-bold text-indigo-400 border border-indigo-800">
+                        MAX
+                      </span>
+                    )}
                     {s.task ?? 'Focus session'}
                   </p>
                   <p className="text-xs text-neutral-500">
@@ -480,7 +1068,7 @@ export default function FocusPage() {
         )}
       </div>
 
-      {/* ── detox wizard (one-time, 10 steps) ── */}
+      {/* ─── DETOX WIZARD (One-Time) ──────────────────────────────────────── */}
       {detox.data && !detox.data.done && (
         <div className="panel space-y-3">
           <p className="label">

@@ -37,7 +37,12 @@ import * as decksId from '../server/handlers/decks/[id]/route'
 import * as decks from '../server/handlers/decks/route'
 import * as distractions from '../server/handlers/distractions/route'
 import * as exportRoute from '../server/handlers/export/route'
+import * as focusAllowlistsId from '../server/handlers/focus/allowlists/[id]/route'
+import * as focusAllowlists from '../server/handlers/focus/allowlists/route'
+import * as focusBridge from '../server/handlers/focus/bridge/route'
 import * as focusId from '../server/handlers/focus/[id]/route'
+import * as focusMaxExit from '../server/handlers/focus/max/exit/route'
+import * as focusMax from '../server/handlers/focus/max/route'
 import * as focus from '../server/handlers/focus/route'
 import * as friction from '../server/handlers/friction/route'
 import * as fsrsOptimize from '../server/handlers/fsrs/optimize/route'
@@ -151,6 +156,11 @@ add('distractions', distractions)
 add('export', exportRoute)
 add('focus', focus)
 add('focus/[id]', focusId)
+add('focus/allowlists', focusAllowlists)
+add('focus/allowlists/[id]', focusAllowlistsId)
+add('focus/bridge', focusBridge)
+add('focus/max', focusMax)
+add('focus/max/exit', focusMaxExit)
 add('friction', friction)
 add('fsrs/optimize', fsrsOptimize)
 add('games', games)

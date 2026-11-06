@@ -16,6 +16,7 @@ import { ftsSearch } from './003-fts-search'
 import { fsrsAndUndo } from './004-fsrs-and-undo'
 import { syncAndOnboarding } from './005-sync-and-onboarding'
 import { sq3rReading } from './006-sq3r-reading'
+import { maxFocus } from './007-max-focus'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -25,6 +26,7 @@ export const MIGRATIONS: readonly Migration[] = [
   fsrsAndUndo,
   syncAndOnboarding,
   sq3rReading,
+  maxFocus,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

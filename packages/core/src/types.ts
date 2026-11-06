@@ -118,7 +118,7 @@ export interface QuestItem {
 
 // ─── Focus / addiction ─────────────────────────────────────────────────────
 
-export type FrictionTrigger = 'break_focus' | 'relapse' | 'distraction'
+export type FrictionTrigger = 'break_focus' | 'relapse' | 'distraction' | 'max_focus_exit'
 
 /** A completed friction-gate interaction (trigger, delay, outcome). */
 export interface FrictionEvent {
