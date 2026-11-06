@@ -170,7 +170,7 @@ function MatchingGameSection() {
               className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                 deckId === d.id
                   ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300 font-medium'
-                  : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
+                  : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'
               }`}
             >
               {d.emoji} {d.name}
@@ -346,7 +346,7 @@ function Slot({ pair, matched }: { pair: MatchingPair; matched: boolean }) {
           ? 'border-emerald-600/50 bg-emerald-600/10 text-emerald-300'
           : isOver
             ? 'border-indigo-400 bg-indigo-500/10'
-            : 'border-neutral-200 text-neutral-700 dark:border-[#26262b] dark:text-neutral-300'
+            : 'border-neutral-200 text-neutral-700 dark:border-(--hub-border) dark:text-neutral-300'
       }`}
     >
       {pair.left}
@@ -364,10 +364,10 @@ function Chip({ pair, matched }: { pair: MatchingPair; matched: boolean }) {
       {...attributes}
       className={`cursor-grab rounded-lg border p-3 text-sm transition-colors select-none ${
         matched
-          ? 'border-neutral-200 text-neutral-600 line-through opacity-40 dark:border-[#26262b]'
+          ? 'border-neutral-200 text-neutral-600 line-through opacity-40 dark:border-(--hub-border)'
           : isDragging
             ? 'z-10 border-indigo-400 bg-indigo-600/20 shadow-lg'
-            : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-indigo-400 dark:border-[#26262b] dark:bg-[#101014] dark:text-neutral-300'
+            : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-indigo-400 dark:border-(--hub-border) dark:bg-(--hub-sunken) dark:text-neutral-300'
       }`}
     >
       {pair.right}
@@ -513,7 +513,7 @@ function BossBattleSection() {
           )}
 
           {active.turnHistory && active.turnHistory.length > 0 && (
-            <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+            <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
               <div className="label">Recent Combat Turns</div>
               <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1 text-xs text-neutral-400">
                 {active.turnHistory
@@ -522,7 +522,7 @@ function BossBattleSection() {
                   .map((t, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between rounded bg-neutral-100 p-2 dark:bg-[#18181b]"
+                      className="flex items-center justify-between rounded bg-neutral-100 p-2 dark:bg-(--hub-panel)"
                     >
                       <span>
                         Turn {t.turn}: {t.description}
@@ -673,21 +673,21 @@ function SocialLeaderboardSection() {
 
         {userStats && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
               <div className="label">Weekly XP</div>
               <div className="text-xl font-bold text-amber-400">{userStats.weeklyXp}</div>
             </div>
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
               <div className="label">Current Streak</div>
               <div className="text-xl font-bold text-orange-400 flex items-center gap-1">
                 <Flame className="h-4 w-4" /> {userStats.streak}d
               </div>
             </div>
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
               <div className="label">Cards Reviewed</div>
               <div className="text-xl font-bold text-indigo-400">{userStats.totalReviews}</div>
             </div>
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-[#18181b]">
+            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
               <div className="label">Learner Level</div>
               <div className="text-xl font-bold text-emerald-400">Lv. {userStats.level}</div>
             </div>
@@ -736,7 +736,7 @@ function SocialLeaderboardSection() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-neutral-200 text-xs text-neutral-500 dark:border-[#26262b]">
+              <tr className="border-b border-neutral-200 text-xs text-neutral-500 dark:border-(--hub-border)">
                 <th className="pb-2 font-medium">Rank</th>
                 <th className="pb-2 font-medium">Learner</th>
                 <th className="pb-2 font-medium">Streak</th>
@@ -745,7 +745,7 @@ function SocialLeaderboardSection() {
                 <th className="pb-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-[#26262b]">
+            <tbody className="divide-y divide-neutral-200 dark:divide-(--hub-border)">
               {leaderboardEntries.map((entry, idx) => (
                 <tr
                   key={entry.id + entry.name}

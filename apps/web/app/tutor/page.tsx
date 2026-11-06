@@ -223,7 +223,7 @@ export default function TutorPage() {
                 className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
                   m.role === 'user'
                     ? 'ml-auto bg-indigo-600 text-white'
-                    : 'bg-neutral-100 dark:bg-[#1a1a1f]'
+                    : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
                 }`}
               >
                 {m.content || '…'}

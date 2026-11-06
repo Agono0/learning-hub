@@ -66,7 +66,7 @@ const FORMATS: CardFormat[] = [
 
 const BOX_LABEL = ['new/learning', 'young', 'young', 'mature', 'mature'] as const
 const BOX_TONE = [
-  'bg-neutral-300 text-neutral-700 dark:bg-[#26262b] dark:text-neutral-400',
+  'bg-neutral-300 text-neutral-700 dark:bg-(--hub-border) dark:text-neutral-400',
   'bg-amber-500/20 text-amber-700 dark:text-amber-300',
   'bg-amber-500/30 text-amber-700 dark:text-amber-300',
   'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
@@ -212,7 +212,7 @@ export default function DecksPage() {
             className={`rounded-lg border px-3 py-2 text-sm ${
               activeDeck === null
                 ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300'
+                : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-neutral-300'
             }`}
           >
             📚 All decks
@@ -223,7 +223,7 @@ export default function DecksPage() {
               className={`group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 activeDeck === d.id
                   ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                  : 'border-neutral-200 text-neutral-600 dark:border-[#26262b] dark:text-neutral-300'
+                  : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-neutral-300'
               }`}
             >
               <button
@@ -259,7 +259,7 @@ export default function DecksPage() {
         </div>
 
         {selectedDeckObj && (
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-[#26262b]">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)">
             <span className="font-medium text-neutral-700 dark:text-neutral-300">
               Deck FSRS-6 preset:
             </span>
@@ -347,8 +347,8 @@ export default function DecksPage() {
                 key={i}
                 className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs ${
                   count === 0
-                    ? 'border-neutral-200 text-neutral-400 dark:border-[#26262b]'
-                    : 'border-neutral-300 text-neutral-600 dark:border-[#3a3a42] dark:text-neutral-300'
+                    ? 'border-neutral-200 text-neutral-400 dark:border-(--hub-border)'
+                    : 'border-neutral-300 text-neutral-600 dark:border-(--hub-border-strong) dark:text-neutral-300'
                 }`}
               >
                 box {i + 1}
@@ -357,11 +357,11 @@ export default function DecksPage() {
             ))}
           </div>
         )}
-        <div className="divide-y divide-neutral-100 dark:divide-[#1e1e23]">
+        <div className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
           {(cards.data?.cards ?? []).map((card) => (
             <div key={card.id} className="flex items-center gap-3 py-2 text-sm">
               <BoxChip box={leitnerBox(card)} />
-              <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:bg-[#1a1a1f]">
+              <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:bg-(--hub-panel-2)">
                 {card.type}
               </span>
               <span className="min-w-0 flex-1 truncate">{cardPreview(card.content)}</span>
@@ -506,7 +506,7 @@ function CardEditorModal({
           {FORMATS.map((f) => (
             <button
               key={f}
-              className={`rounded-lg border px-2.5 py-1 text-xs ${type === f ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300' : 'border-neutral-200 text-neutral-500 dark:border-[#26262b]'}`}
+              className={`rounded-lg border px-2.5 py-1 text-xs ${type === f ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300' : 'border-neutral-200 text-neutral-500 dark:border-(--hub-border)'}`}
               onClick={() => {
                 setType(f)
                 setDraft({})
@@ -661,7 +661,7 @@ function FormatEditor({
           }}
         />
         <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-          <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+          <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
             {'{{c1::answer}}'}
           </code>
           <span>mark each deletion; hint with {'{{c1::answer::hint}}'}</span>
@@ -672,7 +672,7 @@ function FormatEditor({
             {(['basic', 'typein', 'enumeration'] as const).map((m) => (
               <button
                 key={m}
-                className={`rounded border px-2 py-1 ${v.mode === m ? 'border-indigo-500 text-indigo-300' : 'border-neutral-200 text-neutral-500 dark:border-[#26262b]'}`}
+                className={`rounded border px-2 py-1 ${v.mode === m ? 'border-indigo-500 text-indigo-300' : 'border-neutral-200 text-neutral-500 dark:border-(--hub-border)'}`}
                 onClick={() => patch('cloze', { ...v, mode: m })}
               >
                 {m}
@@ -940,7 +940,7 @@ function OcclusionEditor({
         <>
           <div
             ref={containerRef}
-            className="relative max-w-xl cursor-crosshair select-none overflow-hidden rounded-lg border border-neutral-200 dark:border-[#26262b]"
+            className="relative max-w-xl cursor-crosshair select-none overflow-hidden rounded-lg border border-neutral-200 dark:border-(--hub-border)"
             onMouseDown={(e) => {
               const start = toNorm(e)
               setDrawing({ id: `r${Date.now()}`, x: start.x, y: start.y, w: 0, h: 0 })
@@ -1097,7 +1097,7 @@ function BasicImageAttach({
         <img
           src={`/api/images/${imageId}`}
           alt="card image"
-          className="max-h-40 rounded-lg border border-neutral-200 dark:border-[#26262b]"
+          className="max-h-40 rounded-lg border border-neutral-200 dark:border-(--hub-border)"
         />
       )}
       {error && <p className="text-xs text-red-400">{error}</p>}

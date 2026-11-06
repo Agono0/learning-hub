@@ -171,7 +171,7 @@ export default function CoursesPage() {
       {starterCourses.map((sc) => (
         <div
           key={sc.slug}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429]"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)"
         >
           <div className="flex min-w-0 flex-1 items-start gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600/10 text-xl">

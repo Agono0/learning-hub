@@ -155,7 +155,7 @@ export function ExercisePractice({
                   'rounded-full px-3 py-1',
                   confidence === c
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-neutral-100 dark:bg-[#1e1e23]',
+                    : 'bg-neutral-100 dark:bg-(--hub-panel-2)',
                 )}
               >
                 {c ? 'Sure' : 'Guessing'}

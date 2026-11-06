@@ -469,7 +469,7 @@ export default function ReadingPage() {
                 <BookOpen className="h-3.5 w-3.5 shrink-0 opacity-50" />
                 <span className="flex-1 truncate">{s.title}</span>
               </div>
-              <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                 <div className="h-full bg-indigo-500" style={{ width: `${s.position}%` }} />
               </div>
               <div className="mt-1 text-[10px] text-neutral-500">
@@ -570,7 +570,7 @@ export default function ReadingPage() {
                   >
                     <Markdown>{fragment.text}</Markdown>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
                     <button
                       className="btn"
                       onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
@@ -606,7 +606,7 @@ export default function ReadingPage() {
                     ))}
                   </div>
                   {ghostResult && (
-                    <div className="mt-2 rounded-lg bg-neutral-100 p-2 text-xs whitespace-pre-wrap dark:bg-[#1a1a1f]">
+                    <div className="mt-2 rounded-lg bg-neutral-100 p-2 text-xs whitespace-pre-wrap dark:bg-(--hub-panel-2)">
                       {ghostResult}
                     </div>
                   )}
@@ -661,7 +661,7 @@ export default function ReadingPage() {
                         {surveyHeadings.map((h, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-[#242429]"
+                            className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-(--hub-border)"
                           >
                             <span className="font-medium text-neutral-200">{h}</span>
                             <button
@@ -713,7 +713,7 @@ export default function ReadingPage() {
                         {questions.map((q) => (
                           <div
                             key={q.id}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-[#242429]"
+                            className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-(--hub-border)"
                           >
                             <span className="text-neutral-200">{q.question}</span>
                             <button
@@ -764,11 +764,11 @@ export default function ReadingPage() {
                           {Math.round(source.position)}%
                         </span>
                       </div>
-                      <div className="max-h-[42vh] overflow-y-auto rounded-xl border border-neutral-200 p-3 text-sm leading-relaxed dark:border-[#242429]">
+                      <div className="max-h-[42vh] overflow-y-auto rounded-xl border border-neutral-200 p-3 text-sm leading-relaxed dark:border-(--hub-border)">
                         <Markdown>{fragment.text}</Markdown>
                       </div>
                       {questions.length > 0 && (
-                        <div className="space-y-2 rounded-xl bg-neutral-100 p-3 dark:bg-[#16161a]">
+                        <div className="space-y-2 rounded-xl bg-neutral-100 p-3 dark:bg-(--hub-panel)">
                           <div className="text-xs font-semibold text-neutral-400">
                             Answer your guiding questions as you read:
                           </div>
@@ -869,7 +869,7 @@ export default function ReadingPage() {
                         {questions.map((q) => (
                           <div
                             key={q.id}
-                            className="rounded-xl border border-neutral-200 p-3 text-xs space-y-1.5 dark:border-[#242429]"
+                            className="rounded-xl border border-neutral-200 p-3 text-xs space-y-1.5 dark:border-(--hub-border)"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-semibold text-neutral-200">{q.question}</span>
@@ -929,7 +929,7 @@ export default function ReadingPage() {
                   {triageQueue.slice(0, 3).map((h) => (
                     <div
                       key={h.id}
-                      className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+                      className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
                     >
                       <p className="text-neutral-300">{h.text}</p>
                       <div className="mt-2 flex gap-2">
@@ -1063,7 +1063,7 @@ export default function ReadingPage() {
           </div>
 
           {ingestTab === 'file' && (
-            <div className="rounded-xl border-2 border-dashed border-neutral-300 p-6 text-center space-y-2 dark:border-[#26262b]">
+            <div className="rounded-xl border-2 border-dashed border-neutral-300 p-6 text-center space-y-2 dark:border-(--hub-border)">
               <Upload className="mx-auto h-6 w-6 text-neutral-400" />
               <div className="text-sm font-medium">
                 Choose a <code>.pdf</code>, <code>.epub</code>, <code>.md</code>, or{' '}

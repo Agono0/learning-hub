@@ -20,7 +20,10 @@ export function ProgressBar({
       aria-valuemax={100}
       aria-valuenow={pct}
       aria-label={label}
-      className={cx('h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]', className)}
+      className={cx(
+        'h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)',
+        className,
+      )}
     >
       <div
         className="h-full rounded-full bg-indigo-500 transition-[width] duration-500"
@@ -58,7 +61,7 @@ export function ProgressRing({
           r={r}
           fill="none"
           strokeWidth={stroke}
-          className="stroke-neutral-200 dark:stroke-[#26262b]"
+          className="stroke-neutral-200 dark:stroke-(--hub-border)"
         />
         <circle
           cx={size / 2}

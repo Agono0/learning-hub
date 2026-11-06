@@ -575,7 +575,7 @@ function ReviewPageInner() {
                 className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                   deckId === null
                     ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                    : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-[#26262b] dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                    : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
                 }`}
               >
                 📚 All decks
@@ -590,7 +590,7 @@ function ReviewPageInner() {
                   className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                     deckId === d.id
                       ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                      : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-[#26262b] dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                      : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
                   }`}
                 >
                   {d.emoji} {d.name}
@@ -808,13 +808,13 @@ function ReviewPageInner() {
 
       <div className="panel min-h-[280px] space-y-4">
         <div className="flex gap-2 text-[10px] uppercase tracking-widest text-neutral-500">
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
             {current.type}
           </span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
             reps {current.reps}
           </span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">
+          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
             stability {current.stability.toFixed(1)}d
           </span>
         </div>
@@ -938,7 +938,7 @@ function EnergyBar({ energy }: { energy: number }) {
       {Array.from({ length: MAX_ENERGY }, (_, i) => (
         <span
           key={i}
-          className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-red-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-[#26262b]'}`}
+          className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-red-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-(--hub-border)'}`}
         />
       ))}
     </span>
@@ -982,12 +982,12 @@ function CardFront(props: {
           <img
             src={`/api/images/${content.basic.imageId}`}
             alt=""
-            className="max-h-56 rounded-lg border border-neutral-200 dark:border-[#26262b]"
+            className="max-h-56 rounded-lg border border-neutral-200 dark:border-(--hub-border)"
           />
         )}
         <div className="text-xl font-medium">{front}</div>
         {revealed && (
-          <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-[#26262b]">
+          <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-(--hub-border)">
             {content.basic.back}
           </div>
         )}
@@ -1093,7 +1093,7 @@ function CardFront(props: {
                       ? 'border-emerald-600 bg-emerald-600/10 text-emerald-300'
                       : picked
                         ? 'border-red-600 bg-red-600/10 text-red-300'
-                        : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100 dark:border-[#26262b] dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                        : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
                   }`}
                 >
                   {String.fromCharCode(65 + i)}. {opt}
@@ -1220,7 +1220,7 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
   return (
     <div className="space-y-2">
       <div
-        className="relative mx-auto max-w-xl overflow-hidden rounded-lg border border-neutral-200 dark:border-[#26262b]"
+        className="relative mx-auto max-w-xl overflow-hidden rounded-lg border border-neutral-200 dark:border-(--hub-border)"
         style={{ minHeight: 200 }}
       >
         <img

@@ -66,7 +66,7 @@ export const WorldCanvas = React.forwardRef<WorldCanvasHandle, WorldCanvasProps>
           equippedHand: props.equippedHand,
           equippedCompanion: props.equippedCompanion,
           equippedSkin: props.equippedSkin,
-          soundscape: props.soundscape ?? 'birds',
+          soundscape: props.soundscape ?? 'none',
           lowPolyQuality: props.lowPolyQuality,
           mood: props.mood,
           plantedPlots: props.plantedPlots,

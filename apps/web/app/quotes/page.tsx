@@ -191,7 +191,7 @@ export default function QuotesPage() {
                   {(q.tags ?? []).map((t) => (
                     <span
                       key={t}
-                      className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-[#1e1e23] dark:text-neutral-400"
+                      className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-(--hub-panel-2) dark:text-neutral-400"
                     >
                       {t}
                     </span>

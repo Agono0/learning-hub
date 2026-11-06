@@ -21,6 +21,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { usePalette } from '@/components/ThemeSync'
 import { Badge, EmptyState, PageHeader, Panel, Tabs } from '@/ui'
 import { WorldCanvas, type WorldCanvasHandle } from '@/ui/WorldCanvas'
 import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
@@ -117,10 +118,12 @@ export default function WorldPage() {
     'tree' | 'hourglass' | 'campfire' | 'clockwork' | 'crystal'
   >('tree')
   const [viewMode, setViewMode] = useState<'diorama' | 'third_person' | 'hybrid'>('hybrid')
-  const [soundscape, setSoundscape] = useState<'none' | 'birds' | 'rain' | 'fire' | 'wind'>('birds')
+  const [soundscape, setSoundscape] = useState<'none' | 'birds' | 'rain' | 'fire' | 'wind'>('none')
   const [heartbeats, setHeartbeats] = useState(0)
 
   const canvasRef = useRef<WorldCanvasHandle | null>(null)
+  // The app palette drives the world's sky/light mood (calm → morning, midnight → night…).
+  const palette = usePalette()
 
   // Fetch world state & catalog
   useEffect(() => {
@@ -424,6 +427,7 @@ export default function WorldPage() {
               equippedSkin={worldState?.avatar.equippedSkin}
               soundscape={soundscape}
               lowPolyQuality={worldState?.settings.lowPolyQuality ?? 'high'}
+              mood={palette}
               plantedPlots={worldState?.plots}
               unlockedDecor={unlockedDecor}
               progress={progress}
@@ -433,7 +437,7 @@ export default function WorldPage() {
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
               <div className="flex items-center gap-2 pointer-events-auto bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/50 text-xs text-slate-300">
                 <Compass className="w-4 h-4 text-emerald-400" />
-                <span className="capitalize">{viewMode} Mode</span>
+                <span className="capitalize">{viewMode.replace('_', ' ')} Mode</span>
               </div>
 
               <div className="flex items-center gap-2 pointer-events-auto">

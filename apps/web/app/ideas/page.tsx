@@ -299,7 +299,7 @@ export default function IdeasPage() {
           )}
           {incubator.map(({ idea, score }) => (
             <div key={idea.id} className="flex items-center gap-3 text-sm">
-              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                 <div
                   className="h-full rounded-full bg-amber-500"
                   style={{ width: `${Math.round(score * 100)}%` }}
@@ -490,7 +490,7 @@ export default function IdeasPage() {
                 {council.map((p) => (
                   <div
                     key={p.key}
-                    className="rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]"
+                    className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)"
                   >
                     <div className="mb-1 text-xs font-bold uppercase tracking-wide text-indigo-400">
                       {p.name}

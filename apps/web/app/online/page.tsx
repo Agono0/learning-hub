@@ -334,7 +334,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
             </div>
 
             {/* Participants Bar */}
-            <div className="border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+            <div className="border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
               <div className="label mb-2">
                 Active Participants ({activeRoom.participants?.length || 1})
               </div>
@@ -342,7 +342,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                 {(activeRoom.participants || []).map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs dark:border-[#26262b] dark:bg-[#18181b]"
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs dark:border-(--hub-border) dark:bg-(--hub-panel)"
                   >
                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
                     <span className="font-medium">{p.alias}</span>
@@ -359,7 +359,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
               <MessageSquare className="h-4 w-4" /> Room Chat & Motivations
             </h3>
 
-            <div className="h-48 overflow-y-auto space-y-2 rounded-lg bg-neutral-100 p-3 text-xs dark:bg-[#121215]">
+            <div className="h-48 overflow-y-auto space-y-2 rounded-lg bg-neutral-100 p-3 text-xs dark:bg-(--hub-sunken)">
               {chatMessages.length === 0 ? (
                 <div className="text-neutral-500 text-center py-12">
                   No messages yet. Say hello or share what you are studying!
@@ -484,7 +484,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
                   className={`cursor-pointer rounded-lg border p-4 transition-all ${
                     selectedBoss === boss.key
                       ? 'border-indigo-500 bg-indigo-500/10'
-                      : 'border-neutral-200 dark:border-[#26262b] hover:border-neutral-300'
+                      : 'border-neutral-200 dark:border-(--hub-border) hover:border-neutral-300'
                   }`}
                 >
                   <div className="text-3xl mb-2">{boss.avatar}</div>
@@ -583,7 +583,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
               {activeRaid.members.map((m) => (
                 <div
                   key={m.id}
-                  className="rounded-lg bg-neutral-100 p-2.5 dark:bg-[#18181b] text-xs flex justify-between items-center"
+                  className="rounded-lg bg-neutral-100 p-2.5 dark:bg-(--hub-panel) text-xs flex justify-between items-center"
                 >
                   <span className="font-medium">{m.alias}</span>
                   <span className="text-amber-400 font-mono">+{m.damageDealt} dmg</span>
@@ -593,11 +593,11 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
           </div>
 
           {/* Combat Log */}
-          <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+          <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
             <div className="label">Raid Combat Log</div>
             <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-neutral-400">
               {activeRaid.combatLog.map((log, i) => (
-                <div key={i} className="rounded bg-neutral-100 p-1.5 dark:bg-[#121215]">
+                <div key={i} className="rounded bg-neutral-100 p-1.5 dark:bg-(--hub-sunken)">
                   {log}
                 </div>
               ))}
@@ -695,7 +695,7 @@ function CommunityLibrarySection() {
                 {item.tags.map((t) => (
                   <span
                     key={t}
-                    className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-[#18181b]"
+                    className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-(--hub-panel)"
                   >
                     #{t}
                   </span>
@@ -703,7 +703,7 @@ function CommunityLibrarySection() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+            <div className="flex items-center justify-between border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
               <span className="flex items-center gap-1 text-xs text-neutral-500">
                 <Download className="h-3.5 w-3.5" /> {item.downloads} downloads
               </span>
@@ -831,7 +831,7 @@ function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }
             No nudges or invitations received yet.
           </div>
         ) : (
-          <div className="divide-y divide-neutral-200 dark:divide-[#26262b]">
+          <div className="divide-y divide-neutral-200 dark:divide-(--hub-border)">
             {messages.map((msg) => (
               <div key={msg.id} className="py-3 flex items-center justify-between gap-4 text-xs">
                 <div>

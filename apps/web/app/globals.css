@@ -3,13 +3,160 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
+/*
+ * Dynamic theme system — every color utility resolves through runtime CSS
+ * variables, so switching a palette (Settings → Appearance → `data-theme` on
+ * <html>) re-skins the whole app AND the 3D world mood. The default palette
+ * is `calm` (sage-tinted, warm gray). Ramps are mode-independent (lightest →
+ * darkest); dark surfaces come from the `--hub-*` variables via dark: utils.
+ */
+@theme inline {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --color-hub-bg: #0a0a0b;
-  --color-hub-panel: #141417;
-  --color-hub-border: #26262b;
-  --color-hub-accent: #6366f1;
-  --color-hub-accent-soft: #818cf8;
+  --color-hub-bg: var(--hub-bg);
+  --color-hub-panel: var(--hub-panel);
+  --color-hub-panel-2: var(--hub-panel-2);
+  --color-hub-sunken: var(--hub-sunken);
+  --color-hub-border: var(--hub-border);
+  --color-hub-border-strong: var(--hub-border-strong);
+  --color-hub-accent: var(--ac-strong);
+  --color-hub-accent-soft: var(--ac-soft);
+
+  /* Neutral + slate follow the palette tint (color-mix ramps below). */
+  --color-neutral-50: var(--n-50);
+  --color-neutral-100: var(--n-100);
+  --color-neutral-200: var(--n-200);
+  --color-neutral-300: var(--n-300);
+  --color-neutral-400: var(--n-400);
+  --color-neutral-500: var(--n-500);
+  --color-neutral-600: var(--n-600);
+  --color-neutral-700: var(--n-700);
+  --color-neutral-800: var(--n-800);
+  --color-neutral-900: var(--n-900);
+  --color-neutral-950: var(--n-950);
+  --color-slate-50: var(--n-50);
+  --color-slate-100: var(--n-100);
+  --color-slate-200: var(--n-200);
+  --color-slate-300: var(--n-300);
+  --color-slate-400: var(--n-400);
+  --color-slate-500: var(--n-500);
+  --color-slate-600: var(--n-600);
+  --color-slate-700: var(--n-700);
+  --color-slate-800: var(--n-800);
+  --color-slate-900: var(--n-900);
+  --color-slate-950: var(--n-950);
+
+  /* Accent (was indigo): semantic roles, not raw steps. */
+  --color-indigo-100: var(--ac-soft);
+  --color-indigo-200: var(--ac-soft);
+  --color-indigo-300: var(--ac-soft);
+  --color-indigo-400: var(--ac-soft);
+  --color-indigo-500: var(--ac-mid);
+  --color-indigo-600: var(--ac-strong);
+  --color-indigo-700: var(--ac-strong);
+  --color-indigo-800: var(--ac-deep);
+  --color-indigo-900: var(--ac-deep);
+  --color-indigo-950: var(--ac-deep);
+}
+
+/* Default palette: Calm — sage-tinted warm gray. */
+:root,
+[data-theme='calm'] {
+  --tint: #7c8f84;
+  --ac-strong: #56735f;
+  --ac-mid: #6d8f79;
+  --ac-soft: #a7c3b0;
+  --ac-deep: #2c3a31;
+  --hub-bg: #0e120f;
+  --hub-panel: #151a16;
+  --hub-panel-2: #1c221d;
+  --hub-sunken: #101411;
+  --hub-border: #262e28;
+  --hub-border-strong: #3a443c;
+}
+
+[data-theme='forest'] {
+  --tint: #6f9b6a;
+  --ac-strong: #3f7d46;
+  --ac-mid: #55975c;
+  --ac-soft: #9ccaa0;
+  --ac-deep: #1d331e;
+  --hub-bg: #0d130c;
+  --hub-panel: #131b12;
+  --hub-panel-2: #1a2418;
+  --hub-sunken: #0f150e;
+  --hub-border: #24301f;
+  --hub-border-strong: #37452f;
+}
+
+[data-theme='ocean'] {
+  --tint: #6f93b8;
+  --ac-strong: #2f6ea3;
+  --ac-mid: #4b8ab8;
+  --ac-soft: #9fc4e0;
+  --ac-deep: #16293c;
+  --hub-bg: #0c1116;
+  --hub-panel: #121920;
+  --hub-panel-2: #19232c;
+  --hub-sunken: #0e141a;
+  --hub-border: #223040;
+  --hub-border-strong: #35485c;
+}
+
+[data-theme='sunset'] {
+  --tint: #c2916b;
+  --ac-strong: #b45f2d;
+  --ac-mid: #cd7d4a;
+  --ac-soft: #edb98a;
+  --ac-deep: #3d2113;
+  --hub-bg: #14100c;
+  --hub-panel: #1c1612;
+  --hub-panel-2: #241c16;
+  --hub-sunken: #171210;
+  --hub-border: #33281e;
+  --hub-border-strong: #4b3a2a;
+}
+
+[data-theme='blossom'] {
+  --tint: #c48ea4;
+  --ac-strong: #b04a72;
+  --ac-mid: #c9678d;
+  --ac-soft: #efadc4;
+  --ac-deep: #3b1b29;
+  --hub-bg: #130e12;
+  --hub-panel: #1b141a;
+  --hub-panel-2: #241a22;
+  --hub-sunken: #171015;
+  --hub-border: #332531;
+  --hub-border-strong: #4b3646;
+}
+
+[data-theme='midnight'] {
+  --tint: #8b8fc0;
+  --ac-strong: #6355c7;
+  --ac-mid: #7c6fdd;
+  --ac-soft: #b3abef;
+  --ac-deep: #201d3d;
+  --hub-bg: #0d0d14;
+  --hub-panel: #141420;
+  --hub-panel-2: #1b1b2a;
+  --hub-sunken: #0f0f17;
+  --hub-border: #272740;
+  --hub-border-strong: #3c3c5c;
+}
+
+/* Perceived-lightness ramp derived from the palette tint (one source of truth). */
+:root {
+  --n-50: color-mix(in oklab, var(--tint) 5%, white);
+  --n-100: color-mix(in oklab, var(--tint) 9%, white);
+  --n-200: color-mix(in oklab, var(--tint) 15%, white);
+  --n-300: color-mix(in oklab, var(--tint) 24%, white);
+  --n-400: color-mix(in oklab, var(--tint) 38%, white);
+  --n-500: color-mix(in oklab, var(--tint) 52%, white);
+  --n-600: color-mix(in oklab, var(--tint) 64%, black 6%);
+  --n-700: color-mix(in oklab, var(--tint) 52%, black 22%);
+  --n-800: color-mix(in oklab, var(--tint) 40%, black 38%);
+  --n-900: color-mix(in oklab, var(--tint) 30%, black 52%);
+  --n-950: color-mix(in oklab, var(--tint) 18%, black 72%);
 }
 
 html, body {
@@ -26,12 +173,12 @@ html {
 }
 
 body {
-  @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-[#0a0a0b] dark:text-neutral-100;
+  @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-(--hub-bg) dark:text-neutral-100;
 }
 
 /* Card surfaces used across all pages */
 .panel {
-  @apply rounded-xl border border-neutral-200 bg-white p-4 dark:border-[#26262b] dark:bg-[#141417];
+  @apply rounded-xl border border-neutral-200 bg-white p-4 dark:border-(--hub-border) dark:bg-(--hub-panel);
 }
 
 .btn {
@@ -46,7 +193,7 @@ body {
 
 .input {
   @apply w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none
-    focus:ring-2 focus:ring-indigo-500/40 dark:border-[#26262b] dark:bg-[#101014] dark:text-neutral-100;
+    focus:ring-2 focus:ring-indigo-500/40 dark:border-(--hub-border) dark:bg-(--hub-sunken) dark:text-neutral-100;
 }
 
 .label {
@@ -119,13 +266,13 @@ body {
 .prose-hub ol { @apply list-decimal space-y-1 pl-5; }
 .prose-hub a { @apply text-indigo-600 underline underline-offset-2 dark:text-indigo-300; }
 .prose-hub blockquote { @apply border-l-4 border-indigo-500/40 pl-3 text-neutral-600 dark:text-neutral-400; }
-.prose-hub code { @apply rounded bg-neutral-100 px-1 py-0.5 text-[13px] dark:bg-[#1e1e23]; }
-.prose-hub pre { @apply overflow-x-auto rounded-xl bg-neutral-100 p-3 text-[13px] leading-6 dark:bg-[#101014]; }
+.prose-hub code { @apply rounded bg-neutral-100 px-1 py-0.5 text-[13px] dark:bg-(--hub-panel-2); }
+.prose-hub pre { @apply overflow-x-auto rounded-xl bg-neutral-100 p-3 text-[13px] leading-6 dark:bg-(--hub-sunken); }
 .prose-hub pre code { @apply bg-transparent p-0; }
 .prose-hub table { @apply block w-full overflow-x-auto border-collapse text-sm; }
-.prose-hub th { @apply border border-neutral-200 bg-neutral-100/80 px-2.5 py-1.5 text-left font-semibold dark:border-[#26262b] dark:bg-[#1a1a1f]; }
-.prose-hub td { @apply border border-neutral-200 px-2.5 py-1.5 dark:border-[#26262b]; }
+.prose-hub th { @apply border border-neutral-200 bg-neutral-100/80 px-2.5 py-1.5 text-left font-semibold dark:border-(--hub-border) dark:bg-(--hub-panel-2); }
+.prose-hub td { @apply border border-neutral-200 px-2.5 py-1.5 dark:border-(--hub-border); }
 .prose-hub ul:has(> li > input[type="checkbox"]) { @apply list-none pl-1; }
 .prose-hub input[type="checkbox"] { @apply mr-2 rounded accent-indigo-600; }
 .prose-hub del { @apply text-neutral-400 line-through; }
-.prose-hub hr { @apply border-neutral-200 dark:border-[#26262b]; }
+.prose-hub hr { @apply border-neutral-200 dark:border-(--hub-border); }

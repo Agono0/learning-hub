@@ -188,7 +188,7 @@ export default function CanvasPage() {
         <>
           <div
             ref={boardRef}
-            className="relative h-[60vh] overflow-hidden rounded-xl border border-neutral-200 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22><circle cx=%222%22 cy=%222%22 r=%221%22 fill=%22%23333%22/></svg>')] dark:border-[#26262b]"
+            className="relative h-[60vh] overflow-hidden rounded-xl border border-neutral-200 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22><circle cx=%222%22 cy=%222%22 r=%221%22 fill=%22%23333%22/></svg>')] dark:border-(--hub-border)"
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
           >
@@ -200,7 +200,7 @@ export default function CanvasPage() {
                     ? 'border-indigo-500/60 bg-indigo-600/5'
                     : item.kind === 'excerpt'
                       ? 'border-amber-500/50 bg-amber-500/5'
-                      : 'border-neutral-300 bg-white/90 dark:border-[#3a3a41] dark:bg-[#141417]/95'
+                      : 'border-neutral-300 bg-white/90 dark:border-(--hub-border-strong) dark:bg-(--hub-panel)/95'
                 } ${linkFrom === item.id ? 'ring-2 ring-indigo-500' : ''}`}
                 style={{ left: item.x, top: item.y, width: item.w }}
                 onPointerDown={(e) => onPointerDown(e, item)}

@@ -73,7 +73,7 @@ function WorkedExample({
         {example.steps.slice(0, shown).map((step, i) => (
           <li
             key={i}
-            className="flex gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm dark:bg-[#141417]"
+            className="flex gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm dark:bg-(--hub-panel)"
           >
             <span className="font-semibold tabular-nums text-indigo-500">{i + 1}.</span>
             <Markdown className="min-w-0 flex-1">{step}</Markdown>
@@ -123,7 +123,7 @@ function KeyTerms({ terms }: { terms: NonNullable<Content['keyTerms']> }) {
             onClick={() =>
               setOpen((s) => new Set(s.has(i) ? [...s].filter((x) => x !== i) : [...s, i]))
             }
-            className="rounded-xl border border-neutral-200 p-3 text-left dark:border-[#26262b]"
+            className="rounded-xl border border-neutral-200 p-3 text-left dark:border-(--hub-border)"
           >
             <dt className="font-medium">{t.term}</dt>
             <dd

@@ -116,7 +116,7 @@ export default function DashboardPage() {
             <Zap className="h-3.5 w-3.5" /> Total XP
           </div>
           <div className="mt-1 text-2xl font-bold">{d.xpTotal}</div>
-          <div className="mt-2 h-1.5 rounded-full bg-neutral-200 dark:bg-[#26262b]">
+          <div className="mt-2 h-1.5 rounded-full bg-neutral-200 dark:bg-(--hub-border)">
             <div
               className="h-full rounded-full bg-indigo-500"
               style={{ width: `${Math.round(progress * 100)}%` }}

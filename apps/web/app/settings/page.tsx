@@ -20,7 +20,10 @@ import {
 import type { AIProvider } from '@learning-hub/core/types'
 import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
 import {
+  PALETTES,
   applyThemePreference,
+  setPalette,
+  usePalette,
   normalizeThemePreference,
   type ThemePreference,
 } from '@/components/ThemeSync'
@@ -155,6 +158,7 @@ export default function SettingsPage() {
   const [retention, setRetention] = useState(0.9)
   const [sessionMinutes, setSessionMinutes] = useState(25)
   const [theme, setTheme] = useState<ThemePreference>('dark')
+  const palette = usePalette()
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [weightsDraft, setWeightsDraft] = useState('')
   const [rescheduleOnSave, setRescheduleOnSave] = useState(false)
@@ -325,7 +329,7 @@ export default function SettingsPage() {
                 className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                   provider === p.key
                     ? 'border-indigo-500 bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
-                    : 'border-neutral-200 hover:bg-neutral-100 dark:border-[#26262b] dark:hover:bg-[#1a1a1f]'
+                    : 'border-neutral-200 hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
                 }`}
               >
                 {p.label}
@@ -349,7 +353,7 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-[#26262b] dark:bg-[#101014]">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-(--hub-border) dark:bg-(--hub-sunken)">
           <div className="label mb-1.5">1-Click Free &amp; Local Presets</div>
           <div className="flex flex-wrap gap-1.5">
             {[
@@ -392,7 +396,7 @@ export default function SettingsPage() {
                   setModel(preset.model)
                   setBaseUrl(preset.baseUrl)
                 }}
-                className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-[#26262b] dark:bg-[#18181d] dark:text-neutral-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300"
+                className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-[#18181d] dark:text-neutral-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300"
               >
                 {preset.label}
               </button>
@@ -510,7 +514,7 @@ export default function SettingsPage() {
           <div
             role="group"
             aria-label="Theme preference"
-            className="inline-flex rounded-xl border border-neutral-200 bg-neutral-100/70 p-1 dark:border-[#26262b] dark:bg-[#101014]"
+            className="inline-flex rounded-xl border border-neutral-200 bg-neutral-100/70 p-1 dark:border-(--hub-border) dark:bg-(--hub-sunken)"
           >
             {(
               [
@@ -529,12 +533,61 @@ export default function SettingsPage() {
                   aria-pressed={active}
                   className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
                     active
-                      ? 'bg-white text-indigo-600 shadow-xs dark:bg-[#1e1e23] dark:text-indigo-300'
+                      ? 'bg-white text-indigo-600 shadow-xs dark:bg-(--hub-panel-2) dark:text-indigo-300'
                       : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {opt.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Color palette — re-skins the whole app and the 3D world mood. */}
+        <div>
+          <div className="label mb-1">Color palette</div>
+          <div className="mb-2.5 text-sm text-neutral-500">
+            Tints the entire interface — and the 3D forest's sky and light. Calm is the default.
+          </div>
+          <div
+            role="group"
+            aria-label="Color palette"
+            className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          >
+            {PALETTES.map((p) => {
+              const active = palette === p.id
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPalette(p.id)}
+                  aria-pressed={active}
+                  className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
+                    active
+                      ? 'border-indigo-500 bg-indigo-600/10'
+                      : 'border-neutral-200 hover:border-neutral-300 dark:border-(--hub-border) dark:hover:border-(--hub-border-strong)'
+                  }`}
+                >
+                  <span
+                    aria-hidden
+                    className="flex h-7 w-7 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
+                  >
+                    {p.swatch.map((c) => (
+                      <span key={c} className="h-full flex-1" style={{ backgroundColor: c }} />
+                    ))}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold">
+                      {p.label}
+                      {p.id === 'calm' && (
+                        <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-neutral-400">
+                          Default
+                        </span>
+                      )}
+                    </span>
+                  </span>
                 </button>
               )
             })}
@@ -555,7 +608,7 @@ export default function SettingsPage() {
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
               s?.hasCustomWeights
                 ? 'bg-emerald-500/15 text-emerald-500'
-                : 'bg-neutral-200/70 text-neutral-600 dark:bg-[#26262b] dark:text-neutral-400'
+                : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-neutral-400'
             }`}
           >
             {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
@@ -563,7 +616,7 @@ export default function SettingsPage() {
         </div>
 
         {fsrsQuery.data && (
-          <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-[#26262b]">
+          <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-(--hub-border)">
             <div>
               <div className="text-neutral-500">Spaced transitions</div>
               <div className="mt-0.5 text-sm font-semibold">
@@ -922,7 +975,7 @@ function OnlineIdentitySection() {
                 className={`rounded-lg border p-3 text-left transition-all ${
                   mode === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
@@ -1032,7 +1085,7 @@ function PowerToolsSection() {
                 className={`rounded-lg border p-2 text-center text-xs transition-all ${
                   hudStyle === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300 font-medium'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 <div>{opt.label}</div>
@@ -1139,7 +1192,7 @@ function AnkiConnectSection() {
                 className={`rounded-lg border p-3 text-left transition-all ${
                   syncMode === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
@@ -1177,7 +1230,7 @@ function WorldSettingsSection() {
   const [integrationMode, setIntegrationMode] = useState<
     'dedicated' | 'focus_embedded' | 'hud_modal'
   >('dedicated')
-  const [soundscape, setSoundscape] = useState<'birds' | 'rain' | 'fire' | 'wind' | 'none'>('birds')
+  const [soundscape, setSoundscape] = useState<'birds' | 'rain' | 'fire' | 'wind' | 'none'>('none')
   const [saved, setSaved] = useState(false)
 
   const settingsQuery = useQuery<{
@@ -1259,7 +1312,7 @@ function WorldSettingsSection() {
                 className={`rounded-lg border p-3 text-left transition-all ${
                   viewMode === opt.id
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
@@ -1289,7 +1342,7 @@ function WorldSettingsSection() {
                 className={`rounded-lg border p-2 text-center text-xs transition-all ${
                   timerTheme === t.id
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-semibold'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 {t.label}
@@ -1328,7 +1381,7 @@ function WorldSettingsSection() {
                 className={`rounded-lg border p-3 text-left transition-all ${
                   integrationMode === opt.id
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
@@ -1357,7 +1410,7 @@ function WorldSettingsSection() {
                 className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${
                   soundscape === s.id
                     ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-semibold'
-                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
                 }`}
               >
                 {s.label}

@@ -149,7 +149,7 @@ export default function PlannerPage() {
               return (
                 <div
                   key={d}
-                  className="rounded-lg border border-neutral-200 p-2 text-xs dark:border-[#26262b]"
+                  className="rounded-lg border border-neutral-200 p-2 text-xs dark:border-(--hub-border)"
                 >
                   <div className={`font-semibold ${isRest ? 'text-neutral-500' : ''}`}>
                     {d}

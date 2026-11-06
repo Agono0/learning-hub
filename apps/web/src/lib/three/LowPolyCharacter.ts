@@ -90,24 +90,24 @@ export function createLowPolyCharacter(options: CharacterCustomizationOptions): 
   rootGroup.add(leftEye)
   rootGroup.add(rightEye)
 
-  // Hair
+  // Hair — a light cap so the head silhouette stays readable from behind.
   const hairGeo = new THREE.DodecahedronGeometry(0.44, 0)
   const hair = new THREE.Mesh(hairGeo, hairMat)
-  hair.position.set(0, 1.88, -0.05)
-  hair.scale.set(1.02, 0.6, 1.05)
+  hair.position.set(0, 1.9, -0.08)
+  hair.scale.set(0.95, 0.52, 1.0)
   rootGroup.add(hair)
 
-  // 3. Limbs (Arms)
-  const armGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.7, 5)
+  // 3. Limbs (Arms) — hugging the robe so they never read as floating sticks
+  const armGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.62, 5)
   const leftArm = new THREE.Mesh(armGeo, robeMat)
-  leftArm.position.set(-0.55, 1.15, 0)
-  leftArm.rotation.z = 0.25
+  leftArm.position.set(-0.48, 1.18, 0.05)
+  leftArm.rotation.z = 0.18
   leftArm.castShadow = true
   rootGroup.add(leftArm)
 
   const rightArm = new THREE.Mesh(armGeo, robeMat)
-  rightArm.position.set(0.55, 1.15, 0)
-  rightArm.rotation.z = -0.25
+  rightArm.position.set(0.48, 1.18, 0.05)
+  rightArm.rotation.z = -0.18
   rightArm.castShadow = true
   rootGroup.add(rightArm)
 

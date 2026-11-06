@@ -451,7 +451,7 @@ export default function BackupPage() {
         </div>
 
         {provider === 'github' && (
-          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs">
               <span className="text-neutral-400">
                 Personal Access Token (`gist` or `repo` scope)
@@ -524,7 +524,7 @@ export default function BackupPage() {
         )}
 
         {provider === 'dropbox' && (
-          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs">
               <span className="text-neutral-400">Dropbox Access Token</span>
               <input
@@ -569,7 +569,7 @@ export default function BackupPage() {
         )}
 
         {provider === 'gdrive' && (
-          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs">
               <span className="text-neutral-400">Google OAuth Access Token</span>
               <input
@@ -614,7 +614,7 @@ export default function BackupPage() {
         )}
 
         {provider === 'webdav' && (
-          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-[#242429] sm:grid-cols-2">
+          <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs sm:col-span-2">
               <span className="text-neutral-400">WebDAV target file URL</span>
               <input
@@ -731,7 +731,7 @@ export default function BackupPage() {
           className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
             dragging
               ? 'border-indigo-500 bg-indigo-600/10'
-              : 'border-neutral-300 text-neutral-500 dark:border-[#26262b]'
+              : 'border-neutral-300 text-neutral-500 dark:border-(--hub-border)'
           }`}
           onDragOver={(e) => {
             e.preventDefault()
@@ -743,9 +743,17 @@ export default function BackupPage() {
           <Upload className="h-6 w-6" />
           <div className="text-sm">
             Drop{' '}
-            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">.apkg</code>,{' '}
-            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">.txt</code> or{' '}
-            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-[#1a1a1f]">.json</code>{' '}
+            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
+              .apkg
+            </code>
+            ,{' '}
+            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
+              .txt
+            </code>{' '}
+            or{' '}
+            <code className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
+              .json
+            </code>{' '}
             here
           </div>
           <div className="text-xs text-neutral-500">
@@ -799,7 +807,7 @@ export default function BackupPage() {
             {decks.data?.decks.length ?? 0} decks
           </span>
         </div>
-        <div className="divide-y divide-neutral-100 dark:divide-[#1e1e23]">
+        <div className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
           {(decks.data?.decks ?? []).map((d) => (
             <div key={d.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
               <span className="min-w-0 flex-1 truncate">

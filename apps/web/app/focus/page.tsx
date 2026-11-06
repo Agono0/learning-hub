@@ -484,7 +484,7 @@ export default function FocusPage() {
             Protected deep work, honest leak tracking, and precommitment Ulysses contracts.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-[#26262b] dark:bg-[#141417]">
+        <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-(--hub-border) dark:bg-(--hub-panel)">
           <button
             type="button"
             className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
@@ -532,7 +532,7 @@ export default function FocusPage() {
                     className={`btn-ghost border ${
                       minutes === p.focus
                         ? 'border-indigo-500 text-indigo-400'
-                        : 'border-neutral-200 dark:border-[#26262b]'
+                        : 'border-neutral-200 dark:border-(--hub-border)'
                     }`}
                     onClick={() => setMinutes(p.focus)}
                   >
@@ -575,7 +575,7 @@ export default function FocusPage() {
                 </button>
               </div>
 
-              <div className="rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]">
+              <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <p className="label mb-2 flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" /> Pre-session phone protocol
                 </p>
@@ -616,7 +616,7 @@ export default function FocusPage() {
                   </button>
                   <Link
                     href="/world"
-                    className="btn-ghost border border-neutral-200 dark:border-[#26262b] text-neutral-400 text-xs py-1 px-2.5"
+                    className="btn-ghost border border-neutral-200 dark:border-(--hub-border) text-neutral-400 text-xs py-1 px-2.5"
                   >
                     3D Sanctuary →
                   </Link>
@@ -649,7 +649,7 @@ export default function FocusPage() {
               </div>
               <div className="flex items-center justify-center gap-2">
                 <button
-                  className="btn-ghost border border-neutral-200 dark:border-[#26262b]"
+                  className="btn-ghost border border-neutral-200 dark:border-(--hub-border)"
                   onClick={() => armGate('break_focus')}
                 >
                   End early → friction gate
@@ -897,7 +897,7 @@ export default function FocusPage() {
                         className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition ${
                           maxMinutes === m
                             ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
-                            : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 dark:border-[#26262b]'
+                            : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 dark:border-(--hub-border)'
                         }`}
                         onClick={() => setMaxMinutes(m)}
                       >
@@ -1074,7 +1074,7 @@ export default function FocusPage() {
             No sessions yet — start your first protected block.
           </p>
         ) : (
-          <ul className="divide-y divide-neutral-200 text-sm dark:divide-[#26262b]">
+          <ul className="divide-y divide-neutral-200 text-sm dark:divide-(--hub-border)">
             {history.data?.sessions.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">

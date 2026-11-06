@@ -227,7 +227,7 @@ export default function MemoryPalacePage() {
                 {items.map((item, i) => (
                   <div
                     key={i}
-                    className="rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]"
+                    className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="grid h-6 w-6 place-items-center rounded-full bg-indigo-600/20 text-xs font-bold text-indigo-300">
@@ -290,7 +290,7 @@ export default function MemoryPalacePage() {
                   </div>
                 ))}
                 <button
-                  className="btn-ghost w-full justify-center border border-dashed border-neutral-300 dark:border-[#26262b]"
+                  className="btn-ghost w-full justify-center border border-dashed border-neutral-300 dark:border-(--hub-border)"
                   onClick={() =>
                     setItems([
                       ...items,

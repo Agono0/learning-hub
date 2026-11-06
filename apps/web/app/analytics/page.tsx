@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
             ].map((c) => (
               <div key={c.k} className="flex items-center gap-2">
                 <span className="w-24 shrink-0 text-neutral-500">{c.k}</span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                   <div
                     className="h-full rounded-full bg-indigo-500"
                     style={{ width: `${Math.round(c.v)}%` }}
@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
           </thead>
           <tbody className="text-neutral-300">
             {(d?.calibration ?? []).map((c) => (
-              <tr key={c.bucket} className="border-t border-neutral-200 dark:border-[#26262b]">
+              <tr key={c.bucket} className="border-t border-neutral-200 dark:border-(--hub-border)">
                 <td className="py-1.5 pr-3 tabular-nums">{c.bucket}</td>
                 <td className="py-1.5 pr-3 tabular-nums">{pct(c.actual)}</td>
                 <td className="py-1.5 pr-3 tabular-nums">{c.n}</td>

@@ -91,14 +91,16 @@ export class WorldSceneManager {
   private targetCameraPos = new THREE.Vector3(18, 16, 18)
   private lookAtTarget = new THREE.Vector3(0, 1.5, 0)
 
-  // Character movement state (for third-person)
+  // Character movement state (for third-person) — spawns on the meadow south
+  // of the pedestal, facing it, so the follow-cam never starts inside the timer.
   private keysPressed: Record<string, boolean> = {}
-  private charPosition = new THREE.Vector3(0, 0.4, 2.8)
-  private charRotation = 0
+  private charPosition = new THREE.Vector3(2.2, 0.4, 6.8)
+  private charRotation = Math.PI
 
   // Web Audio soundscape
   private audioCtx: AudioContext | null = null
   private soundSourceNodes: AudioNode[] = []
+  private soundTimers: number[] = []
 
   constructor(private config: SceneConfig) {
     this.viewMode = config.viewMode
@@ -230,7 +232,8 @@ export class WorldSceneManager {
     // 12. Input, audio, loop
     this.clock = new THREE.Clock()
     this.bindEvents()
-    this.startSoundscape(config.soundscape ?? 'birds')
+    // Silent by default — soundscapes are opt-in via the sound toggle.
+    this.startSoundscape(config.soundscape ?? 'none')
 
     this.renderLoop()
   }
@@ -389,14 +392,15 @@ export class WorldSceneManager {
 
   private updateCameraTarget() {
     if (this.viewMode === 'third_person') {
-      // Follow behind character
+      // Follow behind character — far enough that the scholar reads as a
+      // figure in the landscape, not a close-up scalp.
       const offset = new THREE.Vector3(
-        -Math.sin(this.charRotation) * 6,
-        3.5,
-        -Math.cos(this.charRotation) * 6,
+        -Math.sin(this.charRotation) * 8.5,
+        4.4,
+        -Math.cos(this.charRotation) * 8.5,
       )
       this.targetCameraPos.copy(this.charPosition).add(offset)
-      this.lookAtTarget.set(this.charPosition.x, this.charPosition.y + 1.2, this.charPosition.z)
+      this.lookAtTarget.set(this.charPosition.x, this.charPosition.y + 1.0, this.charPosition.z)
     } else {
       // Diorama / Isometric view (OrbitControls own the camera from here)
       this.targetCameraPos.set(18, 16, 18)
@@ -446,18 +450,50 @@ export class WorldSceneManager {
         this.audioCtx.resume().catch(() => {})
       }
 
-      // Procedural calming ambient audio generator
+      // Procedural calming ambient audio generator.
+      // Rule: NEVER a continuous oscillator tone — a constant sine reads as an
+      // electrical buzz. Everything is short enveloped events with silence
+      // between, and the world defaults to silent (user opts in via the toggle).
       if (type === 'birds') {
-        // Periodic soft FM chirps
-        const osc = this.audioCtx.createOscillator()
-        const gain = this.audioCtx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(1400, this.audioCtx.currentTime)
-        gain.gain.setValueAtTime(0.015, this.audioCtx.currentTime)
-        osc.connect(gain)
-        gain.connect(this.audioCtx.destination)
-        osc.start()
-        this.soundSourceNodes.push(osc, gain)
+        // Occasional two-note warbles: quick pitch sweeps with a tiny envelope.
+        const chirp = () => {
+          const ctx = this.audioCtx
+          if (!ctx || ctx.state !== 'running') return
+          const t0 = ctx.currentTime + 0.01
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          const base = 1600 + Math.random() * 1200
+          osc.frequency.setValueAtTime(base, t0)
+          osc.frequency.exponentialRampToValueAtTime(base * 1.35, t0 + 0.07)
+          osc.frequency.exponentialRampToValueAtTime(base * 0.85, t0 + 0.15)
+          gain.gain.setValueAtTime(0, t0)
+          gain.gain.linearRampToValueAtTime(0.012, t0 + 0.02)
+          gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18)
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.start(t0)
+          osc.stop(t0 + 0.2)
+          osc.onended = () => {
+            try {
+              osc.disconnect()
+              gain.disconnect()
+            } catch {
+              // ignore
+            }
+          }
+        }
+        // 1–3 chirps per burst, bursts every ~5–9 s, silence in between.
+        const burstTimer = window.setInterval(
+          () => {
+            const notes = 1 + Math.floor(Math.random() * 3)
+            for (let i = 0; i < notes; i++) {
+              window.setTimeout(chirp, i * (220 + Math.random() * 260))
+            }
+          },
+          5000 + Math.random() * 4000,
+        )
+        this.soundTimers.push(burstTimer)
       } else if (type === 'fire') {
         // Crackling low-pass filtered noise
         const bufferSize = this.audioCtx.sampleRate * 2
@@ -485,6 +521,8 @@ export class WorldSceneManager {
   }
 
   public stopSoundscape() {
+    this.soundTimers.forEach((timer) => window.clearInterval(timer))
+    this.soundTimers = []
     this.soundSourceNodes.forEach((node) => {
       try {
         if ('stop' in node && typeof (node as AudioScheduledSourceNode).stop === 'function') {

@@ -373,7 +373,7 @@ export default function CurriculumPage() {
               {buildUnits.map((u, ui) => (
                 <div
                   key={ui}
-                  className="space-y-2 rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]"
+                  className="space-y-2 rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)"
                 >
                   <div className="flex gap-2">
                     <input
@@ -608,7 +608,7 @@ export default function CurriculumPage() {
                     {skillData.radar.skills.map((s) => (
                       <div key={s.skillId} className="flex items-center gap-2 text-xs">
                         <span className="w-40 min-w-0 flex-1 truncate">{s.name}</span>
-                        <div className="h-1.5 w-24 rounded-full bg-neutral-200 dark:bg-[#26262b]">
+                        <div className="h-1.5 w-24 rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                           <div
                             className="h-full rounded-full bg-red-400"
                             style={{ width: `${Math.round(s.pKnown * 100)}%` }}
@@ -678,7 +678,7 @@ export default function CurriculumPage() {
                       )}
                       <span className="truncate">{s.name}</span>
                     </div>
-                    <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+                    <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                       <div
                         className="h-full bg-indigo-500"
                         style={{ width: `${Math.round(s.pKnown * 100)}%` }}
@@ -815,7 +815,7 @@ export default function CurriculumPage() {
                 {mock.questions.map((q) => (
                   <div
                     key={q.index}
-                    className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+                    className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
                   >
                     <div className="font-medium">
                       {q.index + 1}. {q.prompt.split('\n')[0]}

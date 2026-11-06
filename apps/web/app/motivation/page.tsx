@@ -195,7 +195,7 @@ export default function MotivationPage() {
             <p className="text-4xl font-bold tracking-tight">{status.data?.xp.level ?? 1}</p>
             <p className="text-sm text-neutral-500">{status.data?.xp.total ?? 0} XP total</p>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+          <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
             <div
               className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500"
               style={{ width: `${Math.round((status.data?.xp.progress ?? 0) * 100)}%` }}
@@ -247,7 +247,7 @@ export default function MotivationPage() {
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-neutral-700 dark:text-neutral-200">{q.label}</p>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                   <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default function MotivationPage() {
           {goals.data?.goals.map((g) => (
             <li
               key={g.id}
-              className="rounded-lg border border-neutral-200 p-3 dark:border-[#26262b]"
+              className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -362,7 +362,7 @@ export default function MotivationPage() {
                   </button>
                 </div>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all"
                   style={{ width: `${g.progressPct}%` }}
@@ -386,7 +386,7 @@ export default function MotivationPage() {
           {achievements.data?.catalog.map((a) => (
             <div
               key={a.key}
-              className={`rounded-lg border p-3 ${a.unlocked ? 'border-amber-500/50 bg-amber-500/5' : 'border-neutral-200 opacity-60 dark:border-[#26262b]'}`}
+              className={`rounded-lg border p-3 ${a.unlocked ? 'border-amber-500/50 bg-amber-500/5' : 'border-neutral-200 opacity-60 dark:border-(--hub-border)'}`}
             >
               <p className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-200">
                 {a.unlocked ? (
@@ -448,7 +448,7 @@ export default function MotivationPage() {
           {commitments.data?.report.map((r) => (
             <li
               key={r.commitment.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+              className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
             >
               <div className="min-w-0">
                 <p className="truncate text-neutral-700 dark:text-neutral-200">

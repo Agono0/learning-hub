@@ -319,7 +319,7 @@ function Course() {
                 {p.stages.map((s, si) => (
                   <li
                     key={s.id}
-                    className="rounded-xl border border-neutral-200 p-3 dark:border-[#26262b]"
+                    className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)"
                   >
                     <div className="flex items-center gap-2 text-sm font-medium">
                       {s.completedAt ? (
@@ -600,7 +600,7 @@ function MindMapGraph({ nodes, edges }: { nodes: MindNode[]; edges: MindEdge[] }
     [nodes, edges],
   )
   return (
-    <div className="h-[420px] overflow-hidden rounded-xl border border-neutral-200 dark:border-[#26262b]">
+    <div className="h-[420px] overflow-hidden rounded-xl border border-neutral-200 dark:border-(--hub-border)">
       <ForceGraph2D
         graphData={graph}
         nodeLabel="label"

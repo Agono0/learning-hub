@@ -145,7 +145,7 @@ export default function HabitsPage() {
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
                     h.todayDone
                       ? `border-emerald-500 bg-emerald-500/20 text-emerald-400 ${celebrated === h.id ? 'celebrate' : ''}`
-                      : 'border-neutral-300 text-neutral-500 hover:border-indigo-400 dark:border-[#26262b]'
+                      : 'border-neutral-300 text-neutral-500 hover:border-indigo-400 dark:border-(--hub-border)'
                   }`}
                   onClick={() => checkin.mutate(h.id)}
                   disabled={checkin.isPending}
@@ -169,7 +169,7 @@ export default function HabitsPage() {
                   </p>
                 </div>
                 <div className="hidden w-28 sm:block">
-                  <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-[#26262b]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                     <div
                       className="h-full rounded-full bg-indigo-500"
                       style={{ width: `${Math.min(100, (h.solidifying.days / 60) * 100)}%` }}
@@ -302,7 +302,7 @@ export default function HabitsPage() {
           {dopamine.map((d, i) => (
             <li
               key={i}
-              className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+              className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
             >
               <p className="text-neutral-700 dark:text-neutral-200">{d.label}</p>
               <p className="mt-1 text-xs text-neutral-500">

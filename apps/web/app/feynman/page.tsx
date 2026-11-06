@@ -305,7 +305,7 @@ export default function FeynmanPage() {
               className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
                 m.role === 'user'
                   ? 'ml-auto bg-indigo-600 text-white'
-                  : 'bg-neutral-100 dark:bg-[#1a1a1f]'
+                  : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
               }`}
             >
               {m.content || '…'}
@@ -475,7 +475,7 @@ export default function FeynmanPage() {
                   {gapCards.map((c, i) => (
                     <div
                       key={i}
-                      className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-[#26262b]"
+                      className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
                     >
                       <div className="font-medium">{c.front}</div>
                       <div className="mt-1 text-neutral-500">{c.back}</div>

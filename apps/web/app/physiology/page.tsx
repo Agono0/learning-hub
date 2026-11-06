@@ -244,7 +244,7 @@ export default function PhysiologyPage() {
               </thead>
               <tbody className="text-neutral-300">
                 {data.data?.history.slice(0, 14).map((h) => (
-                  <tr key={h.id} className="border-t border-neutral-200 dark:border-[#26262b]">
+                  <tr key={h.id} className="border-t border-neutral-200 dark:border-(--hub-border)">
                     <td className="py-1.5 pr-3">{h.date}</td>
                     <td className="py-1.5 pr-3">{h.sleepHours ?? '—'}</td>
                     <td className="py-1.5 pr-3">{h.sleepQuality ?? '—'}</td>

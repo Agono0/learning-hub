@@ -40,7 +40,7 @@ const ToastContext = createContext<ToastContextValue>(noopContext)
 
 const TONE_STYLES: Record<ToastTone, string> = {
   neutral:
-    'border-neutral-200 bg-white text-neutral-900 dark:border-[#26262b] dark:bg-[#16161a] dark:text-neutral-100',
+    'border-neutral-200 bg-white text-neutral-900 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:text-neutral-100',
   success:
     'border-emerald-500/30 bg-white text-neutral-900 dark:border-emerald-500/30 dark:bg-[#141b17] dark:text-emerald-100',
   warning:

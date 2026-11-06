@@ -36,7 +36,7 @@ export function Tabs<K extends string>({ items, value, onChange, label }: TabsPr
     <div
       role="tablist"
       aria-label={label}
-      className="scroll-x flex gap-1 rounded-xl bg-neutral-100 p-1 dark:bg-[#141417]"
+      className="scroll-x flex gap-1 rounded-xl bg-neutral-100 p-1 dark:bg-(--hub-panel)"
     >
       {items.map((item, i) => {
         const active = item.key === value
@@ -55,7 +55,7 @@ export function Tabs<K extends string>({ items, value, onChange, label }: TabsPr
             className={cx(
               'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors',
               active
-                ? 'bg-white font-medium text-neutral-900 shadow-sm dark:bg-[#26262b] dark:text-neutral-100'
+                ? 'bg-white font-medium text-neutral-900 shadow-sm dark:bg-(--hub-border) dark:text-neutral-100'
                 : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200',
             )}
           >

@@ -8,17 +8,25 @@
 import { AlertTriangle, RotateCcw } from 'lucide-react'
 import './globals.css'
 
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-neutral-50 text-neutral-900 antialiased dark:bg-[#0a0a0b] dark:text-neutral-100">
+      <body className="bg-neutral-50 text-neutral-900 antialiased dark:bg-(--hub-bg) dark:text-neutral-100">
         <div className="flex min-h-screen items-center justify-center p-6">
           <div className="panel celebrate max-w-md space-y-4 py-10 text-center">
             <AlertTriangle className="mx-auto h-10 w-10 text-amber-400" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
               <p className="mt-1 text-sm text-neutral-500">The app hit an unexpected error.</p>
-              {error.digest && <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>}
+              {error.digest && (
+                <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>
+              )}
             </div>
             <button className="btn mx-auto" onClick={reset}>
               <RotateCcw className="h-4 w-4" /> Try again

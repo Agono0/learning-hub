@@ -40,7 +40,7 @@ const optionClass = (selected: boolean, disabled?: boolean) =>
     'flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left text-sm transition-colors',
     selected
       ? 'border-indigo-500 bg-indigo-600/10'
-      : 'border-neutral-200 hover:bg-neutral-50 dark:border-[#26262b] dark:hover:bg-[#18181c]',
+      : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#18181c]',
     disabled && 'pointer-events-none opacity-80',
   )
 
@@ -226,7 +226,7 @@ function Reorder({
       {order.map((itemIndex, pos) => (
         <li
           key={itemIndex}
-          className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-2 dark:border-[#26262b]"
+          className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-2 dark:border-(--hub-border)"
         >
           <span className="w-5 text-xs tabular-nums text-neutral-400">{pos + 1}</span>
           <span
@@ -352,7 +352,7 @@ function MatchingInput({ exercise, value, onChange, disabled }: InputProps<'matc
       {exercise.pairs.map((pair, left) => (
         <label
           key={left}
-          className="grid items-center gap-2 rounded-xl border border-neutral-200 p-3 sm:grid-cols-2 dark:border-[#26262b]"
+          className="grid items-center gap-2 rounded-xl border border-neutral-200 p-3 sm:grid-cols-2 dark:border-(--hub-border)"
         >
           <span className="text-sm font-medium">{pair.left}</span>
           <select
@@ -389,7 +389,7 @@ function CategorizeInput({ exercise, value, onChange, disabled }: InputProps<'ca
       {items.map((item) => (
         <label
           key={item}
-          className="grid items-center gap-2 rounded-xl border border-neutral-200 p-3 sm:grid-cols-2 dark:border-[#26262b]"
+          className="grid items-center gap-2 rounded-xl border border-neutral-200 p-3 sm:grid-cols-2 dark:border-(--hub-border)"
         >
           <span className="text-sm">{item}</span>
           <select
@@ -491,7 +491,7 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
           I’m done — show the rubric
         </button>
       ) : (
-        <div className="space-y-2.5 rounded-xl bg-neutral-50 p-3 dark:bg-[#141417]">
+        <div className="space-y-2.5 rounded-xl bg-neutral-50 p-3 dark:bg-(--hub-panel)">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="label">Tick every point your answer covers</div>
             {!disabled && (
@@ -639,14 +639,14 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
                     </code>
                   </div>
                   {r.columns && r.columns.length > 0 && r.rows && (
-                    <div className="scroll-x rounded-lg border border-neutral-200 dark:border-[#26262b]">
+                    <div className="scroll-x rounded-lg border border-neutral-200 dark:border-(--hub-border)">
                       <table className="w-full text-left font-mono text-xs">
-                        <thead className="bg-neutral-100/80 dark:bg-[#1a1a1f]">
+                        <thead className="bg-neutral-100/80 dark:bg-(--hub-panel-2)">
                           <tr>
                             {r.columns.map((col, ci) => (
                               <th
                                 key={ci}
-                                className="border-b border-neutral-200 px-2.5 py-1 font-semibold dark:border-[#26262b]"
+                                className="border-b border-neutral-200 px-2.5 py-1 font-semibold dark:border-(--hub-border)"
                               >
                                 {col}
                               </th>
@@ -667,7 +667,7 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
                             r.rows.slice(0, 20).map((row, ri) => (
                               <tr
                                 key={ri}
-                                className="border-b border-neutral-100 last:border-none dark:border-[#1f1f24]"
+                                className="border-b border-neutral-100 last:border-none dark:border-(--hub-panel-2)"
                               >
                                 {row.map((cell, ci) => (
                                   <td key={ci} className="px-2.5 py-1">
@@ -698,7 +698,7 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
             </button>
           )}
           {showSolution && exercise.solution && (
-            <pre className="overflow-x-auto rounded-xl bg-neutral-100 p-3 text-[13px] dark:bg-[#101014]">
+            <pre className="overflow-x-auto rounded-xl bg-neutral-100 p-3 text-[13px] dark:bg-(--hub-sunken)">
               {exercise.solution}
             </pre>
           )}

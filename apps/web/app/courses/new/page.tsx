@@ -161,7 +161,7 @@ function PromptBuilder() {
       </form>
 
       {prompt && (
-        <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+        <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="flex items-center gap-2 text-sm font-semibold">
               <span className="grid h-6 w-6 place-items-center rounded-full bg-indigo-600 text-xs text-white">
@@ -299,7 +299,7 @@ function ImportPanel({ step }: { step?: number }) {
       )}
 
       {checked?.ok && (
-        <div className="space-y-3 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+        <div className="space-y-3 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
           <div className="flex items-start gap-3">
             <span className="text-3xl" aria-hidden>
               {checked.preview.emoji ?? '📘'}

@@ -221,7 +221,7 @@ export default function WeeklyPage() {
           </thead>
           <tbody className="text-neutral-300">
             {(m?.days ?? []).map((d) => (
-              <tr key={d.date} className="border-t border-neutral-200 dark:border-[#26262b]">
+              <tr key={d.date} className="border-t border-neutral-200 dark:border-(--hub-border)">
                 <td className="py-1.5 pr-3">
                   {d.date} ({dayLabel(d.date)})
                 </td>
@@ -252,7 +252,7 @@ export default function WeeklyPage() {
           <ul className="space-y-1.5">
             {m?.weakestCards.map((w) => (
               <li key={w.id} className="flex items-center gap-2 text-sm">
-                <span className="w-10 shrink-0 rounded bg-neutral-200 px-1 text-center text-xs font-semibold tabular-nums text-rose-400 dark:bg-[#26262b]">
+                <span className="w-10 shrink-0 rounded bg-neutral-200 px-1 text-center text-xs font-semibold tabular-nums text-rose-400 dark:bg-(--hub-border)">
                   {pct(w.retrievability)}
                 </span>
                 <span className="min-w-0 flex-1 truncate" title={w.label}>
@@ -316,7 +316,7 @@ export default function WeeklyPage() {
         {(transport?.ok ? transport.suggestions! : (s?.suggestions ?? [])).map((sug, i) => (
           <div
             key={i}
-            className={`rounded-lg border p-3 text-sm ${transport?.ok ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-neutral-200 dark:border-[#26262b]'}`}
+            className={`rounded-lg border p-3 text-sm ${transport?.ok ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-neutral-200 dark:border-(--hub-border)'}`}
           >
             <p className="font-medium">{sug.title}</p>
             <p className="mt-1 text-xs text-neutral-500">{sug.evidence}</p>
@@ -327,7 +327,7 @@ export default function WeeklyPage() {
 
         {/* prompt transport: only shown in manual mode — copy envelope, paste the reply back */}
         {s?.mode === 'manual' && s.envelope && (
-          <div className="space-y-2 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-[#33333a]">
+          <div className="space-y-2 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-(--hub-border-strong)">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-medium text-neutral-400">
                 Prompt transport — paste into any AI, no provider needed
@@ -352,7 +352,7 @@ export default function WeeklyPage() {
                 Copy envelope
               </button>
             </div>
-            <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-[#101014] dark:text-neutral-300">
+            <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300">
               {s.envelope.system}
               {'\n\n── user ──\n'}
               {s.envelope.prompt}

@@ -14,7 +14,7 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-10 text-center dark:border-[#26262b]">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-10 text-center dark:border-(--hub-border)">
       {icon && <div className="text-neutral-400">{icon}</div>}
       <div className="font-medium">{title}</div>
       {children && <div className="max-w-sm text-sm text-neutral-500">{children}</div>}
@@ -24,7 +24,7 @@ export function EmptyState({
 }
 
 const BADGE_TONE = {
-  neutral: 'bg-neutral-100 text-neutral-700 dark:bg-[#1e1e23] dark:text-neutral-300',
+  neutral: 'bg-neutral-100 text-neutral-700 dark:bg-(--hub-panel-2) dark:text-neutral-300',
   accent: 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300',
   success: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-300',
   warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',

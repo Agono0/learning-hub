@@ -238,7 +238,7 @@ export default function JournalPage() {
           ].map((s) => (
             <div
               key={s.k}
-              className="rounded-lg border border-neutral-200 p-2 text-center dark:border-[#26262b]"
+              className="rounded-lg border border-neutral-200 p-2 text-center dark:border-(--hub-border)"
             >
               <p className="text-xl font-bold tabular-nums">{s.v}</p>
               <p className="text-[10px] uppercase tracking-wide text-neutral-500">{s.k}</p>
@@ -250,7 +250,7 @@ export default function JournalPage() {
           {weekly.data?.prompts.map((p, i) => (
             <li
               key={i}
-              className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-[#101014] dark:text-neutral-300"
+              className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300"
             >
               {p}
             </li>
