@@ -1285,3 +1285,42 @@ export const cardEmbeddings = table(
   },
   (t) => [index('card_embeddings_model_idx').on(t.model)],
 )
+
+// ─── Adaptive Knowledge Graph & Anki Sync (M13) ──────────────────────────────
+
+export const conceptDependencies = table(
+  'concept_dependencies',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sourceConcept: text('source_concept').notNull(),
+    targetConcept: text('target_concept').notNull(),
+    strength: real('strength').notNull().default(1.0),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('concept_dep_source_idx').on(t.sourceConcept),
+    index('concept_dep_target_idx').on(t.targetConcept),
+  ],
+)
+
+export const ankiSyncMappings = table(
+  'anki_sync_mappings',
+  {
+    cardId: integer('card_id')
+      .primaryKey()
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    ankiNoteId: integer('anki_note_id').notNull(),
+    ankiCardId: integer('anki_card_id'),
+    syncMode: text('sync_mode')
+      .$type<'live_loopback' | 'apkg_export' | 'mirror_readonly'>()
+      .notNull()
+      .default('live_loopback'),
+    lastSyncAt: text('last_sync_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('anki_mappings_note_idx').on(t.ankiNoteId)],
+)

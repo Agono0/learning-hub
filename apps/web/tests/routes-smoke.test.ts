@@ -133,6 +133,9 @@ beforeAll(async () => {
   M.hudQuickReview = await import('../app/api/hud/quick-review/route')
   M.hudCapture = await import('../app/api/hud/capture/route')
   M.embeddingsSearch = await import('../app/api/embeddings/search/route')
+  M.graphDeps = await import('../app/api/curriculum/graph/dependencies/route')
+  M.graphRemedial = await import('../app/api/curriculum/graph/remedial/route')
+  M.ankiConnect = await import('../app/api/anki/connect/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1329,5 +1332,85 @@ describe('max focus mode (milestone 6)', () => {
     const searchBody = (await searchRes.json()) as { ok: boolean; matches: any[] }
     expect(searchBody.ok).toBe(true)
     expect(Array.isArray(searchBody.matches)).toBe(true)
+  })
+
+  it('knowledge graph & anki routes: prerequisite edges, cycle rejection, remedial pause & anki sync', async () => {
+    // 1. Add valid prerequisite edge
+    const addEdgeRes = await M.graphDeps.POST(
+      post('/api/curriculum/graph/dependencies', {
+        sourceConcept: 'Probability',
+        targetConcept: 'Bayesian Inference',
+        strength: 0.95,
+      }),
+    )
+    expect(addEdgeRes.status).toBe(200)
+    const addEdgeBody = (await addEdgeRes.json()) as { ok: boolean; dependency: { id: number } }
+    expect(addEdgeBody.ok).toBe(true)
+    const edgeId = addEdgeBody.dependency.id
+
+    // 2. Reject circular dependency
+    const cycleRes = await M.graphDeps.POST(
+      post('/api/curriculum/graph/dependencies', {
+        sourceConcept: 'Bayesian Inference',
+        targetConcept: 'Probability',
+        strength: 1.0,
+      }),
+    )
+    expect(cycleRes.status).toBe(400)
+    const cycleBody = (await cycleRes.json()) as { ok: boolean; error: string }
+    expect(cycleBody.ok).toBe(false)
+    expect(cycleBody.error).toContain('circular dependency')
+
+    // 3. List dependencies
+    const listRes = await M.graphDeps.GET(req('GET', '/api/curriculum/graph/dependencies'))
+    expect(listRes.status).toBe(200)
+    const listBody = (await listRes.json()) as { ok: boolean; dependencies: any[] }
+    expect(listBody.ok).toBe(true)
+    expect(listBody.dependencies.some((d) => d.id === edgeId)).toBe(true)
+
+    // 4. Remedial pause check
+    const remedialRes = await M.graphRemedial.POST(
+      post('/api/curriculum/graph/remedial', {
+        conceptId: 'Bayesian Inference',
+        nodes: [
+          { id: 'Probability', title: 'Probability', mastery: 0.4, lapses: 2 },
+          { id: 'Bayesian Inference', title: 'Bayesian Inference', mastery: 0.1, lapses: 0 },
+        ],
+        threshold: 0.7,
+      }),
+    )
+    expect(remedialRes.status).toBe(200)
+    const remedialBody = (await remedialRes.json()) as {
+      ok: boolean
+      result: { blocked: boolean; remedialConceptId?: string }
+    }
+    expect(remedialBody.ok).toBe(true)
+    expect(remedialBody.result.blocked).toBe(true)
+    expect(remedialBody.result.remedialConceptId).toBe('Probability')
+
+    // 5. AnkiConnect test connection & card sync
+    const ankiTestRes = await M.ankiConnect.POST(
+      post('/api/anki/connect', { action: 'test_connection' }),
+    )
+    expect(ankiTestRes.status).toBe(200)
+    const ankiTestBody = (await ankiTestRes.json()) as { ok: boolean; loopbackUrl: string }
+    expect(ankiTestBody.ok).toBe(true)
+    expect(ankiTestBody.loopbackUrl).toContain('8765')
+
+    const ankiSyncRes = await M.ankiConnect.POST(
+      post('/api/anki/connect', {
+        action: 'sync_card',
+        cardId: 1,
+        ankiNoteId: 101234,
+        syncMode: 'live_loopback',
+      }),
+    )
+    expect(ankiSyncRes.status).toBe(200)
+
+    const ankiGetRes = await M.ankiConnect.GET()
+    expect(ankiGetRes.status).toBe(200)
+    const ankiGetBody = (await ankiGetRes.json()) as { ok: boolean; count: number }
+    expect(ankiGetBody.ok).toBe(true)
+    expect(ankiGetBody.count).toBeGreaterThan(0)
   })
 })

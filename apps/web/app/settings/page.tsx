@@ -9,6 +9,7 @@ import {
   Layout,
   Monitor,
   Moon,
+  RefreshCw,
   RotateCcw,
   Smartphone,
   Sparkles,
@@ -789,6 +790,9 @@ export default function SettingsPage() {
       {/* ── Desktop & Mobile Power Tools ── */}
       <PowerToolsSection />
 
+      {/* ── AnkiConnect Live Sync (M13) ── */}
+      <AnkiConnectSection />
+
       <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save settings'}
       </button>
@@ -1046,6 +1050,115 @@ function PowerToolsSection() {
             <Smartphone className="h-3.5 w-3.5" />
             <span>Android Home-Screen review glance widget receiver configured.</span>
           </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AnkiConnectSection() {
+  const [syncMode, setSyncMode] = useState<'live_loopback' | 'apkg_export' | 'mirror_readonly'>(
+    'live_loopback',
+  )
+  const [testStatus, setTestStatus] = useState<string | null>(null)
+  const [isTesting, setIsTesting] = useState(false)
+
+  const ankiQuery = useQuery<{ ok: boolean; count: number; mappings: any[] }>({
+    queryKey: ['anki-mappings'],
+    queryFn: () => apiGet<{ ok: boolean; count: number; mappings: any[] }>('/api/anki/connect'),
+  })
+
+  const testConnection = async () => {
+    setIsTesting(true)
+    setTestStatus('Checking localhost:8765 loopback…')
+    try {
+      const res = await apiSend<{ ok: boolean; loopbackUrl: string; status: string }>(
+        '/api/anki/connect',
+        'POST',
+        { action: 'test_connection', syncMode },
+      )
+      if (res.ok) {
+        setTestStatus(`AnkiConnect ready on ${res.loopbackUrl} (v6 API configured).`)
+      } else {
+        setTestStatus('Could not reach AnkiConnect on 127.0.0.1:8765.')
+      }
+    } catch {
+      setTestStatus(
+        'AnkiConnect loopback unreachable. Ensure Anki is running with AnkiConnect add-on (2055492159).',
+      )
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
+  return (
+    <section className="panel space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <RefreshCw className="h-4 w-4 text-indigo-400" /> Live Anki Sync & AnkiConnect
+        </h2>
+        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-400">
+          AnkiConnect v6
+        </span>
+      </div>
+
+      <p className="text-xs text-neutral-400">
+        Seamlessly synchronize cards and review intervals with Anki desktop via localhost:8765
+        loopback, or export portable .apkg decks.
+      </p>
+
+      <div className="space-y-3 pt-2">
+        <div>
+          <label className="label mb-1.5 block">Sync Mode</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[
+              {
+                id: 'live_loopback' as const,
+                title: 'Live Loopback (Recommended)',
+                desc: 'Continuous real-time sync with running Anki via localhost:8765.',
+              },
+              {
+                id: 'apkg_export' as const,
+                title: '.apkg Packages',
+                desc: 'Manual package export/import for airgapped or mobile transfers.',
+              },
+              {
+                id: 'mirror_readonly' as const,
+                title: 'Read-Only Mirror',
+                desc: 'Imports decks and card schedules without modifying your Anki library.',
+              },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setSyncMode(opt.id)}
+                className={`rounded-lg border p-3 text-left transition-all ${
+                  syncMode === opt.id
+                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
+                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button
+            type="button"
+            disabled={isTesting}
+            onClick={testConnection}
+            className="btn text-xs py-2 px-3"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
+            {isTesting ? 'Testing…' : 'Test AnkiConnect Link'}
+          </button>
+          <span className="text-xs text-neutral-400">
+            {ankiQuery.data?.count ?? 0} mapped cards synchronized
+          </span>
+          {testStatus && <span className="text-xs text-neutral-300">{testStatus}</span>}
         </div>
       </div>
     </section>

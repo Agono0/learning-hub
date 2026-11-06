@@ -20,6 +20,7 @@ import * as aiGenerate from '../server/handlers/ai/generate/route'
 import * as aiRubric from '../server/handlers/ai/rubric/route'
 import * as aiTransport from '../server/handlers/ai/transport/route'
 import * as analytics from '../server/handlers/analytics/route'
+import * as ankiConnect from '../server/handlers/anki/connect/route'
 import * as audioDigest from '../server/handlers/audio/digest/route'
 import * as audioGrade from '../server/handlers/audio/grade/route'
 import * as audioSessions from '../server/handlers/audio/sessions/route'
@@ -33,6 +34,8 @@ import * as cardsOcclusion from '../server/handlers/cards/occlusion/route'
 import * as cards from '../server/handlers/cards/route'
 import * as commitments from '../server/handlers/commitments/route'
 import * as curriculumExam from '../server/handlers/curriculum/exam/route'
+import * as curriculumGraphDependencies from '../server/handlers/curriculum/graph/dependencies/route'
+import * as curriculumGraphRemedial from '../server/handlers/curriculum/graph/remedial/route'
 import * as curriculumSkills from '../server/handlers/curriculum/skills/route'
 import * as curriculumGlossary from '../server/handlers/curriculum/glossary/route'
 import * as curriculum from '../server/handlers/curriculum/route'
@@ -159,6 +162,7 @@ add('ai/generate', aiGenerate)
 add('ai/rubric', aiRubric)
 add('ai/transport', aiTransport)
 add('analytics', analytics)
+add('anki/connect', ankiConnect)
 add('audio/digest', audioDigest)
 add('audio/grade', audioGrade)
 add('audio/sessions', audioSessions)
@@ -174,6 +178,8 @@ add('commitments', commitments)
 add('curriculum', curriculum)
 add('curriculum/exam', curriculumExam)
 add('curriculum/glossary', curriculumGlossary)
+add('curriculum/graph/dependencies', curriculumGraphDependencies)
+add('curriculum/graph/remedial', curriculumGraphRemedial)
 add('curriculum/skills', curriculumSkills)
 add('dashboard', dashboard)
 add('decks', decks)

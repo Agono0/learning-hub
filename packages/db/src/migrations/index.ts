@@ -23,6 +23,7 @@ import { social } from './010-social'
 import { online } from './011-online'
 import { audioVoice } from './012-audio-voice'
 import { powerTools } from './013-power-tools'
+import { knowledgeGraph } from './014-knowledge-graph'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -39,6 +40,7 @@ export const MIGRATIONS: readonly Migration[] = [
   online,
   audioVoice,
   powerTools,
+  knowledgeGraph,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
