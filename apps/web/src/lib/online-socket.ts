@@ -76,6 +76,22 @@ export class OnlineSocket<TState = any> {
     }
   }
 
+  /** Closes the socket and stops reconnection (leave room / unmount). */
+  close(): void {
+    this.closedExplicitly = true
+    this.stopHeartbeat()
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    try {
+      this.ws?.close()
+    } catch {
+      // ignore double-close
+    }
+    this.ws = null
+  }
+
   send(data: unknown): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))

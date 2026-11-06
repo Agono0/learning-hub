@@ -618,8 +618,21 @@ function SocialLeaderboardSection() {
     },
   })
 
+  const syncFriendsMutation = useMutation({
+    mutationFn: () =>
+      apiSend<{ ok: boolean; synced: number; failed: { alias: string; reason: string }[] }>(
+        '/api/social/leaderboard/sync',
+        'POST',
+        {},
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['social-leaderboard'] })
+    },
+  })
+
   const userStats = socialQuery.data?.user
   const friends = socialQuery.data?.friends ?? []
+  const syncFailed = syncFriendsMutation.data?.failed ?? []
 
   // Combine user stats + friend stats for ranking
   const leaderboardEntries = [
@@ -665,10 +678,24 @@ function SocialLeaderboardSection() {
             </p>
           </div>
 
-          <Button variant="ghost" onClick={handleCopyStats} disabled={!userStats}>
-            {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied Stats JSON!' : 'Copy Gist Payload'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={handleCopyStats} disabled={!userStats}>
+              {copied ? (
+                <Check className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {copied ? 'Copied Stats JSON!' : 'Copy Gist Payload'}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={syncFriendsMutation.isPending || friends.length === 0}
+              onClick={() => syncFriendsMutation.mutate()}
+              title="Fetch each friend's gist and refresh their stats"
+            >
+              {syncFriendsMutation.isPending ? 'Syncing…' : 'Sync now'}
+            </Button>
+          </div>
         </div>
 
         {userStats && (
@@ -782,6 +809,11 @@ function SocialLeaderboardSection() {
                   </td>
                 </tr>
               ))}
+              {syncFailed.length > 0 && (
+                <p className="px-1 text-[11px] text-amber-500">
+                  Could not sync: {syncFailed.map((f) => `${f.alias} (${f.reason})`).join(', ')}
+                </p>
+              )}
             </tbody>
           </table>
         </div>

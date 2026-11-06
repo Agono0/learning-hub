@@ -406,42 +406,101 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
 function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity'] }) {
   const [selectedBoss, setSelectedBoss] = useState('chronos')
   const [activeRaid, setActiveRaid] = useState<PartyRaidState | null>(null)
+  const [raidLive, setRaidLive] = useState(false)
+  const raidSocketRef = useRef<OnlineSocket<PartyRaidState> | null>(null)
 
   const createRaidMutation = useMutation({
     mutationFn: (bossKey: string) =>
-      apiSend<{ ok: boolean; raidId: string; raid: PartyRaidState; wsUrl: string }>(
-        '/api/online/rooms', // uses server router
-        'POST',
-        { title: `Party Raid: ${bossKey}` },
-      ),
-    onSuccess: () => {
-      // Initialize local party raid simulation
+      apiSend<{
+        ok: boolean
+        offline: boolean
+        raidId?: string
+        raid?: PartyRaidState | null
+        wsUrl?: string
+        reason?: string
+      }>('/api/online/raids', 'POST', { bossKey }),
+    onSuccess: (res) => {
       const boss = BOSS_ROSTER[selectedBoss] ?? BOSS_ROSTER['chronos']!
-      const initial: PartyRaidState = {
-        id: `raid_${Date.now()}`,
-        bossKey: boss.key,
-        bossName: boss.name,
-        bossHp: boss.maxHp * 3,
-        bossMaxHp: boss.maxHp * 3,
-        partyHp: 400,
-        partyMaxHp: 400,
-        status: 'fighting',
-        members: [
-          {
-            id: identity?.userId ?? 'usr_self',
-            alias: identity?.alias ?? 'You',
-            damageDealt: 0,
-            isAlive: true,
-          },
-        ],
-        combatLog: [`The raid against ${boss.name} has begun! Cooperative study damage enabled.`],
+
+      if (res.offline || !res.raidId || !res.wsUrl) {
+        // Honest offline fallback: clearly-labelled local simulation until the
+        // worker is deployed (`npm run worker:deploy`).
+        setRaidLive(false)
+        const initial: PartyRaidState = {
+          id: `raid_${Date.now()}`,
+          bossKey: boss.key,
+          bossName: boss.name,
+          bossHp: boss.maxHp * 3,
+          bossMaxHp: boss.maxHp * 3,
+          partyHp: 400,
+          partyMaxHp: 400,
+          status: 'fighting',
+          members: [
+            {
+              id: identity?.userId ?? 'usr_self',
+              alias: identity?.alias ?? 'You',
+              damageDealt: 0,
+              isAlive: true,
+            },
+          ],
+          combatLog: [
+            `OFFLINE SIMULATION — the engagement worker is unreachable. Launch it with \`npm run worker:deploy\` for real multiplayer.`,
+            `Local raid against ${boss.name} started.`,
+          ],
+        }
+        setActiveRaid(initial)
+        return
       }
-      setActiveRaid(initial)
+
+      // Real raid: connect the Durable Object WebSocket and join as ourselves.
+      setRaidLive(true)
+      const socket = new OnlineSocket<PartyRaidState>({
+        url: res.wsUrl,
+        onState: (state) => {
+          if (state && typeof state === 'object' && 'bossHp' in state) {
+            setActiveRaid(state as PartyRaidState)
+          }
+        },
+      })
+      raidSocketRef.current?.close()
+      raidSocketRef.current = socket
+      socket.connect()
+      socket.send({
+        type: 'join',
+        member: { id: identity?.userId ?? 'usr_self', alias: identity?.alias ?? 'You' },
+      })
+
+      const seeded: PartyRaidState =
+        res.raid ??
+        ({
+          id: res.raidId,
+          bossKey: boss.key,
+          bossName: boss.name,
+          bossHp: boss.maxHp * 2,
+          bossMaxHp: boss.maxHp * 2,
+          partyHp: 500,
+          partyMaxHp: 500,
+          status: 'waiting',
+          members: [],
+          combatLog: [`Raid ${res.raidId} created on the live worker.`],
+        } as PartyRaidState)
+      setActiveRaid(seeded)
     },
   })
 
   const handleSyncPartyDamage = () => {
     if (!activeRaid) return
+
+    // Live raid: every strike is broadcast to the Durable Object and echoed
+    // back through onState — the server is the source of truth.
+    if (raidLive && raidSocketRef.current) {
+      raidSocketRef.current.send({
+        type: 'attack',
+        damage: 10 + Math.min(40, Math.floor((identity?.userId.length ?? 4) * 2)),
+      })
+      return
+    }
+
     const damage = Math.floor(Math.random() * 25) + 15
     const newBossHp = Math.max(0, activeRaid.bossHp - damage)
     const isVictory = newBossHp === 0
@@ -517,6 +576,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
               </h2>
               <p className="text-xs text-neutral-500">
                 Multiplayer encounter: coordinate review sprints with party members.
+                {raidLive ? ' · LIVE (real worker)' : ' · OFFLINE SIMULATION'}
               </p>
             </div>
 

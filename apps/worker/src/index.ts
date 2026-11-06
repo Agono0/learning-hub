@@ -54,9 +54,43 @@ export default {
 
       // ── Auth: Register Device Key ────────────────────────────────────────
       if (path === '/api/v1/auth/register-key' && request.method === 'POST') {
-        const body = (await request.json()) as { pubkey: string; alias: string }
+        const body = (await request.json()) as {
+          pubkey: string
+          alias: string
+          challenge?: string
+          signature?: string
+        }
         if (!body.pubkey || !body.alias) {
           return jsonResponse({ error: 'pubkey and alias are required' }, 400)
+        }
+
+        // Signature verification (ECDSA P-256 / SHA-256 over the challenge).
+        // A signed challenge binds the alias to a key only its owner controls.
+        if (!body.challenge || !body.signature) {
+          return jsonResponse({ error: 'challenge and signature are required' }, 400)
+        }
+        if (!body.challenge.startsWith('lh-identity:v1:')) {
+          return jsonResponse({ error: 'invalid challenge format' }, 400)
+        }
+        try {
+          const pubRaw = Uint8Array.from(atob(body.pubkey), (c) => c.charCodeAt(0))
+          const sigRaw = Uint8Array.from(atob(body.signature), (c) => c.charCodeAt(0))
+          const cryptoKey = await crypto.subtle.importKey(
+            'spki',
+            pubRaw.buffer,
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            false,
+            ['verify'],
+          )
+          const ok = await crypto.subtle.verify(
+            { name: 'ECDSA', hash: 'SHA-256' },
+            cryptoKey,
+            sigRaw.buffer,
+            new TextEncoder().encode(body.challenge),
+          )
+          if (!ok) return jsonResponse({ error: 'signature verification failed' }, 401)
+        } catch {
+          return jsonResponse({ error: 'malformed key or signature' }, 400)
         }
 
         const userId = `usr_${body.pubkey.slice(0, 16)}`

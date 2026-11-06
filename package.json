@@ -12,6 +12,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "worker:deploy": "npm run worker:deploy -w @learning-hub/worker --if-present || (cd apps/worker && npx wrangler deploy)",
     "dev": "npm run dev --workspace @learning-hub/web",
     "build": "npm run build --workspace @learning-hub/web",
     "build:packages": "npm run build --workspace @learning-hub/core && npm run build --workspace @learning-hub/db && npm run build --workspace @learning-hub/cli",
