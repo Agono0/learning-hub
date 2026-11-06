@@ -19,13 +19,20 @@ function makeCtx(): PluginContext {
     logger: createPluginLogger('test'),
     mcpTools: [],
     cliCommands: [],
+    paletteActions: [],
+    dashboardWidgets: [],
   }
 }
 
 describe('definePlugin — contract validation', () => {
   it('accepts a well-formed definition and returns it (default-exportable)', () => {
     const setup = vi.fn()
-    const plugin = definePlugin({ name: 'my-plugin', version: '1.2.3', description: 'does things', setup })
+    const plugin = definePlugin({
+      name: 'my-plugin',
+      version: '1.2.3',
+      description: 'does things',
+      setup,
+    })
     expect(plugin.name).toBe('my-plugin')
     expect(plugin.version).toBe('1.2.3')
     expect(plugin.description).toBe('does things')
@@ -45,7 +52,9 @@ describe('definePlugin — contract validation', () => {
     ['setup not a function', { name: 'p', version: '1.0.0', setup: 'nope' }],
     ['not an object at all', null],
   ])('throws a descriptive error for: %s', (_label, candidate) => {
-    expect(() => definePlugin(candidate as never)).toThrow(/definePlugin: invalid plugin definition/)
+    expect(() => definePlugin(candidate as never)).toThrow(
+      /definePlugin: invalid plugin definition/,
+    )
   })
 
   it('names the offending field in the error', () => {
@@ -66,7 +75,9 @@ describe('parsePluginDefinition / pluginDefinitionIssues — loader-side validat
     expect(parsePluginDefinition(undefined)).toBeNull()
     expect(parsePluginDefinition(42)).toBeNull()
     expect(parsePluginDefinition({ name: 'p' })).toBeNull() // version + setup missing
-    expect(parsePluginDefinition({ name: 'p', version: '1', setup: noop, extra: true })).not.toBeNull()
+    expect(
+      parsePluginDefinition({ name: 'p', version: '1', setup: noop, extra: true }),
+    ).not.toBeNull()
   })
 
   it('pluginDefinitionIssues lists the problems for garbage', () => {

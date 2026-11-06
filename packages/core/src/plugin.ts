@@ -36,7 +36,9 @@ export type McpToolResult = {
 }
 
 /** Handler for a contributed MCP tool; `args` is the zod-parsed input object. */
-export type McpToolHandler = (args: Record<string, unknown>) => McpToolResult | Promise<McpToolResult>
+export type McpToolHandler = (
+  args: Record<string, unknown>,
+) => McpToolResult | Promise<McpToolResult>
 
 /**
  * An MCP tool a plugin adds to the `learning-hub` server. `inputSchema` is a
@@ -91,6 +93,40 @@ export interface PluginContext {
   mcpTools: McpToolContribution[]
   /** Push CLI command contributions here during `setup`. */
   cliCommands: CliCommandContribution[]
+  /** Push declarative command-palette actions here during `setup`. */
+  paletteActions: PaletteActionContribution[]
+  /** Push declarative dashboard widgets here during `setup`. */
+  dashboardWidgets: DashboardWidgetContribution[]
+}
+
+/**
+ * A declarative command-palette action a plugin contributes. `href` routes
+ * in the web app; `hud: 'capture'` opens the Quick-HUD capture tab. Serializable
+ * by design — core never imports React, the web layer renders these.
+ */
+export interface PaletteActionContribution {
+  /** Stable id, namespaced by convention `plugin-id.action`. */
+  id: string
+  label: string
+  href?: string
+  hud?: 'capture' | 'review' | 'search'
+}
+
+/**
+ * A declarative dashboard widget a plugin contributes. Static text and/or a
+ * `dataHref` API path returning `{ items: [{ title, detail? }] }` — the web
+ * layer fetches and renders it as plain text (untrusted content never renders
+ * as HTML). React-free so core stays pure.
+ */
+export interface DashboardWidgetContribution {
+  /** Stable id, namespaced by convention `plugin-id.widget`. */
+  id: string
+  title: string
+  description?: string
+  /** Where a click on the widget header routes. */
+  href?: string
+  /** API path returning `{ items: [{ title, detail? }] }` for the widget body. */
+  dataHref?: string
 }
 
 /** Validated plugin setup function. */
@@ -124,7 +160,9 @@ const pluginDefinitionSchema = z.object({
 export function definePlugin(plugin: PluginDefinition): PluginDefinition {
   const parsed = pluginDefinitionSchema.safeParse(plugin)
   if (!parsed.success) {
-    const detail = parsed.error.issues.map((i) => `${i.path.join('.') || 'plugin'}: ${i.message}`).join('; ')
+    const detail = parsed.error.issues
+      .map((i) => `${i.path.join('.') || 'plugin'}: ${i.message}`)
+      .join('; ')
     throw new Error(`definePlugin: invalid plugin definition — ${detail}`)
   }
   return parsed.data

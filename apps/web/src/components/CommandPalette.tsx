@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import { Search as SearchIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { Repeat as ReviewIcon, Timer, Zap } from 'lucide-react'
 import { NAV } from './nav'
 import { apiGet } from '@/lib/transport'
 
@@ -72,6 +73,15 @@ export function CommandPalette() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query])
+
+  const { data: contributions } = useQuery<{
+    paletteActions: Array<{ id: string; label: string; href?: string; hud?: string }>
+  }>({
+    queryKey: ['plugin-contributions'],
+    queryFn: () => apiGet('/api/plugins/contributions'),
+    staleTime: 60_000,
+  })
+  const paletteActions = contributions?.paletteActions
 
   const { data, isFetching } = useQuery<{ hits: SearchHit[]; mode: 'fts5' | 'like' }>({
     queryKey: ['search', debounced],
@@ -151,6 +161,57 @@ export function CommandPalette() {
                   <span className="ml-2 shrink-0 text-[10px] uppercase text-neutral-400">
                     {KIND_LABEL[hit.kind]}
                   </span>
+                </Command.Item>
+              ))}
+            </Command.Group>
+          )}
+
+          {debounced.length === 0 && (
+            <Command.Group
+              heading={
+                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                  Actions
+                </span>
+              }
+            >
+              <Command.Item
+                value="action start review session"
+                onSelect={() => go('/review')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <ReviewIcon className="h-4 w-4 shrink-0 text-neutral-400" /> Start a review session
+              </Command.Item>
+              <Command.Item
+                value="action start focus session"
+                onSelect={() => go('/focus')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Timer className="h-4 w-4 shrink-0 text-neutral-400" /> Start a focus session
+              </Command.Item>
+              <Command.Item
+                value="action capture a thought quick hud"
+                onSelect={() => {
+                  setOpen(false)
+                  window.dispatchEvent(new Event('toggle-quick-hud'))
+                }}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Zap className="h-4 w-4 shrink-0 text-neutral-400" /> Capture a thought (HUD)
+              </Command.Item>
+              {(paletteActions ?? []).map((a) => (
+                <Command.Item
+                  key={a.id}
+                  value={`action plugin ${a.label}`}
+                  onSelect={() => {
+                    if (a.href) go(a.href)
+                    else if (a.hud) {
+                      setOpen(false)
+                      window.dispatchEvent(new Event('toggle-quick-hud'))
+                    }
+                  }}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+                >
+                  <Zap className="h-4 w-4 shrink-0 text-neutral-400" /> {a.label}
                 </Command.Item>
               ))}
             </Command.Group>

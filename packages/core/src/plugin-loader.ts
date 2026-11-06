@@ -32,6 +32,8 @@ import {
   createPluginLogger,
   parsePluginDefinition,
   pluginDefinitionIssues,
+  PaletteActionContribution,
+  DashboardWidgetContribution,
 } from './plugin'
 import { eventBus } from './events'
 
@@ -49,6 +51,8 @@ export interface RegisteredPlugin {
   /** Contributions pushed during setup (empty until setup resolved). */
   mcpTools: McpToolContribution[]
   cliCommands: CliCommandContribution[]
+  paletteActions: PaletteActionContribution[]
+  dashboardWidgets: DashboardWidgetContribution[]
 }
 
 /** Registry state, keyed by plugin name (dedupe + programmatic access). */
@@ -79,12 +83,21 @@ export async function registerPlugin(
     return null
   }
 
-  const entry: RegisteredPlugin = { plugin, source, mcpTools: [], cliCommands: [] }
+  const entry: RegisteredPlugin = {
+    plugin,
+    source,
+    mcpTools: [],
+    cliCommands: [],
+    paletteActions: [],
+    dashboardWidgets: [],
+  }
   const ctx: PluginContext = {
     events: eventBus,
     logger: createPluginLogger(plugin.name),
     mcpTools: entry.mcpTools,
     cliCommands: entry.cliCommands,
+    paletteActions: entry.paletteActions,
+    dashboardWidgets: entry.dashboardWidgets,
   }
   try {
     await plugin.setup(ctx)
@@ -125,12 +138,16 @@ export function registerBundledPlugin(plugin: LearningHubPlugin): void {
     source: 'bundled',
     mcpTools: [],
     cliCommands: [],
+    paletteActions: [],
+    dashboardWidgets: [],
   }
   const ctx: PluginContext = {
     events: eventBus,
     logger: createPluginLogger(parsed.name),
     mcpTools: entry.mcpTools,
     cliCommands: entry.cliCommands,
+    paletteActions: entry.paletteActions,
+    dashboardWidgets: entry.dashboardWidgets,
   }
 
   let result: void | Promise<void>
@@ -162,14 +179,20 @@ export function listPlugins(): RegisteredPlugin[] {
 export function getPluginContributions(): {
   mcpTools: McpToolContribution[]
   cliCommands: CliCommandContribution[]
+  paletteActions: PaletteActionContribution[]
+  dashboardWidgets: DashboardWidgetContribution[]
 } {
   const mcpTools: McpToolContribution[] = []
   const cliCommands: CliCommandContribution[] = []
+  const paletteActions: PaletteActionContribution[] = []
+  const dashboardWidgets: DashboardWidgetContribution[] = []
   for (const entry of registry.values()) {
     mcpTools.push(...entry.mcpTools)
     cliCommands.push(...entry.cliCommands)
+    paletteActions.push(...entry.paletteActions)
+    dashboardWidgets.push(...entry.dashboardWidgets)
   }
-  return { mcpTools, cliCommands }
+  return { mcpTools, cliCommands, paletteActions, dashboardWidgets }
 }
 
 /** Forget every registration (useful in tests and hot reloads). */
