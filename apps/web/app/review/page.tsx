@@ -17,7 +17,9 @@ import {
   BatteryLow,
   Check,
   Eye,
+  Headphones,
   Home,
+  Mic,
   RotateCcw,
   Sparkles,
   Undo2,
@@ -44,6 +46,13 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 import { InkPad } from '@/ui'
+import {
+  acquireWakeLock,
+  listenForSpeech,
+  playChime,
+  speakText,
+  stopSpeaking,
+} from '@/lib/audio-engine'
 
 interface CardRow {
   id: number
@@ -101,6 +110,24 @@ const GRADES: { grade: Grade; label: string; color: string }[] = [
   { grade: 4, label: 'Easy', color: 'bg-emerald-600 hover:bg-emerald-500' },
 ]
 
+function getCardVoicePrompt(card: CardRow): string {
+  if (card.content.basic) return card.content.basic.front
+  if (card.content.exercise?.prompt) return card.content.exercise.prompt
+  if (card.content.typein?.question) return card.content.typein.question
+  if (card.content.cloze?.text) return card.content.cloze.text
+  if (card.content.mcq?.question) return card.content.mcq.question
+  return 'Review item'
+}
+
+function getCardVoiceAnswer(card: CardRow): string {
+  if (card.content.basic) return card.content.basic.back
+  if (card.content.typein?.acceptedAnswers?.[0]) return card.content.typein.acceptedAnswers[0]
+  if (card.content.mcq && card.content.mcq.options[card.content.mcq.correctIndex]) {
+    return card.content.mcq.options[card.content.mcq.correctIndex]!
+  }
+  return ''
+}
+
 /** useSearchParams needs a Suspense boundary in the static (Tauri) export. */
 export default function ReviewPage() {
   return (
@@ -116,9 +143,14 @@ function ReviewPageInner() {
   const courseIdParam = useSearchParams().get('courseId')
   const courseId = courseIdParam ? Number(courseIdParam) : null
   const [deckId, setDeckId] = useState<number | null>(null)
-  const [mode, setMode] = useState<'normal' | 'pretest' | 'cram'>('normal')
+  const [mode, setMode] = useState<'normal' | 'pretest' | 'cram' | 'commute'>('normal')
   const [limit, setLimit] = useState(20)
   const [started, setStarted] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [speechFeedback, setSpeechFeedback] = useState<string | null>(null)
+  const [commuteAutoPlay, setCommuteAutoPlay] = useState(true)
+  const [isPlayingDigest, setIsPlayingDigest] = useState(false)
+  const [digestStatus, setDigestStatus] = useState<string | null>(null)
 
   const { data: decksData } = useQuery<{ decks: DeckInfo[] }>({
     queryKey: ['decks'],
@@ -391,6 +423,83 @@ function ReviewPageInner() {
     srCriterion,
   ])
 
+  // Commute mode: wake lock management
+  useEffect(() => {
+    let releaseWakeLock: (() => void) | null = null
+    if (mode === 'commute' && started) {
+      acquireWakeLock().then((rel) => {
+        releaseWakeLock = rel
+      })
+    }
+    return () => {
+      if (releaseWakeLock) releaseWakeLock()
+      stopSpeaking()
+    }
+  }, [mode, started])
+
+  // Hands-free voice review loop for commute mode
+  const runVoiceReviewForCurrentCard = useCallback(
+    async (card: CardRow) => {
+      if (!card) return
+      setIsListening(false)
+      setSpeechFeedback('Reading prompt…')
+      try {
+        const promptText = getCardVoicePrompt(card)
+        await speakText(promptText)
+
+        playChime('listen')
+        setIsListening(true)
+        setSpeechFeedback('Listening for your answer…')
+
+        const spoken = await listenForSpeech(6000)
+        setIsListening(false)
+
+        if (!spoken || spoken.trim().length === 0) {
+          setSpeechFeedback('No answer heard. Tap a grade or speak.')
+          return
+        }
+
+        setSpeechFeedback(`Heard: "${spoken}". Evaluating…`)
+        const expectedText = getCardVoiceAnswer(card) || 'done'
+
+        const evalRes = await apiSend<{
+          ok: boolean
+          grade: Grade
+          pass: boolean
+          feedback: string
+          score: number
+        }>('/api/audio/grade', 'POST', {
+          expected: expectedText,
+          spoken,
+        })
+
+        if (evalRes.ok) {
+          playChime(evalRes.pass ? 'success' : 'fail')
+          setSpeechFeedback(evalRes.feedback)
+          await speakText(evalRes.pass ? 'Correct!' : `Answer is: ${expectedText}`)
+          gradeMutation.mutate({
+            cardId: card.id,
+            grade: evalRes.grade,
+            confidence: 1,
+          })
+        }
+      } catch {
+        setIsListening(false)
+        setSpeechFeedback('Voice recognition error. You can answer manually.')
+      }
+    },
+    [gradeMutation],
+  )
+
+  useEffect(() => {
+    if (mode === 'commute' && started && current && commuteAutoPlay && !finishedAt) {
+      const timer = setTimeout(() => {
+        void runVoiceReviewForCurrentCard(current)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [mode, started, current?.id, commuteAutoPlay, finishedAt, runVoiceReviewForCurrentCard])
+
   const reveal = useCallback(() => setRevealed(true), [])
 
   // keyboard: 1-4 grade · space reveal/Good · e undo
@@ -493,14 +602,14 @@ function ReviewPageInner() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <div className="label mb-2">Mode</div>
-              <div className="flex gap-2">
-                {(['normal', 'pretest', 'cram'] as const).map((m) => (
+              <div className="flex flex-wrap gap-2">
+                {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setMode(m)}
-                    className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300' : ''}`}
+                    className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300 font-medium' : ''}`}
                   >
-                    {m}
+                    {m === 'commute' ? '🎧 commute' : m}
                   </button>
                 ))}
               </div>
@@ -509,6 +618,8 @@ function ReviewPageInner() {
                   'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
                 {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
                 {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
+                {mode === 'commute' &&
+                  'Hands-free audio loop: prompts read aloud, voice answer recognized & fuzzy graded.'}
               </p>
             </div>
             <div>
@@ -544,13 +655,52 @@ function ReviewPageInner() {
               </p>
             </div>
           </div>
-          <button
-            className="btn"
-            disabled={(decksData?.decks ?? []).length === 0}
-            onClick={() => setStarted(true)}
-          >
-            <Zap className="h-4 w-4" /> Start session
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="btn"
+              disabled={(decksData?.decks ?? []).length === 0}
+              onClick={() => setStarted(true)}
+            >
+              <Zap className="h-4 w-4" /> Start session
+            </button>
+            <button
+              type="button"
+              className="btn-ghost text-xs flex items-center gap-1.5"
+              disabled={isPlayingDigest}
+              onClick={async () => {
+                setIsPlayingDigest(true)
+                setDigestStatus('Generating commute podcast script…')
+                try {
+                  const data = await apiGet<{
+                    ok: boolean
+                    script: { cues: Array<{ text: string; pauseMs: number }> }
+                  }>(`/api/audio/digest?limit=15&minutes=5&deckId=${deckId ?? ''}`)
+                  if (data.ok && data.script.cues.length > 0) {
+                    setDigestStatus('Playing hands-free audio review…')
+                    for (const cue of data.script.cues) {
+                      if (cue.text && cue.text !== '...') {
+                        await speakText(cue.text)
+                      }
+                      if (cue.pauseMs > 0) {
+                        await new Promise((r) => setTimeout(r, cue.pauseMs))
+                      }
+                    }
+                    setDigestStatus('Commute audio digest complete!')
+                  } else {
+                    setDigestStatus('No due cards found for audio digest.')
+                  }
+                } catch {
+                  setDigestStatus('Could not play audio digest.')
+                } finally {
+                  setIsPlayingDigest(false)
+                }
+              }}
+            >
+              <Headphones className="h-4 w-4 text-indigo-400" />
+              {isPlayingDigest ? 'Playing Audio Digest…' : 'Generate 5m Commute Digest'}
+            </button>
+            {digestStatus && <span className="text-xs text-neutral-400">{digestStatus}</span>}
+          </div>
         </div>
       </div>
     )
@@ -619,6 +769,42 @@ function ReviewPageInner() {
           <EnergyBar energy={energy} />
         </div>
       </div>
+
+      {mode === 'commute' && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-300">
+          <div className="flex items-center gap-2">
+            <Headphones className="h-4 w-4 animate-pulse" />
+            <span>
+              <strong>Commute Mode:</strong>{' '}
+              {speechFeedback || 'Prompt spoken & voice evaluation ready.'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (isListening) {
+                  stopSpeaking()
+                  setIsListening(false)
+                } else if (current) {
+                  void runVoiceReviewForCurrentCard(current)
+                }
+              }}
+              className="btn-ghost flex items-center gap-1 text-[11px] py-1 px-2 border border-indigo-400/30"
+            >
+              <Mic className={`h-3.5 w-3.5 ${isListening ? 'text-rose-400 animate-pulse' : ''}`} />
+              {isListening ? 'Listening…' : 'Speak'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCommuteAutoPlay(!commuteAutoPlay)}
+              className="btn-ghost text-[11px] py-1 px-2 border border-indigo-400/30"
+            >
+              {commuteAutoPlay ? 'Pause Loop' : 'Resume Loop'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="panel min-h-[280px] space-y-4">
         <div className="flex gap-2 text-[10px] uppercase tracking-widest text-neutral-500">

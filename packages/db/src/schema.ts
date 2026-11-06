@@ -1234,3 +1234,20 @@ export const onlineInbox = table(
   },
   (t) => [index('online_inbox_received_idx').on(t.receivedAt)],
 )
+
+// ─── Audio & Voice Commute Mode (M11) ───────────────────────────────────────
+
+export const audioSessions = table('audio_sessions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  deckId: integer('deck_id'),
+  mode: text('mode')
+    .$type<'handsfree_review' | 'audio_digest'>()
+    .notNull()
+    .default('handsfree_review'),
+  cardCount: integer('card_count').notNull().default(0),
+  durationSeconds: integer('duration_seconds').notNull().default(0),
+  speechEngine: text('speech_engine').notNull().default('webspeech'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})

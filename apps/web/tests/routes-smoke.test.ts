@@ -127,6 +127,9 @@ beforeAll(async () => {
   M.onlineRooms = await import('../app/api/online/rooms/route')
   M.onlineLibrary = await import('../app/api/online/library/route')
   M.onlineBuddies = await import('../app/api/online/buddies/route')
+  M.audioDigest = await import('../app/api/audio/digest/route')
+  M.audioGrade = await import('../app/api/audio/grade/route')
+  M.audioSessions = await import('../app/api/audio/sessions/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1205,5 +1208,68 @@ describe('max focus mode (milestone 6)', () => {
       post('/api/online/buddies', { action: 'mark_read', id: messageId }),
     )
     expect(markReadRes.status).toBe(200)
+  })
+
+  it('audio routes: commute digest, spoken answer evaluation & voice session records', async () => {
+    // 1. Audio digest generation
+    const digestRes = await M.audioDigest.GET(req('GET', '/api/audio/digest?limit=10&minutes=5'))
+    expect(digestRes.status).toBe(200)
+    const digestBody = (await digestRes.json()) as { ok: boolean; script: { cues: any[] } }
+    expect(digestBody.ok).toBe(true)
+    expect(Array.isArray(digestBody.script.cues)).toBe(true)
+
+    // 2. Audio evaluation (exact / phonetic match)
+    const gradeResExact = await M.audioGrade.POST(
+      post('/api/audio/grade', {
+        expected: 'Photosynthesis',
+        spoken: 'Photosynthesis',
+      }),
+    )
+    expect(gradeResExact.status).toBe(200)
+    const gradeExactBody = (await gradeResExact.json()) as {
+      ok: boolean
+      grade: number
+      pass: boolean
+    }
+    expect(gradeExactBody.ok).toBe(true)
+    expect(gradeExactBody.pass).toBe(true)
+    expect(gradeExactBody.grade).toBe(4)
+
+    const gradeResFuzzy = await M.audioGrade.POST(
+      post('/api/audio/grade', {
+        expected: 'Mitochondria is the powerhouse of the cell',
+        spoken: 'mitochondria is powerhouse of the cell',
+      }),
+    )
+    expect(gradeResFuzzy.status).toBe(200)
+    const gradeFuzzyBody = (await gradeResFuzzy.json()) as {
+      ok: boolean
+      grade: number
+      pass: boolean
+    }
+    expect(gradeFuzzyBody.ok).toBe(true)
+    expect(gradeFuzzyBody.pass).toBe(true)
+
+    // 3. Audio sessions record & list
+    const sessionPostRes = await M.audioSessions.POST(
+      post('/api/audio/sessions', {
+        durationSeconds: 320,
+        cardCount: 8,
+        mode: 'handsfree_review',
+        speechEngine: 'web-speech',
+      }),
+    )
+    expect(sessionPostRes.status).toBe(200)
+    const sessionPostBody = (await sessionPostRes.json()) as {
+      ok: boolean
+      session: { id: number }
+    }
+    expect(sessionPostBody.ok).toBe(true)
+
+    const sessionGetRes = await M.audioSessions.GET()
+    expect(sessionGetRes.status).toBe(200)
+    const sessionGetBody = (await sessionGetRes.json()) as { ok: boolean; sessions: any[] }
+    expect(sessionGetBody.ok).toBe(true)
+    expect(sessionGetBody.sessions.some((s) => s.id === sessionPostBody.session.id)).toBe(true)
   })
 })

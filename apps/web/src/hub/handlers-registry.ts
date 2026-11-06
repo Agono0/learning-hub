@@ -20,6 +20,9 @@ import * as aiGenerate from '../server/handlers/ai/generate/route'
 import * as aiRubric from '../server/handlers/ai/rubric/route'
 import * as aiTransport from '../server/handlers/ai/transport/route'
 import * as analytics from '../server/handlers/analytics/route'
+import * as audioDigest from '../server/handlers/audio/digest/route'
+import * as audioGrade from '../server/handlers/audio/grade/route'
+import * as audioSessions from '../server/handlers/audio/sessions/route'
 import * as backup from '../server/handlers/backup/route'
 import * as canvasId from '../server/handlers/canvas/[id]/route'
 import * as canvas from '../server/handlers/canvas/route'
@@ -153,6 +156,9 @@ add('ai/generate', aiGenerate)
 add('ai/rubric', aiRubric)
 add('ai/transport', aiTransport)
 add('analytics', analytics)
+add('audio/digest', audioDigest)
+add('audio/grade', audioGrade)
+add('audio/sessions', audioSessions)
 add('backup', backup)
 add('canvas', canvas)
 add('canvas/[id]', canvasId)
