@@ -1,0 +1,858 @@
+'use client'
+
+/**
+ * Online Engagement Hub: Live study rooms with pomodoro sync & chat,
+ * cooperative party boss raids, community deck/course library, and accountability buddies.
+ *
+ * CLIENT component — core imports via SUBPATHS only (never the barrel).
+ */
+import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Bell,
+  BookOpen,
+  Check,
+  Copy,
+  Download,
+  Heart,
+  Key,
+  MessageSquare,
+  Plus,
+  Radio,
+  RefreshCw,
+  Send,
+  Swords,
+  Timer,
+  UserCheck,
+  Users,
+} from 'lucide-react'
+import { BOSS_ROSTER } from '@learning-hub/core/boss'
+import {
+  type CommunityItem,
+  type PartyRaidState,
+  type RoomMessage,
+  type StudyRoomState,
+} from '@learning-hub/core/online'
+import { apiGet, apiSend } from '@/lib/transport'
+import { OnlineSocket } from '@/lib/online-socket'
+import { Badge, Button, PageHeader, Panel, ProgressBar, SelectField, Tabs, TextField } from '@/ui'
+
+type OnlineTab = 'rooms' | 'raids' | 'library' | 'buddies'
+
+interface IdentityResponse {
+  ok: boolean
+  identity: {
+    id: number
+    mode: 'device_key' | 'magic_link' | 'offline'
+    userId: string
+    alias: string
+    pubKey: string | null
+    registeredAt: string | null
+  }
+  prefs: {
+    showOnLeaderboard: boolean
+    allowBuddyRequests: boolean
+    sharePresence: boolean
+  }
+  server: string
+}
+
+export default function OnlinePage() {
+  const [activeTab, setActiveTab] = useState<OnlineTab>('rooms')
+
+  const identityQuery = useQuery<IdentityResponse>({
+    queryKey: ['online-identity'],
+    queryFn: () => apiGet('/api/online/identity'),
+  })
+
+  const identity = identityQuery.data?.identity
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Online Engagement Hub"
+        subtitle="Live study rooms, multiplayer boss raids, community deck & course library, and accountability buddies."
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge
+              tone={
+                identity?.mode === 'device_key'
+                  ? 'success'
+                  : identity?.mode === 'offline'
+                    ? 'neutral'
+                    : 'accent'
+              }
+            >
+              {identity?.mode === 'device_key'
+                ? 'Device Key'
+                : identity?.mode === 'offline'
+                  ? 'Offline Mode'
+                  : 'Magic Link'}
+            </Badge>
+            <span className="text-xs text-neutral-500 font-mono">
+              {identity?.alias ?? 'Learner'}
+            </span>
+          </div>
+        }
+      />
+
+      <Tabs<OnlineTab>
+        label="Online hub modes"
+        value={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'rooms', label: 'Study Rooms', icon: <Radio className="h-4 w-4" /> },
+          { key: 'raids', label: 'Party Raids', icon: <Swords className="h-4 w-4" /> },
+          { key: 'library', label: 'Community Library', icon: <BookOpen className="h-4 w-4" /> },
+          { key: 'buddies', label: 'Buddies & Inbox', icon: <Users className="h-4 w-4" /> },
+        ]}
+      />
+
+      {activeTab === 'rooms' && <StudyRoomsSection identity={identity} />}
+      {activeTab === 'raids' && <PartyRaidsSection identity={identity} />}
+      {activeTab === 'library' && <CommunityLibrarySection />}
+      {activeTab === 'buddies' && <BuddiesInboxSection identity={identity} />}
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* 1. Live Study Rooms (Pomodoro sync & Chat)                                */
+/* ========================================================================= */
+
+function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity'] }) {
+  const [joinCode, setJoinCode] = useState('')
+  const [roomTitle, setRoomTitle] = useState('Deep Work Session')
+  const [workMinutes, setWorkMinutes] = useState(25)
+  const [activeRoom, setActiveRoom] = useState<StudyRoomState | null>(null)
+  const [chatMessages, setChatMessages] = useState<RoomMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [copied, setCopied] = useState(false)
+  const socketRef = useRef<OnlineSocket<StudyRoomState> | null>(null)
+
+  const createRoomMutation = useMutation({
+    mutationFn: (data: { title: string; pomodoroWorkMinutes: number }) =>
+      apiSend<{ ok: boolean; code: string; room: StudyRoomState; wsUrl: string }>(
+        '/api/online/rooms',
+        'POST',
+        data,
+      ),
+    onSuccess: (data) => {
+      setActiveRoom(data.room)
+      connectRoomSocket(data.wsUrl, data.room)
+    },
+  })
+
+  const joinRoomMutation = useMutation({
+    mutationFn: (code: string) =>
+      apiGet<{ ok: boolean; room: StudyRoomState; server: string }>(
+        `/api/online/rooms?code=${code}`,
+      ),
+    onSuccess: (data) => {
+      if (data.room) {
+        setActiveRoom(data.room)
+        const wsUrl = `${data.server.replace(/^http/, 'ws')}/api/v1/rooms/${data.room.code}/ws`
+        connectRoomSocket(wsUrl, data.room)
+      }
+    },
+  })
+
+  const connectRoomSocket = (wsUrl: string, _room: StudyRoomState) => {
+    socketRef.current?.disconnect()
+
+    const socket = new OnlineSocket<StudyRoomState>({
+      url: wsUrl,
+      onState: (state) => setActiveRoom(state),
+      onChat: (msg) => setChatMessages((prev) => [...prev.slice(-40), msg]),
+    })
+
+    socket.connect()
+    socketRef.current = socket
+
+    // Send join packet
+    setTimeout(() => {
+      socket.send({
+        type: 'join',
+        participant: {
+          id: identity?.userId ?? `usr_${Date.now()}`,
+          alias: identity?.alias ?? 'Learner',
+          status: 'studying',
+          streak: 1,
+          cardsReviewed: 0,
+        },
+      })
+    }, 300)
+  }
+
+  useEffect(() => {
+    return () => {
+      socketRef.current?.disconnect()
+    }
+  }, [])
+
+  const handleLeave = () => {
+    socketRef.current?.disconnect()
+    socketRef.current = null
+    setActiveRoom(null)
+    setChatMessages([])
+  }
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chatInput.trim() || !socketRef.current) return
+    socketRef.current.send({
+      type: 'chat',
+      content: chatInput.trim(),
+    })
+    setChatInput('')
+  }
+
+  const handleCopyCode = () => {
+    if (!activeRoom) return
+    void navigator.clipboard.writeText(activeRoom.code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleToggleTimer = () => {
+    socketRef.current?.send({ type: 'timer_toggle' })
+  }
+
+  return (
+    <div className="space-y-6">
+      {!activeRoom ? (
+        <div className="grid gap-6 sm:grid-cols-2">
+          {/* Create Room */}
+          <Panel className="space-y-4">
+            <h3 className="font-bold flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Create Study Room
+            </h3>
+            <p className="text-xs text-neutral-500">
+              Host a synchronized pomodoro room with real-time participant presence and focused room
+              chat.
+            </p>
+            <div className="space-y-3">
+              <TextField
+                label="Room Title"
+                value={roomTitle}
+                onChange={(e) => setRoomTitle(e.target.value)}
+                placeholder="e.g. Focus Sprint"
+              />
+              <SelectField
+                label="Work Interval"
+                value={String(workMinutes)}
+                onChange={(e) => setWorkMinutes(Number(e.target.value))}
+              >
+                <option value="15">15 Minutes</option>
+                <option value="25">25 Minutes (Standard Pomodoro)</option>
+                <option value="45">45 Minutes (Deep Work)</option>
+                <option value="60">60 Minutes (Intensive)</option>
+              </SelectField>
+              <Button
+                variant="primary"
+                className="w-full"
+                disabled={!roomTitle.trim() || createRoomMutation.isPending}
+                onClick={() =>
+                  createRoomMutation.mutate({
+                    title: roomTitle.trim(),
+                    pomodoroWorkMinutes: workMinutes,
+                  })
+                }
+              >
+                <Radio className="h-4 w-4" /> Create Room
+              </Button>
+            </div>
+          </Panel>
+
+          {/* Join Room */}
+          <Panel className="space-y-4">
+            <h3 className="font-bold flex items-center gap-2">
+              <Key className="h-4 w-4" /> Join Existing Room
+            </h3>
+            <p className="text-xs text-neutral-500">
+              Enter a 6-character room code from your study buddy or group.
+            </p>
+            <div className="space-y-3">
+              <TextField
+                label="Room Code"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="e.g. 7K4W9M"
+                maxLength={6}
+              />
+              <Button
+                variant="primary"
+                className="w-full"
+                disabled={joinCode.trim().length !== 6 || joinRoomMutation.isPending}
+                onClick={() => joinRoomMutation.mutate(joinCode.trim())}
+              >
+                <Users className="h-4 w-4" /> Join Room
+              </Button>
+            </div>
+          </Panel>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Active Room Header & Timer */}
+          <Panel className="space-y-4 border-indigo-500/30">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold">{activeRoom.title}</h2>
+                  <Badge tone={activeRoom.isBreak ? 'accent' : 'success'}>
+                    {activeRoom.isBreak ? 'BREAK TIME' : 'FOCUS SPRINT'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-neutral-400 mt-1">
+                  <span>Room Code:</span>
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1 font-mono font-bold text-indigo-400 hover:underline"
+                  >
+                    {activeRoom.code}
+                    {copied ? (
+                      <Check className="h-3 w-3 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={handleToggleTimer}>
+                  <Timer className="h-4 w-4" /> Toggle Break / Work
+                </Button>
+                <Button variant="danger" onClick={handleLeave}>
+                  Leave Room
+                </Button>
+              </div>
+            </div>
+
+            {/* Participants Bar */}
+            <div className="border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+              <div className="label mb-2">
+                Active Participants ({activeRoom.participants?.length || 1})
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(activeRoom.participants || []).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs dark:border-[#26262b] dark:bg-[#18181b]"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    <span className="font-medium">{p.alias}</span>
+                    <span className="text-neutral-500">({p.cardsReviewed} cards)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Panel>
+
+          {/* Room Chat & Activity */}
+          <Panel className="space-y-4">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" /> Room Chat & Motivations
+            </h3>
+
+            <div className="h-48 overflow-y-auto space-y-2 rounded-lg bg-neutral-100 p-3 text-xs dark:bg-[#121215]">
+              {chatMessages.length === 0 ? (
+                <div className="text-neutral-500 text-center py-12">
+                  No messages yet. Say hello or share what you are studying!
+                </div>
+              ) : (
+                chatMessages.map((msg) => (
+                  <div key={msg.id} className="flex flex-col">
+                    <div className="flex items-center gap-1 text-[10px] text-neutral-500">
+                      <span className="font-semibold text-neutral-300">{msg.senderAlias}</span>
+                      <span>·</span>
+                      <span>{new Date(msg.sentAt).toLocaleTimeString()}</span>
+                    </div>
+                    <div className="text-neutral-200 mt-0.5">{msg.content}</div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <form onSubmit={handleSendChat} className="flex gap-2">
+              <div className="flex-1">
+                <TextField
+                  label=""
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Send a supportive message or check-in..."
+                  maxLength={500}
+                />
+              </div>
+              <Button variant="primary" disabled={!chatInput.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </Panel>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* 2. Multiplayer Party Boss Raids                                           */
+/* ========================================================================= */
+
+function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity'] }) {
+  const [selectedBoss, setSelectedBoss] = useState('chronos')
+  const [activeRaid, setActiveRaid] = useState<PartyRaidState | null>(null)
+
+  const createRaidMutation = useMutation({
+    mutationFn: (bossKey: string) =>
+      apiSend<{ ok: boolean; raidId: string; raid: PartyRaidState; wsUrl: string }>(
+        '/api/online/rooms', // uses server router
+        'POST',
+        { title: `Party Raid: ${bossKey}` },
+      ),
+    onSuccess: () => {
+      // Initialize local party raid simulation
+      const boss = BOSS_ROSTER[selectedBoss] ?? BOSS_ROSTER['chronos']!
+      const initial: PartyRaidState = {
+        id: `raid_${Date.now()}`,
+        bossKey: boss.key,
+        bossName: boss.name,
+        bossHp: boss.maxHp * 3,
+        bossMaxHp: boss.maxHp * 3,
+        partyHp: 400,
+        partyMaxHp: 400,
+        status: 'fighting',
+        members: [
+          {
+            id: identity?.userId ?? 'usr_self',
+            alias: identity?.alias ?? 'You',
+            damageDealt: 0,
+            isAlive: true,
+          },
+        ],
+        combatLog: [`The raid against ${boss.name} has begun! Cooperative study damage enabled.`],
+      }
+      setActiveRaid(initial)
+    },
+  })
+
+  const handleSyncPartyDamage = () => {
+    if (!activeRaid) return
+    const damage = Math.floor(Math.random() * 25) + 15
+    const newBossHp = Math.max(0, activeRaid.bossHp - damage)
+    const isVictory = newBossHp === 0
+
+    setActiveRaid({
+      ...activeRaid,
+      bossHp: newBossHp,
+      status: isVictory ? 'victory' : activeRaid.status,
+      members: activeRaid.members.map((m) =>
+        m.id === (identity?.userId ?? 'usr_self')
+          ? { ...m, damageDealt: m.damageDealt + damage }
+          : m,
+      ),
+      combatLog: [
+        ...activeRaid.combatLog,
+        `${identity?.alias ?? 'You'} scored critical reviews dealing ${damage} damage!`,
+        ...(isVictory ? [`🏆 Victory! The party vanquished ${activeRaid.bossName}!`] : []),
+      ].slice(-20),
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      {!activeRaid ? (
+        <div className="space-y-4">
+          <Panel className="space-y-3">
+            <h3 className="font-bold flex items-center gap-2">
+              <Swords className="h-4 w-4" /> Cooperative Party Boss Raids
+            </h3>
+            <p className="text-xs text-neutral-500">
+              Form a party of learners to take down massive world bosses. Every card reviewed by
+              party members deals combined damage to the boss!
+            </p>
+
+            <div className="grid gap-4 sm:grid-cols-3 pt-2">
+              {Object.values(BOSS_ROSTER).map((boss) => (
+                <div
+                  key={boss.key}
+                  onClick={() => setSelectedBoss(boss.key)}
+                  className={`cursor-pointer rounded-lg border p-4 transition-all ${
+                    selectedBoss === boss.key
+                      ? 'border-indigo-500 bg-indigo-500/10'
+                      : 'border-neutral-200 dark:border-[#26262b] hover:border-neutral-300'
+                  }`}
+                >
+                  <div className="text-3xl mb-2">{boss.avatar}</div>
+                  <div className="font-bold">{boss.name}</div>
+                  <div className="text-xs text-neutral-500">{boss.title}</div>
+                  <div className="mt-3 text-xs text-neutral-400">
+                    Party HP Pool: <strong className="text-red-400">{boss.maxHp * 3}</strong>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              variant="primary"
+              className="mt-4"
+              disabled={createRaidMutation.isPending}
+              onClick={() => createRaidMutation.mutate(selectedBoss)}
+            >
+              <Swords className="h-4 w-4" /> Launch Party Raid
+            </Button>
+          </Panel>
+        </div>
+      ) : (
+        <Panel className="space-y-6 border-indigo-500/30">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Swords className="h-5 w-5 text-indigo-400" />
+                Party Raid: {activeRaid.bossName}
+              </h2>
+              <p className="text-xs text-neutral-500">
+                Multiplayer encounter: coordinate review sprints with party members.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Badge
+                tone={
+                  activeRaid.status === 'victory'
+                    ? 'success'
+                    : activeRaid.status === 'defeat'
+                      ? 'danger'
+                      : 'accent'
+                }
+              >
+                {activeRaid.status.toUpperCase()}
+              </Badge>
+              {activeRaid.status === 'fighting' && (
+                <Button variant="primary" onClick={handleSyncPartyDamage}>
+                  <RefreshCw className="h-4 w-4" /> Deal Review Damage
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setActiveRaid(null)}>
+                End Raid
+              </Button>
+            </div>
+          </div>
+
+          {/* Health Bars */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+              <div className="flex justify-between text-xs font-medium text-red-400">
+                <span className="flex items-center gap-1">
+                  <Swords className="h-3.5 w-3.5" /> Colossus Boss HP
+                </span>
+                <span>
+                  {activeRaid.bossHp} / {activeRaid.bossMaxHp} HP
+                </span>
+              </div>
+              <ProgressBar
+                value={activeRaid.bossHp / (activeRaid.bossMaxHp || 1)}
+                className="[&>div]:bg-red-500"
+              />
+            </div>
+
+            <div className="space-y-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <div className="flex justify-between text-xs font-medium text-emerald-400">
+                <span className="flex items-center gap-1">
+                  <Heart className="h-3.5 w-3.5" /> Party Shared Health
+                </span>
+                <span>
+                  {activeRaid.partyHp} / {activeRaid.partyMaxHp} HP
+                </span>
+              </div>
+              <ProgressBar
+                value={activeRaid.partyHp / (activeRaid.partyMaxHp || 1)}
+                className="[&>div]:bg-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Members */}
+          <div className="space-y-2">
+            <div className="label">Party Members</div>
+            <div className="grid gap-2 sm:grid-cols-4">
+              {activeRaid.members.map((m) => (
+                <div
+                  key={m.id}
+                  className="rounded-lg bg-neutral-100 p-2.5 dark:bg-[#18181b] text-xs flex justify-between items-center"
+                >
+                  <span className="font-medium">{m.alias}</span>
+                  <span className="text-amber-400 font-mono">+{m.damageDealt} dmg</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Combat Log */}
+          <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+            <div className="label">Raid Combat Log</div>
+            <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-neutral-400">
+              {activeRaid.combatLog.map((log, i) => (
+                <div key={i} className="rounded bg-neutral-100 p-1.5 dark:bg-[#121215]">
+                  {log}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+      )}
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* 3. Community Library (Decks & Courses Browser)                            */
+/* ========================================================================= */
+
+function CommunityLibrarySection() {
+  const qc = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [filterType, setFilterType] = useState<string>('')
+  const [importedId, setImportedId] = useState<string | null>(null)
+
+  const libraryQuery = useQuery<{ ok: boolean; items: CommunityItem[] }>({
+    queryKey: ['community-library', search, filterType],
+    queryFn: () => {
+      const p = new URLSearchParams()
+      if (search) p.set('q', search)
+      if (filterType) p.set('type', filterType)
+      return apiGet(`/api/online/library?${p.toString()}`)
+    },
+  })
+
+  const importMutation = useMutation({
+    mutationFn: (item: CommunityItem) =>
+      apiSend('/api/share/import', 'POST', { payload: item.shareString }),
+    onSuccess: (_data, item) => {
+      setImportedId(item.id)
+      setTimeout(() => setImportedId(null), 3000)
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: ['curriculum-courses'] })
+    },
+  })
+
+  const items = libraryQuery.data?.items ?? []
+
+  return (
+    <div className="space-y-6">
+      <Panel className="space-y-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h3 className="font-bold">Community Library</h3>
+            <p className="text-xs text-neutral-500">
+              Discover, download, and share community-curated decks and LHCF courses with 1-click
+              import.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <TextField
+              label="Search library"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by title, subject, or tag..."
+            />
+          </div>
+          <SelectField
+            label="Type Filter"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <option value="">All Materials</option>
+            <option value="deck">Flashcard Decks</option>
+            <option value="course">LHCF Curricula / Courses</option>
+          </SelectField>
+        </div>
+      </Panel>
+
+      {/* Items Grid */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {items.map((item) => (
+          <Panel key={item.id} className="flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <Badge tone={item.type === 'deck' ? 'accent' : 'success'}>
+                  {item.type === 'deck' ? 'Deck' : 'Course'}
+                </Badge>
+                <span className="text-xs text-neutral-500">By {item.author}</span>
+              </div>
+              <h4 className="mt-2 text-base font-bold">{item.title}</h4>
+              <p className="mt-1 text-xs text-neutral-400 line-clamp-2">
+                {item.description || 'No description provided.'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1">
+                {item.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-[#18181b]"
+                  >
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-neutral-200 pt-3 dark:border-[#26262b]">
+              <span className="flex items-center gap-1 text-xs text-neutral-500">
+                <Download className="h-3.5 w-3.5" /> {item.downloads} downloads
+              </span>
+              <Button
+                variant={importedId === item.id ? 'ghost' : 'primary'}
+                disabled={importMutation.isPending}
+                onClick={() => importMutation.mutate(item)}
+              >
+                {importedId === item.id ? (
+                  <>
+                    <Check className="h-4 w-4 text-emerald-400" /> Imported!
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" /> Import to Library
+                  </>
+                )}
+              </Button>
+            </div>
+          </Panel>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* 4. Accountability Buddies & Inbox                                         */
+/* ========================================================================= */
+
+function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }) {
+  const qc = useQueryClient()
+  const [targetAlias, setTargetAlias] = useState('')
+  const [customMsg, setCustomMsg] = useState('')
+
+  const inboxQuery = useQuery<{
+    ok: boolean
+    messages: Array<{
+      id: number
+      kind: 'nudge' | 'invite' | 'achievement'
+      senderAlias: string
+      content: string
+      read: boolean
+      receivedAt: string
+    }>
+  }>({
+    queryKey: ['online-inbox'],
+    queryFn: () => apiGet('/api/online/buddies'),
+  })
+
+  const sendNudgeMutation = useMutation({
+    mutationFn: (data: { action: 'nudge' | 'invite'; targetAlias: string; message: string }) =>
+      apiSend('/api/online/buddies', 'POST', data),
+    onSuccess: () => {
+      setTargetAlias('')
+      setCustomMsg('')
+      void qc.invalidateQueries({ queryKey: ['online-inbox'] })
+    },
+  })
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: number) => apiSend('/api/online/buddies', 'POST', { action: 'mark_read', id }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['online-inbox'] })
+    },
+  })
+
+  const messages = inboxQuery.data?.messages ?? []
+
+  return (
+    <div className="space-y-6">
+      {/* Send Nudge Form */}
+      <Panel className="space-y-4">
+        <h3 className="font-bold flex items-center gap-2">
+          <UserCheck className="h-4 w-4" /> Accountability Buddy Nudges
+        </h3>
+        <p className="text-xs text-neutral-500">
+          Support your study partners with friendly streak reminders or room study invites.
+        </p>
+
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!targetAlias.trim()) return
+            sendNudgeMutation.mutate({
+              action: 'nudge',
+              targetAlias: targetAlias.trim(),
+              message: customMsg.trim(),
+            })
+          }}
+        >
+          <TextField
+            label="Buddy Alias"
+            value={targetAlias}
+            onChange={(e) => setTargetAlias(e.target.value)}
+            placeholder="e.g. Alice"
+          />
+          <TextField
+            label="Custom Cheer / Note (Optional)"
+            value={customMsg}
+            onChange={(e) => setCustomMsg(e.target.value)}
+            placeholder="Keep your daily streak going!"
+          />
+          <div className="flex items-end">
+            <Button
+              variant="primary"
+              className="w-full"
+              disabled={!targetAlias.trim() || sendNudgeMutation.isPending}
+            >
+              <Send className="h-4 w-4" /> Send Study Nudge
+            </Button>
+          </div>
+        </form>
+      </Panel>
+
+      {/* Inbox */}
+      <Panel className="space-y-3">
+        <h4 className="font-bold text-sm flex items-center gap-2">
+          <Bell className="h-4 w-4" /> Inbox & Study Nudges
+        </h4>
+
+        {messages.length === 0 ? (
+          <div className="text-sm text-neutral-500 py-8 text-center">
+            No nudges or invitations received yet.
+          </div>
+        ) : (
+          <div className="divide-y divide-neutral-200 dark:divide-[#26262b]">
+            {messages.map((msg) => (
+              <div key={msg.id} className="py-3 flex items-center justify-between gap-4 text-xs">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={msg.kind === 'nudge' ? 'warning' : 'accent'}>
+                      {msg.kind.toUpperCase()}
+                    </Badge>
+                    <span className="font-semibold">{msg.senderAlias}</span>
+                    <span className="text-neutral-500">
+                      {new Date(msg.receivedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-neutral-300">{msg.content}</p>
+                </div>
+
+                {!msg.read && (
+                  <Button variant="ghost" onClick={() => markReadMutation.mutate(msg.id)}>
+                    Mark Read
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
+    </div>
+  )
+}

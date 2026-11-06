@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@learning-hub/core": ["../../packages/core/src/index.ts"],
+      "@learning-hub/core/*": ["../../packages/core/src/*"]
+    }
+  },
+  "include": ["src/**/*", "tests/**/*"]
+}

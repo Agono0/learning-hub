@@ -123,6 +123,10 @@ beforeAll(async () => {
   M.shareExport = await import('../app/api/share/export/route')
   M.shareImport = await import('../app/api/share/import/route')
   M.leaderboard = await import('../app/api/social/leaderboard/route')
+  M.onlineIdentity = await import('../app/api/online/identity/route')
+  M.onlineRooms = await import('../app/api/online/rooms/route')
+  M.onlineLibrary = await import('../app/api/online/library/route')
+  M.onlineBuddies = await import('../app/api/online/buddies/route')
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -1109,5 +1113,97 @@ describe('max focus mode (milestone 6)', () => {
     expect(deleteFriendRes.status).toBe(200)
     const deleteFriendBody = (await deleteFriendRes.json()) as { ok: boolean }
     expect(deleteFriendBody.ok).toBe(true)
+  })
+
+  it('handles Milestone 10: online engagement, identity, study rooms, library, and buddies', async () => {
+    // 1. Online Identity & Settings
+    const identGetRes = await M.onlineIdentity.GET()
+    expect(identGetRes.status).toBe(200)
+    const identGetBody = (await identGetRes.json()) as {
+      ok: boolean
+      identity: any
+      server: string
+    }
+    expect(identGetBody.ok).toBe(true)
+    expect(identGetBody.identity.mode).toBe('offline')
+
+    const identPostRes = await M.onlineIdentity.POST(
+      post('/api/online/identity', {
+        mode: 'device_key',
+        alias: 'AdaExplorer',
+        showOnLeaderboard: true,
+      }),
+    )
+    expect(identPostRes.status).toBe(200)
+    const identPostBody = (await identPostRes.json()) as { ok: boolean; identity: any }
+    expect(identPostBody.ok).toBe(true)
+    expect(identPostBody.identity.mode).toBe('device_key')
+    expect(identPostBody.identity.alias).toBe('AdaExplorer')
+    expect(identPostBody.identity.pubKey?.startsWith('pk_')).toBe(true)
+
+    // 2. Study Rooms
+    const roomPostRes = await M.onlineRooms.POST(
+      post('/api/online/rooms', {
+        title: 'Algorithms Sprint',
+        pomodoroWorkMinutes: 25,
+      }),
+    )
+    expect(roomPostRes.status).toBe(200)
+    const roomPostBody = (await roomPostRes.json()) as { ok: boolean; code: string; room: any }
+    expect(roomPostBody.ok).toBe(true)
+    expect(roomPostBody.code).toHaveLength(6)
+
+    const roomGetRes = await M.onlineRooms.GET(
+      req('GET', `/api/online/rooms?code=${roomPostBody.code}`),
+    )
+    expect(roomGetRes.status).toBe(200)
+    const roomGetBody = (await roomGetRes.json()) as { ok: boolean; room: any }
+    expect(roomGetBody.ok).toBe(true)
+    expect(roomGetBody.room.code).toBe(roomPostBody.code)
+
+    // 3. Community Library
+    const libGetRes = await M.onlineLibrary.GET(req('GET', '/api/online/library'))
+    expect(libGetRes.status).toBe(200)
+    const libGetBody = (await libGetRes.json()) as { ok: boolean; items: any[] }
+    expect(libGetBody.ok).toBe(true)
+    expect(libGetBody.items.length).toBeGreaterThan(0)
+
+    const libPostRes = await M.onlineLibrary.POST(
+      post('/api/online/library', {
+        type: 'deck',
+        title: 'Community Machine Learning',
+        description: 'Core linear algebra & gradient descent flashcards',
+        tags: ['ml', 'math'],
+        shareString: 'LH1_simulated_share_string',
+      }),
+    )
+    expect(libPostRes.status).toBe(200)
+    const libPostBody = (await libPostRes.json()) as { ok: boolean; item: any }
+    expect(libPostBody.ok).toBe(true)
+    expect(libPostBody.item.title).toBe('Community Machine Learning')
+
+    // 4. Accountability Buddies & Inbox
+    const buddyPostRes = await M.onlineBuddies.POST(
+      post('/api/online/buddies', {
+        action: 'nudge',
+        targetAlias: 'LearnerBob',
+        message: 'Great streak! Let us review today.',
+      }),
+    )
+    expect(buddyPostRes.status).toBe(200)
+    const buddyPostBody = (await buddyPostRes.json()) as { ok: boolean; message: { id: number } }
+    expect(buddyPostBody.ok).toBe(true)
+    const messageId = buddyPostBody.message.id
+
+    const buddyGetRes = await M.onlineBuddies.GET()
+    expect(buddyGetRes.status).toBe(200)
+    const buddyGetBody = (await buddyGetRes.json()) as { ok: boolean; messages: any[] }
+    expect(buddyGetBody.ok).toBe(true)
+    expect(buddyGetBody.messages.some((m) => m.id === messageId)).toBe(true)
+
+    const markReadRes = await M.onlineBuddies.POST(
+      post('/api/online/buddies', { action: 'mark_read', id: messageId }),
+    )
+    expect(markReadRes.status).toBe(200)
   })
 })

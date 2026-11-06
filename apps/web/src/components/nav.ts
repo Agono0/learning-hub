@@ -11,6 +11,7 @@ import {
   DatabaseBackup,
   Dumbbell,
   Flame,
+  Globe,
   GraduationCap,
   Images,
   Layers,
@@ -71,6 +72,7 @@ export const NAV: NavGroup[] = [
       { href: '/canvas', label: 'Canvas', icon: Images },
       { href: '/palace', label: 'Palace', icon: Map },
       { href: '/games', label: 'Games', icon: Brain },
+      { href: '/online', label: 'Online Hub', icon: Globe },
     ],
   },
   {

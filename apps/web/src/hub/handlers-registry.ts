@@ -73,6 +73,10 @@ import * as mindmaps from '../server/handlers/mindmaps/route'
 import * as notesId from '../server/handlers/notes/[id]/route'
 import * as notes from '../server/handlers/notes/route'
 import * as onboardingDetox from '../server/handlers/onboarding/detox/route'
+import * as onlineBuddies from '../server/handlers/online/buddies/route'
+import * as onlineIdentity from '../server/handlers/online/identity/route'
+import * as onlineLibrary from '../server/handlers/online/library/route'
+import * as onlineRooms from '../server/handlers/online/rooms/route'
 import * as palaceId from '../server/handlers/palace/[id]/route'
 import * as palace from '../server/handlers/palace/route'
 import * as physio from '../server/handlers/physio/route'
@@ -201,6 +205,10 @@ add('mindmaps/[id]/cards', mindmapsIdCards)
 add('notes', notes)
 add('notes/[id]', notesId)
 add('onboarding/detox', onboardingDetox)
+add('online/buddies', onlineBuddies)
+add('online/identity', onlineIdentity)
+add('online/library', onlineLibrary)
+add('online/rooms', onlineRooms)
 add('palace', palace)
 add('palace/[id]', palaceId)
 add('physio', physio)

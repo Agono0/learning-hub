@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Monitor, Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
+import { Bell, Globe, Monitor, Moon, RotateCcw, Sparkles, Sun, Wand2 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
 import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
 import {
@@ -771,6 +771,9 @@ export default function SettingsPage() {
         )}
       </section>
 
+      {/* ── Online Identity & Privacy ── */}
+      <OnlineIdentitySection />
+
       <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save settings'}
       </button>
@@ -781,5 +784,188 @@ export default function SettingsPage() {
         </span>
       )}
     </div>
+  )
+}
+
+function OnlineIdentitySection() {
+  const qc = useQueryClient()
+  const identityQuery = useQuery({
+    queryKey: ['online-identity'],
+    queryFn: () =>
+      apiGet<{
+        ok: boolean
+        identity: {
+          id: number
+          mode: 'device_key' | 'magic_link' | 'offline'
+          userId: string
+          alias: string
+          pubKey: string | null
+        }
+        prefs: {
+          showOnLeaderboard: boolean
+          allowBuddyRequests: boolean
+          sharePresence: boolean
+        }
+        server: string
+      }>('/api/online/identity'),
+  })
+
+  const [mode, setMode] = useState<'device_key' | 'magic_link' | 'offline'>('offline')
+  const [alias, setAlias] = useState('')
+  const [serverUrl, setServerUrl] = useState('')
+  const [showLeaderboard, setShowLeaderboard] = useState(true)
+  const [allowBuddies, setAllowBuddies] = useState(true)
+  const [savedMsg, setSavedMsg] = useState(false)
+
+  useEffect(() => {
+    if (identityQuery.data) {
+      setMode(identityQuery.data.identity.mode)
+      setAlias(identityQuery.data.identity.alias)
+      setServerUrl(identityQuery.data.server)
+      setShowLeaderboard(identityQuery.data.prefs.showOnLeaderboard)
+      setAllowBuddies(identityQuery.data.prefs.allowBuddyRequests)
+    }
+  }, [identityQuery.data])
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      apiSend('/api/online/identity', 'POST', {
+        mode,
+        alias: alias.trim() || 'Learner',
+        serverUrl: serverUrl.trim() || undefined,
+        showOnLeaderboard: showLeaderboard,
+        allowBuddyRequests: allowBuddies,
+      }),
+    onSuccess: () => {
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 2000)
+      void qc.invalidateQueries({ queryKey: ['online-identity'] })
+    },
+  })
+
+  return (
+    <section className="panel space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Globe className="h-4 w-4" /> Online Engagement & Identity
+        </h2>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+            mode === 'device_key'
+              ? 'bg-emerald-500/10 text-emerald-400'
+              : mode === 'offline'
+                ? 'bg-neutral-500/10 text-neutral-400'
+                : 'bg-indigo-500/10 text-indigo-400'
+          }`}
+        >
+          {mode === 'device_key'
+            ? 'Anonymous Device Key'
+            : mode === 'offline'
+              ? 'Offline First'
+              : 'Magic Link'}
+        </span>
+      </div>
+
+      <p className="text-xs text-neutral-400">
+        Learning HUB is 100% offline-first. Connect opt-in to participate in live study rooms,
+        community deck/course sharing, and cooperative boss raids.
+      </p>
+
+      <div className="space-y-3 pt-2">
+        <div>
+          <label className="label mb-1 block">Identity Mode</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {[
+              {
+                id: 'offline',
+                title: 'Offline Mode',
+                desc: 'Zero network traffic. All features run strictly local on your device.',
+              },
+              {
+                id: 'device_key',
+                title: 'Device Key (Recommended)',
+                desc: 'Anonymous cryptographic keypair generated locally. Zero emails or passwords.',
+              },
+              {
+                id: 'magic_link',
+                title: 'Magic Link',
+                desc: 'Optional email-based sync for multi-device learners.',
+              },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setMode(opt.id as any)}
+                className={`rounded-lg border p-3 text-left transition-all ${
+                  mode === opt.id
+                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
+                    : 'border-neutral-200 dark:border-[#26262b] text-neutral-400 hover:border-neutral-300'
+                }`}
+              >
+                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
+                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label mb-1 block">Display Alias</label>
+            <input
+              type="text"
+              className="input"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              placeholder="e.g. Marie Curie"
+              maxLength={40}
+            />
+          </div>
+          <div>
+            <label className="label mb-1 block">Engagement Worker Server</label>
+            <input
+              type="url"
+              className="input font-mono text-xs"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              placeholder="https://learning-hub-engagement.workers.dev"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2 pt-1">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300">
+            <input
+              type="checkbox"
+              checked={showLeaderboard}
+              onChange={(e) => setShowLeaderboard(e.target.checked)}
+              className="accent-indigo-500"
+            />
+            Show study progress on global opt-in weekly leaderboard
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300">
+            <input
+              type="checkbox"
+              checked={allowBuddies}
+              onChange={(e) => setAllowBuddies(e.target.checked)}
+              className="accent-indigo-500"
+            />
+            Allow accountability buddies to send study nudges & room invitations
+          </label>
+        </div>
+
+        <div className="pt-2 flex items-center gap-3">
+          <button
+            type="button"
+            className="btn-ghost text-xs"
+            disabled={saveMutation.isPending}
+            onClick={() => saveMutation.mutate()}
+          >
+            {saveMutation.isPending ? 'Saving…' : 'Update Online Identity'}
+          </button>
+          {savedMsg && <span className="text-xs text-emerald-400">Identity updated!</span>}
+        </div>
+      </div>
+    </section>
   )
 }

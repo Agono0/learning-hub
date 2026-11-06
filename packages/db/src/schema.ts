@@ -1186,3 +1186,51 @@ export const friends = table(
   },
   (t) => [uniqueIndex('friends_gist_url_idx').on(t.gistUrl)],
 )
+
+// ─── Online Engagement & Cloudflare Worker (M10) ────────────────────────────
+
+export const onlineServers = table('online_servers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** Device-local identity table — stripped from sync/backup export for privacy. */
+export const onlineIdentity = table('online_identity', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  mode: text('mode').$type<'device_key' | 'magic_link' | 'offline'>().notNull().default('offline'),
+  userId: text('user_id').notNull(),
+  alias: text('alias').notNull().default('Learner'),
+  pubKey: text('pub_key'),
+  privKey: text('priv_key'),
+  registeredAt: text('registered_at'),
+})
+
+export const onlinePrefs = table('online_prefs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  showOnLeaderboard: integer('show_on_leaderboard', { mode: 'boolean' }).notNull().default(true),
+  allowBuddyRequests: integer('allow_buddy_requests', { mode: 'boolean' }).notNull().default(true),
+  sharePresence: integer('share_presence', { mode: 'boolean' }).notNull().default(true),
+  activeRoomCode: text('active_room_code'),
+})
+
+/** Append-only inbox for received nudges, invites, or system announcements. */
+export const onlineInbox = table(
+  'online_inbox',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    kind: text('kind').$type<'nudge' | 'invite' | 'achievement'>().notNull(),
+    senderAlias: text('sender_alias').notNull(),
+    content: text('content').notNull(),
+    meta: text('meta', { mode: 'json' }).$type<Record<string, unknown>>(),
+    read: integer('read', { mode: 'boolean' }).notNull().default(false),
+    receivedAt: text('received_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('online_inbox_received_idx').on(t.receivedAt)],
+)
