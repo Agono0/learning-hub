@@ -121,21 +121,24 @@ function Sidebar({ pathname }: { pathname: string | null }) {
     staleTime: 30_000,
   })
 
-  const [collapsed, setCollapsed] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_COLLAPSED_GROUPS
+  // Hydration-safe: initialize to the server-matching constant, then load the
+  // persisted groups AFTER hydration (an initializer reading localStorage here
+  // was the source of an aria-expanded/chevron hydration mismatch).
+  const [collapsed, setCollapsed] = useState<string[]>(DEFAULT_COLLAPSED_GROUPS)
+
+  useEffect(() => {
     try {
       const raw = window.localStorage.getItem(COLLAPSED_STORAGE_KEY)
       if (raw) {
         const parsed = JSON.parse(raw) as unknown
         if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) {
-          return parsed
+          setCollapsed(parsed)
         }
       }
     } catch {
       // ignore
     }
-    return DEFAULT_COLLAPSED_GROUPS
-  })
+  }, [])
 
   useEffect(() => {
     const remote = settingsData?.settings?.sidebarCollapsedGroups

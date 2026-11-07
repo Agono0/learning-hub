@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -110,7 +110,12 @@ export default function FocusPage() {
   const [minutes, setMinutes] = useState(25)
   const [task, setTask] = useState('')
   const [protocol, setProtocol] = useState<Record<string, boolean>>({})
-  const finishLine = useMemo(() => finishTimeVisibility(new Date(), minutes), [minutes])
+  // Hydration-safe: the finish line depends on the wall clock, which can never
+  // match the prerendered HTML — compute it after mount (null until then).
+  const [finishLine, setFinishLine] = useState<string | null>(null)
+  useEffect(() => {
+    setFinishLine(finishTimeVisibility(new Date(), minutes))
+  }, [minutes])
 
   // ── Max Focus state ──
   const [maxMinutes, setMaxMinutes] = useState(45)

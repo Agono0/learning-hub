@@ -9,7 +9,7 @@
  * - Adaptive Prerequisite DAG & Remedial Control view
  * - Cycle-preventing dependency linker
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -60,6 +60,11 @@ export default function GraphPage() {
   const router = useRouter()
   const qc = useQueryClient()
   const [viewMode, setViewMode] = useState<'web' | 'prereq'>('web')
+  // Hydration-safe canvas height: window only known after mount.
+  const [graphHeight, setGraphHeight] = useState(500)
+  useEffect(() => {
+    setGraphHeight(Math.max(400, Math.round(window.innerHeight * 0.62)))
+  }, [])
 
   // Full graph data
   const { data } = useQuery<{ nodes: GraphNode[]; edges: GraphEdge[] }>({
@@ -215,10 +220,7 @@ export default function GraphPage() {
                   router.push(`${routeFor(node)}`)
                 }}
                 width={900}
-                height={Math.max(
-                  400,
-                  typeof window !== 'undefined' ? window.innerHeight * 0.62 : 500,
-                )}
+                height={graphHeight}
               />
             )}
           </div>

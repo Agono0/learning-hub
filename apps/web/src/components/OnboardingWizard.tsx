@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -58,14 +58,16 @@ interface OnboardingSettings {
 export function OnboardingWizard() {
   const qc = useQueryClient()
   const { toast } = useToast()
-  const [localDismissed, setLocalDismissed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
+  // Hydration-safe: constant init, persisted flag loaded after mount.
+  const [localDismissed, setLocalDismissed] = useState(false)
+
+  useEffect(() => {
     try {
-      return window.localStorage.getItem(DISMISSED_KEY) === '1'
+      setLocalDismissed(window.localStorage.getItem(DISMISSED_KEY) === '1')
     } catch {
-      return false
+      // ignore
     }
-  })
+  }, [])
 
   const { data } = useQuery<{ settings: OnboardingSettings }>({
     queryKey: ['settings'],

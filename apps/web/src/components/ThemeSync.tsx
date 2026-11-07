@@ -103,10 +103,9 @@ export function ThemeSync() {
     staleTime: 30_000,
   })
 
-  const pref = normalizeThemePreference(
-    data?.settings?.theme ??
-      (typeof window !== 'undefined' ? window.localStorage.getItem(THEME_STORAGE_KEY) : 'dark'),
-  )
+  // Hydration-safe: window reads live inside the effects below (this component
+  // renders null, but keeping window access out of render prevents the whole
+  // class of hydration mismatches).
 
   // Re-apply the palette on mount (covers SPA navigations after storage edits).
   useEffect(() => {
@@ -114,13 +113,16 @@ export function ThemeSync() {
   }, [])
 
   useEffect(() => {
-    applyThemePreference(pref)
-    if (pref !== 'system' || typeof window.matchMedia !== 'function') return
+    const stored =
+      data?.settings?.theme == null ? window.localStorage.getItem(THEME_STORAGE_KEY) : null
+    const effective = normalizeThemePreference(data?.settings?.theme ?? stored)
+    applyThemePreference(effective)
+    if (effective !== 'system' || typeof window.matchMedia !== 'function') return
     const mql = window.matchMedia('(prefers-color-scheme: dark)')
     const onChange = () => applyThemePreference('system')
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
-  }, [pref])
+  }, [data?.settings?.theme])
 
   return null
 }
