@@ -24,6 +24,7 @@ export * from './visual'
 
 // ── Human systems ──
 export * from './motivation'
+export * from './freshStart'
 export * from './habits'
 export * from './focus'
 export * from './focus-lock'

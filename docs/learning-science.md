@@ -308,7 +308,9 @@ Paper method → open SRS → modern scheduling.
 - **Evidence:** d=0.65 across 94 studies (Gollwitzer & Sheeran 2006).
 - **In Learning HUB:** `ifthen_plans` table + WOOP goal validation —
   `packages/core/src/motivation.ts` (`validateWoopGoal`), handlers
-  `apps/web/src/server/handlers/goals/`.
+  `apps/web/src/server/handlers/goals/`. The goals editor coaches the frame
+  with structured `ifCondition`/`thenAction` halves (≤ 200 chars each) on the
+  `goals` table.
 - **Status:** ✅
 
 ### WOOP / mental contrasting — Gabriele Oettingen, 2000s
@@ -328,7 +330,10 @@ gamification backfires (overjustification).
 ### Fresh-start effect — Dai, Milkman & Riis, 2014
 Temporal landmarks (new week/month) make restarts more likely to stick.
 - **In Learning HUB:** `isFreshStartMoment` gates the dashboard's restart
-  banner — `packages/core/src/motivation.ts`, `apps/web/app/page.tsx`.
+  banner — `packages/core/src/motivation.ts`, `apps/web/app/page.tsx`. After a
+  streak breaks (≤ 7 days old), `nextFreshStart` +
+  `streakBrokeWithinDays` in `packages/core/src/freshStart.ts` add a one-line
+  nudge naming the next landmark.
 - **Status:** ✅
 
 ### Small wins / progress principle — Teresa Amabile, 2011

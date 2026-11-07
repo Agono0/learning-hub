@@ -44,6 +44,8 @@ interface Goal {
   outcome: string | null
   obstacle: string | null
   ifThenPlan: string | null
+  ifCondition: string | null
+  thenAction: string | null
   status: string
   progressPct: number
   dueDate: string | null
@@ -89,6 +91,8 @@ export default function MotivationPage() {
     outcome: '',
     obstacle: '',
     ifThenPlan: '',
+    ifCondition: '',
+    thenAction: '',
     dueDate: '',
   })
   const [goalError, setGoalError] = useState<string | null>(null)
@@ -142,7 +146,15 @@ export default function MotivationPage() {
   const createGoal = useMutation({
     mutationFn: () => apiSend('/api/goals', 'POST', goalForm),
     onSuccess: () => {
-      setGoalForm({ wish: '', outcome: '', obstacle: '', ifThenPlan: '', dueDate: '' })
+      setGoalForm({
+        wish: '',
+        outcome: '',
+        obstacle: '',
+        ifThenPlan: '',
+        ifCondition: '',
+        thenAction: '',
+        dueDate: '',
+      })
       setGoalError(null)
       void qc.invalidateQueries({ queryKey: ['goals'] })
     },
@@ -291,9 +303,32 @@ export default function MotivationPage() {
             value={goalForm.obstacle}
             onChange={(e) => setGoalForm({ ...goalForm, obstacle: e.target.value })}
           />
+          {/* If–then section: an implementation intention pairs the cue with a
+              concrete action (Gollwitzer & Sheeran 2006 meta-analysis, d = 0.65). */}
+          <div className="space-y-2 rounded-lg border border-neutral-200 p-3 sm:col-span-2 dark:border-(--hub-border)">
+            <p className="label">If … then … — plan the moment, not the goal</p>
+            <input
+              className="input"
+              placeholder="If — the cue: 'it's 21:00 and I haven't studied'"
+              maxLength={200}
+              value={goalForm.ifCondition}
+              onChange={(e) => setGoalForm({ ...goalForm, ifCondition: e.target.value })}
+            />
+            <input
+              className="input"
+              placeholder="Then — the action: 'I open the review queue first'"
+              maxLength={200}
+              value={goalForm.thenAction}
+              onChange={(e) => setGoalForm({ ...goalForm, thenAction: e.target.value })}
+            />
+            <p className="text-xs text-neutral-500">
+              Naming the cue and the action in advance roughly doubles follow-through — Gollwitzer
+              &amp; Sheeran 2006 meta-analysis (d&nbsp;=&nbsp;0.65).
+            </p>
+          </div>
           <input
             className="input sm:col-span-2"
-            placeholder="If-then plan — 'If <obstacle>, then I will <action>'"
+            placeholder="Free-text if-then plan (optional) — 'If <obstacle>, then I will <action>'"
             value={goalForm.ifThenPlan}
             onChange={(e) => setGoalForm({ ...goalForm, ifThenPlan: e.target.value })}
           />
@@ -323,6 +358,12 @@ export default function MotivationPage() {
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                     {g.wish}
                   </p>
+                  {(g.ifCondition || g.thenAction) && (
+                    <p className="mt-0.5 text-xs text-indigo-300">
+                      {g.ifCondition ? `If ${g.ifCondition}` : 'If …'}
+                      {g.thenAction ? ` — then ${g.thenAction}` : ' — then …'}
+                    </p>
+                  )}
                   {g.ifThenPlan && <p className="mt-0.5 text-xs text-indigo-300">{g.ifThenPlan}</p>}
                   {g.obstacle && <p className="text-xs text-neutral-500">obstacle: {g.obstacle}</p>}
                 </div>

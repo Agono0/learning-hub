@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
-import { MIGRATIONS, assertMigrationOrder, runMigrations, type Migration } from '../src/migrations'
+import {
+  MIGRATIONS,
+  assertMigrationOrder,
+  createMigrationContext,
+  runMigrations,
+  type Migration,
+} from '../src/migrations'
+import { goalIfThen } from '../src/migrations/022-goal-if-then'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -86,5 +93,56 @@ describe('migration runner', () => {
   it('ships a well-formed registry', () => {
     expect(() => assertMigrationOrder(MIGRATIONS)).not.toThrow()
     expect(MIGRATIONS[0]?.id).toBe(1)
+  })
+
+  it('registers 022 goal-if-then last and after 021', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(goalIfThen)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]?.id).toBe(21)
+  })
+})
+
+describe('022 goal-if-then', () => {
+  // a pre-022 goals table, as shipped by the baseline migration
+  const createPre022Goals = (raw: RawSqliteHandle) =>
+    raw.exec(`CREATE TABLE goals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wish TEXT NOT NULL,
+      outcome TEXT,
+      obstacle TEXT,
+      if_then_plan TEXT,
+      status TEXT NOT NULL DEFAULT 'active',
+      progress_pct REAL NOT NULL DEFAULT 0,
+      quote_id INTEGER,
+      due_date TEXT,
+      created_at TEXT NOT NULL
+    );`)
+
+  it('adds the structured if-then columns to an existing goals table', () => {
+    const raw = open()
+    createPre022Goals(raw)
+    raw.exec(
+      `INSERT INTO goals (wish, created_at) VALUES ('Pass the exam', '2026-01-01T00:00:00Z');`,
+    )
+
+    const report = runMigrations(raw, [goalIfThen])
+    expect(report.applied).toEqual([{ id: 22, name: 'goal-if-then' }])
+    expect(columns(raw, 'goals')).toContain('if_condition')
+    expect(columns(raw, 'goals')).toContain('then_action')
+    // existing rows survive with NULL in the new optional columns
+    const row = raw.prepare('SELECT wish, if_condition, then_action FROM goals').get() as {
+      wish: string
+      if_condition: null
+      then_action: null
+    }
+    expect(row).toEqual({ wish: 'Pass the exam', if_condition: null, then_action: null })
+  })
+
+  it('is idempotent — re-running adds nothing and fails nowhere', () => {
+    const raw = open()
+    createPre022Goals(raw)
+    runMigrations(raw, [goalIfThen])
+    const second = runMigrations(raw, [goalIfThen])
+    expect(second.applied).toEqual([]) // recorded once; up() not re-run
+    expect(() => goalIfThen.up(createMigrationContext(raw))).not.toThrow() // even forced
   })
 })

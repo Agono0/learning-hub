@@ -596,6 +596,9 @@ export const goals = table('goals', {
   outcome: text('outcome'),
   obstacle: text('obstacle'),
   ifThenPlan: text('if_then_plan'), // "If <obstacle>, then I will <action>"
+  // Structured implementation intention (Gollwitzer & Sheeran 2006, d = 0.65):
+  ifCondition: text('if_condition'), // "If <situation/cue>" — trigger half, ≤ 200 chars
+  thenAction: text('then_action'), // "then <action>" — response half, ≤ 200 chars
   status: text('status').notNull().default('active'),
   progressPct: real('progress_pct').notNull().default(0), // goal-gradient bar
   quoteId: integer('quote_id'),

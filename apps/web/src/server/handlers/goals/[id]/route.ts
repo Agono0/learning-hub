@@ -1,9 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { eventBus } from '@learning-hub/core'
+import { eventBus, MAX_IF_THEN_CHARS, validateWoopGoal } from '@learning-hub/core'
 import { goals } from '@learning-hub/db'
-import { validateWoopGoal } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
 type Params = { params: Promise<{ id: string }> }
@@ -13,6 +12,9 @@ const patchGoalSchema = z.object({
   outcome: z.string().nullable().optional(),
   obstacle: z.string().nullable().optional(),
   ifThenPlan: z.string().nullable().optional(),
+  // structured implementation intention (Gollwitzer & Sheeran 2006, d = 0.65)
+  ifCondition: z.string().max(MAX_IF_THEN_CHARS).nullable().optional(),
+  thenAction: z.string().max(MAX_IF_THEN_CHARS).nullable().optional(),
   dueDate: z.string().nullable().optional(),
   status: z.enum(['active', 'done', 'dropped']).optional(),
   progressPct: z.number().optional(),
@@ -39,6 +41,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     outcome: cleared(body.outcome, existing.outcome),
     obstacle: cleared(body.obstacle, existing.obstacle),
     ifThenPlan: cleared(body.ifThenPlan, existing.ifThenPlan),
+    ifCondition: cleared(body.ifCondition, existing.ifCondition),
+    thenAction: cleared(body.thenAction, existing.thenAction),
     dueDate: cleared(body.dueDate, existing.dueDate),
     status: body.status ?? existing.status,
     progressPct:
@@ -52,6 +56,8 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     outcome: next.outcome,
     obstacle: next.obstacle,
     ifThenPlan: next.ifThenPlan,
+    ifCondition: next.ifCondition,
+    thenAction: next.thenAction,
     dueDate: next.dueDate,
   })
   if (!validation.ok)

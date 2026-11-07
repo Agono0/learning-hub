@@ -108,8 +108,13 @@ export function assertMigrationOrder(migrations: readonly Migration[]): void {
 
 /**
  * Apply every migration whose id is not yet recorded, in id order. Each
- * migration runs in its own transaction together with its
- * bookkeeping row, so a crash never leaves a half-applied step recorded.
+ * migration runs in its own `BEGIN IMMEDIATE` transaction together with its
+ * bookkeeping row, so a crash never leaves a half-applied step recorded — and
+ * concurrent openers of the same database file (test workers, dev server +
+ * CLI) serialize on the write lock instead of racing: the loser waits at BEGIN
+ * (busy handler honored), then re-checks and skips the step the winner just
+ * recorded. A deferred BEGIN would do the opposite — read a snapshot, then
+ * fail its first write with SQLITE_BUSY once the winner commits mid-flight.
  */
 export function runMigrations(
   raw: RawSqliteHandle,
@@ -126,6 +131,7 @@ export function runMigrations(
     (raw.prepare('SELECT id FROM schema_migrations').all() as { id: number }[]).map((r) => r.id),
   )
   const ctx = createMigrationContext(raw)
+  const recorded = raw.prepare('SELECT 1 FROM schema_migrations WHERE id = ?')
   const record = raw.prepare(
     'INSERT OR IGNORE INTO schema_migrations (id, name, applied_at) VALUES (?, ?, ?)',
   )
@@ -133,11 +139,17 @@ export function runMigrations(
 
   for (const migration of migrations) {
     if (done.has(migration.id)) continue
-    raw.transaction(() => {
-      migration.up(ctx)
-      record.run(migration.id, migration.name, new Date().toISOString())
-    })()
-    applied.push({ id: migration.id, name: migration.name })
+    const appliedNow = raw
+      .transaction((): boolean => {
+        // Re-check under the write lock: another runner may have applied this
+        // exact step while this one waited for it (done was read before that).
+        if (recorded.get(migration.id) !== undefined) return false
+        migration.up(ctx)
+        record.run(migration.id, migration.name, new Date().toISOString())
+        return true
+      })
+      .immediate()
+    if (appliedNow) applied.push({ id: migration.id, name: migration.name })
   }
 
   const version =

@@ -275,6 +275,47 @@ describe('validateWoopGoal', () => {
     const bare = validateWoopGoal({ wish: 'Pass the exam' })
     expect(bare.completeness).toBe(0.25)
   })
+
+  it('accepts the structured if-then pair as the plan part', () => {
+    const structured = validateWoopGoal({
+      wish: 'Learn Go',
+      ifCondition: "it's 21:00 and I haven't studied",
+      thenAction: 'I will do 3 review cards first',
+    })
+    expect(structured.ok).toBe(true)
+    expect(structured.completeness).toBe(0.5) // wish + the structured plan pair
+  })
+
+  it('leaves each structured half optional (one half alone is valid, not complete)', () => {
+    const onlyIf = validateWoopGoal({ wish: 'Learn Go', ifCondition: 'I feel tired' })
+    const onlyThen = validateWoopGoal({ wish: 'Learn Go', thenAction: 'do 3 cards' })
+    expect(onlyIf.ok).toBe(true)
+    expect(onlyIf.completeness).toBe(0.25)
+    expect(onlyThen.ok).toBe(true)
+    expect(onlyThen.completeness).toBe(0.25)
+  })
+
+  it('caps the structured halves at 200 characters each', () => {
+    const long = 'x'.repeat(201)
+    const overIf = validateWoopGoal({ wish: 'Learn Go', ifCondition: long })
+    const overThen = validateWoopGoal({ wish: 'Learn Go', thenAction: long })
+    expect(overIf.ok).toBe(false)
+    expect(overIf.errors.join(' ')).toMatch(/If-condition.*200/)
+    expect(overThen.ok).toBe(false)
+    expect(overThen.errors.join(' ')).toMatch(/Then-action.*200/)
+    expect(validateWoopGoal({ wish: 'Learn Go', ifCondition: 'x'.repeat(200) }).ok).toBe(true)
+  })
+
+  it('does not double-count the plan when both free-text and structured forms are present', () => {
+    const both = validateWoopGoal({
+      wish: 'Learn Go',
+      ifThenPlan: 'If I feel the urge to scroll, then I will do 3 cards',
+      ifCondition: 'I feel the urge to scroll',
+      thenAction: 'I will do 3 cards',
+    })
+    expect(both.ok).toBe(true)
+    expect(both.completeness).toBe(0.5) // still one plan part
+  })
 })
 
 // ─── Streaks (extra cases) ──────────────────────────────────────────────────

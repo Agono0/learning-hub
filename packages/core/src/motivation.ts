@@ -293,11 +293,23 @@ export function isFreshStartMoment(date: Date | string): FreshStartMoment {
 
 // ─── WOOP goal validation ───────────────────────────────────────────────────
 
+/** Character cap for each half of the structured if-then plan (keeps cards scannable). */
+export const MAX_IF_THEN_CHARS = 200
+
 export interface WoopGoalInput {
   wish: string
   outcome?: string | null
   obstacle?: string | null
   ifThenPlan?: string | null
+  /**
+   * Implementation intention, trigger half — the situation/cue ("If it is 21:00
+   * and I have not studied…"). Optional; ≤ {@link MAX_IF_THEN_CHARS} chars.
+   * Structured counterpart of the free-text `ifThenPlan`
+   * (Gollwitzer & Sheeran 2006 meta-analysis: d = 0.65).
+   */
+  ifCondition?: string | null
+  /** Implementation intention, action half — "…then I will do 3 review cards". Optional; ≤ 200 chars. */
+  thenAction?: string | null
   dueDate?: string | null
 }
 
@@ -315,7 +327,11 @@ const PARTS = 4 // wish, outcome, obstacle, if-then plan
  * WOOP (Oettingen): Wish, Outcome, Obstacle, Plan. The wish is required;
  * the mental-contrast parts are validated when present. The if-then plan must
  * be phrased "If <obstacle>, then I will <action>" — implementation intentions
- * (Gollwitzer 1999) roughly double follow-through.
+ * (Gollwitzer 1999) roughly double follow-through. The plan part counts as
+ * filled by EITHER the free-text `ifThenPlan` OR the structured pair
+ * `ifCondition` + `thenAction` (both halves, ≤ {@link MAX_IF_THEN_CHARS} chars
+ * each — the editor coaches the cue→action frame; Gollwitzer & Sheeran 2006,
+ * d = 0.65).
  */
 export function validateWoopGoal(goal: WoopGoalInput): WoopValidation {
   const errors: string[] = []
@@ -328,11 +344,20 @@ export function validateWoopGoal(goal: WoopGoalInput): WoopValidation {
   const outcome = (goal.outcome ?? '').trim()
   const obstacle = (goal.obstacle ?? '').trim()
   const plan = (goal.ifThenPlan ?? '').trim()
+  const ifCondition = (goal.ifCondition ?? '').trim()
+  const thenAction = (goal.thenAction ?? '').trim()
 
   // Empty-after-trim means "left blank" — the parts are optional, blank ≠ invalid.
   if (outcome.length > 0) filled += 1
 
   if (obstacle.length > 0) filled += 1
+
+  if (ifCondition.length > MAX_IF_THEN_CHARS) {
+    errors.push(`If-condition is limited to ${MAX_IF_THEN_CHARS} characters.`)
+  }
+  if (thenAction.length > MAX_IF_THEN_CHARS) {
+    errors.push(`Then-action is limited to ${MAX_IF_THEN_CHARS} characters.`)
+  }
 
   if (plan.length > 0) {
     filled += 1
@@ -340,6 +365,9 @@ export function validateWoopGoal(goal: WoopGoalInput): WoopValidation {
     if (!lower.includes('if') || !lower.includes('then')) {
       errors.push('If-then plan should read "If <obstacle>, then I will <action>".')
     }
+  } else if (ifCondition.length > 0 && thenAction.length > 0) {
+    // the structured pair IS an if-then plan — same WOOP part
+    filled += 1
   }
 
   if (

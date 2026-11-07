@@ -40,17 +40,36 @@ export interface RawStatement {
 }
 
 /**
+ * The transaction function both drivers return from RawSqliteHandle.transaction,
+ * carrying better-sqlite3's BEGIN-behavior variants (native driver:
+ * lib/methods/transaction.js; the wasm shim mirrors it verbatim). Use
+ * `.immediate()` when the body writes: it takes the write lock at BEGIN
+ * instead of upgrading from a read snapshot, so a concurrent writer's
+ * mid-flight commit yields a clean wait (busy handler honored) instead of
+ * SQLITE_BUSY "database is locked" on the stale-snapshot upgrade.
+ */
+export interface RawTransactionFn<T> {
+  (): T
+  /** Run the same body under `BEGIN IMMEDIATE` (write lock acquired up front). */
+  immediate(): T
+}
+
+/**
  * Structural contract satisfied by BOTH the native better-sqlite3 Database and
  * the sqlite-wasm shim — exactly the surface ensureSchema,
  * ensureCascadeForeignKeys, ensureViews and backup.ts consume. `transaction`
- * accepts better-sqlite3's behavior-variant functions (its `opts` argument is
- * advisory; both drivers expose .default/.deferred/.immediate/.exclusive).
+ * returns better-sqlite3's behavior-variant function (its `opts` argument is
+ * advisory — drizzle honors it; raw callers pick a variant on the returned
+ * function, e.g. `.immediate()`).
  */
 export interface RawSqliteHandle {
   prepare(sql: string): RawStatement
   exec(sql: string): void
   pragma(str: string): unknown
-  transaction<T>(fn: () => T, opts?: { behavior?: 'deferred' | 'immediate' | 'exclusive' }): () => T
+  transaction<T>(
+    fn: () => T,
+    opts?: { behavior?: 'deferred' | 'immediate' | 'exclusive' },
+  ): RawTransactionFn<T>
   close(): void
 }
 

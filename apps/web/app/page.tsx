@@ -7,8 +7,9 @@
  */
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
+import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
 import { PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
@@ -59,6 +60,15 @@ export default function DashboardPage() {
 
   const level = levelFromXp(d.xpTotal)
 
+  // Fresh-start nudge (Dai, Milkman & Riis 2014): after a streak breaks, the
+  // next temporal landmark is a good reset day — but only while the break is
+  // fresh (≤ 7 days). Skipped on landmark days, where the banner above already
+  // delivers the fresh-start framing.
+  const nudge =
+    !d.freshStart && streakBrokeWithinDays(d.streak.lastActiveDate, new Date())
+      ? nextFreshStart(new Date())
+      : null
+
   // Half-width widgets pair up in reading order (two per row on md+).
   const rows: Array<Array<{ id: string; node: React.ReactNode; chrome: boolean; title: string }>> =
     []
@@ -95,6 +105,15 @@ export default function DashboardPage() {
               day: 'numeric',
             })}
             . Today is a perfect day to begin again.
+          </div>
+        </div>
+      )}
+
+      {nudge && (
+        <div className="panel">
+          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+            <Sprout className="h-4 w-4 shrink-0 text-emerald-500" />
+            <span>Fresh start: {nudge.label}</span>
           </div>
         </div>
       )}
