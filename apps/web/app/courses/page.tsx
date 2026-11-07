@@ -47,7 +47,7 @@ function CourseCard({ course }: { course: CatalogCourse }) {
   return (
     <Link
       href={`/courses/course?id=${course.id}`}
-      className="panel flex items-center gap-3 transition-colors hover:border-indigo-400/60"
+      className="panel flex min-w-0 items-center gap-3 overflow-hidden transition-colors hover:border-indigo-400/60"
     >
       <span
         className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-600/10 text-2xl"
