@@ -21,7 +21,10 @@ import {
   getSyncConfig,
   mergeBackup,
   saveSyncConfig,
+  touchSyncDevice,
+  upsertSyncDevice,
   type MergeResult,
+  type SyncDeviceInput,
   type SyncProviderKind,
 } from './sync'
 
@@ -594,6 +597,8 @@ export async function executeCloudSync(opts: {
     encryptionEnabled?: boolean
     passphrase?: string | null
   }
+  /** Caller's device descriptor (client-side UUID + label) for the roster. */
+  device?: SyncDeviceInput
   fetchFn?: FetchLike
   database?: RawSqliteHandle
   pbkdf2Iterations?: number
@@ -640,6 +645,9 @@ export async function executeCloudSync(opts: {
     }
   }
 
+  // Register this device in the roster (client-side identity, see SyncDeviceInput).
+  if (opts.device) upsertSyncDevice(opts.device, database)
+
   let pulled = false
   let pushed = false
   let mergeResult: MergeResult | null = null
@@ -671,6 +679,7 @@ export async function executeCloudSync(opts: {
       mergeResult = await mergeBackup(rawEnvelope, database)
       pulled = true
       latestRevision = pullRes.revision ?? latestRevision
+      if (opts.device) touchSyncDevice(opts.device.deviceId, 'pull', latestRevision, database)
     }
   }
 
@@ -691,6 +700,7 @@ export async function executeCloudSync(opts: {
     }
     pushed = true
     latestRevision = pushRes.revision ?? latestRevision
+    if (opts.device) touchSyncDevice(opts.device.deviceId, 'push', latestRevision, database)
   }
 
   const syncedAt = new Date().toISOString()

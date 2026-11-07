@@ -1529,3 +1529,30 @@ export const userWorldSettings = table('user_world_settings', {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 })
+
+/**
+ * Multi-device sync registry (M19). One row per device that has synced against
+ * the shared cloud target. Device identity lives client-side — a stable UUID
+ * in localStorage that never travels with the DB — so rows merge cleanly:
+ * each device's snapshot carries its own row, and after a merge every device
+ * sees the full roster of who shares its sync target.
+ */
+export const syncDevices = table(
+  'sync_devices',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** Stable client-generated UUID; the join key across snapshots. */
+    deviceId: text('device_id').notNull(),
+    /** Human label shown on other devices ("Desk PC", "Phone"). */
+    name: text('name').notNull(),
+    /** Client-declared platform hint ('web' | 'windows' | 'android'); advisory. */
+    platform: text('platform'),
+    lastPushAt: text('last_push_at'),
+    lastPullAt: text('last_pull_at'),
+    lastRevision: text('last_revision'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('sync_devices_device_idx').on(t.deviceId)],
+)

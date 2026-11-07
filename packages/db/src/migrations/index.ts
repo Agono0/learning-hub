@@ -30,6 +30,7 @@ import { companionDecor } from './017-companion-decor'
 import { ftsOmni } from './018-fts-omni'
 import { embeddingsOmni } from './019-embeddings-omni'
 import { pushSubscriptions } from './020-push-subscriptions'
+import { syncDevices } from './021-sync-devices'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -53,6 +54,7 @@ export const MIGRATIONS: readonly Migration[] = [
   ftsOmni,
   embeddingsOmni,
   pushSubscriptions,
+  syncDevices,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

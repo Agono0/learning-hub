@@ -9,7 +9,7 @@
  */
 import { z } from 'zod'
 import { networkFetch } from '@learning-hub/ai-adapters'
-import { executeCloudSync, getSyncConfig, saveSyncConfig } from '@learning-hub/db'
+import { executeCloudSync, getSyncConfig, listSyncDevices, saveSyncConfig } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 const syncProviderSchema = z.enum(['none', 'dropbox', 'github', 'gdrive', 'webdav'])
@@ -21,15 +21,25 @@ const syncConfigSchema = z.object({
   passphrase: z.string().max(512).nullable().optional(),
 })
 
+/** Client-side device descriptor (stable localStorage UUID — never DB-derived). */
+const syncDeviceSchema = z.object({
+  deviceId: z.string().min(8).max(64),
+  name: z.string().min(1).max(80),
+  platform: z.string().max(40).nullable().optional(),
+})
+
 const syncActionSchema = z.object({
   action: z.enum(['test', 'pull', 'push', 'sync']),
   override: syncConfigSchema.optional(),
+  device: syncDeviceSchema.optional(),
 })
 
-export const GET = withRoute(async () => {
+export const GET = withRoute(async (req: Request) => {
+  const thisDeviceId = new URL(req.url).searchParams.get('deviceId')
   return Response.json({
     ok: true,
     sync: getSyncConfig({ maskSecrets: true }),
+    devices: listSyncDevices(thisDeviceId),
   })
 })
 
@@ -48,11 +58,13 @@ export const POST = withRoute(async (req: Request) => {
     const result = await executeCloudSync({
       action: body.action,
       override: body.override,
+      device: body.device,
       fetchFn: networkFetch,
     })
     return Response.json({
       ...result,
       sync: getSyncConfig({ maskSecrets: true }),
+      devices: listSyncDevices(body.device?.deviceId),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Cloud sync failed'

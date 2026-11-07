@@ -1081,3 +1081,103 @@ export function saveSyncConfig(
 
   return getSyncConfig({ maskSecrets: false, database })
 }
+
+// ─── Sync device roster (M19) ───────────────────────────────────────────────
+//
+// Device identity lives client-side (stable localStorage UUID) so rows merge
+// cleanly across snapshots: every device upserts its own row before pushing,
+// and after a pull each device sees who else shares its target.
+
+export interface SyncDeviceInput {
+  deviceId: string
+  name: string
+  platform?: string | null
+}
+
+export interface SyncDeviceRow {
+  deviceId: string
+  name: string
+  platform: string | null
+  lastPushAt: string | null
+  lastPullAt: string | null
+  lastRevision: string | null
+  createdAt: string
+}
+
+/**
+ * Insert or refresh this device's roster row. Idempotent: re-syncing from the
+ * same device only updates the label/platform, never duplicates rows.
+ */
+export function upsertSyncDevice(
+  device: SyncDeviceInput,
+  database: RawSqliteHandle = getRawDb(),
+): void {
+  if (!device.deviceId.trim() || !device.name.trim()) {
+    throw new ValidationError('sync device requires deviceId and name')
+  }
+  database
+    .prepare(
+      `INSERT INTO "sync_devices" (device_id, name, platform, created_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(device_id) DO UPDATE SET
+         name = excluded.name,
+         platform = excluded.platform`,
+    )
+    .run(device.deviceId, device.name, device.platform ?? null, new Date().toISOString())
+}
+
+/** Record that this device pushed or pulled at `revision` (no-op if unknown device). */
+export function touchSyncDevice(
+  deviceId: string,
+  action: 'push' | 'pull',
+  revision: string | null,
+  database: RawSqliteHandle = getRawDb(),
+): void {
+  const at = new Date().toISOString()
+  database
+    .prepare(
+      action === 'push'
+        ? `UPDATE "sync_devices" SET last_push_at = ?, last_revision = ? WHERE device_id = ?`
+        : `UPDATE "sync_devices" SET last_pull_at = ?, last_revision = ? WHERE device_id = ?`,
+    )
+    .run(at, revision, deviceId)
+}
+
+/**
+ * The device roster sharing this sync target, most-recently-active first.
+ * `thisDeviceId` (the caller's localStorage UUID) marks which row is "here".
+ */
+export function listSyncDevices(
+  thisDeviceId?: string | null,
+  database: RawSqliteHandle = getRawDb(),
+): Array<SyncDeviceRow & { isThisDevice: boolean }> {
+  const hasTable = database
+    .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sync_devices'`)
+    .get()
+  if (!hasTable) return []
+  const rows = database
+    .prepare(
+      `SELECT device_id, name, platform, last_push_at, last_pull_at, last_revision, created_at
+       FROM "sync_devices"
+       ORDER BY COALESCE(last_push_at, last_pull_at, created_at) DESC`,
+    )
+    .all() as {
+    device_id: string
+    name: string
+    platform: string | null
+    last_push_at: string | null
+    last_pull_at: string | null
+    last_revision: string | null
+    created_at: string
+  }[]
+  return rows.map((r) => ({
+    deviceId: r.device_id,
+    name: r.name,
+    platform: r.platform,
+    lastPushAt: r.last_push_at,
+    lastPullAt: r.last_pull_at,
+    lastRevision: r.last_revision,
+    createdAt: r.created_at,
+    isThisDevice: r.device_id === thisDeviceId,
+  }))
+}

@@ -23,6 +23,7 @@ import {
   FileJson,
   FileUp,
   GitMerge,
+  Laptop,
   Lock,
   RefreshCw,
   ShieldCheck,
@@ -30,8 +31,19 @@ import {
   X,
 } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { getDeviceIdentity } from '@/lib/device'
 
 type SyncProviderKind = 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
+
+interface SyncDeviceRow {
+  deviceId: string
+  name: string
+  platform: string | null
+  lastPushAt: string | null
+  lastPullAt: string | null
+  lastRevision: string | null
+  isThisDevice: boolean
+}
 
 interface SyncConfigState {
   provider: SyncProviderKind
@@ -60,6 +72,7 @@ interface SyncActionResponse {
   revision?: string | null
   syncedAt?: string | null
   sync?: SyncConfigState
+  devices?: SyncDeviceRow[]
   error?: string
 }
 
@@ -147,9 +160,16 @@ export default function BackupPage() {
   const [passphrase, setPassphrase] = useState('')
   const [syncFeedback, setSyncFeedback] = useState<StatusLine | null>(null)
 
-  const syncQuery = useQuery<{ ok: boolean; sync: SyncConfigState }>({
+  const syncQuery = useQuery<{ ok: boolean; sync: SyncConfigState; devices: SyncDeviceRow[] }>({
     queryKey: ['sync-config'],
-    queryFn: () => apiGet<{ ok: boolean; sync: SyncConfigState }>('/api/sync'),
+    queryFn: () => {
+      // Client-side device id marks the roster's "this device" row (hydration-safe:
+      // the localStorage read happens inside the query fn, after mount).
+      const { deviceId } = getDeviceIdentity()
+      return apiGet<{ ok: boolean; sync: SyncConfigState; devices: SyncDeviceRow[] }>(
+        `/api/sync${deviceId ? `?deviceId=${encodeURIComponent(deviceId)}` : ''}`,
+      )
+    },
   })
 
   useEffect(() => {
@@ -207,6 +227,7 @@ export default function BackupPage() {
       }
       return apiSend<SyncActionResponse>('/api/sync', 'POST', {
         action,
+        device: getDeviceIdentity(),
         override: {
           provider,
           config: cfg,
@@ -407,6 +428,44 @@ export default function BackupPage() {
               : 'Not synced yet — choose a free provider below'}
           </span>
         </div>
+
+        {(syncQuery.data?.devices?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <div className="text-xs font-semibold text-neutral-500">
+              Devices on this target ({syncQuery.data!.devices.length})
+            </div>
+            <ul className="mt-2 space-y-1.5">
+              {syncQuery.data!.devices.map((d) => (
+                <li
+                  key={d.deviceId}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs"
+                >
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <Laptop className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                    <span className="truncate font-medium">{d.name}</span>
+                    {d.platform && (
+                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-[#1a1a1f]">
+                        {d.platform}
+                      </span>
+                    )}
+                    {d.isThisDevice && (
+                      <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-400">
+                        this device
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[11px] text-neutral-500">
+                    {d.lastPushAt
+                      ? `pushed ${new Date(d.lastPushAt).toLocaleString()}`
+                      : d.lastPullAt
+                        ? `pulled ${new Date(d.lastPullAt).toLocaleString()}`
+                        : 'registered'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 text-xs">
