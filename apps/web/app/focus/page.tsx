@@ -31,8 +31,15 @@ import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
 import { PageHeader, useToast } from '@/ui'
-import { WorldCanvas } from '@/ui/WorldCanvas'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+// The 3D presentation canvas is optional during focus sessions — keep three.js
+// out of the focus route's critical path (same pattern as /world and the graph).
+const WorldCanvas = dynamic(() => import('@/ui/WorldCanvas').then((m) => m.WorldCanvas), {
+  ssr: false,
+  loading: () => <div className="h-full w-full" />,
+})
 
 interface FocusSession {
   id: number

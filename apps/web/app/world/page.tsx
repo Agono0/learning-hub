@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Coins,
   Compass,
@@ -23,8 +24,19 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { usePalette } from '@/components/ThemeSync'
 import { Badge, EmptyState, PageHeader, Panel, Tabs } from '@/ui'
-import { WorldCanvas, type WorldCanvasHandle } from '@/ui/WorldCanvas'
+import type { WorldCanvasHandle } from '@/ui/WorldCanvas'
 import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
+
+// three.js is heavy — load the canvas chunk after first paint (same pattern as
+// the knowledge graph's react-force-graph-2d, per ENGINE-REFERENCE).
+const WorldCanvas = dynamic(() => import('@/ui/WorldCanvas').then((m) => m.WorldCanvas), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-full w-full place-items-center text-sm text-slate-400">
+      Loading world…
+    </div>
+  ),
+})
 
 interface WorldState {
   avatar: {

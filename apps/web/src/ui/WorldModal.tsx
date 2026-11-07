@@ -1,8 +1,18 @@
 'use client'
 
 import React, { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Coins, Compass, Maximize2, X } from 'lucide-react'
-import { WorldCanvas } from './WorldCanvas'
+
+// Keep three.js out of the modal's critical path — it loads after first paint.
+const WorldCanvas = dynamic(() => import('./WorldCanvas').then((m) => m.WorldCanvas), {
+  ssr: false,
+  loading: () => (
+    <div className="grid h-full w-full place-items-center text-sm text-slate-400">
+      Loading world…
+    </div>
+  ),
+})
 
 export interface WorldModalProps {
   isOpen: boolean
