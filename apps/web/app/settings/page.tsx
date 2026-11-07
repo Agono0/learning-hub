@@ -31,6 +31,7 @@ import { deliverNotification } from '@/platform/reminders'
 import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 const PROVIDERS: {
   key: AIProvider
@@ -313,12 +314,10 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          AI provider, scheduler retention, session length, theme.
-        </p>
-      </header>
+      <PageHeader
+        title="Settings"
+        subtitle="AI provider, scheduler retention, session length, theme."
+      />
 
       <section className="panel space-y-4">
         <div>

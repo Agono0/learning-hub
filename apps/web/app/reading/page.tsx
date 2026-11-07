@@ -29,7 +29,7 @@ import {
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
-import { Badge, Markdown, Sheet, Tabs } from '@/ui'
+import { Badge, Markdown, PageHeader, Sheet, Tabs } from '@/ui'
 
 interface Source {
   id: number
@@ -422,24 +422,21 @@ export default function ReadingPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Reading Studio</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            PDF, EPUB, Web Articles, YouTube transcripts & Markdown — incremental reading or guided
-            SQ3R.
-          </p>
-        </div>
-        <button
-          className="btn"
-          onClick={() => {
-            setFeedback(null)
-            setIngestOpen(true)
-          }}
-        >
-          <Plus className="h-4 w-4" /> Add source
-        </button>
-      </header>
+      <PageHeader
+        title="Reading Studio"
+        subtitle="PDF, EPUB, Web Articles, YouTube transcripts & Markdown — incremental reading or guided SQ3R."
+        actions={
+          <button
+            className="btn"
+            onClick={() => {
+              setFeedback(null)
+              setIngestOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4" /> Add source
+          </button>
+        }
+      />
 
       {feedback && (
         <div

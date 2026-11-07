@@ -14,7 +14,7 @@ import { BLOOM_VERBS, CRAM_WARNING, EXPRESSIVE_WRITING_PROMPT } from '@learning-
 import type { MockExam } from '@learning-hub/core/curriculum'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
-import { useToast } from '@/ui'
+import { PageHeader, useToast } from '@/ui'
 
 interface Lesson {
   id: number
@@ -329,17 +329,15 @@ export default function CurriculumPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Curriculum</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Backward-designed courses, a gated skill DAG, and exam mode.
-          </p>
-        </div>
-        <button className="btn" onClick={() => setGenOpen(true)}>
-          <Wand2 className="h-4 w-4" /> Generate course
-        </button>
-      </header>
+      <PageHeader
+        title="Curriculum"
+        subtitle="Backward-designed courses, a gated skill DAG, and exam mode."
+        actions={
+          <button className="btn" onClick={() => setGenOpen(true)}>
+            <Wand2 className="h-4 w-4" /> Generate course
+          </button>
+        }
+      />
 
       {genOpen && (
         <div className="panel space-y-3">

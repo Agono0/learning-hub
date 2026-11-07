@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, BedDouble, Coffee, Dumbbell, Gauge } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface PhysioLog {
   id: number
@@ -80,14 +81,11 @@ export default function PhysiologyPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Activity className="h-6 w-6 text-indigo-400" /> Physiology
-        </h1>
-        <p className="text-sm text-neutral-500">
-          Sleep, movement, caffeine and arousal — correlated with your real retention.
-        </p>
-      </header>
+      <PageHeader
+        icon={<Activity className="h-6 w-6 text-indigo-400" />}
+        title="Physiology"
+        subtitle="Sleep, movement, caffeine and arousal — correlated with your real retention."
+      />
 
       {/* daily log form */}
       <div className="panel space-y-3">

@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
 import { apiGet } from '@/lib/transport'
-import { Skeleton } from '@/ui'
+import { PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
@@ -99,28 +99,26 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Today</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {d.dateKey} · Level {level} · {d.xpToday} XP earned today
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="btn-ghost border text-xs"
-            title={ORDER_KEY_HINT}
-            onClick={() => setOrder(DEFAULT_ORDER)}
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset layout
-          </button>
-          <Link href="/review" className="btn h-11 px-6 text-base">
-            <Repeat2 className="h-5 w-5" />
-            {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title="Today"
+        subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn-ghost border text-xs"
+              title={ORDER_KEY_HINT}
+              onClick={() => setOrder(DEFAULT_ORDER)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Reset layout
+            </button>
+            <Link href="/review" className="btn h-11 px-6 text-base">
+              <Repeat2 className="h-5 w-5" />
+              {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
+            </Link>
+          </div>
+        }
+      />
 
       {rows.map((row, rowIdx) => (
         <section

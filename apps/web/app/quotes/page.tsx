@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Quote, Search, Star } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface QuoteRow {
   id: number
@@ -68,14 +69,11 @@ export default function QuotesPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Quote className="h-6 w-6 text-indigo-400" /> Quotes
-        </h1>
-        <p className="text-sm text-neutral-500">
-          One a day, with the history of who said it and why it survived.
-        </p>
-      </header>
+      <PageHeader
+        icon={<Quote className="h-6 w-6 text-indigo-400" />}
+        title="Quotes"
+        subtitle="One a day, with the history of who said it and why it survived."
+      />
 
       {/* daily quote hero */}
       <div className="panel border-indigo-500/30 text-center">

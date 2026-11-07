@@ -14,7 +14,7 @@ import { brainwritingMerge, scamperLenses, scamperPrompt } from '@learning-hub/c
 import type { IdeaStage } from '@learning-hub/core/types'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
-import { useToast } from '@/ui'
+import { PageHeader, useToast } from '@/ui'
 
 interface Idea {
   id: number
@@ -183,12 +183,10 @@ export default function IdeasPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Ideas</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          Capture, combine, interrogate, and let stale ideas resurface themselves.
-        </p>
-      </header>
+      <PageHeader
+        title="Ideas"
+        subtitle="Capture, combine, interrogate, and let stale ideas resurface themselves."
+      />
 
       {error && <div className="panel text-sm text-amber-500">{error}</div>}
 

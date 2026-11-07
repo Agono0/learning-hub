@@ -18,6 +18,7 @@ import { parseCloze, validateCardContent } from '@learning-hub/core/cards'
 import { leitnerBox, leitnerHistogram } from '@learning-hub/core/fsrs'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface DeckInfo {
   id: number
@@ -171,20 +172,22 @@ export default function DecksPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Decks & Cards</h1>
-        <div className="flex gap-2">
-          <button className="btn" onClick={() => setEditing('new')} disabled={!activeDeck}>
-            <Plus className="h-4 w-4" /> New card
-          </button>
-          <button className="btn-ghost" onClick={() => setBulkOpen(true)} disabled={!activeDeck}>
-            <FilePlus2 className="h-4 w-4" /> Bulk paste
-          </button>
-          <button className="btn-ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
-            <Wand2 className="h-4 w-4" /> AI generate
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Decks & Cards"
+        actions={
+          <div className="flex gap-2">
+            <button className="btn" onClick={() => setEditing('new')} disabled={!activeDeck}>
+              <Plus className="h-4 w-4" /> New card
+            </button>
+            <button className="btn-ghost" onClick={() => setBulkOpen(true)} disabled={!activeDeck}>
+              <FilePlus2 className="h-4 w-4" /> Bulk paste
+            </button>
+            <button className="btn-ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
+              <Wand2 className="h-4 w-4" /> AI generate
+            </button>
+          </div>
+        }
+      />
 
       {/* deck rail */}
       <div className="panel space-y-3">

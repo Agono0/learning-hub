@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface CanvasItem {
   id: string
@@ -179,55 +180,52 @@ export default function CanvasPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Canvas</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Spatial thinking: drag notes, cards, and excerpts; connect them; it all persists as
-            JSON.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <select
-            className="input w-44"
-            value={activeId ?? ''}
-            onChange={(e) => setActiveId(Number(e.target.value) || null)}
-          >
-            <option value="">New canvas…</option>
-            {(data?.canvases ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-          <button
-            className="btn-ghost"
-            onClick={() => {
-              if (activeId) return
-              createCanvas.mutate()
-            }}
-            disabled={Boolean(activeId) || createCanvas.isPending}
-          >
-            <Plus className="h-4 w-4" /> New
-          </button>
-          <button className="btn-ghost" onClick={() => addItem('note')} disabled={!activeId}>
-            + Note
-          </button>
-          <button className="btn-ghost" onClick={() => addItem('card')} disabled={!activeId}>
-            + Card
-          </button>
-          <button className="btn-ghost" onClick={() => addItem('excerpt')} disabled={!activeId}>
-            + Excerpt
-          </button>
-          <button
-            className="btn"
-            onClick={() => save.mutate()}
-            disabled={!activeId || save.isPending}
-          >
-            <Save className="h-4 w-4" /> Save
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        title="Canvas"
+        subtitle="Spatial thinking: drag notes, cards, and excerpts; connect them; it all persists as JSON."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <select
+              className="input w-44"
+              value={activeId ?? ''}
+              onChange={(e) => setActiveId(Number(e.target.value) || null)}
+            >
+              <option value="">New canvas…</option>
+              {(data?.canvases ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                if (activeId) return
+                createCanvas.mutate()
+              }}
+              disabled={Boolean(activeId) || createCanvas.isPending}
+            >
+              <Plus className="h-4 w-4" /> New
+            </button>
+            <button className="btn-ghost" onClick={() => addItem('note')} disabled={!activeId}>
+              + Note
+            </button>
+            <button className="btn-ghost" onClick={() => addItem('card')} disabled={!activeId}>
+              + Card
+            </button>
+            <button className="btn-ghost" onClick={() => addItem('excerpt')} disabled={!activeId}>
+              + Excerpt
+            </button>
+            <button
+              className="btn"
+              onClick={() => save.mutate()}
+              disabled={!activeId || save.isPending}
+            >
+              <Save className="h-4 w-4" /> Save
+            </button>
+          </div>
+        }
+      />
 
       {!activeId ? (
         <div className="panel text-sm text-neutral-500">Create or pick a canvas.</div>

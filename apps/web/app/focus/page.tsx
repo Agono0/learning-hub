@@ -30,7 +30,7 @@ import {
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
-import { useToast } from '@/ui'
+import { PageHeader, useToast } from '@/ui'
 import { WorldCanvas } from '@/ui/WorldCanvas'
 import Link from 'next/link'
 
@@ -484,44 +484,41 @@ export default function FocusPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Timer className="h-6 w-6 text-indigo-400" /> Focus Studio
-          </h1>
-          <p className="text-sm text-neutral-500">
-            Protected deep work, honest leak tracking, and precommitment Ulysses contracts.
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-(--hub-border) dark:bg-(--hub-panel)">
-          <button
-            type="button"
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-              activeTab === 'standard'
-                ? 'bg-white shadow text-neutral-900 dark:bg-[#202025] dark:text-white'
-                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
-            }`}
-            onClick={() => setActiveTab('standard')}
-          >
-            Standard Focus
-          </button>
-          <button
-            type="button"
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-              activeTab === 'max'
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
-            }`}
-            onClick={() => setActiveTab('max')}
-          >
-            <Shield className="h-3.5 w-3.5" />
-            Max Focus Mode
-            {isMaxFocusActive && (
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            )}
-          </button>
-        </div>
-      </header>
+      <PageHeader
+        icon={<Timer className="h-6 w-6 text-indigo-400" />}
+        title="Focus Studio"
+        subtitle="Protected deep work, honest leak tracking, and precommitment Ulysses contracts."
+        actions={
+          <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-(--hub-border) dark:bg-(--hub-panel)">
+            <button
+              type="button"
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                activeTab === 'standard'
+                  ? 'bg-white shadow text-neutral-900 dark:bg-[#202025] dark:text-white'
+                  : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+              }`}
+              onClick={() => setActiveTab('standard')}
+            >
+              Standard Focus
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                activeTab === 'max'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+              }`}
+              onClick={() => setActiveTab('max')}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Max Focus Mode
+              {isMaxFocusActive && (
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+            </button>
+          </div>
+        }
+      />
 
       {xpToast && (
         <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm text-indigo-300">

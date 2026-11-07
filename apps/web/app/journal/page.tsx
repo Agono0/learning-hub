@@ -6,6 +6,7 @@ import { Bot, PenLine, Sparkles } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface JournalEntry {
   id: number
@@ -132,12 +133,11 @@ export default function JournalPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <PenLine className="h-6 w-6 text-indigo-400" /> Journal
-        </h1>
-        <p className="text-sm text-neutral-500">Small wins compound. Mood is data, not judgment.</p>
-      </header>
+      <PageHeader
+        icon={<PenLine className="h-6 w-6 text-indigo-400" />}
+        title="Journal"
+        subtitle="Small wins compound. Mood is data, not judgment."
+      />
 
       {/* today's entry */}
       <div className="panel space-y-3">

@@ -48,7 +48,7 @@ import {
 } from '@learning-hub/core/practice'
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
-import { InkPad } from '@/ui'
+import { InkPad, PageHeader } from '@/ui'
 import {
   acquireWakeLock,
   listenForSpeech,
@@ -571,7 +571,7 @@ function ReviewPageInner() {
   if (!started) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">Review</h1>
+        <PageHeader title="Review" />
         <div className="panel space-y-4">
           <div>
             <div className="label mb-2">Deck</div>
@@ -716,7 +716,7 @@ function ReviewPageInner() {
   if (finishedAt !== null || (!current && results.length > 0)) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">Session complete</h1>
+        <PageHeader title="Session complete" />
         <div className="panel celebrate space-y-3">
           <div className="flex items-center gap-3">
             <Sparkles className="h-8 w-8 text-amber-400" />
@@ -759,22 +759,18 @@ function ReviewPageInner() {
   // ─── Active card ───
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {session.data?.course ? 'Mixed practice' : 'Review'}
-          </h1>
-          {session.data?.course && (
-            <p className="text-xs text-neutral-500">{session.data.course.title}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-sm text-neutral-500">
-          <span>
-            {idx + 1} / {queue.length}
-          </span>
-          <EnergyBar energy={energy} />
-        </div>
-      </div>
+      <PageHeader
+        title={session.data?.course ? 'Mixed practice' : 'Review'}
+        subtitle={session.data?.course ? session.data.course.title : undefined}
+        actions={
+          <div className="flex items-center gap-3 text-sm text-neutral-500">
+            <span>
+              {idx + 1} / {queue.length}
+            </span>
+            <EnergyBar energy={energy} />
+          </div>
+        }
+      />
 
       {mode === 'commute' && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-300">

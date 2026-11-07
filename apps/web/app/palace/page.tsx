@@ -13,6 +13,7 @@ import { Eye, EyeOff, Map, MapPin, Play, Plus, Save, Trash2, X } from 'lucide-re
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { palaceWalkOrder } from '@learning-hub/core/memory'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface PalaceRow {
   id: number
@@ -142,9 +143,7 @@ export default function MemoryPalacePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-        <Map className="h-5 w-5" /> Memory Palace
-      </h1>
+      <PageHeader icon={<Map className="h-5 w-5" />} title="Memory Palace" />
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         {/* palace list */}

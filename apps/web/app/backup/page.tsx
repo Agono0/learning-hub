@@ -29,6 +29,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import { PageHeader } from '@/ui'
 
 type SyncProviderKind = 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
 
@@ -367,29 +368,26 @@ export default function BackupPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Backup, Sync & Import/Export</h1>
-          <p className="text-xs text-neutral-500">
-            Free multi-device Cloud Sync, non-destructive Smart Merge, Anki import, and full
-            snapshots
-          </p>
-        </div>
-        <button
-          className="btn"
-          disabled={downloading}
-          onClick={() => {
-            setDownloading(true)
-            apiDownload('/api/backup', 'learning-hub-backup.json')
-              .catch((e: unknown) =>
-                log({ kind: 'error', text: e instanceof Error ? e.message : 'download failed' }),
-              )
-              .finally(() => setDownloading(false))
-          }}
-        >
-          <DatabaseBackup className="h-4 w-4" /> {downloading ? 'preparing…' : 'Download backup'}
-        </button>
-      </div>
+      <PageHeader
+        title="Backup, Sync & Import/Export"
+        subtitle="Free multi-device Cloud Sync, non-destructive Smart Merge, Anki import, and full snapshots"
+        actions={
+          <button
+            className="btn"
+            disabled={downloading}
+            onClick={() => {
+              setDownloading(true)
+              apiDownload('/api/backup', 'learning-hub-backup.json')
+                .catch((e: unknown) =>
+                  log({ kind: 'error', text: e instanceof Error ? e.message : 'download failed' }),
+                )
+                .finally(() => setDownloading(false))
+            }}
+          >
+            <DatabaseBackup className="h-4 w-4" /> {downloading ? 'preparing…' : 'Download backup'}
+          </button>
+        }
+      />
 
       {/* Free Serverless Cloud Sync */}
       <div className="panel space-y-4">

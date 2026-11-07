@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { isFreshStartMoment } from '@learning-hub/core/src/motivation'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface StreakResponse {
   streak: {
@@ -171,14 +172,11 @@ export default function MotivationPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Flame className="h-6 w-6 text-indigo-400" /> Motivation
-        </h1>
-        <p className="text-sm text-neutral-500">
-          XP for skill milestones, forgiving streaks, white-hat quests.
-        </p>
-      </header>
+      <PageHeader
+        icon={<Flame className="h-6 w-6 text-indigo-400" />}
+        title="Motivation"
+        subtitle="XP for skill milestones, forgiving streaks, white-hat quests."
+      />
 
       {fresh.fresh && (
         <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200">

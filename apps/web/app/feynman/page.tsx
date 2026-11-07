@@ -16,6 +16,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { GraduationCap, Send, Sparkles } from 'lucide-react'
 import { TransportPanel, useAiStatus, type ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface Msg {
   /** stable client-side identity — the message list grows during a session */
@@ -234,14 +235,14 @@ export default function FeynmanPage() {
   if (!started) {
     return (
       <div className="mx-auto max-w-2xl space-y-4">
-        <header>
-          <h1 className="text-2xl font-bold tracking-tight">Feynman Teach-back</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {manual
+        <PageHeader
+          title="Feynman Teach-back"
+          subtitle={
+            manual
               ? 'Manual mode: no AI configured — explain to a real person (or a rubber duck), then grade yourself with the rubric below.'
-              : 'Explain a concept as if to a 12-year-old. A confused student will ask follow-ups, then you get graded on coverage, misconceptions, and gaps — and gap-cards are born automatically.'}
-          </p>
-        </header>
+              : 'Explain a concept as if to a 12-year-old. A confused student will ask follow-ups, then you get graded on coverage, misconceptions, and gaps — and gap-cards are born automatically.'
+          }
+        />
         <div className="panel space-y-3">
           <div>
             <label className="label mb-1 block">Concept you're teaching</label>
@@ -273,21 +274,21 @@ export default function FeynmanPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Teaching: {concept}</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {manual
-              ? 'Answer your listener from memory. Every stumble is rubric data.'
-              : "Answer the student's questions. One question at a time — just like they'd ask."}
-          </p>
-        </div>
-        {!manual && (
-          <button className="btn" onClick={doGrade} disabled={grading || streaming || !sessionId}>
-            <Sparkles className="h-4 w-4" /> {grading ? 'Grading…' : 'Grade my teach-back'}
-          </button>
-        )}
-      </header>
+      <PageHeader
+        title={`Teaching: ${concept}`}
+        subtitle={
+          manual
+            ? 'Answer your listener from memory. Every stumble is rubric data.'
+            : "Answer the student's questions. One question at a time — just like they'd ask."
+        }
+        actions={
+          !manual && (
+            <button className="btn" onClick={doGrade} disabled={grading || streaming || !sessionId}>
+              <Sparkles className="h-4 w-4" /> {grading ? 'Grading…' : 'Grade my teach-back'}
+            </button>
+          )
+        }
+      />
 
       <div className="panel flex h-[45vh] flex-col">
         <div className="flex-1 space-y-3 overflow-y-auto pr-1">

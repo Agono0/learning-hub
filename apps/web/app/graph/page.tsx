@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
@@ -145,40 +146,37 @@ export default function GraphPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Knowledge Graph</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Notes, skills, and adaptive prerequisite DAGs as one navigable web.
-          </p>
-        </div>
-
-        {/* View Switcher */}
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-neutral-700 bg-neutral-900/60 p-1 text-xs font-medium">
-            <button
-              onClick={() => setViewMode('web')}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
-                viewMode === 'web'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              <Network className="h-3.5 w-3.5" /> Force Web
-            </button>
-            <button
-              onClick={() => setViewMode('prereq')}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
-                viewMode === 'prereq'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              <GitFork className="h-3.5 w-3.5" /> Prerequisite DAG & Remedial
-            </button>
+      <PageHeader
+        title="Knowledge Graph"
+        subtitle="Notes, skills, and adaptive prerequisite DAGs as one navigable web."
+        actions={
+          <div className="flex items-center gap-2">
+            {/* View Switcher */}
+            <div className="flex rounded-lg border border-neutral-700 bg-neutral-900/60 p-1 text-xs font-medium">
+              <button
+                onClick={() => setViewMode('web')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
+                  viewMode === 'web'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Network className="h-3.5 w-3.5" /> Force Web
+              </button>
+              <button
+                onClick={() => setViewMode('prereq')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
+                  viewMode === 'prereq'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <GitFork className="h-3.5 w-3.5" /> Prerequisite DAG & Remedial
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {viewMode === 'web' ? (
         <div className="space-y-3">

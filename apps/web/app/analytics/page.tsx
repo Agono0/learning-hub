@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Route, Target } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
+import { PageHeader } from '@/ui'
 
 interface AnalyticsResponse {
   forecast: { date: string; count: number }[]
@@ -46,14 +47,11 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <Route className="h-6 w-6 text-indigo-400" /> Analytics
-        </h1>
-        <p className="text-sm text-neutral-500">
-          Everything computed from your real revlog, focus and physio data.
-        </p>
-      </header>
+      <PageHeader
+        icon={<Route className="h-6 w-6 text-indigo-400" />}
+        title="Analytics"
+        subtitle="Everything computed from your real revlog, focus and physio data."
+      />
 
       <InsightsSection />
 

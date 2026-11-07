@@ -17,6 +17,7 @@ import { History, Lightbulb, Save, Send, Settings2, Sparkles } from 'lucide-reac
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import type { ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -269,61 +270,61 @@ export default function TutorPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Socratic Tutor</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {manual
-              ? 'Self-explain mode: no AI configured — you play the tutor. The escalation ladder becomes self-questioning prompts.'
-              : 'The tutor never gives the answer before your first attempt — nudge → hint → worked example → solution.'}
-          </p>
-        </div>
-        {!manual && (
-          <div className="flex items-center gap-2">
-            <select
-              className="input w-44"
-              value={contextType ?? ''}
-              onChange={(e) => {
-                const v = e.target.value as 'note' | 'lesson' | ''
-                setContextType(v || null)
-                setContextId(null)
-              }}
-            >
-              <option value="">No context</option>
-              <option value="note">A note</option>
-              <option value="lesson">A lesson</option>
-            </select>
-            {contextType === 'note' && (
+      <PageHeader
+        title="Socratic Tutor"
+        subtitle={
+          manual
+            ? 'Self-explain mode: no AI configured — you play the tutor. The escalation ladder becomes self-questioning prompts.'
+            : 'The tutor never gives the answer before your first attempt — nudge → hint → worked example → solution.'
+        }
+        actions={
+          !manual && (
+            <div className="flex items-center gap-2">
               <select
-                className="input w-52"
-                value={contextId ?? ''}
-                onChange={(e) => setContextId(Number(e.target.value) || null)}
+                className="input w-44"
+                value={contextType ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value as 'note' | 'lesson' | ''
+                  setContextType(v || null)
+                  setContextId(null)
+                }}
               >
-                <option value="">Pick note…</option>
-                {(notesData?.notes ?? []).map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.title}
-                  </option>
-                ))}
+                <option value="">No context</option>
+                <option value="note">A note</option>
+                <option value="lesson">A lesson</option>
               </select>
-            )}
-            {contextType === 'lesson' && (
-              <select
-                className="input w-52"
-                value={contextId ?? ''}
-                onChange={(e) => setContextId(Number(e.target.value) || null)}
-              >
-                <option value="">Pick lesson…</option>
-                {(lessonsData?.lessons ?? []).map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.course ? `${l.course} — ${l.title}` : l.title}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
-      </header>
+              {contextType === 'note' && (
+                <select
+                  className="input w-52"
+                  value={contextId ?? ''}
+                  onChange={(e) => setContextId(Number(e.target.value) || null)}
+                >
+                  <option value="">Pick note…</option>
+                  {(notesData?.notes ?? []).map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {n.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {contextType === 'lesson' && (
+                <select
+                  className="input w-52"
+                  value={contextId ?? ''}
+                  onChange={(e) => setContextId(Number(e.target.value) || null)}
+                >
+                  <option value="">Pick lesson…</option>
+                  {(lessonsData?.lessons ?? []).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.course ? `${l.course} — ${l.title}` : l.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )
+        }
+      />
 
       {manual ? (
         <>

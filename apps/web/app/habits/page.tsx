@@ -6,6 +6,7 @@ import { CalendarCheck, Coffee, Link2, PartyPopper, Plus, Trash2 } from 'lucide-
 import { DOPAMINE_MENU, type DopamineType } from '@learning-hub/core/src/habits'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
+import { PageHeader } from '@/ui'
 
 interface Habit {
   id: number
@@ -108,22 +109,19 @@ export default function HabitsPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <CalendarCheck className="h-6 w-6 text-indigo-400" /> Habits
-          </h1>
+      <PageHeader
+        icon={<CalendarCheck className="h-6 w-6 text-indigo-400" />}
+        title="Habits"
+        subtitle="Cue → craving → response → reward. Tiny versions count."
+        actions={
           <p className="text-sm text-neutral-500">
-            Cue → craving → response → reward. Tiny versions count.
+            today:{' '}
+            <span className="font-semibold text-indigo-400">
+              {doneToday}/{habits.length}
+            </span>
           </p>
-        </div>
-        <p className="text-sm text-neutral-500">
-          today:{' '}
-          <span className="font-semibold text-indigo-400">
-            {doneToday}/{habits.length}
-          </span>
-        </p>
-      </header>
+        }
+      />
 
       {/* today's checklist with stacking-chain order + celebrate */}
       <div className="panel space-y-2">

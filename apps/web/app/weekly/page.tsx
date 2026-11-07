@@ -22,6 +22,7 @@ import {
   TrendingDown,
   Zap,
 } from 'lucide-react'
+import { PageHeader } from '@/ui'
 
 interface WeeklyResponse {
   metrics: {
@@ -122,14 +123,13 @@ export default function WeeklyPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          <BarChart3 className="h-6 w-6 text-indigo-400" /> Weekly Review
-        </h1>
-        <p className="text-sm text-neutral-500">
-          {m ? `${m.weekStart} → ${m.weekEnd} · your last 7 local days` : 'Loading your week…'}
-        </p>
-      </header>
+      <PageHeader
+        icon={<BarChart3 className="h-6 w-6 text-indigo-400" />}
+        title="Weekly Review"
+        subtitle={
+          m ? `${m.weekStart} → ${m.weekEnd} · your last 7 local days` : 'Loading your week…'
+        }
+      />
 
       {/* metric tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
