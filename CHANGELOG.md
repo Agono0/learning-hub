@@ -4,6 +4,15 @@ All notable changes to Learning HUB are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### M19 "Foundation" — Public-Release Quality Floor & Sync Roster (in progress)
+
+- **Browser-level smoke tests** — first Playwright suite (`npm run test:ui` from `apps/web`): five ordered critical paths (dashboard renders, a review session grades a card, the sample curriculum imports and opens to a lesson, backup export downloads, snapshot round-trips through Smart Merge restore) against `next dev` on an isolated DB clone — the developer database is never touched. Chromium launches proxy-free; the suite uses `localhost` (Next 16 refuses cross-origin dev resources from `127.0.0.1`).
+- **Sync device roster** — `sync_devices` table (migration 021) + client-side device identity (stable localStorage UUID that never travels in the DB): every sync registers/touches the device, `/api/sync` returns the roster with a "this device" marker, and the Backup page shows which devices share the target. Two-device convergence is proven by a mock-WebDAV round-trip test.
+- **First-run imports** — the onboarding wizard's starter step gains "Already have content?": Anki `.apkg`/`.txt` via `/api/import` and LHCF course files via `/api/curriculum/import`, both fully offline (manual-mode guarantee); step 3 adds a first-review pointer.
+- **PageHeader everywhere** — all 20 remaining hand-rolled page headers (24 headers across conditional branches) migrated to the shared kit; visible text preserved verbatim.
+- **Perf & polish** — three.js world canvas lazy-loads via `next/dynamic` on `/world`, `/focus` 3D mode and WorldModal; hydration-safe device/settings reads; course cards no longer overflow at 360px (grid-item min-content trap).
+- **Docs honesty** — README roadmap pruned of shipped items; learning-science planned-items table reconciled with the changelog; PLAN-M6-M10 archived; active planning in `docs/plan-M19-M21.md`.
+
 ### M18 "Omniscient" — All-in-One Max-Out
 
 - **Search Everything** — FTS5 across 17 knowledge surfaces (12 new: journal, quotes, reading sources, projects, mindmaps, canvases, palaces, goals, habits, quick captures, SQ3R, tutor chats) + a full-screen `/search` page with kind filters + an AI `nl-search` planner that turns a question into keyword queries (manual mode: keyword split).
