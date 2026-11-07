@@ -85,3 +85,7 @@ desktop.ini
 .agents/
 .zcode/
 math-333/
+
+# ── Playwright (browser smoke) artifacts ───────────────────────────────────
+test-results/
+playwright-report/
