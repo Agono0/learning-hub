@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen,
   Check,
   Cloud,
+  FileUp,
   GraduationCap,
   Monitor,
   Moon,
@@ -19,6 +20,17 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Sheet, useToast } from '@/ui'
 
 const DISMISSED_KEY = 'lh-onboarding-dismissed'
+
+/** Reads a File as base64 (chunked to avoid call-stack limits on big .apkg). */
+async function fileToBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
 
 interface StarterOption {
   slug: string
@@ -89,6 +101,59 @@ export function OnboardingWizard() {
   const [sessionMinutes, setSessionMinutes] = useState<number>(s?.sessionMinutes ?? 25)
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(['learning-how-to-learn'])
   const [seedCore, setSeedCore] = useState(true)
+
+  // "Bring your own content" — existing users can move in during first-run.
+  const ankiFileRef = useRef<HTMLInputElement | null>(null)
+  const courseFileRef = useRef<HTMLInputElement | null>(null)
+
+  const importAnkiMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const kind = file.name.toLowerCase().endsWith('.apkg') ? 'apkg' : 'txt'
+      const payload = kind === 'apkg' ? await fileToBase64(file) : await file.text()
+      const res = await apiSend<{
+        deckId?: number
+        deckName?: string
+        imported?: number
+        rejectedCards?: number
+      }>('/api/import', 'POST', {
+        kind,
+        payload,
+        deckName: file.name.replace(/\.(apkg|txt)$/i, ''),
+      })
+      return res
+    },
+    onSuccess: (res) => {
+      void qc.invalidateQueries({ queryKey: ['decks'] })
+      toast({
+        title: `Imported ${res.imported ?? 0} card${(res.imported ?? 0) === 1 ? '' : 's'}`,
+        description: res.rejectedCards
+          ? `${res.rejectedCards} card${res.rejectedCards === 1 ? '' : 's'} skipped.`
+          : undefined,
+        tone: 'success',
+      })
+    },
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
+  })
+
+  const importCourseMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const text = await file.text()
+      return apiSend<{ ok?: boolean; courseId?: number; title?: string }>(
+        '/api/curriculum/import',
+        'POST',
+        { text, filename: file.name },
+      )
+    },
+    onSuccess: (res) => {
+      void qc.invalidateQueries({ queryKey: ['courses'] })
+      toast({
+        title: `Imported “${res.title ?? 'course'}”`,
+        description: 'Find it under Courses — progress is kept on re-import.',
+        tone: 'success',
+      })
+    },
+    onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
+  })
 
   const markDismissedLocally = () => {
     setLocalDismissed(true)
@@ -330,6 +395,54 @@ export function OnboardingWizard() {
                 <strong>Major/PAO memory tables</strong>
               </span>
             </label>
+
+            {/* Bring-your-own content — works fully offline, no AI setup needed. */}
+            <div className="rounded-xl border border-dashed border-neutral-300 p-3 dark:border-(--hub-border)">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+                <FileUp className="h-3.5 w-3.5 text-indigo-500" /> Already have content? Bring it
+                in.
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="btn-ghost justify-center text-xs"
+                  disabled={importAnkiMutation.isPending}
+                  onClick={() => ankiFileRef.current?.click()}
+                >
+                  {importAnkiMutation.isPending ? 'Importing…' : 'Anki deck (.apkg/.txt)'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost justify-center text-xs"
+                  disabled={importCourseMutation.isPending}
+                  onClick={() => courseFileRef.current?.click()}
+                >
+                  {importCourseMutation.isPending ? 'Importing…' : 'Course (.json/.yaml/.md)'}
+                </button>
+              </div>
+              <input
+                ref={ankiFileRef}
+                type="file"
+                accept=".apkg,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) importAnkiMutation.mutate(file)
+                  e.target.value = ''
+                }}
+              />
+              <input
+                ref={courseFileRef}
+                type="file"
+                accept=".json,.yaml,.yml,.md,.markdown,.txt"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) importCourseMutation.mutate(file)
+                  e.target.value = ''
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -386,6 +499,23 @@ export function OnboardingWizard() {
                 </div>
                 <p className="mt-1 text-xs text-neutral-500">
                   Search instantly across all notes, cards, lessons, highlights, and pages.
+                </p>
+              </div>
+              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Sparkles className="h-4 w-4 text-indigo-500" />
+                  Your first review is waiting
+                </div>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Ten minutes of{' '}
+                  <Link
+                    href="/review"
+                    onClick={() => skipMutation.mutate()}
+                    className="text-indigo-500 underline"
+                  >
+                    flashcard review
+                  </Link>{' '}
+                  today beats an hour crammed next weekend — the scheduler spreads the rest for you.
                 </p>
               </div>
             </div>
