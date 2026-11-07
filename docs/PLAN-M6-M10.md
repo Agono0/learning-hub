@@ -1,8 +1,11 @@
 # Learning HUB: Next Features Implementation Plan (M6–M10)
 
-> Baseline: `main` @ `8373bef` (M1–M5 shipped, schema at migration **v6**, 85 tables, 678 unit tests + 63 E2E green).
+> **[ARCHIVED 2026-11-07]** Everything in this plan has shipped (focus
+> lockdown, reminders, visual learning, guilds/duels/raids, online hub — see
+> [CHANGELOG.md](../CHANGELOG.md)). Kept for history only; active planning is
+> [plan-M19-M21.md](plan-M19-M21.md).
 
-See [C:/Users/pc/.gemini/antigravity/brain/481c7aa1-7449-4cdd-9a8c-eaf819d2a001/next_features_plan.md](file:///C:/Users/pc/.gemini/antigravity/brain/481c7aa1-7449-4cdd-9a8c-eaf819d2a001/next_features_plan.md) for the complete design document.
+> Baseline: `main` @ `8373bef` (M1–M5 shipped, schema at migration **v6**, 85 tables, 678 unit tests + 63 E2E green).
 
 ---
 

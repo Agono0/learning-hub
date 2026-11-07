@@ -160,9 +160,9 @@ Expertise comes from targeted practice at the edge of ability with immediate
 feedback — not from hours alone.
 - **In Learning HUB:** weakness targeting: hypercorrection queue, leech
   detection (`leechCandidates` in `packages/core/src/fsrs.ts`), per-skill
-  BKT/Elo mastery (`packages/core/src/bkt.ts`, `elo.ts`); a dedicated
-  weakness radar is a planned M4 item.
-- **Status:** ✅ (radar 📋 M4)
+  BKT/Elo mastery (`packages/core/src/bkt.ts`, `elo.ts`), plus the
+  cross-metric insights engine (`packages/core/src/insights.ts`, M18).
+- **Status:** ✅
 
 ### Desirable difficulties — Robert Bjork, 1994
 Conditions that slow acquisition (spacing, interleaving, varied format)
@@ -452,6 +452,10 @@ the learner's hands.
 
 ## Planned items summary (current expansion)
 
+> Statuses reconciled with [CHANGELOG.md](../CHANGELOG.md) on 2026-11-07 (M18
+> shipped): every row below has landed. Future planning lives in
+> [plan-M19-M21.md](plan-M19-M21.md).
+
 | Item | Milestone |
 | --- | --- |
 | Zeigarnik open loops on the dashboard | ✅ landed |
@@ -463,6 +467,6 @@ the learner's hands.
 | Calibration trainer | ✅ landed |
 | Dual-coding images on basic cards | ✅ landed |
 | Varied phrasings (desirable difficulty) | ✅ landed |
-| SQ3R reading mode | deferred (see roadmap) |
-| Weakness radar, study planner, Today agenda, notifications | M4 |
-| Global search (FTS5) + ⌘K, glossary, cards from notes, mind map, sentence mining | M5 |
+| SQ3R reading mode | ✅ landed (multi-format reading) |
+| Weakness radar, study planner, Today agenda, notifications | ✅ landed |
+| Global search (FTS5) + ⌘K, glossary, cards from notes, mind map, sentence mining | ✅ landed |

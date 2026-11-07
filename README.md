@@ -173,4 +173,12 @@ Released under the [MIT License](./LICENSE). © 2026 Learning HUB contributors.
 
 ## Roadmap (deferred)
 
-Multi-device sync (CRDTs/Turso) · per-card TTS · AI video-call roleplay · party boss battles · FSRS optimizer UI (`@open-spaced-repetition/binding`) · browser-extension friction · web-push reminders · native mobile.
+Multi-device sync v1 (E2EE over the user's own cloud targets) · AI video-call
+roleplay · party boss battles · FSRS optimizer UI (the 21-parameter optimizer
+already ships in `packages/core/src/fsrs-optimizer.ts`) · browser-extension
+friction capture · full CRDT sync. Active milestone planning:
+[docs/plan-M19-M21.md](docs/plan-M19-M21.md).
+
+Shipped since this list was last pruned: per-card TTS, web-push reminders,
+on-device FSRS-6 weight optimization, native Windows/Android shells, E2EE
+cloud backup sync — see [CHANGELOG.md](CHANGELOG.md).
