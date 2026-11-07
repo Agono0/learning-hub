@@ -92,6 +92,14 @@ export const decks = table(
     emoji: text('emoji').default('📚'),
     /** Optional per-deck retention override in [0.5, 0.97]; null inherits global setting. */
     desiredRetention: real('desired_retention'),
+    /**
+     * Per-deck delayed feedback (Butler & Roediger 2008 — delayed feedback beat
+     * immediate feedback for final-test performance): when on, the review flow
+     * hides the answer until the grade is committed blind and the blind-graded
+     * misses (revlog rating 1–2 in the last 24h) surface for restudy at the
+     * start of the next session. Off by default.
+     */
+    delayedFeedback: integer('delayed_feedback', { mode: 'boolean' }).notNull().default(false),
     /** Optional per-deck 21-parameter FSRS-6 weight vector; null inherits global weights. */
     fsrsWeights: text('fsrs_weights', { mode: 'json' }).$type<number[]>(),
     createdAt: text('created_at')

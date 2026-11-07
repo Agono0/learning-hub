@@ -19,6 +19,8 @@ const patchDeckSchema = z.object({
   description: z.string().nullable().optional(),
   emoji: z.string().optional(),
   desiredRetention: z.number().nullable().optional(),
+  /** Delayed feedback (Butler & Roediger 2008): grade blind, corrections next session. */
+  delayedFeedback: z.boolean().optional(),
   fsrsWeights: fsrsWeightsSchema.nullable().optional(),
 })
 
@@ -41,6 +43,8 @@ export const PATCH = withRoute(async (req: Request, ctx: { params: Promise<{ id:
         ? null
         : Math.max(0.5, Math.min(0.97, body.desiredRetention))
   const fsrsWeights = body.fsrsWeights === undefined ? existing.fsrsWeights : body.fsrsWeights
+  const delayedFeedback =
+    body.delayedFeedback === undefined ? existing.delayedFeedback : body.delayedFeedback
   const [deck] = await db
     .update(decks)
     .set({
@@ -48,6 +52,7 @@ export const PATCH = withRoute(async (req: Request, ctx: { params: Promise<{ id:
       description: body.description !== undefined ? body.description : existing.description,
       emoji: body.emoji ?? existing.emoji,
       desiredRetention,
+      delayedFeedback,
       fsrsWeights,
     })
     .where(eq(decks.id, deckId))

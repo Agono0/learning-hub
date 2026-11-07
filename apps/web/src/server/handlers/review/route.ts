@@ -6,7 +6,10 @@
  *   revlog entry (hypercorrection input). With `courseId`, the session covers
  *   the whole course deck regardless of due dates (cram semantics) and is
  *   interleaved across LESSONS (round-robin that preserves the weak-first
- *   priority within each lesson) — Rohrer's mixed practice.
+ *   priority within each lesson) — Rohrer's mixed practice. Each card carries
+ *   `blind` (its deck runs delayed feedback — grade without seeing the answer);
+ *   a deck-scoped session of a delayed-feedback deck also returns `corrections`
+ *   (last-24h blind-graded misses to restudy first, Butler & Roediger 2008).
  * POST { cardId, grade, confidence, timeMs? } → ONE canonical executeReview()
  *   call (packages/db/review-service): an atomic BEGIN IMMEDIATE transaction
  *   covering cards UPDATE + append-only revlog + xp_events + streak + Elo/BKT
@@ -21,7 +24,9 @@ import {
   courses,
   decks,
   executeReview,
+  listDelayedFeedbackCorrections,
   userSettings,
+  type DelayedFeedbackCorrection,
   type ReviewPayload,
 } from '@learning-hub/db'
 import {
@@ -170,6 +175,7 @@ export async function GET(req: Request) {
         .select({
           id: decks.id,
           desiredRetention: decks.desiredRetention,
+          delayedFeedback: decks.delayedFeedback,
           fsrsWeights: decks.fsrsWeights,
         })
         .from(decks)
@@ -183,9 +189,26 @@ export async function GET(req: Request) {
       const retention = deckCfg?.desiredRetention ?? globalCfg.desiredRetention
       const weights = deckCfg?.fsrsWeights ?? globalCfg.fsrsWeights
       const previews = toPreviewRecord(await previewGrades(c, retention, { now, weights }))
-      return { ...c, previews }
+      // Delayed feedback (Butler & Roediger 2008): the answer stays hidden and
+      // the grade is committed blind, so per-card `blind` travels with the card.
+      return { ...c, previews, blind: deckCfg?.delayedFeedback ?? false }
     }),
   )
+
+  // Deck-scoped delayed-feedback session: surface the last 24h of blind-graded
+  // misses (rating 1–2) for restudy before the queue — the repo owns the query.
+  // All-decks and course sessions interleave decks, so they carry no corrections.
+  let corrections: DelayedFeedbackCorrection[] = []
+  if (deckId && !course) {
+    const [deck] = await db
+      .select({ id: decks.id, delayedFeedback: decks.delayedFeedback })
+      .from(decks)
+      .where(eq(decks.id, Number(deckId)))
+      .limit(1)
+    if (deck?.delayedFeedback) {
+      corrections = listDelayedFeedbackCorrections({ deckId: deck.id, now })
+    }
+  }
 
   return Response.json({
     ok: true,
@@ -193,6 +216,7 @@ export async function GET(req: Request) {
     mode: course ? 'cram' : mode,
     course: course ? { id: course.id, title: course.title } : null,
     retention: globalCfg.desiredRetention,
+    corrections,
   })
 }
 

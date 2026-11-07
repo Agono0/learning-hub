@@ -26,6 +26,7 @@ interface DeckInfo {
   description: string | null
   emoji: string | null
   desiredRetention: number | null
+  delayedFeedback: boolean
   fsrsWeights: number[] | null
   hasCustomWeights: boolean
   total: number
@@ -119,9 +120,14 @@ export default function DecksPage() {
     },
   })
   const patchDeck = useMutation({
-    mutationFn: (payload: { id: number; desiredRetention?: number | null }) =>
+    mutationFn: (payload: {
+      id: number
+      desiredRetention?: number | null
+      delayedFeedback?: boolean
+    }) =>
       apiSend(`/api/decks/${payload.id}`, 'PATCH', {
         desiredRetention: payload.desiredRetention,
+        delayedFeedback: payload.delayedFeedback,
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['decks'] })
@@ -249,6 +255,14 @@ export default function DecksPage() {
                     21w
                   </span>
                 )}
+                {d.delayedFeedback && (
+                  <span
+                    className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400"
+                    title="Delayed feedback (Butler & Roediger 2008): grades are committed blind; corrections restudied next session"
+                  >
+                    ⏳ blind
+                  </span>
+                )}
               </button>
               <button
                 className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-red-400"
@@ -290,6 +304,19 @@ export default function DecksPage() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label
+              className="flex items-center gap-1.5 text-neutral-500"
+              title="Delayed feedback (Butler & Roediger 2008): delaying feedback until after the response beat immediate feedback for final-test performance. The answer stays hidden — you commit a grade blind — and your misses (rating 1–2, last 24h) are listed for restudy at the start of the next session."
+            >
+              Delayed feedback
+              <input
+                type="checkbox"
+                checked={selectedDeckObj.delayedFeedback}
+                onChange={(e) =>
+                  patchDeck.mutate({ id: selectedDeckObj.id, delayedFeedback: e.target.checked })
+                }
+              />
             </label>
             <button
               className="btn-ghost py-1 text-xs"

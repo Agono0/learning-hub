@@ -32,6 +32,7 @@ import { embeddingsOmni } from './019-embeddings-omni'
 import { pushSubscriptions } from './020-push-subscriptions'
 import { syncDevices } from './021-sync-devices'
 import { goalIfThen } from './022-goal-if-then'
+import { deckDelayedFeedback } from './023-deck-delayed-feedback'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -57,6 +58,7 @@ export const MIGRATIONS: readonly Migration[] = [
   pushSubscriptions,
   syncDevices,
   goalIfThen,
+  deckDelayedFeedback,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

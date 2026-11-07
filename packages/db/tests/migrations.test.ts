@@ -8,6 +8,7 @@ import {
   type Migration,
 } from '../src/migrations'
 import { goalIfThen } from '../src/migrations/022-goal-if-then'
+import { deckDelayedFeedback } from '../src/migrations/023-deck-delayed-feedback'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -95,9 +96,10 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 022 goal-if-then last and after 021', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(goalIfThen)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]?.id).toBe(21)
+  it('registers 023 deck-delayed-feedback last, after 022 and 021', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(deckDelayedFeedback)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(goalIfThen)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]?.id).toBe(21)
   })
 })
 

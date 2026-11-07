@@ -68,6 +68,16 @@ interface CardRow {
   stability: number
   due: string
   previews?: Record<Grade, string>
+  /** Deck runs delayed feedback (Butler & Roediger 2008): grade blind, no reveal. */
+  blind?: boolean
+}
+/** A blind-graded miss (rating 1–2 in the last 24h) to restudy first. */
+interface CorrectionCard {
+  id: number
+  type: CardFormat
+  content: CardContent
+  rating: number
+  reviewedAt: string
 }
 interface DeckInfo {
   id: number
@@ -105,6 +115,12 @@ interface SessionResult {
   intervalDays: number
   xp: number
 }
+/** GET /api/review response — the queue plus, for a delayed-feedback deck, the restudy list. */
+interface SessionPayload {
+  cards: CardRow[]
+  course: { id: number; title: string } | null
+  corrections?: CorrectionCard[]
+}
 
 const GRADES: { grade: Grade; label: string; color: string }[] = [
   { grade: 1, label: 'Again', color: 'bg-red-600 hover:bg-red-500' },
@@ -113,7 +129,8 @@ const GRADES: { grade: Grade; label: string; color: string }[] = [
   { grade: 4, label: 'Easy', color: 'bg-emerald-600 hover:bg-emerald-500' },
 ]
 
-function getCardVoicePrompt(card: CardRow): string {
+/** Front/prompt text of a card (voice review + the corrections restudy list). */
+function getCardVoicePrompt(card: { content: CardContent }): string {
   if (card.content.basic) return card.content.basic.front
   if (card.content.exercise?.prompt) return card.content.exercise.prompt
   if (card.content.typein?.question) return card.content.typein.question
@@ -122,7 +139,7 @@ function getCardVoicePrompt(card: CardRow): string {
   return 'Review item'
 }
 
-function getCardVoiceAnswer(card: CardRow): string {
+function getCardVoiceAnswer(card: { content: CardContent }): string {
   if (card.content.basic) return card.content.basic.back
   if (card.content.typein?.acceptedAnswers?.[0]) return card.content.typein.acceptedAnswers[0]
   if (card.content.mcq && card.content.mcq.options[card.content.mcq.correctIndex]) {
@@ -159,14 +176,10 @@ function ReviewPageInner() {
     queryKey: ['decks'],
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
-  const session = useQuery<
-    { cards: CardRow[]; course: { id: number; title: string } | null },
-    Error,
-    { cards: CardRow[]; course: { id: number; title: string } | null }
-  >({
+  const session = useQuery<SessionPayload, Error, SessionPayload>({
     queryKey: ['review-session', deckId, courseId, limit, mode],
     queryFn: () =>
-      apiGet<{ cards: CardRow[]; course: { id: number; title: string } | null }>(
+      apiGet<SessionPayload>(
         `/api/review?deckId=${deckId ?? ''}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}`,
       ),
     enabled: started,
@@ -207,6 +220,12 @@ function ReviewPageInner() {
   // (the practice endpoint already recorded the review — the session only advances)
   const [exerciseResult, setExerciseResult] = useState<PracticeResponse | null>(null)
   const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  // delayed feedback (Butler & Roediger 2008): ids graded WITHOUT seeing the
+  // answer this session — shown in the summary; their misses (rating 1–2) are
+  // picked up for restudy from revlog at the next session's start
+  const [blindGraded, setBlindGraded] = useState<number[]>([])
+  // the "Correct these first" restudy list shows once, before the queue
+  const [correctionsSeen, setCorrectionsSeen] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const resetRecallTimer = useCallback(() => {
@@ -243,6 +262,8 @@ function ReviewPageInner() {
       setIdx(0)
       setResults([])
       setUndoStack([])
+      setBlindGraded([])
+      setCorrectionsSeen(false)
       setEnergy(initialEnergy())
       setFinishedAt(null)
       srMap.current = new Map()
@@ -254,6 +275,10 @@ function ReviewPageInner() {
   }, [session.data, resetRecallTimer])
 
   const current = queue[idx]
+  // delayed feedback (Butler & Roediger 2008): the "Correct these first"
+  // restudy list blocks the queue until the learner dismisses it
+  const corrections = session.data?.corrections ?? []
+  const correctionsPending = !correctionsSeen && corrections.length > 0
 
   /** fold a graded recall into the card's successive-relearning state */
   const recordSr = useCallback((cardId: number, correct: boolean) => {
@@ -326,6 +351,11 @@ function ReviewPageInner() {
         },
       ])
       if (wasMistake) setEnergy((e) => applyMistake(e))
+      // delayed feedback: the grade was committed without seeing the answer —
+      // track it so the summary can promise the corrections session
+      if (current.blind) {
+        setBlindGraded((ids) => (ids.includes(variables.cardId) ? ids : [...ids, variables.cardId]))
+      }
       setResults((r) => [
         ...r,
         {
@@ -352,6 +382,8 @@ function ReviewPageInner() {
       const last = undoStack[undoStack.length - 1]!
       setUndoStack((s) => s.slice(0, -1))
       setResults((r) => r.slice(0, -1))
+      // an undone grade is no longer committed — drop it from the blind set
+      setBlindGraded((ids) => ids.filter((id) => id !== last.card.id))
       if (last.prevSr) srMap.current.set(last.card.id, last.prevSr)
       else srMap.current.delete(last.card.id)
       if (last.wasMistake) setEnergy((e) => Math.min(MAX_ENERGY, e + 1))
@@ -498,13 +530,28 @@ function ReviewPageInner() {
   )
 
   useEffect(() => {
-    if (mode === 'commute' && started && current && commuteAutoPlay && !finishedAt) {
+    if (
+      mode === 'commute' &&
+      started &&
+      current &&
+      commuteAutoPlay &&
+      !finishedAt &&
+      !correctionsPending
+    ) {
       const timer = setTimeout(() => {
         void runVoiceReviewForCurrentCard(current)
       }, 500)
       return () => clearTimeout(timer)
     }
-  }, [mode, started, current?.id, commuteAutoPlay, finishedAt, runVoiceReviewForCurrentCard])
+  }, [
+    mode,
+    started,
+    current?.id,
+    commuteAutoPlay,
+    finishedAt,
+    correctionsPending,
+    runVoiceReviewForCurrentCard,
+  ])
 
   const reveal = useCallback(() => setRevealed(true), [])
 
@@ -513,11 +560,13 @@ function ReviewPageInner() {
     const onKey = (e: KeyboardEvent) => {
       if (!current) return
       if (current.type === 'exercise') return // the exercise owns its own controls
+      if (correctionsPending) return // the corrections screen owns the keyboard
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Enter') {
           e.preventDefault()
           if (!revealed) {
-            reveal()
+            // delayed feedback: no reveal — the learner commits a grade blind
+            if (!current.blind) reveal()
           } else {
             // Enter commits the typed answer for typein AND cloze/multi-blank
             // cards — the shared core evaluator decides, never a hardcoded
@@ -531,11 +580,11 @@ function ReviewPageInner() {
       }
       if (e.key === ' ') {
         e.preventDefault()
-        if (!revealed) reveal()
+        if (!revealed && !current.blind) reveal()
         else commit(3)
       } else if (['1', '2', '3', '4'].includes(e.key)) {
         e.preventDefault()
-        if (revealed) commit(Number(e.key) as Grade)
+        if (revealed || current.blind) commit(Number(e.key) as Grade)
       } else if (e.key === 'e') {
         e.preventDefault()
         if (undoStack.length > 0) {
@@ -550,7 +599,7 @@ function ReviewPageInner() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [current, revealed, commit, reveal, undoStack, typeinValue, clozeInput])
+  }, [current, revealed, correctionsPending, commit, reveal, undoStack, typeinValue, clozeInput])
 
   useEffect(() => {
     if (revealed) inputRef.current?.blur()
@@ -725,6 +774,11 @@ function ReviewPageInner() {
                 {stats.correct} / {stats.total} recalled ({stats.accuracy}%)
               </div>
               <div className="text-sm text-neutral-500">+{stats.xp} XP earned</div>
+              {blindGraded.length > 0 && (
+                <div className="text-xs text-amber-400">
+                  {blindGraded.length} graded blind — corrections surface at your next session.
+                </div>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -748,12 +802,18 @@ function ReviewPageInner() {
     )
   }
 
-  if (session.isLoading || !current) {
-    return (
-      <div className="panel text-sm text-neutral-500">
-        {session.isLoading ? 'Building session…' : 'No cards due in this deck.'}
-      </div>
-    )
+  if (session.isLoading) {
+    return <div className="panel text-sm text-neutral-500">Building session…</div>
+  }
+
+  // delayed feedback (Butler & Roediger 2008): the blind-graded misses of the
+  // last 24h come first — even when nothing else in the deck is due
+  if (correctionsPending) {
+    return <CorrectionsScreen corrections={corrections} onDone={() => setCorrectionsSeen(true)} />
+  }
+
+  if (!current) {
+    return <div className="panel text-sm text-neutral-500">No cards due in this deck.</div>
   }
 
   // ─── Active card ───
@@ -850,7 +910,7 @@ function ReviewPageInner() {
             />
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              {!revealed ? (
+              {!revealed && !current.blind ? (
                 <button className="btn" onClick={reveal}>
                   <Eye className="h-4 w-4" /> Reveal{' '}
                   <span className="text-xs opacity-70">space</span>
@@ -866,7 +926,7 @@ function ReviewPageInner() {
                       disabled={gradeMutation.isPending}
                     >
                       <span>{g.label}</span>
-                      {nextLabel && (
+                      {nextLabel && !current.blind && (
                         <span className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-[11px] opacity-90">
                           {nextLabel}
                         </span>
@@ -875,6 +935,14 @@ function ReviewPageInner() {
                     </button>
                   )
                 })
+              )}
+              {current.blind && !revealed && (
+                <span
+                  className="text-xs text-amber-400"
+                  title="Delayed feedback (Butler & Roediger 2008): committing a grade before seeing the answer beat immediate feedback on a final test. Your misses (rating 1–2) surface for restudy at the start of the next session."
+                >
+                  graded blind — corrections at your next session
+                </span>
               )}
               <div className="ml-auto flex items-center gap-1 text-xs">
                 <span className="text-neutral-500">confidence</span>
@@ -913,7 +981,13 @@ function ReviewPageInner() {
         >
           <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
         </button>
-        {current.type !== 'exercise' && <span>keys: 1-4 grade · space reveal/Good · e undo</span>}
+        {current.type !== 'exercise' && (
+          <span>
+            {current.blind
+              ? 'keys: 1-4 grade blind · e undo (delayed feedback — no reveal)'
+              : 'keys: 1-4 grade · space reveal/Good · e undo'}
+          </span>
+        )}
         <button
           className="btn-ghost ml-auto"
           onClick={() => {
@@ -922,6 +996,66 @@ function ReviewPageInner() {
           }}
         >
           End session <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** The back text of a correction card, per format (restudy shows front AND back). */
+function correctionAnswer(card: CorrectionCard): string {
+  if (card.content.basic) return card.content.basic.back
+  if (card.content.typein) return card.content.typein.acceptedAnswers.join(' · ')
+  if (card.content.mcq) return card.content.mcq.options[card.content.mcq.correctIndex] ?? ''
+  if (card.content.cloze) return card.content.cloze.answers.join(' · ')
+  return getCardVoiceAnswer(card) // exercise/proof_step/… — best-effort extraction
+}
+
+/**
+ * "Correct these first" — the restudy list of a delayed-feedback deck
+ * (Butler & Roediger 2008: delaying feedback until after the response beat
+ * immediate feedback on a final test). Shows every blind-graded miss of the
+ * last 24h (revlog rating 1–2) with front and back revealed; reading them is
+ * the correction — grading stays with FSRS, so these cards are NOT requeued.
+ */
+function CorrectionsScreen({
+  corrections,
+  onDone,
+}: {
+  corrections: CorrectionCard[]
+  onDone: () => void
+}) {
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Correct these first"
+        subtitle="blind-graded misses from your last session"
+      />
+      <div className="panel space-y-3">
+        <p className="text-xs text-neutral-500">
+          You committed these blind — read question and answer together now. Butler &amp; Roediger
+          (2008): feedback after the attempt sticks better than feedback during it.
+        </p>
+        <ul className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
+          {corrections.map((c) => (
+            <li key={c.id} className="space-y-1 py-3 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:bg-(--hub-panel-2)">
+                  {c.type}
+                </span>
+                <span
+                  className={`text-[10px] ${c.rating === 1 ? 'text-red-400' : 'text-amber-400'}`}
+                >
+                  {c.rating === 1 ? 'graded again' : 'graded hard'}
+                </span>
+              </div>
+              <div className="font-medium">{getCardVoicePrompt(c)}</div>
+              <div className="text-indigo-300">{correctionAnswer(c)}</div>
+            </li>
+          ))}
+        </ul>
+        <button className="btn" onClick={onDone}>
+          Got it — start the session <ArrowRight className="h-4 w-4" />
         </button>
       </div>
     </div>

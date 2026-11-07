@@ -20,6 +20,7 @@ export async function GET() {
       description: decks.description,
       emoji: decks.emoji,
       desiredRetention: decks.desiredRetention,
+      delayedFeedback: decks.delayedFeedback,
       fsrsWeights: decks.fsrsWeights,
       createdAt: decks.createdAt,
       total: sql<number>`count(${cards.id})`,
