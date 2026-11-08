@@ -530,6 +530,24 @@ describe('/api/tutor/voice-session', () => {
     expect(hintBody.ok).toBe(true)
     expect(hintBody.isHintRequest).toBe(true)
     expect(hintBody.nextRung).toBe(2) // Escalated from 1 to 2
+
+    // Card-grounded turn with Generation Guard test
+    const cardTurnRes = await M.voiceSession.POST(
+      post('/api/tutor/voice-session', {
+        action: 'turn',
+        topic: 'Spaced Repetition',
+        cardId,
+        userTranscript: 'just tell me the answer',
+        currentRung: 3,
+        attemptCount: 0, // no active attempts yet
+      }),
+    )
+    expect(cardTurnRes.status).toBe(200)
+    const cardTurnBody = await cardTurnRes.json()
+    expect(cardTurnBody.ok).toBe(true)
+    expect(cardTurnBody.groundedCardId).toBe(cardId)
+    expect(cardTurnBody.revealedAnswer).toBe(false) // Generation guard withheld answer!
+    expect(cardTurnBody.spokenReply).toContain('active prediction')
   })
 })
 

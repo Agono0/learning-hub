@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { HelpCircle, Mic, MicOff, RefreshCw, Send, Volume2, VolumeX } from 'lucide-react'
-import { apiSend } from '@/lib/transport'
+import { apiGet, apiSend } from '@/lib/transport'
 import { listenForSpeech, playChime, speakText, stopSpeaking } from '@/lib/audio-engine'
 import { Button, Callout, Markdown, PageHeader, Panel, useToast } from '@/ui'
 
@@ -22,6 +23,7 @@ const RUNGS = [
 export default function VoiceTutorPage() {
   const { toast } = useToast()
   const [topic, setTopic] = useState('Photosynthesis light reactions')
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [sessionActive, setSessionActive] = useState(false)
   const [currentRung, setCurrentRung] = useState(1)
   const [turns, setTurns] = useState<DialogueTurn[]>([])
@@ -30,6 +32,13 @@ export default function VoiceTutorPage() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechEnabled, setSpeechEnabled] = useState(true)
   const [isPending, setIsPending] = useState(false)
+
+  const { data: cardsData } = useQuery<{
+    cards: Array<{ id: number; front?: string; back?: string; content?: Record<string, unknown> }>
+  }>({
+    queryKey: ['tutor-cards'],
+    queryFn: () => apiGet('/api/cards?limit=50'),
+  })
 
   const transcriptEndRef = useRef<HTMLDivElement | null>(null)
 
@@ -55,8 +64,10 @@ export default function VoiceTutorPage() {
       }>('/api/tutor/voice-session', 'POST', {
         action: 'start',
         topic: topic.trim(),
+        cardId: selectedCardId ?? undefined,
         userTranscript: '',
         currentRung: 1,
+        attemptCount: 0,
         history: [],
       })
 
@@ -109,8 +120,10 @@ export default function VoiceTutorPage() {
       }>('/api/tutor/voice-session', 'POST', {
         action: 'turn',
         topic: topic.trim(),
+        cardId: selectedCardId ?? undefined,
         userTranscript: userText.trim(),
         currentRung,
+        attemptCount: updatedTurns.filter((t) => t.role === 'user').length,
         history: updatedTurns.map((t) => ({ role: t.role, text: t.text })),
       })
 
@@ -182,6 +195,39 @@ export default function VoiceTutorPage() {
           </Callout>
 
           <div className="space-y-4">
+            {cardsData?.cards && cardsData.cards.length > 0 && (
+              <div>
+                <label className="label mb-1.5 block">
+                  Ground from Your Due Deck Cards (Optional)
+                </label>
+                <select
+                  className="input w-full"
+                  value={selectedCardId ?? ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null
+                    setSelectedCardId(id)
+                    if (id) {
+                      const c = cardsData.cards.find((card) => card.id === id)
+                      if (c) {
+                        const front = c.front || (c.content?.front as string) || ''
+                        setTopic(front.slice(0, 100))
+                      }
+                    }
+                  }}
+                >
+                  <option value="">— Choose a flashcard or enter a custom topic below —</option>
+                  {cardsData.cards.map((c) => {
+                    const front = c.front || (c.content?.front as string) || `Card #${c.id}`
+                    return (
+                      <option key={c.id} value={c.id}>
+                        #{c.id}: {front.slice(0, 80)}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="label mb-1.5 block">Examination Topic / Concept</label>
               <input
