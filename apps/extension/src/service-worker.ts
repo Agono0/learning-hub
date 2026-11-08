@@ -5,6 +5,13 @@
  * applies Declarative Net Request rules, and fail-closed guards active sessions.
  */
 import { buildDnrRules } from '@learning-hub/core/focus-lock'
+import {
+  buildCardCreate,
+  buildReaderIngest,
+  captureEndpoints,
+  resolveDeck,
+  sendToFirst,
+} from './capture'
 
 interface ExtensionState {
   pairingToken?: string
@@ -179,52 +186,22 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
   const state = await getState()
-  const port = state.loopbackPort || DEFAULT_PORT
-  const endpoints = [`http://127.0.0.1:${port}`, 'http://localhost:3000']
+  const bases = captureEndpoints(state.loopbackPort || DEFAULT_PORT)
 
   if (info.menuItemId === 'lh-save-reader') {
+    // A link click saves the link target, so only use the tab title for the page itself.
     const targetUrl = info.linkUrl || info.pageUrl || tab?.url
-    if (!targetUrl) return
-    for (const base of endpoints) {
-      try {
-        const res = await fetch(`${base}/api/reading/ingest`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            kind: 'url',
-            url: targetUrl,
-            title: tab?.url || 'Saved Web Page',
-          }),
-        })
-        if (res.ok) break
-      } catch {
-        // try next endpoint
-      }
-    }
+    const title = info.linkUrl ? undefined : tab?.title
+    const req = buildReaderIngest(targetUrl, title)
+    if (req) await sendToFirst(fetch, bases, req)
+    return
   }
 
   if (info.menuItemId === 'lh-create-card') {
-    const text = info.selectionText
-    if (!text) return
-    for (const base of endpoints) {
-      try {
-        const res = await fetch(`${base}/api/cards`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            deckId: 1,
-            type: 'basic',
-            content: {
-              basic: { front: text, back: `Source: ${info.pageUrl || tab?.url || 'Web'}` },
-            },
-            tags: ['browser-captured'],
-          }),
-        })
-        if (res.ok) break
-      } catch {
-        // try next endpoint
-      }
-    }
+    const target = await resolveDeck(fetch, bases)
+    if (!target) return // no backend reachable, or no deck to put the card in
+    const req = buildCardCreate(info.selectionText, target.deckId, info.pageUrl || tab?.url)
+    if (req) await sendToFirst(fetch, [target.base], req)
   }
 })
 

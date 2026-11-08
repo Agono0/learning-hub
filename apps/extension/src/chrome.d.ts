@@ -61,6 +61,7 @@ declare namespace chrome {
     interface Tab {
       id?: number
       url?: string
+      title?: string
       status?: string
     }
     interface TabChangeInfo {
