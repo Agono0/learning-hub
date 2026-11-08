@@ -167,6 +167,35 @@ export function computeLexicalCoverage(
   }
 }
 
+/** Minimum incidental encounters before a word is offered for SRS promotion (Webb 2007). */
+export const PROMOTION_MIN_ENCOUNTERS = 5
+/** Minimum distinct calendar days those encounters must span (spacing, Waring & Nation 2004). */
+export const PROMOTION_MIN_DAYS = 3
+
+/**
+ * Aggregate-form of {@link isEligibleForSrsPromotion} for callers (e.g. SQL
+ * GROUP BY rollups) that already hold the counts rather than raw events.
+ */
+export function meetsPromotionThreshold(
+  encounterCount: number,
+  distinctDays: number,
+  minEncounters = PROMOTION_MIN_ENCOUNTERS,
+  minDays = PROMOTION_MIN_DAYS,
+): boolean {
+  return encounterCount >= minEncounters && distinctDays >= minDays
+}
+
+/**
+ * Canonical key for an ambient token: lowercase, trimmed, surrounding
+ * punctuation removed. Used both when recording and when matching card fronts.
+ */
+export function normalizeExposureToken(token: string): string {
+  return token
+    .toLowerCase()
+    .trim()
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
+}
+
 /**
  * Determines whether an ambient word meets the spaced exposure threshold
  * for 1-click promotion to active SRS flashcards.
@@ -176,20 +205,18 @@ export function computeLexicalCoverage(
  */
 export function isEligibleForSrsPromotion(
   encounters: ExposureRecord[],
-  minEncounters = 5,
-  minDays = 3,
+  minEncounters = PROMOTION_MIN_ENCOUNTERS,
+  minDays = PROMOTION_MIN_DAYS,
 ): boolean {
   if (encounters.length < minEncounters) return false
 
   const distinctDays = new Set(
     encounters.map((e) => {
-      try {
-        return new Date(e.createdAt).toISOString().split('T')[0]
-      } catch {
-        return e.createdAt
-      }
+      const d = new Date(e.createdAt)
+      // Invalid dates make toISOString() throw — fall back to the raw string.
+      return Number.isNaN(d.getTime()) ? e.createdAt : d.toISOString().slice(0, 10)
     }),
   )
 
-  return distinctDays.size >= minDays
+  return meetsPromotionThreshold(encounters.length, distinctDays.size, minEncounters, minDays)
 }

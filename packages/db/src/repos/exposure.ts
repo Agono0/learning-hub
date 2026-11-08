@@ -2,11 +2,17 @@
  * Learning HUB — Ambient Exposure Ledger Repository:
  * Reusable persistence and query helpers for incidental encounters of vocabulary
  * and technical terms across reading, notes, and lessons.
+ *
+ * `exposure_events` is append-only; every row is one encounter. Rollups
+ * (counts, distinct days) are computed at read time so the promotion rule in
+ * `@learning-hub/core/exposure` stays the single source of truth.
  */
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm'
+import { meetsPromotionThreshold, normalizeExposureToken } from '@learning-hub/core/exposure'
 import { getDb, type LearningHubDB } from '../index'
-import { exposureEvents, cards } from '../schema'
-import { isEligibleForSrsPromotion } from '@learning-hub/core/exposure'
+import { cards, exposureEvents } from '../schema'
+
+export type ExposureSourceType = 'reading' | 'note' | 'lesson'
 
 export interface WordEncounterSummary {
   normalized: string
@@ -15,22 +21,50 @@ export interface WordEncounterSummary {
   firstSeen: string
   lastSeen: string
   distinctDays: number
+  /** Meets the Waring & Nation spaced-encounter threshold. */
   eligibleForPromotion: boolean
+  /** A basic card whose front is this word already exists (don't offer promotion). */
   isAlreadyCard: boolean
 }
 
+/** FSRS state 2 = Review: the learner has graduated the card at least once. */
+const FSRS_STATE_REVIEW = 2
+
+/** SQL expression: the normalized basic-card front, or NULL for other card types. */
+const cardFrontKey = sql<
+  string | null
+>`lower(trim(json_extract(${cards.content}, '$.basic.front')))`
+
+/**
+ * Returns the subset of `normalized` keys that already exist as a basic card front.
+ * Empty input → empty set (no query).
+ */
+export function findCardFronts(normalized: string[], database?: LearningHubDB): Set<string> {
+  const out = new Set<string>()
+  if (normalized.length === 0) return out
+  const db = database ?? getDb()
+  const rows = db
+    .select({ key: cardFrontKey })
+    .from(cards)
+    .where(and(eq(cards.type, 'basic'), inArray(cardFrontKey, normalized)))
+    .all()
+  for (const r of rows) if (r.key) out.add(r.key)
+  return out
+}
+
+/** Records one encounter. Throws if the token is blank after normalization. */
 export function recordExposure(
   data: {
     token: string
-    sourceType?: 'reading' | 'note' | 'lesson'
+    sourceType?: ExposureSourceType
     sourceId?: number
     contextSnippet?: string
   },
   database?: LearningHubDB,
 ): typeof exposureEvents.$inferSelect {
   const db = database ?? getDb()
-  const normalized = data.token.toLowerCase().trim()
-  const nowIso = new Date().toISOString()
+  const normalized = normalizeExposureToken(data.token)
+  if (!normalized) throw new Error('exposure token is empty')
 
   const [row] = db
     .insert(exposureEvents)
@@ -40,7 +74,7 @@ export function recordExposure(
       sourceType: data.sourceType ?? 'reading',
       sourceId: data.sourceId,
       contextSnippet: data.contextSnippet,
-      createdAt: nowIso,
+      createdAt: new Date().toISOString(),
     })
     .returning()
     .all()
@@ -48,88 +82,108 @@ export function recordExposure(
   return row!
 }
 
+/**
+ * Records many encounters in one INSERT (atomic). Blank tokens are skipped.
+ * Returns the number of rows written.
+ */
 export function recordExposureBatch(
   tokens: string[],
   meta: {
-    sourceType?: 'reading' | 'note' | 'lesson'
+    sourceType?: ExposureSourceType
     sourceId?: number
     contextSnippet?: string
   } = {},
   database?: LearningHubDB,
 ): number {
-  const db = database ?? getDb()
-  if (tokens.length === 0) return 0
   const nowIso = new Date().toISOString()
+  const rows = tokens
+    .map((token) => ({ token: token.trim(), normalized: normalizeExposureToken(token) }))
+    .filter((r) => r.normalized.length > 0)
+    .map((r) => ({
+      ...r,
+      sourceType: meta.sourceType ?? 'reading',
+      sourceId: meta.sourceId,
+      contextSnippet: meta.contextSnippet,
+      createdAt: nowIso,
+    }))
+  if (rows.length === 0) return 0
 
-  const rows = tokens.map((token) => ({
-    token: token.trim(),
-    normalized: token.toLowerCase().trim(),
-    sourceType: meta.sourceType ?? 'reading',
-    sourceId: meta.sourceId,
-    contextSnippet: meta.contextSnippet,
-    createdAt: nowIso,
-  }))
-
-  const result = db.insert(exposureEvents).values(rows).run()
-  return result.changes
+  const db = database ?? getDb()
+  return db.insert(exposureEvents).values(rows).run().changes
 }
 
+/**
+ * Per-word encounter rollup, most-encountered first, with promotion
+ * eligibility and whether a card already exists for the word.
+ */
 export function getWordExposureSummaries(
   limit = 50,
   database?: LearningHubDB,
 ): WordEncounterSummary[] {
   const db = database ?? getDb()
 
-  // Aggregate encounters per normalized token
+  const count = sql<number>`count(${exposureEvents.id})`
   const rows = db
     .select({
       normalized: exposureEvents.normalized,
       sampleToken: sql<string>`min(${exposureEvents.token})`,
-      encounterCount: sql<number>`count(${exposureEvents.id})`,
+      encounterCount: count,
       firstSeen: sql<string>`min(${exposureEvents.createdAt})`,
       lastSeen: sql<string>`max(${exposureEvents.createdAt})`,
       distinctDays: sql<number>`count(distinct substr(${exposureEvents.createdAt}, 1, 10))`,
     })
     .from(exposureEvents)
     .groupBy(exposureEvents.normalized)
-    .orderBy(desc(sql`count(${exposureEvents.id})`))
+    .orderBy(desc(count), desc(sql`max(${exposureEvents.createdAt})`))
     .limit(limit)
     .all()
 
-  return rows.map((r) => {
-    const encounters = Number(r.encounterCount)
-    const distinctDays = Number(r.distinctDays)
-    const eligible = encounters >= 5 && distinctDays >= 3
+  const existing = findCardFronts(
+    rows.map((r) => r.normalized),
+    db,
+  )
 
+  return rows.map((r) => {
+    const encounterCount = Number(r.encounterCount)
+    const distinctDays = Number(r.distinctDays)
     return {
       normalized: r.normalized,
       sampleToken: r.sampleToken,
-      encounterCount: encounters,
+      encounterCount,
       firstSeen: r.firstSeen,
       lastSeen: r.lastSeen,
       distinctDays,
-      eligibleForPromotion: eligible,
-      isAlreadyCard: false, // Can be cross-referenced with card front/back if needed
+      eligibleForPromotion: meetsPromotionThreshold(encounterCount, distinctDays),
+      isAlreadyCard: existing.has(r.normalized),
     }
   })
 }
 
-export function getKnownTokensSet(database?: LearningHubDB): Set<string> {
+/**
+ * The learner's "known" lexicon for coverage analysis: words met often enough
+ * to be familiar (≥ the promotion encounter count), plus basic-card fronts
+ * that have graduated to FSRS Review state.
+ */
+export function getKnownTokensSet(database?: LearningHubDB, minEncounters = 5): Set<string> {
   const db = database ?? getDb()
   const known = new Set<string>()
 
-  // Frequent exposures (>= 5 encounters) are treated as familiar
-  const frequentExposures = db
-    .select({
-      normalized: exposureEvents.normalized,
-    })
+  const frequent = db
+    .select({ normalized: exposureEvents.normalized })
     .from(exposureEvents)
     .groupBy(exposureEvents.normalized)
-    .having(sql`count(${exposureEvents.id}) >= 5`)
+    .having(sql`count(${exposureEvents.id}) >= ${minEncounters}`)
     .all()
+  for (const row of frequent) known.add(row.normalized)
 
-  for (const row of frequentExposures) {
-    known.add(row.normalized)
+  const learned = db
+    .select({ key: cardFrontKey })
+    .from(cards)
+    .where(and(eq(cards.type, 'basic'), gte(cards.state, FSRS_STATE_REVIEW)))
+    .all()
+  for (const row of learned) {
+    // Only single-word fronts are lexical items; sentences would never match a token.
+    if (row.key && !/\s/.test(row.key)) known.add(normalizeExposureToken(row.key))
   }
 
   return known

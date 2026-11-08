@@ -27,6 +27,7 @@ import {
   Video,
 } from 'lucide-react'
 import { extractIncidentalGlossTokens } from '@learning-hub/core'
+import { tokenizeText } from '@learning-hub/core/exposure'
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
@@ -89,6 +90,26 @@ function manualGhostHint(mode: 'define' | 'simplify' | 'flashcard', selected: st
     case 'flashcard':
       return `Manual mode — no AI configured. Make the card by hand from ${quote}: click "→ cards" on any highlight below or use SQ3R Review mode to convert your Q&As directly into cards.`
   }
+}
+
+/** Response of GET /api/reading/exposure (+ coverage from POST action 'analyze'). */
+type ExposureLedger = {
+  ok: boolean
+  words: Array<{
+    normalized: string
+    sampleToken: string
+    encounterCount: number
+    distinctDays: number
+    eligibleForPromotion: boolean
+    isAlreadyCard: boolean
+  }>
+  coverageAnalysis?: {
+    totalTokens: number
+    knownCount: number
+    coveragePercent: number
+    zone: 'optimal' | 'frustration' | 'effortless'
+    unknownTokens: Array<{ token: string; count: number }>
+  } | null
 }
 
 export default function ReadingPage() {
@@ -193,12 +214,8 @@ export default function ReadingPage() {
     const text = detail?.fragment?.text
     if (!text || !detail?.source?.id || recordedFragmentRef.current === text) return
     recordedFragmentRef.current = text
-    const words = text
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s'-]/gu, ' ')
-      .split(/\s+/)
-      .filter((w) => w.length >= 3 && !/^\d+$/.test(w))
-      .slice(0, 100)
+    // Same tokenizer (incl. stop-words) the server uses for coverage, capped per fragment.
+    const words = tokenizeText(text).slice(0, 100)
     if (words.length > 0) {
       void apiSend('/api/reading/exposure', 'POST', {
         action: 'record_batch',
@@ -210,29 +227,19 @@ export default function ReadingPage() {
     }
   }, [detail?.fragment?.text, detail?.source?.id])
 
-  const exposureQuery = useQuery<{
-    ok: boolean
-    words: Array<{
-      normalized: string
-      sampleToken: string
-      encounterCount: number
-      distinctDays: number
-      eligibleForPromotion: boolean
-    }>
-    coverageAnalysis?: {
-      totalTokens: number
-      knownCount: number
-      coveragePercent: number
-      zone: 'optimal' | 'frustration' | 'effortless'
-      unknownTokens: Array<{ token: string; count: number }>
-    }
-  }>({
-    queryKey: ['reading-exposure', detail?.fragment?.text?.slice(0, 50)],
-    queryFn: () => {
-      const textParam = detail?.fragment?.text
-        ? `&analyzeText=${encodeURIComponent(detail.fragment.text.slice(0, 400))}`
-        : ''
-      return apiGet(`/api/reading/exposure?limit=40${textParam}`)
+  const exposureQuery = useQuery<ExposureLedger>({
+    queryKey: ['reading-exposure', detail?.source?.id, detail?.fragment?.text?.slice(0, 50)],
+    queryFn: async () => {
+      const ledger = await apiGet<ExposureLedger>('/api/reading/exposure?limit=40')
+      const text = detail?.fragment?.text
+      if (!text) return ledger
+      // POST so the whole fragment is analysed — a query string would truncate it.
+      const { coverageAnalysis } = await apiSend<Pick<ExposureLedger, 'coverageAnalysis'>>(
+        '/api/reading/exposure',
+        'POST',
+        { action: 'analyze', text },
+      )
+      return { ...ledger, coverageAnalysis }
     },
   })
 
@@ -250,6 +257,11 @@ export default function ReadingPage() {
       void qc.invalidateQueries({ queryKey: ['cards'] })
       setFeedback({ kind: 'ok', text: 'Word promoted to FSRS flashcard!' })
     },
+    onError: (e) =>
+      setFeedback({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Could not create card',
+      }),
   })
 
   const [selected, setSelected] = useState('')
@@ -1150,20 +1162,24 @@ export default function ReadingPage() {
                               </div>
                             </div>
 
-                            <button
-                              type="button"
-                              disabled={promoteWord.isPending}
-                              onClick={() =>
-                                promoteWord.mutate({
-                                  token: word.normalized,
-                                  snippet: `Encountered ${word.encounterCount} times across reading.`,
-                                })
-                              }
-                              className="btn-ghost text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
-                            >
-                              <Plus className="h-3.5 w-3.5 text-indigo-400" />
-                              Turn into Card
-                            </button>
+                            {word.isAlreadyCard ? (
+                              <span className="text-[11px] text-emerald-400">Already a card</span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={promoteWord.isPending}
+                                onClick={() =>
+                                  promoteWord.mutate({
+                                    token: word.normalized,
+                                    snippet: `Encountered ${word.encounterCount} times across reading.`,
+                                  })
+                                }
+                                className="btn-ghost text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
+                              >
+                                <Plus className="h-3.5 w-3.5 text-indigo-400" />
+                                Turn into Card
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>

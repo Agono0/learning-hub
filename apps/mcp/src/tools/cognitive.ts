@@ -188,7 +188,7 @@ export const cognitiveTools: RegisteredTool[] = [
     'View naturally encountered vocabulary / technical terms across reading and notes, or record new token encounters for Krashen i+1 tracking.',
     {
       action: z.enum(['list', 'record']).default('list'),
-      tokens: z.array(z.string().trim()).optional(),
+      tokens: z.array(z.string().trim().min(1).max(100)).max(500).optional(),
       sourceType: z.enum(['reading', 'note', 'lesson']).default('reading'),
       limit: z.number().int().min(1).max(100).default(30),
     },
@@ -200,7 +200,7 @@ export const cognitiveTools: RegisteredTool[] = [
       }
 
       const summaries = getWordExposureSummaries(limit)
-      const readyForPromotion = summaries.filter((s) => s.eligibleForPromotion)
+      const readyForPromotion = summaries.filter((s) => s.eligibleForPromotion && !s.isAlreadyCard)
       return json({
         ok: true,
         trackedCount: summaries.length,

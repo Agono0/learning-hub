@@ -826,5 +826,54 @@ describe('/api/curriculum/exam/simulator', () => {
       expect(body.card.content.basic.front).toBe('serendipity')
       expect(body.card.tags).toContain('ambient-promoted')
     })
+
+    it('refuses to promote a word that is already a card (409)', async () => {
+      const res = await M.exposure.POST(
+        post('/api/reading/exposure', { action: 'promote', token: 'Serendipity', deckId }),
+      )
+      expect(res.status).toBe(409)
+    })
+
+    it('404s promotion into a missing deck', async () => {
+      const res = await M.exposure.POST(
+        post('/api/reading/exposure', { action: 'promote', token: 'quixotic', deckId: 999_999 }),
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('marks promoted words as already-a-card in the ledger', async () => {
+      await M.exposure.POST(
+        post('/api/reading/exposure', { action: 'record', token: 'Serendipity' }),
+      )
+      const data = await (await M.exposure.GET(get('/api/reading/exposure?limit=200'))).json()
+      const word = data.words.find((w: any) => w.normalized === 'serendipity')
+      expect(word.isAlreadyCard).toBe(true)
+      expect(data.coverageAnalysis).toBeNull()
+    })
+
+    it('analyzes long texts via POST', async () => {
+      const text = 'Neurons fire. '.repeat(1_000)
+      const res = await M.exposure.POST(post('/api/reading/exposure', { action: 'analyze', text }))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.coverageAnalysis.totalTokens).toBe(2_000)
+    })
+
+    it('validates bodies per action (400)', async () => {
+      const bad = [
+        { action: 'record' },
+        { action: 'record', token: '!!!' },
+        { action: 'record_batch', tokens: [] },
+        { action: 'record_batch', tokens: Array(501).fill('word') },
+        { action: 'promote' },
+        { action: 'analyze', text: '' },
+        { action: 'nope' },
+      ]
+      for (const b of bad) {
+        const res = await M.exposure.POST(post('/api/reading/exposure', b))
+        expect(res.status, JSON.stringify(b).slice(0, 60)).toBe(400)
+      }
+      expect((await M.exposure.GET(get('/api/reading/exposure?limit=0'))).status).toBe(400)
+    })
   })
 })

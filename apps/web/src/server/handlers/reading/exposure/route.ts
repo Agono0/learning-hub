@@ -3,132 +3,143 @@
  * Ingests naturally encountered tokens from reading, notes, and lessons.
  * Computes Krashen i+1 lexical coverage (Nation 2001) and flags words meeting
  * the spaced encounter promotion threshold for 1-click card conversion.
+ *
+ * GET  ?limit&analyzeText      → word rollups (+ coverage for short texts)
+ * POST { action: 'record' }       → one encounter
+ * POST { action: 'record_batch' } → up to 500 encounters
+ * POST { action: 'analyze', text } → coverage for long texts (no URL length limit)
+ * POST { action: 'promote', token } → basic card; 409 if one already exists
  */
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { eventBus } from '@learning-hub/core'
+import {
+  computeLexicalCoverage,
+  exposureBatchSchema,
+  exposureEventSchema,
+  normalizeExposureToken,
+  tokenizeText,
+} from '@learning-hub/core/exposure'
 import {
   cards,
   db,
   decks,
+  findCardFronts,
   getKnownTokensSet,
   getWordExposureSummaries,
   recordExposure,
   recordExposureBatch,
 } from '@learning-hub/db'
-import { computeLexicalCoverage, tokenizeText } from '@learning-hub/core/exposure'
-import { readJson, withRoute } from '@/lib/api'
+import { readJson, readQuery, withRoute } from '@/lib/api'
+
+/** Cap analysed text so a pasted book can't stall the request. */
+const MAX_ANALYZE_CHARS = 200_000
 
 const getQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
-  analyzeText: z.string().optional(),
+  analyzeText: z.string().max(4_000).optional(),
 })
 
-const postBodySchema = z.object({
-  action: z.enum(['record', 'record_batch', 'promote']),
-  token: z.string().trim().optional(),
-  tokens: z.array(z.string().trim()).optional(),
-  sourceType: z.enum(['reading', 'note', 'lesson']).default('reading'),
-  sourceId: z.number().int().positive().optional(),
-  contextSnippet: z.string().max(500).optional(),
-  // For 'promote' action
-  deckId: z.number().int().positive().optional(),
-  back: z.string().optional(),
-})
+const postBodySchema = z.discriminatedUnion('action', [
+  exposureEventSchema.extend({ action: z.literal('record') }),
+  exposureBatchSchema.extend({ action: z.literal('record_batch') }),
+  z.object({ action: z.literal('analyze'), text: z.string().min(1).max(MAX_ANALYZE_CHARS) }),
+  z.object({
+    action: z.literal('promote'),
+    token: z.string().trim().min(1).max(100),
+    deckId: z.number().int().positive().optional(),
+    back: z.string().trim().max(2_000).optional(),
+    contextSnippet: z.string().max(500).optional(),
+  }),
+])
 
-export async function GET(req: Request) {
-  const url = new URL(req.url)
-  const parsed = getQuerySchema.safeParse({
-    limit: url.searchParams.get('limit') || undefined,
-    analyzeText: url.searchParams.get('analyzeText') || undefined,
-  })
+function analyze(text: string) {
+  return computeLexicalCoverage(tokenizeText(text), getKnownTokensSet())
+}
 
-  if (!parsed.success) {
-    return Response.json(
-      { error: 'invalid query params', details: parsed.error.issues },
-      { status: 400 },
-    )
-  }
-
-  const { limit, analyzeText } = parsed.data
-  const words = getWordExposureSummaries(limit)
-
-  let coverageAnalysis = null
-  if (analyzeText) {
-    const known = getKnownTokensSet()
-    const tokens = tokenizeText(analyzeText)
-    coverageAnalysis = computeLexicalCoverage(tokens, known)
-  }
-
+export const GET = withRoute(async (req: Request) => {
+  const { limit, analyzeText } = readQuery(req, getQuerySchema)
   return Response.json({
     ok: true,
-    words,
-    coverageAnalysis,
+    words: getWordExposureSummaries(limit),
+    coverageAnalysis: analyzeText ? analyze(analyzeText) : null,
   })
+})
+
+/** The deck promoted words go into: the requested one, else the first, else a new "Vocabulary" deck. */
+async function resolveDeckId(requested?: number): Promise<number | null> {
+  if (requested) {
+    const [deck] = await db
+      .select({ id: decks.id })
+      .from(decks)
+      .where(eq(decks.id, requested))
+      .limit(1)
+    return deck?.id ?? null
+  }
+  const [first] = await db.select({ id: decks.id }).from(decks).limit(1)
+  if (first) return first.id
+  const [created] = await db
+    .insert(decks)
+    .values({ name: 'Vocabulary' })
+    .returning({ id: decks.id })
+  return created!.id
 }
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, postBodySchema)
 
-  if (body.action === 'record') {
-    if (!body.token) {
-      return Response.json({ error: 'token required for record' }, { status: 400 })
-    }
-    const event = recordExposure({
-      token: body.token,
-      sourceType: body.sourceType,
-      sourceId: body.sourceId,
-      contextSnippet: body.contextSnippet,
-    })
-    return Response.json({ ok: true, action: 'record', event })
-  }
-
-  if (body.action === 'record_batch') {
-    if (!body.tokens || body.tokens.length === 0) {
-      return Response.json({ error: 'tokens array required for record_batch' }, { status: 400 })
-    }
-    const inserted = recordExposureBatch(body.tokens, {
-      sourceType: body.sourceType,
-      sourceId: body.sourceId,
-      contextSnippet: body.contextSnippet,
-    })
-    return Response.json({ ok: true, action: 'record_batch', insertedCount: inserted })
-  }
-
-  if (body.action === 'promote') {
-    if (!body.token) {
-      return Response.json({ error: 'token required for promote' }, { status: 400 })
-    }
-
-    let targetDeckId = body.deckId
-    if (!targetDeckId) {
-      const [firstDeck] = await db.select({ id: decks.id }).from(decks).limit(1)
-      if (!firstDeck) {
-        const [newDeck] = await db
-          .insert(decks)
-          .values({ name: 'Vocabulary' })
-          .returning({ id: decks.id })
-        targetDeckId = newDeck.id
-      } else {
-        targetDeckId = firstDeck.id
+  switch (body.action) {
+    case 'record': {
+      if (!normalizeExposureToken(body.token)) {
+        return Response.json({ error: 'token has no letters or digits' }, { status: 400 })
       }
+      const event = recordExposure(body)
+      return Response.json({ ok: true, action: 'record', event })
     }
 
-    const front = body.token
-    const back = body.back || body.contextSnippet || 'Context from reading'
-    const nowIso = new Date().toISOString()
-
-    const [card] = await db
-      .insert(cards)
-      .values({
-        deckId: targetDeckId!,
-        type: 'basic',
-        content: { basic: { front, back } },
-        tags: ['ambient-promoted', 'vocabulary'],
-        due: nowIso,
+    case 'record_batch': {
+      const insertedCount = recordExposureBatch(body.tokens, {
+        sourceType: body.sourceType,
+        sourceId: body.sourceId,
+        contextSnippet: body.contextSnippet,
       })
-      .returning()
+      return Response.json({ ok: true, action: 'record_batch', insertedCount })
+    }
 
-    return Response.json({ ok: true, action: 'promote', card }, { status: 201 })
+    case 'analyze':
+      return Response.json({ ok: true, action: 'analyze', coverageAnalysis: analyze(body.text) })
+
+    case 'promote': {
+      const normalized = normalizeExposureToken(body.token)
+      if (!normalized) {
+        return Response.json({ error: 'token has no letters or digits' }, { status: 400 })
+      }
+      if (findCardFronts([normalized]).size > 0) {
+        return Response.json({ error: 'a card for this word already exists' }, { status: 409 })
+      }
+
+      const deckId = await resolveDeckId(body.deckId)
+      if (!deckId) return Response.json({ error: 'deck not found' }, { status: 404 })
+
+      const [card] = await db
+        .insert(cards)
+        .values({
+          deckId,
+          type: 'basic',
+          content: {
+            basic: {
+              front: body.token,
+              back: body.back || body.contextSnippet || 'Context from reading',
+            },
+          },
+          tags: ['ambient-promoted', 'vocabulary'],
+          source: 'exposure-ledger',
+          due: new Date().toISOString(),
+        })
+        .returning()
+
+      eventBus.emit('card.created', { deckId, count: 1 })
+      return Response.json({ ok: true, action: 'promote', card }, { status: 201 })
+    }
   }
-
-  return Response.json({ error: 'unsupported action' }, { status: 400 })
 })

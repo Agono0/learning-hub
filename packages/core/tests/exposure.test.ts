@@ -63,3 +63,22 @@ describe('Ambient Exposure Ledger (Krashen i+1 & Spaced Encounters)', () => {
     expect(isEligibleForSrsPromotion(spaced.slice(0, 4))).toBe(false)
   })
 })
+
+describe('exposure promotion helpers', async () => {
+  const m = await import('../src/exposure')
+  it('normalizes tokens by case and surrounding punctuation only', () => {
+    expect(m.normalizeExposureToken('  “Synapse,” ')).toBe('synapse')
+    expect(m.normalizeExposureToken("don't")).toBe("don't")
+    expect(m.normalizeExposureToken('...')).toBe('')
+  })
+  it('applies the encounter/day threshold to aggregates', () => {
+    expect(m.meetsPromotionThreshold(5, 3)).toBe(true)
+    expect(m.meetsPromotionThreshold(4, 3)).toBe(false)
+    expect(m.meetsPromotionThreshold(9, 2)).toBe(false)
+    expect(m.meetsPromotionThreshold(2, 2, 2, 2)).toBe(true)
+  })
+  it('does not throw on invalid timestamps', () => {
+    const bad = Array.from({ length: 5 }, () => ({ createdAt: 'not-a-date' }))
+    expect(m.isEligibleForSrsPromotion(bad)).toBe(false)
+  })
+})
