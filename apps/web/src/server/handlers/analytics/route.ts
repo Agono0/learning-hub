@@ -4,6 +4,7 @@ import { cards, focusSessions, revlog } from '@learning-hub/db'
 import {
   calibrationByCard,
   calibrationCurve,
+  computeCalibrationMetrics,
   dayKey,
   focusLeakTrend,
   forecastHistogram,
@@ -42,6 +43,10 @@ export async function GET(req: Request) {
     .limit(5000)
     .all()
   const calibration = calibrationCurve(
+    revlogRows.map((r) => ({ rating: r.rating })),
+    revlogRows.map((r) => r.retrievability),
+  )
+  const calibrationMetrics = computeCalibrationMetrics(
     revlogRows.map((r) => ({ rating: r.rating })),
     revlogRows.map((r) => r.retrievability),
   )
@@ -137,6 +142,7 @@ export async function GET(req: Request) {
   return Response.json({
     forecast,
     calibration,
+    calibrationMetrics,
     calibrationNote:
       cardRows.length === 0
         ? null

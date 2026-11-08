@@ -114,6 +114,97 @@ export function calibrationCurve(
   }))
 }
 
+export interface CalibrationMetrics {
+  brierScore: number | null
+  meanPredicted: number | null
+  meanActual: number | null
+  bias: number | null
+  status: 'well-calibrated' | 'overconfident' | 'underconfident' | 'insufficient-data'
+  interpretation: string
+}
+
+/**
+ * Computes the Brier score (Brier 1950; Murphy 1973): mean squared error
+ * between predicted retention probability and actual binary recall outcomes.
+ * Perfect calibration = 0.0; uninformative coin flip = 0.25.
+ */
+export function computeBrierScore(
+  reviews: CalibrationReview[],
+  precomputedRetrievability?: (number | null | undefined)[],
+): number | null {
+  let sumSquaredError = 0
+  let count = 0
+
+  for (const [i, r] of reviews.entries()) {
+    const p = r.predictedRetrievability ?? precomputedRetrievability?.[i]
+    if (p == null || !Number.isFinite(p) || p < 0 || p > 1) continue
+    const outcome = r.rating > 1 ? 1 : 0
+    sumSquaredError += (p - outcome) ** 2
+    count += 1
+  }
+
+  if (count === 0) return null
+  return Math.round((sumSquaredError / count) * 10_000) / 10_000
+}
+
+/**
+ * Computes metacognitive calibration metrics including Brier score,
+ * empirical bias (overconfidence vs underconfidence), and evidence-based interpretation.
+ */
+export function computeCalibrationMetrics(
+  reviews: CalibrationReview[],
+  precomputedRetrievability?: (number | null | undefined)[],
+): CalibrationMetrics {
+  let sumPredicted = 0
+  let sumActual = 0
+  let count = 0
+
+  for (const [i, r] of reviews.entries()) {
+    const p = r.predictedRetrievability ?? precomputedRetrievability?.[i]
+    if (p == null || !Number.isFinite(p) || p < 0 || p > 1) continue
+    sumPredicted += p
+    sumActual += r.rating > 1 ? 1 : 0
+    count += 1
+  }
+
+  if (count === 0) {
+    return {
+      brierScore: null,
+      meanPredicted: null,
+      meanActual: null,
+      bias: null,
+      status: 'insufficient-data',
+      interpretation: 'No reviews with calibrated retention probability recorded yet.',
+    }
+  }
+
+  const brierScore = computeBrierScore(reviews, precomputedRetrievability)
+  const meanPredicted = Math.round((sumPredicted / count) * 1000) / 1000
+  const meanActual = Math.round((sumActual / count) * 1000) / 1000
+  const bias = Math.round((meanPredicted - meanActual) * 1000) / 1000
+
+  let status: CalibrationMetrics['status'] = 'well-calibrated'
+  let interpretation =
+    'Your retrievability predictions match empirical retention — healthy metacognitive monitoring.'
+
+  if (bias > 0.05) {
+    status = 'overconfident'
+    interpretation = `You overestimate retention by ${Math.round(bias * 100)}% on average. Pay closer attention to subtle recall errors.`
+  } else if (bias < -0.05) {
+    status = 'underconfident'
+    interpretation = `You underestimate retention by ${Math.round(Math.abs(bias) * 100)}% on average. Your memories are more durable than you realize.`
+  }
+
+  return {
+    brierScore,
+    meanPredicted,
+    meanActual,
+    bias,
+    status,
+    interpretation,
+  }
+}
+
 // ─── Calibration trainer (per-card confidence vs correctness) ────────────────
 
 /** One confidence-vs-correctness stat block per card. */
