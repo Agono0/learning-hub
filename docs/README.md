@@ -30,6 +30,12 @@ drift test fails if they go stale.
 | [TEST_INFRA.md](TEST_INFRA.md) | The test pyramid: unit, dual-driver DB, opaque-box E2E tiers |
 | [adr/](adr/README.md) | Architecture decision records (one codebase, migrations, LHCF) |
 
+## Plans
+
+| Doc | What it is |
+| --- | --- |
+| [plans/MASTER-FIX-PLAN.md](plans/MASTER-FIX-PLAN.md) | Full project audit (2026-11-08): 26 findings F-01–F-26 with per-finding specs, commit-level runbooks, and the P0–P4 execution roadmap |
+
 ## Platforms & integrations
 
 | Doc | What it is |
