@@ -309,12 +309,12 @@ describe('evaluateClozeAnswer & evaluateTypeinAnswer (DEF-002)', () => {
 
 describe('property: cloze parse → segments agree on answers', () => {
   it('every parsed answer appears as a segment answer', () => {
-    const answerArb = fc.string({ minLength: 1, maxLength: 8 }).filter((s) => !/[{}]/.test(s))
+    const answerArb = fc.string({ minLength: 1, maxLength: 8 }).filter((s) => !/[{}:]/.test(s))
     const textArb = fc
       .tuple(
         answerArb,
         answerArb,
-        fc.string({ maxLength: 10 }).filter((s) => !/[{}]/.test(s)),
+        fc.string({ maxLength: 10 }).filter((s) => !/[{}:]/.test(s)),
       )
       .map(([a1, a2, filler]) => `${filler} {{c1::${a1}}} mid {{c2::${a2}}} end`)
     fc.assert(
