@@ -14,6 +14,7 @@ import {
   courses,
   examDates,
   focusSessions,
+  getDailyQuest,
   journalEntries,
   lessonProgress,
   lessons,
@@ -101,7 +102,7 @@ export const GET = withRoute(async (): Promise<Response> => {
   const allQuotes = await db.select().from(quotes).limit(500)
   const quote = allQuotes.length ? allQuotes[hashString(today) % allQuotes.length] : null
 
-  const [todayQuest] = await db.select().from(quests).where(eq(quests.date, today)).limit(1)
+  const todayQuest = getDailyQuest(today)
 
   // Zeigarnik open loops: unfinished lessons (most recently started first)
   // and upcoming exams — surfaced so the learner can close the loop.

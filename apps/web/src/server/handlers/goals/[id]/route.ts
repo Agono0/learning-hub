@@ -1,8 +1,6 @@
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
 import { eventBus, MAX_IF_THEN_CHARS, validateWoopGoal } from '@learning-hub/core'
-import { goals } from '@learning-hub/db'
+import { deleteGoal, getGoal, updateGoal } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 type Params = { params: Promise<{ id: string }> }
@@ -26,7 +24,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   const goalId = Number.parseInt(id, 10)
   if (!Number.isInteger(goalId)) return Response.json({ error: 'Invalid id' }, { status: 400 })
 
-  const [existing] = db.select().from(goals).where(eq(goals.id, goalId)).all()
+  const existing = getGoal(goalId)
   if (!existing) return Response.json({ error: 'Goal not found' }, { status: 404 })
 
   const body = await readJson(req, patchGoalSchema)
@@ -66,10 +64,10 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
       { status: 400 },
     )
 
-  const [row] = db.update(goals).set(next).where(eq(goals.id, goalId)).returning().all()
+  const { goal: row, completedJustNow } = updateGoal(goalId, next)
 
   // Fact after the write: a WOOP goal reached `done` for the first time.
-  if (row && existing.status !== 'done' && row.status === 'done') {
+  if (row && completedJustNow) {
     eventBus.emit('goal.completed', { goalId: row.id })
   }
 
@@ -81,6 +79,6 @@ export async function DELETE(_req: Request, { params }: Params) {
   const { id } = await params
   const goalId = Number.parseInt(id, 10)
   if (!Number.isInteger(goalId)) return Response.json({ error: 'Invalid id' }, { status: 400 })
-  db.delete(goals).where(eq(goals.id, goalId)).run()
+  deleteGoal(goalId)
   return Response.json({ ok: true })
 }
