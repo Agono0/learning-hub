@@ -41,6 +41,7 @@ beforeAll(async () => {
   M.weaknessV2 = await import('../app/api/curriculum/skills/weakness-v2/route')
   M.voiceSession = await import('../app/api/tutor/voice-session/route')
   M.examSim = await import('../app/api/curriculum/exam/simulator/route')
+  M.review = await import('../src/server/handlers/review/route')
   M.api = await import('../src/lib/api')
   M.db = await import('@learning-hub/db')
 
@@ -633,5 +634,47 @@ describe('/api/curriculum/exam/simulator', () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.createdCount).toBe(2)
+  })
+
+  it('triggers hypercorrection when confidence=1 and grade=1 on /api/review', async () => {
+    const { db, cards } = M.db
+    const c = db
+      .insert(cards)
+      .values({
+        deckId,
+        front: 'Capital of Australia?',
+        back: 'Canberra',
+        content: { front: 'Capital of Australia?', back: 'Canberra' },
+        type: 'basic',
+        due: new Date().toISOString(),
+      })
+      .returning()
+      .all()[0]
+
+    // High confidence mistake: confidence=1, grade=1
+    const res = await M.review.POST(
+      post('/api/review', {
+        cardId: c.id,
+        grade: 1,
+        confidence: 1,
+      }),
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.hypercorrection).toBeDefined()
+    expect(body.hypercorrection.isEligible).toBe(true)
+    expect(body.hypercorrection.prompt).toContain('Canberra')
+
+    // Low confidence mistake: confidence=0, grade=1 -> isEligible: false
+    const res2 = await M.review.POST(
+      post('/api/review', {
+        cardId: c.id,
+        grade: 1,
+        confidence: 0,
+      }),
+    )
+    const body2 = await res2.json()
+    expect(body2.hypercorrection.isEligible).toBe(false)
   })
 })

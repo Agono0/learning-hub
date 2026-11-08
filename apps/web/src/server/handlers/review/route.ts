@@ -20,6 +20,7 @@ import { and, eq, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   db,
+  cardEmbeddings,
   cards,
   courses,
   decks,
@@ -31,8 +32,10 @@ import {
 } from '@learning-hub/db'
 import {
   buildSession,
+  checkHypercorrection,
   dayKey,
   interleaveBy,
+  interleaveBySemanticDistance,
   previewGrades,
   type Confidence,
   type Grade,
@@ -158,6 +161,25 @@ export async function GET(req: Request) {
     .map((r) => sessionCards.find((c) => c.id === r.id))
     .filter((c) => c !== undefined)
 
+  // Contrastive semantic interleaving (Kornell & Bjork 2008): if card embeddings are indexed,
+  // interleave to avoid concept clumping; otherwise keep weak-first buildSession order.
+  const cardIds = ordered.map((c) => c.id)
+  let interleaved = ordered
+  if (!course && cardIds.length > 2) {
+    const embRows = await db
+      .select({ cardId: cardEmbeddings.cardId, embedding: cardEmbeddings.embedding })
+      .from(cardEmbeddings)
+      .where(inArray(cardEmbeddings.cardId, cardIds))
+    if (embRows.length > 0) {
+      const embMap = new Map(embRows.map((r) => [r.cardId, r.embedding]))
+      const cardsWithEmb = ordered.map((c) => ({
+        ...c,
+        embedding: embMap.get(c.id),
+      }))
+      interleaved = interleaveBySemanticDistance(cardsWithEmb)
+    }
+  }
+
   // Mixed practice: alternate lessons while keeping the per-lesson priority
   // (weak-first) intact. sourceKey is `lhcf:<course>/<lesson>/<n>` for course
   // cards; anything else stays a single group.
@@ -166,7 +188,7 @@ export async function GET(req: Request) {
         const parts = (c.sourceKey ?? '').split('/')
         return parts.length >= 2 && parts[0]!.startsWith('lhcf:') ? parts[1]! : ''
       })
-    : ordered
+    : interleaved
 
   const globalCfg = await globalFsrsConfig()
   const deckIds = [...new Set(mixed.map((c) => c.deckId))]
@@ -249,6 +271,17 @@ export const POST = withRoute(async (req: Request) => {
     }),
   )
 
+  const cardContent =
+    typeof result.card.content === 'object' && result.card.content
+      ? (result.card.content as Record<string, unknown>)
+      : null
+  const correctAnswer = result.card.back || (cardContent?.back ? String(cardContent.back) : '')
+  const hypercorrection = checkHypercorrection({
+    confidence: body.confidence === 1 ? 5 : 1,
+    grade: body.grade,
+    correctAnswer,
+  })
+
   return Response.json({
     ok: true,
     card: result.card,
@@ -261,6 +294,7 @@ export const POST = withRoute(async (req: Request) => {
     streak: { current: result.streak.current, best: result.streak.best },
     elo: result.elo,
     retrievability: result.retrievability,
+    hypercorrection,
     day: dayKey(now, body.tzOffset),
   })
 })

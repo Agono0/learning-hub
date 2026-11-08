@@ -108,6 +108,11 @@ interface ReviewResponse {
   intervalDays: number
   xp: number
   streak: { current: number; best: number }
+  hypercorrection?: {
+    isEligible: boolean
+    prompt?: string
+    contrastNote?: string
+  }
 }
 interface SessionResult {
   cardId: number
@@ -220,6 +225,9 @@ function ReviewPageInner() {
   // (the practice endpoint already recorded the review — the session only advances)
   const [exerciseResult, setExerciseResult] = useState<PracticeResponse | null>(null)
   const [finishedAt, setFinishedAt] = useState<number | null>(null)
+  const [hyperNotice, setHyperNotice] = useState<{ prompt: string; contrastNote: string } | null>(
+    null,
+  )
   // delayed feedback (Butler & Roediger 2008): ids graded WITHOUT seeing the
   // answer this session — shown in the summary; their misses (rating 1–2) are
   // picked up for restudy from revlog at the next session's start
@@ -365,6 +373,12 @@ function ReviewPageInner() {
           xp: data.xp,
         },
       ])
+      if (data.hypercorrection?.isEligible && data.hypercorrection.prompt) {
+        setHyperNotice({
+          prompt: data.hypercorrection.prompt,
+          contrastNote: data.hypercorrection.contrastNote || '',
+        })
+      }
       // The re-queued copy extends the queue, so a re-queue on the LAST card
       // must also extend the end check — otherwise the retry is dropped.
       resetCardState()
@@ -897,6 +911,23 @@ function ReviewPageInner() {
           </div>
         ) : (
           <>
+            {hyperNotice && (
+              <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                <div className="flex items-center justify-between font-semibold text-amber-300">
+                  <span>Metacognitive Hypercorrection (Butterfield &amp; Metcalfe)</span>
+                  <button
+                    onClick={() => setHyperNotice(null)}
+                    className="text-xs text-amber-400 hover:text-amber-200"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-amber-200/90">{hyperNotice.prompt}</p>
+                <p className="mt-1 text-[11px] italic text-amber-300/75">
+                  {hyperNotice.contrastNote}
+                </p>
+              </div>
+            )}
             <CardFront
               card={current}
               revealed={revealed}

@@ -9,7 +9,7 @@
  *
  * CLIENT component — uses `@/lib/transport` and `<Markdown>` exclusively (Hard Rules #1, #11).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen,
@@ -26,6 +26,7 @@ import {
   Upload,
   Video,
 } from 'lucide-react'
+import { extractIncidentalGlossTokens } from '@learning-hub/core'
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
@@ -157,6 +158,35 @@ export default function ReadingPage() {
         '/api/reading/highlights?mode=resurface&limit=10',
       ),
   })
+
+  const { data: vocabCards } = useQuery<{
+    cards: Array<{ id: number; front?: string; back?: string; content?: Record<string, unknown> }>
+  }>({
+    queryKey: ['vocab-cards'],
+    queryFn: () => apiGet('/api/cards?limit=200'),
+  })
+
+  const incidentalGloss = useMemo(() => {
+    const text = detail?.source?.content || detail?.fragment?.text || ''
+    if (!text || !vocabCards?.cards) return []
+    const map = new Map<string, { cardId: number; definition: string }>()
+    for (const c of vocabCards.cards) {
+      const front = (c.front || (c.content?.front as string) || '').trim().toLowerCase()
+      const back = (c.back || (c.content?.back as string) || '').trim()
+      if (front && back && front.length > 2) {
+        map.set(front, { cardId: c.id, definition: back })
+      }
+    }
+    const tokens = extractIncidentalGlossTokens(text, map)
+    const matched = tokens.filter((t) => !t.isKnown && t.definition)
+    const unique = new Map<string, { word: string; cardId: number; definition: string }>()
+    for (const m of matched) {
+      if (!unique.has(m.normalized)) {
+        unique.set(m.normalized, { word: m.word, cardId: m.cardId!, definition: m.definition! })
+      }
+    }
+    return Array.from(unique.values())
+  }, [detail?.source?.content, detail?.fragment?.text, vocabCards?.cards])
 
   const [selected, setSelected] = useState('')
   const [triageQueue, setTriageQueue] = useState<Highlight[]>([])
@@ -561,6 +591,30 @@ export default function ReadingPage() {
                       {Math.round(source.position)}%
                     </span>
                   </div>
+                  {incidentalGloss.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-2.5 text-xs">
+                      <div className="flex items-center justify-between font-medium text-indigo-300">
+                        <span>Incidental Vocabulary (Krashen i+1)</span>
+                        <span className="text-[10px] opacity-75">
+                          {incidentalGloss.length} in text
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {incidentalGloss.map((item) => (
+                          <span
+                            key={item.word}
+                            className="inline-flex items-center gap-1 rounded bg-black/30 px-2 py-0.5 text-[11px]"
+                            title={`Definition: ${item.definition}`}
+                          >
+                            <span className="font-semibold text-neutral-200">{item.word}</span>
+                            <span className="max-w-[120px] truncate text-[10px] text-neutral-400">
+                              — {item.definition}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div
                     className="mt-3 max-h-[48vh] overflow-y-auto text-sm leading-relaxed selection:bg-indigo-500/30"
                     onMouseUp={() => setSelected(window.getSelection()?.toString() ?? '')}
