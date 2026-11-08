@@ -742,6 +742,17 @@ describe('/api/curriculum/exam/simulator', () => {
       expect(body.action).toBe('balance')
       expect(Array.isArray(body.shifts)).toBe(true)
       expect(Array.isArray(body.forecast)).toBe(true)
+
+      // today is an easy day, so the mature card due today is moved off it —
+      // and the move is persisted to its due date, nothing else.
+      const shift = body.shifts.find((s: { cardId: number }) => s.cardId === d.id)
+      expect(shift).toBeDefined()
+      expect(shift.shiftDays).not.toBe(0)
+      const after = db.select().from(cards).where(eq(cards.id, d.id)).all()[0]
+      expect(after.due).toBe(shift.newDue)
+      expect(after.stability).toBe(30)
+      expect(after.scheduledDays).toBe(30)
+      expect(after.state).toBe(2)
     })
 
     it('catches up overdue backlog without mutating FSRS memory state', async () => {

@@ -3,7 +3,6 @@ import { callRoute } from '../helpers/api-client'
 import * as notesRoute from '../../../apps/web/app/api/notes/route'
 import * as noteIdRoute from '../../../apps/web/app/api/notes/[id]/route'
 import * as ideasRoute from '../../../apps/web/app/api/ideas/route'
-import * as ideaIdRoute from '../../../apps/web/app/api/ideas/[id]/route'
 import * as evolveRoute from '../../../apps/web/app/api/ideas/evolve/route'
 import * as graphRoute from '../../../apps/web/app/api/graph/route'
 
@@ -19,7 +18,8 @@ describe('Tier 1: Notes, Ideas & Knowledge Graph API', () => {
       method: 'POST',
       body: {
         title: 'Cognitive Load Theory',
-        content: 'Sweller formulated Cognitive Load Theory distinguishing intrinsic, extraneous, and germane load.',
+        content:
+          'Sweller formulated Cognitive Load Theory distinguishing intrinsic, extraneous, and germane load.',
         supertag: 'DEFINITION',
       },
     })
@@ -53,6 +53,10 @@ describe('Tier 1: Notes, Ideas & Knowledge Graph API', () => {
     })
     expect(singleNoteRes.status).toBe(200)
     expect(singleNoteRes.data.note.id).toBe(note1Id)
+    // note 2 links to note 1 by title → it shows up as a backlink
+    expect(singleNoteRes.data.backlinks.map((b: { fromNoteId: number }) => b.fromNoteId)).toContain(
+      note2Id,
+    )
   })
 
   it('captures ideas into inbox and evolves them into a hybrid offspring', async () => {
@@ -61,7 +65,8 @@ describe('Tier 1: Notes, Ideas & Knowledge Graph API', () => {
       method: 'POST',
       body: {
         title: 'Spaced Retrieval via LLM Dialogues',
-        content: 'Using conversational agents to prompt active recall questions during natural chat.',
+        content:
+          'Using conversational agents to prompt active recall questions during natural chat.',
         stage: 'seed',
       },
     })
