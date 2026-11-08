@@ -23,6 +23,30 @@ function corsHeaders(): HeadersInit {
   }
 }
 
+/** A community_library row as stored in D1 (tags is a JSON array string). */
+interface LibraryRow {
+  id: string
+  type: string
+  title: string
+  description: string | null
+  author: string
+  downloads: number
+  rating: number
+  tags: string | null
+  share_string: string
+  published_at: string
+}
+
+/** Tags column → string[]; a corrupt value yields [] instead of failing the search. */
+function parseTags(raw: string | null): string[] {
+  try {
+    const v: unknown = JSON.parse(raw || '[]')
+    return Array.isArray(v) ? v.filter((t): t is string => typeof t === 'string') : []
+  } catch {
+    return []
+  }
+}
+
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -213,22 +237,24 @@ export default {
         }
 
         let query = 'SELECT * FROM community_library WHERE 1=1'
-        const params: any[] = []
+        const params: D1Value[] = []
 
         if (type) {
           query += ' AND type = ?'
           params.push(type)
         }
         if (q) {
-          query += ' AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ?)'
-          params.push(`%${q}%`, `%${q}%`)
+          // Escape LIKE wildcards so a search for "100%" or "a_b" is literal.
+          const needle = `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`
+          query += " AND (LOWER(title) LIKE ? ESCAPE '\\' OR LOWER(description) LIKE ? ESCAPE '\\')"
+          params.push(needle, needle)
         }
         query += ' ORDER BY downloads DESC LIMIT 50'
 
         const results = await env.DB.prepare(query)
           .bind(...params)
-          .all()
-        const items = results.results.map((r: any) => ({
+          .all<LibraryRow>()
+        const items = results.results.map((r) => ({
           id: r.id,
           type: r.type,
           title: r.title,
@@ -236,7 +262,7 @@ export default {
           author: r.author,
           downloads: r.downloads,
           rating: r.rating,
-          tags: JSON.parse(r.tags || '[]'),
+          tags: parseTags(r.tags),
           shareString: r.share_string,
           publishedAt: r.published_at,
         }))
@@ -281,8 +307,12 @@ export default {
       }
 
       if (path === '/api/v1/library/download' && request.method === 'POST') {
-        const body = (await request.json()) as { id: string }
-        if (!body.id) return jsonResponse({ error: 'id required' }, 400)
+        const raw: unknown = await request.json().catch(() => null)
+        const id = (raw as { id?: unknown } | null)?.id
+        if (typeof id !== 'string' || id.length === 0 || id.length > 100) {
+          return jsonResponse({ error: 'id required' }, 400)
+        }
+        const body = { id }
 
         if (env.DB) {
           await env.DB.prepare(
@@ -295,10 +325,10 @@ export default {
             'SELECT share_string FROM community_library WHERE id = ?',
           )
             .bind(body.id)
-            .first()
+            .first<{ share_string: string }>()
 
           if (!item) return jsonResponse({ error: 'Item not found' }, 404)
-          return jsonResponse({ ok: true, shareString: (item as any).share_string })
+          return jsonResponse({ ok: true, shareString: item.share_string })
         }
 
         return jsonResponse({ ok: true, shareString: '' })
@@ -359,8 +389,8 @@ export default {
       }
 
       return jsonResponse({ error: 'Not found' }, 404)
-    } catch (err: any) {
-      return jsonResponse({ error: err.message || 'Internal error' }, 500)
+    } catch (err: unknown) {
+      return jsonResponse({ error: (err instanceof Error && err.message) || 'Internal error' }, 500)
     }
   },
 }

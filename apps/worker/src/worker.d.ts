@@ -7,8 +7,13 @@ declare interface DurableObjectStorage {
   delete(key: string): Promise<boolean>
 }
 
+/** Opaque Durable Object id (only passed back to `namespace.get`). */
+declare interface DurableObjectId {
+  toString(): string
+}
+
 declare interface DurableObjectState {
-  id: any
+  id: DurableObjectId
   storage: DurableObjectStorage
   blockConcurrencyWhile<T>(callback: () => Promise<T>): Promise<T>
   acceptWebSocket(ws: WebSocket): void
@@ -16,18 +21,21 @@ declare interface DurableObjectState {
 }
 
 declare interface DurableObjectNamespace {
-  idFromName(name: string): any
-  get(id: any): {
+  idFromName(name: string): DurableObjectId
+  get(id: DurableObjectId): {
     fetch(request: Request | string, init?: RequestInit): Promise<Response>
   }
 }
 
 declare interface D1PreparedStatement {
-  bind(...values: any[]): D1PreparedStatement
-  all<T = Record<string, any>>(): Promise<{ results: T[] }>
+  bind(...values: D1Value[]): D1PreparedStatement
+  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>
   run(): Promise<{ success: boolean }>
-  first<T = Record<string, any>>(): Promise<T | null>
+  first<T = Record<string, unknown>>(): Promise<T | null>
 }
+
+/** Values D1 can bind to a `?` placeholder. */
+declare type D1Value = string | number | boolean | null | ArrayBuffer
 
 declare interface D1Database {
   prepare(query: string): D1PreparedStatement
@@ -39,8 +47,8 @@ declare class WebSocketPair {
 }
 
 interface WebSocket {
-  serializeAttachment(attachment: any): void
-  deserializeAttachment(): any
+  serializeAttachment(attachment: unknown): void
+  deserializeAttachment(): unknown
 }
 
 interface ResponseInit {
