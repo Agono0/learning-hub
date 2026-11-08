@@ -26,7 +26,7 @@ export function levelProgress(xp: number): number {
   const cur = xpForLevel(level)
   const next = xpForLevel(level + 1)
   if (next === cur) return 1
-  return Math.min(1, (xp - cur) / (next - cur))
+  return Math.min(1, Math.max(0, (xp - cur) / (next - cur)))
 }
 
 /** XP awarded per event (science-first: depth over time). */
