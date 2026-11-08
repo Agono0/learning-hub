@@ -44,8 +44,17 @@ async function resolveGroundedContext(
         typeof card.content === 'object' && card.content
           ? (card.content as Record<string, unknown>)
           : null
-      const front = card.front || (cardContent?.front as string) || body.topic
-      const back = card.back || (cardContent?.back as string) || ''
+      const rawFront =
+        cardContent?.front ??
+        (cardContent?.basic as Record<string, unknown> | undefined)?.front ??
+        body.topic
+      const rawBack =
+        cardContent?.back ??
+        (cardContent?.basic as Record<string, unknown> | undefined)?.back ??
+        (cardContent?.typein as { acceptedAnswers?: string[] } | undefined)?.acceptedAnswers?.[0] ??
+        ''
+      const front = String(rawFront)
+      const back = String(rawBack)
       return {
         topic: body.topic,
         prompt: front,
@@ -61,7 +70,7 @@ async function resolveGroundedContext(
       return {
         topic: lesson.title,
         prompt: `Key concepts of ${lesson.title}`,
-        targetAnswer: lesson.description || lesson.title,
+        targetAnswer: lesson.objective || lesson.title,
       }
     }
   }

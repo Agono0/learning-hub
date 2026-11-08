@@ -275,8 +275,14 @@ export const POST = withRoute(async (req: Request) => {
     typeof result.card.content === 'object' && result.card.content
       ? (result.card.content as Record<string, unknown>)
       : null
-  const correctAnswer = result.card.back || (cardContent?.back ? String(cardContent.back) : '')
+  const rawBack =
+    cardContent?.back ??
+    (cardContent?.basic as Record<string, unknown> | undefined)?.back ??
+    (cardContent?.typein as { acceptedAnswers?: string[] } | undefined)?.acceptedAnswers?.[0] ??
+    ''
+  const correctAnswer = String(rawBack)
   const hypercorrection = checkHypercorrection({
+    cardId: result.card.id,
     confidence: body.confidence === 1 ? 5 : 1,
     grade: body.grade,
     correctAnswer,

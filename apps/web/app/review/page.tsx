@@ -33,11 +33,12 @@ import { isSpeechAvailable, speak } from '@/lib/speech'
 import { hapticLight, hapticHeavy } from '@/platform/haptics'
 import {
   applyMistake,
+  evaluateSpokenAnswer,
   initialEnergy,
   MAX_ENERGY,
   stepsToShow,
   workedExampleFade,
-} from '@learning-hub/core/review'
+} from '@learning-hub/core'
 import {
   DEFAULT_SR_CRITERION,
   initialSrState,
@@ -228,6 +229,11 @@ function ReviewPageInner() {
   const [hyperNotice, setHyperNotice] = useState<{ prompt: string; contrastNote: string } | null>(
     null,
   )
+  const [oralListening, setOralListening] = useState(false)
+  const [suggestedOralGrade, setSuggestedOralGrade] = useState<{
+    grade: Grade
+    spoken: string
+  } | null>(null)
   // delayed feedback (Butler & Roediger 2008): ids graded WITHOUT seeing the
   // answer this session — shown in the summary; their misses (rating 1–2) are
   // picked up for restudy from revlog at the next session's start
@@ -319,6 +325,7 @@ function ReviewPageInner() {
     setTypeinValue('')
     setMcqPick(null)
     setClozeInput({})
+    setSuggestedOralGrade(null)
     resetRecallTimer()
   }, [resetRecallTimer])
 
@@ -427,6 +434,32 @@ function ReviewPageInner() {
       void qc.invalidateQueries({ queryKey: ['decks'] })
     },
   })
+
+  const handleOralRecall = useCallback(async () => {
+    if (oralListening || !current) return
+    setOralListening(true)
+    try {
+      const transcript = await listenForSpeech(6000)
+      if (transcript.trim()) {
+        const cardContent =
+          typeof current.content === 'object' && current.content
+            ? (current.content as Record<string, unknown>)
+            : null
+        const rawBack =
+          cardContent?.back ??
+          (cardContent?.basic as Record<string, unknown> | undefined)?.back ??
+          (cardContent?.typein as { acceptedAnswers?: string[] } | undefined)
+            ?.acceptedAnswers?.[0] ??
+          ''
+        const expected = String(rawBack)
+        const evalResult = evaluateSpokenAnswer(transcript, expected)
+        setSuggestedOralGrade({ grade: evalResult.grade, spoken: transcript })
+        setRevealed(true)
+      }
+    } finally {
+      setOralListening(false)
+    }
+  }, [oralListening, current])
 
   const commit = useCallback(
     (grade: Grade) => {
@@ -942,17 +975,29 @@ function ReviewPageInner() {
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
               {!revealed && !current.blind ? (
-                <button className="btn" onClick={reveal}>
-                  <Eye className="h-4 w-4" /> Reveal{' '}
-                  <span className="text-xs opacity-70">space</span>
-                </button>
+                <>
+                  <button className="btn" onClick={reveal}>
+                    <Eye className="h-4 w-4" /> Reveal{' '}
+                    <span className="text-xs opacity-70">space</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${oralListening ? 'animate-pulse bg-rose-500 text-white' : 'btn-ghost'}`}
+                    onClick={() => void handleOralRecall()}
+                    title="Speak your answer aloud (Oral retrieval practice, generation effect)"
+                  >
+                    <Mic className="h-4 w-4" />
+                    {oralListening ? 'Listening…' : 'Say aloud'}
+                  </button>
+                </>
               ) : (
                 GRADES.map((g) => {
                   const nextLabel = current.previews?.[g.grade]
+                  const isSuggested = suggestedOralGrade?.grade === g.grade
                   return (
                     <button
                       key={g.grade}
-                      className={`btn ${g.color}`}
+                      className={`btn ${g.color} ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
                       onClick={() => commit(g.grade)}
                       disabled={gradeMutation.isPending}
                     >
@@ -966,6 +1011,15 @@ function ReviewPageInner() {
                     </button>
                   )
                 })
+              )}
+              {suggestedOralGrade && (
+                <div className="mt-1 flex w-full items-center gap-1.5 text-xs text-amber-300">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>
+                    Spoken: &ldquo;{suggestedOralGrade.spoken}&rdquo; — suggested grade highlighted
+                    above.
+                  </span>
+                </div>
               )}
               {current.blind && !revealed && (
                 <span
