@@ -68,6 +68,13 @@ with *Unsupported class file major version*.
 Release signing is not configured yet: the APK is unsigned and the Windows
 installer is not code-signed (SmartScreen will warn). Both need your own keys.
 
+Auto-update via the Tauri updater plugin is planned but not wired — do not add
+the `@tauri-apps/plugin-updater` npm dependency until the full chain lands:
+Cargo plugin in `src-tauri/Cargo.toml`, plugin registration in `lib.rs`, the
+`updater:default` capability, a `plugins.updater` section (pubkey + endpoints)
+in `tauri.conf.json`, a UI update check, and release signing as the
+prerequisite.
+
 ## Rules that keep it working
 
 - **UI never calls `fetch` directly** — always `@/lib/transport`.

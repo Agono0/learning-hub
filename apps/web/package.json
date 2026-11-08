@@ -17,7 +17,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit --incremental false",
     "test": "vitest run",
     "test:ui": "playwright test"
@@ -38,7 +38,6 @@
     "@tauri-apps/plugin-http": "^2.8.3",
     "@tauri-apps/plugin-log": "^2.10.1",
     "@tauri-apps/plugin-notification": "^2.8.0",
-    "@tauri-apps/plugin-updater": "^2.14.1",
     "better-sqlite3": "^13.0.3",
     "cmdk": "^1.1.1",
     "drizzle-orm": "^0.45.4",
