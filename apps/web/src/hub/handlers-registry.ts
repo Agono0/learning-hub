@@ -25,7 +25,6 @@ import * as analytics from '../server/handlers/analytics/route'
 import * as ankiConnect from '../server/handlers/anki/connect/route'
 import * as audioDigest from '../server/handlers/audio/digest/route'
 import * as audioGrade from '../server/handlers/audio/grade/route'
-import * as audioSessions from '../server/handlers/audio/sessions/route'
 import * as backup from '../server/handlers/backup/route'
 import * as canvasId from '../server/handlers/canvas/[id]/route'
 import * as canvas from '../server/handlers/canvas/route'
@@ -201,7 +200,6 @@ add('analytics', analytics)
 add('anki/connect', ankiConnect)
 add('audio/digest', audioDigest)
 add('audio/grade', audioGrade)
-add('audio/sessions', audioSessions)
 add('backup', backup)
 add('canvas', canvas)
 add('canvas/[id]', canvasId)

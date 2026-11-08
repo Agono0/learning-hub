@@ -92,7 +92,6 @@ type Modules = {
   onlineBuddies: typeof import('../app/api/online/buddies/route')
   audioDigest: typeof import('../app/api/audio/digest/route')
   audioGrade: typeof import('../app/api/audio/grade/route')
-  audioSessions: typeof import('../app/api/audio/sessions/route')
   hudQuickReview: typeof import('../app/api/hud/quick-review/route')
   hudCapture: typeof import('../app/api/hud/capture/route')
   embeddingsSearch: typeof import('../app/api/embeddings/search/route')
@@ -190,7 +189,6 @@ beforeAll(async () => {
     onlineBuddies: await import('../app/api/online/buddies/route'),
     audioDigest: await import('../app/api/audio/digest/route'),
     audioGrade: await import('../app/api/audio/grade/route'),
-    audioSessions: await import('../app/api/audio/sessions/route'),
     hudQuickReview: await import('../app/api/hud/quick-review/route'),
     hudCapture: await import('../app/api/hud/capture/route'),
     embeddingsSearch: await import('../app/api/embeddings/search/route'),
@@ -1391,30 +1389,8 @@ describe('max focus mode (milestone 6)', () => {
     expect(gradeFuzzyBody.ok).toBe(true)
     expect(gradeFuzzyBody.pass).toBe(true)
 
-    // 3. Audio sessions record & list
-    const sessionPostRes = await M.audioSessions.POST(
-      post('/api/audio/sessions', {
-        durationSeconds: 320,
-        cardCount: 8,
-        mode: 'handsfree_review',
-        speechEngine: 'web-speech',
-      }),
-    )
-    expect(sessionPostRes.status).toBe(200)
-    const sessionPostBody = (await sessionPostRes.json()) as {
-      ok: boolean
-      session: { id: number }
-    }
-    expect(sessionPostBody.ok).toBe(true)
-
-    const sessionGetRes = await M.audioSessions.GET(req('GET', '/api/audio/sessions'))
-    expect(sessionGetRes.status).toBe(200)
-    const sessionGetBody = (await sessionGetRes.json()) as {
-      ok: boolean
-      sessions: { id: number }[]
-    }
-    expect(sessionGetBody.ok).toBe(true)
-    expect(sessionGetBody.sessions.some((s) => s.id === sessionPostBody.session.id)).toBe(true)
+    // 3. (removed) /api/audio/sessions had no UI consumer — F-08⑤ removed
+    // the route; the purpose-built circadian/tmr routes cover audio flows.
   })
 
   it('power tools routes: quick-review due cards, quick-capture thoughts & vector embedding search', async () => {
