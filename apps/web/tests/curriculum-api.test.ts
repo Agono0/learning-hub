@@ -122,6 +122,25 @@ describe('curriculum API', () => {
     expect(view.lesson.title).toBe('SELECT and FROM')
     const typein = view.exercises.find((e: any) => e.exercise.type === 'typein')
 
+    // Lesson Pretesting (Richland et al. 2009): primes learner without counting as lesson attempt or updating FSRS
+    const pretestRes = await (
+      await H.practice.POST(
+        new Request(
+          url('/api/curriculum/practice'),
+          json({ cardId: typein.cardId, answer: { text: 'wrong_guess' }, pretest: true }),
+        ),
+      )
+    ).json()
+    expect(pretestRes.pretest).toBe(true)
+    expect(pretestRes.result.correct).toBe(false)
+    expect(pretestRes.review).toBeNull()
+
+    // Pretest did not count as an official attempt on the lesson
+    const pretestLessonCheck = await (
+      await H.lesson.GET(new Request(url('/x')), ctx(lessonId))
+    ).json()
+    expect(pretestLessonCheck.progress).toBeNull()
+
     const right = await (
       await H.practice.POST(
         new Request(
