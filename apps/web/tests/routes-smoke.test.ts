@@ -1468,6 +1468,25 @@ describe('max focus mode (milestone 6)', () => {
     expect(contributeBody.guild.totalXp).toBeGreaterThanOrEqual(1500)
     expect(contributeBody.guild.level).toBeGreaterThanOrEqual(2)
 
+    // duplicate name → 409, unknown guild → 404, non-member contribution → 403
+    const dup = await M.socialGuilds.POST(
+      post('/api/social/guilds', {
+        action: 'create',
+        name: 'Curie Laboratory',
+        tag: 'DUP',
+        leaderAlias: 'X',
+      }),
+    )
+    expect(dup.status).toBe(409)
+    const missingJoin = await M.socialGuilds.POST(
+      post('/api/social/guilds', { action: 'join', guildId: 999_999, alias: 'Pierre' }),
+    )
+    expect(missingJoin.status).toBe(404)
+    const outsider = await M.socialGuilds.POST(
+      post('/api/social/guilds', { action: 'contribute', guildId, alias: 'Stranger', xp: 10 }),
+    )
+    expect(outsider.status).toBe(403)
+
     // 2. 1v1 Duels: record duel outcome & recalculate Elo
     const duelPostRes = await M.socialDuels.POST(
       post('/api/social/duels', {
