@@ -22,6 +22,7 @@ interface AnalyticsResponse {
   }
   heatmap: { date: string; count: number }[]
   timeOfDay: { hour: number; total: number; correct: number; rate: number | null }[]
+  hourAccuracy: { hour: number; reviews: number; correctPct: number | null }[]
   learningScore: { score: number; components: { retention: number; focus: number; volume: number } }
   focusLeakTrend: { date: string; leaks: number; sessions: number; avgPerSession: number | null }[]
   trueRetention: { retentionPct: number | null; totalReviews: number }
@@ -30,6 +31,38 @@ interface AnalyticsResponse {
 
 function pct(x: number | null): string {
   return x == null ? '—' : `${Math.round(x * 100)}%`
+}
+
+/** Per-bucket tooltip: honest label for empty hours, sparse hours and real rates. */
+function hourTitle(h: { hour: number; reviews: number; correctPct: number | null }): string {
+  if (h.reviews === 0) return `${h.hour}:00 — no reviews yet`
+  if (h.correctPct == null) return `${h.hour}:00 — not enough data (${h.reviews} reviews)`
+  return `${h.hour}:00 — ${h.correctPct}% correct (${h.reviews} reviews)`
+}
+
+/**
+ * One calm sentence naming the best and worst recall window. Only hours with
+ * ≥10 reviews (correctPct != null) compete — small samples stay out, mirroring
+ * the insights engine's "hint, not a finding" rule. First hour wins ties.
+ */
+function bestHoursSentence(hours: { hour: number; correctPct: number | null }[]): string {
+  const eligible = hours.filter(
+    (h): h is { hour: number; correctPct: number } => h.correctPct != null,
+  )
+  if (eligible.length === 0) {
+    return 'Not enough data yet — an hour shows its accuracy once it has 10 reviews.'
+  }
+  const fmt = (h: number) => `${String(h).padStart(2, '0')}:00`
+  const win = (h: number) => `${fmt(h)}–${fmt((h + 1) % 24)}`
+  const best = eligible.reduce((a, b) => (b.correctPct > a.correctPct ? b : a))
+  const worst = eligible.reduce((a, b) => (b.correctPct < a.correctPct ? b : a))
+  if (best.hour === worst.hour) {
+    return `So far only ${win(best.hour)} has enough reviews (${best.correctPct}% correct).`
+  }
+  if (best.correctPct === worst.correctPct) {
+    return `Recall is steady across your active hours (around ${best.correctPct}% correct).`
+  }
+  return `You recall best around ${win(best.hour)} (${best.correctPct}% correct) and worst around ${win(worst.hour)} (${worst.correctPct}%).`
 }
 
 export default function AnalyticsPage() {
@@ -235,6 +268,32 @@ export default function AnalyticsPage() {
         </div>
         <p className="text-xs text-neutral-500">
           bar height = correct rate · green = your prime hours (≥90%)
+        </p>
+      </div>
+
+      {/* your best hours — hour-of-day recall accuracy (chronotype) */}
+      <div className="panel space-y-2">
+        <p className="label">Your best hours — recall accuracy by local hour</p>
+        <div className="flex h-24 items-end gap-px">
+          {(d?.hourAccuracy ?? []).map((h) => (
+            <div key={h.hour} className="group relative flex-1" title={hourTitle(h)}>
+              <div
+                className={`w-full rounded-t-sm ${h.correctPct == null ? 'bg-neutral-700' : 'bg-indigo-500'}`}
+                style={{ height: h.correctPct == null ? 3 : `${Math.max(6, h.correctPct)}%` }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between text-[10px] text-neutral-600">
+          <span>00h</span>
+          <span>06h</span>
+          <span>12h</span>
+          <span>18h</span>
+          <span>23h</span>
+        </div>
+        <p className="text-xs text-neutral-500">{bestHoursSentence(d?.hourAccuracy ?? [])}</p>
+        <p className="text-xs text-neutral-500">
+          grey slots have under 10 reviews — not enough data
         </p>
       </div>
 

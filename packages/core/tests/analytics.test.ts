@@ -5,8 +5,10 @@ import {
   focusLeakTrend,
   forecastHistogram,
   heatmapData,
+  hourOfDayAccuracy,
   learningScore,
   timeOfDayPerformance,
+  HOUR_ACCURACY_MIN_REVIEWS,
 } from '../src/analytics'
 
 describe('forecastHistogram', () => {
@@ -192,6 +194,72 @@ describe('timeOfDayPerformance', () => {
     ])
     expect(hours).toHaveLength(24)
     expect(hours.reduce((acc, h) => acc + h.total, 0)).toBe(0)
+  })
+})
+
+describe('hourOfDayAccuracy', () => {
+  it('empty input → 24 zero buckets with null accuracy (honest empty state)', () => {
+    const hours = hourOfDayAccuracy([])
+    expect(hours).toHaveLength(24)
+    expect(hours.map((h) => h.hour)).toEqual([...Array(24).keys()])
+    expect(hours.every((h) => h.reviews === 0 && h.correctPct === null)).toBe(true)
+  })
+
+  it('counts rating > 1 as correct — Hard (2) passes, only Again (1) fails', () => {
+    const reviews = [
+      ...Array.from({ length: 6 }, () => ({ reviewedAt: '2026-11-04T09:00:00Z', rating: 2 })),
+      ...Array.from({ length: 4 }, () => ({ reviewedAt: '2026-11-04T09:30:00Z', rating: 3 })),
+    ]
+    expect(hourOfDayAccuracy(reviews)[9]).toEqual({ hour: 9, reviews: 10, correctPct: 100 })
+    const withAgain = [...reviews, { reviewedAt: '2026-11-04T09:45:00Z', rating: 1 }]
+    expect(hourOfDayAccuracy(withAgain)[9]).toEqual({ hour: 9, reviews: 11, correctPct: 91 })
+  })
+
+  it('buckets under 10 reviews report correctPct null (small-N honesty, insights n<10)', () => {
+    const nine = Array.from({ length: HOUR_ACCURACY_MIN_REVIEWS - 1 }, (_, i) => ({
+      reviewedAt: `2026-11-04T09:${String(i).padStart(2, '0')}:00Z`,
+      rating: 4, // a perfect streak — still not reportable at n=9
+    }))
+    const hours = hourOfDayAccuracy(nine)
+    expect(hours[9]).toEqual({ hour: 9, reviews: 9, correctPct: null })
+    // the 10th review unlocks the rate
+    const ten = [...nine, { reviewedAt: '2026-11-04T09:59:00Z', rating: 1 }]
+    expect(hourOfDayAccuracy(ten)[9]).toEqual({ hour: 9, reviews: 10, correctPct: 90 })
+  })
+
+  it('buckets by the caller tz offset (getTimezoneOffset semantics, DEF-014)', () => {
+    const reviews = [{ reviewedAt: '2026-11-04T14:00:00Z', rating: 3 }]
+    // UTC+2 → getTimezoneOffset() = -2 → 14:00Z is 16:00 local
+    expect(hourOfDayAccuracy(reviews, -2)[16]).toEqual({ hour: 16, reviews: 1, correctPct: null })
+    // UTC-5 → getTimezoneOffset() = +5 → 14:00Z is 09:00 local
+    expect(hourOfDayAccuracy(reviews, { timezoneOffsetHours: 5 })[9].reviews).toBe(1)
+  })
+
+  it('crosses day boundaries in both directions and handles fractional offsets', () => {
+    // UTC+2 (offset -2h): 23:30Z is 01:30 next day locally
+    const forward = hourOfDayAccuracy([{ reviewedAt: '2026-11-04T23:30:00Z', rating: 3 }], {
+      timezoneOffsetHours: -2,
+    })
+    expect(forward[1].reviews).toBe(1)
+    // UTC-5 (offset +5h): 01:30Z is 20:30 previous day locally
+    const backward = hourOfDayAccuracy([{ reviewedAt: '2026-11-04T01:30:00Z', rating: 3 }], {
+      timezoneOffsetHours: 5,
+    })
+    expect(backward[20].reviews).toBe(1)
+    // UTC+5:30 (offset -330min): 10:45Z is 16:15 local
+    const fractional = hourOfDayAccuracy([{ reviewedAt: '2026-11-04T10:45:00Z', rating: 4 }], {
+      timezoneOffsetMinutes: -330,
+    })
+    expect(fractional[16].reviews).toBe(1)
+  })
+
+  it('safely ignores invalid timestamps without crashing', () => {
+    const hours = hourOfDayAccuracy([
+      { reviewedAt: 'invalid-date', rating: 3 },
+      { reviewedAt: '', rating: 2 },
+    ])
+    expect(hours).toHaveLength(24)
+    expect(hours.reduce((acc, h) => acc + h.reviews, 0)).toBe(0)
   })
 })
 

@@ -93,6 +93,7 @@ beforeAll(async () => {
   M.db = await import('@learning-hub/db')
   M.core = await import('@learning-hub/core')
   M.quests = await import('../app/api/quests/route')
+  M.analytics = await import('../app/api/analytics/route')
   M.settings = await import('../app/api/settings/route')
   M.habits = await import('../app/api/habits/route')
   M.checkin = await import('../app/api/habits/checkin/route')
@@ -1626,5 +1627,77 @@ describe('max focus mode (milestone 6)', () => {
     expect(settingsBody.ok).toBe(true)
     expect(settingsBody.settings.timerTheme).toBe('hourglass')
     expect(settingsBody.settings.viewMode).toBe('diorama')
+  })
+})
+
+describe('analytics hour-of-day accuracy (chronotype)', () => {
+  it('GET ?tzOffset=0 buckets revlog rows by UTC hour: 10-review hour reports pct, sparse hours null', async () => {
+    // 10 reviews in hour 09 UTC (9 Good + 1 Again → 90%), 3 in hour 21 (<10 → null)
+    const rows = [
+      ...Array.from({ length: 10 }, (_, i) => ({
+        at: `2026-11-04T09:${String(i * 6).padStart(2, '0')}:00Z`,
+        rating: i < 9 ? 3 : 1,
+      })),
+      ...Array.from({ length: 3 }, (_, i) => ({
+        at: `2026-11-04T21:${String(i * 10).padStart(2, '0')}:00Z`,
+        rating: 4,
+      })),
+    ]
+    M.db.db
+      .insert(M.db.revlog)
+      .values(
+        rows.map((r, i) => ({
+          id: Date.parse('2026-11-04T00:00:00Z') + i, // unique epoch-ms ids
+          cardId: 990001,
+          rating: r.rating,
+          state: 2,
+          elapsedDays: 0,
+          scheduledDays: 1,
+          timeMs: 5000,
+          reviewedAt: r.at,
+        })),
+      )
+      .run()
+
+    const res = await M.analytics.GET(req('GET', '/api/analytics?tzOffset=0'))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      hourAccuracy: { hour: number; reviews: number; correctPct: number | null }[]
+    }
+    expect(body.hourAccuracy).toHaveLength(24)
+    // 10 reviews in the bucket → rate unlocked (small-N honesty satisfied)
+    expect(body.hourAccuracy[9]).toEqual({ hour: 9, reviews: 10, correctPct: 90 })
+    // 3 reviews < 10 → honest null, count still visible
+    expect(body.hourAccuracy[21]).toEqual({ hour: 21, reviews: 3, correctPct: null })
+    // untouched hour
+    expect(body.hourAccuracy[8]).toEqual({ hour: 8, reviews: 0, correctPct: null })
+  })
+
+  it('honors the client tzOffset: 10 reviews at 13:xxZ land in local hour 14 at UTC+1', async () => {
+    // tzOffset=-60 (getTimezoneOffset semantics: UTC+1) → 13:xxZ is 14:xx local
+    M.db.db
+      .insert(M.db.revlog)
+      .values(
+        Array.from({ length: 10 }, (_, i) => ({
+          id: Date.parse('2026-11-05T00:00:00Z') + i,
+          cardId: 990001,
+          rating: 3,
+          state: 2,
+          elapsedDays: 0,
+          scheduledDays: 1,
+          timeMs: 5000,
+          reviewedAt: `2026-11-04T13:${String(i).padStart(2, '0')}:00Z`,
+        })),
+      )
+      .run()
+
+    const res = await M.analytics.GET(req('GET', '/api/analytics?tzOffset=-60'))
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      hourAccuracy: { hour: number; reviews: number; correctPct: number | null }[]
+    }
+    expect(body.hourAccuracy[14]).toEqual({ hour: 14, reviews: 10, correctPct: 100 })
+    // local hour 13 = 12:xxZ — nothing seeded there; the shift really happened
+    expect(body.hourAccuracy[13].reviews).toBe(0)
   })
 })

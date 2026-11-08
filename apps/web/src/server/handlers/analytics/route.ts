@@ -8,6 +8,7 @@ import {
   focusLeakTrend,
   forecastHistogram,
   heatmapData,
+  hourOfDayAccuracy,
   learningScore,
   timeOfDayPerformance,
   type DailyReviewsRow,
@@ -94,6 +95,15 @@ export async function GET(req: Request) {
     { timezoneOffsetMinutes: tz },
   )
 
+  // your best hours: recall accuracy per local hour (chronotype). Same
+  // local-hour buckets, but hours with <10 reviews report null (small-N
+  // honesty, same bar as the insights engine) so a lucky streak can't
+  // crown a barely-used hour "best".
+  const hourAccuracy = hourOfDayAccuracy(
+    revlogRows.map((r) => ({ reviewedAt: r.reviewedAt, rating: r.rating })),
+    { timezoneOffsetMinutes: tz },
+  )
+
   // learning score over the last 7 days
   const weeklyReviews = dailyReviewRows
     .filter((r) => r.day >= weekAgo)
@@ -136,6 +146,7 @@ export async function GET(req: Request) {
     calibrationTrainer,
     heatmap,
     timeOfDay,
+    hourAccuracy,
     learningScore: score,
     focusLeakTrend: leakTrend,
     trueRetention: { retentionPct, totalReviews: retentionRows[0]?.total ?? 0 },

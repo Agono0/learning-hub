@@ -234,6 +234,46 @@ export function timeOfDayPerformance(
   return hours
 }
 
+// ─── Hour-of-day recall accuracy (chronotype) ───────────────────────────────
+
+/**
+ * Minimum graded reviews an hour bucket needs before its accuracy is reported.
+ * Matches the insights engine's n<10 "treat as a hint, not a finding" bar
+ * (packages/core/src/insights.ts) so no hour is crowned "best" off a tiny,
+ * noisy sample.
+ */
+export const HOUR_ACCURACY_MIN_REVIEWS = 10
+
+/** One hour-of-day recall-accuracy bucket. */
+export interface HourAccuracy {
+  /** Local hour of day, 0-23 (see TimeOfDayOptions for what "local" means). */
+  hour: number
+  /** Graded reviews that landed in this hour. */
+  reviews: number
+  /** Percent with rating > 1 (integer 0-100); null under HOUR_ACCURACY_MIN_REVIEWS. */
+  correctPct: number | null
+}
+
+/**
+ * Recall accuracy per hour of day — the data behind "your best hours".
+ * Same bucketing as `timeOfDayPerformance` (rating > 1 counts as correct,
+ * invalid timestamps skipped); pass the client's `getTimezoneOffset()` so the
+ * buckets land on the user's local hours. Small-N honesty: hours with fewer
+ * than `HOUR_ACCURACY_MIN_REVIEWS` reviews report `correctPct: null` instead
+ * of a rate a lucky streak could skew.
+ */
+export function hourOfDayAccuracy(
+  reviews: { reviewedAt: string; rating: number }[],
+  opts?: TimeOfDayOptions | number,
+): HourAccuracy[] {
+  return timeOfDayPerformance(reviews, opts).map((h) => ({
+    hour: h.hour,
+    reviews: h.total,
+    correctPct:
+      h.total < HOUR_ACCURACY_MIN_REVIEWS ? null : Math.round((h.correct / h.total) * 100),
+  }))
+}
+
 // ─── Learning score ─────────────────────────────────────────────────────────
 
 export interface LearningScoreResult {
