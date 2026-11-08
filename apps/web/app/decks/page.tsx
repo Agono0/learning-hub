@@ -96,6 +96,37 @@ export default function DecksPage() {
   const [editing, setEditing] = useState<CardRow | 'new' | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [shareNote, setShareNote] = useState<string | null>(null)
+
+  // Share this deck as an lh-share/v1 string (F-08②): the import side lives
+  // on the Online page; export mirrors its hint copy.
+  const shareDeck = useMutation({
+    mutationFn: (deckId: number) =>
+      apiSend<{ ok: boolean; shareString: string }>('/api/share/export', 'POST', {
+        type: 'deck',
+        id: deckId,
+      }),
+    onSuccess: (data) => {
+      void navigator.clipboard
+        ?.writeText(data.shareString)
+        .then(() =>
+          setShareNote('Share string copied. Paste it on another device (Online → Import).'),
+        )
+        .catch(() =>
+          setShareNote('Copy failed — the share string is shown in the browser console.'),
+        )
+      if (!navigator.clipboard) {
+        // Clipboard unavailable: log so the string is still reachable.
+        console.log('[share] deck share string:', data.shareString)
+        setShareNote('Clipboard unavailable — share string printed to the console.')
+      }
+      setTimeout(() => setShareNote(null), 6000)
+    },
+    onError: (err) => {
+      setShareNote(err instanceof Error ? err.message : 'Export failed')
+      setTimeout(() => setShareNote(null), 6000)
+    },
+  })
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
     queryKey: ['decks'],
@@ -334,7 +365,16 @@ export default function DecksPage() {
                 Reset weights
               </button>
             )}
+            <button
+              className="btn-ghost py-1 text-xs"
+              disabled={shareDeck.isPending}
+              title="Copy an lh-share/v1 string for this deck — import it on another device via Online → Import"
+              onClick={() => shareDeck.mutate(selectedDeckObj.id)}
+            >
+              <Upload className="h-3.5 w-3.5" /> Share…
+            </button>
             {deckFsrsNote && <span className="text-neutral-500">{deckFsrsNote}</span>}
+            {shareNote && <span className="text-indigo-400">{shareNote}</span>}
           </div>
         )}
       </div>
