@@ -151,6 +151,9 @@ import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
 import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
 import * as dialecticArena from '../server/handlers/dialectic/arena/route'
 import * as ingestMultimodal from '../server/handlers/ingest/multimodal/route'
+import * as curriculumSkillsWeaknessV2 from '../server/handlers/curriculum/skills/weakness-v2/route'
+import * as tutorVoiceSession from '../server/handlers/tutor/voice-session/route'
+import * as curriculumExamSimulator from '../server/handlers/curriculum/exam/simulator/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -322,6 +325,9 @@ add('cognitive/load', cognitiveLoad)
 add('spatial/palace-3d', spatialPalace3d)
 add('dialectic/arena', dialecticArena)
 add('ingest/multimodal', ingestMultimodal)
+add('curriculum/skills/weakness-v2', curriculumSkillsWeaknessV2)
+add('tutor/voice-session', tutorVoiceSession)
+add('curriculum/exam/simulator', curriculumExamSimulator)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

@@ -6,6 +6,7 @@
  * 404/409 paths, the single grading path, and the answer-key/XP rules.
  */
 import { beforeAll, describe, expect, it } from 'vitest'
+import { eq } from 'drizzle-orm'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -37,6 +38,9 @@ beforeAll(async () => {
   M.arena = await import('../app/api/dialectic/arena/route')
   M.ingest = await import('../app/api/ingest/multimodal/route')
   M.palace3d = await import('../app/api/spatial/palace-3d/route')
+  M.weaknessV2 = await import('../app/api/curriculum/skills/weakness-v2/route')
+  M.voiceSession = await import('../app/api/tutor/voice-session/route')
+  M.examSim = await import('../app/api/curriculum/exam/simulator/route')
   M.api = await import('../src/lib/api')
   M.db = await import('@learning-hub/db')
 
@@ -434,5 +438,200 @@ describe('/api/spatial/palace-3d', () => {
         )
       ).status,
     ).toBe(404)
+  })
+})
+
+describe('/api/curriculum/skills/weakness-v2', () => {
+  it('GET returns confusion pairs, topic forecasts, and leech decompositions', async () => {
+    const res = await M.weaknessV2.GET(get('/api/curriculum/skills/weakness-v2'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(Array.isArray(body.confusionPairs)).toBe(true)
+    expect(Array.isArray(body.topicForecasts)).toBe(true)
+    expect(Array.isArray(body.leechDecompositions)).toBe(true)
+    expect(body.totalCards).toBeGreaterThanOrEqual(1)
+  })
+
+  it('POST applies decomposition in transaction and suspends the original leech card', async () => {
+    const { db, cards } = M.db
+    const [leech] = db
+      .insert(cards)
+      .values({
+        deckId,
+        type: 'basic',
+        due: new Date().toISOString(),
+        lapses: 8,
+        content: { basic: { front: 'Overloaded front', back: 'Fact 1. Fact 2.' } },
+      })
+      .returning()
+      .all()
+
+    const res = await M.weaknessV2.POST(
+      post('/api/curriculum/skills/weakness-v2', {
+        action: 'apply_decomposition',
+        originalCardId: leech.id,
+        candidates: [
+          { front: 'Overloaded front (Part 1/2)', back: 'Fact 1', format: 'basic' },
+          { front: 'Overloaded front (Part 2/2)', back: 'Fact 2', format: 'basic' },
+        ],
+      }),
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.createdCount).toBe(2)
+    expect(body.originalSuspended).toBe(true)
+
+    // Verify original card was suspended
+    const [refetched] = db.select().from(cards).where(eq(cards.id, leech.id)).all()
+    expect(refetched.suspended).toBe(true)
+  })
+})
+
+describe('/api/tutor/voice-session', () => {
+  it('GET returns supported Socratic ladder rungs', async () => {
+    const res = await M.voiceSession.GET(get('/api/tutor/voice-session'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.supportedRungs).toHaveLength(4)
+    expect(body.mode).toBe('conversational_socratic')
+  })
+
+  it('POST handles starting a session and escalating rungs on hint requests', async () => {
+    // Start session
+    const startRes = await M.voiceSession.POST(
+      post('/api/tutor/voice-session', {
+        action: 'start',
+        topic: 'Central Limit Theorem',
+        userTranscript: '',
+        currentRung: 1,
+      }),
+    )
+    expect(startRes.status).toBe(200)
+    const startBody = await startRes.json()
+    expect(startBody.ok).toBe(true)
+    expect(startBody.spokenReply.length).toBeGreaterThan(10)
+    expect(startBody.nextRung).toBe(1)
+
+    // Turn with hint request
+    const hintRes = await M.voiceSession.POST(
+      post('/api/tutor/voice-session', {
+        action: 'turn',
+        topic: 'Central Limit Theorem',
+        userTranscript: "I'm stuck and need a hint please",
+        currentRung: 1,
+      }),
+    )
+    expect(hintRes.status).toBe(200)
+    const hintBody = await hintRes.json()
+    expect(hintBody.ok).toBe(true)
+    expect(hintBody.isHintRequest).toBe(true)
+    expect(hintBody.nextRung).toBe(2) // Escalated from 1 to 2
+  })
+})
+
+describe('/api/curriculum/exam/simulator', () => {
+  it('GET returns timed mock exam assembly with Bloom taxonomy classification', async () => {
+    const res = await M.examSim.GET(
+      get('/api/curriculum/exam/simulator?count=5&durationMinutes=10'),
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.durationMinutes).toBe(10)
+    expect(Array.isArray(body.questions)).toBe(true)
+    expect(body.questions.length).toBeGreaterThanOrEqual(1)
+    expect(['remember', 'understand', 'apply']).toContain(body.questions[0].bloomLevel)
+  })
+
+  it('POST grades accurately with no false positives on MCQ shared tokens and supports typein', async () => {
+    const { db, cards } = M.db
+    const [mcqCard] = db
+      .insert(cards)
+      .values({
+        deckId,
+        type: 'mcq',
+        due: new Date().toISOString(),
+        content: {
+          mcq: {
+            question: 'Which process yields gametes?',
+            options: ['Option A: Mitosis', 'Option B: Meiosis', 'Option C: Binary Fission'],
+            correctIndex: 1, // 'Option B: Meiosis'
+          },
+        },
+      })
+      .returning()
+      .all()
+
+    const [typeinCard] = db
+      .insert(cards)
+      .values({
+        deckId,
+        type: 'typein',
+        due: new Date().toISOString(),
+        content: {
+          typein: {
+            question: 'What is the main photosynthetic pigment?',
+            acceptedAnswers: ['Chlorophyll', 'Chlorophyll a'],
+          },
+        },
+      })
+      .returning()
+      .all()
+
+    // Test MCQ wrong option that shares the word "Option"
+    const wrongMcqGradeRes = await M.examSim.POST(
+      post('/api/curriculum/exam/simulator', {
+        action: 'grade',
+        submissions: [
+          { cardId: mcqCard.id, answer: 'Option A: Mitosis' }, // wrong, but contains "Option"
+        ],
+      }),
+    )
+    const wrongMcqBody = await wrongMcqGradeRes.json()
+    expect(wrongMcqBody.score).toBe(0)
+    expect(wrongMcqBody.results[0].correct).toBe(false) // Verified: NO false positive!
+    expect(wrongMcqBody.missedCards).toHaveLength(1)
+
+    // Test correct MCQ option
+    const rightMcqGradeRes = await M.examSim.POST(
+      post('/api/curriculum/exam/simulator', {
+        action: 'grade',
+        submissions: [{ cardId: mcqCard.id, answer: 'Option B: Meiosis' }],
+      }),
+    )
+    const rightMcqBody = await rightMcqGradeRes.json()
+    expect(rightMcqBody.score).toBe(100)
+    expect(rightMcqBody.results[0].correct).toBe(true)
+
+    // Test typein card with accepted answer
+    const typeinGradeRes = await M.examSim.POST(
+      post('/api/curriculum/exam/simulator', {
+        action: 'grade',
+        submissions: [{ cardId: typeinCard.id, answer: 'chlorophyll' }],
+      }),
+    )
+    const typeinBody = await typeinGradeRes.json()
+    expect(typeinBody.score).toBe(100)
+    expect(typeinBody.results[0].correct).toBe(true)
+  })
+
+  it('POST creates cards from misses within transaction', async () => {
+    const res = await M.examSim.POST(
+      post('/api/curriculum/exam/simulator', {
+        action: 'create_cards_from_misses',
+        deckId,
+        misses: [
+          { front: '[Exam Miss] What is entropy?', back: 'Measure of disorder in a system' },
+          { front: '[Exam Miss] What is enthalpy?', back: 'Total heat content of a system' },
+        ],
+      }),
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.createdCount).toBe(2)
   })
 })
