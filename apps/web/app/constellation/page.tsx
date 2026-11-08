@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Check, Plus, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 import {
   Button,
   Callout,
@@ -109,6 +110,7 @@ export default function ConstellationPage() {
   const edges = useMemo(() => data?.edges ?? [], [data])
   const selected = nodes.find((n) => n.id === selectedId) ?? null
   const titleOf = (id: string) => nodes.find((n) => n.id === id)?.title ?? id
+  const reducedMotion = useReducedMotion()
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEY })
   const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong')
@@ -293,7 +295,9 @@ export default function ConstellationPage() {
         ctx.textAlign = 'center'
         ctx.fillText(p.title, p.x, p.y + r + 13)
       }
-      animId = requestAnimationFrame(step)
+      if (!reducedMotion) {
+        animId = requestAnimationFrame(step)
+      }
     }
     animId = requestAnimationFrame(step)
 
@@ -301,7 +305,7 @@ export default function ConstellationPage() {
       cancelAnimationFrame(animId)
       observer?.disconnect()
     }
-  }, [nodes, edges])
+  }, [nodes, edges, reducedMotion])
 
   const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()

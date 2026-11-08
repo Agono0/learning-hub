@@ -35,6 +35,7 @@ import {
   Volume2,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { useReducedMotion } from '@/lib/useReducedMotion'
 import { Button, Callout, EmptyState, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
 
 interface PalaceListResponse {
@@ -84,6 +85,7 @@ export default function Palace3dPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [cameraPos, setCameraPos] = useState<SpatialVector3>([0, 1.6, 5])
   const [yaw, setYaw] = useState(0)
+  const reducedMotion = useReducedMotion()
 
   const palaces = useQuery<PalaceListResponse>({
     queryKey: ['palaces-for-3d'],
@@ -189,8 +191,10 @@ export default function Palace3dPage() {
 
     let animId = 0
     const animate = () => {
-      animId = requestAnimationFrame(animate)
-      for (const m of meshes) if (m.userData.spins) m.rotation.y += 0.008
+      if (!reducedMotion) {
+        animId = requestAnimationFrame(animate)
+        for (const m of meshes) if (m.userData.spins) m.rotation.y += 0.008
+      }
       renderer.render(three, camera)
     }
     animate()

@@ -16,6 +16,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Moon, ShieldCheck, Sparkles, Volume2 } from 'lucide-react'
 import { earconPartials, nextTmrCueDelayMs, type TmrEarcon } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
+import { getSharedAudioContext } from '@/lib/audio-graph'
 import { Button, Callout, EmptyState, PageHeader, Panel, Skeleton } from '@/ui'
 
 interface TmrCueItem {
@@ -35,17 +36,6 @@ interface TmrResponse {
 const FLUSH_EVERY = 5
 /** Peak gain of one earcon — deliberately a whisper; the device volume does the rest. */
 const EARCON_GAIN = 0.04
-
-function getAudioContext(ref: { current: AudioContext | null }): AudioContext | null {
-  if (typeof window === 'undefined') return null
-  const Ctor =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-  if (!Ctor) return null
-  if (!ref.current) ref.current = new Ctor()
-  if (ref.current.state === 'suspended') void ref.current.resume()
-  return ref.current
-}
 
 export default function SleepTmrPage() {
   const [nightMode, setNightMode] = useState(false)
@@ -82,9 +72,13 @@ export default function SleepTmrPage() {
     }).catch(() => undefined)
   }
 
-  const playEarcon = (earcon: TmrEarcon) => {
-    const ctx = getAudioContext(audioCtxRef)
-    if (!ctx) return
+  const playEarcon = async (earcon: TmrEarcon) => {
+    let ctx: AudioContext | null = null
+    try {
+      ctx = await getSharedAudioContext()
+    } catch {
+      return
+    }
     try {
       const seconds = earcon.durationMs / 1000
       const gain = ctx.createGain()
@@ -157,8 +151,12 @@ export default function SleepTmrPage() {
     [],
   )
 
-  const startNight = () => {
-    getAudioContext(audioCtxRef) // inside the click: browsers block audio started later
+  const startNight = async () => {
+    try {
+      await getSharedAudioContext() // inside the click: unlock gesture
+    } catch {
+      /* ignore */
+    }
     setPlayedCount(0)
     setNightMode(true)
   }

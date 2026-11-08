@@ -9,6 +9,7 @@ import {
   generatePinkNoiseSamples,
   generateWhiteNoiseSamples,
 } from '@learning-hub/core'
+import { getSharedAudioContext, registerAudioSource } from '@/lib/audio-graph'
 
 export function SoundscapeBar({ className = '' }: { className?: string }) {
   const [activePreset, setActivePreset] = useState<SoundscapePreset>('none')
@@ -33,7 +34,7 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
     currentNodesRef.current = []
   }
 
-  const startSoundscape = (preset: SoundscapePreset, vol: number) => {
+  const startSoundscape = async (preset: SoundscapePreset, vol: number) => {
     stopActiveAudio()
     if (preset === 'none') {
       setIsPlaying(false)
@@ -41,16 +42,8 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
     }
 
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioCtx()
-      }
-      const ctx = audioCtxRef.current
-      if (ctx.state === 'suspended') {
-        void ctx.resume()
-      }
+      const ctx = await getSharedAudioContext()
+      audioCtxRef.current = ctx
 
       if (!masterGainRef.current) {
         const mg = ctx.createGain()
@@ -58,6 +51,7 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
         masterGainRef.current = mg
       }
       masterGainRef.current.gain.setValueAtTime(vol, ctx.currentTime)
+      registerAudioSource(stopActiveAudio)
 
       const sampleRate = ctx.sampleRate
       const durationSeconds = 3

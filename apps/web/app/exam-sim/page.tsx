@@ -327,6 +327,8 @@ export default function ExamSimulatorPage() {
             </div>
 
             <div
+              role="timer"
+              aria-label="Remaining time"
               className={`flex items-center gap-1.5 font-mono text-base font-bold tabular-nums px-2.5 py-1 rounded-md ${
                 isUrgent
                   ? 'bg-rose-100 text-rose-600 animate-pulse dark:bg-rose-950/60 dark:text-rose-400'
@@ -335,6 +337,18 @@ export default function ExamSimulatorPage() {
             >
               <Clock className="h-4 w-4" />
               {formatTimer(secondsRemaining)}
+            </div>
+            {/* Throttled screen reader announcement at critical thresholds */}
+            <div className="sr-only" aria-live="polite">
+              {secondsRemaining === 600
+                ? '10 minutes remaining'
+                : secondsRemaining === 300
+                  ? '5 minutes remaining'
+                  : secondsRemaining === 60
+                    ? '1 minute remaining'
+                    : secondsRemaining === 30
+                      ? '30 seconds remaining'
+                      : null}
             </div>
 
             <Button
@@ -356,7 +370,7 @@ export default function ExamSimulatorPage() {
           </div>
 
           {/* Question Palette Buttons */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
+          <div role="tablist" aria-label="Exam questions" className="flex flex-wrap gap-1.5 pt-1">
             {examData.questions.map((q, idx) => {
               const hasAns = !!answers[q.cardId]?.trim()
               const isFlg = flagged.has(q.cardId)
@@ -366,8 +380,11 @@ export default function ExamSimulatorPage() {
                 <button
                   key={q.cardId}
                   type="button"
+                  role="tab"
+                  aria-selected={isCur}
+                  aria-label={`Question ${idx + 1}${hasAns ? ', answered' : ', unanswered'}${isFlg ? ', flagged' : ''}`}
                   onClick={() => setCurrentIndex(idx)}
-                  className={`h-8 w-8 rounded text-xs font-medium transition-all ${
+                  className={`h-8 w-8 min-h-[36px] min-w-[36px] rounded text-xs font-medium transition-all ${
                     isCur
                       ? 'ring-2 ring-indigo-500 font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
                       : isFlg
