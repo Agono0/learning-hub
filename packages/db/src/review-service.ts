@@ -20,8 +20,6 @@ import {
   XP_REWARDS,
   recordActivity,
   outcomeFrom,
-  eloUpdate,
-  bktUpdate,
   cardRowToFsrs,
   fsrsToCardRow,
   parseFsrsWeights,
@@ -29,7 +27,8 @@ import {
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from './index'
 import { withTransaction, type Transaction } from './transaction'
-import { cards, decks, revlog, streaks, xpEvents, eloEvents, mastery, userSettings } from './schema'
+import { applySkillResponse } from './mastery-service'
+import { cards, decks, revlog, streaks, xpEvents, userSettings } from './schema'
 
 /** One card grade to process (all fields optional except cardId and grade). */
 export interface ReviewPayload {
@@ -254,56 +253,21 @@ function executeReviewInTx(
   if (card.skillId) {
     const outcome = outcomeFrom(payload.grade, confidence)
     const isCorrect = payload.grade >= 3
-    const m = tx.select().from(mastery).where(eq(mastery.skillId, card.skillId)).limit(1).get()
-    const ratingBefore = m?.elo ?? 1000
-    const attemptsBefore = m?.attempts ?? 0
-    const correctBefore = m?.correct ?? 0
-    const pKnownBefore = m?.pKnown ?? 0.1
-
-    const eloCalc = eloUpdate(ratingBefore, 1000, outcome, card.reps, attemptsBefore)
-    const pKnownAfter = bktUpdate(pKnownBefore, isCorrect)
-    const attemptsAfter = attemptsBefore + 1
-    const correctAfter = correctBefore + (isCorrect ? 1 : 0)
-
-    tx.insert(eloEvents)
-      .values({
-        skillId: card.skillId,
-        ratingBefore: eloCalc.ratingBefore,
-        ratingAfter: eloCalc.ratingAfter,
-        itemDifficulty: eloCalc.itemDifficultyBefore,
-        outcome,
-        createdAt: now.toISOString(),
-      })
-      .run()
-
-    if (m) {
-      tx.update(mastery)
-        .set({
-          elo: eloCalc.ratingAfter,
-          pKnown: pKnownAfter,
-          attempts: attemptsAfter,
-          correct: correctAfter,
-          updatedAt: now.toISOString(),
-        })
-        .where(eq(mastery.id, m.id))
-        .run()
-    } else {
-      tx.insert(mastery)
-        .values({
-          skillId: card.skillId,
-          elo: eloCalc.ratingAfter,
-          pKnown: pKnownAfter,
-          attempts: attemptsAfter,
-          correct: correctAfter,
-          updatedAt: now.toISOString(),
-        })
-        .run()
-    }
+    // Rule 7: routed through the ONE canonical mastery path (mastery-service.ts).
+    // The review path passes the card's FSRS reps as the Elo K-decay attempt
+    // count — exam submit keeps mastery-attempts semantics (documented there).
+    const applied = applySkillResponse(tx, {
+      skillId: card.skillId,
+      outcome,
+      correct: isCorrect,
+      learnerAttempts: card.reps,
+      atMs: now.getTime(),
+    })
 
     eloResult = {
       skillId: card.skillId,
-      ratingBefore: eloCalc.ratingBefore,
-      ratingAfter: eloCalc.ratingAfter,
+      ratingBefore: applied.ratingBefore,
+      ratingAfter: applied.ratingAfter,
       outcome,
     }
   }
