@@ -196,8 +196,12 @@ describe('Cognitive tables sync & merge semantics', () => {
     const devA = createDeviceDb()
     const devB = createDeviceDb()
 
-    devA.db.insert(schema.palaces).values({ id: 1, name: 'Villa' }).run()
-    devB.db.insert(schema.palaces).values({ id: 1, name: 'Villa' }).run()
+    // Same palace on both devices: palaces sync by (name, created_at), so the
+    // shared identity must be explicit — two now() calls can land in
+    // different milliseconds and correctly read as two distinct palaces.
+    const createdAt = '2026-11-01T00:00:00.000Z'
+    devA.db.insert(schema.palaces).values({ id: 1, name: 'Villa', createdAt }).run()
+    devB.db.insert(schema.palaces).values({ id: 1, name: 'Villa', createdAt }).run()
 
     // Device A updated earlier
     devA.db
