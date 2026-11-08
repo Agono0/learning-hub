@@ -6,7 +6,7 @@
  */
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { awardXp, db, courses, lessons, sources, tracks, units } from '@learning-hub/db'
+import { awardXp, db, courses, getSource, lessons, tracks, units } from '@learning-hub/db'
 import {
   generateCoursePrompt,
   generatedCourseSchema,
@@ -79,7 +79,7 @@ export const POST = withRoute(async (req: Request) => {
   }
   let pdfText: string | undefined
   if (body.pdfId) {
-    const [src] = await db.select().from(sources).where(eq(sources.id, body.pdfId)).limit(1)
+    const src = getSource(body.pdfId)
     if (!src) return Response.json({ error: 'source not found' }, { status: 404 })
     pdfText = src.content
   }

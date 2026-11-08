@@ -13,7 +13,7 @@
  */
 import { z } from 'zod'
 import { eq, gte } from 'drizzle-orm'
-import { db, chatSessions, ideas, journalEntries, notes, sources } from '@learning-hub/db'
+import { db, chatSessions, getSource, ideas, journalEntries, notes } from '@learning-hub/db'
 import {
   AI_FEATURES,
   brainwritePrompt,
@@ -73,7 +73,7 @@ async function buildPrompt(
       const pdfId = Number(params.get('pdfId') ?? 0)
       let pdfText: string | undefined
       if (pdfId) {
-        const [src] = await db.select().from(sources).where(eq(sources.id, pdfId)).limit(1)
+        const src = getSource(pdfId)
         if (!src) throw new Error(`source ${pdfId} not found`)
         pdfText = src.content
       }
@@ -87,7 +87,7 @@ async function buildPrompt(
       const pdfId = Number(params.get('pdfId') ?? 0)
       let source = text('text')
       if (!source && pdfId) {
-        const [src] = await db.select().from(sources).where(eq(sources.id, pdfId)).limit(1)
+        const src = getSource(pdfId)
         if (!src) throw new Error(`source ${pdfId} not found`)
         source = src.content
       }

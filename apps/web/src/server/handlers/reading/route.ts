@@ -3,10 +3,9 @@
  * POST accepts multipart/form-data (PDF → unpdf, EPUB → extractEpubBytes,
  * Markdown/TXT → UTF-8 text) or JSON { title, kind, content, url }.
  */
-import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { extractEpubBytes } from '@learning-hub/core'
-import { db, highlights, sources, sq3rSessions } from '@learning-hub/db'
+import { createSource, deleteSource, listSources } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 const pasteSourceSchema = z.object({
@@ -18,7 +17,7 @@ const pasteSourceSchema = z.object({
 })
 
 export const GET = withRoute(async () => {
-  const rows = await db.select().from(sources).orderBy(desc(sources.priority)).limit(200)
+  const rows = listSources({ limit: 200 })
   return Response.json({ sources: rows })
 })
 
@@ -44,10 +43,7 @@ export const POST = withRoute(async (req: Request) => {
       const buffer = new Uint8Array(await file.arrayBuffer())
       const pdf = await getDocumentProxy(buffer)
       const { text } = await extractText(pdf, { mergePages: true })
-      const [source] = await db
-        .insert(sources)
-        .values({ kind: 'pdf', title, content: text, priority })
-        .returning()
+      const source = createSource({ kind: 'pdf', title, content: text, priority })
       return Response.json({ ok: true, source, characters: text.length })
     }
 
@@ -60,10 +56,12 @@ export const POST = withRoute(async (req: Request) => {
         throw new ApiError(400, err instanceof Error ? err.message : 'invalid EPUB file')
       }
       const title = customTitle || extracted.title || file.name.replace(/\.epub$/i, '')
-      const [source] = await db
-        .insert(sources)
-        .values({ kind: 'epub', title, content: extracted.content, priority })
-        .returning()
+      const source = createSource({
+        kind: 'epub',
+        title,
+        content: extracted.content,
+        priority,
+      })
       return Response.json({
         ok: true,
         source,
@@ -77,10 +75,7 @@ export const POST = withRoute(async (req: Request) => {
       if (!text) throw new ApiError(400, 'uploaded text file is empty')
       const title = customTitle || file.name.replace(/\.(md|markdown|txt)$/i, '')
       const kind = rawName.endsWith('.txt') ? 'paste' : 'markdown'
-      const [source] = await db
-        .insert(sources)
-        .values({ kind, title, content: text, priority })
-        .returning()
+      const source = createSource({ kind, title, content: text, priority })
       return Response.json({ ok: true, source, characters: text.length })
     }
 
@@ -91,16 +86,13 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   const body = await readJson(req, pasteSourceSchema)
-  const [source] = await db
-    .insert(sources)
-    .values({
-      kind: body.kind ?? 'paste',
-      title: body.title,
-      content: body.content,
-      url: body.url ?? null,
-      priority: body.priority ?? 50,
-    })
-    .returning()
+  const source = createSource({
+    kind: body.kind ?? 'paste',
+    title: body.title,
+    content: body.content,
+    url: body.url ?? null,
+    priority: body.priority ?? 50,
+  })
   return Response.json({ ok: true, source })
 })
 
@@ -109,11 +101,6 @@ export const DELETE = withRoute(async (req: Request) => {
   const id = Number(url.searchParams.get('id'))
   if (!id || Number.isNaN(id)) return Response.json({ error: 'id required' }, { status: 400 })
 
-  db.transaction((tx) => {
-    tx.delete(sq3rSessions).where(eq(sq3rSessions.sourceId, id)).run()
-    tx.delete(highlights).where(eq(highlights.sourceId, id)).run()
-    tx.delete(sources).where(eq(sources.id, id)).run()
-  })
-
+  deleteSource(id)
   return Response.json({ ok: true })
 })
