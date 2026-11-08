@@ -499,6 +499,18 @@ Dynamic brown/pink noise generation combined with isochronic tempo pulses.
 - **In Learning HUB:** `packages/core/src/focus-soundscape.ts` and `apps/web/src/components/SoundscapeBar.tsx`.
 - **Status:** ✅
 
+### Calm Sensory Interaction & E-Ink Zen Mode — Mark Weiser (1991)
+Ambient, low-friction sensory interfaces reduce cognitive fatigue and eye strain during extended retrieval practice.
+- **Evidence:** Weiser's calm technology paradigm demonstrates that tools which inhabit the periphery of attentional focus minimize unnecessary cognitive arousal. In daylight or on reflective displays (e-ink), 1-bit high-contrast styling and zero animations prevent visual fatigue and battery drain. Tactile haptic feedback (calibrated 12–50ms micro-pulses) provides instant confirmation of retrieval accuracy without visual clutter.
+- **In Learning HUB:** E-Ink Zen Mode (`html.theme-e-ink` in `apps/web/app/globals.css`), `ThemeSync.tsx`, and calibrated tactile haptics (`@/platform/haptics.ts`).
+- **Status:** ✅
+
+### Real-Time Cognitive Load Telemetry & Flow Balancing — Yerkes & Dodson (1908); Sweller (1988)
+Dynamic detection of working memory saturation and flow disruption during review sessions.
+- **Evidence:** High hesitation variance, prolonged latency spikes, and frequent backspace churn reliably signal working memory overload before catastrophic error cascades occur (Yerkes-Dodson inverted-U). Non-intrusive breathing pauses and step-down interventions restore attentional bandwidth.
+- **In Learning HUB:** `/api/cognitive/load`, `evaluateCognitiveLoad` in `packages/core/src/cognitive-load/`, and real-time flow alerts in `apps/web/app/review/page.tsx`.
+- **Status:** ✅
+
 ---
 
 ## Planned items summary (current expansion)
