@@ -116,9 +116,13 @@ export interface SqliteWasmStatement {
   readonly busy: boolean
 }
 
-/** Transaction function with better-sqlite3's behavior variants attached. */
+/**
+ * Transaction function with better-sqlite3's behavior variants attached.
+ * Like better-sqlite3's `Transaction`, it is called standalone (`tx(1)`), so
+ * it carries no `this` requirement; the caller's `this` is forwarded to `fn`.
+ */
 export interface SqliteWasmTransactionFn<ArgsT extends unknown[], ResultT> {
-  (this: SqliteWasmDatabase, ...args: ArgsT): ResultT
+  (...args: ArgsT): ResultT
   default: this
   deferred: this
   immediate: this
@@ -132,7 +136,7 @@ export interface SqliteWasmDatabase {
   exec(sql: string): void
   pragma(source: string, options?: { simple?: boolean }): unknown
   transaction<ArgsT extends unknown[], ResultT>(
-    fn: (this: SqliteWasmDatabase, ...args: ArgsT) => ResultT,
+    fn: (...args: ArgsT) => ResultT,
   ): SqliteWasmTransactionFn<ArgsT, ResultT>
   close(): void
   readonly open: boolean
@@ -485,14 +489,14 @@ class SqliteWasmDb implements SqliteWasmDatabase {
    * and rejects promise-returning callbacks.
    */
   transaction<ArgsT extends unknown[], ResultT>(
-    fn: (this: SqliteWasmDatabase, ...args: ArgsT) => ResultT,
+    fn: (...args: ArgsT) => ResultT,
   ): SqliteWasmTransactionFn<ArgsT, ResultT> {
     if (typeof fn !== 'function') throw new TypeError('Expected first argument to be a function')
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- mirrors better-sqlite3's own transaction.js shape
     const db = this
 
     const makeTx = (begin: string) =>
-      function sqliteTransaction(this: SqliteWasmDatabase, ...args: ArgsT): ResultT {
+      function sqliteTransaction(this: unknown, ...args: ArgsT): ResultT {
         if (!db.open) throw new TypeError('The database connection is not open')
         if (db.inTransaction) {
           // Nested: savepoint fallback (mirrors better-sqlite3).
