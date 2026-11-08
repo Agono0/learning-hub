@@ -136,7 +136,7 @@ export default function MindmapPage() {
   const exportCardsMutation = useMutation({
     mutationFn: async () => {
       if (!selectedId || !selectedDeckId) throw new Error('Select a deck')
-      return apiSend<{ ok: boolean; importedCount: number }>(
+      return apiSend<{ ok: boolean; importedCount: number; skippedCount?: number }>(
         `/api/mindmaps/${selectedId}/cards`,
         'POST',
         { deckId: selectedDeckId },
@@ -144,7 +144,14 @@ export default function MindmapPage() {
     },
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ['decks'] })
-      setExportResult(`Successfully created ${res.importedCount} flashcards in your deck!`)
+      const skipped = res.skippedCount
+        ? ` (${res.skippedCount} already in this deck were kept as-is)`
+        : ''
+      setExportResult(
+        res.importedCount > 0 || !skipped
+          ? `Created ${res.importedCount} flashcards in your deck${skipped}.`
+          : `No new cards — all ${res.skippedCount} are already in this deck.`,
+      )
     },
     onError: (err) => {
       setExportResult(err instanceof Error ? err.message : 'Export failed')
@@ -154,7 +161,13 @@ export default function MindmapPage() {
   const handleSelectMindmap = (row: MindmapRow) => {
     setSelectedId(row.id)
     setTitle(row.title)
-    const nodes = JSON.parse(row.nodesJson) as MindmapNode[]
+    let nodes: MindmapNode[] = []
+    try {
+      const parsed: unknown = JSON.parse(row.nodesJson)
+      if (Array.isArray(parsed)) nodes = parsed as MindmapNode[]
+    } catch {
+      /* corrupt map: open it empty rather than crash the page */
+    }
     if (nodes.length > 0) {
       let md = `# ${row.title}\n`
       for (const n of nodes) {

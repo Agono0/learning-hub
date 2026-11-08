@@ -3,7 +3,7 @@
  *
  * Mind-maps, batch occlusion card generation, and handwritten review attempt storage.
  */
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, like } from 'drizzle-orm'
 import {
   expandOcclusionToCards,
   mindmapToCards,
@@ -12,7 +12,7 @@ import {
   type MindmapNode,
 } from '@learning-hub/core/visual'
 import { getDb, type LearningHubDB } from '../index'
-import { cardAttemptImages, cards, mindmaps } from '../schema'
+import { cardAttemptImages, cards, decks, mindmaps } from '../schema'
 import { withTransaction } from '../transaction'
 
 export function listMindmaps(database?: LearningHubDB): (typeof mindmaps.$inferSelect)[] {
@@ -150,54 +150,107 @@ export function batchCreateOcclusionCards(
   }, conn)
 }
 
+/** Why a mind-map import could not run (mapped to 404 / 422 by the HTTP layer). */
+export class MindmapImportError extends Error {
+  constructor(
+    readonly code: 'mindmap_not_found' | 'deck_not_found' | 'invalid_mindmap',
+    message: string,
+  ) {
+    super(message)
+    this.name = 'MindmapImportError'
+  }
+}
+
+/** FNV-1a 32-bit — a short, stable fingerprint of a generated card's content. */
+function fingerprint(text: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
+/** Stable origin key for a card generated from mind map `mindmapId`. */
+export function mindmapCardSource(mindmapId: number, content: unknown): string {
+  return `mindmap:${mindmapId}:${fingerprint(JSON.stringify(content))}`
+}
+
+function parseJsonArray(text: string | null | undefined, what: string): unknown[] {
+  try {
+    const v: unknown = JSON.parse(text || '[]')
+    if (Array.isArray(v)) return v
+  } catch {
+    /* fall through */
+  }
+  throw new MindmapImportError('invalid_mindmap', `Mind map ${what} are not valid JSON`)
+}
+
 /**
  * Converts a mindmap's concepts and hierarchy into flashcards in the target deck.
+ *
+ * Idempotent per deck: every generated card carries a stable `source`
+ * (`mindmap:<id>:<content hash>`), and cards that already exist in the deck
+ * are skipped — re-importing after editing the map adds only the new cards and
+ * never resets review history. A card whose generated text changed (e.g. a
+ * parent's child list) is added as a new card; the old one is kept, not
+ * overwritten. Throws {@link MindmapImportError}.
  */
 export function importMindmapCards(
   mindmapId: number,
   targetDeckId: number,
   database?: LearningHubDB,
-): (typeof cards.$inferSelect)[] {
+): { created: (typeof cards.$inferSelect)[]; skipped: number } {
   const conn = database ?? getDb()
   const row = getMindmap(mindmapId, conn)
-  if (!row) throw new Error(`Mindmap ${mindmapId} not found`)
-
-  const nodes = JSON.parse(row.nodesJson) as MindmapNode[]
-  const edges = JSON.parse(row.edgesJson || '[]')
-  const mindmapData: MindmapData = {
-    title: row.title,
-    nodes,
-    edges,
+  if (!row) throw new MindmapImportError('mindmap_not_found', `Mind map ${mindmapId} not found`)
+  if (!conn.select({ id: decks.id }).from(decks).where(eq(decks.id, targetDeckId)).get()) {
+    throw new MindmapImportError('deck_not_found', `Deck ${targetDeckId} not found`)
   }
 
-  const generated = mindmapToCards(mindmapData)
+  const nodes = parseJsonArray(row.nodesJson, 'nodes') as MindmapNode[]
+  const edges = parseJsonArray(row.edgesJson, 'edges') as MindmapData['edges']
+  if (!nodes.every((n) => n && typeof n.id === 'string' && typeof n.text === 'string')) {
+    throw new MindmapImportError('invalid_mindmap', 'Mind map nodes need string id and text')
+  }
+
+  const generated = mindmapToCards({ title: row.title, nodes, edges })
   const nowIso = new Date().toISOString()
 
   return withTransaction((tx) => {
-    const createdList: (typeof cards.$inferSelect)[] = []
+    const existing = new Set(
+      tx
+        .select({ source: cards.source })
+        .from(cards)
+        .where(and(eq(cards.deckId, targetDeckId), like(cards.source, `mindmap:${mindmapId}:%`)))
+        .all()
+        .map((r) => r.source),
+    )
+
+    const created: (typeof cards.$inferSelect)[] = []
+    let skipped = 0
     for (const card of generated) {
+      const source = mindmapCardSource(mindmapId, card.content)
+      if (existing.has(source)) {
+        skipped++
+        continue
+      }
+      existing.add(source) // the generator can emit the same card twice
       const [newRow] = tx
         .insert(cards)
         .values({
           deckId: targetDeckId,
           type: card.format,
           content: card.content,
+          tags: card.tags,
+          source,
           due: nowIso,
-          stability: 0,
-          difficulty: 0,
-          elapsedDays: 0,
-          scheduledDays: 0,
-          reps: 0,
-          lapses: 0,
-          state: 0,
-          learningStep: 0,
-          suspended: false,
           createdAt: nowIso,
         })
         .returning()
         .all()
-      if (newRow) createdList.push(newRow)
+      if (newRow) created.push(newRow)
     }
-    return createdList
+    return { created, skipped }
   }, conn)
 }
