@@ -1,7 +1,5 @@
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { habits } from '@learning-hub/db'
+import { deleteHabit, getHabit, updateHabit } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 type Params = { params: Promise<{ id: string }> }
@@ -23,7 +21,7 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
   const { id } = await params
   const habitId = Number.parseInt(id, 10)
   if (!Number.isInteger(habitId)) return Response.json({ error: 'Invalid id' }, { status: 400 })
-  const [existing] = db.select().from(habits).where(eq(habits.id, habitId)).all()
+  const existing = getHabit(habitId)
   if (!existing) return Response.json({ error: 'Habit not found' }, { status: 404 })
 
   const body = await readJson(req, patchHabitSchema)
@@ -34,22 +32,18 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     return t === '' ? null : t
   }
 
-  const [row] = db
-    .update(habits)
-    .set({
-      name: body.name?.trim() || existing.name,
-      cue: pick(body.cue, existing.cue),
-      cueType: pick(body.cueType, existing.cueType),
-      craving: pick(body.craving, existing.craving),
-      response: pick(body.response, existing.response),
-      reward: pick(body.reward, existing.reward),
-      anchor: pick(body.anchor, existing.anchor),
-      order: body.order ?? existing.order,
-      archived: body.archived ?? existing.archived,
-    })
-    .where(eq(habits.id, habitId))
-    .returning()
-    .all()
+  const row = updateHabit(habitId, {
+    name: body.name?.trim() || existing.name,
+    cue: pick(body.cue, existing.cue),
+    cueType: pick(body.cueType, existing.cueType),
+    craving: pick(body.craving, existing.craving),
+    response: pick(body.response, existing.response),
+    reward: pick(body.reward, existing.reward),
+    anchor: pick(body.anchor, existing.anchor),
+    order: body.order ?? existing.order,
+    archived: body.archived ?? existing.archived,
+  })
+
   return Response.json({ habit: row })
 })
 
@@ -58,12 +52,6 @@ export async function DELETE(_req: Request, { params }: Params) {
   const { id } = await params
   const habitId = Number.parseInt(id, 10)
   if (!Number.isInteger(habitId)) return Response.json({ error: 'Invalid id' }, { status: 400 })
-  try {
-    db.delete(habits).where(eq(habits.id, habitId)).run()
-    return Response.json({ ok: true, archived: false })
-  } catch {
-    // habit_logs references this habit — archive instead of breaking history
-    db.update(habits).set({ archived: true }).where(eq(habits.id, habitId)).run()
-    return Response.json({ ok: true, archived: true })
-  }
+  const res = deleteHabit(habitId)
+  return Response.json(res)
 }
