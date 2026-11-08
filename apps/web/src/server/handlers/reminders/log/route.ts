@@ -2,7 +2,7 @@
  * /api/reminders/log — Append-only audit trail of dispatched reminders.
  */
 import { z } from 'zod'
-import { listRecentReminderLogs, logReminderSent } from '@learning-hub/db'
+import { listRecentReminderLogs, logReminderSent, reminderEngagement } from '@learning-hub/db'
 import { REMINDER_KINDS, type ReminderKind } from '@learning-hub/core/reminders'
 import { readJson, withRoute } from '@/lib/api'
 
@@ -17,7 +17,10 @@ export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50))
   const logs = listRecentReminderLogs(limit)
-  return Response.json({ ok: true, logs })
+  // Engagement (F-08④): clicks vs sends over the trailing week — both tables
+  // are append-only, so this is a pure read.
+  const engagement = reminderEngagement(7)
+  return Response.json({ ok: true, logs, engagement })
 })
 
 export const POST = withRoute(async (req: Request) => {

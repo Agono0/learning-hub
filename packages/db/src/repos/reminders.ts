@@ -293,6 +293,33 @@ export function listRecentReminderLogs(
   return conn.select().from(reminderLog).orderBy(desc(reminderLog.id)).limit(limit).all()
 }
 
+/**
+ * Engagement stat (F-08④): clicks in the window vs reminders sent in the same
+ * window — both append-only tables, read-only here. `windowDays` counts
+ * UTC days back from now (default 7).
+ */
+export function reminderEngagement(
+  windowDays = 7,
+  database?: LearningHubDB,
+): { sent: number; clicked: number; engagementPct: number } {
+  const conn = database ?? getDb()
+  const since = new Date(Date.now() - windowDays * 86_400_000).toISOString()
+  const sent =
+    conn
+      .select({ n: sql<number>`count(*)` })
+      .from(reminderLog)
+      .where(gte(reminderLog.sentAt, since))
+      .get()?.n ?? 0
+  const clicked =
+    conn
+      .select({ n: sql<number>`count(*)` })
+      .from(reminderClicks)
+      .where(gte(reminderClicks.clickedAt, since))
+      .get()?.n ?? 0
+  const engagementPct = sent > 0 ? Math.round((clicked / sent) * 100) : 0
+  return { sent, clicked, engagementPct }
+}
+
 // ── Web-push subscriptions (M18) ─────────────────────────────────────────────
 
 export interface PushSubscriptionInput {
