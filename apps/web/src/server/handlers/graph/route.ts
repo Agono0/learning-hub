@@ -11,10 +11,10 @@ import {
   db,
   cards,
   courses,
-  ideaLinks,
   ideas,
   lessonProgress,
   lessons,
+  listIdeaLinks,
   noteLinks,
   notes,
   skillEdges,
@@ -142,7 +142,7 @@ async function knowledgeGraph() {
     .limit(150) // sampled — full card graph is too dense to render
 
   const noteLinkRows = await db.select().from(noteLinks).limit(600)
-  const ideaLinkRows = await db.select().from(ideaLinks).limit(400)
+  const ideaLinkRows = listIdeaLinks({ limit: 400 })
   const skillEdgeRows = await db.select().from(skillEdges).limit(200)
 
   const nodes = [

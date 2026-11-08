@@ -28,6 +28,7 @@ import {
   focusSessions,
   frictionEvents,
   getFsrsStatus,
+  getRandomQuote,
   getStarterCatalogStatus,
   getSyncConfig,
   goals,
@@ -37,7 +38,6 @@ import {
   notes,
   noteLinks,
   optimizeAndPersistFsrs,
-  quotes,
   searchAll,
 } from '@learning-hub/db'
 import {
@@ -411,11 +411,7 @@ const builtinTools: RegisteredTool[] = [
 
   // ── Quotes ──
   tool('quote_random', 'A random motivational quote (with its context).', {}, async () => {
-    const [quote] = await db
-      .select()
-      .from(quotes)
-      .orderBy(sql`random()`)
-      .limit(1)
+    const quote = getRandomQuote()
     return json({ quote: quote ?? null })
   }),
 

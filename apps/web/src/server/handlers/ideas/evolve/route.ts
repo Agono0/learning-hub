@@ -5,8 +5,7 @@
  * Body: { aId, bId }
  */
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
-import { awardXp, db, ideaLinks, ideas } from '@learning-hub/db'
+import { createHybridIdea, getIdea } from '@learning-hub/db'
 import { evolveIdeas, manualHybrid } from '@learning-hub/core'
 import { getActiveAIClientFromDb } from '@/lib/ai'
 import { readJson, withRoute } from '@/lib/api'
@@ -20,8 +19,8 @@ const evolveSchema = z.object({
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, evolveSchema)
-  const [a] = await db.select().from(ideas).where(eq(ideas.id, body.aId)).limit(1)
-  const [b] = await db.select().from(ideas).where(eq(ideas.id, body.bId)).limit(1)
+  const a = getIdea(body.aId)
+  const b = getIdea(body.bId)
   if (!a || !b) return Response.json({ error: 'idea not found' }, { status: 404 })
 
   const { system, prompt, guidance } = evolveIdeas(a, b)
@@ -48,15 +47,18 @@ export const POST = withRoute(async (req: Request) => {
     mode = 'manual'
   }
 
-  const [offspring] = await db
-    .insert(ideas)
-    .values({ title, content, stage: 'seed', tags: ['hybrid'] })
-    .returning()
-  await db.insert(ideaLinks).values([
-    { fromIdeaId: a.id, toIdeaId: offspring!.id, type: 'parent-of', context: 'evolution parent A' },
-    { fromIdeaId: b.id, toIdeaId: offspring!.id, type: 'parent-of', context: 'evolution parent B' },
-  ])
-  // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
-  awardXp(db, { source: 'idea', meta: { parents: [a.id, b.id], offspring: offspring!.id, mode } })
-  return Response.json({ ok: true, mode, offspring, parents: [a.id, b.id] })
+  const result = createHybridIdea({
+    aId: a.id,
+    bId: b.id,
+    title,
+    content,
+    mode,
+  })
+
+  return Response.json({
+    ok: true,
+    mode: result.mode,
+    offspring: result.offspring,
+    parents: result.parents,
+  })
 })

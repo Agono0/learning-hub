@@ -18,6 +18,7 @@ import {
   journalEntries,
   lessonProgress,
   lessons,
+  listQuotes,
   quests,
   quotes,
   streaks,
@@ -99,7 +100,7 @@ export const GET = withRoute(async (): Promise<Response> => {
     .from(xpEvents)
     .where(gte(xpEvents.createdAt, `${today}T00:00:00.000Z`))
 
-  const allQuotes = await db.select().from(quotes).limit(500)
+  const { quotes: allQuotes } = listQuotes({ limit: 500 })
   const quote = allQuotes.length ? allQuotes[hashString(today) % allQuotes.length] : null
 
   const todayQuest = getDailyQuest(today)

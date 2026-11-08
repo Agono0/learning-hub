@@ -24,13 +24,13 @@ import {
   executeReview,
   focusSessions,
   getFsrsStatus,
+  getRandomQuote,
   getStarterCatalogStatus,
   getSyncConfig,
   ideas,
   installStarterPack,
   optimizeAndPersistFsrs,
   quests,
-  quotes,
   searchAll,
   streaks,
   withTransaction,
@@ -137,11 +137,7 @@ async function today() {
     .from(quests)
     .where(eq(quests.date, dayKey(now)))
     .limit(1)
-  const [quote] = await db
-    .select()
-    .from(quotes)
-    .orderBy(sql`random()`)
-    .limit(1)
+  const quote = getRandomQuote()
   const [streakRow] = await db.select().from(streaks).limit(1)
   const lines = [
     `Due cards:   ${Number(dueCount ?? 0)}`,
@@ -334,11 +330,7 @@ async function focus(minutesArg?: string) {
 }
 
 async function quote() {
-  const [q] = await db
-    .select()
-    .from(quotes)
-    .orderBy(sql`random()`)
-    .limit(1)
+  const q = getRandomQuote()
   if (!q) {
     console.log('No quotes in the database — run `learning-hub starter install` first.')
     return

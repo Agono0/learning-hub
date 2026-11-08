@@ -2,9 +2,8 @@
  * /api/ideas — list + create. Create accepts an optional `linkedTo` to wire a
  * link immediately. Ideas are the inbox board + incubator data.
  */
-import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, ideaLinks, ideas } from '@learning-hub/db'
+import { createIdea, listIdeas, type IdeaLinkType, type IdeaStage } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 const IDEA_STAGES = ['seed', 'growing', 'validated', 'project'] as const
@@ -29,38 +28,26 @@ export async function GET(req: Request) {
   const stageParam = url.searchParams.get('stage')
   // column is typed IdeaStage — only pass through valid values, else unfiltered
   const stage = (IDEA_STAGES as readonly string[]).includes(stageParam ?? '')
-    ? (stageParam as (typeof IDEA_STAGES)[number])
+    ? (stageParam as IdeaStage)
     : null
-  const rows = stage
-    ? await db
-        .select()
-        .from(ideas)
-        .where(eq(ideas.stage, stage))
-        .orderBy(desc(ideas.updatedAt))
-        .limit(200)
-    : await db.select().from(ideas).orderBy(desc(ideas.updatedAt)).limit(200)
-  const links = await db.select().from(ideaLinks)
+  const { ideas: rows, links } = listIdeas({ stage, limit: 200 })
   return Response.json({ ideas: rows, links })
 }
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, createIdeaSchema)
-  const [idea] = await db
-    .insert(ideas)
-    .values({
-      title: body.title,
-      content: body.content ?? '',
-      tags: body.tags ?? [],
-      stage: body.stage ?? 'seed',
-    })
-    .returning()
-  if (body.linkedTo?.ideaId) {
-    await db.insert(ideaLinks).values({
-      fromIdeaId: body.linkedTo.ideaId,
-      toIdeaId: idea!.id,
-      type: body.linkedTo.type ?? 'related',
-      context: body.linkedTo.context ?? null,
-    })
-  }
+  const idea = createIdea({
+    title: body.title,
+    content: body.content,
+    tags: body.tags,
+    stage: body.stage as IdeaStage | undefined,
+    linkedTo: body.linkedTo
+      ? {
+          ideaId: body.linkedTo.ideaId,
+          type: body.linkedTo.type as IdeaLinkType | undefined,
+          context: body.linkedTo.context,
+        }
+      : undefined,
+  })
   return Response.json({ ok: true, idea })
 })

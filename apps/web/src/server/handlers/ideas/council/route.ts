@@ -2,9 +2,8 @@
  * POST /api/ideas/council — run the idea past 4 personas (optimist, skeptic,
  * domain expert, devil's advocate) sequentially. Body: { ideaId }
  */
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, chatSessions, ideas } from '@learning-hub/db'
+import { db, chatSessions, getIdea } from '@learning-hub/db'
 import { COUNCIL_PERSONAS } from '@learning-hub/core'
 import { requireAI } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
@@ -15,7 +14,7 @@ const councilSchema = z.object({
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, councilSchema)
-  const [idea] = await db.select().from(ideas).where(eq(ideas.id, body.ideaId)).limit(1)
+  const idea = getIdea(body.ideaId)
   if (!idea) return Response.json({ error: 'idea not found' }, { status: 404 })
 
   try {

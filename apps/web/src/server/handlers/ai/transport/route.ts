@@ -13,7 +13,7 @@
  */
 import { z } from 'zod'
 import { eq, gte } from 'drizzle-orm'
-import { db, chatSessions, getSource, ideas, journalEntries, notes } from '@learning-hub/db'
+import { db, chatSessions, getIdea, getSource, journalEntries, notes } from '@learning-hub/db'
 import {
   AI_FEATURES,
   brainwritePrompt,
@@ -119,7 +119,7 @@ async function buildPrompt(
         throw new Error(
           `ideaId query param required for ${feature.name} (or copy the prompt with your idea inline)`,
         )
-      const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId)).limit(1)
+      const idea = getIdea(ideaId)
       if (!idea) throw new Error(`idea ${ideaId} not found`)
       return `Idea under review: "${idea.title}"\n${idea.content || '(no description yet)'}\n\nGive your persona's assessment of this idea.`
     }
