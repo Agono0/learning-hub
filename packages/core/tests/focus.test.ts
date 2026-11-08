@@ -19,11 +19,14 @@ function act(gate: FrictionGate, action: GateAction): FrictionGate {
   return tickGate(gate, action)
 }
 
-function runToReflection(opts?: { trigger?: 'break_focus' | 'relapse' | 'distraction' }): FrictionGate {
+function runToReflection(opts?: {
+  trigger?: 'break_focus' | 'relapse' | 'distraction'
+}): FrictionGate {
   let gate = createFrictionGate(opts?.trigger ?? 'relapse')
   gate = act(gate, { type: 'begin_countdown' })
   for (let i = 0; i < COUNTDOWN_SECONDS; i++) gate = act(gate, { type: 'tick' })
-  for (let i = 0; i < BREATHS_REQUIRED * BREATH_CYCLE_SECONDS; i++) gate = act(gate, { type: 'tick' })
+  for (let i = 0; i < BREATHS_REQUIRED * BREATH_CYCLE_SECONDS; i++)
+    gate = act(gate, { type: 'tick' })
   return gate
 }
 
@@ -44,7 +47,11 @@ describe('friction gate — happy path', () => {
 
   it('completes the full flow: running → armed → countdown → breathing → reflection → proceeded → resume', () => {
     let gate = createGate()
-    gate = act(gate, { type: 'start_session', plannedMinutes: 50, startedAt: '2026-11-04T09:00:00.000Z' })
+    gate = act(gate, {
+      type: 'start_session',
+      plannedMinutes: 50,
+      startedAt: '2026-11-04T09:00:00.000Z',
+    })
     gate = act(gate, { type: 'arm', trigger: 'break_focus' })
     expect(gate.state.phase).toBe('friction_armed')
     expect(gate.state.trigger).toBe('break_focus')
@@ -115,7 +122,11 @@ describe('friction gate — happy path', () => {
 
   it('is pure — the input gate is never mutated', () => {
     const gate = createGate()
-    const next = act(gate, { type: 'start_session', plannedMinutes: 25, startedAt: '2026-11-04T09:00:00.000Z' })
+    const next = act(gate, {
+      type: 'start_session',
+      plannedMinutes: 25,
+      startedAt: '2026-11-04T09:00:00.000Z',
+    })
     expect(gate.state.phase).toBe('idle')
     expect(next.state.phase).toBe('focus_running')
     expect(next.trail).toEqual(['idle', 'focus_running'])
@@ -152,7 +163,8 @@ describe('friction gate — invalid transitions are rejected', () => {
     for (let i = 0; i < COUNTDOWN_SECONDS - 1; i++) gate = act(gate, { type: 'tick' }) // stop at 1s left
     expect(() => act(gate, { type: 'reflect', text: 'no' })).toThrow(GateError)
     let almost = act(gate, { type: 'tick' })
-    for (let i = 0; i < BREATHS_REQUIRED * BREATH_CYCLE_SECONDS - 1; i++) almost = act(almost, { type: 'tick' })
+    for (let i = 0; i < BREATHS_REQUIRED * BREATH_CYCLE_SECONDS - 1; i++)
+      almost = act(almost, { type: 'tick' })
     expect(almost.state.phase).toBe('breathing')
     expect(() => act(almost, { type: 'reflect', text: 'no' })).toThrow(GateError)
   })
@@ -162,14 +174,24 @@ describe('friction gate — invalid transitions are rejected', () => {
     expect(() => act(idle, { type: 'arm', trigger: 'relapse' })).toThrow(GateError)
     expect(() => act(idle, { type: 'begin_countdown' })).toThrow(GateError)
     expect(() => act(idle, { type: 'tick' })).toThrow(GateError)
-    const running = act(idle, { type: 'start_session', plannedMinutes: 10, startedAt: '2026-11-04T09:00:00.000Z' })
+    const running = act(idle, {
+      type: 'start_session',
+      plannedMinutes: 10,
+      startedAt: '2026-11-04T09:00:00.000Z',
+    })
     expect(() =>
-      act(running, { type: 'start_session', plannedMinutes: 20, startedAt: '2026-11-04T09:00:00.000Z' }),
+      act(running, {
+        type: 'start_session',
+        plannedMinutes: 20,
+        startedAt: '2026-11-04T09:00:00.000Z',
+      }),
     ).toThrow(GateError)
     expect(() => act(running, { type: 'reflect', text: 'hi' })).toThrow(GateError)
     expect(() => act(running, { type: 'abort' })).toThrow(GateError)
     expect(() => act(running, { type: 'resume' })).toThrow(GateError)
-    expect(() => act(idle, { type: 'start_session', plannedMinutes: 0, startedAt: 'x' })).toThrow(GateError)
+    expect(() => act(idle, { type: 'start_session', plannedMinutes: 0, startedAt: 'x' })).toThrow(
+      GateError,
+    )
   })
 
   it('cannot tick outside countdown/breathing, cannot disarm outside armed', () => {
@@ -206,7 +228,11 @@ describe('focus helpers', () => {
   })
 
   it('POMODORO_PRESETS are 25/5, 50/10, 90/20', () => {
-    expect(POMODORO_PRESETS.map((p) => `${p.focus}/${p.breakMinutes}`)).toEqual(['25/5', '50/10', '90/20'])
+    expect(POMODORO_PRESETS.map((p) => `${p.focus}/${p.breakMinutes}`)).toEqual([
+      '25/5',
+      '50/10',
+      '90/20',
+    ])
   })
 
   it('finishTimeVisibility shows the endpoint time', () => {

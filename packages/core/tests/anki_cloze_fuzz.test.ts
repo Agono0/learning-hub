@@ -7,7 +7,12 @@ import {
   sanitizeAnkiHtml,
   expandClozeCard,
 } from '../src/anki'
-import { evaluateClozeAnswer, isCardAnswerCorrect, validateCardContent } from '../src/cards'
+import {
+  evaluateClozeAnswer,
+  isCardAnswerCorrect,
+  isCardFormat,
+  validateCardContent,
+} from '../src/cards'
 
 describe('Anki Lexer & RFC 4180 Fuzzing & Boundary Stress Tests', () => {
   it('handles nested quotes, escaped quotes, and empty quoted fields', () => {
@@ -267,10 +272,8 @@ describe('Card Generation & validateCardContent Conformance', () => {
     const input = '#separator:tab\n#notetype:Basic (and reversed card)\nFront\tBack\ttags'
     const res = parseAnkiDecks(input, { expandReversed: false })
     expect(res.cards[0]!.classification).toBe('reversed')
-    // Attempting to validate with classification as format fails because 'reversed' is not in CardFormat
-    const val = validateCardContent(res.cards[0]!.classification as any, res.cards[0]!.content)
-    expect(val.ok).toBe(false)
-    expect(val.errors[0]).toBe('unknown format: reversed')
+    // 'reversed' is an import classification, not a storable CardFormat
+    expect(isCardFormat(res.cards[0]!.classification)).toBe(false)
     // The content itself is actually basic format
     const basicVal = validateCardContent('basic', res.cards[0]!.content)
     expect(basicVal.ok).toBe(true)

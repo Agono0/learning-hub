@@ -76,8 +76,26 @@ const RAW: WeeklyReportRaw = {
       state: 2,
       lastReview: '2026-11-03T10:00:00Z',
     },
-    { id: 4, label: 'Brand new', due: '2026-11-04T09:00:00Z', lapses: 0, stability: 0, reps: 0, state: 0 },
-    { id: 5, label: 'Suspended', due: '2026-11-05T09:00:00Z', lapses: 9, stability: 0.5, reps: 6, state: 2, suspended: true, lastReview: '2026-11-01T09:00:00Z' },
+    {
+      id: 4,
+      label: 'Brand new',
+      due: '2026-11-04T09:00:00Z',
+      lapses: 0,
+      stability: 0,
+      reps: 0,
+      state: 0,
+    },
+    {
+      id: 5,
+      label: 'Suspended',
+      due: '2026-11-05T09:00:00Z',
+      lapses: 9,
+      stability: 0.5,
+      reps: 6,
+      state: 2,
+      suspended: true,
+      lastReview: '2026-11-01T09:00:00Z',
+    },
   ],
 }
 
@@ -88,7 +106,13 @@ describe('computeWeeklyReportMetrics', () => {
     expect(m.weekEnd).toBe('2026-11-04')
     expect(m.weekStart).toBe('2026-10-29')
     expect(m.days.map((d) => d.date)).toEqual([
-      '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04',
+      '2026-10-29',
+      '2026-10-30',
+      '2026-10-31',
+      '2026-11-01',
+      '2026-11-02',
+      '2026-11-03',
+      '2026-11-04',
     ])
     expect(m.offsetMinutes).toBe(0)
   })
@@ -138,7 +162,13 @@ describe('computeWeeklyReportMetrics', () => {
 
   it('forecasts the next 7 local days and folds overdue cards into today', () => {
     expect(m.forecast.map((f) => f.date)).toEqual([
-      '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10',
+      '2026-11-04',
+      '2026-11-05',
+      '2026-11-06',
+      '2026-11-07',
+      '2026-11-08',
+      '2026-11-09',
+      '2026-11-10',
     ])
     // card 1 due today, card 4 (new) due today, card 2 due 11-06; card 3 far future and 5 suspended excluded
     expect(m.forecast[0]).toEqual({ date: '2026-11-04', count: 2 })
@@ -168,7 +198,10 @@ describe('computeWeeklyReportMetrics', () => {
     const shifted = computeWeeklyReportMetrics({
       ...RAW,
       offsetMinutes: -120,
-      reviews: [...RAW.reviews, { cardId: 7, rating: 3, state: 2, reviewedAt: '2026-11-03T23:30:00Z' }],
+      reviews: [
+        ...RAW.reviews,
+        { cardId: 7, rating: 3, state: 2, reviewedAt: '2026-11-03T23:30:00Z' },
+      ],
       xpEvents: [{ amount: 3, createdAt: '2026-10-29T22:00:00Z' }], // local 2026-10-30 00:00
     })
     expect(shifted.days[1]).toMatchObject({ date: '2026-10-30', xp: 3 })
@@ -177,13 +210,26 @@ describe('computeWeeklyReportMetrics', () => {
   })
 
   it('degrades gracefully on an empty account', () => {
-    const empty = computeWeeklyReportMetrics({ reviews: [], xpEvents: [], focusSessions: [], cards: [], streak: null, today: '2026-11-04' })
+    const empty = computeWeeklyReportMetrics({
+      reviews: [],
+      xpEvents: [],
+      focusSessions: [],
+      cards: [],
+      streak: null,
+      today: '2026-11-04',
+    })
     expect(empty.trueRetention.rate).toBeNull()
     expect(empty.trueRetention.pct).toBeNull()
     expect(empty.calibration).toEqual({ n: 0, predictedAvg: null, actualAvg: null, delta: null })
     expect(empty.streak).toEqual({
-      current: 0, best: 0, freezes: 0, weekendAmulet: false,
-      lastActiveDate: null, daysActive: 0, daysMissed: 7, atRisk: false,
+      current: 0,
+      best: 0,
+      freezes: 0,
+      weekendAmulet: false,
+      lastActiveDate: null,
+      daysActive: 0,
+      daysMissed: 7,
+      atRisk: false,
     })
     expect(empty.weakestCards).toEqual([])
     expect(empty.totals).toEqual({ reviews: 0, correct: 0, xp: 0, focusMinutes: 0 })
@@ -206,7 +252,14 @@ describe('ruleBasedSuggestions', () => {
   })
 
   it('switches priorities on an empty account (no invented data)', () => {
-    const empty = computeWeeklyReportMetrics({ reviews: [], xpEvents: [], focusSessions: [], cards: [], streak: null, today: '2026-11-04' })
+    const empty = computeWeeklyReportMetrics({
+      reviews: [],
+      xpEvents: [],
+      focusSessions: [],
+      cards: [],
+      streak: null,
+      today: '2026-11-04',
+    })
     const s = ruleBasedSuggestions(empty)
     expect(s).toHaveLength(3)
     expect(s[0]!.evidence).toContain('0 reviews')
@@ -221,9 +274,24 @@ describe('ruleBasedSuggestions', () => {
       reviews: [],
       xpEvents: [],
       focusSessions: [],
-      streak: { current: 1, best: 1, freezes: 2, weekendAmulet: false, lastActiveDate: '2026-11-04' },
+      streak: {
+        current: 1,
+        best: 1,
+        freezes: 2,
+        weekendAmulet: false,
+        lastActiveDate: '2026-11-04',
+      },
       cards: [
-        { id: 1, label: 'Easy card', due: '2026-11-10T09:00:00Z', lapses: 0, stability: 30, reps: 5, state: 2, lastReview: '2026-11-01T09:00:00Z' },
+        {
+          id: 1,
+          label: 'Easy card',
+          due: '2026-11-10T09:00:00Z',
+          lapses: 0,
+          stability: 30,
+          reps: 5,
+          state: 2,
+          lastReview: '2026-11-01T09:00:00Z',
+        },
       ],
     })
     const s = ruleBasedSuggestions(m)
@@ -246,9 +314,24 @@ describe('ruleBasedSuggestions', () => {
       ],
       xpEvents: [{ amount: 10, createdAt: '2026-11-04T10:00:00Z' }],
       focusSessions: [],
-      streak: { current: 0, best: 0, freezes: 2, weekendAmulet: false, lastActiveDate: '2026-11-04' },
+      streak: {
+        current: 0,
+        best: 0,
+        freezes: 2,
+        weekendAmulet: false,
+        lastActiveDate: '2026-11-04',
+      },
       cards: [
-        { id: 1, label: 'Healthy', due: '2026-11-03T23:36:00Z', lapses: 0, stability: 20, reps: 5, state: 2, lastReview: '2026-11-01T09:00:00Z' },
+        {
+          id: 1,
+          label: 'Healthy',
+          due: '2026-11-03T23:36:00Z',
+          lapses: 0,
+          stability: 20,
+          reps: 5,
+          state: 2,
+          lastReview: '2026-11-01T09:00:00Z',
+        },
       ],
     })
     const s = ruleBasedSuggestions(m)
@@ -262,10 +345,25 @@ describe('ruleBasedSuggestions', () => {
       offsetMinutes: 0,
       today: '2026-11-04',
       now: '2026-11-04T12:00:00Z',
-      reviews: Array.from({ length: 100 }, (_, i) => ({ rating: 3, state: 2, retrievability: 0.9, reviewedAt: `2026-11-0${(i % 5) + 1}T10:00:00Z` })),
+      reviews: Array.from({ length: 100 }, (_, i) => ({
+        rating: 3,
+        state: 2,
+        retrievability: 0.9,
+        reviewedAt: `2026-11-0${(i % 5) + 1}T10:00:00Z`,
+      })),
       xpEvents: [],
-      focusSessions: Array.from({ length: 6 }, (_, i) => ({ startedAt: `2026-11-0${(i % 5) + 1}T08:00:00Z`, actualMinutes: 25, completed: true })),
-      streak: { current: 30, best: 30, freezes: 2, weekendAmulet: false, lastActiveDate: '2026-11-04' },
+      focusSessions: Array.from({ length: 6 }, (_, i) => ({
+        startedAt: `2026-11-0${(i % 5) + 1}T08:00:00Z`,
+        actualMinutes: 25,
+        completed: true,
+      })),
+      streak: {
+        current: 30,
+        best: 30,
+        freezes: 2,
+        weekendAmulet: false,
+        lastActiveDate: '2026-11-04',
+      },
       cards: [],
     })
     const s = ruleBasedSuggestions(healthy)

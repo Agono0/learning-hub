@@ -31,8 +31,16 @@ describe('SCAMPER lenses', () => {
 })
 
 describe('idea evolution', () => {
-  const a = { id: 1, title: 'Incremental reading', content: 'Read papers in 800-word daily fragments.' }
-  const b = { id: 2, title: 'Two-host podcast', content: 'Turn lessons into a dialogue between hosts.' }
+  const a = {
+    id: 1,
+    title: 'Incremental reading',
+    content: 'Read papers in 800-word daily fragments.',
+  }
+  const b = {
+    id: 2,
+    title: 'Two-host podcast',
+    content: 'Turn lessons into a dialogue between hosts.',
+  }
 
   it('builds a guardrailed prompt naming both parents', () => {
     const { system, prompt, guidance } = evolveIdeas(a, b)
@@ -92,11 +100,23 @@ describe('incubator decay', () => {
         (days1, every, hours) => {
           const today = new Date('2026-06-01T12:00:00.000Z')
           const s1 = incubatorScore(
-            { ...base, resurfaceEveryDays: every, lastResurfacedAt: new Date(today.getTime() - (days1 * 24 + hours) * 3600_000).toISOString() },
+            {
+              ...base,
+              resurfaceEveryDays: every,
+              lastResurfacedAt: new Date(
+                today.getTime() - (days1 * 24 + hours) * 3600_000,
+              ).toISOString(),
+            },
             today,
           )
           const s2 = incubatorScore(
-            { ...base, resurfaceEveryDays: every, lastResurfacedAt: new Date(today.getTime() - ((days1 + 7) * 24 + hours) * 3600_000).toISOString() },
+            {
+              ...base,
+              resurfaceEveryDays: every,
+              lastResurfacedAt: new Date(
+                today.getTime() - ((days1 + 7) * 24 + hours) * 3600_000,
+              ).toISOString(),
+            },
             today,
           )
           return s2 < s1
@@ -116,9 +136,27 @@ describe('incubator decay', () => {
   it('ideasToResurface picks the most decayed, skips projects', () => {
     const today = new Date('2026-06-01T00:00:00.000Z')
     const ideas = [
-      { id: 1, title: 'fresh', resurfaceEveryDays: 14, decayScore: 1, lastResurfacedAt: '2026-05-30T00:00:00.000Z' },
-      { id: 2, title: 'stale', resurfaceEveryDays: 14, decayScore: 1, lastResurfacedAt: '2026-01-01T00:00:00.000Z' },
-      { id: 3, title: 'older', resurfaceEveryDays: 14, decayScore: 1, lastResurfacedAt: '2025-12-01T00:00:00.000Z' },
+      {
+        id: 1,
+        title: 'fresh',
+        resurfaceEveryDays: 14,
+        decayScore: 1,
+        lastResurfacedAt: '2026-05-30T00:00:00.000Z',
+      },
+      {
+        id: 2,
+        title: 'stale',
+        resurfaceEveryDays: 14,
+        decayScore: 1,
+        lastResurfacedAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        id: 3,
+        title: 'older',
+        resurfaceEveryDays: 14,
+        decayScore: 1,
+        lastResurfacedAt: '2025-12-01T00:00:00.000Z',
+      },
       { id: 4, title: 'promoted already', stage: 'project', resurfaceEveryDays: 14, decayScore: 0 },
     ]
     const resurfaced = ideasToResurface(ideas, today, 5)
@@ -128,7 +166,10 @@ describe('incubator decay', () => {
 
 describe('promoteToProject', () => {
   it('builds project fields linked to the idea', () => {
-    const fields = promoteToProject(42, { title: 'Memory palace app', content: 'A palace per deck.' })
+    const fields = promoteToProject(42, {
+      title: 'Memory palace app',
+      content: 'A palace per deck.',
+    })
     expect(fields).toMatchObject({ ideaId: 42, title: 'Memory palace app', status: 'active' })
     expect(fields.description).toContain('palace per deck')
     expect(fields.milestones.length).toBeGreaterThan(0)

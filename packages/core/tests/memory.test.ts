@@ -16,8 +16,16 @@ import {
 describe('Major system', () => {
   it('exposes the canonical digit→consonant map', () => {
     expect(MAJOR_SYSTEM).toEqual({
-      '0': 's', '1': 't', '2': 'n', '3': 'm', '4': 'r',
-      '5': 'l', '6': 'sh', '7': 'k', '8': 'f', '9': 'p',
+      '0': 's',
+      '1': 't',
+      '2': 'n',
+      '3': 'm',
+      '4': 'r',
+      '5': 'l',
+      '6': 'sh',
+      '7': 'k',
+      '8': 'f',
+      '9': 'p',
     })
     // every digit 0-9 has a phoneme family
     for (let d = 0; d <= 9; d++) {

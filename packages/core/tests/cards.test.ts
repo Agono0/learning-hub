@@ -327,3 +327,15 @@ describe('property: cloze parse → segments agree on answers', () => {
     )
   })
 })
+
+describe('isCardFormat', async () => {
+  const { isCardFormat } = await import('../src/cards')
+  it('accepts every storable format and rejects everything else', () => {
+    for (const f of ['basic', 'cloze', 'mcq', 'typein', 'occlusion', 'exercise']) {
+      expect(isCardFormat(f)).toBe(true)
+    }
+    for (const bad of ['qa', 'reversed', '', 'toString', '__proto__', 1, null, undefined]) {
+      expect(isCardFormat(bad)).toBe(false)
+    }
+  })
+})

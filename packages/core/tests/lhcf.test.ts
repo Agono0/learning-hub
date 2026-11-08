@@ -173,8 +173,18 @@ describe('validation', () => {
   })
 
   it('rejects non-http resource links', () => {
-    const course = structuredClone(minimal) as Record<string, any>
-    course.modules[0].lessons[0].resources = [{ title: 'x', url: 'javascript:alert(1)' }]
+    const mod = minimal.modules[0]!
+    const course = {
+      ...minimal,
+      modules: [
+        {
+          ...mod,
+          lessons: [
+            { ...mod.lessons[0]!, resources: [{ title: 'x', url: 'javascript:alert(1)' }] },
+          ],
+        },
+      ],
+    }
     expect(validateLhcf(course).ok).toBe(false)
   })
 })
@@ -207,12 +217,22 @@ describe('parsing every format', () => {
   })
 
   it('reads the markdown convention (modules, lessons, objectives, sections, fences)', () => {
-    const raw = parseLhcfMarkdown(read('learning-how-to-learn.md')) as Record<string, any>
+    // Raw (pre-validation) parser output; the assertions below check this shape.
+    const raw = parseLhcfMarkdown(read('learning-how-to-learn.md')) as {
+      modules: Array<{
+        lessons: Array<{
+          title: string
+          objective: string
+          theory: Array<{ heading?: string }>
+          exercises: unknown[]
+        }>
+      }>
+    }
     expect(raw.modules).toHaveLength(2)
-    const lesson = raw.modules[0].lessons[0]
+    const lesson = raw.modules[0]!.lessons[0]!
     expect(lesson.title).toBe('The testing effect')
     expect(lesson.objective).toMatch(/^Explain/)
-    expect(lesson.theory.map((s: { heading?: string }) => s.heading)).toContain('Why it works')
+    expect(lesson.theory.map((s) => s.heading)).toContain('Why it works')
     expect(lesson.exercises.length).toBe(3)
   })
 
