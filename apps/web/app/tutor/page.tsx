@@ -152,7 +152,7 @@ export default function TutorPage() {
     queryFn: () => apiGet<{ decks: DeckRow[] }>('/api/decks'),
   })
 
-  const { data: sessionsData, refetch: refetchSessions } = useQuery<{ sessions: SessionRow[] }>({
+  const { data: sessionsData } = useQuery<{ sessions: SessionRow[] }>({
     queryKey: ['tutor-sessions'],
     queryFn: () => apiGet<{ sessions: SessionRow[] }>('/api/ai/chat/sessions'),
     enabled: sessionsOpen,
@@ -189,6 +189,8 @@ export default function TutorPage() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setStreaming(false)
+      // the server created/updated this session — keep the sessions list current
+      void queryClient.invalidateQueries({ queryKey: ['tutor-sessions'] })
     }
   }
 

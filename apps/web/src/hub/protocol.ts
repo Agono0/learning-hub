@@ -15,8 +15,6 @@
  *   so the worker can rebuild a `Request` whose bytes are identical to what a
  *   browser fetch would have sent.
  */
-import type { DbInitOptions } from '@learning-hub/db'
-
 // ─── Main → worker ──────────────────────────────────────────────────────────
 
 /** One-time bootstrap. The worker replies `ready` or `ready-error`. */
@@ -136,6 +134,12 @@ export type HubRequestBody = HubJsonBody | HubFormBody
 /** Bootstrap succeeded; request/stream traffic may start. */
 export interface HubReadyMessage {
   type: 'ready'
+  /**
+   * True when the database lives on the persistent OPFS pool VFS; false when
+   * the worker fell back to in-memory storage (data is lost on restart).
+   * Optional for compatibility with workers that predate the field.
+   */
+  persistent?: boolean
 }
 
 /** Bootstrap failed — the worker stays alive but will not serve requests. */

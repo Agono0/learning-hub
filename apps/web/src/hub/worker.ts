@@ -67,7 +67,8 @@ interface WasmModuleWithPool {
  * Bootstrap the DB exactly once. Throws on failure — the message loop replies
  * `ready-error` and keeps the worker alive for diagnostics.
  */
-async function boot(msg: HubInitMessage): Promise<void> {
+/** Boots the backend; resolves whether storage is persistent (OPFS pool active). */
+async function boot(msg: HubInitMessage): Promise<{ persistent: boolean }> {
   const dbPath = msg.dbPath || '/learning-hub.db'
 
   // 0. AI provider traffic → main thread → tauri-plugin-http (no webview CORS).
@@ -121,6 +122,7 @@ async function boot(msg: HubInitMessage): Promise<void> {
   }
 
   ready = true
+  return { persistent: poolActive }
 }
 
 /** Rebuild the handler-facing Request from a protocol message. */
@@ -244,7 +246,7 @@ ctx.addEventListener('message', (event) => {
   const msg = event.data
   if (msg?.type === 'init') {
     boot(msg)
-      .then(() => ctx.postMessage({ type: 'ready' }))
+      .then(({ persistent }) => ctx.postMessage({ type: 'ready', persistent }))
       .catch((err) =>
         ctx.postMessage({
           type: 'ready-error',

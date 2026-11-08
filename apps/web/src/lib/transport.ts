@@ -225,6 +225,25 @@ function failWorker(worker: Worker, error: Error): void {
   worker.terminate()
 }
 
+let hubPersistent: boolean | null = null
+const persistenceListeners = new Set<(persistent: boolean) => void>()
+
+/**
+ * Whether the native backend's database is persistent: `true` on OPFS,
+ * `false` when the worker fell back to in-memory storage (nothing survives a
+ * restart), `null` before the worker is ready or when not using the worker
+ * (web target: the server's SQLite file is always persistent).
+ */
+export function hubStoragePersistent(): boolean | null {
+  return hubPersistent
+}
+
+/** Subscribe to the persistence status (fires once the worker is ready). */
+export function onHubStoragePersistence(fn: (persistent: boolean) => void): () => void {
+  persistenceListeners.add(fn)
+  return () => persistenceListeners.delete(fn)
+}
+
 /** Dispatch every worker message; resolves/rejects the matching promise. */
 function handleWorkerMessage(worker: Worker, message: HubFromWorker): void {
   // Typed lifecycle/stream frames (checked first: stream-end also has status).
@@ -234,6 +253,13 @@ function handleWorkerMessage(worker: Worker, message: HubFromWorker): void {
       return
     switch (message.type) {
       case 'ready': {
+        if (message.persistent === false) {
+          hubPersistent = false
+          console.warn('[hub] storage is in-memory: data will not survive a restart')
+        } else {
+          hubPersistent = true
+        }
+        for (const fn of persistenceListeners) fn(hubPersistent)
         if (workerPhase?.phase === 'starting' && workerPhase.worker === worker) {
           const phase = workerPhase
           workerPhase = { phase: 'ready', worker }
