@@ -6,6 +6,46 @@ import { apiGet } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
 import { PageHeader } from '@/ui'
 
+/** Response of GET /api/review/stats (append-only revlog aggregates). */
+interface ReviewStatsResponse {
+  trueRetention: { total: number; retained: number; retention_pct: number | null }
+  today: { day: string; reviews: number; correct: number; avgTimeMs: number | null }
+  forecast: { date: string; count: number }[]
+}
+
+/** Today's review activity — the only UI consumer of /api/review/stats (F-08①). */
+function TodayStatsPanel() {
+  const q = useQuery({
+    queryKey: ['review-stats'],
+    queryFn: () => apiGet<ReviewStatsResponse>('/api/review/stats'),
+  })
+  const t = q.data?.today
+  const correctPct = t && t.reviews > 0 ? Math.round((t.correct / t.reviews) * 100) : null
+  return (
+    <div className="panel grid grid-cols-3 gap-3 text-center">
+      <div>
+        <p className="text-2xl font-bold tabular-nums">{t?.reviews ?? '…'}</p>
+        <p className="text-xs text-neutral-500">reviews today</p>
+      </div>
+      <div>
+        <p className="text-2xl font-bold tabular-nums text-emerald-400">{correctPct ?? '—'}</p>
+        <p className="text-xs text-neutral-500">% correct today</p>
+      </div>
+      <div>
+        <p className="text-2xl font-bold tabular-nums">
+          {t?.avgTimeMs != null ? `${Math.round(t.avgTimeMs / 100) / 10}s` : '—'}
+        </p>
+        <p className="text-xs text-neutral-500">avg per review</p>
+      </div>
+      {t && t.reviews === 0 && (
+        <p className="col-span-3 text-xs text-neutral-500">
+          No reviews yet today — stats appear after your first session.
+        </p>
+      )}
+    </div>
+  )
+}
+
 interface AnalyticsResponse {
   forecast: { date: string; count: number }[]
   calibration: { bucket: string; predicted: number | null; actual: number | null; n: number }[]
@@ -95,6 +135,9 @@ export default function AnalyticsPage() {
       />
 
       <InsightsSection />
+
+      {/* today's counts — /api/review/stats (F-08①) */}
+      <TodayStatsPanel />
 
       {/* true retention + learning score */}
       <div className="grid gap-4 sm:grid-cols-2">
