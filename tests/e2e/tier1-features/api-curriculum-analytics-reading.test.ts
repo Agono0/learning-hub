@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { callRoute } from '../helpers/api-client'
+import type { SourceRow } from '../helpers/rows'
 import * as curriculumRoute from '../../../apps/web/app/api/curriculum/route'
 import * as analyticsRoute from '../../../apps/web/app/api/analytics/route'
 import * as readingRoute from '../../../apps/web/app/api/reading/route'
@@ -16,15 +17,24 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
   it('queries curriculum tree and marks a lesson complete', async () => {
     // Ensure at least one track/course/unit/lesson exists for test
     const [track] = await db.insert(tracks).values({ title: 'Cognitive Science' }).returning()
-    const [course] = await db.insert(courses).values({ trackId: track!.id, title: 'Memory Architecture' }).returning()
-    const [unit] = await db.insert(units).values({ courseId: course!.id, title: 'Spaced Retrieval' }).returning()
-    const [lesson] = await db.insert(lessons).values({ unitId: unit!.id, title: 'FSRS Formulae' }).returning()
+    const [course] = await db
+      .insert(courses)
+      .values({ trackId: track!.id, title: 'Memory Architecture' })
+      .returning()
+    const [unit] = await db
+      .insert(units)
+      .values({ courseId: course!.id, title: 'Spaced Retrieval' })
+      .returning()
+    const [lesson] = await db
+      .insert(lessons)
+      .values({ unitId: unit!.id, title: 'FSRS Formulae' })
+      .returning()
 
-    const treeRes = await callRoute(curriculumRoute.GET)
+    const treeRes = await callRoute<{ tracks: unknown[] }>(curriculumRoute.GET)
     expect(treeRes.status).toBe(200)
     expect(Array.isArray(treeRes.data.tracks)).toBe(true)
 
-    const patchRes = await callRoute(curriculumRoute.PATCH, {
+    const patchRes = await callRoute<{ ok: boolean; completed: boolean }>(curriculumRoute.PATCH, {
       method: 'PATCH',
       body: { lessonId: lesson!.id, complete: true },
     })
@@ -34,7 +44,13 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
   })
 
   it('fetches comprehensive learning analytics via GET /api/analytics', async () => {
-    const res = await callRoute(analyticsRoute.GET)
+    const res = await callRoute<{
+      forecast: unknown
+      calibration: unknown
+      heatmap: unknown
+      timeOfDay: unknown
+      learningScore: unknown
+    }>(analyticsRoute.GET)
 
     expect(res.status).toBe(200)
     expect(res.data.forecast).toBeDefined()
@@ -46,7 +62,7 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
 
   it('manages reading library and extracts/triages highlights', async () => {
     // 1. Add reading source
-    const postSrc = await callRoute(readingRoute.POST, {
+    const postSrc = await callRoute<{ source: SourceRow }>(readingRoute.POST, {
       method: 'POST',
       body: {
         title: 'Ebbinghaus Forgetting Curve (1885)',
@@ -60,7 +76,7 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
     createdSourceId = postSrc.data.source.id
 
     // 2. Extract highlights
-    const postHl = await callRoute(highlightsRoute.POST, {
+    const postHl = await callRoute<{ ok: boolean; created: number }>(highlightsRoute.POST, {
       method: 'POST',
       body: {
         sourceId: createdSourceId,
@@ -72,7 +88,7 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
     expect(postHl.data.created).toBeGreaterThanOrEqual(1)
 
     // 3. List highlights for this source
-    const listHl = await callRoute(highlightsRoute.GET, {
+    const listHl = await callRoute<{ highlights: Array<{ id: number }> }>(highlightsRoute.GET, {
       query: { sourceId: createdSourceId },
     })
     expect(listHl.status).toBe(200)
@@ -80,7 +96,7 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
     createdHighlightId = listHl.data.highlights[0].id
 
     // 4. Triage highlight: keep
-    const patchHl = await callRoute(highlightsRoute.PATCH, {
+    const patchHl = await callRoute<{ ok: boolean; triaged: number }>(highlightsRoute.PATCH, {
       method: 'PATCH',
       body: {
         id: createdHighlightId,
@@ -93,7 +109,9 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
   })
 
   it('retrieves achievements catalog with real-time aggregates', async () => {
-    const res = await callRoute(achievementsRoute.GET)
+    const res = await callRoute<{ catalog: unknown[]; stats: { totalReviews: number } }>(
+      achievementsRoute.GET,
+    )
 
     expect(res.status).toBe(200)
     expect(Array.isArray(res.data.catalog)).toBe(true)
@@ -103,11 +121,14 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
   })
 
   it('retrieves and updates user settings', async () => {
-    const getRes = await callRoute(settingsRoute.GET)
+    const getRes = await callRoute<{ settings: unknown }>(settingsRoute.GET)
     expect(getRes.status).toBe(200)
     expect(getRes.data.settings).toBeDefined()
 
-    const putRes = await callRoute(settingsRoute.PUT, {
+    const putRes = await callRoute<{
+      ok: boolean
+      settings: { desiredRetention: number; sessionMinutes: number; theme: string }
+    }>(settingsRoute.PUT, {
       method: 'PUT',
       body: {
         desiredRetention: 0.88,
@@ -123,12 +144,12 @@ describe('Tier 1: Curriculum, Analytics, Reading & System APIs', () => {
   })
 
   it('fetches streak level and records daily activity', async () => {
-    const getRes = await callRoute(streaksRoute.GET)
+    const getRes = await callRoute<{ streak: unknown; xp: unknown }>(streaksRoute.GET)
     expect(getRes.status).toBe(200)
     expect(getRes.data.streak).toBeDefined()
     expect(getRes.data.xp).toBeDefined()
 
-    const postRes = await callRoute(streaksRoute.POST)
+    const postRes = await callRoute<{ ok: boolean; streak: unknown }>(streaksRoute.POST)
     expect(postRes.status).toBe(200)
     expect(postRes.data.ok).toBe(true)
     expect(postRes.data.streak).toBeDefined()

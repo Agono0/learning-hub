@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { callRoute } from '../helpers/api-client'
+import type { CardRow, FocusSessionRow, NoteRow, SourceRow } from '../helpers/rows'
 import {
   db,
   decks,
@@ -34,10 +35,7 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     const [deck] = await db.insert(decks).values({ name: 'Tier 3 Multi-Feature Deck' }).returning()
     deckId = deck!.id
 
-    const [skill] = await db
-      .insert(skills)
-      .values({ name: 'Calculus: Derivatives', track: 'Mathematics' })
-      .returning()
+    const [skill] = await db.insert(skills).values({ name: 'Calculus: Derivatives' }).returning()
     skillId = skill!.id
 
     // 2. Set up initial card tied to skill
@@ -60,7 +58,7 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
 
   it('atomically synchronizes review with Card, Revlog, XP, Streak, and Elo mastery', async () => {
     // Execute Review: Grade 4 (Easy), Confidence 1
-    const reviewRes = await callRoute(reviewRoute.POST, {
+    const reviewRes = await callRoute<{ ok: boolean; card: CardRow }>(reviewRoute.POST, {
       method: 'POST',
       body: {
         cardId,
@@ -138,7 +136,7 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
 
   it('tests outliner note bullet to card conversion contract (DEF-009 audit)', async () => {
     // 1. Create a note with bullet syntax
-    const noteRes = await callRoute(notesRoute.POST, {
+    const noteRes = await callRoute<{ note: NoteRow }>(notesRoute.POST, {
       method: 'POST',
       body: {
         title: 'Deep Learning Optimization Note',
@@ -155,39 +153,38 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     const bulletToConvert = bullets[0]
 
     // 3. Convert bullet into flashcard via /api/cards/bullet
-    const convertRes = await callRoute(bulletCardRoute.POST, {
-      method: 'POST',
-      body: {
-        noteId,
-        bulletId: bulletToConvert.id,
-        content: bulletToConvert.content,
-        deckId,
+    const convertRes = await callRoute<{ ok?: boolean; card?: CardRow; error?: string }>(
+      bulletCardRoute.POST,
+      {
+        method: 'POST',
+        body: {
+          noteId,
+          bulletId: bulletToConvert.id,
+          content: bulletToConvert.content,
+          deckId,
+        },
       },
-    })
+    )
 
-    // Contract check: if DEF-009 is resolved (M2), returns 201; if DEF-009 is pending, returns 400
-    if (convertRes.status === 201) {
-      expect(convertRes.data.ok).toBe(true)
-      const createdCard = convertRes.data.card
-      expect(createdCard.source).toBe('note-bullet')
-      expect(createdCard.bulletId).toBe(bulletToConvert.id)
-    } else {
-      // DEF-009 observed: syncBulletCard output requires schema wrapper normalization
-      expect(convertRes.status).toBe(400)
-      expect(convertRes.data.error).toBe('invalid derived content')
-    }
+    // DEF-009 (resolved): a bullet converts into a card linked back to it
+    expect(convertRes.status).toBe(201)
+    expect(convertRes.data.ok).toBe(true)
+    expect(convertRes.data.card).toMatchObject({
+      source: 'note-bullet',
+      bulletId: bulletToConvert.id,
+    })
   })
 
   it('forms bidirectional knowledge graph connections between wikilinked notes', async () => {
     // Note Alpha
-    const alphaRes = await callRoute(notesRoute.POST, {
+    const alphaRes = await callRoute<{ note: NoteRow }>(notesRoute.POST, {
       method: 'POST',
       body: { title: 'Synaptic Pruning', content: 'Process of synapse elimination.' },
     })
     const alphaId = alphaRes.data.note.id
 
     // Note Beta referencing Alpha
-    const betaRes = await callRoute(notesRoute.POST, {
+    const betaRes = await callRoute<{ note: NoteRow }>(notesRoute.POST, {
       method: 'POST',
       body: {
         title: 'Brain Maturation',
@@ -197,19 +194,20 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     const betaId = betaRes.data.note.id
 
     // Verify Graph API contains the edge
-    const graphRes = await callRoute(graphRoute.GET)
+    const graphRes = await callRoute<{
+      edges: Array<{ source: string; target: string; type: string }>
+    }>(graphRoute.GET)
     expect(graphRes.status).toBe(200)
 
     const link = graphRes.data.edges.find(
-      (e: any) => e.source === `note:${betaId}` && e.target === `note:${alphaId}`,
+      (e) => e.source === `note:${betaId}` && e.target === `note:${alphaId}`,
     )
-    expect(link).toBeDefined()
-    expect(link.type).toBe('related')
+    expect(link).toMatchObject({ type: 'related' })
   })
 
   it('links focus session completion to distraction friction and XP', async () => {
     // 1. Start session
-    const startRes = await callRoute(focusRoute.POST, {
+    const startRes = await callRoute<{ session: FocusSessionRow }>(focusRoute.POST, {
       method: 'POST',
       body: { plannedMinutes: 30, type: 'deep', task: 'Writing thesis chapter' },
     })
@@ -226,7 +224,7 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     })
 
     // 3. Complete session with 1 leak
-    const completeRes = await callRoute(focusIdRoute.PATCH, {
+    const completeRes = await callRoute<{ xpAwarded: number }>(focusIdRoute.PATCH, {
       method: 'PATCH',
       params: { id: String(sessionId) },
       body: {
@@ -239,16 +237,14 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     expect(completeRes.data.xpAwarded).toBeGreaterThan(0)
 
     // 4. Verify session in focus API reflects leak
-    const focusListRes = await callRoute(focusRoute.GET)
-    const foundSession = focusListRes.data.sessions.find((s: any) => s.id === sessionId)
-    expect(foundSession).toBeDefined()
-    expect(foundSession.completed).toBe(true)
-    expect(foundSession.leaks).toBe(1)
+    const focusListRes = await callRoute<{ sessions: FocusSessionRow[] }>(focusRoute.GET)
+    const foundSession = focusListRes.data.sessions.find((s) => s.id === sessionId)
+    expect(foundSession).toMatchObject({ completed: true, leaks: 1 })
   })
 
   it('evaluates reading source deletion behavior on child highlights (DEF-004 verification)', async () => {
     // 1. Create reading source
-    const srcRes = await callRoute(readingRoute.POST, {
+    const srcRes = await callRoute<{ source: SourceRow }>(readingRoute.POST, {
       method: 'POST',
       body: {
         title: 'DEF-004 Cascade Test Document',
@@ -272,21 +268,16 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     expect(initialHighlights.length).toBeGreaterThanOrEqual(1)
 
     // 3. Delete parent reading source via DELETE /api/reading
-    // DEF-004 verification: if cascade delete is not yet implemented, foreign key constraint throws
-    try {
-      const delRes = await callRoute(readingRoute.DELETE, {
-        method: 'DELETE',
-        query: { id: sourceId },
-      })
-      expect(delRes.status).toBe(200)
-      const remainingHighlights = await db
-        .select()
-        .from(highlights)
-        .where(eq(highlights.sourceId, sourceId))
-      expect(remainingHighlights.length).toBe(0)
-    } catch (err: any) {
-      // DEF-004 confirmed: foreign key constraint failed due to uncascaded child highlights
-      expect(err.message).toMatch(/FOREIGN KEY/i)
-    }
+    // DEF-004 (resolved): deleting a source removes its highlights in the same transaction
+    const delRes = await callRoute(readingRoute.DELETE, {
+      method: 'DELETE',
+      query: { id: sourceId },
+    })
+    expect(delRes.status).toBe(200)
+    const remainingHighlights = await db
+      .select()
+      .from(highlights)
+      .where(eq(highlights.sourceId, sourceId))
+    expect(remainingHighlights.length).toBe(0)
   })
 })

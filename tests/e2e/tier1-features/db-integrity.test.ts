@@ -21,9 +21,9 @@ describe('Tier 1: Database Integrity & Schema Pragmas', () => {
     const sqlite = getSqlite()
     try {
       const views = sqlite
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'view'")
+        .prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'view'")
         .all()
-        .map((r: any) => r.name)
+        .map((r) => r.name)
 
       expect(views).toContain('v_true_retention')
       expect(views).toContain('v_daily_reviews')
@@ -47,10 +47,14 @@ describe('Tier 1: Database Integrity & Schema Pragmas', () => {
     try {
       // Attempting to insert a card with non-existent deckId = 999999 must fail foreign key check
       expect(() => {
-        sqlite.prepare(`
+        sqlite
+          .prepare(
+            `
           INSERT INTO cards (deck_id, type, content, tags, due, created_at)
           VALUES (999999, 'basic', '{"basic":{"front":"test","back":"test"}}', '[]', '2026-11-04T00:00:00.000Z', '2026-11-04T00:00:00.000Z')
-        `).run()
+        `,
+          )
+          .run()
       }).toThrow(/FOREIGN KEY/i)
     } finally {
       sqlite.close()
@@ -61,9 +65,9 @@ describe('Tier 1: Database Integrity & Schema Pragmas', () => {
     const sqlite = getSqlite()
     try {
       const tables = sqlite
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+        .prepare<[], { name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'")
         .all()
-        .map((r: any) => r.name)
+        .map((r) => r.name)
 
       const expectedTables = [
         'decks',

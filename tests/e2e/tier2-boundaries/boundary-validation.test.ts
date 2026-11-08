@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { callRoute } from '../helpers/api-client'
+import type { CardRow, DeckRow, NoteRow } from '../helpers/rows'
 import * as decksRoute from '../../../apps/web/app/api/decks/route'
 import * as cardsRoute from '../../../apps/web/app/api/cards/route'
 import * as cardIdRoute from '../../../apps/web/app/api/cards/[id]/route'
@@ -13,7 +14,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
   let validDeckId: number
 
   beforeAll(async () => {
-    const res = await callRoute(decksRoute.POST, {
+    const res = await callRoute<{ deck: DeckRow }>(decksRoute.POST, {
       method: 'POST',
       body: { name: 'Tier 2 Boundary Verification Deck' },
     })
@@ -22,7 +23,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
 
   describe('Empty and Missing Required Inputs', () => {
     it('rejects deck creation with empty or whitespace-only name (400)', async () => {
-      const emptyRes = await callRoute(decksRoute.POST, {
+      const emptyRes = await callRoute<{ error?: string }>(decksRoute.POST, {
         method: 'POST',
         body: { name: '' },
       })
@@ -122,7 +123,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
     })
 
     it('clamps review session limit parameter between 1 and 100', async () => {
-      const resLarge = await callRoute(reviewRoute.GET, {
+      const resLarge = await callRoute<{ cards: CardRow[] }>(reviewRoute.GET, {
         query: { deckId: validDeckId, limit: 500 },
       })
       expect(resLarge.status).toBe(200)
@@ -133,7 +134,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
 
   describe('Conflict & Non-Existent Entity Handling (404 / 409)', () => {
     it('returns 409 Conflict when creating a deck with an already existing name', async () => {
-      const res = await callRoute(decksRoute.POST, {
+      const res = await callRoute<{ error?: string }>(decksRoute.POST, {
         method: 'POST',
         body: { name: 'Tier 2 Boundary Verification Deck' },
       })
@@ -142,7 +143,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
     })
 
     it('returns 404 Not Found when reviewing a non-existent card ID', async () => {
-      const res = await callRoute(reviewRoute.POST, {
+      const res = await callRoute<{ error?: string }>(reviewRoute.POST, {
         method: 'POST',
         body: { cardId: 9999999, grade: 3, confidence: 1 },
       })
@@ -169,7 +170,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
   describe('Extreme Payloads, Escaping & Character Sets', () => {
     it('correctly handles large markdown text (30,000 chars) in notes', async () => {
       const longContent = 'Cognitive science principles.\n\n'.repeat(1000) // ~30,000 chars
-      const res = await callRoute(notesRoute.POST, {
+      const res = await callRoute<{ note: NoteRow }>(notesRoute.POST, {
         method: 'POST',
         body: {
           title: 'Large Knowledge Synthesis Note',
@@ -185,7 +186,7 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
       const mathPrompt = 'What is the Gaussian integral: $\\int_{-\\infty}^{\\infty} e^{-x^2} dx$?'
       const mathReveal = '$\\sqrt{\\pi}$ 🎯 (Euler-Poisson integral — 日本語: ガウス積分)'
 
-      const res = await callRoute(cardsRoute.POST, {
+      const res = await callRoute<{ card: CardRow }>(cardsRoute.POST, {
         method: 'POST',
         body: {
           deckId: validDeckId,
@@ -196,8 +197,8 @@ describe('Tier 2: Boundary, Extreme Limits & Corner Case Validations', () => {
       })
 
       expect(res.status).toBe(201)
-      expect(res.data.card.content.basic.front).toBe(mathPrompt)
-      expect(res.data.card.content.basic.back).toBe(mathReveal)
+      expect(res.data.card.content.basic?.front).toBe(mathPrompt)
+      expect(res.data.card.content.basic?.back).toBe(mathReveal)
       expect(res.data.card.tags).toContain('emoji🚀')
       expect(res.data.card.tags).toContain('積分')
     })

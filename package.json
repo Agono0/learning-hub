@@ -29,7 +29,7 @@
     "mcp": "tsx apps/mcp/src/index.ts",
     "cli": "tsx apps/cli/src/index.ts",
     "serve": "tsx apps/server/src/index.ts",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p tests/e2e/tsconfig.json",
     "app:dev": "npm run dev --workspace @learning-hub/native",
     "app:build": "npm run build --workspace @learning-hub/native",
     "android:dev": "node scripts/tauri-android.mjs dev",

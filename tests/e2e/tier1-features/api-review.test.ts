@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { callRoute } from '../helpers/api-client'
+import type { CardRow, DeckRow } from '../helpers/rows'
+
+/** POST /api/review — the fields this suite asserts on. */
+interface ReviewResult {
+  ok: boolean
+  card: CardRow
+  preReview: { state: number }
+  revlogId: number
+  intervalDays: number
+  due: string
+  xp: number
+  streak: unknown
+}
 import * as decksRoute from '../../../apps/web/app/api/decks/route'
 import * as cardsRoute from '../../../apps/web/app/api/cards/route'
 import * as reviewRoute from '../../../apps/web/app/api/review/route'
@@ -11,13 +24,13 @@ describe('Tier 1: Review Pipeline & FSRS Scheduling', () => {
 
   beforeAll(async () => {
     // Create dedicated deck and card
-    const deckRes = await callRoute(decksRoute.POST, {
+    const deckRes = await callRoute<{ deck: DeckRow }>(decksRoute.POST, {
       method: 'POST',
       body: { name: 'E2E Review Track Deck' },
     })
     deckId = deckRes.data.deck.id
 
-    const cardRes = await callRoute(cardsRoute.POST, {
+    const cardRes = await callRoute<{ card: CardRow }>(cardsRoute.POST, {
       method: 'POST',
       body: {
         deckId,
@@ -30,21 +43,24 @@ describe('Tier 1: Review Pipeline & FSRS Scheduling', () => {
   })
 
   it('builds a review session via GET /api/review', async () => {
-    const res = await callRoute(reviewRoute.GET, {
-      query: { deckId, mode: 'normal' },
-    })
+    const res = await callRoute<{ ok: boolean; cards: CardRow[]; mode: string; retention: number }>(
+      reviewRoute.GET,
+      {
+        query: { deckId, mode: 'normal' },
+      },
+    )
 
     expect(res.status).toBe(200)
     expect(res.data.ok).toBe(true)
     expect(Array.isArray(res.data.cards)).toBe(true)
-    const cardFound = res.data.cards.find((c: any) => c.id === cardId)
+    const cardFound = res.data.cards.find((c) => c.id === cardId)
     expect(cardFound).toBeDefined()
     expect(res.data.mode).toBe('normal')
     expect(typeof res.data.retention).toBe('number')
   })
 
   it('applies a review grade via POST /api/review (Grade 3: Good, Confident)', async () => {
-    const res = await callRoute(reviewRoute.POST, {
+    const res = await callRoute<ReviewResult>(reviewRoute.POST, {
       method: 'POST',
       body: {
         cardId,
@@ -67,7 +83,11 @@ describe('Tier 1: Review Pipeline & FSRS Scheduling', () => {
   })
 
   it('retrieves updated retention and due forecast via GET /api/review/stats', async () => {
-    const res = await callRoute(statsRoute.GET)
+    const res = await callRoute<{
+      trueRetention: unknown
+      today: { reviews: number }
+      forecast: unknown[]
+    }>(statsRoute.GET)
 
     expect(res.status).toBe(200)
     expect(res.data.trueRetention).toBeDefined()

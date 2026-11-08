@@ -38,7 +38,7 @@ describe('Tier 1: curriculum via MCP', () => {
   })
 
   it('designs, validates, imports and tutors a course', async () => {
-    const { prompt } = await client.callTool('curriculum_prompt', {
+    const { prompt } = await client.callTool<{ prompt: string }>('curriculum_prompt', {
       topic: 'Photosynthesis',
       weeks: 2,
       hoursPerWeek: 2,
@@ -53,19 +53,29 @@ describe('Tier 1: curriculum via MCP', () => {
     })
     expect(dry).toMatchObject({ ok: true, dryRun: true, slug: 'learning-how-to-learn' })
 
-    const done = await client.callTool('curriculum_import', { text, filename: 'course.md' })
+    const done = await client.callTool<{ report: { created: boolean; courseId: number } }>(
+      'curriculum_import',
+      { text, filename: 'course.md' },
+    )
     expect(done.report.created).toBe(true)
 
-    const next = await client.callTool('curriculum_next', { courseId: done.report.courseId })
+    const next = await client.callTool<{
+      lesson: { lesson: { title: string }; exercises: unknown[] }
+    }>('curriculum_next', { courseId: done.report.courseId })
     expect(next.lesson.lesson.title).toBe('The testing effect')
     expect(next.lesson.exercises.length).toBeGreaterThan(0)
 
-    const exported = await client.callTool('curriculum_export', { courseId: done.report.courseId })
+    const exported = await client.callTool<{ slug: string }>('curriculum_export', {
+      courseId: done.report.courseId,
+    })
     expect(exported.slug).toBe('learning-how-to-learn')
   })
 
   it('returns path-addressed errors for an invalid course', async () => {
-    const bad = await client.callTool('curriculum_import', { text: '{"title":"x","modules":[]}' })
+    const bad = await client.callTool<{ ok: boolean; errors: Array<{ path: string }> }>(
+      'curriculum_import',
+      { text: '{"title":"x","modules":[]}' },
+    )
     expect(bad.ok).toBe(false)
     expect(bad.errors[0].path).toBe('modules')
   })
