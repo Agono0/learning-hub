@@ -20,16 +20,18 @@ import {
   cards,
   courses,
   examDates,
-  focusSessions,
   frictionEvents,
   ideas,
   reminderClicks,
   reminderLog,
   revlog,
   pushSubscriptions,
+  streaks,
   userSettings,
   xpEvents,
 } from '../schema'
+import { liveStreak } from '@learning-hub/core/streaks'
+import { getOpenFocusSession } from './focus-lock'
 
 export function getOrCreateUserSettings(conn: LearningHubDB): typeof userSettings.$inferSelect {
   const existing = conn.select().from(userSettings).where(eq(userSettings.id, 'default')).get()
@@ -98,21 +100,25 @@ export function collectUserFacts(database?: LearningHubDB): UserFacts {
     .all()
   const todayXp = xpRow?.total ?? 0
 
-  // 4. Current streak (estimate from distinct review days)
-  const [distinctDaysRow] = conn
-    .select({ count: sql<number>`count(distinct substr(${revlog.reviewedAt}, 1, 10))` })
-    .from(revlog)
-    .all()
-  const currentStreak = Math.min(distinctDaysRow?.count ?? 0, 30)
+  // 4. Current streak — the real consecutive-day streak (with freezes/amulet),
+  //    not "number of distinct days ever reviewed".
+  const streakRow = conn.select().from(streaks).limit(1).get()
+  const currentStreak = streakRow
+    ? liveStreak(
+        {
+          current: streakRow.current,
+          best: streakRow.best,
+          lastActiveDate: streakRow.lastActiveDate,
+          freezes: streakRow.freezes,
+          weekendAmulet: Boolean(streakRow.weekendAmulet),
+        },
+        now,
+      )
+    : 0
 
-  // 5. Active focus session duration
-  const activeFocus = conn
-    .select()
-    .from(focusSessions)
-    .where(eq(focusSessions.completed, false))
-    .orderBy(desc(focusSessions.id))
-    .limit(1)
-    .get()
+  // 5. Active focus session duration — only a session still running counts;
+  //    an abandoned one keeps completed=false but has endedAt set.
+  const activeFocus = getOpenFocusSession(conn)
   let continuousFocusMinutes = 0
   if (activeFocus && activeFocus.startedAt) {
     const startMs = new Date(activeFocus.startedAt).getTime()

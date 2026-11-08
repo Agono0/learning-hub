@@ -64,7 +64,13 @@ describe('recordActivity with offset', () => {
   })
 
   it('weekend amulet follows the local weekday when an offset is given', () => {
-    const amulet = { ...base, current: 3, best: 3, lastActiveDate: '2026-11-05', weekendAmulet: true }
+    const amulet = {
+      ...base,
+      current: 3,
+      best: 3,
+      lastActiveDate: '2026-11-05',
+      weekendAmulet: true,
+    }
     // 2026-11-06 is a Friday in UTC, but the UTC+2 local day is Saturday Nov 7.
     const s = recordActivity(amulet, new Date('2026-11-06T22:30:00Z'), -120)
     expect(s.current).toBe(4) // amulet saved the streak on the local Saturday
@@ -82,5 +88,24 @@ describe('dateKeyOf (shared util)', () => {
   it('agrees with dayKey for Date inputs', () => {
     const d = new Date('2026-11-04T01:02:03.456Z')
     expect(dateKeyOf(d)).toBe(dayKey(d))
+  })
+})
+
+describe('liveStreak', async () => {
+  const { liveStreak } = await import('../src/streaks')
+  const base = { current: 7, best: 7, freezes: 0, weekendAmulet: false }
+  const now = new Date('2026-11-11T12:00:00Z') // a Wednesday
+  it('keeps the streak through today and yesterday', () => {
+    expect(liveStreak({ ...base, lastActiveDate: '2026-11-11' }, now)).toBe(7)
+    expect(liveStreak({ ...base, lastActiveDate: '2026-11-10' }, now)).toBe(7)
+  })
+  it('bridges one missed day only with a freeze', () => {
+    expect(liveStreak({ ...base, lastActiveDate: '2026-11-09' }, now)).toBe(0)
+    expect(liveStreak({ ...base, freezes: 1, lastActiveDate: '2026-11-09' }, now)).toBe(7)
+  })
+  it('is 0 for long gaps and empty state', () => {
+    expect(liveStreak({ ...base, lastActiveDate: '2026-10-01' }, now)).toBe(0)
+    expect(liveStreak({ ...base, lastActiveDate: null }, now)).toBe(0)
+    expect(liveStreak({ ...base, current: 0, lastActiveDate: '2026-11-11' }, now)).toBe(0)
   })
 })
