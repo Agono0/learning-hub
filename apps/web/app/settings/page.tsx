@@ -868,6 +868,39 @@ export default function SettingsPage() {
   )
 }
 
+type IdentityMode = 'device_key' | 'magic_link' | 'offline'
+
+const IDENTITY_MODES: ReadonlyArray<{ id: IdentityMode; title: string; desc: string }> = [
+  {
+    id: 'offline',
+    title: 'Offline Mode',
+    desc: 'Zero network traffic. All features run strictly local on your device.',
+  },
+  {
+    id: 'device_key',
+    title: 'Device Key (Recommended)',
+    desc: 'Anonymous cryptographic keypair generated locally. Zero emails or passwords.',
+  },
+  {
+    id: 'magic_link',
+    title: 'Magic Link',
+    desc: 'Optional email-based sync for multi-device learners.',
+  },
+]
+
+/** GET /api/anki/connect — mapped cards (only the count is shown here). */
+interface AnkiMappingsResponse {
+  ok: boolean
+  count: number
+  mappings: Array<{
+    cardId: number
+    ankiNoteId: number
+    ankiCardId: number | null
+    syncMode: string
+    lastSyncAt: string
+  }>
+}
+
 function OnlineIdentitySection() {
   const qc = useQueryClient()
   const identityQuery = useQuery({
@@ -891,7 +924,7 @@ function OnlineIdentitySection() {
       }>('/api/online/identity'),
   })
 
-  const [mode, setMode] = useState<'device_key' | 'magic_link' | 'offline'>('offline')
+  const [mode, setMode] = useState<IdentityMode>('offline')
   const [alias, setAlias] = useState('')
   const [serverUrl, setServerUrl] = useState('')
   const [showLeaderboard, setShowLeaderboard] = useState(true)
@@ -956,27 +989,11 @@ function OnlineIdentitySection() {
         <div>
           <label className="label mb-1 block">Identity Mode</label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {[
-              {
-                id: 'offline',
-                title: 'Offline Mode',
-                desc: 'Zero network traffic. All features run strictly local on your device.',
-              },
-              {
-                id: 'device_key',
-                title: 'Device Key (Recommended)',
-                desc: 'Anonymous cryptographic keypair generated locally. Zero emails or passwords.',
-              },
-              {
-                id: 'magic_link',
-                title: 'Magic Link',
-                desc: 'Optional email-based sync for multi-device learners.',
-              },
-            ].map((opt) => (
+            {IDENTITY_MODES.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => setMode(opt.id as any)}
+                onClick={() => setMode(opt.id)}
                 className={`rounded-lg border p-3 text-left transition-all ${
                   mode === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
@@ -1125,9 +1142,9 @@ function AnkiConnectSection() {
   const [testStatus, setTestStatus] = useState<string | null>(null)
   const [isTesting, setIsTesting] = useState(false)
 
-  const ankiQuery = useQuery<{ ok: boolean; count: number; mappings: any[] }>({
+  const ankiQuery = useQuery<AnkiMappingsResponse>({
     queryKey: ['anki-mappings'],
-    queryFn: () => apiGet<{ ok: boolean; count: number; mappings: any[] }>('/api/anki/connect'),
+    queryFn: () => apiGet<AnkiMappingsResponse>('/api/anki/connect'),
   })
 
   const testConnection = async () => {

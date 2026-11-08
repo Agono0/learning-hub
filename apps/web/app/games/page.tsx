@@ -110,6 +110,15 @@ interface SocialResponse {
   }>
 }
 
+/** POST /api/social/duels response (Elo exchange for both players). */
+interface DuelResult {
+  ok: boolean
+  eloUpdates?: {
+    player1: { previous: number; next: number }
+    player2: { previous: number; next: number }
+  }
+}
+
 export default function GamesPage() {
   const [activeTab, setActiveTab] = useState<GameTab>('matching')
 
@@ -889,8 +898,8 @@ function DuelsArenaSection() {
       winnerAlias?: string
       player1Score: number
       player2Score: number
-    }) => apiSend('/api/social/duels', 'POST', data),
-    onSuccess: (data: any) => {
+    }) => apiSend<DuelResult>('/api/social/duels', 'POST', data),
+    onSuccess: (data) => {
       if (data.ok && data.eloUpdates) {
         setEloDelta(data.eloUpdates.player1.next - data.eloUpdates.player1.previous)
       }

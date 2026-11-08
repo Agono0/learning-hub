@@ -108,12 +108,16 @@ export default function MindmapPage() {
         edgesJson: JSON.stringify(mindmap.edges ?? []),
       }
       if (selectedId) {
-        return apiSend(`/api/mindmaps/${selectedId}`, 'PUT', payload)
+        return apiSend<{ ok: boolean; mindmap?: MindmapRow }>(
+          `/api/mindmaps/${selectedId}`,
+          'PUT',
+          payload,
+        )
       } else {
         return apiSend<{ ok: boolean; mindmap: MindmapRow }>('/api/mindmaps', 'POST', payload)
       }
     },
-    onSuccess: (res: any) => {
+    onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: ['mindmaps'] })
       if (res?.mindmap?.id) {
         setSelectedId(res.mindmap.id)
