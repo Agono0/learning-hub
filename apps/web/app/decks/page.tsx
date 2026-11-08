@@ -11,11 +11,23 @@
  */
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FilePlus2, Layers, Pencil, Plus, Sparkles, Trash2, Upload, Wand2, X } from 'lucide-react'
+import {
+  FilePlus2,
+  Layers,
+  Pencil,
+  Plus,
+  Sparkles,
+  Stethoscope,
+  Trash2,
+  Upload,
+  Wand2,
+  X,
+} from 'lucide-react'
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import type { LintResult } from '@learning-hub/core/linter'
 import { parseCloze, validateCardContent } from '@learning-hub/core/cards'
 import { leitnerBox, leitnerHistogram } from '@learning-hub/core/fsrs'
+import { DeckDoctorSheet } from '@/components/DeckDoctorSheet'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import { PageHeader } from '@/ui'
@@ -96,6 +108,7 @@ export default function DecksPage() {
   const [editing, setEditing] = useState<CardRow | 'new' | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [doctorDeckId, setDoctorDeckId] = useState<number | null>(null)
   const [shareNote, setShareNote] = useState<string | null>(null)
 
   // Share this deck as an lh-share/v1 string (F-08②): the import side lives
@@ -221,6 +234,14 @@ export default function DecksPage() {
             </button>
             <button className="btn-ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
               <Wand2 className="h-4 w-4" /> AI generate
+            </button>
+            <button
+              className="btn-ghost flex items-center gap-1.5"
+              onClick={() => setDoctorDeckId(activeDeck)}
+              disabled={!activeDeck}
+              title="Run Deck Doctor health inspection and one-click fixes"
+            >
+              <Stethoscope className="h-4 w-4 text-indigo-400" /> Doctor
             </button>
           </div>
         }
@@ -482,6 +503,13 @@ export default function DecksPage() {
           onGenerated={invalidate}
         />
       )}
+      <DeckDoctorSheet
+        deckId={doctorDeckId}
+        deckName={doctorDeckId ? deckName(doctorDeckId) : undefined}
+        open={doctorDeckId !== null}
+        onClose={() => setDoctorDeckId(null)}
+        onApplied={invalidate}
+      />
     </div>
   )
 }
