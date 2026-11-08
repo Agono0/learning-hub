@@ -32,7 +32,7 @@ function createTestDb() {
       "SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
     )
     .all('table')
-    .map((r) => r.sql as string)
+    .map((r) => (r as { sql: string }).sql)
   for (const ddl of ddls) sqlite.exec(ddl)
 
   const db = drizzle(sqlite, { schema })
@@ -55,8 +55,8 @@ function createTestDb() {
       .values({
         id: cardId,
         deckId: 1,
-        type: 'qa',
-        content: { front: `Front ${cardId}`, back: `Back ${cardId}` },
+        type: 'basic',
+        content: { basic: { front: `Front ${cardId}`, back: `Back ${cardId}` } },
         due: now.toISOString(),
         state: 0,
         stability: 0,

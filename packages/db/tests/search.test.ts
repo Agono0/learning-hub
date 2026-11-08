@@ -133,22 +133,22 @@ describe('fts search', () => {
       nodesJson: '[]',
       edgesJson: '[]',
     })
-    await db.insert(canvases).values({ title: 'Thesis storyboard', items: '[]', edges: '[]' })
+    await db.insert(canvases).values({ title: 'Thesis storyboard', items: [], edges: [] })
     await db.insert(palaces).values({ name: 'Childhood home', description: 'Method of loci route' })
     await db.insert(goals).values({ wish: 'Read 30 books this year' })
     await db.insert(habits).values({ name: 'Morning pages', cue: 'wake up' })
     await db.insert(quickCaptures).values({ text: 'idea: hippocampus pun for memory palace' })
     await db.insert(sq3rSessions).values({
       sourceId: 1,
-      surveyHeadings: 'consolidation sections',
-      questions: 'how does sleep consolidate memory?',
+      surveyHeadings: ['consolidation sections'],
+      questions: [{ id: 'q1', question: 'how does sleep consolidate memory?', answer: '' }],
       reciteNotes: '',
-      completedSteps: '[]',
+      completedSteps: [],
     })
     await db.insert(chatSessions).values({
       kind: 'tutor',
       title: 'long-term potentiation chat',
-      messages: '[]',
+      messages: [],
     })
 
     const res = searchAll(db, 'hippocampus')

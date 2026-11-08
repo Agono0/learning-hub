@@ -115,6 +115,6 @@ describe('reminder audit trail', () => {
     recordReminderClick({ reminderLogId: sent.id, kind: 'daily_review' })
     const facts = collectUserFacts()
     expect(facts.sentToday.some((s) => s.kind === 'daily_review')).toBe(true)
-    expect(facts.clickedToday.some((c) => c.kind === 'daily_review')).toBe(true)
+    expect(facts.clickedToday?.some((c) => c.kind === 'daily_review')).toBe(true)
   })
 })

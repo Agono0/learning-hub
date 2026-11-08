@@ -8,6 +8,7 @@ import { MIGRATIONS, runMigrations } from '../src/migrations'
 import type { RawSqliteHandle } from '../src/index'
 import { backupAll } from '../src/backup'
 import { mergeBackup } from '../src/sync'
+import { generateTmrEarcon } from '@learning-hub/core'
 
 function createDeviceDb() {
   const sqlite = new Database(':memory:')
@@ -32,9 +33,7 @@ describe('Cognitive tables sync & merge semantics', () => {
       .values({
         id: 1,
         deckId: 1,
-        front: 'What is LTP?',
-        back: 'Long term potentiation',
-        content: { front: 'What is LTP?', back: 'Long term potentiation' },
+        content: { basic: { front: 'What is LTP?', back: 'Long term potentiation' } },
         type: 'basic',
         due: '2026-01-01',
       })
@@ -46,9 +45,7 @@ describe('Cognitive tables sync & merge semantics', () => {
       .values({
         id: 1,
         deckId: 1,
-        front: 'What is LTP?',
-        back: 'Long term potentiation',
-        content: { front: 'What is LTP?', back: 'Long term potentiation' },
+        content: { basic: { front: 'What is LTP?', back: 'Long term potentiation' } },
         type: 'basic',
         due: '2026-01-01',
       })
@@ -131,9 +128,7 @@ describe('Cognitive tables sync & merge semantics', () => {
       .values({
         id: 10,
         deckId: 1,
-        front: 'F=ma',
-        back: 'Newtons second law',
-        content: { front: 'F=ma', back: 'Newtons second law' },
+        content: { basic: { front: 'F=ma', back: 'Newtons second law' } },
         type: 'basic',
         due: '2026-01-01',
       })
@@ -145,15 +140,13 @@ describe('Cognitive tables sync & merge semantics', () => {
       .values({
         id: 10,
         deckId: 1,
-        front: 'F=ma',
-        back: 'Newtons second law',
-        content: { front: 'F=ma', back: 'Newtons second law' },
+        content: { basic: { front: 'F=ma', back: 'Newtons second law' } },
         type: 'basic',
         due: '2026-01-01',
       })
       .run()
 
-    const sig = { cardId: 10, rootFrequency: 440, intervals: [0, 4, 7] }
+    const sig = generateTmrEarcon(10)
 
     // Device A: cued awake 5 times, sleep 1 time
     devA.db

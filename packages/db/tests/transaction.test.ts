@@ -1,78 +1,84 @@
-import { describe, it, expect } from 'vitest'
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
+import { describe, expect, it } from 'vitest'
+import { initDb, type LearningHubDB } from '../src/index'
+import { decks } from '../src/schema'
 import { withTransaction, writeTransaction } from '../src/transaction'
 
-const testTable = sqliteTable('test_tx', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  val: text('val').notNull(),
-})
-
-function createTestDb() {
-  const sqlite = new Database(':memory:')
-  sqlite.pragma('journal_mode = WAL')
-  sqlite.pragma('foreign_keys = ON')
-  sqlite.exec(`CREATE TABLE test_tx (id INTEGER PRIMARY KEY AUTOINCREMENT, val TEXT NOT NULL);`)
-  return drizzle(sqlite, { schema: { testTable } })
+/** A fresh in-memory database built by the production initDb pipeline. */
+async function createTestDb(): Promise<LearningHubDB> {
+  const db = await initDb({ path: ':memory:' })
+  db.delete(decks).run() // start from zero decks regardless of seeding
+  return db
 }
 
+const names = (db: LearningHubDB) =>
+  db
+    .select({ name: decks.name })
+    .from(decks)
+    .all()
+    .map((r) => r.name)
+
 describe('transaction helpers', () => {
-  it('commits writes atomically on successful return', () => {
-    const db = createTestDb()
+  it('commits writes atomically on successful return', async () => {
+    const db = await createTestDb()
 
     const result = withTransaction((tx) => {
-      tx.insert(testTable).values({ val: 'alpha' }).run()
-      tx.insert(testTable).values({ val: 'beta' }).run()
+      tx.insert(decks).values({ name: 'alpha' }).run()
+      tx.insert(decks).values({ name: 'beta' }).run()
       return 42
-    }, db as any)
+    }, db)
 
     expect(result).toBe(42)
-    const rows = db.select().from(testTable).all()
-    expect(rows).toHaveLength(2)
-    expect(rows.map((r) => r.val)).toEqual(['alpha', 'beta'])
+    expect(names(db)).toEqual(['alpha', 'beta'])
   })
 
-  it('rolls back all writes if an exception is thrown', () => {
-    const db = createTestDb()
+  it('rolls back all writes if an exception is thrown', async () => {
+    const db = await createTestDb()
 
     expect(() => {
       withTransaction((tx) => {
-        tx.insert(testTable).values({ val: 'gamma' }).run()
+        tx.insert(decks).values({ name: 'gamma' }).run()
         throw new Error('Simulated failure during transaction')
-      }, db as any)
+      }, db)
     }).toThrow('Simulated failure during transaction')
 
-    const rows = db.select().from(testTable).all()
-    expect(rows).toHaveLength(0)
+    expect(names(db)).toEqual([])
   })
 
-  it('writeTransaction behaves as an identical alias for withTransaction', () => {
-    const db = createTestDb()
+  it('rolls back the earlier write when a later one violates a constraint', async () => {
+    const db = await createTestDb()
+
+    expect(() =>
+      withTransaction((tx) => {
+        tx.insert(decks).values({ name: 'dup' }).run()
+        tx.insert(decks).values({ name: 'dup' }).run() // decks.name is UNIQUE
+      }, db),
+    ).toThrow()
+
+    expect(names(db)).toEqual([])
+  })
+
+  it('writeTransaction behaves as an identical alias for withTransaction', async () => {
+    const db = await createTestDb()
 
     const res = writeTransaction((tx) => {
-      tx.insert(testTable).values({ val: 'delta' }).run()
+      tx.insert(decks).values({ name: 'delta' }).run()
       return 'ok'
-    }, db as any)
+    }, db)
 
     expect(res).toBe('ok')
-    const rows = db.select().from(testTable).all()
-    expect(rows).toHaveLength(1)
-    expect(rows[0]?.val).toBe('delta')
+    expect(names(db)).toEqual(['delta'])
   })
 
-  it('supports multiple sequential transactions cleanly', () => {
-    const db = createTestDb()
+  it('supports multiple sequential transactions cleanly', async () => {
+    const db = await createTestDb()
 
     withTransaction((tx) => {
-      tx.insert(testTable).values({ val: 't1' }).run()
-    }, db as any)
-
+      tx.insert(decks).values({ name: 't1' }).run()
+    }, db)
     withTransaction((tx) => {
-      tx.insert(testTable).values({ val: 't2' }).run()
-    }, db as any)
+      tx.insert(decks).values({ name: 't2' }).run()
+    }, db)
 
-    const rows = db.select().from(testTable).all()
-    expect(rows).toHaveLength(2)
+    expect(names(db)).toEqual(['t1', 't2'])
   })
 })
