@@ -21,13 +21,19 @@ vi.mock('@learning-hub/db', async (importOriginal) => {
   }
 })
 
-type Modules = Record<string, any>
-const M: Modules = {}
+type Modules = {
+  route: typeof import('../app/api/audio/circadian/commute/route')
+  db: typeof import('@learning-hub/db')
+}
+// Assigned in beforeAll, after LEARNING_HUB_DB points at the temp database.
+let M: Modules
 let cardId: number
 
 beforeAll(async () => {
-  M.route = await import('../app/api/audio/circadian/commute/route')
-  M.db = await import('@learning-hub/db')
+  M = {
+    route: await import('../app/api/audio/circadian/commute/route'),
+    db: await import('@learning-hub/db'),
+  }
   const deckId = M.db.db.insert(M.db.decks).values({ name: 'D' }).returning().all()[0].id
   cardId = M.db.db
     .insert(M.db.cards)

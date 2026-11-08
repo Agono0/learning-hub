@@ -158,10 +158,20 @@ export async function normalizeRouteContext<C>(context: C): Promise<C> {
  * serve from a Next.js route OR a non-Node runtime; the 2nd argument is
  * normalized via {@link normalizeRouteContext} before the handler sees it.
  */
+/**
+ * The wrapped handler's call signature. A handler that declares no context
+ * (C stays `unknown`) can be called with just the request — tests, the hub
+ * registry and scripts do; a handler that needs `{ params }` keeps the
+ * context argument required.
+ */
+export type WrappedRoute<C> = unknown extends C
+  ? (req: Request, context?: unknown) => Promise<Response>
+  : (req: Request, context: C) => Promise<Response>
+
 export function withRoute<C = unknown>(
   handler: (req: Request, context: C) => Promise<Response>,
-): (req: Request, context: C) => Promise<Response> {
-  return async (req, context) => {
+): WrappedRoute<C> {
+  const wrapped = async (req: Request, context: C): Promise<Response> => {
     try {
       return await handler(req, await normalizeRouteContext(context))
     } catch (err) {
@@ -172,4 +182,7 @@ export function withRoute<C = unknown>(
       return jsonError(500, 'Internal error')
     }
   }
+  // Both branches of WrappedRoute accept (req, context: C); TS can't narrow a
+  // conditional return type inside the body, hence the one assertion.
+  return wrapped as WrappedRoute<C>
 }

@@ -3,9 +3,9 @@ import { validateCardContent, parseCloze, evaluateClozeAnswer } from '../package
 
 let totalChecks = 0
 let failedChecks = 0
-const failures: Array<{ desc: string; details: any }> = []
+const failures: Array<{ desc: string; details: unknown }> = []
 
-function check(desc: string, cond: boolean, details?: any) {
+function check(desc: string, cond: boolean, details?: unknown) {
   totalChecks++
   if (!cond) {
     failedChecks++
@@ -240,11 +240,12 @@ for (const { input, label } of invalidFrontRows) {
   const emptyBackInput = 'Front with no back\t\ttags'
   const res = parseAnkiDecks(emptyBackInput)
   check('Empty back field produces 1 valid card', res.cards.length === 1)
+  const basicContent = res.cards[0]?.content as { basic?: { back?: string } } | undefined
   check(
     'Empty back field card.content.basic.back falls back to "..."',
-    (res.cards[0]?.content as any).basic?.back === '...',
+    basicContent?.basic?.back === '...',
     {
-      contentBack: (res.cards[0]?.content as any).basic?.back,
+      contentBack: basicContent?.basic?.back,
     },
   )
   const val = validateCardContent('basic', res.cards[0]!.content)
@@ -415,7 +416,7 @@ for (const { header, expected } of validSeparators) {
 // ─────────────────────────────────────────────────────────────────────────────
 console.log('--- Testing Requirement 7: Empty delimiter infinite loop guard ---')
 
-const emptyDelimCases = ['', null as any, undefined as any]
+const emptyDelimCases: Array<string | undefined> = ['', null as unknown as string, undefined]
 
 for (const d of emptyDelimCases) {
   const t0 = performance.now()

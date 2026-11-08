@@ -221,7 +221,7 @@ runSuite('Matching Game: Grade For Accuracy Range [1, 2, 3, 4]', (s) => {
   for (const val of inputs) {
     s.totalTests++
     const grade = gradeForAccuracy(val)
-    const valid = [1, 2, 3, 4].includes(grade as any)
+    const valid = ([1, 2, 3, 4] as number[]).includes(grade)
     if (valid) {
       s.passed++
     } else {
@@ -323,7 +323,7 @@ runSuite('Matching Game: evaluateMatchingGame Finite & Non-negative Properties',
         const validAcc = Number.isFinite(res.accuracy) && res.accuracy >= 0 && res.accuracy <= 1
         const validScorePct =
           Number.isFinite(res.scorePct) && res.scorePct >= 0 && res.scorePct <= 100
-        const validGrade = [1, 2, 3, 4].includes(res.grade as any)
+        const validGrade = ([1, 2, 3, 4] as number[]).includes(res.grade)
         const validXp = Number.isFinite(res.xp) && res.xp >= 0
         const validSpeed = typeof res.speedBonus === 'boolean'
 

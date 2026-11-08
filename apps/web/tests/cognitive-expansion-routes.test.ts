@@ -15,8 +15,25 @@ import { join } from 'node:path'
 const tempDbFile = join(mkdtempSync(join(tmpdir(), 'lh-cog-routes-')), 'cog.db')
 process.env.LEARNING_HUB_DB = tempDbFile
 
-type Modules = Record<string, any>
-const M: Modules = {}
+type Modules = {
+  commute: typeof import('../app/api/audio/circadian/commute/route')
+  tmr: typeof import('../app/api/audio/tmr/cues/route')
+  gkt: typeof import('../app/api/cognitive/gkt/route')
+  load: typeof import('../app/api/cognitive/load/route')
+  arena: typeof import('../app/api/dialectic/arena/route')
+  ingest: typeof import('../app/api/ingest/multimodal/route')
+  palace3d: typeof import('../app/api/spatial/palace-3d/route')
+  weaknessV2: typeof import('../app/api/curriculum/skills/weakness-v2/route')
+  voiceSession: typeof import('../app/api/tutor/voice-session/route')
+  examSim: typeof import('../app/api/curriculum/exam/simulator/route')
+  workload: typeof import('../app/api/workload/route')
+  exposure: typeof import('../app/api/reading/exposure/route')
+  review: typeof import('../src/server/handlers/review/route')
+  api: typeof import('../src/lib/api')
+  db: typeof import('@learning-hub/db')
+}
+// Assigned in beforeAll, after LEARNING_HUB_DB points at the temp database.
+let M: Modules
 
 const BASE = 'http://localhost'
 const get = (path: string) => new Request(`${BASE}${path}`)
@@ -31,21 +48,23 @@ let deckId: number
 let cardId: number
 
 beforeAll(async () => {
-  M.commute = await import('../app/api/audio/circadian/commute/route')
-  M.tmr = await import('../app/api/audio/tmr/cues/route')
-  M.gkt = await import('../app/api/cognitive/gkt/route')
-  M.load = await import('../app/api/cognitive/load/route')
-  M.arena = await import('../app/api/dialectic/arena/route')
-  M.ingest = await import('../app/api/ingest/multimodal/route')
-  M.palace3d = await import('../app/api/spatial/palace-3d/route')
-  M.weaknessV2 = await import('../app/api/curriculum/skills/weakness-v2/route')
-  M.voiceSession = await import('../app/api/tutor/voice-session/route')
-  M.examSim = await import('../app/api/curriculum/exam/simulator/route')
-  M.workload = await import('../app/api/workload/route')
-  M.exposure = await import('../app/api/reading/exposure/route')
-  M.review = await import('../src/server/handlers/review/route')
-  M.api = await import('../src/lib/api')
-  M.db = await import('@learning-hub/db')
+  M = {
+    commute: await import('../app/api/audio/circadian/commute/route'),
+    tmr: await import('../app/api/audio/tmr/cues/route'),
+    gkt: await import('../app/api/cognitive/gkt/route'),
+    load: await import('../app/api/cognitive/load/route'),
+    arena: await import('../app/api/dialectic/arena/route'),
+    ingest: await import('../app/api/ingest/multimodal/route'),
+    palace3d: await import('../app/api/spatial/palace-3d/route'),
+    weaknessV2: await import('../app/api/curriculum/skills/weakness-v2/route'),
+    voiceSession: await import('../app/api/tutor/voice-session/route'),
+    examSim: await import('../app/api/curriculum/exam/simulator/route'),
+    workload: await import('../app/api/workload/route'),
+    exposure: await import('../app/api/reading/exposure/route'),
+    review: await import('../src/server/handlers/review/route'),
+    api: await import('../src/lib/api'),
+    db: await import('@learning-hub/db'),
+  }
 
   const { db, decks, cards } = M.db
   deckId = db.insert(decks).values({ name: 'Commute Deck' }).returning().all()[0].id
@@ -82,7 +101,7 @@ describe('/api/audio/circadian/commute', () => {
     const res = await M.commute.GET(get(`/api/audio/circadian/commute?deckId=${deckId}`))
     expect(res.status).toBe(200)
     const body = await res.json()
-    const cue = body.cues.find((c: any) => c.cardId === cardId)
+    const cue = body.cues.find((c: { cardId: number }) => c.cardId === cardId)
     expect(cue.promptText).toBe('What is FSRS?')
     expect(cue.answerText).toBe('A spaced repetition scheduler')
     // S = 40 days → a longer (deliberate) pause than a brand-new card's 2.5 s floor
@@ -102,7 +121,7 @@ describe('/api/audio/circadian/commute', () => {
       .select()
       .from(M.db.revlog)
       .all()
-      .filter((r: any) => r.cardId === cardId).length
+      .filter((r: { cardId: number }) => r.cardId === cardId).length
     const res = await M.commute.POST(
       post('/api/audio/circadian/commute', {
         sessionMode: 'commute',
@@ -126,7 +145,7 @@ describe('/api/audio/circadian/commute', () => {
       .select()
       .from(M.db.revlog)
       .all()
-      .filter((r: any) => r.cardId === cardId).length
+      .filter((r: { cardId: number }) => r.cardId === cardId).length
     expect(after).toBe(before + 1) // the single grading path wrote the revlog row
   })
 })
@@ -134,7 +153,7 @@ describe('/api/audio/circadian/commute', () => {
 describe('/api/audio/tmr/cues', () => {
   it('lists the cue minted by the commute session', async () => {
     const body = await (await M.tmr.GET(get('/api/audio/tmr/cues'))).json()
-    expect(body.cues.some((c: any) => c.cardId === cardId)).toBe(true)
+    expect(body.cues.some((c: { cardId: number }) => c.cardId === cardId)).toBe(true)
   })
 
   it('mint_cue 404s for an unknown card and mints for a real one', async () => {
@@ -160,7 +179,7 @@ describe('/api/audio/tmr/cues', () => {
     )
     expect((await res.json()).playedCount).toBe(1)
     const cue = (await (await M.tmr.GET(get('/api/audio/tmr/cues'))).json()).cues.find(
-      (c: any) => c.cardId === cardId,
+      (c: { cardId: number }) => c.cardId === cardId,
     )
     expect(cue.timesCuedSleep).toBe(1)
     expect((await M.tmr.POST(post('/api/audio/tmr/cues', { action: 'dance' }))).status).toBe(400)
@@ -193,10 +212,10 @@ describe('/api/cognitive/gkt', () => {
     const body = await res.json()
     expect(body.rootCauseAlert.culpritPrerequisiteId).toBe('algebra')
     const dag = await (await M.gkt.GET(get('/api/cognitive/gkt'))).json()
-    expect(dag.nodes.map((n: any) => n.id).indexOf('algebra')).toBeLessThan(
-      dag.nodes.map((n: any) => n.id).indexOf('calculus'),
+    expect(dag.nodes.map((n: { id: string }) => n.id).indexOf('algebra')).toBeLessThan(
+      dag.nodes.map((n: { id: string }) => n.id).indexOf('calculus'),
     )
-    const algebra = dag.nodes.find((n: any) => n.id === 'algebra')
+    const algebra = dag.nodes.find((n: { id: string; masteryProb: number }) => n.id === 'algebra')
     expect(algebra.masteryProb).toBeLessThan(0.3)
   })
 
@@ -228,7 +247,7 @@ describe('/api/cognitive/load', () => {
     expect(body.evaluation.flowZone).toBeDefined()
     const events = (await (await M.load.GET(get(`/api/cognitive/load?cardId=${cardId}`))).json())
       .events
-    const ev = events.find((e: any) => e.id === body.eventId)
+    const ev = events.find((e: { id: number; hesitationVariance: number }) => e.id === body.eventId)
     expect(ev.hesitationVariance).toBe(0) // sorted → even 100 ms gaps → zero jitter
   })
 
@@ -401,7 +420,10 @@ describe('/api/spatial/palace-3d', () => {
       await M.palace3d.GET(get(`/api/spatial/palace-3d?palaceId=${palaceId}`))
     ).json()
     expect(body.persisted).toBe(false)
-    expect(body.scene.spatialLoci.map((l: any) => l.title)).toEqual(['Door', 'Fountain'])
+    expect(body.scene.spatialLoci.map((l: { title: string }) => l.title)).toEqual([
+      'Door',
+      'Fountain',
+    ])
     expect(body.scene.spatialLoci[0].cardId).toBeUndefined()
     expect(body.scene.spatialLoci[1].cardId).toBe(cardId)
     expect(M.db.getPalace3dScene(palaceId)).toBeUndefined()
@@ -662,9 +684,7 @@ describe('/api/curriculum/exam/simulator', () => {
       .insert(cards)
       .values({
         deckId,
-        front: 'Capital of Australia?',
-        back: 'Canberra',
-        content: { front: 'Capital of Australia?', back: 'Canberra' },
+        content: { basic: { front: 'Capital of Australia?', back: 'Canberra' } },
         type: 'basic',
         due: new Date().toISOString(),
       })
@@ -718,7 +738,7 @@ describe('/api/curriculum/exam/simulator', () => {
         .insert(cards)
         .values({
           deckId,
-          content: { front: 'Workload Q', back: 'Workload A' },
+          content: { basic: { front: 'Workload Q', back: 'Workload A' } },
           type: 'basic',
           due: now.toISOString(),
           state: 2,
@@ -762,7 +782,7 @@ describe('/api/curriculum/exam/simulator', () => {
         .insert(cards)
         .values({
           deckId,
-          content: { front: 'Overdue Q', back: 'Overdue A' },
+          content: { basic: { front: 'Overdue Q', back: 'Overdue A' } },
           type: 'basic',
           due: oldDue,
           state: 2,
@@ -815,7 +835,7 @@ describe('/api/curriculum/exam/simulator', () => {
       const data = await getRes.json()
       expect(data.ok).toBe(true)
       expect(Array.isArray(data.words)).toBe(true)
-      expect(data.words.some((w: any) => w.normalized === 'synaptic')).toBe(true)
+      expect(data.words.some((w: { normalized: string }) => w.normalized === 'synaptic')).toBe(true)
       expect(data.coverageAnalysis).toBeDefined()
       expect(typeof data.coverageAnalysis.coveragePercent).toBe('number')
       expect(['optimal', 'frustration', 'effortless']).toContain(data.coverageAnalysis.zone)
@@ -857,7 +877,9 @@ describe('/api/curriculum/exam/simulator', () => {
         post('/api/reading/exposure', { action: 'record', token: 'Serendipity' }),
       )
       const data = await (await M.exposure.GET(get('/api/reading/exposure?limit=200'))).json()
-      const word = data.words.find((w: any) => w.normalized === 'serendipity')
+      const word = data.words.find(
+        (w: { normalized: string; isAlreadyCard: boolean }) => w.normalized === 'serendipity',
+      )
       expect(word.isAlreadyCard).toBe(true)
       expect(data.coverageAnalysis).toBeNull()
     })

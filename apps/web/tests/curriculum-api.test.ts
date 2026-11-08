@@ -20,21 +20,36 @@ const json = (body: unknown) => ({
 const url = (p: string) => `http://localhost${p}`
 const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) })
 
-type Handlers = Record<string, any>
-const H: Handlers = {}
+type Handlers = {
+  importRoute: typeof import('@/server/handlers/curriculum/import/route')
+  prompt: typeof import('@/server/handlers/curriculum/prompt/route')
+  courses: typeof import('@/server/handlers/curriculum/courses/route')
+  course: typeof import('@/server/handlers/curriculum/courses/[id]/route')
+  exportRoute: typeof import('@/server/handlers/curriculum/courses/[id]/export/route')
+  exam: typeof import('@/server/handlers/curriculum/courses/[id]/exam/route')
+  certificate: typeof import('@/server/handlers/curriculum/courses/[id]/certificate/route')
+  lesson: typeof import('@/server/handlers/curriculum/lessons/[id]/route')
+  practice: typeof import('@/server/handlers/curriculum/practice/route')
+  stage: typeof import('@/server/handlers/curriculum/stages/[id]/route')
+  review: typeof import('@/server/handlers/review/route')
+}
+// Assigned in beforeAll, after LEARNING_HUB_DB points at the temp database.
+let H: Handlers
 
 beforeAll(async () => {
-  H.importRoute = await import('@/server/handlers/curriculum/import/route')
-  H.prompt = await import('@/server/handlers/curriculum/prompt/route')
-  H.courses = await import('@/server/handlers/curriculum/courses/route')
-  H.course = await import('@/server/handlers/curriculum/courses/[id]/route')
-  H.exportRoute = await import('@/server/handlers/curriculum/courses/[id]/export/route')
-  H.exam = await import('@/server/handlers/curriculum/courses/[id]/exam/route')
-  H.certificate = await import('@/server/handlers/curriculum/courses/[id]/certificate/route')
-  H.lesson = await import('@/server/handlers/curriculum/lessons/[id]/route')
-  H.practice = await import('@/server/handlers/curriculum/practice/route')
-  H.stage = await import('@/server/handlers/curriculum/stages/[id]/route')
-  H.review = await import('@/server/handlers/review/route')
+  H = {
+    importRoute: await import('@/server/handlers/curriculum/import/route'),
+    prompt: await import('@/server/handlers/curriculum/prompt/route'),
+    courses: await import('@/server/handlers/curriculum/courses/route'),
+    course: await import('@/server/handlers/curriculum/courses/[id]/route'),
+    exportRoute: await import('@/server/handlers/curriculum/courses/[id]/export/route'),
+    exam: await import('@/server/handlers/curriculum/courses/[id]/exam/route'),
+    certificate: await import('@/server/handlers/curriculum/courses/[id]/certificate/route'),
+    lesson: await import('@/server/handlers/curriculum/lessons/[id]/route'),
+    practice: await import('@/server/handlers/curriculum/practice/route'),
+    stage: await import('@/server/handlers/curriculum/stages/[id]/route'),
+    review: await import('@/server/handlers/review/route'),
+  }
 })
 
 let courseId = 0
@@ -120,7 +135,9 @@ describe('curriculum API', () => {
     const lessonId = overview.modules[0].lessons[0].id
     const view = await (await H.lesson.GET(new Request(url('/x')), ctx(lessonId))).json()
     expect(view.lesson.title).toBe('SELECT and FROM')
-    const typein = view.exercises.find((e: any) => e.exercise.type === 'typein')
+    const typein = view.exercises.find(
+      (e: { exercise: { type: string } }) => e.exercise.type === 'typein',
+    )
 
     // Lesson Pretesting (Richland et al. 2009): primes learner without counting as lesson attempt or updating FSRS
     const pretestRes = await (

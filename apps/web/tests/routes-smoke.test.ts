@@ -51,8 +51,67 @@ const repoDbFile = join(findRepoRoot(), 'data', 'learning-hub.db')
 
 process.env.LEARNING_HUB_DB = tempDbFile
 
-type Modules = Record<string, any>
-const M: Modules = {}
+type Modules = {
+  db: typeof import('@learning-hub/db')
+  core: typeof import('@learning-hub/core')
+  quests: typeof import('../app/api/quests/route')
+  analytics: typeof import('../app/api/analytics/route')
+  settings: typeof import('../app/api/settings/route')
+  habits: typeof import('../app/api/habits/route')
+  checkin: typeof import('../app/api/habits/checkin/route')
+  focus: typeof import('../app/api/focus/route')
+  focusId: typeof import('../app/api/focus/[id]/route')
+  streaks: typeof import('../app/api/streaks/route')
+  highlights: typeof import('../app/api/reading/highlights/route')
+  journalAi: typeof import('../app/api/journal/ai/route')
+  curriculum: typeof import('../app/api/curriculum/route')
+  aiGenerate: typeof import('../app/api/ai/generate/route')
+  aiRubric: typeof import('../app/api/ai/rubric/route')
+  transport: typeof import('../app/api/ai/transport/route')
+  decks: typeof import('../app/api/decks/route')
+  focusMax: typeof import('../app/api/focus/max/route')
+  focusMaxExit: typeof import('../app/api/focus/max/exit/route')
+  focusAllowlists: typeof import('../app/api/focus/allowlists/route')
+  focusBridge: typeof import('../app/api/focus/bridge/route')
+  remindersPlan: typeof import('../app/api/reminders/plan/route')
+  remindersLog: typeof import('../app/api/reminders/log/route')
+  remindersClick: typeof import('../app/api/reminders/click/route')
+  cardsOcclusion: typeof import('../app/api/cards/occlusion/route')
+  mindmaps: typeof import('../app/api/mindmaps/route')
+  mindmapsId: typeof import('../app/api/mindmaps/[id]/route')
+  mindmapsIdCards: typeof import('../app/api/mindmaps/[id]/cards/route')
+  reviewAttemptImage: typeof import('../app/api/review/attempt-image/route')
+  cards: typeof import('../app/api/cards/route')
+  boss: typeof import('../app/api/games/boss/route')
+  shareExport: typeof import('../app/api/share/export/route')
+  shareImport: typeof import('../app/api/share/import/route')
+  leaderboard: typeof import('../app/api/social/leaderboard/route')
+  onlineIdentity: typeof import('../app/api/online/identity/route')
+  onlineRooms: typeof import('../app/api/online/rooms/route')
+  onlineLibrary: typeof import('../app/api/online/library/route')
+  onlineBuddies: typeof import('../app/api/online/buddies/route')
+  audioDigest: typeof import('../app/api/audio/digest/route')
+  audioGrade: typeof import('../app/api/audio/grade/route')
+  audioSessions: typeof import('../app/api/audio/sessions/route')
+  hudQuickReview: typeof import('../app/api/hud/quick-review/route')
+  hudCapture: typeof import('../app/api/hud/capture/route')
+  embeddingsSearch: typeof import('../app/api/embeddings/search/route')
+  graphDeps: typeof import('../app/api/curriculum/graph/dependencies/route')
+  graphRemedial: typeof import('../app/api/curriculum/graph/remedial/route')
+  ankiConnect: typeof import('../app/api/anki/connect/route')
+  socialGuilds: typeof import('../app/api/social/guilds/route')
+  socialDuels: typeof import('../app/api/social/duels/route')
+  socialSeasons: typeof import('../app/api/social/seasons/route')
+  worldState: typeof import('../app/api/world/state/route')
+  worldMarket: typeof import('../app/api/world/market/route')
+  worldAvatar: typeof import('../app/api/world/avatar/route')
+  worldPlots: typeof import('../app/api/world/plots/route')
+  worldVerifyReview: typeof import('../app/api/world/verify/review/route')
+  worldVerifyFocus: typeof import('../app/api/world/verify/focus/route')
+  worldSettings: typeof import('../app/api/world/settings/route')
+}
+// Assigned in beforeAll, after LEARNING_HUB_DB points at the temp database.
+let M: Modules
 
 function post(url: string, body: unknown, headers?: Record<string, string>): Request {
   return new Request(`http://localhost${url}`, {
@@ -70,7 +129,7 @@ function req(method: string, url: string, body?: unknown): Request {
 }
 
 // controllable fake AI client — null = not configured; provider mirrors user_settings.aiProvider
-const fakeAI: { client: any; provider: string } = { client: null, provider: 'anthropic' }
+const fakeAI: { client: unknown; provider: string } = { client: null, provider: 'anthropic' }
 vi.mock('@/lib/ai', () => {
   class AIUnavailableError extends Error {
     constructor() {
@@ -90,63 +149,65 @@ vi.mock('@/lib/ai', () => {
 })
 
 beforeAll(async () => {
-  M.db = await import('@learning-hub/db')
-  M.core = await import('@learning-hub/core')
-  M.quests = await import('../app/api/quests/route')
-  M.analytics = await import('../app/api/analytics/route')
-  M.settings = await import('../app/api/settings/route')
-  M.habits = await import('../app/api/habits/route')
-  M.checkin = await import('../app/api/habits/checkin/route')
-  M.focus = await import('../app/api/focus/route')
-  M.focusId = (await import('../app/api/focus/[id]/route')) as any
-  M.streaks = await import('../app/api/streaks/route')
-  M.highlights = await import('../app/api/reading/highlights/route')
-  M.journalAi = await import('../app/api/journal/ai/route')
-  M.curriculum = await import('../app/api/curriculum/route')
-  M.aiGenerate = await import('../app/api/ai/generate/route')
-  M.aiRubric = await import('../app/api/ai/rubric/route')
-  M.transport = await import('../app/api/ai/transport/route')
-  M.decks = await import('../app/api/decks/route')
-  M.focusMax = await import('../app/api/focus/max/route')
-  M.focusMaxExit = await import('../app/api/focus/max/exit/route')
-  M.focusAllowlists = await import('../app/api/focus/allowlists/route')
-  M.focusBridge = await import('../app/api/focus/bridge/route')
-  M.remindersPlan = await import('../app/api/reminders/plan/route')
-  M.remindersLog = await import('../app/api/reminders/log/route')
-  M.remindersClick = await import('../app/api/reminders/click/route')
-  M.cardsOcclusion = await import('../app/api/cards/occlusion/route')
-  M.mindmaps = await import('../app/api/mindmaps/route')
-  M.mindmapsId = (await import('../app/api/mindmaps/[id]/route')) as any
-  M.mindmapsIdCards = (await import('../app/api/mindmaps/[id]/cards/route')) as any
-  M.reviewAttemptImage = await import('../app/api/review/attempt-image/route')
-  M.cards = await import('../app/api/cards/route')
-  M.boss = await import('../app/api/games/boss/route')
-  M.shareExport = await import('../app/api/share/export/route')
-  M.shareImport = await import('../app/api/share/import/route')
-  M.leaderboard = await import('../app/api/social/leaderboard/route')
-  M.onlineIdentity = await import('../app/api/online/identity/route')
-  M.onlineRooms = await import('../app/api/online/rooms/route')
-  M.onlineLibrary = await import('../app/api/online/library/route')
-  M.onlineBuddies = await import('../app/api/online/buddies/route')
-  M.audioDigest = await import('../app/api/audio/digest/route')
-  M.audioGrade = await import('../app/api/audio/grade/route')
-  M.audioSessions = await import('../app/api/audio/sessions/route')
-  M.hudQuickReview = await import('../app/api/hud/quick-review/route')
-  M.hudCapture = await import('../app/api/hud/capture/route')
-  M.embeddingsSearch = await import('../app/api/embeddings/search/route')
-  M.graphDeps = await import('../app/api/curriculum/graph/dependencies/route')
-  M.graphRemedial = await import('../app/api/curriculum/graph/remedial/route')
-  M.ankiConnect = await import('../app/api/anki/connect/route')
-  M.socialGuilds = await import('../app/api/social/guilds/route')
-  M.socialDuels = await import('../app/api/social/duels/route')
-  M.socialSeasons = await import('../app/api/social/seasons/route')
-  M.worldState = await import('../app/api/world/state/route')
-  M.worldMarket = await import('../app/api/world/market/route')
-  M.worldAvatar = await import('../app/api/world/avatar/route')
-  M.worldPlots = await import('../app/api/world/plots/route')
-  M.worldVerifyReview = await import('../app/api/world/verify/review/route')
-  M.worldVerifyFocus = await import('../app/api/world/verify/focus/route')
-  M.worldSettings = await import('../app/api/world/settings/route')
+  M = {
+    db: await import('@learning-hub/db'),
+    core: await import('@learning-hub/core'),
+    quests: await import('../app/api/quests/route'),
+    analytics: await import('../app/api/analytics/route'),
+    settings: await import('../app/api/settings/route'),
+    habits: await import('../app/api/habits/route'),
+    checkin: await import('../app/api/habits/checkin/route'),
+    focus: await import('../app/api/focus/route'),
+    focusId: await import('../app/api/focus/[id]/route'),
+    streaks: await import('../app/api/streaks/route'),
+    highlights: await import('../app/api/reading/highlights/route'),
+    journalAi: await import('../app/api/journal/ai/route'),
+    curriculum: await import('../app/api/curriculum/route'),
+    aiGenerate: await import('../app/api/ai/generate/route'),
+    aiRubric: await import('../app/api/ai/rubric/route'),
+    transport: await import('../app/api/ai/transport/route'),
+    decks: await import('../app/api/decks/route'),
+    focusMax: await import('../app/api/focus/max/route'),
+    focusMaxExit: await import('../app/api/focus/max/exit/route'),
+    focusAllowlists: await import('../app/api/focus/allowlists/route'),
+    focusBridge: await import('../app/api/focus/bridge/route'),
+    remindersPlan: await import('../app/api/reminders/plan/route'),
+    remindersLog: await import('../app/api/reminders/log/route'),
+    remindersClick: await import('../app/api/reminders/click/route'),
+    cardsOcclusion: await import('../app/api/cards/occlusion/route'),
+    mindmaps: await import('../app/api/mindmaps/route'),
+    mindmapsId: await import('../app/api/mindmaps/[id]/route'),
+    mindmapsIdCards: await import('../app/api/mindmaps/[id]/cards/route'),
+    reviewAttemptImage: await import('../app/api/review/attempt-image/route'),
+    cards: await import('../app/api/cards/route'),
+    boss: await import('../app/api/games/boss/route'),
+    shareExport: await import('../app/api/share/export/route'),
+    shareImport: await import('../app/api/share/import/route'),
+    leaderboard: await import('../app/api/social/leaderboard/route'),
+    onlineIdentity: await import('../app/api/online/identity/route'),
+    onlineRooms: await import('../app/api/online/rooms/route'),
+    onlineLibrary: await import('../app/api/online/library/route'),
+    onlineBuddies: await import('../app/api/online/buddies/route'),
+    audioDigest: await import('../app/api/audio/digest/route'),
+    audioGrade: await import('../app/api/audio/grade/route'),
+    audioSessions: await import('../app/api/audio/sessions/route'),
+    hudQuickReview: await import('../app/api/hud/quick-review/route'),
+    hudCapture: await import('../app/api/hud/capture/route'),
+    embeddingsSearch: await import('../app/api/embeddings/search/route'),
+    graphDeps: await import('../app/api/curriculum/graph/dependencies/route'),
+    graphRemedial: await import('../app/api/curriculum/graph/remedial/route'),
+    ankiConnect: await import('../app/api/anki/connect/route'),
+    socialGuilds: await import('../app/api/social/guilds/route'),
+    socialDuels: await import('../app/api/social/duels/route'),
+    socialSeasons: await import('../app/api/social/seasons/route'),
+    worldState: await import('../app/api/world/state/route'),
+    worldMarket: await import('../app/api/world/market/route'),
+    worldAvatar: await import('../app/api/world/avatar/route'),
+    worldPlots: await import('../app/api/world/plots/route'),
+    worldVerifyReview: await import('../app/api/world/verify/review/route'),
+    worldVerifyFocus: await import('../app/api/world/verify/focus/route'),
+    worldSettings: await import('../app/api/world/settings/route'),
+  }
 })
 
 describe('quests (items 1, 3, 11)', () => {
@@ -365,13 +426,13 @@ describe('streak dedupe (item 10)', () => {
   })
 
   it('POST /api/streaks records activity through the shared helper (idempotent per day)', async () => {
-    const first = await M.streaks.POST()
+    const first = await M.streaks.POST(req('POST', '/api/streaks'))
     expect(first.status).toBe(200)
     const body = (await first.json()) as { ok: boolean; streak: { current: number } }
     expect(body.ok).toBe(true)
     expect(body.streak.current).toBe(1) // already counted today (habit check-in test above)
 
-    const again = await M.streaks.POST()
+    const again = await M.streaks.POST(req('POST', '/api/streaks'))
     const againBody = (await again.json()) as { streak: { current: number } }
     expect(againBody.streak.current).toBe(1) // same day → no change
   })
@@ -413,9 +474,8 @@ describe('reading highlights (item 7)', () => {
       .select()
       .from(M.db.highlights)
       .all()
-      .find((r: { id: number }) => r.id === h.id)
-    expect(afterGet.strength).toBe(0.5)
-    expect(afterGet.lastReviewedAt).toBeNull()
+      .find((r) => r.id === h.id)
+    expect(afterGet).toMatchObject({ strength: 0.5, lastReviewedAt: null })
 
     // explicit seen → strength +0.05, lastReviewedAt set
     const seen = await M.highlights.POST(post('/api/reading/highlights', { seenIds: [h.id] }))
@@ -426,9 +486,9 @@ describe('reading highlights (item 7)', () => {
       .select()
       .from(M.db.highlights)
       .all()
-      .find((r: { id: number }) => r.id === h.id)
-    expect(afterSeen.strength).toBeCloseTo(0.55)
-    expect(afterSeen.lastReviewedAt).not.toBeNull()
+      .find((r) => r.id === h.id)
+    expect(afterSeen?.strength).toBeCloseTo(0.55)
+    expect(afterSeen?.lastReviewedAt).toEqual(expect.any(String))
   })
 })
 
@@ -456,9 +516,8 @@ describe('journal/ai (item 6)', () => {
       .select()
       .from(M.db.journalEntries)
       .all()
-      .find((e: { date: string }) => e.date === tomorrow)
-    expect(entry).toBeDefined()
-    expect(entry.aiInsight).toBe(body.insight)
+      .find((e) => e.date === tomorrow)
+    expect(entry).toMatchObject({ aiInsight: body.insight })
 
     // a journaled date gets the insight on the existing row
     const res2 = await M.journalAi.POST(post('/api/journal/ai', { date: today }))
@@ -468,9 +527,9 @@ describe('journal/ai (item 6)', () => {
       .select()
       .from(M.db.journalEntries)
       .all()
-      .find((e: { date: string }) => e.date === today)
-    expect(row.mood).toBe(4) // original fields intact
-    expect(row.aiInsight).toBeTruthy()
+      .find((e) => e.date === today)
+    expect(row?.mood).toBe(4) // original fields intact
+    expect(row?.aiInsight).toEqual(expect.any(String))
   })
 
   it('provider none → manual reflection prompts stored as the insight (never dead-ends)', async () => {
@@ -490,8 +549,9 @@ describe('journal/ai (item 6)', () => {
       .select()
       .from(M.db.journalEntries)
       .all()
-      .find((e: { date: string }) => e.date === today)
-    expect(row.aiInsight).toBe(body.insight)
+      .find((e) => e.date === today)
+    expect(row).toBeDefined()
+    expect(row!.aiInsight).toBe(body.insight)
     fakeAI.provider = 'anthropic'
   })
 
@@ -685,9 +745,9 @@ describe('AI error sanitization + transaction sweeps (items 8, 9)', () => {
       .select()
       .from(M.db.cards)
       .all()
-      .filter((c: { deckId: number }) => c.deckId === deck.id)
+      .filter((c) => c.deckId === deck.id)
     expect(deckCards).toHaveLength(2)
-    expect(deckCards.every((c: { source: string }) => c.source === 'ai')).toBe(true)
+    expect(deckCards.every((c) => c.source === 'ai')).toBe(true)
   })
 
   it('ai/generate with malformed JSON → 400, not 500', async () => {
@@ -816,7 +876,7 @@ describe('google provider & ai/rubric (milestone 5)', () => {
 describe('max focus mode (milestone 6)', () => {
   it('enforces single-session lock, 60s cooldown exit gate, and allowlist presets', async () => {
     // 1. Check initial status
-    const statusRes = await M.focusMax.GET()
+    const statusRes = await M.focusMax.GET(req('GET', '/api/focus/max'))
     expect(statusRes.status).toBe(200)
 
     // 2. Start Max Focus
@@ -867,13 +927,13 @@ describe('max focus mode (milestone 6)', () => {
     expect(cancelBody.lock.exitState).toBe('locked')
 
     // 7. Allowlist presets & bridge heartbeat
-    const allowlistsRes = await M.focusAllowlists.GET()
+    const allowlistsRes = await M.focusAllowlists.GET(req('GET', '/api/focus/allowlists'))
     expect(allowlistsRes.status).toBe(200)
-    const allowBody = (await allowlistsRes.json()) as { ok: boolean; allowlists: any[] }
+    const allowBody = (await allowlistsRes.json()) as { ok: boolean; allowlists: unknown[] }
     expect(allowBody.ok).toBe(true)
     expect(allowBody.allowlists.length).toBeGreaterThanOrEqual(1)
 
-    const bridgeRes = await M.focusBridge.GET()
+    const bridgeRes = await M.focusBridge.GET(req('GET', '/api/focus/bridge'))
     expect(bridgeRes.status).toBe(200)
     const bridgeBody = (await bridgeRes.json()) as { ok: boolean; pairingToken: string }
     expect(bridgeBody.ok).toBe(true)
@@ -887,13 +947,13 @@ describe('max focus mode (milestone 6)', () => {
 
   it('plans, logs, clicks, and configures calm reminders', async () => {
     // 1. Plan candidate reminders
-    const planRes = await M.remindersPlan.GET()
+    const planRes = await M.remindersPlan.GET(req('GET', '/api/reminders/plan'))
     expect(planRes.status).toBe(200)
     const planBody = (await planRes.json()) as {
       ok: boolean
-      settings: any
-      facts: any
-      candidates: any[]
+      settings: { dailyCap: number }
+      facts: unknown
+      candidates: unknown[]
     }
     expect(planBody.ok).toBe(true)
     expect(planBody.settings).toBeDefined()
@@ -918,7 +978,7 @@ describe('max focus mode (milestone 6)', () => {
     // 3. List recent reminder logs
     const listRes = await M.remindersLog.GET(req('GET', '/api/reminders/log?limit=10'))
     expect(listRes.status).toBe(200)
-    const listBody = (await listRes.json()) as { ok: boolean; logs: any[] }
+    const listBody = (await listRes.json()) as { ok: boolean; logs: { id: number }[] }
     expect(listBody.ok).toBe(true)
     expect(listBody.logs.some((l) => l.id === logBody.logged.id)).toBe(true)
 
@@ -946,7 +1006,10 @@ describe('max focus mode (milestone 6)', () => {
       }),
     )
     expect(setRes.status).toBe(200)
-    const setBody = (await setRes.json()) as { ok: boolean; settings: any }
+    const setBody = (await setRes.json()) as {
+      ok: boolean
+      settings: { remindersQuietStart: string; remindersDailyCap: number }
+    }
     expect(setBody.ok).toBe(true)
     expect(setBody.settings.remindersQuietStart).toBe('23:00')
     expect(setBody.settings.remindersDailyCap).toBe(5)
@@ -972,7 +1035,7 @@ describe('max focus mode (milestone 6)', () => {
       }),
     )
     expect(occRes.status).toBe(200)
-    const occBody = (await occRes.json()) as { ok: boolean; count: number; cards: any[] }
+    const occBody = (await occRes.json()) as { ok: boolean; count: number; cards: { id: number }[] }
     expect(occBody.ok).toBe(true)
     expect(occBody.count).toBe(2)
     const cardId = occBody.cards[0]!.id
@@ -1006,9 +1069,9 @@ describe('max focus mode (milestone 6)', () => {
     const mmId = mmBody.mindmap.id
 
     // 4. List mindmaps and get single
-    const listRes = await M.mindmaps.GET()
+    const listRes = await M.mindmaps.GET(req('GET', '/api/mindmaps'))
     expect(listRes.status).toBe(200)
-    const listBody = (await listRes.json()) as { ok: boolean; mindmaps: any[] }
+    const listBody = (await listRes.json()) as { ok: boolean; mindmaps: { id: number }[] }
     expect(listBody.mindmaps.some((m) => m.id === mmId)).toBe(true)
 
     const getRes = await M.mindmapsId.GET(req('GET', `/api/mindmaps/${mmId}`), {
@@ -1041,16 +1104,19 @@ describe('max focus mode (milestone 6)', () => {
       req('GET', `/api/review/attempt-image?cardId=${cardId}`),
     )
     expect(getAttemptRes.status).toBe(200)
-    const getAttemptBody = (await getAttemptRes.json()) as { ok: boolean; attempt: any }
+    const getAttemptBody = (await getAttemptRes.json()) as {
+      ok: boolean
+      attempt: { cardId: number }
+    }
     expect(getAttemptBody.attempt).toBeDefined()
     expect(getAttemptBody.attempt.cardId).toBe(cardId)
   })
 
   it('handles Milestone 9: boss battles, deck sharing envelopes and decentralized friend leaderboard', async () => {
     // 1. Boss battles
-    const bossGetRes = await M.boss.GET()
+    const bossGetRes = await M.boss.GET(req('GET', '/api/games/boss'))
     expect(bossGetRes.status).toBe(200)
-    const bossGetBody = (await bossGetRes.json()) as { ok: boolean; roster: any[] }
+    const bossGetBody = (await bossGetRes.json()) as { ok: boolean; roster: unknown[] }
     expect(bossGetBody.ok).toBe(true)
     expect(bossGetBody.roster.length).toBeGreaterThanOrEqual(3)
 
@@ -1058,7 +1124,10 @@ describe('max focus mode (milestone 6)', () => {
       post('/api/games/boss', { action: 'start', bossKey: 'chronos' }),
     )
     expect(bossStartRes.status).toBe(200)
-    const bossStartBody = (await bossStartRes.json()) as { ok: boolean; battle: any }
+    const bossStartBody = (await bossStartRes.json()) as {
+      ok: boolean
+      battle: { bossKey: string; currentHp: number }
+    }
     expect(bossStartBody.ok).toBe(true)
     expect(bossStartBody.battle.bossKey).toBe('chronos')
     expect(bossStartBody.battle.currentHp).toBe(200)
@@ -1091,7 +1160,7 @@ describe('max focus mode (milestone 6)', () => {
     const exportBody = (await exportRes.json()) as {
       ok: boolean
       shareString: string
-      envelope: any
+      envelope: unknown
     }
     expect(exportBody.ok).toBe(true)
     expect(exportBody.shareString.startsWith('LH1_')).toBe(true)
@@ -1145,9 +1214,13 @@ describe('max focus mode (milestone 6)', () => {
     expect(badCourse.status).toBe(422)
 
     // 3. Decentralized Gist Friends Leaderboard
-    const lbGetRes = await M.leaderboard.GET()
+    const lbGetRes = await M.leaderboard.GET(req('GET', '/api/social/leaderboard'))
     expect(lbGetRes.status).toBe(200)
-    const lbGetBody = (await lbGetRes.json()) as { ok: boolean; user: any; friends: any[] }
+    const lbGetBody = (await lbGetRes.json()) as {
+      ok: boolean
+      user: { schema: string }
+      friends: unknown[]
+    }
     expect(lbGetBody.ok).toBe(true)
     expect(lbGetBody.user.schema).toBe('lh-stats/v1')
 
@@ -1172,11 +1245,11 @@ describe('max focus mode (milestone 6)', () => {
 
   it('handles Milestone 10: online engagement, identity, study rooms, library, and buddies', async () => {
     // 1. Online Identity & Settings
-    const identGetRes = await M.onlineIdentity.GET()
+    const identGetRes = await M.onlineIdentity.GET(req('GET', '/api/online/identity'))
     expect(identGetRes.status).toBe(200)
     const identGetBody = (await identGetRes.json()) as {
       ok: boolean
-      identity: any
+      identity: { mode: string }
       server: string
     }
     expect(identGetBody.ok).toBe(true)
@@ -1190,7 +1263,10 @@ describe('max focus mode (milestone 6)', () => {
       }),
     )
     expect(identPostRes.status).toBe(200)
-    const identPostBody = (await identPostRes.json()) as { ok: boolean; identity: any }
+    const identPostBody = (await identPostRes.json()) as {
+      ok: boolean
+      identity: { mode: string; alias: string; pubKey?: string }
+    }
     expect(identPostBody.ok).toBe(true)
     expect(identPostBody.identity.mode).toBe('device_key')
     expect(identPostBody.identity.alias).toBe('AdaExplorer')
@@ -1205,7 +1281,7 @@ describe('max focus mode (milestone 6)', () => {
       }),
     )
     expect(roomPostRes.status).toBe(200)
-    const roomPostBody = (await roomPostRes.json()) as { ok: boolean; code: string; room: any }
+    const roomPostBody = (await roomPostRes.json()) as { ok: boolean; code: string; room: unknown }
     expect(roomPostBody.ok).toBe(true)
     expect(roomPostBody.code).toHaveLength(6)
 
@@ -1213,14 +1289,14 @@ describe('max focus mode (milestone 6)', () => {
       req('GET', `/api/online/rooms?code=${roomPostBody.code}`),
     )
     expect(roomGetRes.status).toBe(200)
-    const roomGetBody = (await roomGetRes.json()) as { ok: boolean; room: any }
+    const roomGetBody = (await roomGetRes.json()) as { ok: boolean; room: { code: string } }
     expect(roomGetBody.ok).toBe(true)
     expect(roomGetBody.room.code).toBe(roomPostBody.code)
 
     // 3. Community Library
     const libGetRes = await M.onlineLibrary.GET(req('GET', '/api/online/library'))
     expect(libGetRes.status).toBe(200)
-    const libGetBody = (await libGetRes.json()) as { ok: boolean; items: any[] }
+    const libGetBody = (await libGetRes.json()) as { ok: boolean; items: unknown[] }
     expect(libGetBody.ok).toBe(true)
     expect(libGetBody.items.length).toBeGreaterThan(0)
 
@@ -1234,7 +1310,7 @@ describe('max focus mode (milestone 6)', () => {
       }),
     )
     expect(libPostRes.status).toBe(200)
-    const libPostBody = (await libPostRes.json()) as { ok: boolean; item: any }
+    const libPostBody = (await libPostRes.json()) as { ok: boolean; item: { title: string } }
     expect(libPostBody.ok).toBe(true)
     expect(libPostBody.item.title).toBe('Community Machine Learning')
 
@@ -1251,9 +1327,9 @@ describe('max focus mode (milestone 6)', () => {
     expect(buddyPostBody.ok).toBe(true)
     const messageId = buddyPostBody.message.id
 
-    const buddyGetRes = await M.onlineBuddies.GET()
+    const buddyGetRes = await M.onlineBuddies.GET(req('GET', '/api/online/buddies'))
     expect(buddyGetRes.status).toBe(200)
-    const buddyGetBody = (await buddyGetRes.json()) as { ok: boolean; messages: any[] }
+    const buddyGetBody = (await buddyGetRes.json()) as { ok: boolean; messages: { id: number }[] }
     expect(buddyGetBody.ok).toBe(true)
     expect(buddyGetBody.messages.some((m) => m.id === messageId)).toBe(true)
 
@@ -1267,7 +1343,9 @@ describe('max focus mode (milestone 6)', () => {
     // 1. Audio digest generation
     const digestRes = await M.audioDigest.GET(req('GET', '/api/audio/digest?limit=10&minutes=5'))
     expect(digestRes.status).toBe(200)
-    const digestBody = (await digestRes.json()) as { ok: boolean; script: { cues: any[] } }
+    const digestBody = (await digestRes.json()) as { ok: boolean; script: { cues: unknown[] } }
+    expect(digestBody.ok).toBe(true)
+    expect(Array.isArray(digestBody.script.cues)).toBe(true)
     expect(digestBody.ok).toBe(true)
     expect(Array.isArray(digestBody.script.cues)).toBe(true)
 
@@ -1319,9 +1397,12 @@ describe('max focus mode (milestone 6)', () => {
     }
     expect(sessionPostBody.ok).toBe(true)
 
-    const sessionGetRes = await M.audioSessions.GET()
+    const sessionGetRes = await M.audioSessions.GET(req('GET', '/api/audio/sessions'))
     expect(sessionGetRes.status).toBe(200)
-    const sessionGetBody = (await sessionGetRes.json()) as { ok: boolean; sessions: any[] }
+    const sessionGetBody = (await sessionGetRes.json()) as {
+      ok: boolean
+      sessions: { id: number }[]
+    }
     expect(sessionGetBody.ok).toBe(true)
     expect(sessionGetBody.sessions.some((s) => s.id === sessionPostBody.session.id)).toBe(true)
   })
@@ -1330,7 +1411,7 @@ describe('max focus mode (milestone 6)', () => {
     // 1. HUD quick-review cards
     const hudRes = await M.hudQuickReview.GET(req('GET', '/api/hud/quick-review?limit=3'))
     expect(hudRes.status).toBe(200)
-    const hudBody = (await hudRes.json()) as { ok: boolean; cards: any[] }
+    const hudBody = (await hudRes.json()) as { ok: boolean; cards: unknown[] }
     expect(hudBody.ok).toBe(true)
     expect(Array.isArray(hudBody.cards)).toBe(true)
 
@@ -1353,7 +1434,7 @@ describe('max focus mode (milestone 6)', () => {
 
     const captureGet = await M.hudCapture.GET(req('GET', '/api/hud/capture'))
     expect(captureGet.status).toBe(200)
-    const captureGetBody = (await captureGet.json()) as { ok: boolean; captures: any[] }
+    const captureGetBody = (await captureGet.json()) as { ok: boolean; captures: { id: number }[] }
     expect(captureGetBody.ok).toBe(true)
     expect(captureGetBody.captures.some((c) => c.id === captureId)).toBe(true)
 
@@ -1376,7 +1457,7 @@ describe('max focus mode (milestone 6)', () => {
       }),
     )
     expect(searchRes.status).toBe(200)
-    const searchBody = (await searchRes.json()) as { ok: boolean; matches: any[] }
+    const searchBody = (await searchRes.json()) as { ok: boolean; matches: unknown[] }
     expect(searchBody.ok).toBe(true)
     expect(Array.isArray(searchBody.matches)).toBe(true)
   })
@@ -1411,7 +1492,7 @@ describe('max focus mode (milestone 6)', () => {
     // 3. List dependencies
     const listRes = await M.graphDeps.GET(req('GET', '/api/curriculum/graph/dependencies'))
     expect(listRes.status).toBe(200)
-    const listBody = (await listRes.json()) as { ok: boolean; dependencies: any[] }
+    const listBody = (await listRes.json()) as { ok: boolean; dependencies: { id: number }[] }
     expect(listBody.ok).toBe(true)
     expect(listBody.dependencies.some((d) => d.id === edgeId)).toBe(true)
 
@@ -1454,7 +1535,7 @@ describe('max focus mode (milestone 6)', () => {
     )
     expect(ankiSyncRes.status).toBe(200)
 
-    const ankiGetRes = await M.ankiConnect.GET()
+    const ankiGetRes = await M.ankiConnect.GET(req('GET', '/api/anki/connect'))
     expect(ankiGetRes.status).toBe(200)
     const ankiGetBody = (await ankiGetRes.json()) as { ok: boolean; count: number }
     expect(ankiGetBody.ok).toBe(true)
@@ -1482,7 +1563,7 @@ describe('max focus mode (milestone 6)', () => {
 
     const listGuildsRes = await M.socialGuilds.GET(req('GET', '/api/social/guilds'))
     expect(listGuildsRes.status).toBe(200)
-    const listGuildsBody = (await listGuildsRes.json()) as { ok: boolean; guilds: any[] }
+    const listGuildsBody = (await listGuildsRes.json()) as { ok: boolean; guilds: { id: number }[] }
     expect(listGuildsBody.ok).toBe(true)
     expect(listGuildsBody.guilds.some((g) => g.id === guildId)).toBe(true)
 
@@ -1546,7 +1627,7 @@ describe('max focus mode (milestone 6)', () => {
 
     const duelsGetRes = await M.socialDuels.GET(req('GET', '/api/social/duels'))
     expect(duelsGetRes.status).toBe(200)
-    const duelsGetBody = (await duelsGetRes.json()) as { ok: boolean; duels: any[] }
+    const duelsGetBody = (await duelsGetRes.json()) as { ok: boolean; duels: { id: number }[] }
     expect(duelsGetBody.ok).toBe(true)
     expect(duelsGetBody.duels.some((d) => d.id === duelPostBody.duel.id)).toBe(true)
 
@@ -1555,8 +1636,8 @@ describe('max focus mode (milestone 6)', () => {
     expect(seasonsGetRes.status).toBe(200)
     const seasonsGetBody = (await seasonsGetRes.json()) as {
       ok: boolean
-      tiers: any[]
-      progress: any
+      tiers: unknown[]
+      progress: unknown
     }
     expect(seasonsGetBody.ok).toBe(true)
     expect(seasonsGetBody.tiers.length).toBe(30)
@@ -1589,7 +1670,7 @@ describe('max focus mode (milestone 6)', () => {
       ok: boolean
       avatar: { characterId: string }
       balance: number
-      plots: any[]
+      plots: unknown[]
       settings: { viewMode: string }
     }
     expect(stateBody.ok).toBe(true)
@@ -1649,7 +1730,7 @@ describe('max focus mode (milestone 6)', () => {
     // 5. Market catalog and purchase
     const marketRes = await M.worldMarket.GET(req('GET', '/api/world/market'))
     expect(marketRes.status).toBe(200)
-    const marketBody = (await marketRes.json()) as { ok: boolean; catalog: any[] }
+    const marketBody = (await marketRes.json()) as { ok: boolean; catalog: unknown[] }
     expect(marketBody.ok).toBe(true)
     expect(marketBody.catalog.length).toBeGreaterThan(5)
 

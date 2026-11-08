@@ -15,8 +15,12 @@ import { join } from 'node:path'
 const tempDbFile = join(mkdtempSync(join(tmpdir(), 'lh-insights-untested-')), 'untested.db')
 process.env.LEARNING_HUB_DB = tempDbFile
 
-type Modules = Record<string, any>
-const M: Modules = {}
+type Modules = {
+  route: typeof import('../app/api/insights/untested/route')
+  db: typeof import('@learning-hub/db')
+}
+// Assigned in beforeAll, after LEARNING_HUB_DB points at the temp database.
+let M: Modules
 
 /** One wire item, as core's untestedMaterialItemSchema shapes it. */
 interface UntestedWireItem {
@@ -25,8 +29,10 @@ interface UntestedWireItem {
 }
 
 beforeAll(async () => {
-  M.route = await import('../app/api/insights/untested/route')
-  M.db = await import('@learning-hub/db')
+  M = {
+    route: await import('../app/api/insights/untested/route'),
+    db: await import('@learning-hub/db'),
+  }
 })
 
 async function getJson(): Promise<{ items: UntestedWireItem[] }> {
