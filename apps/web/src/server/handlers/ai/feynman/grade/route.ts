@@ -7,8 +7,8 @@
  */
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { db, cards, chatSessions, decks, xpEvents } from '@learning-hub/db'
-import { FEYNMAN_GRADER, XP_REWARDS, feynmanGradeSchema } from '@learning-hub/core'
+import { awardXp, cards, chatSessions, db, decks } from '@learning-hub/db'
+import { FEYNMAN_GRADER, feynmanGradeSchema } from '@learning-hub/core'
 import { requireAI, AIUnavailableError } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
 
@@ -91,11 +91,8 @@ export const POST = withRoute(async (req: Request) => {
       createdCards.push(card!.id)
     }
 
-    await db.insert(xpEvents).values({
-      source: 'teachback',
-      amount: XP_REWARDS.teachback,
-      meta: { sessionId: session.id, coverage: score.coverage },
-    })
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'teachback', meta: { sessionId: session.id, coverage: score.coverage } })
 
     return Response.json({ ok: true, score, createdCards, deckId })
   } catch (e) {

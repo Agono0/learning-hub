@@ -18,6 +18,7 @@ import { stdin, stdout, exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
 import {
   db,
+  awardXp,
   cards,
   executeCloudSync,
   executeReview,
@@ -302,11 +303,8 @@ async function focus(minutesArg?: string) {
       .update(focusSessions)
       .set({ endedAt: new Date().toISOString(), actualMinutes, completed: true })
       .where(eq(focusSessions.id, session!.id))
-    await db.insert(xpEvents).values({
-      source: 'focus',
-      amount: XP_REWARDS.focusSession,
-      meta: { sessionId: session!.id },
-    })
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'focus', meta: { sessionId: session!.id } })
     console.log(`\n✅ Focus complete: ${actualMinutes} min. +${XP_REWARDS.focusSession} XP`)
     exit(0)
   }

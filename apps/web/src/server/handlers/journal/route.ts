@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { journalEntries, xpEvents } from '@learning-hub/db'
+import { awardXp, journalEntries } from '@learning-hub/db'
 import { XP_REWARDS, dayKey, validateJournalEntry } from '@learning-hub/core'
 import { readJson, tzOffsetFromQuery, tzOffsetSchema, withRoute } from '@/lib/api'
 
@@ -75,9 +75,8 @@ export const POST = withRoute(async (req: Request) => {
     .values({ date, mood, smallWins, gratitude, worryDump })
     .returning()
     .all()
-  db.insert(xpEvents)
-    .values({ source: 'journal', amount: XP_REWARDS.journal, meta: { date } })
-    .run()
+  // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+  awardXp(db, { source: 'journal', meta: { date } })
   return Response.json(
     { entry: row, created: true, xpAwarded: XP_REWARDS.journal },
     { status: 201 },

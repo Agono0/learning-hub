@@ -11,6 +11,7 @@ import { liveStreak } from '@learning-hub/core/streaks'
 import { getDb, type LearningHubDB } from '../index'
 import { bossBattles, friends, onlineIdentity, revlog, streaks, xpEvents } from '../schema'
 import { withTransaction } from '../transaction'
+import { awardXp } from './xp'
 
 /** SQL predicate: this revlog row has not been undone (undone reviews never count). */
 const notUndone = sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`
@@ -124,14 +125,14 @@ export function syncBossBattleProgress(database?: LearningHubDB): {
 
     // Bounty is paid exactly once: on the transition out of 'active'.
     if (status === 'victory' && res.changes > 0) {
-      tx.insert(xpEvents)
-        .values({
-          source: 'boss',
-          amount: boss.rewardXp,
-          meta: { bossKey: boss.key, bossName: boss.name, battleId: active.id },
-          createdAt: nowIso,
-        })
-        .run()
+      // Rule 7: XP via the canonical awardXp path (repos/xp.ts); boss bounty
+      // is a dynamic amount → passed explicitly.
+      awardXp(tx, {
+        source: 'boss',
+        amount: boss.rewardXp,
+        meta: { bossKey: boss.key, bossName: boss.name, battleId: active.id },
+        atMs: new Date(nowIso).getTime(),
+      })
     }
 
     const updated = tx.select().from(bossBattles).where(eq(bossBattles.id, active.id)).get()!

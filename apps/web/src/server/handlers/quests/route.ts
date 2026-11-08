@@ -3,6 +3,7 @@ import { and, eq, gte, lt, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { ensurePluginsLoaded } from '@/lib/plugins'
 import {
+  awardXp,
   cards,
   focusSessions,
   habitLogs,
@@ -10,7 +11,6 @@ import {
   lessons,
   quests,
   revlog,
-  xpEvents,
   userSettings,
   withTransaction,
 } from '@learning-hub/db'
@@ -155,9 +155,9 @@ export const POST = withRoute(async (req: Request) => {
         .where(and(eq(quests.id, row.id), eq(quests.completed, false)))
         .run()
       if (res.changes > 0) {
-        tx.insert(xpEvents)
-          .values({ source: 'quest', amount: row.xpReward, meta: { date: today } })
-          .run()
+        // Rule 7: XP via the canonical awardXp path (repos/xp.ts); the quest
+        // row's xpReward (generated as XP_REWARDS.quest) is the explicit amount.
+        awardXp(tx, { source: 'quest', amount: row.xpReward, meta: { date: today } })
         xpAwarded = row.xpReward
       }
     }

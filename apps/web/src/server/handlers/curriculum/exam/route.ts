@@ -8,7 +8,15 @@
  */
 import { and, desc, eq, lte } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, cards, examDates, skills, withTransaction, applySkillResponse } from '@learning-hub/db'
+import {
+  db,
+  cards,
+  examDates,
+  mastery,
+  skills,
+  withTransaction,
+  applySkillResponse,
+} from '@learning-hub/db'
 import { buildMockExam, examCountdownPlan, outcomeFrom, type MockCard } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 

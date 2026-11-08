@@ -3,6 +3,7 @@ import { eventBus } from '@learning-hub/core'
 import { db } from '@/lib/db'
 import {
   achievements,
+  awardXp,
   certificates,
   courseExamAttempts,
   examDates,
@@ -15,12 +16,7 @@ import {
   streaks,
   xpEvents,
 } from '@learning-hub/db'
-import {
-  ACHIEVEMENTS,
-  XP_REWARDS,
-  unlockedAchievementKeys,
-  type AchievementStats,
-} from '@learning-hub/core'
+import { ACHIEVEMENTS, unlockedAchievementKeys, type AchievementStats } from '@learning-hub/core'
 
 /** GET /api/achievements — catalog with live unlock check from real aggregates. */
 export async function GET() {
@@ -137,9 +133,8 @@ export async function GET() {
     const row = byKey.get(key)
     if (row && row.unlockedAt == null) {
       db.update(achievements).set({ unlockedAt: nowIso }).where(eq(achievements.id, row.id)).run()
-      db.insert(xpEvents)
-        .values({ source: 'achievement', amount: XP_REWARDS.achievement, meta: { key } })
-        .run()
+      // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+      awardXp(db, { source: 'achievement', meta: { key } })
       newlyUnlocked.push(key)
       // Fact after the write: the badge is unlocked (listeners: plugins, sounds…).
       eventBus.emit('achievement.unlocked', { achievementId: key })

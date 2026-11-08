@@ -6,8 +6,8 @@
  */
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { db, ideaLinks, ideas, xpEvents } from '@learning-hub/db'
-import { evolveIdeas, manualHybrid, XP_REWARDS } from '@learning-hub/core'
+import { awardXp, db, ideaLinks, ideas } from '@learning-hub/db'
+import { evolveIdeas, manualHybrid } from '@learning-hub/core'
 import { getActiveAIClientFromDb } from '@/lib/ai'
 import { readJson, withRoute } from '@/lib/api'
 
@@ -56,12 +56,7 @@ export const POST = withRoute(async (req: Request) => {
     { fromIdeaId: a.id, toIdeaId: offspring!.id, type: 'parent-of', context: 'evolution parent A' },
     { fromIdeaId: b.id, toIdeaId: offspring!.id, type: 'parent-of', context: 'evolution parent B' },
   ])
-  await db
-    .insert(xpEvents)
-    .values({
-      source: 'idea',
-      amount: XP_REWARDS.ideaEvolve,
-      meta: { parents: [a.id, b.id], offspring: offspring!.id, mode },
-    })
+  // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+  awardXp(db, { source: 'idea', meta: { parents: [a.id, b.id], offspring: offspring!.id, mode } })
   return Response.json({ ok: true, mode, offspring, parents: [a.id, b.id] })
 })

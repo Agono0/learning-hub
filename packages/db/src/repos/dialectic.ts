@@ -4,7 +4,8 @@
 import { desc, eq } from 'drizzle-orm'
 import type { DebateTurn } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
-import { dialecticArenaDebates, xpEvents } from '../schema'
+import { dialecticArenaDebates } from '../schema'
+import { awardXp } from './xp'
 import { withTransaction } from '../transaction'
 
 export function recordDialecticDebate(
@@ -89,13 +90,12 @@ export function submitDialecticVerdict(
       .all()
     const xpAwarded = existing.learnerVerdict == null && xp > 0 ? Math.round(xp) : 0
     if (xpAwarded > 0) {
-      tx.insert(xpEvents)
-        .values({
-          source: 'debate',
-          amount: xpAwarded,
-          meta: { debateId: id, score: learnerScore },
-        })
-        .run()
+      // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+      awardXp(tx, {
+        source: 'debate',
+        amount: xpAwarded,
+        meta: { debateId: id, score: learnerScore },
+      })
     }
     return { debate: debate!, xpAwarded }
   }, database)

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ensurePluginsLoaded } from '@/lib/plugins'
-import { focusSessions, xpEvents, withTransaction, updateStreakInTx } from '@learning-hub/db'
+import { awardXp, focusSessions, withTransaction, updateStreakInTx } from '@learning-hub/db'
 import { XP_REWARDS, eventBus } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
@@ -57,14 +57,12 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     // XP only for the transition of a still-open session to completed — an
     // abandoned or early-exited session (endedAt set) can't be completed later.
     if (body.completed && !existing.completed && !existing.endedAt) {
+      // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+      awardXp(tx, {
+        source: 'focus',
+        meta: { sessionId, plannedMinutes: existing.plannedMinutes, task: existing.task },
+      })
       xpAwarded = XP_REWARDS.focusSession
-      tx.insert(xpEvents)
-        .values({
-          source: 'focus',
-          amount: xpAwarded,
-          meta: { sessionId, plannedMinutes: existing.plannedMinutes, task: existing.task },
-        })
-        .run()
       // focus work counts toward the streak
       updateStreakInTx(tx, new Date())
     }

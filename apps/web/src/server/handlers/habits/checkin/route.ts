@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { eventBus } from '@learning-hub/core'
-import { habitLogs, habits, xpEvents, withTransaction, updateStreakInTx } from '@learning-hub/db'
+import { awardXp, habitLogs, habits, withTransaction, updateStreakInTx } from '@learning-hub/db'
 import { XP_REWARDS, dayKey } from '@learning-hub/core'
 import { readJson, tzOffsetSchema, withRoute } from '@/lib/api'
 
@@ -37,13 +37,11 @@ export const POST = withRoute(async (req: Request) => {
 
     if (inserted.length === 0) return { alreadyDone: true as const, date: today }
 
-    tx.insert(xpEvents)
-      .values({
-        source: 'habit',
-        amount: XP_REWARDS.habit,
-        meta: { habitId: body.habitId, habit: habit.name, date: today },
-      })
-      .run()
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(tx, {
+      source: 'habit',
+      meta: { habitId: body.habitId, habit: habit.name, date: today },
+    })
 
     // streak counts any real activity — habit check-in qualifies
     updateStreakInTx(tx, new Date())

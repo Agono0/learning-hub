@@ -28,7 +28,8 @@ import {
 import { getDb, type LearningHubDB } from './index'
 import { withTransaction, type Transaction } from './transaction'
 import { applySkillResponse } from './mastery-service'
-import { cards, decks, revlog, streaks, xpEvents, userSettings } from './schema'
+import { cards, decks, revlog, streaks, userSettings } from './schema'
+import { awardXp } from './repos/xp'
 
 /** One card grade to process (all fields optional except cardId and grade). */
 export interface ReviewPayload {
@@ -233,17 +234,16 @@ function executeReviewInTx(
   }
   const [revlogEntry] = tx.insert(revlog).values(revlogValues).returning().all()
 
-  // f. Award XP (append-only)
+  // f. Award XP (append-only) — via the canonical awardXp path (rule 7);
+  //    composite amount: review base + confident-correct recall bonus.
   const xpAmount =
     XP_REWARDS.review + (payload.grade >= 3 && confidence === 1 ? XP_REWARDS.reviewRecall : 0)
-  tx.insert(xpEvents)
-    .values({
-      source: 'review',
-      amount: xpAmount,
-      meta: { cardId: card.id, grade: payload.grade, confidence },
-      createdAt: now.toISOString(),
-    })
-    .run()
+  awardXp(tx, {
+    source: 'review',
+    amount: xpAmount,
+    meta: { cardId: card.id, grade: payload.grade, confidence },
+    atMs: now.getTime(),
+  })
 
   // g. Update Streak (DEF-001 fix, shared helper)
   const nextStreak = updateStreakInTx(tx, now)

@@ -6,12 +6,11 @@
  */
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, courses, lessons, sources, tracks, units, xpEvents } from '@learning-hub/db'
+import { awardXp, db, courses, lessons, sources, tracks, units } from '@learning-hub/db'
 import {
   generateCoursePrompt,
   generatedCourseSchema,
   parseGeneratedCourse,
-  XP_REWARDS,
 } from '@learning-hub/core'
 import { requireAI, AIUnavailableError, type AIClient } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
@@ -117,13 +116,8 @@ export const PATCH = withRoute(async (req: Request) => {
       .update(lessons)
       .set({ completedAt: new Date().toISOString() })
       .where(eq(lessons.id, lesson.id))
-    await db
-      .insert(xpEvents)
-      .values({
-        source: 'lesson',
-        amount: XP_REWARDS.lesson,
-        meta: { lessonId: lesson.id, title: lesson.title },
-      })
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'lesson', meta: { lessonId: lesson.id, title: lesson.title } })
   }
   return Response.json({ ok: true, completed: true })
 })
