@@ -11,6 +11,7 @@ import {
   updateOnlinePrefs,
 } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 import {
   generateIdentityKeyPair,
   identityChallenge,
@@ -96,7 +97,8 @@ export const POST = withRoute(async (req: Request) => {
         updatedIdentity.privKey,
         identitySigningPayload(challenge, updatedIdentity.alias),
       )
-      const res = await fetch(`${getDefaultOnlineServer()}/api/v1/auth/register-key`, {
+      // remoteFetch → native HTTP bridge under Tauri (webview CORS-free).
+      const res = await remoteFetch(`${getDefaultOnlineServer()}/api/v1/auth/register-key`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

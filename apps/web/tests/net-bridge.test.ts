@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { createBridgedFetch, type NetBridge } from '@/hub/net-bridge'
 import type { HubNetFromWorker, HubNetToWorker } from '@/hub/protocol'
+import { remoteFetch, setRemoteFetch } from '../src/server/net'
 
 /** Wire a bridge to a fake "main thread" that answers with `script`. */
 function harness(
@@ -95,5 +96,38 @@ describe('net bridge', () => {
     controller.abort()
     await expect(pending).rejects.toThrow(/Abort/)
     expect(sent.some((m) => m.type === 'net-abort')).toBe(true)
+  })
+})
+
+// ── Handler-level outbound port (F-07) ─────────────────────────────────────
+// On web the port's default impl IS global fetch (pass-through); under the hub
+// worker, worker.ts installs the SAME bridged fetch the AI adapters use, so
+// online/social calls are webview-CORS-free.
+
+describe('handler remoteFetch port (F-07: native CORS-free bridge)', () => {
+  it('passes through to global fetch on the web target (default impl)', async () => {
+    // data: URL — no network, proves the default impl is plain fetch.
+    const res = await remoteFetch('data:text/plain,hello-port')
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('hello-port')
+  })
+
+  it('routes through an injected impl — the hub worker installs the native bridge here', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    setRemoteFetch((url, init) => {
+      calls.push({ url, init })
+      return Promise.resolve(new Response('bridged', { status: 200 }))
+    })
+    try {
+      const res = await remoteFetch('https://worker.example.com/api/v1/rooms/ABCD/info', {
+        signal: AbortSignal.timeout(4000),
+      })
+      expect(await res.text()).toBe('bridged')
+      expect(calls).toHaveLength(1)
+      expect(calls[0].url).toBe('https://worker.example.com/api/v1/rooms/ABCD/info')
+    } finally {
+      // Restore the web default (global fetch pass-through).
+      setRemoteFetch((url, init) => fetch(url, init))
+    }
   })
 })

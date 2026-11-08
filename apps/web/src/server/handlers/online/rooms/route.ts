@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { makeRoomCode } from '@learning-hub/core/online'
 import { getDefaultOnlineServer, getOnlineIdentity } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 
 const createRoomSchema = z.object({
   title: z.string().min(1).max(80),
@@ -23,7 +24,8 @@ export const GET = withRoute(async (req: Request) => {
   }
 
   try {
-    const res = await fetch(`${server}/api/v1/rooms/${code}/info`, {
+    // remoteFetch → native HTTP bridge under Tauri (webview CORS-free).
+    const res = await remoteFetch(`${server}/api/v1/rooms/${code}/info`, {
       signal: AbortSignal.timeout(4000),
     })
     if (res.ok) {
@@ -66,7 +68,7 @@ export const POST = withRoute(async (req: Request) => {
   const identity = getOnlineIdentity()
 
   try {
-    const res = await fetch(`${server}/api/v1/rooms/create`, {
+    const res = await remoteFetch(`${server}/api/v1/rooms/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

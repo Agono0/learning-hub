@@ -38,6 +38,7 @@ import { matchRoute } from './handlers-registry'
 import type { HubFromWorker, HubInitMessage, HubRequestMessage, HubToWorker } from './protocol'
 import { ensurePluginsLoaded } from '@/lib/plugins'
 import { setNetworkFetch } from '@learning-hub/ai-adapters'
+import { setRemoteFetch } from '../server/net'
 import { createBridgedFetch, type NetBridge } from './net-bridge'
 
 /** DedicatedWorkerGlobalScope with the protocol's typed postMessage. */
@@ -75,6 +76,10 @@ async function boot(msg: HubInitMessage): Promise<{ persistent: boolean }> {
   if (msg.nativeNet) {
     netBridge = createBridgedFetch((message, transfer) => ctx.postMessage(message, transfer))
     setNetworkFetch(netBridge.fetch)
+    // Handler-level outbound calls (online/social sync etc.) ride the SAME
+    // bridge — otherwise they'd run as webview fetch and depend on remote
+    // servers sending CORS headers (F-07).
+    setRemoteFetch(netBridge.fetch)
   }
   const vfs = msg.vfs || 'opfs-sahpool'
 
