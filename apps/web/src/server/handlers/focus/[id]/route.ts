@@ -41,10 +41,11 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     const [row] = tx
       .update(focusSessions)
       .set({
-        endedAt: new Date().toISOString(),
+        // Re-PATCHing an ended session (e.g. adding mood/notes) keeps its end time.
+        endedAt: existing.endedAt ?? new Date().toISOString(),
         actualMinutes: actualMinutes ?? existing.actualMinutes,
         leaks: body.leaks ?? existing.leaks,
-        completed: body.completed ?? existing.completed,
+        completed: existing.endedAt ? existing.completed : (body.completed ?? existing.completed),
         mood: body.mood !== undefined ? body.mood : existing.mood,
         notes,
       })
@@ -53,7 +54,9 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
       .all()
 
     let xpAwarded = 0
-    if ((body.completed ?? existing.completed) && !existing.completed) {
+    // XP only for the transition of a still-open session to completed — an
+    // abandoned or early-exited session (endedAt set) can't be completed later.
+    if (body.completed && !existing.completed && !existing.endedAt) {
       xpAwarded = XP_REWARDS.focusSession
       tx.insert(xpEvents)
         .values({

@@ -29,7 +29,9 @@ describe('Tier 1: Focus Sessions, Goals, Friction & Habits API', () => {
     const getRes = await callRoute(goalsRoute.GET)
     expect(getRes.status).toBe(200)
     expect(Array.isArray(getRes.data.goals)).toBe(true)
-    expect(getRes.data.goals.some((g: any) => g.wish === 'Complete Spaced Repetition Research Paper')).toBe(true)
+    expect(
+      getRes.data.goals.some((g: any) => g.wish === 'Complete Spaced Repetition Research Paper'),
+    ).toBe(true)
   })
 
   it('starts, logs distraction friction, and completes a focus session', async () => {
@@ -77,6 +79,42 @@ describe('Tier 1: Focus Sessions, Goals, Friction & Habits API', () => {
     expect(completeRes.status).toBe(200)
     expect(completeRes.data.session.completed).toBe(true)
     expect(completeRes.data.xpAwarded).toBeGreaterThan(0)
+  })
+
+  it('never restores or pays XP for an abandoned session', async () => {
+    const startRes = await callRoute(focusRoute.POST, {
+      method: 'POST',
+      body: { plannedMinutes: 25, task: 'abandon me' },
+    })
+    const id = startRes.data.session.id
+
+    // running while open
+    expect((await callRoute(focusRoute.GET)).data.running?.id).toBe(id)
+
+    // abandon it
+    const abandon = await callRoute(focusIdRoute.PATCH, {
+      method: 'PATCH',
+      params: { id: String(id) },
+      body: { actualMinutes: 3, completed: false },
+    })
+    expect(abandon.data.xpAwarded).toBe(0)
+    const endedAt = abandon.data.session.endedAt
+    expect(endedAt).toBeTruthy()
+
+    // no longer "running", so the page won't restore it on reload
+    expect((await callRoute(focusRoute.GET)).data.running).toBeNull()
+
+    // a late "completed" PATCH (stale tab / restored timer) pays nothing and keeps it ended
+    const late = await callRoute(focusIdRoute.PATCH, {
+      method: 'PATCH',
+      params: { id: String(id) },
+      body: { completed: true, mood: 4 },
+    })
+    expect(late.status).toBe(200)
+    expect(late.data.xpAwarded).toBe(0)
+    expect(late.data.session.completed).toBe(false)
+    expect(late.data.session.endedAt).toBe(endedAt)
+    expect(late.data.session.mood).toBe(4) // mood/notes can still be added
   })
 
   it('creates a habit and performs daily check-in', async () => {
