@@ -34,6 +34,7 @@ import { syncDevices } from './021-sync-devices'
 import { goalIfThen } from './022-goal-if-then'
 import { deckDelayedFeedback } from './023-deck-delayed-feedback'
 import { ultimateCognitiveExpansion } from './024-ultimate-cognitive-expansion'
+import { cognitiveUpsertKeys } from './025-cognitive-upsert-keys'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -61,6 +62,7 @@ export const MIGRATIONS: readonly Migration[] = [
   goalIfThen,
   deckDelayedFeedback,
   ultimateCognitiveExpansion,
+  cognitiveUpsertKeys,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

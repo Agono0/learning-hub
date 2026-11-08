@@ -10,6 +10,7 @@ import {
 import { goalIfThen } from '../src/migrations/022-goal-if-then'
 import { deckDelayedFeedback } from '../src/migrations/023-deck-delayed-feedback'
 import { ultimateCognitiveExpansion } from '../src/migrations/024-ultimate-cognitive-expansion'
+import { cognitiveUpsertKeys } from '../src/migrations/025-cognitive-upsert-keys'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -97,10 +98,11 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 024 ultimate-cognitive-expansion last, after 023 and 022', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(ultimateCognitiveExpansion)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(deckDelayedFeedback)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(goalIfThen)
+  it('registers 025 cognitive-upsert-keys last, after 024 and 023', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(cognitiveUpsertKeys)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(ultimateCognitiveExpansion)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(deckDelayedFeedback)
+    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(goalIfThen)
   })
 })
 
@@ -166,5 +168,98 @@ describe('024 ultimate-cognitive-expansion', () => {
     // Idempotent re-run
     const second = runMigrations(raw, [ultimateCognitiveExpansion])
     expect(second.applied).toEqual([])
+  })
+})
+
+describe('025 cognitive-upsert-keys', () => {
+  /** The exact pre-release table shapes found in a real development database. */
+  const legacyTables = (raw: RawSqliteHandle) =>
+    raw.exec(`
+      CREATE TABLE cards (id INTEGER PRIMARY KEY);
+      CREATE TABLE palaces (id INTEGER PRIMARY KEY);
+      CREATE TABLE tmr_cues (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        card_id integer NOT NULL REFERENCES cards(id) ON DELETE cascade,
+        earcon_signature text NOT NULL,
+        times_cued_awake integer NOT NULL DEFAULT 0,
+        times_cued_sleep integer NOT NULL DEFAULT 0,
+        last_sleep_cue_at text,
+        overnight_gain_score real,
+        created_at text NOT NULL
+      );
+      CREATE INDEX tmr_cues_card_idx ON tmr_cues (card_id);
+      CREATE TABLE palace_3d_scenes (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        palace_id integer NOT NULL REFERENCES palaces(id) ON DELETE cascade,
+        environment_archetype text NOT NULL DEFAULT 'roman_villa',
+        camera_start_pos text,
+        walk_path text,
+        spatial_loci text NOT NULL DEFAULT '[]',
+        audio_panning_enabled integer NOT NULL DEFAULT true,
+        updated_at text NOT NULL
+      );
+    `)
+
+  it('dedupes legacy rows (summing cue counters) and makes card_id / palace_id upsertable', () => {
+    const raw = open()
+    legacyTables(raw)
+    raw.exec(`
+      INSERT INTO cards (id) VALUES (1), (2);
+      INSERT INTO palaces (id) VALUES (7);
+      INSERT INTO tmr_cues (card_id, earcon_signature, times_cued_awake, times_cued_sleep, created_at)
+        VALUES (1, '{}', 1, 2, 'a'), (1, '{}', 3, 4, 'b'), (2, '{}', 1, 0, 'c');
+      INSERT INTO palace_3d_scenes (palace_id, spatial_loci, updated_at)
+        VALUES (7, '[1]', 'old'), (7, '[2]', 'new');
+    `)
+
+    expect(runMigrations(raw, [cognitiveUpsertKeys]).applied).toEqual([
+      { id: 25, name: 'cognitive-upsert-keys' },
+    ])
+
+    const cues = raw
+      .prepare('SELECT card_id, times_cued_awake, times_cued_sleep FROM tmr_cues ORDER BY card_id')
+      .all()
+    expect(cues).toEqual([
+      { card_id: 1, times_cued_awake: 4, times_cued_sleep: 6 },
+      { card_id: 2, times_cued_awake: 1, times_cued_sleep: 0 },
+    ])
+    expect(raw.prepare('SELECT spatial_loci FROM palace_3d_scenes').all()).toEqual([
+      { spatial_loci: '[2]' },
+    ])
+
+    // The upserts the repos issue now work.
+    raw.exec(`
+      INSERT INTO tmr_cues (card_id, earcon_signature, times_cued_awake, created_at)
+        VALUES (1, '{}', 1, 'd')
+        ON CONFLICT (card_id) DO UPDATE SET times_cued_awake = times_cued_awake + 1;
+      INSERT INTO palace_3d_scenes (palace_id, spatial_loci, updated_at) VALUES (7, '[3]', 'x')
+        ON CONFLICT (palace_id) DO UPDATE SET spatial_loci = excluded.spatial_loci;
+    `)
+    expect(raw.prepare('SELECT times_cued_awake FROM tmr_cues WHERE card_id = 1').get()).toEqual({
+      times_cued_awake: 5,
+    })
+    expect(raw.prepare('SELECT spatial_loci FROM palace_3d_scenes').get()).toEqual({
+      spatial_loci: '[3]',
+    })
+  })
+
+  it('leaves a fresh 024 database untouched (key is already the primary key)', () => {
+    const raw = open()
+    raw.exec(
+      'CREATE TABLE cards (id INTEGER PRIMARY KEY); CREATE TABLE palaces (id INTEGER PRIMARY KEY); CREATE TABLE decks (id INTEGER PRIMARY KEY); CREATE TABLE courses (id INTEGER PRIMARY KEY);',
+    )
+    runMigrations(raw, [ultimateCognitiveExpansion])
+    const before = raw
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name")
+      .all()
+    runMigrations(raw, [cognitiveUpsertKeys])
+    const after = raw
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name")
+      .all()
+    expect(after).toEqual(before)
+  })
+
+  it('is a no-op when the tables do not exist', () => {
+    expect(() => cognitiveUpsertKeys.up(createMigrationContext(open()))).not.toThrow()
   })
 })
