@@ -44,3 +44,4 @@ drift test fails if they go stale.
 | [ai-providers.md](ai-providers.md) | Providers, prompt transport, test-enforced manual modes |
 | [plugins.md](plugins.md) | The plugin contract and event bus |
 | [api-server.md](api-server.md) | The headless REST server |
+| [worker-self-hosting.md](worker-self-hosting.md) | Cloudflare Worker self-hosting: D1, Durable Objects, study rooms, boss raids, public library |

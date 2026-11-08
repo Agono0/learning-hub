@@ -53,7 +53,7 @@ CRDT sync stays deferred until the roster + snapshot loop proves insufficient.
   navigation over all 17 FTS surfaces.
 - **Realtime social push** — party boss battles and live co-study presence on
   the existing Durable Object websocket raid infra; guard moderation first
-  (BLOCKED_WORDS list exists) and publish self-hosting docs for the worker.
+  (BLOCKED_WORDS list exists) and publish self-hosting docs for the worker (done: [docs/worker-self-hosting.md](worker-self-hosting.md)).
 
 ## Verification bar (every milestone)
 
