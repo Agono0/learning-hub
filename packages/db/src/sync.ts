@@ -59,6 +59,9 @@ const APPEND_ONLY_TABLES = new Set([
   'friction_events',
   'course_exam_attempts',
   'study_coin_ledger',
+  'cognitive_telemetry_events',
+  'circadian_audio_sessions',
+  'dialectic_arena_debates',
 ])
 
 const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs', 'focus_bridge'])
@@ -204,6 +207,20 @@ export function computeRecordNaturalKey(
       return `id:${str(row['id'])}`
     case 'forest_plots':
       return `u:${str(row['user_id'])}:tree:${str(row['tree_type'])}:at:${str(row['created_at'])}`
+    case 'circadian_audio_sessions':
+      return `mode:${str(row['session_mode'])}:at:${str(row['created_at'])}`
+    case 'cognitive_telemetry_events':
+      return `card:${str(row['card_id'])}:at:${str(row['created_at'])}:load:${str(row['estimated_cli'])}`
+    case 'dialectic_arena_debates':
+      return `topic:${str(row['topic'])}:at:${str(row['created_at'])}`
+    case 'concept_dag_nodes':
+      return `id:${str(row['id'])}`
+    case 'concept_dag_edges':
+      return `prereq:${str(row['prerequisite_id'])}:dep:${str(row['dependent_id'])}`
+    case 'tmr_cues':
+      return `card:${str(row['card_id'])}`
+    case 'palace_3d_scenes':
+      return `palace:${str(row['palace_id'])}`
     default:
       return null
   }
@@ -728,6 +745,54 @@ export async function mergeBackup(
         }
 
         // 4b. Mutable tables: matched local row -> domain/LWW update
+        if (table === 'tmr_cues' && matchedLocal) {
+          const cardId = matchedLocal['card_id'] as number
+          const awakeA = Number(matchedLocal['times_cued_awake'] ?? 0)
+          const awakeB = Number(remapped['times_cued_awake'] ?? 0)
+          const sleepA = Number(matchedLocal['times_cued_sleep'] ?? 0)
+          const sleepB = Number(remapped['times_cued_sleep'] ?? 0)
+          const lastSleepA = str(matchedLocal['last_sleep_cue_at'])
+          const lastSleepB = str(remapped['last_sleep_cue_at'])
+          const merged: Record<string, unknown> = {
+            ...matchedLocal,
+            times_cued_awake: Math.max(awakeA, awakeB),
+            times_cued_sleep: Math.max(sleepA, sleepB),
+            last_sleep_cue_at: (lastSleepA > lastSleepB ? lastSleepA : lastSleepB) || null,
+            overnight_gain_score:
+              remapped['overnight_gain_score'] ?? matchedLocal['overnight_gain_score'],
+          }
+          const updateCols = columns.filter((c) => c !== 'card_id')
+          database
+            .prepare(
+              `UPDATE "tmr_cues"
+               SET ${updateCols.map((c) => `"${c}" = ?`).join(', ')}
+               WHERE card_id = ?`,
+            )
+            .run(...updateCols.map((c) => normalizeBackupValue(merged[c] as never)), cardId)
+          Object.assign(matchedLocal, merged)
+          updated += 1
+          continue
+        }
+
+        if (table === 'palace_3d_scenes' && matchedLocal) {
+          const palaceId = matchedLocal['palace_id'] as number
+          const incTs = str(remapped['updated_at'])
+          const locTs = str(matchedLocal['updated_at'])
+          if (incTs > locTs) {
+            const updateCols = columns.filter((c) => c !== 'palace_id')
+            database
+              .prepare(
+                `UPDATE "palace_3d_scenes"
+                 SET ${updateCols.map((c) => `"${c}" = ?`).join(', ')}
+                 WHERE palace_id = ?`,
+              )
+              .run(...updateCols.map((c) => normalizeBackupValue(remapped[c] as never)), palaceId)
+            Object.assign(matchedLocal, { ...remapped, palace_id: palaceId })
+            updated += 1
+          }
+          continue
+        }
+
         if (matchedLocal && singleIntPk && typeof matchedLocal['id'] === 'number') {
           const localId = matchedLocal['id']
           if (typeof rawInc['id'] === 'number') {
