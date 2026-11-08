@@ -16,6 +16,7 @@ import {
   Sparkles,
   Sun,
   TreePine,
+  Vibrate,
   Wand2,
 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
@@ -121,6 +122,7 @@ interface SettingsRow {
   hasCustomWeights?: boolean
   sessionMinutes: number
   theme: string
+  hapticsEnabled?: boolean
   remindersEnabled?: boolean
   remindersQuietStart?: string
   remindersQuietEnd?: string
@@ -162,6 +164,7 @@ export default function SettingsPage() {
   const [retention, setRetention] = useState(0.9)
   const [sessionMinutes, setSessionMinutes] = useState(25)
   const [theme, setTheme] = useState<ThemePreference>('dark')
+  const [hapticsOn, setHapticsOn] = useState(true)
   const palette = usePalette()
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [weightsDraft, setWeightsDraft] = useState('')
@@ -187,6 +190,7 @@ export default function SettingsPage() {
     setRetention(s.desiredRetention)
     setSessionMinutes(s.sessionMinutes)
     setTheme(normalizeThemePreference(s.theme))
+    if (s.hapticsEnabled !== undefined) setHapticsOn(s.hapticsEnabled)
     setWeightsDraft(
       s.fsrsWeights && s.fsrsWeights.length === 21
         ? s.fsrsWeights.map((w) => Number(w.toFixed(4))).join(', ')
@@ -267,6 +271,7 @@ export default function SettingsPage() {
         desiredRetention: retention,
         sessionMinutes,
         theme: overrideTheme ?? theme,
+        hapticsEnabled: hapticsOn,
         remindersEnabled,
         remindersQuietStart,
         remindersQuietEnd,
@@ -599,6 +604,30 @@ export default function SettingsPage() {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      {/* Sensory — haptics opt-out (F-06): vibration feedback stays calm by default. */}
+      <section className="panel space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="label flex items-center gap-2">
+              <Vibrate className="h-4 w-4 text-indigo-400" />
+              Haptics
+            </div>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              Vibration feedback on grading and session boundaries. Off = completely silent.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hapticsOn}
+              onChange={(e) => setHapticsOn(e.target.checked)}
+              className="accent-indigo-500"
+            />
+            {hapticsOn ? 'Enabled' : 'Disabled'}
+          </label>
         </div>
       </section>
 

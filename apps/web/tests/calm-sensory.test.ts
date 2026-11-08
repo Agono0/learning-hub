@@ -12,6 +12,8 @@ import {
   hapticLight,
   hapticMedium,
   hapticWarning,
+  hapticsEnabled as hapticsFlag,
+  setHapticsEnabled,
 } from '../src/platform/haptics'
 
 describe('Calm Sensory & E-Ink Zen Mode (Phase 3.3)', () => {
@@ -117,6 +119,30 @@ describe('Calm Sensory & E-Ink Zen Mode (Phase 3.3)', () => {
 
       hapticBreathe()
       expect(vibrateSpy).toHaveBeenCalledWith([20, 100, 20, 100, 30])
+    })
+
+    it('opt-out invariant (F-06): disabled → every helper is a silent no-op', () => {
+      setHapticsEnabled(false)
+      expect(hapticsFlag()).toBe(false)
+
+      hapticLight()
+      hapticMedium()
+      hapticHeavy()
+      hapticWarning()
+      hapticHypercorrection()
+      hapticBreathe()
+      expect(vibrateSpy).not.toHaveBeenCalled()
+
+      // Re-enabling restores feedback (settings toggle round-trip).
+      setHapticsEnabled(true)
+      expect(hapticsFlag()).toBe(true)
+      hapticLight()
+      expect(vibrateSpy).toHaveBeenCalledWith(12)
+    })
+
+    afterEach(() => {
+      // Leave the module default for later suites.
+      setHapticsEnabled(true)
     })
   })
 })

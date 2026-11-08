@@ -12,6 +12,7 @@ import { deckDelayedFeedback } from '../src/migrations/023-deck-delayed-feedback
 import { ultimateCognitiveExpansion } from '../src/migrations/024-ultimate-cognitive-expansion'
 import { cognitiveUpsertKeys } from '../src/migrations/025-cognitive-upsert-keys'
 import { exposureEventsMigration } from '../src/migrations/026-exposure-events'
+import { hapticsSetting } from '../src/migrations/027-haptics-setting'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -99,12 +100,59 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 026 exposure-events last, after 025, 024 and 023', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(exposureEventsMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(cognitiveUpsertKeys)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(ultimateCognitiveExpansion)
-    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(deckDelayedFeedback)
-    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(goalIfThen)
+  it('registers 027 haptics-setting last, after 026, 025, 024 and 023', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(hapticsSetting)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(exposureEventsMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(cognitiveUpsertKeys)
+    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(ultimateCognitiveExpansion)
+    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(deckDelayedFeedback)
+  })
+})
+
+describe('027 haptics-setting', () => {
+  // a pre-027 user_settings row, as shipped by earlier migrations
+  const createPre027Settings = (raw: RawSqliteHandle) => {
+    raw.exec(
+      `CREATE TABLE user_settings (
+        id TEXT PRIMARY KEY DEFAULT 'default',
+        theme TEXT NOT NULL DEFAULT 'dark',
+        session_minutes INTEGER NOT NULL DEFAULT 25,
+        updated_at TEXT NOT NULL
+      );`,
+    )
+    raw.exec(
+      `INSERT INTO user_settings (id, theme, updated_at) VALUES ('default', 'dark', '2026-01-01T00:00:00.000Z');`,
+    )
+  }
+
+  it('adds haptics_enabled to an existing user_settings table (rows keep default ON)', () => {
+    const raw = open()
+    createPre027Settings(raw)
+
+    const report = runMigrations(raw, [hapticsSetting])
+    expect(report.applied).toEqual([{ id: 27, name: 'haptics-setting' }])
+    expect(columns(raw, 'user_settings')).toContain('haptics_enabled')
+    // The shipped behavior (haptics on) is the default — existing users see no change.
+    const row = raw
+      .prepare('SELECT theme, haptics_enabled FROM user_settings WHERE id = ?')
+      .get('default') as { theme: string; haptics_enabled: number }
+    expect(row).toEqual({ theme: 'dark', haptics_enabled: 1 })
+  })
+
+  it('is idempotent — re-running adds nothing and fails nowhere', () => {
+    const raw = open()
+    createPre027Settings(raw)
+    runMigrations(raw, [hapticsSetting])
+    const second = runMigrations(raw, [hapticsSetting])
+    expect(second.applied).toEqual([]) // recorded once; up() not re-run
+    expect(() => hapticsSetting.up(createMigrationContext(raw))).not.toThrow() // even forced
+  })
+
+  it('is a no-op on tables that do not exist (fresh DBs get the column from schema.ts)', () => {
+    const raw = open()
+    const report = runMigrations(raw, [hapticsSetting])
+    expect(report.applied).toEqual([{ id: 27, name: 'haptics-setting' }])
+    expect(() => hapticsSetting.up(createMigrationContext(raw))).not.toThrow()
   })
 })
 

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { HelpCircle, Mic, MicOff, RefreshCw, Send, Volume2, VolumeX } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { hapticLight, hapticWarning } from '@/platform/haptics'
 import { listenForSpeech, playChime, speakText, stopSpeaking } from '@/lib/audio-engine'
 import { Button, Callout, Markdown, PageHeader, Panel, useToast } from '@/ui'
 
@@ -140,6 +141,9 @@ function VoiceTutorContent() {
 
       setTurns([...updatedTurns, assistantTurn])
       setCurrentRung(res.nextRung)
+      // Haptic texture on the turn boundary: the tutor's reply arrived (F-06
+      // wiring parity with the review page's grading feedback).
+      hapticLight()
 
       if (speechEnabled) {
         setIsSpeaking(true)
@@ -147,6 +151,7 @@ function VoiceTutorContent() {
         setIsSpeaking(false)
       }
     } catch (err) {
+      hapticWarning()
       toast({
         title: 'Tutor connection error',
         description: err instanceof Error ? err.message : String(err),

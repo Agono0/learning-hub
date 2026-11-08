@@ -978,6 +978,8 @@ export const userSettings = table('user_settings', {
   fsrsWeights: text('fsrs_weights', { mode: 'json' }).$type<number[]>(),
   sessionMinutes: integer('session_minutes').notNull().default(25),
   theme: text('theme').notNull().default('dark'),
+  /** Tactile feedback (grading, session boundaries). Sensory features must be opt-out — calm by default. */
+  hapticsEnabled: integer('haptics_enabled', { mode: 'boolean' }).notNull().default(true),
   detoxWizard: text('detox_wizard', { mode: 'json' })
     .$type<Record<string, boolean>>()
     .notNull()

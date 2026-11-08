@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/transport'
+import { setHapticsEnabled } from '@/platform/haptics'
 
 export type ThemePreference = 'dark' | 'light' | 'system' | 'e-ink'
 
@@ -100,7 +101,7 @@ export function setPalette(palette: PaletteId): void {
  * pre-paint by the init script in app/layout.tsx.
  */
 export function ThemeSync() {
-  const { data } = useQuery<{ settings?: { theme?: string } }>({
+  const { data } = useQuery<{ settings?: { theme?: string; hapticsEnabled?: boolean } }>({
     queryKey: ['settings'],
     queryFn: () => apiGet('/api/settings'),
     staleTime: 30_000,
@@ -126,6 +127,14 @@ export function ThemeSync() {
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
   }, [data?.settings?.theme])
+
+  // Apply the persisted haptics opt-out once settings arrive (undefined until
+  // loaded → keep the default-on so early session haptics behave as shipped).
+  useEffect(() => {
+    if (data?.settings?.hapticsEnabled !== undefined) {
+      setHapticsEnabled(data.settings.hapticsEnabled)
+    }
+  }, [data?.settings?.hapticsEnabled])
 
   return null
 }

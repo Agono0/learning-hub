@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { hapticHeavy, hapticLight } from '@/platform/haptics'
 import { Button, Callout, PageHeader, Panel, Skeleton, useToast } from '@/ui'
 
 interface ExamQuestion {
@@ -138,6 +139,10 @@ export default function ExamSimulatorPage() {
       setTimerActive(false)
       setInExam(false)
       setGradedReport(report)
+      // Haptic texture on the exam boundary: heavy beat for a miss-heavy
+      // submission (attention), light for a pass (F-06 wiring parity).
+      if (report.score >= 50) hapticLight()
+      else hapticHeavy()
       toast({
         title: 'Exam submitted',
         description: `Your score: ${report.score}%. Delayed feedback is ready to review.`,

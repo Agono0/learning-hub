@@ -34,6 +34,8 @@ const putSettingsSchema = z.object({
   fsrsWeights: fsrsWeightsSchema.nullable().optional(),
   sessionMinutes: z.number().optional(),
   theme: z.enum(['dark', 'light', 'system', 'e-ink']).optional(),
+  /** Tactile feedback (grading, session boundaries) — sensory features are opt-out. */
+  hapticsEnabled: z.boolean().optional(),
   onboardingCompleted: z.boolean().optional(),
   sidebarCollapsedGroups: z.array(z.string().max(80)).max(20).nullable().optional(),
   remindersEnabled: z.boolean().optional(),
@@ -140,6 +142,7 @@ export const PUT = withRoute(async (req: Request) => {
   if (body.sessionMinutes !== undefined)
     patch.sessionMinutes = Math.max(5, Math.min(180, Math.round(body.sessionMinutes)))
   if (body.theme !== undefined) patch.theme = body.theme
+  if (body.hapticsEnabled !== undefined) patch.hapticsEnabled = body.hapticsEnabled
   if (body.onboardingCompleted !== undefined) patch.onboardingCompleted = body.onboardingCompleted
   if (body.sidebarCollapsedGroups !== undefined)
     patch.sidebarCollapsedGroups = body.sidebarCollapsedGroups
