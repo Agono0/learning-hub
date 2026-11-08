@@ -7,6 +7,7 @@
 import { desc, eq } from 'drizzle-orm'
 import { onlineIdentity, onlineInbox, onlinePrefs, onlineServers } from '../schema'
 import { getDb, type LearningHubDB } from '../index'
+import { withTransaction } from '../transaction'
 
 export const DEFAULT_ONLINE_SERVER = 'https://learning-hub-engagement.workers.dev'
 
@@ -91,6 +92,11 @@ export function getDefaultOnlineServer(database?: LearningHubDB): string {
   return server?.url || DEFAULT_ONLINE_SERVER
 }
 
+/**
+ * Saves a worker server and (optionally) makes it the default, atomically.
+ * Saving a URL that is already known updates that row instead of adding a
+ * duplicate, so toggling between servers doesn't grow the table.
+ */
 export function setOnlineServer(
   name: string,
   url: string,
@@ -98,24 +104,27 @@ export function setOnlineServer(
   database?: LearningHubDB,
 ): typeof onlineServers.$inferSelect {
   const conn = database ?? getDb()
-  const nowIso = new Date().toISOString()
+  const cleanUrl = url.trim().replace(/\/+$/, '')
 
-  if (isDefault) {
-    conn.update(onlineServers).set({ isDefault: false }).run()
-  }
+  return withTransaction((tx) => {
+    if (isDefault) tx.update(onlineServers).set({ isDefault: false }).run()
 
-  const [created] = conn
-    .insert(onlineServers)
-    .values({
-      name,
-      url,
-      isDefault,
-      createdAt: nowIso,
-    })
-    .returning()
-    .all()
+    const existing = tx.select().from(onlineServers).where(eq(onlineServers.url, cleanUrl)).get()
+    if (existing) {
+      tx.update(onlineServers)
+        .set({ name, isDefault: isDefault || existing.isDefault })
+        .where(eq(onlineServers.id, existing.id))
+        .run()
+      return tx.select().from(onlineServers).where(eq(onlineServers.id, existing.id)).get()!
+    }
 
-  return created!
+    const [created] = tx
+      .insert(onlineServers)
+      .values({ name, url: cleanUrl, isDefault, createdAt: new Date().toISOString() })
+      .returning()
+      .all()
+    return created!
+  }, conn)
 }
 
 // ─── Inbox Messages (Append-only) ───────────────────────────────────────────
@@ -158,6 +167,7 @@ export function addInboxMessage(
 
 export function markInboxRead(id: number, database?: LearningHubDB): boolean {
   const conn = database ?? getDb()
-  conn.update(onlineInbox).set({ read: true }).where(eq(onlineInbox.id, id)).run()
-  return true
+  return (
+    conn.update(onlineInbox).set({ read: true }).where(eq(onlineInbox.id, id)).run().changes > 0
+  )
 }

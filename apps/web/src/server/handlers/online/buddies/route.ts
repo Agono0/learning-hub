@@ -28,7 +28,7 @@ export const POST = withRoute(async (req: Request) => {
 
   if (body.action === 'mark_read') {
     if (!body.id) throw new ApiError(400, 'id required to mark read')
-    markInboxRead(body.id)
+    if (!markInboxRead(body.id)) throw new ApiError(404, 'message not found')
     return Response.json({ ok: true })
   }
 

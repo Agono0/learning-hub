@@ -2,8 +2,8 @@
  * /api/curriculum/graph/dependencies — Manages concept prerequisite edges in the DAG.
  */
 import { z } from 'zod'
-import { willCreateCycle } from '@learning-hub/core/knowledge-graph'
 import {
+  ConceptCycleError,
   addConceptDependency,
   listConceptDependencies,
   removeConceptDependency,
@@ -11,8 +11,8 @@ import {
 import { readJson, withRoute } from '@/lib/api'
 
 const addEdgeSchema = z.object({
-  sourceConcept: z.string().min(1),
-  targetConcept: z.string().min(1),
+  sourceConcept: z.string().trim().min(1).max(200),
+  targetConcept: z.string().trim().min(1).max(200),
   strength: z.number().min(0).max(1).default(1.0),
 })
 
@@ -30,30 +30,16 @@ export const GET = withRoute(async (req: Request) => {
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, addEdgeSchema)
 
-  // Fetch existing edges to verify that this addition does not create a cycle
-  const currentEdges = listConceptDependencies().map((d) => ({
-    from: d.sourceConcept,
-    to: d.targetConcept,
-    strength: d.strength,
-  }))
-
-  const wouldCycle = willCreateCycle(currentEdges, {
-    from: body.sourceConcept,
-    to: body.targetConcept,
-    strength: body.strength,
-  })
-
-  if (wouldCycle) {
-    return Response.json(
-      {
-        ok: false,
-        error: 'Cannot add prerequisite: would create a circular dependency in the graph.',
-      },
-      { status: 400 },
-    )
+  // The repo checks for cycles in the same transaction as the insert.
+  let created
+  try {
+    created = addConceptDependency(body)
+  } catch (err) {
+    if (err instanceof ConceptCycleError) {
+      return Response.json({ ok: false, error: err.message }, { status: 400 })
+    }
+    throw err
   }
-
-  const created = addConceptDependency(body)
   return Response.json({
     ok: true,
     dependency: created,
