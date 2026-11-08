@@ -13,7 +13,9 @@ import { withTransaction } from '../transaction'
 /** Thrown when an edge would make the prerequisite graph cyclic (incl. A → A). */
 export class ConceptCycleError extends Error {
   constructor(from: string, to: string) {
-    super(`Adding "${from}" → "${to}" would create a circular prerequisite.`)
+    super(
+      `Adding "${from}" → "${to}" would create a circular dependency in the prerequisite graph.`,
+    )
     this.name = 'ConceptCycleError'
   }
 }
