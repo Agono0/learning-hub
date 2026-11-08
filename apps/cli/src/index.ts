@@ -32,8 +32,11 @@ import {
   quotes,
   searchAll,
   streaks,
+  withTransaction,
+  getWordExposureSummaries,
   xpEvents,
 } from '@learning-hub/db'
+import { balanceWorkload, catchUpBacklog, forecastWorkload } from '@learning-hub/core/workload'
 import {
   clozeSegments,
   dayKey,
@@ -448,6 +451,91 @@ async function syncCmd(runArgs: string[]) {
   process.exitCode = 1
 }
 
+async function workloadCmd(runArgs: string[]) {
+  const sub = runArgs[0] || 'forecast'
+  const cardRows = db
+    .select({
+      id: cards.id,
+      due: cards.due,
+      stability: cards.stability,
+      scheduledDays: cards.scheduledDays,
+      state: cards.state,
+      lapses: cards.lapses,
+    })
+    .from(cards)
+    .where(eq(cards.suspended, false))
+    .all()
+
+  const cardItems = cardRows.map((r) => ({
+    id: r.id,
+    due: r.due,
+    stability: r.stability ?? 0,
+    intervalDays: r.scheduledDays ?? 0,
+    state: r.state ?? 0,
+    lapses: r.lapses ?? 0,
+  }))
+
+  const now = new Date()
+
+  if (sub === 'forecast') {
+    const forecast = forecastWorkload(cardItems, 14, now)
+    const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0).length
+    console.log(
+      panel('14-Day Workload Forecast', [
+        `Total active cards: ${cardItems.length}`,
+        `Overdue right now:  ${overdue}`,
+        '',
+        ...forecast.map((f) => `  ${f.day}: ${'#'.repeat(Math.min(f.count, 30))} (${f.count})`),
+      ]),
+    )
+    return
+  }
+
+  if (sub === 'balance') {
+    const { shifts } = balanceWorkload(cardItems, { days: 14, easyDays: [0, 6], asOf: now })
+    if (shifts.length > 0) {
+      withTransaction((tx) => {
+        for (const s of shifts) {
+          tx.update(cards).set({ due: s.newDue }).where(eq(cards.id, s.cardId)).run()
+        }
+      })
+    }
+    console.log(`✔ Smoothed ${shifts.length} review due dates without compromising retention.`)
+    return
+  }
+
+  if (sub === 'catchup') {
+    const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0)
+    const shifts = catchUpBacklog(overdue, 30, now)
+    if (shifts.length > 0) {
+      withTransaction((tx) => {
+        for (const s of shifts) {
+          tx.update(cards).set({ due: s.newDue }).where(eq(cards.id, s.cardId)).run()
+        }
+      })
+    }
+    console.log(
+      `✔ Rescheduled ${shifts.length} overdue cards (lowest stability prioritized first).`,
+    )
+    return
+  }
+
+  console.log('Usage: learning-hub workload [forecast|balance|catchup]')
+}
+
+function exposureCmd() {
+  const words = getWordExposureSummaries(20)
+  if (words.length === 0) {
+    console.log('No ambient vocabulary encounters recorded yet.')
+    return
+  }
+  const lines = words.map((w) => {
+    const tag = w.eligibleForPromotion ? '[Ready for SRS]' : ''
+    return `${w.normalized.padEnd(20)} ${String(w.encounterCount).padStart(3)}x (${w.distinctDays} days) ${tag}`
+  })
+  console.log(panel('Ambient Vocabulary Ledger (Krashen i+1)', lines))
+}
+
 // ─── Command registry ───────────────────────────────────────────────────────
 //
 // Built-ins as data + plugin contributions merged at dispatch time. With zero
@@ -519,6 +607,18 @@ const builtinCommands: RegisteredCommand[] = [
     run: (runArgs) => {
       process.exitCode = curriculumCommand(runArgs)
     },
+  },
+  {
+    name: 'workload',
+    description: 'forecast, smooth, or catch up review backlog',
+    usage: '[forecast|balance|catchup]',
+    run: (runArgs) => workloadCmd(runArgs),
+  },
+  {
+    name: 'exposure',
+    description: 'ambient vocabulary ledger and Krashen i+1 tracking',
+    usage: '[list]',
+    run: () => exposureCmd(),
   },
 ]
 

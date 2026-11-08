@@ -17,6 +17,7 @@ import { and, desc, eq, like, lte, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { json, tool, type RegisteredTool } from './tool-kit'
 import { curriculumTools } from './tools/curriculum'
+import { cognitiveTools } from './tools/cognitive'
 import {
   CardNotFoundError,
   cards,
@@ -535,7 +536,7 @@ async function main() {
     )
   }
 
-  for (const registered of [...builtinTools, ...curriculumTools]) {
+  for (const registered of [...builtinTools, ...curriculumTools, ...cognitiveTools]) {
     server.registerTool(
       registered.name,
       { description: registered.description, inputSchema: registered.inputSchema },
