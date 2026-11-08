@@ -3,7 +3,7 @@
  * domain expert, devil's advocate) sequentially. Body: { ideaId }
  */
 import { z } from 'zod'
-import { db, chatSessions, getIdea } from '@learning-hub/db'
+import { createChatSession, getIdea } from '@learning-hub/db'
 import { COUNCIL_PERSONAS } from '@learning-hub/core'
 import { requireAI } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
@@ -25,7 +25,7 @@ export const POST = withRoute(async (req: Request) => {
       const text = await ai.generateText({ system: persona.system, prompt })
       responses.push({ key: persona.key, name: persona.name, response: text })
     }
-    await db.insert(chatSessions).values({
+    createChatSession({
       kind: 'council',
       contextType: 'idea',
       contextId: idea.id,

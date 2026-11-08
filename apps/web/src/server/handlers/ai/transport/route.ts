@@ -13,7 +13,7 @@
  */
 import { z } from 'zod'
 import { eq, gte } from 'drizzle-orm'
-import { db, chatSessions, getIdea, getSource, journalEntries, notes } from '@learning-hub/db'
+import { db, getChatSession, getIdea, getSource, journalEntries, notes } from '@learning-hub/db'
 import {
   AI_FEATURES,
   brainwritePrompt,
@@ -58,11 +58,7 @@ async function buildPrompt(
       const sessionId = Number(params.get('sessionId') ?? 0)
       if (!sessionId)
         throw new Error('sessionId query param required for the feynman-grader envelope')
-      const [session] = await db
-        .select()
-        .from(chatSessions)
-        .where(eq(chatSessions.id, sessionId))
-        .limit(1)
+      const session = getChatSession(sessionId)
       if (!session) throw new Error(`chat session ${sessionId} not found`)
       const transcript = ((session.messages as { role: string; content: string }[]) ?? [])
         .map((m) => `${m.role === 'user' ? 'Learner' : 'Student-questioner'}: ${m.content}`)

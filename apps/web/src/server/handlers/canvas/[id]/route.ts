@@ -1,9 +1,8 @@
 /**
  * /api/canvas/[id] — read / save items+edges / delete.
  */
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, canvases } from '@learning-hub/db'
+import { deleteCanvas, getCanvas, updateCanvas } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 /** One draggable board element, as produced by the canvas page. */
@@ -38,11 +37,7 @@ function parseId(id: string): number {
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
-  const [canvas] = await db
-    .select()
-    .from(canvases)
-    .where(eq(canvases.id, Number(id)))
-    .limit(1)
+  const canvas = getCanvas(Number(id))
   if (!canvas) return Response.json({ error: 'not found' }, { status: 404 })
   return Response.json({ canvas })
 }
@@ -51,22 +46,13 @@ export const PATCH = withRoute(async (req: Request, ctx: { params: Promise<{ id:
   const { id } = await ctx.params
   const canvasId = parseId(id)
   const body = await readJson(req, patchCanvasSchema)
-  const [existing] = await db.select().from(canvases).where(eq(canvases.id, canvasId)).limit(1)
-  if (!existing) return Response.json({ error: 'not found' }, { status: 404 })
-  await db
-    .update(canvases)
-    .set({
-      title: body.title ?? existing.title,
-      items: body.items ?? existing.items,
-      edges: body.edges ?? existing.edges,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(canvases.id, existing.id))
+  const updated = updateCanvas(canvasId, body)
+  if (!updated) return Response.json({ error: 'not found' }, { status: 404 })
   return Response.json({ ok: true })
 })
 
 export const DELETE = withRoute(async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
   const { id } = await ctx.params
-  await db.delete(canvases).where(eq(canvases.id, parseId(id)))
+  deleteCanvas(parseId(id))
   return Response.json({ ok: true })
 })

@@ -17,7 +17,14 @@
  */
 import { z } from 'zod'
 import { eq, like, or, sql } from 'drizzle-orm'
-import { db, chatSessions, lessons, notes } from '@learning-hub/db'
+import {
+  db,
+  createChatSession,
+  getChatSession,
+  lessons,
+  notes,
+  updateChatSessionMessages,
+} from '@learning-hub/db'
 import {
   FEYNMAN_STUDENT,
   SOCRATIC_SYSTEM,
@@ -194,38 +201,28 @@ export const POST = withRoute(async (req: Request) => {
   const askedForHint = HINT_ASK.test(lastUser)
   let sessionId = body.sessionId ?? null
   if (sessionId) {
-    const [existing] = await db
-      .select()
-      .from(chatSessions)
-      .where(eq(chatSessions.id, sessionId))
-      .limit(1)
+    const existing = getChatSession(sessionId)
     if (existing) {
       const priorMessages = (existing.messages as unknown[]) ?? []
       const newMessages = messages.slice(priorMessages.length)
-      await db
-        .update(chatSessions)
-        .set({
-          ...(newMessages.length > 0 ? { messages: [...priorMessages, ...newMessages] } : {}),
-          hintsUsed: existing.hintsUsed + (askedForHint && kind === 'tutor' ? 1 : 0),
-        })
-        .where(eq(chatSessions.id, sessionId))
+      updateChatSessionMessages(sessionId, {
+        messages: newMessages.length > 0 ? [...priorMessages, ...newMessages] : priorMessages,
+        hintsUsed: existing.hintsUsed + (askedForHint && kind === 'tutor' ? 1 : 0),
+      })
     } else {
       sessionId = null
     }
   }
   if (!sessionId) {
-    const [created] = await db
-      .insert(chatSessions)
-      .values({
-        kind,
-        contextType: body.contextType ?? null,
-        contextId: body.contextId ?? null,
-        title: lastUser.slice(0, 80),
-        messages,
-        hintsUsed: askedForHint && kind === 'tutor' ? 1 : 0,
-      })
-      .returning()
-    sessionId = created!.id
+    const created = createChatSession({
+      kind,
+      contextType: body.contextType ?? null,
+      contextId: body.contextId ?? null,
+      title: lastUser.slice(0, 80),
+      messages,
+      hintsUsed: askedForHint && kind === 'tutor' ? 1 : 0,
+    })
+    sessionId = created.id
   }
 
   try {

@@ -3,10 +3,8 @@
  * GET        → the 20 most recent sessions (id, title, createdAt, score)
  * GET ?id=   → one full session with its messages
  */
-import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { chatSessions } from '@learning-hub/db'
+import { getChatSession, listChatSessions, updateChatSessionTitle } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 export const GET = withRoute(async (req: Request) => {
@@ -18,31 +16,12 @@ export const GET = withRoute(async (req: Request) => {
     if (!parsed.success) {
       return Response.json({ ok: false, error: 'id must be a positive integer' }, { status: 400 })
     }
-    const [session] = await db
-      .select()
-      .from(chatSessions)
-      .where(eq(chatSessions.id, parsed.data))
-      .limit(1)
+    const session = getChatSession(parsed.data)
     if (!session) return Response.json({ ok: false, error: 'Session not found' }, { status: 404 })
     return Response.json({ ok: true, session })
   }
 
-  const sessions = await db
-    .select({
-      id: chatSessions.id,
-      kind: chatSessions.kind,
-      contextType: chatSessions.contextType,
-      contextId: chatSessions.contextId,
-      title: chatSessions.title,
-      score: chatSessions.score,
-      hintsUsed: chatSessions.hintsUsed,
-      createdAt: chatSessions.createdAt,
-    })
-    .from(chatSessions)
-    .where(eq(chatSessions.kind, 'tutor'))
-    .orderBy(desc(chatSessions.id))
-    .limit(20)
-
+  const sessions = listChatSessions({ kind: 'tutor', limit: 20 })
   return Response.json({ ok: true, sessions })
 })
 
@@ -54,6 +33,6 @@ const renameSchema = z.object({
 /** POST /api/ai/chat/sessions — rename a session (the title is auto-set from the first message). */
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, renameSchema)
-  await db.update(chatSessions).set({ title: body.title }).where(eq(chatSessions.id, body.id))
+  updateChatSessionTitle(body.id, body.title)
   return Response.json({ ok: true })
 })
