@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   Award,
   CheckCircle2,
   Clock,
   Flag,
+  Mic,
   PlusCircle,
   RefreshCw,
   Timer,
@@ -552,19 +554,30 @@ export default function ExamSimulatorPage() {
                 </p>
               </div>
 
-              {cardsAdded ? (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-4 w-4" /> Added to Decks
-                </span>
-              ) : (
-                <Button
-                  onClick={() => addMissesMutation.mutate()}
-                  disabled={addMissesMutation.isPending}
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/voice-tutor?topic=${encodeURIComponent(
+                    `Missed exam questions remediation: ${gradedReport.missedCards[0]?.front ?? ''}`,
+                  )}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-xs hover:bg-white dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
                 >
-                  <PlusCircle className="h-4 w-4 mr-1.5" />
-                  Add {gradedReport.missedCards.length} Misses to Review
-                </Button>
-              )}
+                  <Mic className="h-3.5 w-3.5" />
+                  Socratic Voice Drill
+                </Link>
+                {cardsAdded ? (
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4" /> Added to Decks
+                  </span>
+                ) : (
+                  <Button
+                    onClick={() => addMissesMutation.mutate()}
+                    disabled={addMissesMutation.isPending}
+                  >
+                    <PlusCircle className="h-4 w-4 mr-1.5" />
+                    Add {gradedReport.missedCards.length} Misses to Review
+                  </Button>
+                )}
+              </div>
             </div>
           </Panel>
         )}
@@ -616,6 +629,17 @@ export default function ExamSimulatorPage() {
                   </span>
                 </div>
               </div>
+
+              {!res.correct && (
+                <div className="pt-1">
+                  <Link
+                    href={`/voice-tutor?topic=${encodeURIComponent(res.prompt)}&cardId=${res.cardId}`}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                  >
+                    <Mic className="h-3 w-3" /> Drill with Socratic Voice Tutor
+                  </Link>
+                </div>
+              )}
             </Panel>
           ))}
         </div>

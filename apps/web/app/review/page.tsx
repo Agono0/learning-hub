@@ -31,7 +31,13 @@ import {
 import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
 import { clozeSegments, isCardAnswerCorrect, pickBasicFront } from '@learning-hub/core/cards'
 import { isSpeechAvailable, speak } from '@/lib/speech'
-import { hapticLight, hapticHeavy } from '@/platform/haptics'
+import {
+  hapticLight,
+  hapticMedium,
+  hapticHeavy,
+  hapticWarning,
+  hapticHypercorrection,
+} from '@/platform/haptics'
 import {
   applyMistake,
   evaluateSpokenAnswer,
@@ -231,6 +237,7 @@ function ReviewPageInner() {
   const [hyperNotice, setHyperNotice] = useState<{ prompt: string; contrastNote: string } | null>(
     null,
   )
+  const [flowAlert, setFlowAlert] = useState<{ zone: string; message: string } | null>(null)
   const [oralListening, setOralListening] = useState(false)
   const [suggestedOralGrade, setSuggestedOralGrade] = useState<{
     grade: Grade
@@ -384,10 +391,17 @@ function ReviewPageInner() {
         },
       ])
       if (data.hypercorrection?.isEligible && data.hypercorrection.prompt) {
+        hapticHypercorrection()
         setHyperNotice({
           prompt: data.hypercorrection.prompt,
           contrastNote: data.hypercorrection.contrastNote || '',
         })
+      } else if (variables.grade >= 3) {
+        hapticLight()
+      } else if (variables.grade === 2) {
+        hapticMedium()
+      } else {
+        hapticWarning()
       }
       // The re-queued copy extends the queue, so a re-queue on the LAST card
       // must also extend the end check — otherwise the retry is dropped.
@@ -467,9 +481,34 @@ function ReviewPageInner() {
   const commit = useCallback(
     (grade: Grade) => {
       if (!current || gradeMutation.isPending) return
+      const elapsed = readRecallTimeMs()
       gradeMutation.mutate({ cardId: current.id, grade, confidence })
+
+      // Background cognitive telemetry & flow-state monitoring (Yerkes-Dodson DDA)
+      void apiSend<{
+        ok: boolean
+        evaluation?: {
+          flowZone: 'boredom' | 'flow' | 'overload'
+          interventionSuggestion?: string
+        }
+      }>('/api/cognitive/load', 'POST', {
+        cardId: current.id,
+        responseLatencyMs: elapsed,
+        recentErrorCount: results.slice(-5).filter((r) => r.grade === 1).length,
+      })
+        .then((res) => {
+          if (res?.evaluation?.flowZone === 'overload' && res.evaluation.interventionSuggestion) {
+            setFlowAlert({
+              zone: 'overload',
+              message: res.evaluation.interventionSuggestion,
+            })
+          }
+        })
+        .catch(() => {
+          // Telemetry errors must never disrupt review flow
+        })
     },
-    [current, gradeMutation, confidence],
+    [current, gradeMutation, confidence, readRecallTimeMs, results],
   )
 
   // Practice-engine exercise cards are graded AND recorded by the practice
@@ -976,6 +1015,24 @@ function ReviewPageInner() {
           </div>
         ) : (
           <>
+            {flowAlert && (
+              <div className="mb-3 flex items-center justify-between rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-sky-400 shrink-0" />
+                  <div>
+                    <span className="font-semibold text-sky-300">Flow Pacing Intervention</span>
+                    <p className="mt-0.5 text-xs text-sky-200/90">{flowAlert.message}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFlowAlert(null)}
+                  className="rounded px-2 py-1 text-xs text-sky-300 hover:bg-sky-500/20"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
             {hyperNotice && (
               <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                 <div className="flex items-center justify-between font-semibold text-amber-300">

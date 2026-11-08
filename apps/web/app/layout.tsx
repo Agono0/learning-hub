@@ -25,7 +25,7 @@ export const viewport: Viewport = {
 }
 
 /** Applies mode + palette before first paint (no flash). Mirrors ThemeSync. */
-const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('lh-theme')||'dark';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';var p=localStorage.getItem('lh-palette');document.documentElement.dataset.theme=p||'calm';}catch(e){}})();`
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('lh-theme')||'dark';var e=t==='e-ink';var d=!e&&(t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches));document.documentElement.classList.toggle('dark',d);document.documentElement.classList.toggle('theme-e-ink',e);document.documentElement.style.colorScheme=e?'light':(d?'dark':'light');var p=localStorage.getItem('lh-palette');document.documentElement.dataset.theme=p||'calm';}catch(e){}})();`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

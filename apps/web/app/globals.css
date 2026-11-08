@@ -276,3 +276,49 @@ body {
 .prose-hub input[type="checkbox"] { @apply mr-2 rounded accent-indigo-600; }
 .prose-hub del { @apply text-neutral-400 line-through; }
 .prose-hub hr { @apply border-neutral-200 dark:border-(--hub-border); }
+
+/* ── E-Ink Zen Mode (Mark Weiser Calm Tech; Onyx/Kindle/Paperwhite high contrast) ── */
+html.theme-e-ink {
+  --hub-bg: #ffffff;
+  --hub-panel: #ffffff;
+  --hub-panel-2: #f4f4f4;
+  --hub-sunken: #f0f0f0;
+  --hub-border: #000000;
+  --hub-border-strong: #000000;
+  --ac-strong: #000000;
+  --ac-soft: #f0f0f0;
+  --ac-mid: #000000;
+  --ac-deep: #000000;
+  --n-50: #ffffff;
+  --n-100: #f4f4f4;
+  --n-200: #e5e5e5;
+  --n-300: #d4d4d4;
+  --n-400: #a3a3a3;
+  --n-500: #737373;
+  --n-600: #525252;
+  --n-700: #404040;
+  --n-800: #262626;
+  --n-900: #171717;
+  --n-950: #000000;
+  color-scheme: light;
+}
+
+html.theme-e-ink *,
+html.theme-e-ink *::before,
+html.theme-e-ink *::after {
+  animation: none !important;
+  transition: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+html.theme-e-ink body {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+html.theme-e-ink .panel {
+  border-width: 1px !important;
+  border-color: #000000 !important;
+  background-color: #ffffff !important;
+}

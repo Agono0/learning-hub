@@ -33,7 +33,7 @@ const putSettingsSchema = z.object({
   desiredRetention: z.number().optional(), // zod rejects NaN/Infinity → finite by construction
   fsrsWeights: fsrsWeightsSchema.nullable().optional(),
   sessionMinutes: z.number().optional(),
-  theme: z.enum(['dark', 'light', 'system']).optional(),
+  theme: z.enum(['dark', 'light', 'system', 'e-ink']).optional(),
   onboardingCompleted: z.boolean().optional(),
   sidebarCollapsedGroups: z.array(z.string().max(80)).max(20).nullable().optional(),
   remindersEnabled: z.boolean().optional(),

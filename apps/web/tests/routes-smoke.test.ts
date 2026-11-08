@@ -355,6 +355,16 @@ describe('settings (item 2)', () => {
     expect(body.settings.onboardingCompleted).toBe(true)
     expect(body.settings.sidebarCollapsedGroups).toEqual(['Explore', 'Discipline'])
     expect(typeof body.settings.isEmptyWorkspace).toBe('boolean')
+
+    // E-Ink Zen Mode theme preference
+    const einkRes = await M.settings.PUT(
+      req('PUT', '/api/settings', {
+        theme: 'e-ink',
+      }),
+    )
+    expect(einkRes.status).toBe(200)
+    const einkBody = (await einkRes.json()) as { settings: { theme: string } }
+    expect(einkBody.settings.theme).toBe('e-ink')
   })
 })
 

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { HelpCircle, Mic, MicOff, RefreshCw, Send, Volume2, VolumeX } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
@@ -20,10 +21,14 @@ const RUNGS = [
   { rung: 4, name: 'Full Solution', desc: 'Synthesis & re-derivation' },
 ]
 
-export default function VoiceTutorPage() {
+function VoiceTutorContent() {
   const { toast } = useToast()
-  const [topic, setTopic] = useState('Photosynthesis light reactions')
-  const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
+  const searchParams = useSearchParams()
+  const queryTopic = searchParams.get('topic')
+  const queryCardId = searchParams.get('cardId') ? Number(searchParams.get('cardId')) : null
+
+  const [topic, setTopic] = useState(queryTopic || 'Photosynthesis light reactions')
+  const [selectedCardId, setSelectedCardId] = useState<number | null>(queryCardId)
   const [sessionActive, setSessionActive] = useState(false)
   const [currentRung, setCurrentRung] = useState(1)
   const [turns, setTurns] = useState<DialogueTurn[]>([])
@@ -424,5 +429,19 @@ export default function VoiceTutorPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function VoiceTutorPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-4xl py-6 text-sm text-neutral-400">
+          Loading Voice Tutor...
+        </div>
+      }
+    >
+      <VoiceTutorContent />
+    </Suspense>
   )
 }

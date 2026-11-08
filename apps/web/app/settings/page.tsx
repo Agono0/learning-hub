@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Bell,
+  BookOpen,
   Command,
   Globe,
   Layout,
@@ -526,6 +527,7 @@ export default function SettingsPage() {
                 { key: 'dark', label: 'Dark', icon: Moon },
                 { key: 'light', label: 'Light', icon: Sun },
                 { key: 'system', label: 'System', icon: Monitor },
+                { key: 'e-ink', label: 'E-Ink Zen', icon: BookOpen },
               ] as const
             ).map((opt) => {
               const Icon = opt.icon
