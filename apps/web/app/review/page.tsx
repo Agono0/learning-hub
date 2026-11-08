@@ -22,6 +22,7 @@ import {
   Mic,
   RotateCcw,
   Sparkles,
+  Sliders,
   Undo2,
   X,
   Zap,
@@ -50,6 +51,7 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 import { InkPad, PageHeader } from '@/ui'
+import { WorkloadBalancerModal } from '@/components/WorkloadBalancerModal'
 import {
   acquireWakeLock,
   listenForSpeech,
@@ -240,6 +242,7 @@ function ReviewPageInner() {
   const [blindGraded, setBlindGraded] = useState<number[]>([])
   // the "Correct these first" restudy list shows once, before the queue
   const [correctionsSeen, setCorrectionsSeen] = useState(false)
+  const [showWorkloadModal, setShowWorkloadModal] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const resetRecallTimer = useCallback(() => {
@@ -801,9 +804,21 @@ function ReviewPageInner() {
               <Headphones className="h-4 w-4 text-indigo-400" />
               {isPlayingDigest ? 'Playing Audio Digest…' : 'Generate 5m Commute Digest'}
             </button>
+            <button
+              type="button"
+              className="btn-ghost text-xs flex items-center gap-1.5"
+              onClick={() => setShowWorkloadModal(true)}
+            >
+              <Sliders className="h-4 w-4 text-indigo-400" /> Workload &amp; Easy Days
+            </button>
             {digestStatus && <span className="text-xs text-neutral-400">{digestStatus}</span>}
           </div>
         </div>
+        <WorkloadBalancerModal
+          isOpen={showWorkloadModal}
+          onClose={() => setShowWorkloadModal(false)}
+          deckId={deckId ?? undefined}
+        />
       </div>
     )
   }
@@ -840,11 +855,23 @@ function ReviewPageInner() {
             >
               <RotateCcw className="h-4 w-4" /> New session
             </button>
+            <button
+              type="button"
+              className="btn-ghost flex items-center gap-1.5"
+              onClick={() => setShowWorkloadModal(true)}
+            >
+              <Sliders className="h-4 w-4" /> Workload &amp; Forecast
+            </button>
             <a href="/" className="btn-ghost">
               <Home className="h-4 w-4" /> Dashboard
             </a>
           </div>
         </div>
+        <WorkloadBalancerModal
+          isOpen={showWorkloadModal}
+          onClose={() => setShowWorkloadModal(false)}
+          deckId={deckId ?? undefined}
+        />
       </div>
     )
   }

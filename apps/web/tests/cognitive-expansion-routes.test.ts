@@ -41,6 +41,7 @@ beforeAll(async () => {
   M.weaknessV2 = await import('../app/api/curriculum/skills/weakness-v2/route')
   M.voiceSession = await import('../app/api/tutor/voice-session/route')
   M.examSim = await import('../app/api/curriculum/exam/simulator/route')
+  M.workload = await import('../app/api/workload/route')
   M.review = await import('../src/server/handlers/review/route')
   M.api = await import('../src/lib/api')
   M.db = await import('@learning-hub/db')
@@ -694,5 +695,87 @@ describe('/api/curriculum/exam/simulator', () => {
     )
     const body2 = await res2.json()
     expect(body2.hypercorrection.isEligible).toBe(false)
+  })
+
+  describe('/api/workload balancer', () => {
+    it('returns forecast for cards', async () => {
+      const res = await M.workload.GET(get('/api/workload?days=14'))
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.ok).toBe(true)
+      expect(Array.isArray(data.forecast)).toBe(true)
+      expect(data.forecast.length).toBe(14)
+      expect(typeof data.totalCards).toBe('number')
+      expect(typeof data.overdueCount).toBe('number')
+    })
+
+    it('balances workload with easy days or caps and modifies card due dates', async () => {
+      const { db, cards } = M.db
+      // Insert a card with 30-day interval
+      const now = new Date()
+      const d = db
+        .insert(cards)
+        .values({
+          deckId,
+          content: { front: 'Workload Q', back: 'Workload A' },
+          type: 'basic',
+          due: now.toISOString(),
+          state: 2,
+          stability: 30,
+          scheduledDays: 30,
+        })
+        .returning()
+        .all()[0]
+
+      const dayOfWeek = now.getDay()
+      const res = await M.workload.POST(
+        post('/api/workload', {
+          action: 'balance',
+          days: 14,
+          easyDays: [dayOfWeek], // make today an easy day
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.action).toBe('balance')
+      expect(Array.isArray(body.shifts)).toBe(true)
+      expect(Array.isArray(body.forecast)).toBe(true)
+    })
+
+    it('catches up overdue backlog without mutating FSRS memory state', async () => {
+      const { db, cards } = M.db
+      const oldDue = new Date(Date.now() - 5 * 86_400_000).toISOString()
+      const c = db
+        .insert(cards)
+        .values({
+          deckId,
+          content: { front: 'Overdue Q', back: 'Overdue A' },
+          type: 'basic',
+          due: oldDue,
+          state: 2,
+          stability: 15,
+          scheduledDays: 15,
+        })
+        .returning()
+        .all()[0]
+
+      const res = await M.workload.POST(
+        post('/api/workload', {
+          action: 'catch_up',
+          dailyCap: 10,
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.action).toBe('catch_up')
+
+      // Verify the card's FSRS memory fields were NOT mutated (Rule 7)
+      const updated = db.select().from(cards).where(eq(cards.id, c.id)).all()[0]
+      expect(updated.stability).toBe(15)
+      expect(updated.scheduledDays).toBe(15)
+      expect(updated.state).toBe(2)
+    })
   })
 })
