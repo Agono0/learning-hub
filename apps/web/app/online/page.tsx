@@ -132,7 +132,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
   const [chatMessages, setChatMessages] = useState<RoomMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [copied, setCopied] = useState(false)
-  const socketRef = useRef<OnlineSocket<StudyRoomState> | null>(null)
+  const socketRef = useRef<OnlineSocket<StudyRoomState, RoomMessage> | null>(null)
 
   const createRoomMutation = useMutation({
     mutationFn: (data: { title: string; pomodoroWorkMinutes: number }) =>
@@ -164,7 +164,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
   const connectRoomSocket = (wsUrl: string, _room: StudyRoomState) => {
     socketRef.current?.disconnect()
 
-    const socket = new OnlineSocket<StudyRoomState>({
+    const socket = new OnlineSocket<StudyRoomState, RoomMessage>({
       url: wsUrl,
       onState: (state) => setActiveRoom(state),
       onChat: (msg) => setChatMessages((prev) => [...prev.slice(-40), msg]),

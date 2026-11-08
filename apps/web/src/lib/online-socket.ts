@@ -7,26 +7,30 @@
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
-export interface OnlineSocketOptions<TState> {
+export interface OnlineSocketOptions<TState, TChat> {
   url: string
   onState: (state: TState) => void
-  onChat?: (message: any) => void
+  onChat?: (message: TChat) => void
   onStatusChange?: (status: ConnectionStatus) => void
 }
 
-export class OnlineSocket<TState = any> {
+/**
+ * TState / TChat are the server's room-state and chat-message shapes. They are
+ * not validated here — the socket only routes frames by `type`.
+ */
+export class OnlineSocket<TState = unknown, TChat = unknown> {
   private ws: WebSocket | null = null
   private url: string
   private onState: (state: TState) => void
-  private onChat?: (message: any) => void
+  private onChat?: (message: TChat) => void
   private onStatusChange?: (status: ConnectionStatus) => void
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
-  private reconnectTimer: any = null
-  private heartbeatTimer: any = null
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private closedExplicitly = false
 
-  constructor(options: OnlineSocketOptions<TState>) {
+  constructor(options: OnlineSocketOptions<TState, TChat>) {
     this.url = options.url
     this.onState = options.onState
     this.onChat = options.onChat
