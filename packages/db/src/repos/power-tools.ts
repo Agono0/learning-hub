@@ -3,7 +3,7 @@
  * - Quick Captures (inbox thoughts, external references)
  * - Card Vector Embeddings & Similarity Search
  */
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, not, sql } from 'drizzle-orm'
 import { cosineSimilarity } from '@learning-hub/core/embeddings'
 import { getDb, type LearningHubDB } from '../index'
 import { cardEmbeddings, cards, quickCaptures, embeddings } from '../schema'
@@ -107,6 +107,27 @@ export function listCardEmbeddings(model = 'all-MiniLM-L6-v2') {
   return db.select().from(cardEmbeddings).where(eq(cardEmbeddings.model, model)).all()
 }
 
+/** Prompt/answer text for a card of any format (for search result previews). */
+export function cardPreview(content: unknown): { front: string; back: string } {
+  const c = (content && typeof content === 'object' ? content : {}) as Record<
+    string,
+    Record<string, unknown> | undefined
+  >
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  if (c.basic) return { front: str(c.basic.front), back: str(c.basic.back) }
+  if (c.typein) {
+    const answers = c.typein.acceptedAnswers
+    return { front: str(c.typein.question), back: Array.isArray(answers) ? str(answers[0]) : '' }
+  }
+  if (c.mcq) {
+    const options = Array.isArray(c.mcq.options) ? c.mcq.options : []
+    const idx = typeof c.mcq.correctIndex === 'number' ? c.mcq.correctIndex : -1
+    return { front: str(c.mcq.question), back: str(options[idx]) }
+  }
+  if (c.cloze) return { front: str(c.cloze.text), back: '' }
+  return { front: '', back: '' }
+}
+
 export interface SemanticCardMatch {
   cardId: number
   score: number
@@ -143,20 +164,7 @@ export function searchCardEmbeddingsCosine(
     if (!emb || emb.length !== queryVector.length) continue
     const score = cosineSimilarity(queryVector, emb)
     if (score >= minScore) {
-      let front = 'Card prompt'
-      let back = 'Card answer'
-      if (row.content && typeof row.content === 'object') {
-        const c = row.content as any
-        if (c.basic) {
-          front = c.basic.front || ''
-          back = c.basic.back || ''
-        } else if (c.typein) {
-          front = c.typein.question || ''
-          back = c.typein.acceptedAnswers?.[0] || ''
-        } else if (c.cloze) {
-          front = c.cloze.text || ''
-        }
-      }
+      const { front, back } = cardPreview(row.content)
 
       matches.push({
         cardId: row.cardId,
@@ -300,7 +308,8 @@ export function getPendingEmbeddingTexts(
     if (!KIND_META_SQL[kind]) continue
     const rows = db.all<{ id: number; text: string }>(
       sql.raw(
-        `SELECT id, substr(${BODY_SQL[kind]}, 1, 2000) AS text FROM "${tableFor(kind)}" WHERE id NOT IN (SELECT ref_id FROM embeddings WHERE kind = '${kind}') LIMIT ${limit}`,
+        // Blank bodies are excluded in SQL (before LIMIT) so they can't crowd out real rows.
+        `SELECT id, substr(${BODY_SQL[kind]}, 1, 2000) AS text FROM "${tableFor(kind)}" WHERE id NOT IN (SELECT ref_id FROM embeddings WHERE kind = '${kind}') AND length(trim(coalesce(${BODY_SQL[kind]}, ''))) > 0 LIMIT ${Math.max(1, Math.floor(limit))}`,
       ),
     )
     for (const r of rows) {
@@ -371,9 +380,12 @@ export function findRelatedEmbeddings(
     .get()
   if (!target) return { found: false, hits: [] }
 
-  const rows = db.all<{ kind: string; ref_id: number; vector: number[] }>(
-    sql`SELECT kind, ref_id, vector FROM embeddings WHERE NOT (kind = ${kind} AND ref_id = ${refId})`,
-  )
+  // Drizzle select (not raw SQL) so the JSON `vector` column is decoded to number[].
+  const rows = db
+    .select({ kind: embeddings.kind, refId: embeddings.refId, vector: embeddings.vector })
+    .from(embeddings)
+    .where(not(and(eq(embeddings.kind, kind), eq(embeddings.refId, refId))!))
+    .all()
 
   const scored: Array<{ kind: EmbeddingKind; refId: number; score: number }> = []
   for (const row of rows) {
@@ -381,27 +393,32 @@ export function findRelatedEmbeddings(
     if (!KIND_META_SQL[k]) continue
     if (!Array.isArray(row.vector) || row.vector.length !== target.dim) continue
     const score = cosineSimilarity(target.vector, row.vector)
-    if (score >= minScore) scored.push({ kind: k, refId: row.ref_id, score })
+    if (score >= minScore) scored.push({ kind: k, refId: row.refId, score })
   }
   scored.sort((a, b) => b.score - a.score)
 
   const hits: RelatedHit[] = []
-  for (const s of scored.slice(0, topK)) {
+  for (const s of scored) {
+    if (hits.length >= topK) break
     const meta = KIND_META_SQL[s.kind]
+    let row: { title: string | null } | undefined
     try {
-      const row = db.all<{ title: string }>(
-        sql.raw(`SELECT ${meta.title} AS title FROM "${tableFor(s.kind)}" WHERE id = ${s.refId}`),
+      row = db.all<{ title: string | null }>(
+        sql.raw(
+          `SELECT ${meta.title} AS title FROM "${tableFor(s.kind)}" WHERE id = ${Number(s.refId)}`,
+        ),
       )[0]
-      hits.push({
-        kind: s.kind,
-        refId: s.refId,
-        title: row?.title ?? '(untitled)',
-        href: meta.href,
-        score: Math.round(s.score * 1000) / 1000,
-      })
     } catch {
-      // row deleted since indexing — skip
+      continue // table missing on an old DB
     }
+    if (!row) continue // source row deleted since indexing — a dead link is worse than no hit
+    hits.push({
+      kind: s.kind,
+      refId: s.refId,
+      title: row.title || '(untitled)',
+      href: meta.href,
+      score: Math.round(s.score * 1000) / 1000,
+    })
   }
   return { found: true, hits }
 }
