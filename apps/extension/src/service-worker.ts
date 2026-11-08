@@ -147,13 +147,85 @@ async function syncLockStatus(): Promise<void> {
 
 // ─── Event Listeners ────────────────────────────────────────────────────────
 
+function setupContextMenus(): void {
+  try {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: 'lh-save-reader',
+        title: 'Save to Learning HUB Reader',
+        contexts: ['page', 'link'],
+      })
+      chrome.contextMenus.create({
+        id: 'lh-create-card',
+        title: 'Create Flashcard from "%s"',
+        contexts: ['selection'],
+      })
+    })
+  } catch {
+    // Context menus not supported in this runtime
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 })
   void syncLockStatus()
+  setupContextMenus()
 })
 
 chrome.runtime.onStartup.addListener(() => {
   void syncLockStatus()
+  setupContextMenus()
+})
+
+chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
+  const state = await getState()
+  const port = state.loopbackPort || DEFAULT_PORT
+  const endpoints = [`http://127.0.0.1:${port}`, 'http://localhost:3000']
+
+  if (info.menuItemId === 'lh-save-reader') {
+    const targetUrl = info.linkUrl || info.pageUrl || tab?.url
+    if (!targetUrl) return
+    for (const base of endpoints) {
+      try {
+        const res = await fetch(`${base}/api/reading/ingest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: 'url',
+            url: targetUrl,
+            title: tab?.url || 'Saved Web Page',
+          }),
+        })
+        if (res.ok) break
+      } catch {
+        // try next endpoint
+      }
+    }
+  }
+
+  if (info.menuItemId === 'lh-create-card') {
+    const text = info.selectionText
+    if (!text) return
+    for (const base of endpoints) {
+      try {
+        const res = await fetch(`${base}/api/cards`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deckId: 1,
+            type: 'basic',
+            content: {
+              basic: { front: text, back: `Source: ${info.pageUrl || tab?.url || 'Web'}` },
+            },
+            tags: ['browser-captured'],
+          }),
+        })
+        if (res.ok) break
+      } catch {
+        // try next endpoint
+      }
+    }
+  }
 })
 
 chrome.alarms.onAlarm.addListener((alarm) => {

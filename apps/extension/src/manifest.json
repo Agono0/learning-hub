@@ -8,7 +8,8 @@
     "declarativeNetRequestWithHostAccess",
     "storage",
     "alarms",
-    "tabs"
+    "tabs",
+    "contextMenus"
   ],
   "host_permissions": [
     "http://127.0.0.1/*",

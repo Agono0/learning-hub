@@ -72,4 +72,23 @@ declare namespace chrome {
       addListener(cb: (tabId: number, changeInfo: TabChangeInfo, tab: Tab) => void): void
     }
   }
+  namespace contextMenus {
+    interface CreateProperties {
+      id?: string
+      title?: string
+      contexts?: Array<'all' | 'page' | 'selection' | 'link' | 'image'>
+      parentId?: string
+    }
+    interface OnClickData {
+      menuItemId: string | number
+      selectionText?: string
+      linkUrl?: string
+      pageUrl?: string
+    }
+    function create(createProperties: CreateProperties, callback?: () => void): void
+    function removeAll(callback?: () => void): void
+    const onClicked: {
+      addListener(cb: (info: OnClickData, tab?: tabs.Tab) => void): void
+    }
+  }
 }
