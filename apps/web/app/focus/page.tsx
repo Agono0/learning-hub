@@ -16,6 +16,7 @@ import {
   TreePine,
   X,
   XCircle,
+  Trash2,
 } from 'lucide-react'
 import {
   BREATH_SECONDS,
@@ -107,6 +108,93 @@ function breathLabel(cycleSecond: number): string {
 const isTauriDesktop =
   typeof window !== 'undefined' &&
   Boolean((window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__)
+
+interface DistractionRow {
+  id: number
+  name: string
+  kind: 'app' | 'website' | 'habit'
+}
+
+/**
+ * The distraction log (F-08③): the apps/sites declared war on, persisted via
+ * /api/distractions CRUD — the surface the friction gate and the browser
+ * extension read. One primary action (add); remove is quiet.
+ */
+function DistractionAppsPanel() {
+  const qc = useQueryClient()
+  const [newName, setNewName] = useState('')
+  const list = useQuery({
+    queryKey: ['distractions'],
+    queryFn: () => apiGet<{ distractions: DistractionRow[] }>('/api/distractions'),
+  })
+
+  const add = useMutation({
+    mutationFn: (name: string) => apiSend('/api/distractions', 'POST', { name, kind: 'website' }),
+    onSuccess: () => {
+      setNewName('')
+      void qc.invalidateQueries({ queryKey: ['distractions'] })
+    },
+    onError: (err) => {
+      console.warn('[distractions] add failed:', err instanceof Error ? err.message : err)
+    },
+  })
+  const remove = useMutation({
+    mutationFn: (id: number) => apiSend(`/api/distractions?id=${id}`, 'DELETE'),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['distractions'] }),
+  })
+
+  const rows = list.data?.distractions ?? []
+  return (
+    <div className="panel space-y-3">
+      <p className="label">Distraction apps</p>
+      <p className="text-xs text-neutral-500">
+        These are logged when a focus session catches you switching to them.
+      </p>
+      <div className="flex gap-2">
+        <input
+          className="input h-9 flex-1 text-sm"
+          placeholder="Add a domain or app name…"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && newName.trim().length >= 2) add.mutate(newName.trim())
+          }}
+          aria-label="Add a distraction app or domain"
+        />
+        <button
+          className="btn text-xs"
+          disabled={newName.trim().length < 2 || add.isPending}
+          onClick={() => add.mutate(newName.trim())}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-xs text-neutral-500">Nothing logged yet.</p>
+      ) : (
+        <ul className="space-y-1">
+          {rows.map((r) => (
+            <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate text-neutral-700 dark:text-neutral-200">
+                {r.name}
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-neutral-500">
+                  {r.kind}
+                </span>
+              </span>
+              <button
+                className="btn-ghost px-2 py-1 text-neutral-500 hover:text-red-400"
+                title={`Remove ${r.name}`}
+                onClick={() => remove.mutate(r.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function FocusPage() {
   const qc = useQueryClient()
@@ -1121,6 +1209,9 @@ export default function FocusPage() {
           </ul>
         )}
       </div>
+
+      {/* ─── DISTRACTION APPS (F-08③) ───────────────────────────────────── */}
+      <DistractionAppsPanel />
 
       {/* ─── DETOX WIZARD (One-Time) ──────────────────────────────────────── */}
       {detox.data && !detox.data.done && (
