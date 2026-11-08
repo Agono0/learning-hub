@@ -31,6 +31,7 @@ import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
 import { PageHeader, useToast } from '@/ui'
+import { SoundscapeBar } from '@/components/SoundscapeBar'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
@@ -536,6 +537,8 @@ export default function FocusPage() {
       {/* ─── TAB 1: STANDARD FOCUS ────────────────────────────────────────── */}
       {activeTab === 'standard' && (
         <>
+          <SoundscapeBar />
+
           {!running && (
             <div className="panel space-y-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -660,6 +663,7 @@ export default function FocusPage() {
                   (honest count via Page Visibility)
                 </span>
               </div>
+
               <div className="flex items-center justify-center gap-2">
                 <button
                   className="btn-ghost border border-neutral-200 dark:border-(--hub-border)"

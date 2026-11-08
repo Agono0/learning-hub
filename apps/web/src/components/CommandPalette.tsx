@@ -8,9 +8,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
-import { Search as SearchIcon } from 'lucide-react'
+import {
+  Box,
+  FileCheck,
+  Headphones,
+  Mic,
+  Moon,
+  Radar,
+  Repeat as ReviewIcon,
+  Search as SearchIcon,
+  Sparkles,
+  Timer,
+  Zap,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { Repeat as ReviewIcon, Timer, Zap } from 'lucide-react'
 import { NAV } from './nav'
 import { apiGet } from '@/lib/transport'
 
@@ -197,6 +208,56 @@ export function CommandPalette() {
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
                 <Zap className="h-4 w-4 shrink-0 text-neutral-400" /> Capture a thought (HUD)
+              </Command.Item>
+              <Command.Item
+                value="action start commute audio hands free"
+                onSelect={() => go('/audio-commute')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Headphones className="h-4 w-4 shrink-0 text-neutral-400" /> Start Commute Audio
+              </Command.Item>
+              <Command.Item
+                value="action start sleep targeted memory reactivation tmr"
+                onSelect={() => go('/sleep-tmr')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Moon className="h-4 w-4 shrink-0 text-neutral-400" /> Start Sleep TMR
+              </Command.Item>
+              <Command.Item
+                value="action enter 3d memory palace loci"
+                onSelect={() => go('/palace-3d')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Box className="h-4 w-4 shrink-0 text-neutral-400" /> Enter 3D Memory Palace
+              </Command.Item>
+              <Command.Item
+                value="action view knowledge constellation galaxy"
+                onSelect={() => go('/constellation')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Sparkles className="h-4 w-4 shrink-0 text-neutral-400" /> Open Knowledge
+                Constellation
+              </Command.Item>
+              <Command.Item
+                value="action start socratic voice tutor oral exam"
+                onSelect={() => go('/voice-tutor')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Mic className="h-4 w-4 shrink-0 text-neutral-400" /> Start Socratic Voice Tutor
+              </Command.Item>
+              <Command.Item
+                value="action take timed mock exam simulator"
+                onSelect={() => go('/exam-sim')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <FileCheck className="h-4 w-4 shrink-0 text-neutral-400" /> Take Timed Mock Exam
+              </Command.Item>
+              <Command.Item
+                value="action open weakness radar v2 confusion pairs"
+                onSelect={() => go('/weakness')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Radar className="h-4 w-4 shrink-0 text-neutral-400" /> Open Weakness Radar v2
               </Command.Item>
               {(paletteActions ?? []).map((a) => (
                 <Command.Item
