@@ -42,6 +42,7 @@ beforeAll(async () => {
   M.voiceSession = await import('../app/api/tutor/voice-session/route')
   M.examSim = await import('../app/api/curriculum/exam/simulator/route')
   M.workload = await import('../app/api/workload/route')
+  M.exposure = await import('../app/api/reading/exposure/route')
   M.review = await import('../src/server/handlers/review/route')
   M.api = await import('../src/lib/api')
   M.db = await import('@learning-hub/db')
@@ -776,6 +777,54 @@ describe('/api/curriculum/exam/simulator', () => {
       expect(updated.stability).toBe(15)
       expect(updated.scheduledDays).toBe(15)
       expect(updated.state).toBe(2)
+    })
+  })
+
+  describe('/api/reading/exposure (Ambient Exposure Ledger & Coverage)', () => {
+    it('records batch exposures and computes lexical coverage analysis', async () => {
+      // Record batch exposures
+      const res = await M.exposure.POST(
+        post('/api/reading/exposure', {
+          action: 'record_batch',
+          tokens: ['neuroplasticity', 'synaptic', 'dendrite', 'axon'],
+          sourceType: 'reading',
+          contextSnippet: 'Synaptic connections strengthen through LTP.',
+        }),
+      )
+      expect(res.status).toBe(200)
+      const postBody = await res.json()
+      expect(postBody.ok).toBe(true)
+      expect(postBody.insertedCount).toBe(4)
+
+      // Query summaries and coverage analysis
+      const getRes = await M.exposure.GET(
+        get('/api/reading/exposure?limit=10&analyzeText=The+brain+exhibits+synaptic+plasticity'),
+      )
+      expect(getRes.status).toBe(200)
+      const data = await getRes.json()
+      expect(data.ok).toBe(true)
+      expect(Array.isArray(data.words)).toBe(true)
+      expect(data.words.some((w: any) => w.normalized === 'synaptic')).toBe(true)
+      expect(data.coverageAnalysis).toBeDefined()
+      expect(typeof data.coverageAnalysis.coveragePercent).toBe('number')
+      expect(['optimal', 'frustration', 'effortless']).toContain(data.coverageAnalysis.zone)
+    })
+
+    it('promotes an encountered ambient word into an active flashcard', async () => {
+      const res = await M.exposure.POST(
+        post('/api/reading/exposure', {
+          action: 'promote',
+          token: 'serendipity',
+          back: 'An unexpected, fortunate discovery.',
+          deckId,
+        }),
+      )
+      expect(res.status).toBe(201)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.card.type).toBe('basic')
+      expect(body.card.content.basic.front).toBe('serendipity')
+      expect(body.card.tags).toContain('ambient-promoted')
     })
   })
 })

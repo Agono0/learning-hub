@@ -155,6 +155,7 @@ import * as curriculumSkillsWeaknessV2 from '../server/handlers/curriculum/skill
 import * as tutorVoiceSession from '../server/handlers/tutor/voice-session/route'
 import * as curriculumExamSimulator from '../server/handlers/curriculum/exam/simulator/route'
 import * as workload from '../server/handlers/workload/route'
+import * as readingExposure from '../server/handlers/reading/exposure/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -330,6 +331,7 @@ add('curriculum/skills/weakness-v2', curriculumSkillsWeaknessV2)
 add('tutor/voice-session', tutorVoiceSession)
 add('curriculum/exam/simulator', curriculumExamSimulator)
 add('workload', workload)
+add('reading/exposure', readingExposure)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

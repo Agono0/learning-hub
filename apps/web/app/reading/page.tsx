@@ -76,7 +76,7 @@ interface Sq3rSession {
 }
 
 type IngestTab = 'file' | 'url' | 'youtube' | 'markdown'
-type StudyMode = 'incremental' | 'sq3r'
+type StudyMode = 'incremental' | 'sq3r' | 'exposure'
 type Sq3rStep = 'survey' | 'question' | 'read' | 'recite' | 'review'
 
 function manualGhostHint(mode: 'define' | 'simplify' | 'flashcard', selected: string): string {
@@ -187,6 +187,70 @@ export default function ReadingPage() {
     }
     return Array.from(unique.values())
   }, [detail?.source?.content, detail?.fragment?.text, vocabCards?.cards])
+
+  const recordedFragmentRef = useRef<string>('')
+  useEffect(() => {
+    const text = detail?.fragment?.text
+    if (!text || !detail?.source?.id || recordedFragmentRef.current === text) return
+    recordedFragmentRef.current = text
+    const words = text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s'-]/gu, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !/^\d+$/.test(w))
+      .slice(0, 100)
+    if (words.length > 0) {
+      void apiSend('/api/reading/exposure', 'POST', {
+        action: 'record_batch',
+        tokens: words,
+        sourceType: 'reading',
+        sourceId: detail.source.id,
+        contextSnippet: text.slice(0, 200),
+      })
+    }
+  }, [detail?.fragment?.text, detail?.source?.id])
+
+  const exposureQuery = useQuery<{
+    ok: boolean
+    words: Array<{
+      normalized: string
+      sampleToken: string
+      encounterCount: number
+      distinctDays: number
+      eligibleForPromotion: boolean
+    }>
+    coverageAnalysis?: {
+      totalTokens: number
+      knownCount: number
+      coveragePercent: number
+      zone: 'optimal' | 'frustration' | 'effortless'
+      unknownTokens: Array<{ token: string; count: number }>
+    }
+  }>({
+    queryKey: ['reading-exposure', detail?.fragment?.text?.slice(0, 50)],
+    queryFn: () => {
+      const textParam = detail?.fragment?.text
+        ? `&analyzeText=${encodeURIComponent(detail.fragment.text.slice(0, 400))}`
+        : ''
+      return apiGet(`/api/reading/exposure?limit=40${textParam}`)
+    },
+  })
+
+  const promoteWord = useMutation({
+    mutationFn: async ({ token, snippet }: { token: string; snippet?: string }) => {
+      return apiSend('/api/reading/exposure', 'POST', {
+        action: 'promote',
+        token,
+        contextSnippet: snippet,
+      })
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reading-exposure'] })
+      void qc.invalidateQueries({ queryKey: ['vocab-cards'] })
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      setFeedback({ kind: 'ok', text: 'Word promoted to FSRS flashcard!' })
+    },
+  })
 
   const [selected, setSelected] = useState('')
   const [triageQueue, setTriageQueue] = useState<Highlight[]>([])
@@ -557,6 +621,11 @@ export default function ReadingPage() {
                       label: 'SQ3R Guided Study',
                       icon: <ListChecks className="h-3.5 w-3.5" />,
                     },
+                    {
+                      key: 'exposure',
+                      label: 'Vocabulary Ledger',
+                      icon: <Sparkles className="h-3.5 w-3.5" />,
+                    },
                   ]}
                 />
                 <div className="flex items-center gap-2">
@@ -591,6 +660,28 @@ export default function ReadingPage() {
                       {Math.round(source.position)}%
                     </span>
                   </div>
+                  {exposureQuery.data?.coverageAnalysis && (
+                    <div className="mt-2.5 flex items-center gap-2 text-xs">
+                      <span className="text-neutral-400">Lexical Coverage:</span>
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
+                          exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/50'
+                            : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                              ? 'bg-rose-950/80 text-rose-300 border border-rose-700/50'
+                              : 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
+                        }`}
+                      >
+                        {exposureQuery.data.coverageAnalysis.coveragePercent}% (
+                        {exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                          ? 'Optimal Krashen i+1 (95–98%)'
+                          : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                            ? 'Frustration (<95% - gloss recommended)'
+                            : 'Effortless (>98%)'}
+                        )
+                      </span>
+                    </div>
+                  )}
                   {incidentalGloss.length > 0 && (
                     <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-2.5 text-xs">
                       <div className="flex items-center justify-between font-medium text-indigo-300">
@@ -662,7 +753,7 @@ export default function ReadingPage() {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : studyMode === 'sq3r' ? (
                 /* ─── Guided SQ3R Mode (Robinson 1946) ─── */
                 <div className="panel space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -971,6 +1062,113 @@ export default function ReadingPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              ) : (
+                /* ─── Ambient Exposure Ledger & Lexical Coverage ─── */
+                <div className="panel space-y-4">
+                  <div>
+                    <h2 className="font-semibold text-neutral-100 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-amber-400" />
+                      Ambient Vocabulary &amp; Incidental Exposure Ledger
+                    </h2>
+                    <p className="mt-1 text-xs text-neutral-400">
+                      Grounded in Krashen&apos;s comprehensible input (1985) and incidental
+                      vocabulary research (Nation 2001, Webb 2007). Words encountered naturally
+                      across 5+ spaced sessions over &ge;3 distinct days acquire deep conceptual
+                      anchoring.
+                    </p>
+                  </div>
+
+                  {exposureQuery.data?.coverageAnalysis && (
+                    <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-neutral-200">
+                          Current Reading Text Lexical Coverage
+                        </span>
+                        <span className="font-bold text-neutral-100">
+                          {exposureQuery.data.coverageAnalysis.coveragePercent}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-neutral-800 overflow-hidden">
+                        <div
+                          style={{
+                            width: `${Math.min(100, exposureQuery.data.coverageAnalysis.coveragePercent)}%`,
+                          }}
+                          className={`h-full ${
+                            exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                              ? 'bg-emerald-500'
+                              : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                                ? 'bg-rose-500'
+                                : 'bg-indigo-500'
+                          }`}
+                        />
+                      </div>
+                      <p className="text-[11px] text-neutral-400">
+                        {exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                          ? 'Optimal Krashen i+1 band (95–98% known): reading flows smoothly while unfamiliar words are inferred from context.'
+                          : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                            ? 'Frustration band (<95% known): density of novel terms may hinder comprehension. Consider checking gloss definitions.'
+                            : 'Fluency band (>98% known): effortless extensive reading for consolidation.'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold text-neutral-300">
+                      <span>Words You Keep Meeting ({exposureQuery.data?.words?.length ?? 0})</span>
+                      <span className="text-[11px] text-neutral-500">
+                        Threshold: &ge;5 encounters across &ge;3 days
+                      </span>
+                    </div>
+
+                    {(exposureQuery.data?.words ?? []).length === 0 ? (
+                      <p className="py-6 text-center text-xs text-neutral-500">
+                        No vocabulary encounters recorded yet. Start reading to build your ambient
+                        exposure ledger!
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-950/40">
+                        {(exposureQuery.data?.words ?? []).map((word) => (
+                          <div
+                            key={word.normalized}
+                            className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs hover:bg-neutral-900/40 transition-colors"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-neutral-200 text-sm">
+                                  {word.normalized}
+                                </span>
+                                {word.eligibleForPromotion ? (
+                                  <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-medium">
+                                    Ready for SRS ({word.encounterCount}x / {word.distinctDays}d)
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-neutral-500">
+                                    {word.encounterCount} encounters &bull; {word.distinctDays} days
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={promoteWord.isPending}
+                              onClick={() =>
+                                promoteWord.mutate({
+                                  token: word.normalized,
+                                  snippet: `Encountered ${word.encounterCount} times across reading.`,
+                                })
+                              }
+                              className="btn-ghost text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
+                            >
+                              <Plus className="h-3.5 w-3.5 text-indigo-400" />
+                              Turn into Card
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
