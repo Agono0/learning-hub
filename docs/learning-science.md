@@ -459,6 +459,48 @@ the learner's hands.
 
 ---
 
+## 10. Cognitive Power Expansion (2026)
+
+### Targeted Memory Reactivation (TMR) — Rasch & Born (2007); Hu et al. (2020)
+Replaying acoustic cues (earcons) during non-REM slow-wave sleep reactivates neural cell assemblies and accelerates memory consolidation.
+- **Evidence:** Meta-analysis by Hu et al. (2020, *Psychol. Bull.*) establishes an overall effect size of Hedges' $g \approx 0.29$ for cue-specific memory consolidation.
+- **Honest Evidence Boundary:** Consumer devices without EEG polysomnography (PSG) cannot detect real-time NREM sleep stages. Learning HUB pairs unique synthesized earcons during wake review and triggers low-volume cues on a post-sleep onset timer (30–90 min post-sleep), providing accessible acoustic priming while noting clinical PSG limitations.
+- **In Learning HUB:** `packages/core/src/circadian.ts`, `apps/web/src/server/handlers/audio/tmr/cues/route.ts`, table `tmr_cues`.
+- **Status:** ✅
+
+### Pretesting Effect — Richland, Kornell, & Kao (2009); Little & Bjork (2016)
+Attempting to answer questions *prior* to studying material produces retrieval-potentiated learning, significantly enhancing subsequent encoding and long-term retention ($d \approx 0.30$), even when the initial guess is incorrect.
+- **Evidence:** Failing a pretest generates semantic curiosity and highlights conceptual gaps, priming the brain's attention during subsequent study.
+- **Integrity Rule (AGENTS.md Rule 7):** Pretests must never penalize the learner's Elo rating or Bayesian Knowledge Tracing (BKT) mastery probabilities.
+- **In Learning HUB:** `isPretest: true` parameter in `/api/curriculum/practice` and lesson player priming component (`apps/web/app/courses/lesson/page.tsx`).
+- **Status:** ✅
+
+### Incidental Vocabulary Acquisition & Krashen $i+1$ — Krashen (1985); Nation (2001); Webb (2007)
+Acquiring technical terminology and vocabulary naturally through ambient reading rather than isolated flashcard drilling.
+- **Evidence:** Laufer (1989) & Nation (2001) demonstrate that 95%–98% lexical coverage of running text is the critical threshold for optimal incidental acquisition ($i+1$). Below 95%, comprehension collapses; above 98%, text is effortless. Waring & Nation (2004) and Webb (2007) show that 5 to 16 spaced encounters across $\ge 3$ distinct sessions are necessary for durable acquisition.
+- **In Learning HUB:** `packages/core/src/exposure.ts`, append-only table `exposure_events` (migration 026), `/api/reading/exposure`, and the Vocabulary Ledger in `apps/web/app/reading/page.tsx`.
+- **Status:** ✅
+
+### Spaced Repetition Workload Balancer & Load Smoothing
+Eliminating review spikes and backlog overload without compromising the FSRS retrievability guarantee.
+- **Mechanism:** Applies a safe fuzz window bounded by $\pm \min(\text{interval} \times 0.05, 2\text{d})$ to smooth due spikes onto adjacent days, respects weekly easy days (e.g., weekends), and reschedules overdue backlogs prioritized by lowest stability first to salvage fading traces. Card memory parameters (stability, difficulty, reps) remain untouched (Rule 7).
+- **In Learning HUB:** `packages/core/src/workload.ts`, `/api/workload`, and `WorkloadBalancerModal.tsx`.
+- **Status:** ✅
+
+### Metacognitive Calibration & Brier Score — Murphy (1973); Lichtenstein et al. (1982)
+Measuring the exact alignment between predicted memory retention and empirical recall reality.
+- **Evidence:** Learners suffer from severe overconfidence bias (Dunning-Kruger effect). The Brier score ($BS = \frac{1}{N}\sum (p_i - o_i)^2$) strictly quantifies calibration error ($0.0 = \text{perfect}$, $0.25 = \text{uninformative}$).
+- **In Learning HUB:** `computeBrierScore` and `computeCalibrationMetrics` in `packages/core/src/analytics.ts`, reliability diagram in `apps/web/app/analytics/page.tsx`.
+- **Status:** ✅
+
+### Procedural Focus Soundscape & Acoustic Masking
+Dynamic brown/pink noise generation combined with isochronic tempo pulses.
+- **Evidence Calibration:** Acoustic steady noise provides broadband masking that reduces cognitive disruption from conversational distractors. While popular claims of magical brainwave entrainment via binaural beats are largely unproven in meta-analyses, steady acoustic masking and predictable rhythmic pacing reliably support sustained attention.
+- **In Learning HUB:** `packages/core/src/focus-soundscape.ts` and `apps/web/src/components/SoundscapeBar.tsx`.
+- **Status:** ✅
+
+---
+
 ## Planned items summary (current expansion)
 
 > Statuses reconciled with [CHANGELOG.md](../CHANGELOG.md) on 2026-11-07 (M18

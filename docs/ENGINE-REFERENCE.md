@@ -49,7 +49,7 @@ Only `@learning-hub/ai-adapters` may import `ai` / `@ai-sdk/*` — see [ai-provi
 - Schema: `packages/db/src/schema.ts` (45 tables, pushed). Views `v_true_retention`, `v_daily_reviews`, `v_xp_daily` are created automatically on first client connection (raw SQL in `createDb`).
 - Dates: ISO-8601 strings. Day keys: `YYYY-MM-DD` (use `dayKey(date)` from core/streaks).
 - JSON columns: `text('x', { mode: 'json' }).$type<T>()`.
-- Append-only tables: `revlog`, `xp_events`, `friction_events`, `elo_events` — INSERT only, never UPDATE/DELETE.
+- Append-only tables: `revlog`, `xp_events`, `friction_events`, `elo_events`, `cognitive_telemetry_events`, `circadian_audio_sessions`, `dialectic_arena_debates`, `exposure_events` — INSERT only, never UPDATE/DELETE.
 - DB path resolves via `$LEARNING_HUB_DB` or walks up from cwd to the repo root → `data/learning-hub.db`. Images dir: `data/images/`.
 
 ## Project conventions
@@ -69,4 +69,7 @@ Only `@learning-hub/ai-adapters` may import `ai` / `@ai-sdk/*` — see [ai-provi
 - `bkt.ts`: `bktUpdate(pKnown, correct, params?)`; `isMastered(pKnown, attempts)`; `unlockProbability(pKnown)`; `DEFAULT_BKT`.
 - `xp.ts`: `XP_REWARDS`, `levelFromXp`, `xpForLevel`, `levelProgress`.
 - `streaks.ts`: `recordActivity(state, today)`, `dayKey`, `emergencyReview`, `isWeekend`.
+- `workload.ts`: `forecastWorkload(cards, days, asOf)`, `balanceWorkload(cards, opts)`, `catchUpBacklog(overdue, dailyCap, asOf)`. Preserves Rule 7 (only modifies `due` dates).
+- `exposure.ts`: `tokenizeText(text)`, `computeLexicalCoverage(tokens, known)`, `isEligibleForSrsPromotion(encounters)`.
+- `analytics.ts`: `computeBrierScore(reviews)`, `computeCalibrationMetrics(reviews)`.
 - `types.ts`: CardContent per-format shapes, Grade, Confidence, QuestItem, FrictionTrigger, AISettings, helpers.

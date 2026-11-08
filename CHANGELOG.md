@@ -4,6 +4,20 @@ All notable changes to Learning HUB are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Cognitive Power Expansion & Metacognitive Systems
+
+- **Spaced Repetition Workload Balancer & Easy Days** — forecast review load over 30 days, smooth spikes using safe interval fuzz ($\le 5\%$ of interval, capped at 2 days) so retention is preserved, set weekly easy days (e.g. low-load weekends), and recover from overdue backlogs (prioritizing lowest stability first). Strictly adheres to AGENTS.md Rule 7 (modifies `due` dates only).
+- **Ambient Vocabulary Ledger & Krashen $i+1$ Coverage** — tracks naturally encountered vocabulary and technical terms across reading, notes, and lessons. Computes running lexical coverage against the 95–98% Krashen band (Nation 2001; Laufer 1989), records context snippets in append-only `exposure_events` table (migration 026, sync-safe), and surfaces words meeting the 5-encounter spaced threshold (Webb 2007) for 1-click active FSRS flashcard promotion.
+- **Lesson Pretesting Effect** — pretesting scaffold (Richland, Kornell, & Kao 2009; Little & Bjork 2016) before study; answers graded with `isPretest: true` and strictly excluded from BKT mastery and Elo updates (Rule 7).
+- **Metacognitive Calibration Dashboard & Reliability Diagram** — computes exact Brier scores ($BS = \frac{1}{N}\sum(p_i - o_i)^2$; Murphy 1973) and metacognitive bias index (overconfidence vs underconfidence), rendered alongside an interactive visual SVG reliability diagram ($y = x$ ideal reference).
+- **Weakness Radar v2 & Multi-Format Mock Exam Simulator** — temporal proximity confusion pair detection (Underwood 1957), forward FSRS power decay forecasting, 1-click atomic leech decomposition (Wozniak Rule 1), and Bloom's taxonomy mock exam assembly.
+- **On-Device Whisper STT Client & Oral Recall Mode** — fuzzy Levenshtein transcript matching, audio resampling (`resampleTo16k`), and voice evaluation review mode.
+- **Hands-Free Commute & TMR Sleep Reactivation** — nocturnal slow-wave sleep acoustic cueing (Hu et al. 2020: Hedges' $g \approx 0.29$) with honest non-PSG timer calibration.
+- **Walkable 3D Spatial Memory Palaces** — WebXR Three.js visualization of loci routes with reduced-motion support.
+- **Multi-Agent Dialectic Courtroom Arena** — multi-agent thesis/antithesis debates with learner verdicts.
+- **MCP & CLI Full Parity** — `weakness_radar`, `workload_balance`, and `exposure_ledger` available to agents and terminal users.
+- **Browser Extension Quick-Add & Reader Ingestion** — context-menu capture for rapid card creation and full-page reading ingestion.
+
 ### M19 "Foundation" — Public-Release Quality Floor & Sync Roster (in progress)
 
 - **Browser-level smoke tests** — first Playwright suite (`npm run test:ui` from `apps/web`): five ordered critical paths (dashboard renders, a review session grades a card, the sample curriculum imports and opens to a lesson, backup export downloads, snapshot round-trips through Smart Merge restore) against `next dev` on an isolated DB clone — the developer database is never touched. Chromium launches proxy-free; the suite uses `localhost` (Next 16 refuses cross-origin dev resources from `127.0.0.1`).
