@@ -15,8 +15,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import {
   Activity,
-  ArrowDown,
-  ArrowUp,
   BookOpen,
   CalendarClock,
   CirclePlay,
@@ -26,7 +24,6 @@ import {
   Pickaxe,
   Quote as QuoteIcon,
   Repeat2,
-  RotateCcw,
   Sparkles,
   Telescope,
   Timer,

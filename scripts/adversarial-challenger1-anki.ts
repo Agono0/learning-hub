@@ -1,17 +1,5 @@
-import {
-  parseAnkiDecks,
-  parseDelimitedRows,
-  parseTags,
-  sanitizeAnkiHtml,
-  expandReversedCards,
-  expandClozeCard,
-} from '../packages/core/src/anki'
-import {
-  validateCardContent,
-  parseCloze,
-  evaluateClozeAnswer,
-  isCardAnswerCorrect,
-} from '../packages/core/src/cards'
+import { parseAnkiDecks, parseDelimitedRows, expandClozeCard } from '../packages/core/src/anki'
+import { validateCardContent, parseCloze, evaluateClozeAnswer } from '../packages/core/src/cards'
 
 let totalChecks = 0
 let failedChecks = 0
@@ -38,13 +26,31 @@ console.log('===================================================================
 console.log('--- Testing Requirement 1: Multi-column rows starting with "#" ---')
 
 const hashRowCases = [
-  { raw: '#include <iostream>\tC++ stream I/O header\tcpp programming', front: '#include <iostream>' },
+  {
+    raw: '#include <iostream>\tC++ stream I/O header\tcpp programming',
+    front: '#include <iostream>',
+  },
   { raw: '#pragma once\tCompiler header guard directive\tcpp programming', front: '#pragma once' },
-  { raw: '"#define MAX_BUFFER 4096"\tPreprocessor macro\tcpp programming', front: '#define MAX_BUFFER 4096' },
-  { raw: '# Heading 1: Introduction\tMarkdown primary title\tmarkdown', front: '# Heading 1: Introduction' },
-  { raw: '## Heading 2: Subtitle\tMarkdown secondary title\tmarkdown', front: '## Heading 2: Subtitle' },
-  { raw: '### Heading 3: Detail\tMarkdown tertiary title\tmarkdown', front: '### Heading 3: Detail' },
-  { raw: '#!/usr/bin/env bash\tShebang script execution line\tbash shell', front: '#!/usr/bin/env bash' },
+  {
+    raw: '"#define MAX_BUFFER 4096"\tPreprocessor macro\tcpp programming',
+    front: '#define MAX_BUFFER 4096',
+  },
+  {
+    raw: '# Heading 1: Introduction\tMarkdown primary title\tmarkdown',
+    front: '# Heading 1: Introduction',
+  },
+  {
+    raw: '## Heading 2: Subtitle\tMarkdown secondary title\tmarkdown',
+    front: '## Heading 2: Subtitle',
+  },
+  {
+    raw: '### Heading 3: Detail\tMarkdown tertiary title\tmarkdown',
+    front: '### Heading 3: Detail',
+  },
+  {
+    raw: '#!/usr/bin/env bash\tShebang script execution line\tbash shell',
+    front: '#!/usr/bin/env bash',
+  },
   { raw: '# TODO: refactor logic\tPython comment card\tpython', front: '# TODO: refactor logic' },
   { raw: '#region Internal Logic\tC# preprocessor block\tcsharp', front: '#region Internal Logic' },
   { raw: '#1 Ranked Question\tAnswer to question 1\tranking', front: '#1 Ranked Question' },
@@ -53,15 +59,25 @@ const hashRowCases = [
 
 // Test 1.1: TSV with #separator:tab header
 {
-  const tsvHeaderInput = ['#separator:tab', '#deck:C++ & Markdown Deck', ...hashRowCases.map((c) => c.raw)].join('\n')
+  const tsvHeaderInput = [
+    '#separator:tab',
+    '#deck:C++ & Markdown Deck',
+    ...hashRowCases.map((c) => c.raw),
+  ].join('\n')
   const res = parseAnkiDecks(tsvHeaderInput)
-  check('TSV with #separator:tab preserves all 11 hash cards', res.cards.length === 11, { count: res.cards.length })
+  check('TSV with #separator:tab preserves all 11 hash cards', res.cards.length === 11, {
+    count: res.cards.length,
+  })
   check('TSV with #separator:tab logs 0 errors', res.errors.length === 0, { errors: res.errors })
   for (let i = 0; i < hashRowCases.length; i++) {
-    check(`Card ${i} front matches verbatim: ${hashRowCases[i].front}`, res.cards[i]?.front === hashRowCases[i].front, {
-      expected: hashRowCases[i].front,
-      actual: res.cards[i]?.front,
-    })
+    check(
+      `Card ${i} front matches verbatim: ${hashRowCases[i].front}`,
+      res.cards[i]?.front === hashRowCases[i].front,
+      {
+        expected: hashRowCases[i].front,
+        actual: res.cards[i]?.front,
+      },
+    )
   }
 }
 
@@ -69,10 +85,17 @@ const hashRowCases = [
 {
   const tsvNoHeaderInput = hashRowCases.map((c) => c.raw).join('\n')
   const res = parseAnkiDecks(tsvNoHeaderInput)
-  check('TSV without header preserves all 11 hash cards', res.cards.length === 11, { count: res.cards.length })
-  check('TSV without header autodetects tab', res.metadata.separator === '\t', { sep: res.metadata.separator })
+  check('TSV without header preserves all 11 hash cards', res.cards.length === 11, {
+    count: res.cards.length,
+  })
+  check('TSV without header autodetects tab', res.metadata.separator === '\t', {
+    sep: res.metadata.separator,
+  })
   for (let i = 0; i < hashRowCases.length; i++) {
-    check(`Implicit TSV card ${i} front: ${hashRowCases[i].front}`, res.cards[i]?.front === hashRowCases[i].front)
+    check(
+      `Implicit TSV card ${i} front: ${hashRowCases[i].front}`,
+      res.cards[i]?.front === hashRowCases[i].front,
+    )
   }
 }
 
@@ -85,7 +108,9 @@ const hashRowCases = [
     '# Title|H1|md',
   ].join('\n')
   const res = parseAnkiDecks(pipeInput)
-  check('Pipe with #separator:pipe preserves 3 hash cards', res.cards.length === 3, { count: res.cards.length })
+  check('Pipe with #separator:pipe preserves 3 hash cards', res.cards.length === 3, {
+    count: res.cards.length,
+  })
   check('Pipe card 0 front is #include <vector>', res.cards[0]?.front === '#include <vector>')
 }
 
@@ -101,10 +126,14 @@ const hashRowCases = [
     '# Trailing comment',
   ].join('\n')
   const res = parseAnkiDecks(mixedInput)
-  check('Single-column comments dropped, multi-column kept (2 cards)', res.cards.length === 2, { count: res.cards.length })
+  check('Single-column comments dropped, multi-column kept (2 cards)', res.cards.length === 2, {
+    count: res.cards.length,
+  })
   check('Mixed cards[0] is #include', res.cards[0]?.front === '#include <stdio.h>')
   check('Mixed cards[1] is # Heading 1', res.cards[1]?.front === '# Heading 1')
-  check('No errors logged for valid single-column comments', res.errors.length === 0, { errors: res.errors })
+  check('No errors logged for valid single-column comments', res.errors.length === 0, {
+    errors: res.errors,
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -120,11 +149,17 @@ console.log('--- Testing Requirement 2: Delimiter autodetection robustness ---')
     'Items: a, b, c, d, e, f, g, h, i, j, k, l, m\tResult: z, y, x, w, v\ttag4',
   ].join('\n')
   const res = parseAnkiDecks(proseTsv)
-  check('Heavy prose commas do not override tab delimiter', res.metadata.separator === '\t', { sep: res.metadata.separator })
-  check('Heavy prose cards count is 3', res.cards.length === 3, { count: res.cards.length })
-  check('First card front contains all commas intact', res.cards[0]?.front.startsWith('First, second, third'), {
-    front: res.cards[0]?.front,
+  check('Heavy prose commas do not override tab delimiter', res.metadata.separator === '\t', {
+    sep: res.metadata.separator,
   })
+  check('Heavy prose cards count is 3', res.cards.length === 3, { count: res.cards.length })
+  check(
+    'First card front contains all commas intact',
+    res.cards[0]?.front.startsWith('First, second, third'),
+    {
+      front: res.cards[0]?.front,
+    },
+  )
 }
 
 // Test 2.2: HTML entities containing semicolons (&amp;, &lt;, &gt;, &quot;, &#39;, &nbsp;)
@@ -134,7 +169,9 @@ console.log('--- Testing Requirement 2: Delimiter autodetection robustness ---')
     'More &amp; more &amp; more &amp; entities &lt;x&gt; &gt;y&lt;\tBack 2\ttags',
   ].join('\n')
   const res = parseAnkiDecks(htmlEntitiesTsv)
-  check('HTML entity semicolons do not skew TSV autodetection', res.metadata.separator === '\t', { sep: res.metadata.separator })
+  check('HTML entity semicolons do not skew TSV autodetection', res.metadata.separator === '\t', {
+    sep: res.metadata.separator,
+  })
   check('Parsed 2 cards from entity TSV', res.cards.length === 2)
 }
 
@@ -145,7 +182,9 @@ console.log('--- Testing Requirement 2: Delimiter autodetection robustness ---')
     'More &amp; entities|Back 2|tags',
   ].join('\n')
   const res = parseAnkiDecks(htmlEntitiesPipe)
-  check('HTML entity semicolons do not skew pipe autodetection', res.metadata.separator === '|', { sep: res.metadata.separator })
+  check('HTML entity semicolons do not skew pipe autodetection', res.metadata.separator === '|', {
+    sep: res.metadata.separator,
+  })
   check('Parsed 2 cards from entity Pipe file', res.cards.length === 2)
 }
 
@@ -156,7 +195,9 @@ console.log('--- Testing Requirement 2: Delimiter autodetection robustness ---')
     'D &gt; E &amp; F;Second answer;tag2',
   ].join('\n')
   const res = parseAnkiDecks(semiWithEntities)
-  check('Actual semicolon delimiter detected even with entities', res.metadata.separator === ';', { sep: res.metadata.separator })
+  check('Actual semicolon delimiter detected even with entities', res.metadata.separator === ';', {
+    sep: res.metadata.separator,
+  })
   check('Parsed 2 cards from entity Semicolon file', res.cards.length === 2)
 }
 
@@ -178,11 +219,20 @@ const invalidFrontRows = [
 for (const { input, label } of invalidFrontRows) {
   const res = parseAnkiDecks(input)
   check(`Invalid front (${label}) produces 0 cards`, res.cards.length === 0, { cards: res.cards })
-  check(`Invalid front (${label}) logs exactly 1 error`, res.errors.length === 1, { errors: res.errors })
-  check(`Invalid front (${label}) error message is informative`, res.errors[0]?.message === 'Card front cannot be empty', {
-    msg: res.errors[0]?.message,
+  check(`Invalid front (${label}) logs exactly 1 error`, res.errors.length === 1, {
+    errors: res.errors,
   })
-  check(`Invalid front (${label}) stats errorCount matches errors length`, res.stats.errorCount === 1)
+  check(
+    `Invalid front (${label}) error message is informative`,
+    res.errors[0]?.message === 'Card front cannot be empty',
+    {
+      msg: res.errors[0]?.message,
+    },
+  )
+  check(
+    `Invalid front (${label}) stats errorCount matches errors length`,
+    res.stats.errorCount === 1,
+  )
 }
 
 // Test 3.2: Empty back field is ALLOWED and falls back to '...' in content
@@ -190,11 +240,17 @@ for (const { input, label } of invalidFrontRows) {
   const emptyBackInput = 'Front with no back\t\ttags'
   const res = parseAnkiDecks(emptyBackInput)
   check('Empty back field produces 1 valid card', res.cards.length === 1)
-  check('Empty back field card.content.basic.back falls back to "..."', (res.cards[0]?.content as any).basic?.back === '...', {
-    contentBack: (res.cards[0]?.content as any).basic?.back,
-  })
+  check(
+    'Empty back field card.content.basic.back falls back to "..."',
+    (res.cards[0]?.content as any).basic?.back === '...',
+    {
+      contentBack: (res.cards[0]?.content as any).basic?.back,
+    },
+  )
   const val = validateCardContent('basic', res.cards[0]!.content)
-  check('Empty back card passes validateCardContent(basic)', val.ok === true, { errors: val.errors })
+  check('Empty back card passes validateCardContent(basic)', val.ok === true, {
+    errors: val.errors,
+  })
 }
 
 // Test 3.3: Entirely empty row (both front and back empty) in multi-row deck
@@ -202,7 +258,10 @@ for (const { input, label } of invalidFrontRows) {
   const bothEmpty = 'Valid Front\tValid Back\ttags\n\t\t'
   const res = parseAnkiDecks(bothEmpty)
   check('Multi-row with empty row produces 1 valid card', res.cards.length === 1)
-  check('Multi-row with empty row logs error for line 2', res.errors.length === 1 && res.errors[0]?.line === 2)
+  check(
+    'Multi-row with empty row logs error for line 2',
+    res.errors.length === 1 && res.errors[0]?.line === 2,
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,20 +278,30 @@ const emptyClozeCases = [
 for (const input of emptyClozeCases) {
   const res = parseAnkiDecks(input)
   check(`Empty cloze (${input.slice(0, 25)}) parsed 1 card`, res.cards.length === 1)
-  check(`Empty cloze (${input.slice(0, 25)}) classification is 'basic'`, res.cards[0]?.classification === 'basic', {
-    cls: res.cards[0]?.classification,
-  })
+  check(
+    `Empty cloze (${input.slice(0, 25)}) classification is 'basic'`,
+    res.cards[0]?.classification === 'basic',
+    {
+      cls: res.cards[0]?.classification,
+    },
+  )
   const val = validateCardContent('basic', res.cards[0]!.content)
-  check(`Empty cloze (${input.slice(0, 25)}) passes validateCardContent(basic)`, val.ok === true, { errors: val.errors })
+  check(`Empty cloze (${input.slice(0, 25)}) passes validateCardContent(basic)`, val.ok === true, {
+    errors: val.errors,
+  })
 }
 
 // Test 4.2: Mixed empty and non-empty blanks (e.g. {{c1::}} and {{c2::valid}})
 {
   const mixedCloze = 'One {{c1::}} and two {{c2::Valid Answer}}\tNotes\ttags'
   const res = parseAnkiDecks(mixedCloze)
-  check('Mixed empty/valid cloze is classified as cloze', res.cards[0]?.classification === 'cloze', {
-    cls: res.cards[0]?.classification,
-  })
+  check(
+    'Mixed empty/valid cloze is classified as cloze',
+    res.cards[0]?.classification === 'cloze',
+    {
+      cls: res.cards[0]?.classification,
+    },
+  )
   check('Mixed cloze contains valid answer', res.cards[0]?.clozeData?.answers[0] === 'Valid Answer')
   const val = validateCardContent('cloze', res.cards[0]!.content)
   check('Mixed cloze passes validateCardContent(cloze)', val.ok === true, { errors: val.errors })
@@ -270,11 +339,17 @@ for (const { header, data } of markerlessClozeCases) {
   const input = `#separator:tab\n${header}\n${data}`
   const res = parseAnkiDecks(input)
   check(`Markerless cloze (${header}) parsed 1 card`, res.cards.length === 1)
-  check(`Markerless cloze (${header}) classification is 'basic'`, res.cards[0]?.classification === 'basic', {
-    cls: res.cards[0]?.classification,
-  })
+  check(
+    `Markerless cloze (${header}) classification is 'basic'`,
+    res.cards[0]?.classification === 'basic',
+    {
+      cls: res.cards[0]?.classification,
+    },
+  )
   const val = validateCardContent('basic', res.cards[0]!.content)
-  check(`Markerless cloze (${header}) conforms to Zod basic schema`, val.ok === true, { errors: val.errors })
+  check(`Markerless cloze (${header}) conforms to Zod basic schema`, val.ok === true, {
+    errors: val.errors,
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -296,9 +371,13 @@ const badSeparators = [
 for (const badSep of badSeparators) {
   const input = `#separator:${badSep}\nFront\tBack\ttags`
   const res = parseAnkiDecks(input)
-  check(`Bad separator "${badSep}" falls back to autodetection (\t)`, res.metadata.separator === '\t', {
-    actualSep: res.metadata.separator,
-  })
+  check(
+    `Bad separator "${badSep}" falls back to autodetection (\t)`,
+    res.metadata.separator === '\t',
+    {
+      actualSep: res.metadata.separator,
+    },
+  )
   check(`Bad separator "${badSep}" parsed card successfully`, res.cards.length === 1)
   check(`Bad separator "${badSep}" card front is "Front"`, res.cards[0]?.front === 'Front')
 }
@@ -321,10 +400,14 @@ const validSeparators = [
 for (const { header, expected } of validSeparators) {
   const input = `${header}\nFront${expected}Back${expected}tags`
   const res = parseAnkiDecks(input)
-  check(`Valid separator "${header}" resolves to ${JSON.stringify(expected)}`, res.metadata.separator === expected, {
-    actual: res.metadata.separator,
-    expected,
-  })
+  check(
+    `Valid separator "${header}" resolves to ${JSON.stringify(expected)}`,
+    res.metadata.separator === expected,
+    {
+      actual: res.metadata.separator,
+      expected,
+    },
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -332,19 +415,26 @@ for (const { header, expected } of validSeparators) {
 // ─────────────────────────────────────────────────────────────────────────────
 console.log('--- Testing Requirement 7: Empty delimiter infinite loop guard ---')
 
-const emptyDelimCases = [
-  '',
-  null as any,
-  undefined as any,
-]
+const emptyDelimCases = ['', null as any, undefined as any]
 
 for (const d of emptyDelimCases) {
   const t0 = performance.now()
   const rows = parseDelimitedRows('Front1\tBack1\nFront2\tBack2', d)
   const elapsedMs = performance.now() - t0
-  check(`parseDelimitedRows with delimiter ${JSON.stringify(d)} returns immediately (<50ms)`, elapsedMs < 50, { elapsedMs })
-  check(`parseDelimitedRows with delimiter ${JSON.stringify(d)} tokenizes 2 rows using fallback tab`, rows.length === 2, { rows })
-  check(`Row 0 content is ['Front1', 'Back1']`, rows[0]?.[0] === 'Front1' && rows[0]?.[1] === 'Back1')
+  check(
+    `parseDelimitedRows with delimiter ${JSON.stringify(d)} returns immediately (<50ms)`,
+    elapsedMs < 50,
+    { elapsedMs },
+  )
+  check(
+    `parseDelimitedRows with delimiter ${JSON.stringify(d)} tokenizes 2 rows using fallback tab`,
+    rows.length === 2,
+    { rows },
+  )
+  check(
+    `Row 0 content is ['Front1', 'Back1']`,
+    rows[0]?.[0] === 'Front1' && rows[0]?.[1] === 'Back1',
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,7 +444,16 @@ console.log('--- Testing Requirement 8: Generative stress matrix (1,000 cards) -
 
 const generatedRows: string[] = ['#separator:tab', '#deck:Adversarial Generated Deck']
 
-const unicodePrefixes = ['#include <iostream>', '#pragma pack', '# Heading 1', '#!/bin/bash', '普通の質問', 'Вопрос 1', 'Frage schön', 'Emoji 🚀 Question']
+const unicodePrefixes = [
+  '#include <iostream>',
+  '#pragma pack',
+  '# Heading 1',
+  '#!/bin/bash',
+  '普通の質問',
+  'Вопрос 1',
+  'Frage schön',
+  'Emoji 🚀 Question',
+]
 const bodyTypes = [
   'Simple question',
   'Question, with, several, commas, embedded',
@@ -380,8 +479,12 @@ const fuzzRes = parseAnkiDecks(fuzzInput)
 const elapsedFuzz = performance.now() - t0Fuzz
 
 check('1000 generated cards parsed in under 200ms', elapsedFuzz < 200, { elapsedFuzz })
-check('1000 generated cards all successfully parsed', fuzzRes.cards.length === 1000, { count: fuzzRes.cards.length })
-check('0 errors encountered during 1000 card fuzz', fuzzRes.errors.length === 0, { errors: fuzzRes.errors })
+check('1000 generated cards all successfully parsed', fuzzRes.cards.length === 1000, {
+  count: fuzzRes.cards.length,
+})
+check('0 errors encountered during 1000 card fuzz', fuzzRes.errors.length === 0, {
+  errors: fuzzRes.errors,
+})
 
 // Validate EVERY card against validateCardContent oracle
 let schemaFailures = 0
@@ -396,7 +499,9 @@ for (let i = 0; i < fuzzRes.cards.length; i++) {
     }
   }
 }
-check('All 1,000 cards pass validateCardContent schema oracle', schemaFailures === 0, { schemaFailures })
+check('All 1,000 cards pass validateCardContent schema oracle', schemaFailures === 0, {
+  schemaFailures,
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REQUIREMENT 9: Cloze Evaluation Deep Edge Cases
@@ -433,9 +538,19 @@ console.log('--- Testing Requirement 9: Cloze Answer Evaluation Edge Cases ---')
     rawFields: [],
   }
   const expanded = expandClozeCard(card)
-  check('expandClozeCard with duplicate c1 produces 2 sibling cards (c1, c2)', expanded.length === 2, { count: expanded.length })
-  check('Sibling 1 cloze answers contains "sun"', expanded[0]?.clozeData?.answers.includes('sun') === true)
-  check('Sibling 2 cloze answers contains "moon"', expanded[1]?.clozeData?.answers.includes('moon') === true)
+  check(
+    'expandClozeCard with duplicate c1 produces 2 sibling cards (c1, c2)',
+    expanded.length === 2,
+    { count: expanded.length },
+  )
+  check(
+    'Sibling 1 cloze answers contains "sun"',
+    expanded[0]?.clozeData?.answers.includes('sun') === true,
+  )
+  check(
+    'Sibling 2 cloze answers contains "moon"',
+    expanded[1]?.clozeData?.answers.includes('moon') === true,
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

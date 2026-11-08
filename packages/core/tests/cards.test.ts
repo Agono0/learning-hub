@@ -11,7 +11,6 @@ import {
   evaluateTypeinAnswer,
   interleaveQueue,
   isCardAnswerCorrect,
-  normalizeAnswer,
   parseCloze,
   pickBasicFront,
   stripBulletMarker,

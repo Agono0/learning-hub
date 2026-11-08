@@ -5,18 +5,9 @@ import {
   parseDelimitedRows,
   parseTags,
   sanitizeAnkiHtml,
-  expandReversedCards,
   expandClozeCard,
 } from '../src/anki'
-import {
-  clozeSegments,
-  evaluateClozeAnswer,
-  evaluateTypeinAnswer,
-  isCardAnswerCorrect,
-  normalizeAnswer,
-  parseCloze,
-  validateCardContent,
-} from '../src/cards'
+import { evaluateClozeAnswer, isCardAnswerCorrect, validateCardContent } from '../src/cards'
 
 describe('Anki Lexer & RFC 4180 Fuzzing & Boundary Stress Tests', () => {
   it('handles nested quotes, escaped quotes, and empty quoted fields', () => {
@@ -167,10 +158,7 @@ describe('Anki Metadata Comments & Header Variation Tests', () => {
     expect(res.cards[0]!.back).toBe('Back')
 
     // Document BUG 6 fix: If unknown separator name is given, it falls back to autodetected delimiter
-    const unknownSepInput = [
-      '#separator:unknown_custom_separator',
-      'Front\tBack\ttags',
-    ].join('\n')
+    const unknownSepInput = ['#separator:unknown_custom_separator', 'Front\tBack\ttags'].join('\n')
     const badSepRes = parseAnkiDecks(unknownSepInput)
     expect(badSepRes.metadata.separator).toBe('\t')
     expect(badSepRes.cards[0]!.front).toBe('Front')

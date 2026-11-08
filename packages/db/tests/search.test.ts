@@ -8,16 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
-import {
-  initDb,
-  notes,
-  cards,
-  decks,
-  getDb,
-  searchAll,
-  setDb,
-  type LearningHubDB,
-} from '../src/index'
+import { initDb, notes, cards, decks, searchAll, setDb, type LearningHubDB } from '../src/index'
 
 let db: LearningHubDB
 let tmp: string

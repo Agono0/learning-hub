@@ -6,7 +6,6 @@ import * as cardIdRoute from '../../../apps/web/app/api/cards/[id]/route'
 import * as reviewRoute from '../../../apps/web/app/api/review/route'
 import * as goalsRoute from '../../../apps/web/app/api/goals/route'
 import * as focusRoute from '../../../apps/web/app/api/focus/route'
-import * as readingRoute from '../../../apps/web/app/api/reading/route'
 import * as highlightsRoute from '../../../apps/web/app/api/reading/highlights/route'
 import * as notesRoute from '../../../apps/web/app/api/notes/route'
 

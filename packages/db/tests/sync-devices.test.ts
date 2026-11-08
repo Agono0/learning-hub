@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
-import * as schema from '../src/schema'
 import { ensureSchemaIndexes, ensureSchemaTables } from '../src/schema-ddl'
 import { MIGRATIONS, runMigrations } from '../src/migrations'
 import type { RawSqliteHandle } from '../src/index'

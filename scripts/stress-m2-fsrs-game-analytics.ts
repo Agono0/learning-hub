@@ -2,22 +2,14 @@
  * Empirical Stress Harness for Milestone 2 Core Domain:
  * FSRS Retrievability, Game Accuracy & Grading, Diurnal Analytics.
  */
-import {
-  calculateRetrievability,
-  FSRS6_DEFAULT_DECAY,
-  FSRS6_DEFAULT_FACTOR,
-} from '../packages/core/src/fsrs'
+import { calculateRetrievability } from '../packages/core/src/fsrs'
 import {
   calculateMatchingAccuracy,
   gradeForAccuracy,
   calculateMatchingXp,
   evaluateMatchingGame,
 } from '../packages/core/src/games'
-import {
-  timeOfDayPerformance,
-  type TimeOfDayOptions,
-  type HourPerformance,
-} from '../packages/core/src/analytics'
+import { timeOfDayPerformance, type TimeOfDayOptions } from '../packages/core/src/analytics'
 
 interface StressSummary {
   section: string
@@ -48,7 +40,8 @@ runSuite('FSRS Retrievability: Grid Invariant [0, 1]', (s) => {
     for (const t of elapsedDays) {
       s.totalTests++
       const r = calculateRetrievability(stab, t)
-      const valid = typeof r === 'number' && !Number.isNaN(r) && Number.isFinite(r) && r >= 0 && r <= 1
+      const valid =
+        typeof r === 'number' && !Number.isNaN(r) && Number.isFinite(r) && r >= 0 && r <= 1
       if (valid) {
         s.passed++
       } else {
@@ -70,7 +63,7 @@ runSuite('FSRS Retrievability: Calibration Anchor R(S, S) ≈ 0.90', (s) => {
     s.totalTests++
     const r = calculateRetrievability(stab, stab)
     // Calibration anchor: R(S, S) should be 0.90 within 1e-4
-    const diff = Math.abs(r - 0.90)
+    const diff = Math.abs(r - 0.9)
     if (diff < 1e-4) {
       s.passed++
     } else {
@@ -91,7 +84,7 @@ runSuite('FSRS Retrievability: Custom Decay Anchor Invariant', (s) => {
   for (const d of decays) {
     s.totalTests++
     const r = calculateRetrievability(stab, stab, d)
-    const diff = Math.abs(r - 0.90)
+    const diff = Math.abs(r - 0.9)
     if (diff < 1e-4) {
       s.passed++
     } else {
@@ -144,7 +137,8 @@ runSuite('FSRS Retrievability: Random Continuous Fuzzing (10,000 samples)', (s) 
     const stab = (pseudoRandom() - 0.1) * 1000
     const elapsed = (pseudoRandom() - 0.1) * 1000
     const r = calculateRetrievability(stab, elapsed)
-    const valid = typeof r === 'number' && !Number.isNaN(r) && Number.isFinite(r) && r >= 0 && r <= 1
+    const valid =
+      typeof r === 'number' && !Number.isNaN(r) && Number.isFinite(r) && r >= 0 && r <= 1
     if (valid) {
       s.passed++
     } else {
@@ -171,7 +165,12 @@ runSuite('Matching Game: Accuracy Grid Invariant [0, 1]', (s) => {
     for (const misses of missesList) {
       s.totalTests++
       const acc = calculateMatchingAccuracy(pairs, misses)
-      const valid = typeof acc === 'number' && !Number.isNaN(acc) && Number.isFinite(acc) && acc >= 0 && acc <= 1
+      const valid =
+        typeof acc === 'number' &&
+        !Number.isNaN(acc) &&
+        Number.isFinite(acc) &&
+        acc >= 0 &&
+        acc <= 1
       if (valid) {
         s.passed++
       } else {
@@ -189,9 +188,34 @@ runSuite('Matching Game: Accuracy Grid Invariant [0, 1]', (s) => {
 
 runSuite('Matching Game: Grade For Accuracy Range [1, 2, 3, 4]', (s) => {
   const inputs = [
-    -100, -1, -0.0001, 0, 0.001, 0.1, 0.39, 0.39999, 0.4, 0.40001, 0.5,
-    0.69, 0.69999, 0.7, 0.70001, 0.89, 0.89999, 0.9, 0.90001, 0.99, 1.0,
-    1.0001, 1.5, 10, 100, Infinity, -Infinity, NaN
+    -100,
+    -1,
+    -0.0001,
+    0,
+    0.001,
+    0.1,
+    0.39,
+    0.39999,
+    0.4,
+    0.40001,
+    0.5,
+    0.69,
+    0.69999,
+    0.7,
+    0.70001,
+    0.89,
+    0.89999,
+    0.9,
+    0.90001,
+    0.99,
+    1.0,
+    1.0001,
+    1.5,
+    10,
+    100,
+    Infinity,
+    -Infinity,
+    NaN,
   ]
 
   for (const val of inputs) {
@@ -250,9 +274,21 @@ runSuite('Matching Game: calculateMatchingXp Finite & Non-negative', (s) => {
       for (const timeMs of timeMsList) {
         s.totalTests++
         const res = calculateMatchingXp({ pairs, accuracy, timeMs })
-        const validXp = typeof res.xp === 'number' && !Number.isNaN(res.xp) && Number.isFinite(res.xp) && res.xp >= 0
-        const validBase = typeof res.base === 'number' && !Number.isNaN(res.base) && Number.isFinite(res.base) && res.base >= 0
-        const validRecall = typeof res.recallBonus === 'number' && !Number.isNaN(res.recallBonus) && Number.isFinite(res.recallBonus) && res.recallBonus >= 0
+        const validXp =
+          typeof res.xp === 'number' &&
+          !Number.isNaN(res.xp) &&
+          Number.isFinite(res.xp) &&
+          res.xp >= 0
+        const validBase =
+          typeof res.base === 'number' &&
+          !Number.isNaN(res.base) &&
+          Number.isFinite(res.base) &&
+          res.base >= 0
+        const validRecall =
+          typeof res.recallBonus === 'number' &&
+          !Number.isNaN(res.recallBonus) &&
+          Number.isFinite(res.recallBonus) &&
+          res.recallBonus >= 0
         const validSpeed = typeof res.speedBonus === 'boolean'
 
         if (validXp && validBase && validRecall && validSpeed) {
@@ -285,12 +321,22 @@ runSuite('Matching Game: evaluateMatchingGame Finite & Non-negative Properties',
         const validMisses = Number.isFinite(res.misses) && res.misses >= 0
         const validAttempts = Number.isFinite(res.totalAttempts) && res.totalAttempts >= 0
         const validAcc = Number.isFinite(res.accuracy) && res.accuracy >= 0 && res.accuracy <= 1
-        const validScorePct = Number.isFinite(res.scorePct) && res.scorePct >= 0 && res.scorePct <= 100
+        const validScorePct =
+          Number.isFinite(res.scorePct) && res.scorePct >= 0 && res.scorePct <= 100
         const validGrade = [1, 2, 3, 4].includes(res.grade as any)
         const validXp = Number.isFinite(res.xp) && res.xp >= 0
         const validSpeed = typeof res.speedBonus === 'boolean'
 
-        if (validPairs && validMisses && validAttempts && validAcc && validScorePct && validGrade && validXp && validSpeed) {
+        if (
+          validPairs &&
+          validMisses &&
+          validAttempts &&
+          validAcc &&
+          validScorePct &&
+          validGrade &&
+          validXp &&
+          validSpeed
+        ) {
           s.passed++
         } else {
           s.failed++
@@ -313,19 +359,25 @@ runSuite('Matching Game: evaluateMatchingGame Finite & Non-negative Properties',
 runSuite('Analytics: 24-Hour Coverage & UTC Binning', (s) => {
   const reviews = Array.from({ length: 24 }, (_, i) => ({
     reviewedAt: `2026-11-04T${String(i).padStart(2, '0')}:15:00.000Z`,
-    rating: (i % 2 === 0 ? 3 : 1), // alternate correct / not correct
+    rating: i % 2 === 0 ? 3 : 1, // alternate correct / not correct
   }))
 
   const result = timeOfDayPerformance(reviews)
   s.totalTests++
-  if (result.length === 24) s.passed++; else s.failed++
+  if (result.length === 24) s.passed++
+  else s.failed++
 
   for (let h = 0; h < 24; h++) {
     s.totalTests++
     const bin = result[h]!
     const expectedCorrect = h % 2 === 0 ? 1 : 0
     const expectedRate = expectedCorrect === 1 ? 1.0 : 0.0
-    if (bin.hour === h && bin.total === 1 && bin.correct === expectedCorrect && bin.rate === expectedRate) {
+    if (
+      bin.hour === h &&
+      bin.total === 1 &&
+      bin.correct === expectedCorrect &&
+      bin.rate === expectedRate
+    ) {
       s.passed++
     } else {
       s.failed++
@@ -341,18 +393,23 @@ runSuite('Analytics: 24-Hour Coverage & UTC Binning', (s) => {
 
 runSuite('Analytics: Timezone Offsets (+720, -720, +330, 0)', (s) => {
   const baseTime = '2026-11-04T12:00:00.000Z' // 12:00 UTC
-  const testCases: Array<{ opts: TimeOfDayOptions | number; expectedHour: number; label: string }> = [
-    { opts: 0, expectedHour: 12, label: 'UTC 0 (number)' },
-    { opts: { timezoneOffsetMinutes: 0 }, expectedHour: 12, label: 'UTC 0 (opts)' },
-    { opts: { timezoneOffsetHours: 0 }, expectedHour: 12, label: 'UTC 0 (hours opt)' },
-    { opts: 720 / 60, expectedHour: 0, label: '+720 min / +12h (wraps to 00:00 next day)' },
-    { opts: { timezoneOffsetMinutes: 720 }, expectedHour: 0, label: '+720 min (opts)' },
-    { opts: -720 / 60, expectedHour: 0, label: '-720 min / -12h (wraps to 00:00 same/prev day)' },
-    { opts: { timezoneOffsetMinutes: -720 }, expectedHour: 0, label: '-720 min (opts)' },
-    { opts: { timezoneOffsetMinutes: 330 }, expectedHour: 17, label: '+330 min / +5.5h (12:00 + 5:30 -> 17:30 -> hour 17)' },
-    { opts: 5.5, expectedHour: 17, label: '5.5 hours shorthand -> hour 17' },
-    { opts: -330 / 60, expectedHour: 6, label: '-5.5 hours (12:00 - 5:30 -> 06:30 -> hour 6)' },
-  ]
+  const testCases: Array<{ opts: TimeOfDayOptions | number; expectedHour: number; label: string }> =
+    [
+      { opts: 0, expectedHour: 12, label: 'UTC 0 (number)' },
+      { opts: { timezoneOffsetMinutes: 0 }, expectedHour: 12, label: 'UTC 0 (opts)' },
+      { opts: { timezoneOffsetHours: 0 }, expectedHour: 12, label: 'UTC 0 (hours opt)' },
+      { opts: 720 / 60, expectedHour: 0, label: '+720 min / +12h (wraps to 00:00 next day)' },
+      { opts: { timezoneOffsetMinutes: 720 }, expectedHour: 0, label: '+720 min (opts)' },
+      { opts: -720 / 60, expectedHour: 0, label: '-720 min / -12h (wraps to 00:00 same/prev day)' },
+      { opts: { timezoneOffsetMinutes: -720 }, expectedHour: 0, label: '-720 min (opts)' },
+      {
+        opts: { timezoneOffsetMinutes: 330 },
+        expectedHour: 17,
+        label: '+330 min / +5.5h (12:00 + 5:30 -> 17:30 -> hour 17)',
+      },
+      { opts: 5.5, expectedHour: 17, label: '5.5 hours shorthand -> hour 17' },
+      { opts: -330 / 60, expectedHour: 6, label: '-5.5 hours (12:00 - 5:30 -> 06:30 -> hour 6)' },
+    ]
 
   for (const tc of testCases) {
     s.totalTests++
@@ -378,7 +435,11 @@ runSuite('Analytics: Day Boundary Forward Wrap-Around (23h + offset)', (s) => {
   // Review at 23:30:00Z
   const review23 = [{ reviewedAt: '2026-11-04T23:30:00.000Z', rating: 4 }]
 
-  const forwardCases: Array<{ opts: TimeOfDayOptions | number; expectedHour: number; label: string }> = [
+  const forwardCases: Array<{
+    opts: TimeOfDayOptions | number
+    expectedHour: number
+    label: string
+  }> = [
     { opts: 1, expectedHour: 0, label: '23:30 + 1h -> 00:30 (hour 0 next day)' },
     { opts: 2, expectedHour: 1, label: '23:30 + 2h -> 01:30 (hour 1 next day)' },
     { opts: 3.5, expectedHour: 3, label: '23:30 + 3.5h -> 03:00 (hour 3 next day)' },
@@ -407,7 +468,11 @@ runSuite('Analytics: Day Boundary Backward Wrap-Around (00h - offset)', (s) => {
   // Review at 00:30:00Z
   const review00 = [{ reviewedAt: '2026-11-04T00:30:00.000Z', rating: 4 }]
 
-  const backwardCases: Array<{ opts: TimeOfDayOptions | number; expectedHour: number; label: string }> = [
+  const backwardCases: Array<{
+    opts: TimeOfDayOptions | number
+    expectedHour: number
+    label: string
+  }> = [
     { opts: -1, expectedHour: 23, label: '00:30 - 1h -> 23:30 (hour 23 prev day)' },
     { opts: -2, expectedHour: 22, label: '00:30 - 2h -> 22:30 (hour 22 prev day)' },
     { opts: -3.5, expectedHour: 21, label: '00:30 - 3.5h -> 21:00 (hour 21 prev day)' },
@@ -469,7 +534,8 @@ runSuite('Analytics: Backwards Compatibility Without Options', (s) => {
     const bin = defaultRes[sliceHour]!
     if (bin.total === 0) sliceMatches = false
   }
-  if (sliceMatches) s.passed++; else {
+  if (sliceMatches) s.passed++
+  else {
     s.failed++
     s.violations.push({
       test: 'Legacy UTC string slice hour match',

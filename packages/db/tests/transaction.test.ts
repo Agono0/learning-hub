@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core'
-import { eq } from 'drizzle-orm'
 import { withTransaction, writeTransaction } from '../src/transaction'
 
 const testTable = sqliteTable('test_tx', {

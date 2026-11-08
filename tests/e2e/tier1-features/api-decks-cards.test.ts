@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createIsolatedTestDb, type TestDbContext } from '../helpers/test-db'
+import { describe, it, expect } from 'vitest'
 import { callRoute } from '../helpers/api-client'
 import * as decksRoute from '../../../apps/web/app/api/decks/route'
 import * as deckIdRoute from '../../../apps/web/app/api/decks/[id]/route'
@@ -114,7 +113,8 @@ describe('Tier 1: Decks and Cards API Lifecycle', () => {
           question: 'Which brain region is critical for declarative memory consolidation?',
           options: ['Hippocampus', 'Cerebellum', 'Medulla', 'Basal Ganglia'],
           correctIndex: 0,
-          rationale: 'The hippocampus is essential for consolidating short-term memory to long-term memory.',
+          rationale:
+            'The hippocampus is essential for consolidating short-term memory to long-term memory.',
         },
         tags: ['brain'],
       },

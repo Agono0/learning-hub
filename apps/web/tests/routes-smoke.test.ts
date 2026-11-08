@@ -13,7 +13,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 
 // find the workspace root the same way packages/db/src/paths.ts resolveDbPath does
 function findRepoRoot(): string {

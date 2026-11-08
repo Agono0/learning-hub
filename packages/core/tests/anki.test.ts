@@ -3,7 +3,6 @@ import {
   parseAnkiDecks,
   parseDelimitedRows,
   parseTags,
-  expandReversedCards,
   expandClozeCard,
   sanitizeAnkiHtml,
 } from '../src/anki'
@@ -107,10 +106,9 @@ describe('parseAnkiDecks', () => {
   })
 
   it('autodetects comma delimiter when header is missing', () => {
-    const input = [
-      '"Question 1","Answer 1","tag1 tag2"',
-      '"Question 2","Answer 2","tag3"',
-    ].join('\n')
+    const input = ['"Question 1","Answer 1","tag1 tag2"', '"Question 2","Answer 2","tag3"'].join(
+      '\n',
+    )
 
     const result = parseAnkiDecks(input)
     expect(result.metadata.separator).toBe(',')

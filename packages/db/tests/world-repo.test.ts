@@ -2,12 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import * as schema from '../src/schema'
-import { ensureSchemaIndexes, ensureSchemaTables } from '../src/schema-ddl'
-import { MIGRATIONS, runMigrations } from '../src/migrations'
-import { initDb, setDb, type LearningHubDB, type RawSqliteHandle } from '../src/index'
+import { initDb, setDb, type LearningHubDB } from '../src/index'
 import {
   addForestPlot,
   getCoinBalance,

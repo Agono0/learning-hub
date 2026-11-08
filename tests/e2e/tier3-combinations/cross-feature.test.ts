@@ -1,6 +1,18 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import { callRoute } from '../helpers/api-client'
-import { db, decks, skills, cards, revlog, streaks, xpEvents, mastery, eloEvents, notes, noteBullets, sources, highlights } from '@learning-hub/db'
+import {
+  db,
+  decks,
+  skills,
+  cards,
+  revlog,
+  streaks,
+  xpEvents,
+  mastery,
+  eloEvents,
+  noteBullets,
+  highlights,
+} from '@learning-hub/db'
 import { eq } from 'drizzle-orm'
 import * as reviewRoute from '../../../apps/web/app/api/review/route'
 import * as notesRoute from '../../../apps/web/app/api/notes/route'
@@ -22,7 +34,10 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     const [deck] = await db.insert(decks).values({ name: 'Tier 3 Multi-Feature Deck' }).returning()
     deckId = deck!.id
 
-    const [skill] = await db.insert(skills).values({ name: 'Calculus: Derivatives', track: 'Mathematics' }).returning()
+    const [skill] = await db
+      .insert(skills)
+      .values({ name: 'Calculus: Derivatives', track: 'Mathematics' })
+      .returning()
     skillId = skill!.id
 
     // 2. Set up initial card tied to skill
@@ -90,9 +105,12 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     // Seed existing streak of 5 days, best 10
     const [existingStreak] = await db.select().from(streaks).limit(1)
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    
+
     if (existingStreak) {
-      await db.update(streaks).set({ current: 5, best: 10, lastActiveDate: yesterday }).where(eq(streaks.id, existingStreak.id))
+      await db
+        .update(streaks)
+        .set({ current: 5, best: 10, lastActiveDate: yesterday })
+        .where(eq(streaks.id, existingStreak.id))
     } else {
       await db.insert(streaks).values({ current: 5, best: 10, lastActiveDate: yesterday })
     }
@@ -124,7 +142,8 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
       method: 'POST',
       body: {
         title: 'Deep Learning Optimization Note',
-        content: '# Optimization\n\n* What is Adam? :: Adaptive Moment Estimation optimizer\n* What is SGD? :: Stochastic Gradient Descent',
+        content:
+          '# Optimization\n\n* What is Adam? :: Adaptive Moment Estimation optimizer\n* What is SGD? :: Stochastic Gradient Descent',
       },
     })
     expect(noteRes.status).toBe(200)
@@ -170,7 +189,10 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
     // Note Beta referencing Alpha
     const betaRes = await callRoute(notesRoute.POST, {
       method: 'POST',
-      body: { title: 'Brain Maturation', content: 'Maturation includes [[Synaptic Pruning]] in adolescence.' },
+      body: {
+        title: 'Brain Maturation',
+        content: 'Maturation includes [[Synaptic Pruning]] in adolescence.',
+      },
     })
     const betaId = betaRes.data.note.id
 
@@ -231,7 +253,8 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
       body: {
         title: 'DEF-004 Cascade Test Document',
         kind: 'paste',
-        content: 'Research shows that memory decay is exponential because review is omitted. The first principle was discovered in 1885.',
+        content:
+          'Research shows that memory decay is exponential because review is omitted. The first principle was discovered in 1885.',
       },
     })
     const sourceId = srcRes.data.source.id
@@ -242,7 +265,10 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
       body: { sourceId, max: 2 },
     })
 
-    const initialHighlights = await db.select().from(highlights).where(eq(highlights.sourceId, sourceId))
+    const initialHighlights = await db
+      .select()
+      .from(highlights)
+      .where(eq(highlights.sourceId, sourceId))
     expect(initialHighlights.length).toBeGreaterThanOrEqual(1)
 
     // 3. Delete parent reading source via DELETE /api/reading
@@ -253,7 +279,10 @@ describe('Tier 3: Cross-Feature Interactions & Pairwise Subsystems', () => {
         query: { id: sourceId },
       })
       expect(delRes.status).toBe(200)
-      const remainingHighlights = await db.select().from(highlights).where(eq(highlights.sourceId, sourceId))
+      const remainingHighlights = await db
+        .select()
+        .from(highlights)
+        .where(eq(highlights.sourceId, sourceId))
       expect(remainingHighlights.length).toBe(0)
     } catch (err: any) {
       // DEF-004 confirmed: foreign key constraint failed due to uncascaded child highlights

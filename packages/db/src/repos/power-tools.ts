@@ -5,7 +5,7 @@
  */
 import { and, desc, eq, not, sql } from 'drizzle-orm'
 import { cosineSimilarity } from '@learning-hub/core/embeddings'
-import { getDb, type LearningHubDB } from '../index'
+import { getDb } from '../index'
 import { cardEmbeddings, cards, quickCaptures, embeddings } from '../schema'
 
 export interface QuickCaptureRow {
