@@ -4,6 +4,7 @@
  * Provides hands-free audio playback, microphone speech recognition,
  * screen wake-lock, and audio feedback beeps.
  */
+import { getMasterGain, getSharedAudioContext } from './audio-graph'
 
 export interface SpeechSynthesisOptions {
   rate?: number
@@ -48,6 +49,33 @@ export function stopSpeaking(): void {
 /**
  * Listens for user spoken answer via SpeechRecognition API.
  */
+/** The subset of the Web Speech API recognizer used here (not in TS's DOM lib). */
+interface SpeechRecognizer {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechResultEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start(): void
+  abort(): void
+}
+
+interface SpeechResultEvent {
+  results?: ArrayLike<ArrayLike<{ transcript: string }>>
+}
+
+type SpeechRecognizerCtor = new () => SpeechRecognizer
+
+/** The standard or WebKit-prefixed recognizer constructor, if the browser has one. */
+function speechRecognizerCtor(): SpeechRecognizerCtor | null {
+  const w = window as Window & {
+    SpeechRecognition?: SpeechRecognizerCtor
+    webkitSpeechRecognition?: SpeechRecognizerCtor
+  }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
+
 export function listenForSpeech(timeoutMs = 6000): Promise<string> {
   return new Promise((resolve) => {
     if (typeof window === 'undefined') {
@@ -55,8 +83,7 @@ export function listenForSpeech(timeoutMs = 6000): Promise<string> {
       return
     }
 
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const SpeechRecognition = speechRecognizerCtor()
 
     if (!SpeechRecognition) {
       resolve('')
@@ -78,7 +105,7 @@ export function listenForSpeech(timeoutMs = 6000): Promise<string> {
         }
       }, timeoutMs)
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event) => {
         if (!resolved) {
           resolved = true
           clearTimeout(timer)
@@ -118,6 +145,15 @@ export function playChime(
   durationMs = 200,
 ): void {
   if (typeof window === 'undefined') return
+  // One shared AudioContext (audio-graph singleton): browsers cap concurrent
+  // contexts, so creating one per chime made cues go silent after a few.
+  void playChimeOnSharedGraph(freqOrCue, durationMs)
+}
+
+async function playChimeOnSharedGraph(
+  freqOrCue: number | 'listen' | 'success' | 'fail',
+  durationMs: number,
+): Promise<void> {
   try {
     let freq = 520
     if (typeof freqOrCue === 'number') {
@@ -130,10 +166,8 @@ export function playChime(
       freq = 280
     }
 
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioCtx) return
-
-    const ctx = new AudioCtx()
+    const ctx = await getSharedAudioContext()
+    const master = await getMasterGain()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
 
@@ -144,7 +178,11 @@ export function playChime(
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000)
 
     osc.connect(gain)
-    gain.connect(ctx.destination)
+    gain.connect(master)
+    osc.onended = () => {
+      osc.disconnect()
+      gain.disconnect()
+    }
 
     osc.start()
     osc.stop(ctx.currentTime + durationMs / 1000)
@@ -156,10 +194,10 @@ export function playChime(
 /**
  * Requests a screen wake lock so the phone screen stays awake during audio commute sessions.
  */
-export async function acquireWakeLock(): Promise<any> {
+export async function acquireWakeLock(): Promise<WakeLockSentinel | null> {
   if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
     try {
-      return await (navigator as any).wakeLock.request('screen')
+      return await navigator.wakeLock.request('screen')
     } catch {
       return null
     }

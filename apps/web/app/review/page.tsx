@@ -513,14 +513,19 @@ function ReviewPageInner() {
 
   // Commute mode: wake lock management
   useEffect(() => {
-    let releaseWakeLock: (() => void) | null = null
+    // The sentinel is an object with release(), not a function. `cancelled`
+    // covers cleanup running before the lock request resolves.
+    let cancelled = false
+    let wakeLock: WakeLockSentinel | null = null
     if (mode === 'commute' && started) {
-      acquireWakeLock().then((rel) => {
-        releaseWakeLock = rel
+      void acquireWakeLock().then((lock) => {
+        if (cancelled) void lock?.release().catch(() => undefined)
+        else wakeLock = lock
       })
     }
     return () => {
-      if (releaseWakeLock) releaseWakeLock()
+      cancelled = true
+      void wakeLock?.release().catch(() => undefined)
       stopSpeaking()
     }
   }, [mode, started])
