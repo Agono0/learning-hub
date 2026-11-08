@@ -1,5 +1,10 @@
 /**
  * /api/share/import — Imports a deck or course from an `lh-share/v1` envelope or base64 string.
+ *
+ * Share strings come from other people, so their payload is validated exactly
+ * like first-party input: every card through validateCardContent, and courses
+ * through the LHCF parser (parseCurriculum). Any invalid item rejects the whole
+ * import with 422 and path-addressed errors — nothing is half-imported.
  */
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -8,6 +13,8 @@ import {
   shareEnvelopeSchema,
   type ShareEnvelope,
 } from '@learning-hub/core/share'
+import { isCardFormat, validateCardContent } from '@learning-hub/core'
+import { parseCurriculum } from '@learning-hub/core/curriculum'
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { cards, db, decks, importCurriculum, withTransaction } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
@@ -30,11 +37,28 @@ export const POST = withRoute(async (req: Request) => {
   const nowIso = new Date().toISOString()
 
   if (envelope.type === 'deck') {
-    const rawCards = (envelope.data.cards ?? []) as Array<{
-      type: CardFormat
-      content: CardContent
-      tags?: string[]
-    }>
+    const rawCards: unknown[] = Array.isArray(envelope.data.cards) ? envelope.data.cards : []
+    const validCards: Array<{ type: CardFormat; content: CardContent; tags: string[] }> = []
+    const errors: Array<{ path: string; message: string }> = []
+    rawCards.forEach((raw, i) => {
+      const c = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+      if (!isCardFormat(c.type)) {
+        errors.push({ path: `cards.${i}.type`, message: `unknown card type: ${String(c.type)}` })
+        return
+      }
+      const checked = validateCardContent(c.type, c.content)
+      if (!checked.ok) {
+        for (const message of checked.errors) errors.push({ path: `cards.${i}.content`, message })
+        return
+      }
+      const tags = Array.isArray(c.tags)
+        ? c.tags.filter((t): t is string => typeof t === 'string').slice(0, 50)
+        : []
+      validCards.push({ type: c.type, content: checked.data as CardContent, tags })
+    })
+    if (errors.length > 0) {
+      return Response.json({ ok: false, error: 'Invalid cards in share', errors }, { status: 422 })
+    }
 
     return withTransaction((tx) => {
       let targetDeckId = body.targetDeckId
@@ -64,13 +88,13 @@ export const POST = withRoute(async (req: Request) => {
       }
 
       let count = 0
-      for (const c of rawCards) {
+      for (const c of validCards) {
         tx.insert(cards)
           .values({
             deckId: targetDeckId,
             type: c.type,
             content: c.content,
-            tags: c.tags ?? [],
+            tags: c.tags,
             due: nowIso,
             stability: 0,
             difficulty: 0,
@@ -98,10 +122,19 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   // Course import
-  const rawCourse = envelope.data.course as any
-  if (!rawCourse) throw new ApiError(400, 'Invalid course data in envelope')
+  const rawCourse: unknown = envelope.data.course
+  if (!rawCourse || typeof rawCourse !== 'object') {
+    throw new ApiError(400, 'Invalid course data in envelope')
+  }
+  const parsed = parseCurriculum(JSON.stringify(rawCourse), { format: 'json' })
+  if (!parsed.ok) {
+    return Response.json(
+      { ok: false, error: 'Invalid course in share', errors: parsed.errors },
+      { status: 422 },
+    )
+  }
 
-  const report = importCurriculum(rawCourse)
+  const report = importCurriculum(parsed.course)
   return Response.json({
     ok: true,
     type: 'course',

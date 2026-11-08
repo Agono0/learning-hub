@@ -1109,6 +1109,41 @@ describe('max focus mode (milestone 6)', () => {
     expect(importBody.deckId).toBeGreaterThan(0)
     expect(importBody.importedCount).toBe(1)
 
+    // Shared payloads are foreign input: invalid cards/courses are rejected whole (422)
+    const envelope = (type: 'deck' | 'course', data: Record<string, unknown>) => ({
+      v: 1,
+      schema: 'lh-share/v1',
+      type,
+      exportedAt: new Date().toISOString(),
+      metadata: { title: `Evil ${type}`, itemCount: 1 },
+      data,
+      checksum: 'xxxx',
+    })
+    const deckCountBefore = (await (await M.decks.GET()).json()).decks.length
+    const badDeck = await M.shareImport.POST(
+      post('/api/share/import', {
+        payload: envelope('deck', {
+          cards: [
+            { type: 'basic', content: { basic: { front: 'ok', back: 'ok' } } },
+            { type: 'script', content: { html: '<img onerror=x>' } },
+            { type: 'basic', content: { basic: { front: 42 } } },
+          ],
+        }),
+      }),
+    )
+    expect(badDeck.status).toBe(422)
+    const badDeckBody = (await badDeck.json()) as { errors: Array<{ path: string }> }
+    expect(badDeckBody.errors.map((e) => e.path)).toEqual(
+      expect.arrayContaining(['cards.1.type', 'cards.2.content']),
+    )
+    // atomic: not even the valid first card's deck was created
+    expect((await (await M.decks.GET()).json()).decks.length).toBe(deckCountBefore)
+
+    const badCourse = await M.shareImport.POST(
+      post('/api/share/import', { payload: envelope('course', { course: { title: 'no slug' } }) }),
+    )
+    expect(badCourse.status).toBe(422)
+
     // 3. Decentralized Gist Friends Leaderboard
     const lbGetRes = await M.leaderboard.GET()
     expect(lbGetRes.status).toBe(200)

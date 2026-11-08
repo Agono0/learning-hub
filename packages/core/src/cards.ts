@@ -284,6 +284,11 @@ export type ValidatedContent =
   { ok: true; data: CardContent; errors: [] } | { ok: false; data: null; errors: string[] }
 
 /** Validate card content for a format; returns zod issue strings on failure. */
+/** Type guard: `v` names a card format this build can validate and render. */
+export function isCardFormat(v: unknown): v is CardFormat {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(contentSchemas, v)
+}
+
 export function validateCardContent(format: CardFormat, content: unknown): ValidatedContent {
   const schema = contentSchemas[format]
   if (!schema) return { ok: false, data: null, errors: [`unknown format: ${format}`] }
