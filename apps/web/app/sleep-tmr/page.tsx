@@ -3,32 +3,27 @@
 /**
  * Targeted Memory Reactivation (TMR) Sleep Consolidation Suite.
  *
- * Implements:
- * - Nocturnal audio cue scheduler for Slow-Wave Sleep (SWS) memory consolidation.
- * - Sub-awakening volume cap (<= 32dB SPL) and randomized spacing (20-40s).
- * - Procedural harmonic pentatonic earcon synthesis via Web Audio API.
- * - OLED black night mode.
+ * - Queue: cues for cards reviewed today (commute sessions mint them automatically;
+ *   "Queue today's reviews" mints them for everything reviewed in the last 24 h).
+ * - Night mode: replays each card's harmonic earcon (its own partials, from core)
+ *   softly, spaced by a random 20–40 s gap (Rasch & Born 2007; Oudiette & Paller 2013).
+ * - Playback is logged in batches and flushed on exit; a screen wake lock keeps the
+ *   timer alive where the browser supports it. OLED-black night screen.
  * - No raw fetch: uses apiGet/apiSend from @/lib/transport.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Moon, ShieldCheck, Sparkles, Volume2 } from 'lucide-react'
+import { earconPartials, nextTmrCueDelayMs, type TmrEarcon } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { Button, Callout, EmptyState, PageHeader, Panel, Skeleton } from '@/ui'
 
 interface TmrCueItem {
-  id: number
   cardId: number
-  earconSignature: {
-    cardId: number
-    baseFrequency: number
-    harmonicType: string
-    durationMs: number
-    maxDbSpl: number
-  }
+  earconSignature: TmrEarcon
   timesCuedAwake: number
   timesCuedSleep: number
-  lastSleepCueAt?: string
+  lastSleepCueAt?: string | null
 }
 
 interface TmrResponse {
@@ -36,219 +31,261 @@ interface TmrResponse {
   cues: TmrCueItem[]
 }
 
+/** Played card ids are sent to the server in batches of this size (and on exit). */
+const FLUSH_EVERY = 5
+/** Peak gain of one earcon — deliberately a whisper; the device volume does the rest. */
+const EARCON_GAIN = 0.04
+
+function getAudioContext(ref: { current: AudioContext | null }): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  const Ctor =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+  if (!Ctor) return null
+  if (!ref.current) ref.current = new Ctor()
+  if (ref.current.state === 'suspended') void ref.current.resume()
+  return ref.current
+}
+
 export default function SleepTmrPage() {
-  const [nightModeActive, setNightModeActive] = useState(false)
-  const [playedCuesCount, setPlayedCuesCount] = useState(0)
-  const [currentCueFreq, setCurrentCueFreq] = useState<number | null>(null)
+  const [nightMode, setNightMode] = useState(false)
+  const [playedCount, setPlayedCount] = useState(0)
+  const [currentFreq, setCurrentFreq] = useState<number | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const pendingIdsRef = useRef<number[]>([])
 
-  const { data, refetch } = useQuery<TmrResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<TmrResponse>({
     queryKey: ['sleep-tmr-cues'],
-    queryFn: () => apiGet<TmrResponse>('/api/audio/tmr/cues?limit=30'),
-    staleTime: 60_000,
+    queryFn: () => apiGet<TmrResponse>('/api/audio/tmr/cues', { limit: 30 }),
+    // Never swap the list under a running night session.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
   })
-
   const cues = data?.cues ?? []
 
-  const recordSleepMutation = useMutation({
-    mutationFn: (cardIds: number[]) =>
-      apiSend('/api/audio/tmr/cues', 'POST', {
-        action: 'record_sleep_playback',
-        playedCardIds: cardIds,
+  const mintRecent = useMutation({
+    mutationFn: () =>
+      apiSend<{ ok: boolean; minted: number }>('/api/audio/tmr/cues', 'POST', {
+        action: 'mint_recent',
       }),
-    onSuccess: () => refetch(),
+    onSuccess: () => void refetch(),
   })
 
-  // Play harmonic earcon procedurally
-  const playEarcon = (baseFreq: number, durationMs = 250) => {
+  const flushPlayed = () => {
+    const ids = pendingIdsRef.current
+    if (ids.length === 0) return
+    pendingIdsRef.current = []
+    // Fire-and-forget: a lost batch only under-counts sleep cues.
+    void apiSend('/api/audio/tmr/cues', 'POST', {
+      action: 'record_sleep_playback',
+      playedCardIds: ids,
+    }).catch(() => undefined)
+  }
+
+  const playEarcon = (earcon: TmrEarcon) => {
+    const ctx = getAudioContext(audioCtxRef)
+    if (!ctx) return
     try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioCtx()
-      }
-      const ctx = audioCtxRef.current
-      if (ctx.state === 'suspended') ctx.resume()
-
-      // Primary oscillator + Harmonic overtone (perfect fifth: 1.5x)
-      const osc1 = ctx.createOscillator()
-      const osc2 = ctx.createOscillator()
+      const seconds = earcon.durationMs / 1000
       const gain = ctx.createGain()
-
-      // Sub-awakening whisper volume
-      gain.gain.setValueAtTime(0.04, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000)
-
-      osc1.frequency.setValueAtTime(baseFreq, ctx.currentTime)
-      osc2.frequency.setValueAtTime(baseFreq * 1.5, ctx.currentTime)
-
-      osc1.connect(gain)
-      osc2.connect(gain)
+      gain.gain.setValueAtTime(EARCON_GAIN, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.0005, ctx.currentTime + seconds)
       gain.connect(ctx.destination)
-
-      osc1.start()
-      osc2.start()
-      osc1.stop(ctx.currentTime + durationMs / 1000)
-      osc2.stop(ctx.currentTime + durationMs / 1000)
-
-      setCurrentCueFreq(baseFreq)
-      setTimeout(() => setCurrentCueFreq(null), durationMs)
+      for (const freq of earconPartials(earcon)) {
+        const osc = ctx.createOscillator()
+        osc.frequency.setValueAtTime(freq, ctx.currentTime)
+        osc.connect(gain)
+        osc.start()
+        osc.stop(ctx.currentTime + seconds)
+      }
+      setCurrentFreq(earcon.baseFrequency)
+      setTimeout(() => setCurrentFreq(null), earcon.durationMs)
     } catch {
-      /* ignore */
+      /* audio unavailable */
     }
   }
 
-  // Nocturnal playback interval loop
+  // ── Night loop: random 20–40 s gaps, cycling through the queue ────────────
   useEffect(() => {
-    if (!nightModeActive || cues.length === 0) return
-
-    const playedIds: number[] = []
+    if (!nightMode || cues.length === 0) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout>
     let index = 0
 
-    // Play next cue every 25 seconds during sleep
-    const interval = setInterval(() => {
-      if (index >= cues.length) {
-        index = 0 // loop
-      }
-      const cue = cues[index]
-      playEarcon(cue.earconSignature.baseFrequency, cue.earconSignature.durationMs)
-      playedIds.push(cue.cardId)
-      setPlayedCuesCount((c) => c + 1)
-      index++
+    const scheduleNext = () => {
+      timer = setTimeout(() => {
+        if (cancelled) return
+        const cue = cues[index % cues.length]!
+        index++
+        playEarcon(cue.earconSignature)
+        setPlayedCount((c) => c + 1)
+        pendingIdsRef.current.push(cue.cardId)
+        if (pendingIdsRef.current.length >= FLUSH_EVERY) flushPlayed()
+        scheduleNext()
+      }, nextTmrCueDelayMs())
+    }
+    scheduleNext()
 
-      // Record periodically
-      if (playedIds.length >= 5) {
-        recordSleepMutation.mutate([...playedIds])
-        playedIds.length = 0
-      }
-    }, 25000)
+    // Keep the screen (and so the timers) awake where supported.
+    let wakeLock: { release: () => Promise<void> } | null = null
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> }
+    }
+    nav.wakeLock
+      ?.request('screen')
+      .then((lock) => {
+        if (cancelled) void lock.release()
+        else wakeLock = lock
+      })
+      .catch(() => undefined)
 
-    return () => clearInterval(interval)
-  }, [nightModeActive, cues])
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+      void wakeLock?.release().catch(() => undefined)
+      flushPlayed()
+    }
+  }, [nightMode, cues])
 
-  if (nightModeActive) {
+  // Leaving the page: flush and close audio.
+  useEffect(
+    () => () => {
+      flushPlayed()
+      void audioCtxRef.current?.close().catch(() => undefined)
+      audioCtxRef.current = null
+    },
+    [],
+  )
+
+  const startNight = () => {
+    getAudioContext(audioCtxRef) // inside the click: browsers block audio started later
+    setPlayedCount(0)
+    setNightMode(true)
+  }
+
+  const exitNight = () => {
+    setNightMode(false)
+    void refetch()
+  }
+
+  if (nightMode) {
     return (
-      <div className="fixed inset-0 bg-black text-neutral-400 flex flex-col items-center justify-between p-8 z-50 select-none">
-        <div className="text-center pt-8 space-y-2">
-          <Moon className="w-12 h-12 text-blue-500/80 mx-auto animate-pulse" />
-          <h1 className="text-xl font-medium text-neutral-200">Sleep TMR Mode Active</h1>
+      <div className="fixed inset-0 z-50 flex select-none flex-col items-center justify-between bg-black p-8 text-neutral-400">
+        <div className="space-y-2 pt-8 text-center">
+          <Moon className="mx-auto h-12 w-12 animate-pulse text-indigo-400/80" />
+          <h1 className="text-xl font-medium text-neutral-200">Sleep replay running</h1>
           <p className="text-xs text-neutral-500">
-            Sub-awakening audio cues replaying during NREM slow-wave sleep
+            Soft cues every 20–40 seconds. Keep this screen open.
           </p>
         </div>
-
-        <div className="text-center space-y-2">
-          <div className="text-4xl font-mono text-blue-400">{playedCuesCount}</div>
+        <div className="space-y-2 text-center" aria-live="polite">
+          <div className="font-mono text-4xl text-indigo-300">{playedCount}</div>
           <div className="text-xs uppercase tracking-wider text-neutral-500">
-            Nocturnal Replays Tonight
+            cues played tonight
           </div>
-          {currentCueFreq ? (
-            <div className="text-xs text-emerald-400 flex items-center justify-center gap-1">
-              <Sparkles className="w-3 h-3" /> Replaying earcon ({Math.round(currentCueFreq)} Hz)
+          {currentFreq ? (
+            <div className="flex items-center justify-center gap-1 text-xs text-emerald-400">
+              <Sparkles className="h-3 w-3" /> cue ({Math.round(currentFreq)} Hz)
             </div>
           ) : null}
         </div>
-
         <button
-          onClick={() => setNightModeActive(false)}
-          className="w-full max-w-sm py-4 px-6 rounded-2xl bg-neutral-900 border border-neutral-800 text-neutral-300 font-semibold text-sm hover:bg-neutral-800 transition min-h-[48px]"
+          type="button"
+          onClick={exitNight}
+          className="min-h-[48px] w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 px-6 py-4 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800"
         >
-          Wake Up / Exit Night Mode
+          Wake up / exit
         </button>
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
       <PageHeader
-        title="Targeted Memory Reactivation (TMR)"
-        subtitle="Auditory memory cues replayed softly during Slow-Wave Sleep (SWS) to consolidate daytime learning without waking you."
+        title="Sleep Replay (TMR)"
+        subtitle="Soft audio cues paired with today's cards, replayed during sleep to support overnight consolidation."
+        icon={<Moon className="h-5 w-5" />}
       />
 
-      {/* Safety & Protocol Banner */}
-      <div className="p-4 rounded-xl bg-blue-950/40 border border-blue-900/60 flex items-start gap-3">
-        <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-200/90 leading-relaxed space-y-1">
-          <div className="font-semibold text-blue-100">Calibrated Acoustic Safety Threshold</div>
-          <p>
-            Cues are capped at sub-awakening volume (&le; 32dB SPL) and spaced 20–40s apart (Rasch &
-            Born 2007; Oudiette & Paller 2013). Place your phone on your nightstand or use
-            comfortable sleep earbuds.
+      <Callout tone="accent" title="Set a safe volume first">
+        <span className="inline-flex items-start gap-2">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+          Press Preview on a cue and lower your device volume until it is barely audible. The app
+          cannot measure loudness — your device volume sets it. Evidence for sleep cueing comes from
+          lab studies (Rasch &amp; Born 2007); treat it as a small bonus, not a substitute for
+          review.
+        </span>
+      </Callout>
+
+      <Panel
+        title="Tonight's queue"
+        actions={
+          <Button
+            variant="ghost"
+            loading={mintRecent.isPending}
+            onClick={() => mintRecent.mutate()}
+          >
+            Queue today&apos;s reviews
+          </Button>
+        }
+      >
+        {mintRecent.data ? (
+          <p className="text-xs text-neutral-500">
+            {mintRecent.data.minted > 0
+              ? `${mintRecent.data.minted} cards from the last 24 hours queued.`
+              : 'No reviews in the last 24 hours to queue.'}
           </p>
-        </div>
-      </div>
+        ) : null}
+        {mintRecent.isError ? (
+          <p className="text-xs text-rose-600">Could not queue reviews — try again.</p>
+        ) : null}
 
-      {/* Sleep Starter Card */}
-      <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
-              <Moon className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-white">Nocturnal TMR Scheduler</h2>
-              <p className="text-xs text-neutral-400">
-                {cues.length} memory cues ready for overnight consolidation
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            setNightModeActive(true)
-            setPlayedCuesCount(0)
-          }}
-          disabled={cues.length === 0}
-          className="w-full py-3.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold flex items-center justify-center gap-2 transition min-h-[48px]"
-        >
-          <Moon className="w-5 h-5 fill-current" />
-          Start Night Sleep Replay (OLED Mode)
-        </button>
-      </div>
-
-      {/* Queued Cues Catalog */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-neutral-300">Queued TMR Earcon Signatures</h3>
-        {cues.length === 0 ? (
-          <div className="p-6 text-center text-xs text-neutral-500 rounded-xl bg-neutral-900/50 border border-neutral-800">
-            No TMR cues minted yet. Review cards in active review or commute mode to associate
-            memory signatures.
-          </div>
+        {isLoading ? (
+          <Skeleton className="h-24" />
+        ) : isError ? (
+          <Callout tone="danger" title="Could not load cues">
+            <Button variant="ghost" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </Callout>
+        ) : cues.length === 0 ? (
+          <EmptyState icon={<Moon className="h-6 w-6" />} title="Nothing queued yet">
+            Finish a commute audio session, or press “Queue today&apos;s reviews” after studying.
+          </EmptyState>
         ) : (
-          <div className="space-y-2">
-            {cues.map((c) => (
-              <div
-                key={c.id}
-                className="p-3.5 rounded-xl bg-neutral-900/70 border border-neutral-800 flex items-center justify-between gap-3 text-xs"
-              >
-                <div className="space-y-0.5">
-                  <div className="font-medium text-neutral-200">
-                    Card #{c.cardId} Harmonic Earcon
-                  </div>
-                  <div className="text-neutral-400 text-[11px]">
-                    Freq: {c.earconSignature.baseFrequency}Hz · Harmonic:{' '}
-                    {c.earconSignature.harmonicType} · Replayed in sleep: {c.timesCuedSleep}x
-                  </div>
-                </div>
-
-                <button
-                  onClick={() =>
-                    playEarcon(c.earconSignature.baseFrequency, c.earconSignature.durationMs)
-                  }
-                  className="p-2.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition flex items-center gap-1.5 min-h-[40px]"
-                  title="Test hear harmonic signature"
+          <>
+            <Button className="w-full" icon={<Moon className="h-4 w-4" />} onClick={startNight}>
+              Start sleep replay ({cues.length} cues)
+            </Button>
+            <ul className="space-y-2">
+              {cues.map((c) => (
+                <li
+                  key={c.cardId}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 text-xs dark:border-(--hub-border)"
                 >
-                  <Volume2 className="w-4 h-4 text-blue-400" />
-                  <span>Preview</span>
-                </button>
-              </div>
-            ))}
-          </div>
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="font-medium">Card #{c.cardId}</div>
+                    <div className="text-neutral-500">
+                      {c.earconSignature.baseFrequency} Hz ·{' '}
+                      {c.earconSignature.harmonicType.replace('_', ' ')} · replayed{' '}
+                      {c.timesCuedSleep}×
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    icon={<Volume2 className="h-4 w-4" />}
+                    onClick={() => playEarcon(c.earconSignature)}
+                    aria-label={`Preview cue for card ${c.cardId}`}
+                  >
+                    Preview
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-      </div>
+      </Panel>
     </div>
   )
 }

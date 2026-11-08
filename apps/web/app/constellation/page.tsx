@@ -1,27 +1,34 @@
 'use client'
 
 /**
- * Kinetic Cosmic Knowledge Constellation.
+ * Knowledge Constellation — Graph Knowledge Tracing over a prerequisite DAG.
  *
- * Implements:
- * - Real-time force-directed physics graph with particle mass.
- * - Cosmic mastery decay glow based on FSRS Retrievability R(t).
- * - Root-cause prerequisite dependency traces.
+ * - Force-directed canvas of concepts (arrows point prerequisite → dependent),
+ *   coloured by BKT mastery. Click a star (or a list row) to inspect it.
+ * - Add concepts and prerequisite links (the server refuses cycles).
+ * - Record a pass/fail on a concept: belief propagates through the graph and a
+ *   failure names the weakest prerequisite to review first (root-cause diagnosis).
  * - No raw fetch: uses apiGet/apiSend from @/lib/transport.
  */
-import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle } from 'lucide-react'
-import { apiGet } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, Check, Plus, Sparkles, X } from 'lucide-react'
+import { apiGet, apiSend } from '@/lib/transport'
+import {
+  Button,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  SelectField,
+  Skeleton,
+  TextField,
+} from '@/ui'
 
 interface GktNodeData {
   id: string
   title: string
   masteryProb: number
-  slipProb: number
-  guessProb: number
-  transitProb: number
 }
 
 interface GktEdgeData {
@@ -36,232 +43,516 @@ interface GktResponse {
   edges: GktEdgeData[]
 }
 
-interface SimulatedParticle {
+interface RootCauseAlert {
+  culpritPrerequisiteId: string
+  culpritTitle?: string
+  currentMastery: number
+  message: string
+}
+
+interface Particle {
   id: string
   title: string
   x: number
   y: number
   vx: number
   vy: number
-  radius: number
   mastery: number
 }
 
-export default function ConstellationPage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [selectedNode, setSelectedNode] = useState<GktNodeData | null>(null)
-  const particlesRef = useRef<Map<string, SimulatedParticle>>(new Map())
+const CANVAS_HEIGHT = 380
+const QUERY_KEY = ['cognitive-gkt-dag']
 
-  const { data } = useQuery<GktResponse>({
-    queryKey: ['cognitive-gkt-dag'],
+/** Mastery bands shared by the canvas, the list and the legend. */
+function band(mastery: number): 'weak' | 'learning' | 'mastered' {
+  return mastery < 0.6 ? 'weak' : mastery > 0.8 ? 'mastered' : 'learning'
+}
+const BAND_COLOR = { weak: '#ef4444', learning: '#34d399', mastered: '#38bdf8' } as const
+
+/** URL-safe concept id from its title, unique against existing ids. */
+function slugId(title: string, taken: ReadonlySet<string>): string {
+  const base =
+    title
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/[\s_]+/g, '-')
+      .slice(0, 60) || 'concept'
+  let id = base
+  for (let n = 2; taken.has(id); n++) id = `${base}-${n}`
+  return id
+}
+
+function radiusOf(p: { mastery: number }): number {
+  return 10 + p.mastery * 8
+}
+
+export default function ConstellationPage() {
+  const queryClient = useQueryClient()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const particlesRef = useRef<Map<string, Particle>>(new Map())
+  const selectedRef = useRef<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [newTitle, setNewTitle] = useState('')
+  const [linkFrom, setLinkFrom] = useState('')
+  const [linkTo, setLinkTo] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [alert, setAlert] = useState<RootCauseAlert | null>(null)
+  selectedRef.current = selectedId
+
+  const { data, isLoading, isError, refetch } = useQuery<GktResponse>({
+    queryKey: QUERY_KEY,
     queryFn: () => apiGet<GktResponse>('/api/cognitive/gkt'),
   })
+  const nodes = useMemo(() => data?.nodes ?? [], [data])
+  const edges = useMemo(() => data?.edges ?? [], [data])
+  const selected = nodes.find((n) => n.id === selectedId) ?? null
+  const titleOf = (id: string) => nodes.find((n) => n.id === id)?.title ?? id
 
-  const nodes = data?.nodes ?? []
-  const edges = data?.edges ?? []
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+  const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong')
 
-  // Initialize and run the force-directed physics simulation loop
+  const addConcept = useMutation({
+    mutationFn: (title: string) =>
+      apiSend('/api/cognitive/gkt', 'POST', {
+        action: 'upsert_node',
+        nodeData: { id: slugId(title, new Set(nodes.map((n) => n.id))), title },
+      }),
+    onSuccess: () => {
+      setNewTitle('')
+      setFormError(null)
+      void invalidate()
+    },
+    onError: (e) => setFormError(errorText(e)),
+  })
+
+  const addLink = useMutation({
+    mutationFn: (v: { prerequisiteId: string; dependentId: string }) =>
+      apiSend('/api/cognitive/gkt', 'POST', { action: 'add_edge', edgeData: v }),
+    onSuccess: () => {
+      setLinkFrom('')
+      setLinkTo('')
+      setFormError(null)
+      void invalidate()
+    },
+    onError: (e) =>
+      setFormError(
+        /409|cycle/i.test(errorText(e))
+          ? 'That link would create a loop — a prerequisite cannot depend on its own dependent.'
+          : errorText(e),
+      ),
+  })
+
+  const evaluate = useMutation({
+    mutationFn: (v: { nodeId: string; passed: boolean }) =>
+      apiSend<{ ok: boolean; rootCauseAlert?: RootCauseAlert }>('/api/cognitive/gkt', 'POST', {
+        action: 'evaluate_review',
+        ...v,
+      }),
+    onSuccess: (res) => {
+      setAlert(res.rootCauseAlert ?? null)
+      void invalidate()
+    },
+  })
+
+  // ── Physics + rendering ───────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || nodes.length === 0) return
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const width = (canvas.width = canvas.parentElement?.clientWidth ?? 600)
-    const height = (canvas.height = 420)
+    let width = 0
+    const dpr = Math.min(2, window.devicePixelRatio || 1)
+    const resize = () => {
+      width = canvas.parentElement?.clientWidth ?? 600
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(CANVAS_HEIGHT * dpr)
+      canvas.style.height = `${CANVAS_HEIGHT}px`
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    resize()
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null
+    if (canvas.parentElement) observer?.observe(canvas.parentElement)
 
-    // Seed particles if not already initialized
+    // Sync particles with the latest nodes: keep positions, refresh data, drop removed.
     const particles = particlesRef.current
+    const ids = new Set(nodes.map((n) => n.id))
+    for (const id of [...particles.keys()]) if (!ids.has(id)) particles.delete(id)
     nodes.forEach((n, i) => {
-      if (!particles.has(n.id)) {
-        const theta = (i / nodes.length) * 2 * Math.PI
-        const dist = 100 + Math.random() * 60
-        particles.set(n.id, {
-          id: n.id,
-          title: n.title,
-          x: width / 2 + Math.cos(theta) * dist,
-          y: height / 2 + Math.sin(theta) * dist,
-          vx: 0,
-          vy: 0,
-          radius: 12 + n.masteryProb * 8,
-          mastery: n.masteryProb,
-        })
+      const existing = particles.get(n.id)
+      if (existing) {
+        existing.title = n.title
+        existing.mastery = n.masteryProb
+        return
       }
+      const theta = (i / nodes.length) * 2 * Math.PI
+      const dist = 80 + Math.random() * 50
+      particles.set(n.id, {
+        id: n.id,
+        title: n.title,
+        x: width / 2 + Math.cos(theta) * dist,
+        y: CANVAS_HEIGHT / 2 + Math.sin(theta) * dist,
+        vx: 0,
+        vy: 0,
+        mastery: n.masteryProb,
+      })
     })
 
-    let animId: number
-    const stepPhysics = () => {
-      // 1. Repulsive electrostatic force between all particle pairs
-      const list = Array.from(particles.values())
+    let animId = 0
+    const step = () => {
+      const list = [...particles.values()]
       for (let i = 0; i < list.length; i++) {
         for (let j = i + 1; j < list.length; j++) {
-          const p1 = list[i]
-          const p2 = list[j]
-          const dx = p2.x - p1.x
-          const dy = p2.y - p1.y
+          const a = list[i]!
+          const b = list[j]!
+          const dx = b.x - a.x
+          const dy = b.y - a.y
           const distSq = dx * dx + dy * dy + 100
           const dist = Math.sqrt(distSq)
-          const force = 3200 / distSq
-
-          const fx = (dx / dist) * force
-          const fy = (dy / dist) * force
-
-          p1.vx -= fx
-          p1.vy -= fy
-          p2.vx += fx
-          p2.vy += fy
+          const f = 3200 / distSq
+          a.vx -= (dx / dist) * f
+          a.vy -= (dy / dist) * f
+          b.vx += (dx / dist) * f
+          b.vy += (dy / dist) * f
         }
       }
-
-      // 2. Attractive spring force along prerequisite edges
-      for (const edge of edges) {
-        const p1 = particles.get(edge.prerequisiteId)
-        const p2 = particles.get(edge.dependentId)
-        if (p1 && p2) {
-          const dx = p2.x - p1.x
-          const dy = p2.y - p1.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          const targetDist = 90
-          const springForce = (dist - targetDist) * 0.035 * edge.weight
-
-          p1.vx += (dx / dist) * springForce
-          p1.vy += (dy / dist) * springForce
-          p2.vx -= (dx / dist) * springForce
-          p2.vy -= (dy / dist) * springForce
-        }
+      for (const e of edges) {
+        const a = particles.get(e.prerequisiteId)
+        const b = particles.get(e.dependentId)
+        if (!a || !b) continue
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1 // coincident points: no NaN
+        const f = (dist - 90) * 0.035 * e.weight
+        a.vx += (dx / dist) * f
+        a.vy += (dy / dist) * f
+        b.vx -= (dx / dist) * f
+        b.vy -= (dy / dist) * f
       }
-
-      // 3. Center gravity pull & friction damping
       for (const p of list) {
-        const cdx = width / 2 - p.x
-        const cdy = height / 2 - p.y
-        p.vx += cdx * 0.005
-        p.vy += cdy * 0.005
-
-        p.vx *= 0.88
-        p.vy *= 0.88
-
-        p.x += p.vx
-        p.y += p.vy
+        p.vx = (p.vx + (width / 2 - p.x) * 0.005) * 0.88
+        p.vy = (p.vy + (CANVAS_HEIGHT / 2 - p.y) * 0.005) * 0.88
+        p.x = Math.min(width - 12, Math.max(12, p.x + p.vx))
+        p.y = Math.min(CANVAS_HEIGHT - 24, Math.max(12, p.y + p.vy))
       }
 
-      // 4. Render Cosmic Constellation Frame
       ctx.fillStyle = '#05070f'
-      ctx.fillRect(0, 0, width, height)
+      ctx.fillRect(0, 0, width, CANVAS_HEIGHT)
 
-      // Draw Edges with direction arrows
       ctx.lineWidth = 1.5
-      for (const edge of edges) {
-        const p1 = particles.get(edge.prerequisiteId)
-        const p2 = particles.get(edge.dependentId)
-        if (p1 && p2) {
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)'
-          ctx.beginPath()
-          ctx.moveTo(p1.x, p1.y)
-          ctx.lineTo(p2.x, p2.y)
-          ctx.stroke()
-        }
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.55)'
+      for (const e of edges) {
+        const a = particles.get(e.prerequisiteId)
+        const b = particles.get(e.dependentId)
+        if (!a || !b) continue
+        const dx = b.x - a.x
+        const dy = b.y - a.y
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1
+        const ux = dx / dist
+        const uy = dy / dist
+        const tipX = b.x - ux * (radiusOf(b) + 3)
+        const tipY = b.y - uy * (radiusOf(b) + 3)
+        ctx.beginPath()
+        ctx.moveTo(a.x, a.y)
+        ctx.lineTo(tipX, tipY)
+        ctx.stroke()
+        ctx.beginPath() // arrowhead: prerequisite → dependent
+        ctx.moveTo(tipX, tipY)
+        ctx.lineTo(tipX - ux * 8 - uy * 4, tipY - uy * 8 + ux * 4)
+        ctx.lineTo(tipX - ux * 8 + uy * 4, tipY - uy * 8 - ux * 4)
+        ctx.closePath()
+        ctx.fill()
       }
 
-      // Draw Nodes with Mastery Decay Glow
       for (const p of list) {
-        const isDue = p.mastery < 0.6
-        const glowColor = isDue
-          ? 'rgba(239, 68, 68, 0.4)'
-          : p.mastery > 0.8
-            ? 'rgba(56, 189, 248, 0.45)'
-            : 'rgba(52, 211, 153, 0.4)'
-
-        // Outer cosmic aura
-        ctx.fillStyle = glowColor
+        const color = BAND_COLOR[band(p.mastery)]
+        const r = radiusOf(p)
+        ctx.globalAlpha = 0.35
+        ctx.fillStyle = color
         ctx.beginPath()
-        ctx.arc(p.x, p.y, p.radius + 6, 0, 2 * Math.PI)
+        ctx.arc(p.x, p.y, r + 6, 0, 2 * Math.PI)
         ctx.fill()
-
-        // Inner solid core
-        ctx.fillStyle = isDue ? '#ef4444' : p.mastery > 0.8 ? '#38bdf8' : '#34d399'
+        ctx.globalAlpha = 1
         ctx.beginPath()
-        ctx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI)
+        ctx.arc(p.x, p.y, r, 0, 2 * Math.PI)
         ctx.fill()
-
-        // Label
+        if (selectedRef.current === p.id) {
+          ctx.strokeStyle = '#f8fafc'
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, r + 4, 0, 2 * Math.PI)
+          ctx.stroke()
+          ctx.lineWidth = 1.5
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
+        }
         ctx.fillStyle = '#f8fafc'
-        ctx.font = '10px Inter, sans-serif'
+        ctx.font = '11px Inter, system-ui, sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(p.title, p.x, p.y + p.radius + 12)
+        ctx.fillText(p.title, p.x, p.y + r + 13)
       }
-
-      animId = requestAnimationFrame(stepPhysics)
+      animId = requestAnimationFrame(step)
     }
+    animId = requestAnimationFrame(step)
 
-    animId = requestAnimationFrame(stepPhysics)
-    return () => cancelAnimationFrame(animId)
+    return () => {
+      cancelAnimationFrame(animId)
+      observer?.disconnect()
+    }
   }, [nodes, edges])
 
+  const onCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    let hit: string | null = null
+    for (const p of particlesRef.current.values()) {
+      const r = radiusOf(p) + 6
+      if ((p.x - x) ** 2 + (p.y - y) ** 2 <= r * r) hit = p.id
+    }
+    if (hit) {
+      setSelectedId(hit)
+      setAlert(null)
+    }
+  }
+
+  const prerequisites = selected ? edges.filter((e) => e.dependentId === selected.id) : []
+  const dependents = selected ? edges.filter((e) => e.prerequisiteId === selected.id) : []
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
       <PageHeader
-        title="Kinetic Knowledge Constellation"
-        subtitle="A living, force-directed cosmic knowledge graph. Nodes glow brighter with retention and cool down as they near their review deadline."
+        title="Knowledge Constellation"
+        subtitle="Your concepts and their prerequisites. Record how you did on a concept and the graph tells you which foundation to shore up first."
+        icon={<Sparkles className="h-5 w-5" />}
       />
 
-      {/* Interactive Physics Canvas */}
-      <div className="relative rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl bg-[#05070f]">
-        <canvas ref={canvasRef} className="w-full h-[420px] block cursor-pointer" />
-
-        {/* Legend Overlay */}
-        <div className="absolute bottom-3 left-3 flex items-center gap-4 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur border border-white/10 text-[11px] text-neutral-300">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
-            <span>Mastered (&gt; 80%)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <span>Learning (60–80%)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
-            <span>Due for Review</span>
+      {isLoading ? (
+        <Skeleton className="h-96" />
+      ) : isError ? (
+        <Callout tone="danger" title="Could not load the concept graph">
+          <Button variant="ghost" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </Callout>
+      ) : nodes.length === 0 ? (
+        <EmptyState icon={<Sparkles className="h-6 w-6" />} title="No concepts yet">
+          Add your first concept below, then link the ideas it depends on.
+        </EmptyState>
+      ) : (
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-[#05070f] dark:border-(--hub-border)">
+          <canvas
+            ref={canvasRef}
+            onClick={onCanvasClick}
+            className="block w-full cursor-pointer"
+            aria-label="Concept graph. Use the concept list below to inspect concepts with a keyboard."
+            role="img"
+          />
+          <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-3 rounded-lg bg-black/60 px-3 py-1.5 text-[11px] text-neutral-300">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> Mastered (&gt; 80%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Learning (60–80%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Weak (&lt; 60%)
+            </span>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Concept Node List & Prerequisite Inspect */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-neutral-300">Knowledge Topography Nodes</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {nodes.map((node) => {
-            const isDue = node.masteryProb < 0.6
-            return (
-              <div
-                key={node.id}
-                onClick={() => setSelectedNode(node)}
-                className={`p-3.5 rounded-xl border transition cursor-pointer text-xs space-y-1 ${
-                  selectedNode?.id === node.id
-                    ? 'bg-blue-950/40 border-blue-500'
-                    : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'
-                }`}
-              >
-                <div className="flex items-center justify-between font-semibold text-neutral-200">
-                  <span>{node.title}</span>
-                  <span className={isDue ? 'text-red-400' : 'text-sky-400'}>
-                    {Math.round(node.masteryProb * 100)}%
-                  </span>
-                </div>
-                <div className="text-neutral-400 text-[11px] flex items-center gap-1">
-                  <span>Transit prob: {node.transitProb}</span>
-                  {isDue ? (
-                    <span className="ml-auto text-red-400 flex items-center gap-0.5">
-                      <AlertTriangle className="w-3 h-3" /> Due
+      {selected ? (
+        <Panel
+          title={selected.title}
+          actions={
+            <Button
+              variant="ghost"
+              icon={<X className="h-4 w-4" />}
+              aria-label="Close concept details"
+              onClick={() => {
+                setSelectedId(null)
+                setAlert(null)
+              }}
+            />
+          }
+        >
+          <p className="text-sm">
+            Estimated mastery: <strong>{Math.round(selected.masteryProb * 100)}%</strong>
+          </p>
+          <div className="grid gap-3 text-xs sm:grid-cols-2">
+            <div>
+              <div className="font-semibold text-neutral-500">Builds on</div>
+              {prerequisites.length ? (
+                <ul className="mt-1 space-y-0.5">
+                  {prerequisites.map((e) => (
+                    <li key={e.prerequisiteId}>{titleOf(e.prerequisiteId)}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-neutral-500">No prerequisites linked.</p>
+              )}
+            </div>
+            <div>
+              <div className="font-semibold text-neutral-500">Unlocks</div>
+              {dependents.length ? (
+                <ul className="mt-1 space-y-0.5">
+                  {dependents.map((e) => (
+                    <li key={e.dependentId}>{titleOf(e.dependentId)}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-neutral-500">Nothing depends on this yet.</p>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              icon={<Check className="h-4 w-4" />}
+              loading={evaluate.isPending}
+              onClick={() => evaluate.mutate({ nodeId: selected.id, passed: true })}
+            >
+              I got it right
+            </Button>
+            <Button
+              variant="ghost"
+              icon={<X className="h-4 w-4" />}
+              disabled={evaluate.isPending}
+              onClick={() => evaluate.mutate({ nodeId: selected.id, passed: false })}
+            >
+              I got it wrong
+            </Button>
+          </div>
+          {evaluate.isError ? (
+            <p className="text-xs text-rose-600">{errorText(evaluate.error)}</p>
+          ) : null}
+          {alert ? (
+            <Callout tone="warning" title="Review a prerequisite first">
+              <span className="inline-flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                {alert.message}
+              </span>
+            </Callout>
+          ) : evaluate.isSuccess ? (
+            <p className="text-xs text-neutral-500">Recorded — the graph has been updated.</p>
+          ) : null}
+        </Panel>
+      ) : null}
+
+      {nodes.length > 0 ? (
+        <Panel title="Concepts">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+            {nodes.map((node) => {
+              const b = band(node.masteryProb)
+              return (
+                <button
+                  type="button"
+                  key={node.id}
+                  onClick={() => {
+                    setSelectedId(node.id)
+                    setAlert(null)
+                  }}
+                  aria-pressed={selectedId === node.id}
+                  className={`min-h-[44px] rounded-xl border p-3 text-left text-xs transition ${
+                    selectedId === node.id
+                      ? 'border-indigo-500 bg-indigo-600/10'
+                      : 'border-neutral-200 hover:border-neutral-400 dark:border-(--hub-border)'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 font-semibold">
+                    <span className="truncate">{node.title}</span>
+                    <span className={b === 'weak' ? 'text-rose-600' : 'text-sky-600'}>
+                      {Math.round(node.masteryProb * 100)}%
                     </span>
+                  </div>
+                  {b === 'weak' ? (
+                    <div className="mt-1 flex items-center gap-1 text-rose-600">
+                      <AlertTriangle className="h-3 w-3" /> Weak
+                    </div>
                   ) : null}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+                </button>
+              )
+            })}
+          </div>
+        </Panel>
+      ) : null}
+
+      <Panel title="Edit the graph">
+        <form
+          className="flex flex-col gap-2 sm:flex-row sm:items-end"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (newTitle.trim()) addConcept.mutate(newTitle.trim())
+          }}
+        >
+          <TextField
+            label="New concept"
+            className="flex-1"
+            value={newTitle}
+            maxLength={200}
+            placeholder="e.g. Chain rule"
+            onChange={(e) => setNewTitle(e.target.value)}
+          />
+          <Button
+            type="submit"
+            variant="ghost"
+            icon={<Plus className="h-4 w-4" />}
+            loading={addConcept.isPending}
+            disabled={!newTitle.trim()}
+          >
+            Add concept
+          </Button>
+        </form>
+
+        {nodes.length >= 2 ? (
+          <form
+            className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (linkFrom && linkTo)
+                addLink.mutate({ prerequisiteId: linkFrom, dependentId: linkTo })
+            }}
+          >
+            <SelectField
+              label="Prerequisite"
+              value={linkFrom}
+              onChange={(e) => setLinkFrom(e.target.value)}
+            >
+              <option value="">Choose…</option>
+              {nodes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.title}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
+              label="is needed for"
+              value={linkTo}
+              onChange={(e) => setLinkTo(e.target.value)}
+            >
+              <option value="">Choose…</option>
+              {nodes
+                .filter((n) => n.id !== linkFrom)
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.title}
+                  </option>
+                ))}
+            </SelectField>
+            <Button
+              type="submit"
+              variant="ghost"
+              loading={addLink.isPending}
+              disabled={!linkFrom || !linkTo || linkFrom === linkTo}
+            >
+              Link
+            </Button>
+          </form>
+        ) : null}
+        {formError ? <p className="text-xs text-rose-600">{formError}</p> : null}
+      </Panel>
     </div>
   )
 }

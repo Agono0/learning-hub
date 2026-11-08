@@ -75,18 +75,35 @@ export const POST = withRoute(async (req: Request) => {
     }
   }
 
+  // The reviews above are already committed. Everything below is bookkeeping and
+  // must NOT turn the response into an error: a 500 here would invite the client
+  // to retry the whole payload and grade the same cards twice.
+  const warnings: string[] = []
+
   // 2. Record the session after grading, with the honest graded count.
-  const session = recordCircadianAudioSession({
-    sessionMode: body.sessionMode,
-    deckId: body.deckId,
-    cardsReviewed: Math.max(body.cardsReviewed, graded.length),
-    durationSeconds: body.durationSeconds,
-    binauralMode: body.binauralMode,
-    handsFreeInputs: body.handsFreeInputs,
-  })
+  let session: ReturnType<typeof recordCircadianAudioSession> | null = null
+  try {
+    session = recordCircadianAudioSession({
+      sessionMode: body.sessionMode,
+      deckId: body.deckId,
+      cardsReviewed: graded.length,
+      durationSeconds: body.durationSeconds,
+      binauralMode: body.binauralMode,
+      handsFreeInputs: body.handsFreeInputs,
+    })
+  } catch (err) {
+    console.error('[commute] session log failed after grading:', err)
+    warnings.push('session log not saved')
+  }
 
   // 3. Pair today's commute cards with sleep cues (Targeted Memory Reactivation).
-  const tmrCuesMinted = mintTmrCues(graded.map((g) => g.cardId))
+  let tmrCuesMinted = 0
+  try {
+    tmrCuesMinted = mintTmrCues(graded.map((g) => g.cardId))
+  } catch (err) {
+    console.error('[commute] TMR cue minting failed after grading:', err)
+    warnings.push('sleep cues not queued')
+  }
 
   return Response.json({
     ok: true,
@@ -94,5 +111,6 @@ export const POST = withRoute(async (req: Request) => {
     gradedCount: graded.length,
     failed,
     tmrCuesMinted,
+    warnings,
   })
 })

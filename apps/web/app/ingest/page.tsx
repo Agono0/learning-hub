@@ -1,19 +1,21 @@
 'use client'
 
 /**
- * Universal Multi-Modal Ingestion Hub.
+ * Universal Multi-Modal Ingest — turn a lecture transcript, a paper or source code
+ * into review cards.
  *
- * Implements:
- * - YouTube lecture transcripts -> Timestamped flashcards with video deep links.
- * - Academic PDFs -> Formula derivation & definition cards.
- * - GitHub repositories -> Syntax cloze & architecture cards.
- * - No raw fetch: uses apiGet/apiSend from @/lib/transport.
+ * Generation is a preview (nothing is stored); "Save to deck" sends the kept cards
+ * through the normal validated bulk path (`PUT /api/cards?bulk=1`), so ingested
+ * cards obey the same content rules as hand-made ones.
+ * No raw fetch: uses apiGet/apiSend from @/lib/transport.
  */
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { CheckCircle2, Code2, FileText, Sparkles, Video } from 'lucide-react'
-import { apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { CheckCircle2, Code2, FileText, Save, Sparkles, Video } from 'lucide-react'
+import { apiGet, apiSend } from '@/lib/transport'
+import { Button, Callout, PageHeader, Panel, SelectField, Tabs, TextArea, TextField } from '@/ui'
+
+type Media = 'youtube' | 'pdf' | 'code'
 
 interface IngestedCard {
   front: string
@@ -25,182 +27,212 @@ interface IngestedCard {
 interface IngestResponse {
   ok: boolean
   cardCount: number
+  segmentCount?: number
   cards: IngestedCard[]
+  items: Array<{ type: string; content: unknown }>
 }
 
+const KIND: Record<Media, 'youtube_transcript' | 'academic_paper' | 'code_files'> = {
+  youtube: 'youtube_transcript',
+  pdf: 'academic_paper',
+  code: 'code_files',
+}
+
+const PLACEHOLDER: Record<Media, string> = {
+  youtube: '00:01:15.000\nThis is where we introduce gradient descent…',
+  pdf: 'Definition 1.1: An invariant subspace is …\n$$E = mc^2$$',
+  code: 'export function velocity(distance: number, time: number) {\n  return distance / time\n}',
+}
+
+const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong')
+
 export default function UniversalIngestPage() {
-  const [activeMedia, setActiveMedia] = useState<'youtube' | 'pdf' | 'code'>('youtube')
+  const [media, setMedia] = useState<Media>('youtube')
   const [title, setTitle] = useState('')
   const [sourceUrl, setSourceUrl] = useState('')
+  const [filename, setFilename] = useState('main.ts')
   const [rawText, setRawText] = useState('')
-  const [generatedCards, setGeneratedCards] = useState<IngestedCard[]>([])
+  const [deckId, setDeckId] = useState<number | ''>('')
 
-  const ingestMutation = useMutation({
-    mutationFn: () => {
-      const kindMap = {
-        youtube: 'youtube_transcript',
-        pdf: 'academic_paper',
-        code: 'code_files',
-      } as const
-      return apiSend<IngestResponse>('/api/ingest/multimodal', 'POST', {
-        kind: kindMap[activeMedia],
+  const decks = useQuery<{ decks: Array<{ id: number; name: string }> }>({
+    queryKey: ['decks-for-ingest'],
+    queryFn: () => apiGet('/api/decks'),
+  })
+  useEffect(() => {
+    if (deckId === '' && decks.data?.decks[0]) setDeckId(decks.data.decks[0].id)
+  }, [decks.data, deckId])
+
+  const ingest = useMutation({
+    mutationFn: () =>
+      apiSend<IngestResponse>('/api/ingest/multimodal', 'POST', {
+        kind: KIND[media],
         rawContent: rawText,
-        title: title || 'Ingested Resource',
-        sourceUrl: sourceUrl || undefined,
-        filename: activeMedia === 'code' ? 'main.ts' : undefined,
-      })
-    },
-    onSuccess: (res) => {
-      setGeneratedCards(res.cards ?? [])
-    },
+        title: title.trim() || 'Ingested Source',
+        sourceUrl: media === 'youtube' && sourceUrl.trim() ? sourceUrl.trim() : undefined,
+        filename: media === 'code' ? filename.trim() || 'main.ts' : undefined,
+      }),
   })
 
+  const save = useMutation({
+    mutationFn: (items: IngestResponse['items']) =>
+      apiSend<{ ok?: boolean; created: number; cardIds: number[]; rejected: unknown[] }>(
+        '/api/cards?bulk=1',
+        'PUT',
+        {
+          deckId: Number(deckId),
+          items: items.map((i) => ({ ...i, tags: ['ingest', media], source: 'ingest' })),
+        },
+      ),
+  })
+
+  const switchMedia = (m: Media) => {
+    setMedia(m)
+    ingest.reset()
+    save.reset()
+  }
+
+  const result = ingest.data
+  const urlInvalid =
+    media === 'youtube' && sourceUrl.trim() !== '' && !/^https?:\/\//i.test(sourceUrl.trim())
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
       <PageHeader
-        title="Universal Multi-Modal Ingest"
-        subtitle="Convert YouTube lectures, academic papers, or GitHub code into structured review cards and curricula in seconds."
+        title="Universal Ingest"
+        subtitle="Turn a lecture transcript, a paper or source code into review cards. Preview first, then save the cards to a deck."
+        icon={<Sparkles className="h-5 w-5" />}
       />
 
-      {/* Media Type Tabs */}
-      <div className="flex items-center gap-2 p-1 bg-neutral-900 border border-neutral-800 rounded-xl max-w-fit text-xs">
-        <button
-          onClick={() => {
-            setActiveMedia('youtube')
-            setGeneratedCards([])
-          }}
-          className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-            activeMedia === 'youtube'
-              ? 'bg-red-600 text-white'
-              : 'text-neutral-400 hover:text-white'
-          }`}
-        >
-          <Video className="w-3.5 h-3.5" /> YouTube / Lecture
-        </button>
-        <button
-          onClick={() => {
-            setActiveMedia('pdf')
-            setGeneratedCards([])
-          }}
-          className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-            activeMedia === 'pdf' ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-white'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5" /> Research Paper / PDF
-        </button>
-        <button
-          onClick={() => {
-            setActiveMedia('code')
-            setGeneratedCards([])
-          }}
-          className={`px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5 ${
-            activeMedia === 'code'
-              ? 'bg-emerald-600 text-white'
-              : 'text-neutral-400 hover:text-white'
-          }`}
-        >
-          <Code2 className="w-3.5 h-3.5" /> Codebase / GitHub
-        </button>
-      </div>
+      <Tabs
+        label="Source type"
+        value={media}
+        onChange={switchMedia}
+        items={[
+          { key: 'youtube', label: 'Lecture transcript', icon: <Video className="h-4 w-4" /> },
+          { key: 'pdf', label: 'Paper', icon: <FileText className="h-4 w-4" /> },
+          { key: 'code', label: 'Code', icon: <Code2 className="h-4 w-4" /> },
+        ]}
+      />
 
-      {/* Input Form Panel */}
-      <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-neutral-300 mb-1">
-              Source Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={
-                activeMedia === 'youtube'
-                  ? 'e.g. Stanford CS229 Lecture 1'
-                  : activeMedia === 'pdf'
-                    ? 'e.g. Attention Is All You Need'
-                    : 'e.g. Engine Core Module'
-              }
-              className="w-full p-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-neutral-300 mb-1">
-              Source URL (Optional for deep-linking)
-            </label>
-            <input
-              type="text"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-              placeholder={
-                activeMedia === 'youtube'
-                  ? 'https://youtube.com/watch?v=...'
-                  : 'https://arxiv.org/abs/...'
-              }
-              className="w-full p-2.5 rounded-xl bg-neutral-800 border border-neutral-700 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-neutral-300 mb-1">
-            {activeMedia === 'youtube'
-              ? 'Paste Video Transcript (VTT / SRT / Plain text with timestamps)'
-              : activeMedia === 'pdf'
-                ? 'Paste Academic Paper Content (Text with LaTeX $$...$$ equations)'
-                : 'Paste Code / Module Declarations'}
-          </label>
-          <textarea
-            value={rawText}
-            onChange={(e) => setRawText(e.target.value)}
-            placeholder={
-              activeMedia === 'youtube'
-                ? '00:01:15 This is where we discuss backpropagation.\n00:01:45 The gradient flows through the chain rule...'
-                : activeMedia === 'pdf'
-                  ? 'Definition 2.1: An isometric mapping preserves distances.\n$$d(f(x), f(y)) = d(x, y)$$'
-                  : 'export function computeEntropy(prob: number[]): number {\n  return prob.reduce((acc, p) => acc - p * Math.log2(p), 0)\n}'
-            }
-            className="w-full h-36 p-3 rounded-xl bg-neutral-800 border border-neutral-700 text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-blue-500"
+      <Panel>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField
+            label="Title"
+            value={title}
+            maxLength={200}
+            placeholder={media === 'code' ? 'e.g. Physics helpers' : 'e.g. CS229 Lecture 1'}
+            onChange={(e) => setTitle(e.target.value)}
           />
+          {media === 'youtube' ? (
+            <TextField
+              label="Video URL (optional)"
+              hint="Cards link back to the exact moment."
+              type="url"
+              value={sourceUrl}
+              error={urlInvalid ? 'Use an http(s) link' : undefined}
+              placeholder="https://youtube.com/watch?v=…"
+              onChange={(e) => setSourceUrl(e.target.value)}
+            />
+          ) : media === 'code' ? (
+            <TextField
+              label="File name"
+              hint="Sets the code language of the cards."
+              value={filename}
+              maxLength={200}
+              onChange={(e) => setFilename(e.target.value)}
+            />
+          ) : null}
         </div>
-
-        <button
-          onClick={() => ingestMutation.mutate()}
-          disabled={rawText.trim().length < 10 || ingestMutation.isPending}
-          className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center justify-center gap-2 transition min-h-[44px]"
+        <TextArea
+          label={
+            media === 'youtube'
+              ? 'Transcript (VTT, SRT or timestamped lines)'
+              : media === 'pdf'
+                ? 'Paper text'
+                : 'Source code'
+          }
+          className="font-mono"
+          value={rawText}
+          rows={8}
+          placeholder={PLACEHOLDER[media]}
+          onChange={(e) => setRawText(e.target.value)}
+        />
+        <Button
+          className="w-full"
+          icon={<Sparkles className="h-4 w-4" />}
+          loading={ingest.isPending}
+          disabled={rawText.trim().length < 10 || urlInvalid}
+          onClick={() => {
+            save.reset()
+            ingest.mutate()
+          }}
         >
-          <Sparkles className="w-4 h-4" />
-          {ingestMutation.isPending
-            ? 'Processing Multi-Modal Ingestion...'
-            : 'Generate Flashcards & Atoms'}
-        </button>
-      </div>
+          Generate cards
+        </Button>
+        {ingest.isError ? <p className="text-xs text-rose-600">{errorText(ingest.error)}</p> : null}
+      </Panel>
 
-      {/* Generated Output Preview */}
-      {generatedCards.length > 0 ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-neutral-300">
-            <span>Generated Knowledge Atoms ({generatedCards.length})</span>
-            <span className="text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" /> Ready for Review Queue
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            {generatedCards.map((card, idx) => (
-              <div
-                key={idx}
-                className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 space-y-2 text-xs"
+      {result ? (
+        result.cards.length === 0 ? (
+          <Callout tone="warning" title="No cards found">
+            {media === 'youtube'
+              ? 'Put each timestamp on its own line, followed by what was said.'
+              : media === 'pdf'
+                ? 'Cards come from $$display equations$$ and lines starting with “Definition”, “Theorem”, “Lemma”…'
+                : 'Cards come from declarations: function, class, interface, type, enum, const, let, def.'}
+          </Callout>
+        ) : (
+          <Panel title={`Preview (${result.cards.length} cards)`}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <SelectField
+                label="Save to deck"
+                className="flex-1"
+                value={deckId}
+                onChange={(e) => setDeckId(e.target.value ? Number(e.target.value) : '')}
               >
-                <div className="font-medium text-neutral-200 whitespace-pre-wrap">{card.front}</div>
-                <div className="p-2.5 rounded-lg bg-neutral-800/60 border border-neutral-700/60 text-emerald-300 font-mono">
-                  {card.back}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                {(decks.data?.decks ?? []).length === 0 ? (
+                  <option value="">No decks yet</option>
+                ) : null}
+                {(decks.data?.decks ?? []).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </SelectField>
+              <Button
+                icon={<Save className="h-4 w-4" />}
+                loading={save.isPending}
+                disabled={deckId === '' || save.isSuccess}
+                onClick={() => save.mutate(result.items)}
+              >
+                Save {result.cards.length} cards
+              </Button>
+            </div>
+            {save.isError ? <p className="text-xs text-rose-600">{errorText(save.error)}</p> : null}
+            {save.data ? (
+              <p className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="h-4 w-4" />
+                {save.data.created} cards saved — they are in your review queue now.
+                {save.data.rejected.length > 0
+                  ? ` ${save.data.rejected.length} skipped (invalid content).`
+                  : ''}
+              </p>
+            ) : null}
+            <ul className="space-y-2">
+              {result.cards.map((card, idx) => (
+                <li
+                  key={idx}
+                  className="space-y-2 rounded-xl border border-neutral-200 p-3 text-xs dark:border-(--hub-border)"
+                >
+                  <div className="whitespace-pre-wrap break-words font-medium">{card.front}</div>
+                  <div className="whitespace-pre-wrap break-words rounded-lg bg-emerald-600/10 p-2 font-mono text-emerald-700 dark:text-emerald-300">
+                    {card.back}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )
       ) : null}
     </div>
   )
