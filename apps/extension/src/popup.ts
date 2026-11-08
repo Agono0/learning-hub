@@ -1,3 +1,5 @@
+import { STATE_KEYS, isLockActive, normalizePort, parseStoredState } from './state'
+
 document.addEventListener('DOMContentLoaded', async () => {
   const tokenInput = document.getElementById('pairing-token') as HTMLInputElement
   const portInput = document.getElementById('loopback-port') as HTMLInputElement
@@ -7,17 +9,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const activeInfo = document.getElementById('active-info') as HTMLDivElement
   const endsAtSpan = document.getElementById('ends-at') as HTMLSpanElement
 
-  const data = await chrome.storage.local.get(['pairingToken', 'loopbackPort', 'lastKnownLock'])
-  if (data.pairingToken) tokenInput.value = data.pairingToken
-  if (data.loopbackPort) portInput.value = String(data.loopbackPort)
+  const state = parseStoredState(await chrome.storage.local.get(STATE_KEYS))
+  if (state.pairingToken) tokenInput.value = state.pairingToken
+  portInput.value = String(state.loopbackPort)
 
-  const lock = data.lastKnownLock
-  const now = Date.now()
-  if (lock && lock.active && lock.endsAt && new Date(lock.endsAt).getTime() > now) {
+  const lock = state.lastKnownLock
+  if (lock && isLockActive(lock, Date.now())) {
     statusBadge.textContent = 'Active Lockdown'
     statusBadge.className = 'status-badge status-active'
     activeInfo.style.display = 'block'
-    endsAtSpan.textContent = new Date(lock.endsAt).toLocaleTimeString()
+    endsAtSpan.textContent = new Date(lock.endsAt!).toLocaleTimeString()
   } else {
     statusBadge.textContent = 'Idle'
     statusBadge.className = 'status-badge status-idle'
@@ -26,7 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const token = tokenInput.value.trim()
-    const port = Number(portInput.value) || 47615
+    const port = normalizePort(portInput.value)
+    portInput.value = String(port)
     await chrome.storage.local.set({
       pairingToken: token,
       loopbackPort: port,

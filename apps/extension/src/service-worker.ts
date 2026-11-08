@@ -12,28 +12,12 @@ import {
   resolveDeck,
   sendToFirst,
 } from './capture'
+import { DEFAULT_PORT, STATE_KEYS, parseStoredState, type ExtensionState } from './state'
 
-interface ExtensionState {
-  pairingToken?: string
-  loopbackPort?: number
-  lastKnownLock?: {
-    active: boolean
-    endsAt: string | null
-    domains: string[]
-  } | null
-  lastCheckedAt?: number
-}
-
-const DEFAULT_PORT = 47615
 const ALARM_NAME = 'lh-focus-poll'
 
 async function getState(): Promise<ExtensionState> {
-  const data = await chrome.storage.local.get(['pairingToken', 'loopbackPort', 'lastKnownLock'])
-  return {
-    pairingToken: data.pairingToken,
-    loopbackPort: data.loopbackPort || DEFAULT_PORT,
-    lastKnownLock: data.lastKnownLock || null,
-  }
+  return parseStoredState(await chrome.storage.local.get(STATE_KEYS))
 }
 
 async function saveState(patch: Partial<ExtensionState>): Promise<void> {
