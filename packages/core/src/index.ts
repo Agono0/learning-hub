@@ -68,3 +68,14 @@ export * from './knowledge-graph'
 export * from './anki-connect'
 export * from './guilds'
 export * from './world'
+
+// ── Retrieval coverage (fluency-illusion guard) ──
+export * from './retrieval'
+
+// ── Ultimate Cognitive Expansion (Phases 1–5) ──
+export * from './circadian'
+export * from './cognitive-load'
+export * from './gkt'
+export * from './spatial'
+export * from './dialectic'
+export * from './multimodal'

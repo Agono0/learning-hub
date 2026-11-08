@@ -33,6 +33,7 @@ import { pushSubscriptions } from './020-push-subscriptions'
 import { syncDevices } from './021-sync-devices'
 import { goalIfThen } from './022-goal-if-then'
 import { deckDelayedFeedback } from './023-deck-delayed-feedback'
+import { ultimateCognitiveExpansion } from './024-ultimate-cognitive-expansion'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -59,6 +60,7 @@ export const MIGRATIONS: readonly Migration[] = [
   syncDevices,
   goalIfThen,
   deckDelayedFeedback,
+  ultimateCognitiveExpansion,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

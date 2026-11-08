@@ -62,6 +62,7 @@ import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
 import * as searchNl from '../server/handlers/search/nl/route'
 import * as insights from '../server/handlers/insights/route'
+import * as insightsUntested from '../server/handlers/insights/untested/route'
 import * as timeline from '../server/handlers/timeline/route'
 import * as onlineRaids from '../server/handlers/online/raids/route'
 import * as socialFriendsSync from '../server/handlers/social/leaderboard/sync/route'
@@ -143,6 +144,13 @@ import * as curriculumCourseCertificate from '../server/handlers/curriculum/cour
 import * as curriculumLessonId from '../server/handlers/curriculum/lessons/[id]/route'
 import * as curriculumPractice from '../server/handlers/curriculum/practice/route'
 import * as curriculumStageId from '../server/handlers/curriculum/stages/[id]/route'
+import * as audioCircadianCommute from '../server/handlers/audio/circadian/commute/route'
+import * as audioTmrCues from '../server/handlers/audio/tmr/cues/route'
+import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
+import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
+import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
+import * as dialecticArena from '../server/handlers/dialectic/arena/route'
+import * as ingestMultimodal from '../server/handlers/ingest/multimodal/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -271,6 +279,7 @@ add('review/undo', reviewUndo)
 add('search', search)
 add('search/nl', searchNl)
 add('insights', insights)
+add('insights/untested', insightsUntested)
 add('timeline', timeline)
 add('online/raids', onlineRaids)
 add('social/leaderboard/sync', socialFriendsSync)
@@ -306,6 +315,13 @@ add('world/plots', worldPlots)
 add('world/verify/review', worldVerifyReview)
 add('world/verify/focus', worldVerifyFocus)
 add('world/settings', worldSettings)
+add('audio/circadian/commute', audioCircadianCommute)
+add('audio/tmr/cues', audioTmrCues)
+add('cognitive/gkt', cognitiveGkt)
+add('cognitive/load', cognitiveLoad)
+add('spatial/palace-3d', spatialPalace3d)
+add('dialectic/arena', dialecticArena)
+add('ingest/multimodal', ingestMultimodal)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

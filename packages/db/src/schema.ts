@@ -13,10 +13,13 @@ import {
 } from 'drizzle-orm/sqlite-core'
 import type {
   AIProvider,
+  BinauralMode,
   CardContent,
   CardFormat,
   Confidence,
+  DebateTurn,
   FrictionTrigger,
+  HandsFreeGradeEvent,
   HighlightTriage,
   IdeaLinkType,
   IdeaStage,
@@ -24,6 +27,8 @@ import type {
   PARStatus,
   QuestItem,
   SourceKind,
+  SpatialLocus,
+  TmrEarcon,
   XPSource,
 } from '@learning-hub/core'
 import type { LhcfCourse, LhcfLesson } from '@learning-hub/core/curriculum'
@@ -1566,4 +1571,154 @@ export const syncDevices = table(
       .$defaultFn(() => new Date().toISOString()),
   },
   (t) => [uniqueIndex('sync_devices_device_idx').on(t.deviceId)],
+)
+
+// ─── Ultimate Cognitive Expansion (Phases 1–5) ─────────────────────────────
+
+export const circadianAudioSessions = table(
+  'circadian_audio_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sessionMode: text('session_mode').notNull(), // 'commute' | 'sleep_tmr' | 'wind_down'
+    deckId: integer('deck_id').references(() => decks.id, { onDelete: 'set null' }),
+    cardsReviewed: integer('cards_reviewed').notNull().default(0),
+    durationSeconds: integer('duration_seconds').notNull().default(0),
+    binauralMode: text('binaural_mode').$type<BinauralMode>(),
+    handsFreeInputs: text('hands_free_inputs', { mode: 'json' }).$type<HandsFreeGradeEvent[]>(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('circadian_audio_sessions_mode_idx').on(t.sessionMode),
+    index('circadian_audio_sessions_created_idx').on(t.createdAt),
+  ],
+)
+
+export const tmrCues = table(
+  'tmr_cues',
+  {
+    cardId: integer('card_id')
+      .primaryKey()
+      .notNull()
+      .references(() => cards.id, { onDelete: 'cascade' }),
+    earconSignature: text('earcon_signature', { mode: 'json' }).$type<TmrEarcon>().notNull(),
+    timesCuedAwake: integer('times_cued_awake').notNull().default(0),
+    timesCuedSleep: integer('times_cued_sleep').notNull().default(0),
+    lastSleepCueAt: text('last_sleep_cue_at'),
+    overnightGainScore: real('overnight_gain_score'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('tmr_cues_card_idx').on(t.cardId)],
+)
+
+export const conceptDagNodes = table(
+  'concept_dag_nodes',
+  {
+    id: text('id').primaryKey(),
+    courseId: integer('course_id').references(() => courses.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description'),
+    masteryProb: real('mastery_prob').notNull().default(0.1),
+    slipProb: real('slip_prob').notNull().default(0.1),
+    guessProb: real('guess_prob').notNull().default(0.2),
+    transitProb: real('transit_prob').notNull().default(0.15),
+    lastAssessedAt: text('last_assessed_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('concept_dag_nodes_course_idx').on(t.courseId)],
+)
+
+export const conceptDagEdges = table(
+  'concept_dag_edges',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    prerequisiteId: text('prerequisite_id')
+      .notNull()
+      .references(() => conceptDagNodes.id, { onDelete: 'cascade' }),
+    dependentId: text('dependent_id')
+      .notNull()
+      .references(() => conceptDagNodes.id, { onDelete: 'cascade' }),
+    weight: real('weight').notNull().default(1.0),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('concept_dag_edges_prereq_idx').on(t.prerequisiteId),
+    index('concept_dag_edges_dep_idx').on(t.dependentId),
+    uniqueIndex('concept_dag_edges_pair_idx').on(t.prerequisiteId, t.dependentId),
+  ],
+)
+
+export const cognitiveTelemetryEvents = table(
+  'cognitive_telemetry_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cardId: integer('card_id').references(() => cards.id, { onDelete: 'cascade' }),
+    responseLatencyMs: integer('response_latency_ms').notNull(),
+    hesitationVariance: real('hesitation_variance'),
+    editChurnCount: integer('edit_churn_count').notNull().default(0),
+    estimatedCli: real('estimated_cli').notNull(),
+    flowZone: text('flow_zone').notNull(), // 'underload' | 'optimal_flow' | 'overload'
+    interventionApplied: text('intervention_applied'), // 'none' | 'scaffold_hint' | 'worked_example' | 'format_stepdown'
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('cognitive_telemetry_card_idx').on(t.cardId),
+    index('cognitive_telemetry_created_idx').on(t.createdAt),
+  ],
+)
+
+export const palace3dScenes = table(
+  'palace_3d_scenes',
+  {
+    palaceId: integer('palace_id')
+      .primaryKey()
+      .notNull()
+      .references(() => palaces.id, { onDelete: 'cascade' }),
+    environmentArchetype: text('environment_archetype').notNull().default('roman_villa'),
+    cameraStartPos: text('camera_start_pos', { mode: 'json' }).$type<{
+      x: number
+      y: number
+      z: number
+      pitch: number
+      yaw: number
+    }>(),
+    walkPath: text('walk_path', { mode: 'json' }).$type<Array<[number, number, number]>>(),
+    spatialLoci: text('spatial_loci', { mode: 'json' })
+      .$type<SpatialLocus[]>()
+      .notNull()
+      .default([]),
+    audioPanningEnabled: integer('audio_panning_enabled', { mode: 'boolean' })
+      .notNull()
+      .default(true),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('palace_3d_scenes_palace_idx').on(t.palaceId)],
+)
+
+export const dialecticArenaDebates = table(
+  'dialectic_arena_debates',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    topic: text('topic').notNull(),
+    thesisAgentRole: text('thesis_agent_role').notNull(),
+    antithesisAgentRole: text('antithesis_agent_role').notNull(),
+    transcript: text('transcript', { mode: 'json' }).$type<DebateTurn[]>().notNull().default([]),
+    learnerVerdict: text('learner_verdict'),
+    learnerScore: integer('learner_score'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('dialectic_arena_debates_created_idx').on(t.createdAt)],
 )

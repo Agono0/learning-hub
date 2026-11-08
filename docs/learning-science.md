@@ -207,6 +207,10 @@ Testing *is* studying: retrieval changes memory more than restudy.
 - **In Learning HUB:** the entire review session (`apps/web/app/review/`),
   the practice engine (`packages/core/src/practice/`), key terms hidden until
   tapped in lessons, retrieval-first AI guardrails (`packages/core/src/ai/prompts.ts`).
+  The "Read but never tested" dashboard panel names the fluency-illusion gap —
+  sources and notes consumed but never mined into cards (query:
+  `packages/db/src/repos/retrieval.ts`, ranking: `packages/core/src/retrieval.ts`,
+  widget: `apps/web/src/components/dashboard/widgets.tsx`).
 - **Status:** ✅
 
 ### Successive relearning — Rawson & Dunlosky, 2011

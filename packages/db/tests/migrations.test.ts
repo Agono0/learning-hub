@@ -9,6 +9,7 @@ import {
 } from '../src/migrations'
 import { goalIfThen } from '../src/migrations/022-goal-if-then'
 import { deckDelayedFeedback } from '../src/migrations/023-deck-delayed-feedback'
+import { ultimateCognitiveExpansion } from '../src/migrations/024-ultimate-cognitive-expansion'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -96,10 +97,10 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 023 deck-delayed-feedback last, after 022 and 021', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(deckDelayedFeedback)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(goalIfThen)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]?.id).toBe(21)
+  it('registers 024 ultimate-cognitive-expansion last, after 023 and 022', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(ultimateCognitiveExpansion)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(deckDelayedFeedback)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(goalIfThen)
   })
 })
 
@@ -146,5 +147,24 @@ describe('022 goal-if-then', () => {
     const second = runMigrations(raw, [goalIfThen])
     expect(second.applied).toEqual([]) // recorded once; up() not re-run
     expect(() => goalIfThen.up(createMigrationContext(raw))).not.toThrow() // even forced
+  })
+})
+
+describe('024 ultimate-cognitive-expansion', () => {
+  it('creates the 7 cognitive and spatial tables idempotently', () => {
+    const raw = open()
+    const report = runMigrations(raw, [ultimateCognitiveExpansion])
+    expect(report.applied).toEqual([{ id: 24, name: 'ultimate-cognitive-expansion' }])
+    expect(columns(raw, 'circadian_audio_sessions')).toContain('session_mode')
+    expect(columns(raw, 'tmr_cues')).toContain('earcon_signature')
+    expect(columns(raw, 'concept_dag_nodes')).toContain('mastery_prob')
+    expect(columns(raw, 'concept_dag_edges')).toContain('prerequisite_id')
+    expect(columns(raw, 'cognitive_telemetry_events')).toContain('estimated_cli')
+    expect(columns(raw, 'palace_3d_scenes')).toContain('environment_archetype')
+    expect(columns(raw, 'dialectic_arena_debates')).toContain('thesis_agent_role')
+
+    // Idempotent re-run
+    const second = runMigrations(raw, [ultimateCognitiveExpansion])
+    expect(second.applied).toEqual([])
   })
 })

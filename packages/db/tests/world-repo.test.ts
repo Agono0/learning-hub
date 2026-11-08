@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import * as schema from '../src/schema'
 import { ensureSchemaIndexes, ensureSchemaTables } from '../src/schema-ddl'
 import { MIGRATIONS, runMigrations } from '../src/migrations'
-import type { RawSqliteHandle } from '../src/index'
+import { initDb, setDb, type LearningHubDB, type RawSqliteHandle } from '../src/index'
 import {
   addForestPlot,
   getCoinBalance,
@@ -18,6 +21,28 @@ import {
   updateUserAvatar,
   updateWorldSettings,
 } from '../src/repos/world'
+
+// The world repos resolve their connection via getDb() internally, so point
+// the active instance at a throwaway temp database. Never let them touch the
+// developer database (data/learning-hub.db) — zero-mutation invariant
+// (docs/TEST_INFRA.md); a parallel vitest worker opening it concurrently can
+// also hit SQLITE_IOERR/locked on the WAL sidecar files on Windows.
+let tmp: string
+let activeDb: LearningHubDB
+
+beforeAll(async () => {
+  tmp = mkdtempSync(join(tmpdir(), 'lh-world-'))
+  activeDb = await initDb({ path: join(tmp, 'world.db') })
+  setDb(activeDb)
+})
+
+afterAll(() => {
+  try {
+    ;(activeDb as unknown as { close?: () => void }).close?.()
+  } catch {
+    /* ignore */
+  }
+})
 
 describe('3D World & Economy Repositories', () => {
   it('manages user avatar customizations, equipped gear, and unlocked items', () => {
