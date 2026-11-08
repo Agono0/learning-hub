@@ -12,14 +12,14 @@
     "node": ">=22"
   },
   "scripts": {
-    "worker:deploy": "npm run worker:deploy -w @learning-hub/worker --if-present || (cd apps/worker && npx wrangler deploy)",
+    "worker:deploy": "npm run deploy --workspace @learning-hub/worker",
     "dev": "npm run dev --workspace @learning-hub/web",
     "build": "npm run build --workspace @learning-hub/web",
     "build:packages": "npm run build --workspace @learning-hub/core && npm run build --workspace @learning-hub/db && npm run build --workspace @learning-hub/cli",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "vitest run --config vitest.e2e.config.mjs",
     "coverage": "npm run coverage --workspaces --if-present",
-    "check": "npm run typecheck && npm run lint && npm run test",
+    "check": "npm run typecheck && npm run lint && npm run check:scripts && npm run test",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -37,7 +37,8 @@
     "web:tauri": "node scripts/tauri-web.mjs build",
     "preview:tauri": "node scripts/serve-static.mjs apps/web/.next-tauri 4173",
     "new:feature": "node scripts/new-feature.mjs",
-    "docs:curriculum": "tsx scripts/gen-curriculum-docs.ts"
+    "docs:curriculum": "tsx scripts/gen-curriculum-docs.ts",
+    "check:scripts": "node scripts/check-package-scripts.mjs"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
