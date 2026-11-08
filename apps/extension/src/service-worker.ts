@@ -12,6 +12,7 @@ import {
   resolveDeck,
   sendToFirst,
 } from './capture'
+import { buildFrictionReport, decideFriction } from './friction'
 import { DEFAULT_PORT, STATE_KEYS, parseStoredState, type ExtensionState } from './state'
 
 const ALARM_NAME = 'lh-focus-poll'
@@ -216,4 +217,22 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, _tab) => {
       chrome.tabs.update(tabId, { url: chrome.runtime.getURL('blocked.html?reason=settings') })
     }
   }
+})
+
+// ─── Friction capture (F-10) ────────────────────────────────────────────────
+// onBeforeNavigate reports the ORIGINAL target before DNR rewrites it to
+// blocked.html — exactly the attempt we want to record. Fire-and-forget: the
+// report can never block or slow the navigation itself.
+chrome.webNavigation?.onBeforeNavigate?.addListener((details) => {
+  void (async () => {
+    try {
+      const state = await getState()
+      const decision = decideFriction(state.lastKnownLock, details.url, Date.now())
+      if (!decision.record || !decision.payload) return
+      const req = buildFrictionReport({ ...decision, record: true, payload: decision.payload })
+      await sendToFirst(fetch, captureEndpoints(state.loopbackPort || DEFAULT_PORT), req)
+    } catch {
+      // Telemetry must never surface as an extension error.
+    }
+  })()
 })

@@ -103,4 +103,17 @@ declare namespace chrome {
       addListener(cb: (info: OnClickData, tab?: tabs.Tab) => void): void
     }
   }
+  namespace webNavigation {
+    interface BeforeNavigateDetails {
+      tabId: number
+      url: string
+      processId?: number
+      frameId: number
+      parentFrameId?: number
+      timeStamp: number
+    }
+    const onBeforeNavigate: {
+      addListener(cb: (details: BeforeNavigateDetails) => void): void
+    }
+  }
 }

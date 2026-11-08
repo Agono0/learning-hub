@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('pairing-form') as HTMLFormElement
   const savedMsg = document.getElementById('saved-msg') as HTMLDivElement
   const statusBadge = document.getElementById('status-badge') as HTMLSpanElement
+  const frictionBadge = document.getElementById('friction-badge') as HTMLSpanElement | null
   const activeInfo = document.getElementById('active-info') as HTMLDivElement
   const endsAtSpan = document.getElementById('ends-at') as HTMLSpanElement
 
@@ -17,11 +18,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (lock && isLockActive(lock, Date.now())) {
     statusBadge.textContent = 'Active Lockdown'
     statusBadge.className = 'status-badge status-active'
+    if (frictionBadge) {
+      frictionBadge.textContent = 'active'
+      frictionBadge.style.color = '#34d399'
+    }
     activeInfo.style.display = 'block'
     endsAtSpan.textContent = new Date(lock.endsAt!).toLocaleTimeString()
   } else {
     statusBadge.textContent = 'Idle'
     statusBadge.className = 'status-badge status-idle'
+    if (frictionBadge) {
+      frictionBadge.textContent = 'off'
+      frictionBadge.style.color = 'var(--muted)'
+    }
   }
 
   form.addEventListener('submit', async (e) => {
