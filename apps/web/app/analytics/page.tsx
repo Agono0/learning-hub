@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Route, Target } from 'lucide-react'
-import { apiGet, apiSend } from '@/lib/transport'
+import { apiGet } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
 import { PageHeader } from '@/ui'
 
@@ -255,7 +255,7 @@ export default function AnalyticsPage() {
                 />
 
                 {/* Plot points from calibration buckets */}
-                {d.calibration.map((c, i) => {
+                {d.calibration.map((c) => {
                   if (c.actual == null || c.predicted == null) return null
                   // Map predicted [0.5..1.0] -> x [30..220]
                   const x = 30 + ((c.predicted - 0.5) / 0.5) * 190

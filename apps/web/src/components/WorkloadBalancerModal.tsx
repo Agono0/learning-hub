@@ -41,7 +41,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
   const [dailyBacklogCap, setDailyBacklogCap] = useState<number>(30)
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  const { data, isLoading, refetch } = useQuery<WorkloadResponse>({
+  const { data, isLoading } = useQuery<WorkloadResponse>({
     queryKey: ['workload', deckId],
     queryFn: () => {
       const qs = new URLSearchParams({ days: '30' })
