@@ -9,7 +9,7 @@
  */
 import { and, eq, ne } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, cards, noteBullets } from '@learning-hub/db'
+import { db, cards, linkNoteBulletCard, noteBullets } from '@learning-hub/db'
 import { lintCard, syncBulletCard, validateCardContent, type LintResult } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
@@ -66,10 +66,7 @@ export const POST = withRoute(async (req: Request) => {
       .returning()
   }
 
-  await db
-    .update(noteBullets)
-    .set({ cardId: card!.id, updatedAt: new Date().toISOString() })
-    .where(eq(noteBullets.id, body.bulletId))
+  linkNoteBulletCard(body.bulletId, card!.id)
 
   const siblings = await db
     .select()
