@@ -1272,7 +1272,7 @@ function AiGenerateModal({
   // manual mode: validated transport cards → regular bulk insert (no AI in the loop)
   const insertManual = useMutation({
     mutationFn: async (cards: { text: string; answers: string[]; hint?: string }[]) => {
-      const body = await apiSend<{ ok?: boolean; created?: number[]; error?: string }>(
+      const body = await apiSend<{ ok?: boolean; created?: number; error?: string }>(
         '/api/cards?bulk=1',
         'PUT',
         {
@@ -1286,7 +1286,7 @@ function AiGenerateModal({
         },
       )
       if (!body.ok) throw new Error(body.error ?? 'saving cards failed')
-      return body.created!.length
+      return body.created ?? 0 // the bulk route returns a count (ids are in cardIds)
     },
     onSuccess: (n) => {
       setCreated(n)

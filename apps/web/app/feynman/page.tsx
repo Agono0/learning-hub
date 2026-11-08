@@ -160,7 +160,7 @@ export default function FeynmanPage() {
           }
         })
         .filter((i) => i.content.basic.front && i.content.basic.back)
-      const body = await apiSend<{ ok?: boolean; created?: number[]; error?: string }>(
+      const body = await apiSend<{ ok?: boolean; created?: number; error?: string }>(
         '/api/cards?bulk=1',
         'PUT',
         {
@@ -169,7 +169,7 @@ export default function FeynmanPage() {
         },
       )
       if (!body.ok) throw new Error(body.error ?? 'saving cards failed')
-      return body.created!.length
+      return body.created ?? 0 // the bulk route returns a count (ids are in cardIds)
     },
     onSuccess: (n) => setSavedCards(n),
     onError: (e) => setError(e instanceof Error ? e.message : String(e)),
