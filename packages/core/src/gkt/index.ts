@@ -84,8 +84,8 @@ export function wouldIntroduceCycle(
 /**
  * Executes Bayesian belief propagation across the knowledge graph:
  * 1. Computes local posterior mastery P(L_target | outcome).
- * 2. If failed, propagates blame upstream to prerequisites. If any prerequisite
- *    mastery falls below 0.60, triggers a Root-Cause Diagnosis.
+ * 2. If failed, propagates blame upstream to direct prerequisites. If any prerequisite
+ *    mastery falls below 0.60, triggers a Root-Cause Diagnosis naming the weakest one.
  * 3. If passed, propagates positive credit downstream to dependents.
  */
 export function propagateGktBelief(
@@ -132,11 +132,14 @@ export function propagateGktBelief(
 
       // Blame factor proportional to edge weight and slip inverse
       const blame = 0.2 * edge.weight * (1 - target.slipProb) * (1 - parent.masteryProb)
-      const degraded = Math.max(0.05, Math.round((parent.masteryProb - blame) * 1000) / 1000)
+      // Floor at 0.05 — but never ABOVE the parent's current belief: a failure
+      // downstream must not raise an already-weaker prerequisite.
+      const floor = Math.min(0.05, parent.masteryProb)
+      const degraded = Math.max(floor, Math.round((parent.masteryProb - blame) * 1000) / 1000)
       updatedMasteries[parent.id] = degraded
 
-      // Flag root cause if prerequisite is weak (< 0.60)
-      if (degraded < 0.6 && !rootCauseAlert) {
+      // Root cause = the WEAKEST prerequisite below 0.60 (ties: first edge wins).
+      if (degraded < 0.6 && (!rootCauseAlert || degraded < rootCauseAlert.currentMastery)) {
         rootCauseAlert = {
           culpritPrerequisiteId: parent.id,
           culpritTitle: parent.title,
@@ -206,4 +209,16 @@ export function topologicalSortGkt(nodes: GktNode[], edges: GktEdge[]): GktNode[
 
   // If sorted count < nodes count, a cycle exists; return original list as fallback
   return sorted.length === nodes.length ? sorted : nodes
+}
+
+/**
+ * Keep only edges whose BOTH endpoints are in `nodeIds` — a course-scoped graph must
+ * not carry edges into nodes it does not contain (they would be silently dropped by
+ * propagation and confuse the topological sort's in-degree counts).
+ */
+export function edgesWithinNodes<E extends { prerequisiteId: string; dependentId: string }>(
+  edges: readonly E[],
+  nodeIds: ReadonlySet<string>,
+): E[] {
+  return edges.filter((e) => nodeIds.has(e.prerequisiteId) && nodeIds.has(e.dependentId))
 }

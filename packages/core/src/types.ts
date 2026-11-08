@@ -122,6 +122,7 @@ export type XPSource =
   | 'journal'
   | 'idea'
   | 'boss'
+  | 'debate'
 
 /** One daily quest with its progress toward the target. */
 export interface QuestItem {

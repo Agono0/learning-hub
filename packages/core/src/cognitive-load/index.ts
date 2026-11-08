@@ -50,8 +50,17 @@ export function computeKeystrokeJitter(timestamps: number[]): number {
  * Evaluates real-time telemetry to compute the Cognitive Load Index (CLI).
  */
 export function evaluateCognitiveLoad(telemetry: CognitiveLoadTelemetry): CognitiveLoadResult {
-  const baseline = telemetry.baselineLatencyMs ?? 4000
-  const latencyRatio = telemetry.responseLatencyMs / baseline
+  // A zero/negative/non-finite baseline would make the ratio Infinity or NaN and
+  // poison the whole index — fall back to the 4 s population default instead.
+  const rawBaseline = telemetry.baselineLatencyMs
+  const baseline =
+    rawBaseline !== undefined && Number.isFinite(rawBaseline) && rawBaseline > 0
+      ? rawBaseline
+      : 4000
+  const latency = Number.isFinite(telemetry.responseLatencyMs)
+    ? Math.max(0, telemetry.responseLatencyMs)
+    : 0
+  const latencyRatio = latency / baseline
   const jitter = telemetry.keystrokeTimestamps
     ? computeKeystrokeJitter(telemetry.keystrokeTimestamps)
     : 0
@@ -116,9 +125,11 @@ export interface EmbeddableCard {
 }
 
 /**
- * Interleaves a queue of cards using semantic embedding distance.
- * Maximizes distance between consecutive cards while deliberately pairing
- * confusable concept contrasts (cosine similarity between 0.70 and 0.88).
+ * Interleaves a queue of cards using semantic embedding distance: greedily picks,
+ * after each card, the remaining card LEAST similar to it (cosine), so near-duplicate
+ * concepts are never reviewed back-to-back (blocked practice). The first card stays
+ * first; a card without an embedding is taken in queue order. O(n²) — fine for a
+ * review session, not for a whole collection.
  */
 export function interleaveBySemanticDistance<T extends EmbeddableCard>(cards: T[]): T[] {
   if (cards.length <= 2) return [...cards]
@@ -133,7 +144,7 @@ export function interleaveBySemanticDistance<T extends EmbeddableCard>(cards: T[
       continue
     }
 
-    // Find the next best card: avoid near duplicates (> 0.92) but prefer moderate contrasts
+    // Next card = the least similar remaining one to the card just placed.
     let bestIndex = 0
     let minConsecutiveSimilarity = Infinity
 
@@ -144,7 +155,6 @@ export function interleaveBySemanticDistance<T extends EmbeddableCard>(cards: T[
         break
       }
       const sim = cosineSimilarity(last.embedding, candidate.embedding)
-      // We want to avoid blocked repetitions of identical concepts (sim > 0.90)
       if (sim < minConsecutiveSimilarity) {
         minConsecutiveSimilarity = sim
         bestIndex = i

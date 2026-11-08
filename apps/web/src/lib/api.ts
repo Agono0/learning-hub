@@ -97,6 +97,31 @@ export async function readJson<T>(req: Request, schema: z.ZodType<T>): Promise<T
   return parsed.data
 }
 
+/**
+ * Validate a request's query string with a zod schema (zod at every boundary).
+ * Params arrive as strings — use `z.coerce.number()` for numbers. Empty values
+ * (`?limit=`) are dropped so `.optional()` / `.default()` apply instead of
+ * coercing '' to 0. Throws ApiError(400) with flattened issues on failure.
+ */
+export function readQuery<T>(req: Request, schema: z.ZodType<T>): T {
+  const params: Record<string, string> = {}
+  for (const [key, value] of new URL(req.url).searchParams) {
+    if (value !== '') params[key] = value
+  }
+  const parsed = schema.safeParse(params)
+  if (!parsed.success) {
+    throw new ApiError(
+      400,
+      'Invalid query parameters',
+      parsed.error.issues.map((issue) => ({
+        path: issue.path.map(String).join('.'),
+        message: issue.message,
+      })),
+    )
+  }
+  return parsed.data
+}
+
 /** JSON error response with a consistent `{ error, detail? }` shape. */
 export function jsonError(status: number, message: string, detail?: unknown): Response {
   return Response.json(detail !== undefined ? { error: message, detail } : { error: message }, {

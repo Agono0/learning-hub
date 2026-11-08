@@ -64,8 +64,10 @@ export function generateTmrEarcon(cardId: number): TmrEarcon {
     'octave',
   ]
 
-  const baseFreq = PENTATONIC_FREQS[cardId % PENTATONIC_FREQS.length]
-  const harmonicType = HARMONICS[Math.floor(cardId / 7) % HARMONICS.length]
+  // Non-negative integer seed: a negative/fractional id would index past the tables.
+  const seed = Math.abs(Math.trunc(Number.isFinite(cardId) ? cardId : 0))
+  const baseFreq = PENTATONIC_FREQS[seed % PENTATONIC_FREQS.length]!
+  const harmonicType = HARMONICS[Math.floor(seed / 7) % HARMONICS.length]!
 
   return {
     cardId,
@@ -75,6 +77,42 @@ export function generateTmrEarcon(cardId: number): TmrEarcon {
     targetSleepStage: 'sws_nrem',
     maxDbSpl: 32,
   }
+}
+
+/**
+ * Frequency ratios (just intonation) of each earcon harmonic relative to its base
+ * note: major triad 4:5:6, minor triad 10:12:15, perfect fifth 2:3, octave 1:2.
+ */
+export const EARCON_HARMONIC_RATIOS: Record<TmrEarcon['harmonicType'], readonly number[]> = {
+  major_triad: [1, 1.25, 1.5],
+  minor_triad: [1, 1.2, 1.5],
+  perfect_fifth: [1, 1.5],
+  octave: [1, 2],
+}
+
+/**
+ * The partial frequencies (Hz) to synthesise for an earcon — one oscillator each.
+ * Distinct harmonic shapes are what make cues discriminable from one another, so
+ * the player must honour `harmonicType` rather than always adding a fifth.
+ */
+export function earconPartials(
+  earcon: Pick<TmrEarcon, 'baseFrequency' | 'harmonicType'>,
+): number[] {
+  const ratios = EARCON_HARMONIC_RATIOS[earcon.harmonicType] ?? EARCON_HARMONIC_RATIOS.perfect_fifth
+  return ratios.map((r) => Math.round(earcon.baseFrequency * r * 100) / 100)
+}
+
+/** Minimum / maximum silence between sleep cues (ms) — the 20–40 s TMR protocol. */
+export const TMR_CUE_GAP_MS = { min: 20_000, max: 40_000 } as const
+
+/**
+ * Randomised gap before the next sleep cue, uniform in [20 s, 40 s]. Jitter keeps
+ * cues from forming a predictable rhythm the sleeper habituates (or wakes) to.
+ * @param rng uniform [0, 1) source — injectable for deterministic tests.
+ */
+export function nextTmrCueDelayMs(rng: () => number = Math.random): number {
+  const u = Math.min(1, Math.max(0, rng()))
+  return Math.round(TMR_CUE_GAP_MS.min + u * (TMR_CUE_GAP_MS.max - TMR_CUE_GAP_MS.min))
 }
 
 // ─── Procedural Binaural Beat Frequencies ───────────────────────────────────
@@ -122,7 +160,14 @@ export function getBinauralFrequencies(mode: BinauralMode): BinauralChannelFrequ
 
 export const handsFreeGradeEventSchema = z.object({
   cardId: z.number().int().positive(),
-  inputType: z.enum(['voice_speech', 'earbud_media_key', 'accelerometer_tilt', 'auto_timeout']),
+  // `manual_tap` = an on-screen grade button (the common case when the screen is on).
+  inputType: z.enum([
+    'voice_speech',
+    'earbud_media_key',
+    'accelerometer_tilt',
+    'auto_timeout',
+    'manual_tap',
+  ]),
   grade: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   latencyMs: z.number().nonnegative(),
   timestamp: z.string(),
@@ -157,7 +202,9 @@ export function extractIncidentalGlossTokens(
   text: string,
   targetVocabMap: Map<string, { cardId: number; definition: string }>,
 ): GlossToken[] {
-  const words = text.split(/(\s+|[.,!?;:()[\]{}"])/)
+  // The capture group keeps separators as their own tokens (so the text can be
+  // re-rendered verbatim); split also emits '' between adjacent separators — drop those.
+  const words = text.split(/(\s+|[.,!?;:()[\]{}"])/).filter((t) => t !== '')
   return words.map((token) => {
     const clean = token.toLowerCase().trim()
     const target = targetVocabMap.get(clean)

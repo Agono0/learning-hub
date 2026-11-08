@@ -4,7 +4,8 @@
 import { desc, eq } from 'drizzle-orm'
 import type { DebateTurn } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
-import { dialecticArenaDebates } from '../schema'
+import { dialecticArenaDebates, xpEvents } from '../schema'
+import { withTransaction } from '../transaction'
 
 export function recordDialecticDebate(
   data: {
@@ -56,4 +57,46 @@ export function getDialecticDebate(
 ): typeof dialecticArenaDebates.$inferSelect | undefined {
   const db = database ?? getDb()
   return db.select().from(dialecticArenaDebates).where(eq(dialecticArenaDebates.id, id)).get()
+}
+
+/**
+ * Store the learner's ruling on a debate and, when `xp > 0`, append the matching
+ * `xp_events` row — one transaction, so XP can never exist without its verdict.
+ * XP is only granted the FIRST time a debate gets a verdict (re-submitting edits
+ * the ruling but does not farm XP). Returns the updated row and the XP actually
+ * awarded, or undefined when the debate does not exist.
+ */
+export function submitDialecticVerdict(
+  id: number,
+  verdict: string,
+  score: number,
+  xp: number,
+  database?: LearningHubDB,
+): { debate: typeof dialecticArenaDebates.$inferSelect; xpAwarded: number } | undefined {
+  return withTransaction((tx) => {
+    const existing = tx
+      .select()
+      .from(dialecticArenaDebates)
+      .where(eq(dialecticArenaDebates.id, id))
+      .get()
+    if (!existing) return undefined
+    const learnerScore = Math.max(0, Math.min(100, Math.round(score)))
+    const [debate] = tx
+      .update(dialecticArenaDebates)
+      .set({ learnerVerdict: verdict, learnerScore })
+      .where(eq(dialecticArenaDebates.id, id))
+      .returning()
+      .all()
+    const xpAwarded = existing.learnerVerdict == null && xp > 0 ? Math.round(xp) : 0
+    if (xpAwarded > 0) {
+      tx.insert(xpEvents)
+        .values({
+          source: 'debate',
+          amount: xpAwarded,
+          meta: { debateId: id, score: learnerScore },
+        })
+        .run()
+    }
+    return { debate: debate!, xpAwarded }
+  }, database)
 }

@@ -88,9 +88,10 @@ export function listUntestedMaterial(limit = 20, database?: LearningHubDB): Unte
   return ranked.map((r) => ({
     kind: r.kind,
     id: r.id,
-    title: r.title,
+    // A blank title would fail the boundary schema (min 1) and take the whole panel down.
+    title: r.title?.trim() || (r.kind === 'source' ? 'Untitled source' : 'Untitled note'),
     lastOpenedAt: r.lastOpenedAt,
-    excerpt: (r.excerpt ?? '').trim(),
+    excerpt: (r.excerpt ?? '').trim().slice(0, EXCERPT_CHARS),
     href: hrefFor(r.kind),
   }))
 }

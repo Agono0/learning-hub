@@ -79,33 +79,83 @@ export function calculateSpatialAudioAttenuation(
   }
   const clampedGain = Math.max(0.0, Math.min(1.0, Math.round(gain * 100) / 100))
 
-  // Stereo pan relative to camera orientation yaw
-  // Rotate (dx, dz) into camera local coordinates
-  const cosYaw = Math.cos(-cameraYaw)
-  const sinYaw = Math.sin(-cameraYaw)
-  const localX = dx * cosYaw - dz * sinYaw
-  const localZ = dx * sinYaw + dz * cosYaw
-
-  // Normalize local horizontal angle to pan factor [-1.0, 1.0]
-  const angle = Math.atan2(localX, Math.max(0.1, localZ))
-  const stereoPan = Math.max(-1.0, Math.min(1.0, Math.sin(angle)))
+  // Stereo pan = sine of the source's azimuth relative to where the camera faces.
+  // Convention (three.js): yaw is rotation about +Y; yaw 0 looks down -Z, so the
+  // camera's right vector is (cos yaw, 0, -sin yaw). Projecting the horizontal
+  // offset onto it and dividing by the horizontal distance gives sin(azimuth):
+  // +1 hard right, -1 hard left, 0 straight ahead or behind.
+  const yaw = Number.isFinite(cameraYaw) ? cameraYaw : 0
+  const rightComponent = dx * Math.cos(yaw) - dz * Math.sin(yaw)
+  const horizontal = Math.sqrt(dx * dx + dz * dz)
+  const stereoPan = horizontal < 1e-6 ? 0 : Math.max(-1, Math.min(1, rightComponent / horizontal))
 
   return {
     distance: Math.round(distance * 100) / 100,
     gain: clampedGain,
-    stereoPan: Math.round(stereoPan * 100) / 100,
+    // `+ 0` normalises -0 (a source dead behind) to 0.
+    stereoPan: Math.round(stereoPan * 100) / 100 + 0,
   }
+}
+
+/**
+ * Walk the camera relative to where it faces (same three.js yaw convention as
+ * {@link calculateSpatialAudioAttenuation}): `forward` metres along the view
+ * direction (-Z at yaw 0) and `strafe` metres to the right. Height is unchanged;
+ * x/z are rounded to centimetres and clamped to ±`bound` so the walker stays on
+ * the floor plane.
+ */
+export function moveAlongYaw(
+  position: SpatialVector3,
+  yaw: number,
+  forward: number,
+  strafe: number,
+  bound = 14,
+): SpatialVector3 {
+  const fx = -Math.sin(yaw)
+  const fz = -Math.cos(yaw)
+  const rx = Math.cos(yaw)
+  const rz = -Math.sin(yaw)
+  const clamp = (v: number) => Math.max(-bound, Math.min(bound, Math.round(v * 100) / 100))
+  return [
+    clamp(position[0] + fx * forward + rx * strafe) + 0,
+    position[1],
+    clamp(position[2] + fz * forward + rz * strafe) + 0,
+  ]
 }
 
 // ─── Procedural Spatial Scene Layout Generators ─────────────────────────────
 
+/** One thing to place in a palace: its stable id, label and (optional) linked card. */
+export interface LocusSource {
+  id: number
+  title: string
+  /**
+   * Linked review card. Omitted → `id` is treated as the card id (the original
+   * card-list call shape); `null` → the locus has no card.
+   */
+  cardId?: number | null
+}
+
+/** The card a source links to, per {@link LocusSource.cardId}'s rules. */
+function linkedCardId(src: LocusSource): number | undefined {
+  if (src.cardId === undefined) return src.id
+  return src.cardId ?? undefined
+}
+
 /**
  * Generates an architectural 3D spatial loci layout for cards in a room archetype.
+ * Deterministic: same archetype + sources → same coordinates (loci never jump
+ * between visits, which would break the spatial memory they exist to build).
  */
 export function generateArchetypeLoci(
   archetype: EnvironmentArchetype,
-  cards: Array<{ id: number; title: string }>,
+  sources: LocusSource[],
 ): SpatialLocus[] {
+  const cards = sources.map((s) => ({
+    id: s.id,
+    title: s.title || 'Locus Anchor',
+    cardId: linkedCardId(s),
+  }))
   const loci: SpatialLocus[] = []
 
   switch (archetype) {
@@ -118,13 +168,13 @@ export function generateArchetypeLoci(
         const x = Math.round(Math.cos(theta) * radius * 100) / 100
         const z = Math.round(Math.sin(theta) * radius * 100) / 100
         loci.push({
-          id: `locus-villa-${cards[i].id}`,
-          cardId: cards[i].id,
-          title: cards[i].title,
+          id: `locus-villa-${cards[i]!.id}`,
+          ...(cards[i]!.cardId !== undefined ? { cardId: cards[i]!.cardId } : {}),
+          title: cards[i]!.title,
           position: [x, 0.8, z],
           rotationY: theta + Math.PI / 2,
           assetType: 'pedestal_plaque',
-          contentPreview: cards[i].title,
+          contentPreview: cards[i]!.title,
         })
       }
       break
@@ -137,13 +187,13 @@ export function generateArchetypeLoci(
         const x = isLeft ? -3.5 : 3.5
         const z = -Math.floor(i / 2) * spacing
         loci.push({
-          id: `locus-gallery-${cards[i].id}`,
-          cardId: cards[i].id,
-          title: cards[i].title,
+          id: `locus-gallery-${cards[i]!.id}`,
+          ...(cards[i]!.cardId !== undefined ? { cardId: cards[i]!.cardId } : {}),
+          title: cards[i]!.title,
           position: [x, 1.6, z],
           rotationY: isLeft ? Math.PI / 2 : -Math.PI / 2,
           assetType: 'wall_canvas',
-          contentPreview: cards[i].title,
+          contentPreview: cards[i]!.title,
         })
       }
       break
@@ -160,13 +210,13 @@ export function generateArchetypeLoci(
         const y = Math.round((1.2 + tier * 0.8 + Math.sin(indexInTier) * 0.2) * 100) / 100
         const z = Math.round(Math.sin(theta) * radius * 100) / 100
         loci.push({
-          id: `locus-cyber-${cards[i].id}`,
-          cardId: cards[i].id,
-          title: cards[i].title,
+          id: `locus-cyber-${cards[i]!.id}`,
+          ...(cards[i]!.cardId !== undefined ? { cardId: cards[i]!.cardId } : {}),
+          title: cards[i]!.title,
           position: [x, y, z],
           rotationY: -theta,
           assetType: 'holographic_orb',
-          contentPreview: cards[i].title,
+          contentPreview: cards[i]!.title,
         })
       }
       break

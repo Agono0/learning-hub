@@ -2,8 +2,10 @@
  * Learning HUB — Graph Knowledge Tracing (GKT) DB Repository.
  */
 import { eq, inArray } from 'drizzle-orm'
+import { edgesWithinNodes } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import { conceptDagEdges, conceptDagNodes } from '../schema'
+import { withTransaction } from '../transaction'
 
 export function upsertConceptDagNode(
   node: {
@@ -95,30 +97,54 @@ export function getConceptDag(
   let edges: (typeof conceptDagEdges.$inferSelect)[] = []
 
   if (nodeIds.length > 0) {
-    edges = db
-      .select()
-      .from(conceptDagEdges)
-      .where(inArray(conceptDagEdges.prerequisiteId, nodeIds))
-      .all()
+    // Both endpoints must be inside the (course-scoped) node set — an edge into a
+    // node from another course would otherwise leak into this graph.
+    edges = edgesWithinNodes(
+      db
+        .select()
+        .from(conceptDagEdges)
+        .where(inArray(conceptDagEdges.prerequisiteId, nodeIds))
+        .all(),
+      new Set(nodeIds),
+    )
   }
 
   return { nodes, edges }
 }
 
+/** One concept node by id, or undefined. */
+export function getConceptDagNode(
+  id: string,
+  database?: LearningHubDB,
+): typeof conceptDagNodes.$inferSelect | undefined {
+  const db = database ?? getDb()
+  return db.select().from(conceptDagNodes).where(eq(conceptDagNodes.id, id)).get()
+}
+
+/**
+ * Persist a propagation result atomically (hard rule: multi-row writes are
+ * transactional). Only `assessedNodeId` — the concept the learner was actually
+ * tested on — gets a new `last_assessed_at`; neighbours moved by belief
+ * propagation keep theirs, so "last assessed" stays an honest timestamp.
+ * Probabilities are clamped to the schema's [0.001, 0.999] range.
+ */
 export function updateNodeMasteries(
   masteries: Record<string, number>,
   database?: LearningHubDB,
+  assessedNodeId?: string,
 ): void {
-  const db = database ?? getDb()
   const nowIso = new Date().toISOString()
+  const entries = Object.entries(masteries).filter(([, p]) => Number.isFinite(p))
+  if (entries.length === 0) return
 
-  for (const [nodeId, prob] of Object.entries(masteries)) {
-    db.update(conceptDagNodes)
-      .set({
-        masteryProb: prob,
-        lastAssessedAt: nowIso,
-      })
-      .where(eq(conceptDagNodes.id, nodeId))
-      .run()
-  }
+  withTransaction((tx) => {
+    for (const [nodeId, prob] of entries) {
+      const masteryProb = Math.min(0.999, Math.max(0.001, prob))
+      const set =
+        assessedNodeId === undefined || nodeId === assessedNodeId
+          ? { masteryProb, lastAssessedAt: nowIso }
+          : { masteryProb }
+      tx.update(conceptDagNodes).set(set).where(eq(conceptDagNodes.id, nodeId)).run()
+    }
+  }, database)
 }
