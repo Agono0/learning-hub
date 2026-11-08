@@ -1722,3 +1722,30 @@ export const dialecticArenaDebates = table(
   },
   (t) => [index('dialectic_arena_debates_created_idx').on(t.createdAt)],
 )
+
+/**
+ * Ambient exposure ledger: records incidental encounters of vocabulary and technical
+ * terms during reading, notes, and lessons for Krashen i+1 tracking and spaced promotion.
+ * Append-only table (Rule 8).
+ */
+export const exposureEvents = table(
+  'exposure_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    token: text('token').notNull(),
+    normalized: text('normalized').notNull(),
+    sourceType: text('source_type')
+      .$type<'reading' | 'note' | 'lesson'>()
+      .notNull()
+      .default('reading'),
+    sourceId: integer('source_id'),
+    contextSnippet: text('context_snippet'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('exposure_events_normalized_idx').on(t.normalized),
+    index('exposure_events_created_idx').on(t.createdAt),
+  ],
+)

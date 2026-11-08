@@ -11,6 +11,7 @@ import { goalIfThen } from '../src/migrations/022-goal-if-then'
 import { deckDelayedFeedback } from '../src/migrations/023-deck-delayed-feedback'
 import { ultimateCognitiveExpansion } from '../src/migrations/024-ultimate-cognitive-expansion'
 import { cognitiveUpsertKeys } from '../src/migrations/025-cognitive-upsert-keys'
+import { exposureEventsMigration } from '../src/migrations/026-exposure-events'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -98,11 +99,30 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 025 cognitive-upsert-keys last, after 024 and 023', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(cognitiveUpsertKeys)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(ultimateCognitiveExpansion)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(deckDelayedFeedback)
-    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(goalIfThen)
+  it('registers 026 exposure-events last, after 025, 024 and 023', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(exposureEventsMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(cognitiveUpsertKeys)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(ultimateCognitiveExpansion)
+    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(deckDelayedFeedback)
+    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(goalIfThen)
+  })
+})
+
+describe('026 exposure-events', () => {
+  it('creates the exposure_events table and indexes idempotently', () => {
+    const raw = open()
+    const ctx = createMigrationContext(raw)
+    exposureEventsMigration.up(ctx)
+
+    expect(ctx.hasTable('exposure_events')).toBe(true)
+    const cols = columns(raw, 'exposure_events')
+    expect(cols).toContain('token')
+    expect(cols).toContain('normalized')
+    expect(cols).toContain('source_type')
+    expect(cols).toContain('context_snippet')
+
+    // Idempotent re-run
+    expect(() => exposureEventsMigration.up(ctx)).not.toThrow()
   })
 })
 

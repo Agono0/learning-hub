@@ -62,6 +62,7 @@ const APPEND_ONLY_TABLES = new Set([
   'cognitive_telemetry_events',
   'circadian_audio_sessions',
   'dialectic_arena_debates',
+  'exposure_events',
 ])
 
 const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs', 'focus_bridge'])
