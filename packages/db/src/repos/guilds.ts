@@ -103,6 +103,16 @@ export function joinGuild(guildId: number, alias: string): boolean {
 }
 
 /**
+ * Remove an alias from whatever guild they belong to.
+ * Returns true if a membership was removed.
+ */
+export function leaveGuild(alias: string): boolean {
+  const db = getDb()
+  const res = db.delete(guildMembers).where(eq(guildMembers.alias, alias)).run()
+  return (res?.changes ?? 0) > 0
+}
+
+/**
  * Pools `xp` from a member into their guild and recomputes the guild level,
  * atomically. Only members of `guildId` can contribute to it, and only a
  * positive whole amount. Returns whether anything was credited.

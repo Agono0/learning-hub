@@ -18,6 +18,7 @@ import { stdin, stdout, exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
 import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
 import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
+import { debateCommand, guildCommand, palaceCommand, worldCommand } from './commands/community'
 import {
   db,
   awardXp,
@@ -647,6 +648,30 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Bayesian prerequisite DAG knowledge tracing',
     usage: '[drill]',
     run: (runArgs) => gktCommand(runArgs),
+  },
+  {
+    name: 'debate',
+    description: 'multi-agent dialectic arena and learner ruling',
+    usage: '[list|open|turn|vote]',
+    run: (runArgs) => debateCommand(runArgs),
+  },
+  {
+    name: 'palace',
+    description: 'spatial memory palace and loci ordering',
+    usage: '[list|add]',
+    run: (runArgs) => palaceCommand(runArgs),
+  },
+  {
+    name: 'world',
+    description: '3D virtual study world, coins, and forest',
+    usage: '[status|market]',
+    run: (runArgs) => worldCommand(runArgs),
+  },
+  {
+    name: 'guild',
+    description: 'study clans, levels, and team XP pooling',
+    usage: '[list|join|leave]',
+    run: (runArgs) => guildCommand(runArgs),
   },
 ]
 

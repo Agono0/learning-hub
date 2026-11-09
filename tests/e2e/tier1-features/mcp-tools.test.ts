@@ -43,6 +43,13 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(toolNames).toContain('study_plan_get')
     expect(toolNames).toContain('study_plan_set')
     expect(toolNames).toContain('gkt_session')
+    expect(toolNames).toContain('dialectic_arena')
+    expect(toolNames).toContain('palace_list')
+    expect(toolNames).toContain('palace_add_locus')
+    expect(toolNames).toContain('world_state')
+    expect(toolNames).toContain('world_market_buy')
+    expect(toolNames).toContain('guild_list')
+    expect(toolNames).toContain('guild_join')
   })
 
   it('captures and searches ideas via idea_create and idea_search', async () => {
@@ -294,5 +301,116 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     })
     expect(gktAnswer.ok).toBe(true)
     expect(gktAnswer.updatedMasteries[conceptId]).toBeDefined()
+  })
+
+  it('operates dialectic arena, spatial palaces, virtual world, and study guilds via community tools (Batch C3)', async () => {
+    // 1. dialectic_arena: propose -> turn -> vote -> list
+    const proposeRes = await client.callTool<{
+      ok: boolean
+      debate: { id: number; topic: string }
+    }>('dialectic_arena', {
+      action: 'propose',
+      topic: 'Episodic vs Semantic Memory Consolidation',
+      thesisAgentRole: 'Cognitive Neuroscientist',
+      antithesisAgentRole: 'Behavioral Psychologist',
+    })
+    expect(proposeRes.ok).toBe(true)
+    const debateId = proposeRes.debate.id
+    expect(debateId).toBeDefined()
+
+    const turnRes = await client.callTool<{
+      ok: boolean
+      debateId: number
+      totalTurns: number
+    }>('dialectic_arena', {
+      action: 'turn',
+      debateId,
+      speaker: 'thesis_agent',
+      speakerName: 'Neuroscientist',
+      argumentText: 'Hippocampal sharp-wave ripples replay memories for neocortical transfer.',
+    })
+    expect(turnRes.ok).toBe(true)
+    expect(turnRes.totalTurns).toBe(1)
+
+    const voteRes = await client.callTool<{
+      ok: boolean
+      debateId: number
+      verdict: string
+      learnerScore: number
+      xpAwarded: number
+    }>('dialectic_arena', {
+      action: 'vote',
+      debateId,
+      verdict: 'Synthesis favors complementary learning systems.',
+      score: 95,
+      xp: 20,
+    })
+    expect(voteRes.ok).toBe(true)
+    expect(voteRes.learnerScore).toBe(95)
+    expect(voteRes.xpAwarded).toBe(20)
+
+    const listDebates = await client.callTool<{
+      ok: boolean
+      count: number
+      debates: Array<{ id: number; topic: string; hasVerdict: boolean }>
+    }>('dialectic_arena', { action: 'list', limit: 10 })
+    expect(listDebates.ok).toBe(true)
+    expect(listDebates.debates.some((d) => d.id === debateId && d.hasVerdict)).toBe(true)
+
+    // 2. palace_add_locus & palace_list
+    const addLocus = await client.callTool<{
+      ok: boolean
+      palaceId: number
+      locus: { id: number; name: string; lociIndex: number }
+    }>('palace_add_locus', {
+      palaceName: 'Athenaeum of Cognitive Science',
+      name: 'Grand Marble Archway',
+      lociIndex: 0,
+      vividImage: 'Massive ionic pillars pulsating with synaptic glow',
+    })
+    expect(addLocus.ok).toBe(true)
+    expect(addLocus.palaceId).toBeDefined()
+    expect(addLocus.locus.name).toBe('Grand Marble Archway')
+
+    const listPalacesRes = await client.callTool<{
+      ok: boolean
+      count: number
+      palaces: Array<{ id: number; name: string; lociCount: number }>
+    }>('palace_list', {})
+    expect(listPalacesRes.ok).toBe(true)
+    expect(listPalacesRes.palaces.some((p) => p.name.includes('Athenaeum'))).toBe(true)
+
+    // 3. world_state
+    const worldRes = await client.callTool<{
+      ok: boolean
+      balance: number
+      avatar: { characterId: string }
+      forest: { totalTreesPlanted: number }
+    }>('world_state', { userId: 'default' })
+    expect(worldRes.ok).toBe(true)
+    expect(worldRes.avatar.characterId).toBeDefined()
+    expect(typeof worldRes.balance).toBe('number')
+
+    // 4. guild_join & guild_list
+    const joinRes = await client.callTool<{
+      ok: boolean
+      guildId: number
+      alias: string
+      joined: boolean
+    }>('guild_join', {
+      name: 'Memory Athletes Guild',
+      tag: 'ATH',
+      alias: 'agent_tester',
+    })
+    expect(joinRes.ok).toBe(true)
+    expect(joinRes.joined).toBe(true)
+
+    const listGuildsRes = await client.callTool<{
+      ok: boolean
+      count: number
+      guilds: Array<{ id: number; name: string; tag: string }>
+    }>('guild_list', { limit: 10 })
+    expect(listGuildsRes.ok).toBe(true)
+    expect(listGuildsRes.guilds.some((g) => g.tag === 'ATH')).toBe(true)
   })
 })

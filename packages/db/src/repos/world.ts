@@ -156,6 +156,9 @@ export function getCoinBalance(userId = 'default'): number {
   return latest ? latest.balanceAfter : 0
 }
 
+/** Alias for getCoinBalance */
+export const getStudyCoinBalance = getCoinBalance
+
 export function getRecentCoinEarnings5m(userId = 'default'): number {
   const db = getDb()
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()

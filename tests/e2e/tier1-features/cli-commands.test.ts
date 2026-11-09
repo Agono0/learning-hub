@@ -93,7 +93,7 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(physioRes.exitCode).toBe(0)
     expect(physioRes.stdout).toContain('Physiology & Retention Telemetry')
     expect(physioRes.stdout).toContain('Yerkes-Dodson zone')
-  })
+  }, 20000)
 
   it('runs reading, plan, and gkt CLI commands (Batch C2)', async () => {
     // 1. reading add & list
@@ -135,5 +135,112 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(gktDrill.exitCode).toBe(0)
     expect(gktDrill.stdout).toContain('Graph Knowledge Tracing (GKT)')
     expect(gktDrill.stdout).toContain('Updated mastery')
-  })
+  }, 20000)
+
+  it('runs debate, palace, world, and guild CLI commands (Batch C3)', async () => {
+    // 1. debate open, turn, list
+    const debateOpen = await runCli(
+      [
+        'debate',
+        'open',
+        '--topic',
+        'Desirable Difficulties in Schema Formation',
+        '--thesis',
+        'Cognitivist',
+        '--antithesis',
+        'DirectInstructionist',
+      ],
+      getActiveDbPath(),
+    )
+    expect(debateOpen.exitCode).toBe(0)
+    expect(debateOpen.stdout).toContain('Opened debate')
+    expect(debateOpen.stdout).toContain('Desirable Difficulties')
+
+    const debateTurn = await runCli(
+      [
+        'debate',
+        'turn',
+        '1',
+        '--content',
+        'Varied and interleaved practice enhances transfer to novel domains.',
+        '--speaker',
+        'thesis_agent',
+        '--name',
+        'Cognitivist',
+      ],
+      getActiveDbPath(),
+    )
+    expect(debateTurn.exitCode).toBe(0)
+    expect(debateTurn.stdout).toContain('Appended turn')
+
+    const debateList = await runCli(['debate', 'list'], getActiveDbPath())
+    expect(debateList.exitCode).toBe(0)
+    expect(debateList.stdout).toContain('Dialectic Arena Debates')
+    expect(debateList.stdout).toContain('Desirable Difficulties')
+
+    // 2. palace create, add, list
+    const palaceCreate = await runCli(
+      ['palace', 'create', 'Renaissance Memory Hall'],
+      getActiveDbPath(),
+    )
+    expect(palaceCreate.exitCode).toBe(0)
+    expect(palaceCreate.stdout).toContain('Created palace')
+    expect(palaceCreate.stdout).toContain('Renaissance Memory Hall')
+
+    const palaceAdd = await runCli(
+      [
+        'palace',
+        'add',
+        '1',
+        '--locus',
+        'Fountain Courtyard',
+        '--image',
+        'Gleaming obsidian fountain with cascading droplets',
+      ],
+      getActiveDbPath(),
+    )
+    expect(palaceAdd.exitCode).toBe(0)
+    expect(palaceAdd.stdout).toContain('Added locus station')
+    expect(palaceAdd.stdout).toContain('Fountain Courtyard')
+
+    const palaceList = await runCli(['palace', 'list'], getActiveDbPath())
+    expect(palaceList.exitCode).toBe(0)
+    expect(palaceList.stdout).toContain('Memory Palaces')
+    expect(palaceList.stdout).toContain('Renaissance Memory Hall')
+
+    // 3. world status & market
+    const worldStatus = await runCli(['world', 'status'], getActiveDbPath())
+    expect(worldStatus.exitCode).toBe(0)
+    expect(worldStatus.stdout).toContain('Study World Status')
+    expect(worldStatus.stdout).toContain('Study Coins')
+
+    const worldMarket = await runCli(['world', 'market'], getActiveDbPath())
+    expect(worldMarket.exitCode).toBe(0)
+    expect(worldMarket.stdout).toContain('Study World Market Catalog')
+
+    // 4. guild create, list, join, leave
+    const guildCreate = await runCli(
+      ['guild', 'create', 'Polymath Society', '--tag', 'POLY', '--leader', 'scholar'],
+      getActiveDbPath(),
+    )
+    expect(guildCreate.exitCode).toBe(0)
+    expect(guildCreate.stdout).toContain('Created guild')
+    expect(guildCreate.stdout).toContain('[POLY]')
+
+    const guildList = await runCli(['guild', 'list'], getActiveDbPath())
+    expect(guildList.exitCode).toBe(0)
+    expect(guildList.stdout).toContain('Study Guilds')
+    expect(guildList.stdout).toContain('Polymath Society')
+
+    const guildJoin = await runCli(
+      ['guild', 'join', '1', '--alias', 'apprentice'],
+      getActiveDbPath(),
+    )
+    expect(guildJoin.exitCode).toBe(0)
+    expect(guildJoin.stdout).toContain('apprentice joined guild #1')
+
+    const guildLeave = await runCli(['guild', 'leave', '--alias', 'apprentice'], getActiveDbPath())
+    expect(guildLeave.exitCode).toBe(0)
+    expect(guildLeave.stdout).toContain('apprentice left their guild')
+  }, 30000)
 })

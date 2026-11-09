@@ -20,6 +20,7 @@ import { curriculumTools } from './tools/curriculum'
 import { cognitiveTools } from './tools/cognitive'
 import { lifestyleTools } from './tools/lifestyle'
 import { learningPathTools } from './tools/learning-path'
+import { communityTools } from './tools/community'
 import {
   CardNotFoundError,
   cards,
@@ -540,6 +541,7 @@ async function main() {
     ...cognitiveTools,
     ...lifestyleTools,
     ...learningPathTools,
+    ...communityTools,
   ]) {
     server.registerTool(
       registered.name,

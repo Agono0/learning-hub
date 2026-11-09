@@ -61,6 +61,27 @@ export function getDialecticDebate(
 }
 
 /**
+ * Append a turn to an existing dialectic debate's transcript.
+ */
+export function appendDialecticTurn(
+  debateId: number,
+  turn: DebateTurn,
+  database?: LearningHubDB,
+): typeof dialecticArenaDebates.$inferSelect | undefined {
+  const db = database ?? getDb()
+  const existing = getDialecticDebate(debateId, db)
+  if (!existing) return undefined
+  const updatedTranscript = [...(existing.transcript ?? []), turn]
+  const [updated] = db
+    .update(dialecticArenaDebates)
+    .set({ transcript: updatedTranscript })
+    .where(eq(dialecticArenaDebates.id, debateId))
+    .returning()
+    .all()
+  return updated
+}
+
+/**
  * Store the learner's ruling on a debate and, when `xp > 0`, append the matching
  * `xp_events` row — one transaction, so XP can never exist without its verdict.
  * XP is only granted the FIRST time a debate gets a verdict (re-submitting edits
