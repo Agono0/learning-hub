@@ -92,7 +92,7 @@ function columnSpecs(cfg: TableConfigLike): string[] {
       parts.push('PRIMARY KEY')
       if (col.autoIncrement) parts.push('AUTOINCREMENT')
     }
-    if (col.isUnique && col.uniqueType === 'unique') parts.push('UNIQUE')
+    if (col.isUnique) parts.push('UNIQUE')
     if (col.notNull) parts.push('NOT NULL')
     if (col.default !== undefined) parts.push(`DEFAULT ${defaultLiteral(col.default)}`)
     return parts.join(' ')

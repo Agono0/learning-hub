@@ -112,18 +112,13 @@ describe('Media Artifacts Generation', () => {
       }
 
       const mockClient: AIClient = {
-        providerId: 'custom-endpoint',
-        generateJSON: async () => fakeScript,
+        generateJSON: async <T>() => fakeScript as unknown as T,
         generateText: async () => 'test',
-        streamText: async () => ({
-          textStream: new ReadableStream(),
-          fullText: Promise.resolve(''),
-        }),
       }
 
       const res = await podcastScript('Lesson summary about testing effects', mockClient)
       expect(res.ok).toBe(true)
-      if (res.ok) {
+      if (res.ok && res.data) {
         expect(res.data.title).toBe('AI Generated Podcast')
         expect(res.data.segments).toHaveLength(4)
       }
@@ -139,18 +134,13 @@ describe('Media Artifacts Generation', () => {
       }
 
       const mockClient: AIClient = {
-        providerId: 'custom-endpoint',
-        generateJSON: async () => fakeGuide,
+        generateJSON: async <T>() => fakeGuide as unknown as T,
         generateText: async () => 'test',
-        streamText: async () => ({
-          textStream: new ReadableStream(),
-          fullText: Promise.resolve(''),
-        }),
       }
 
       const res = await studyGuide('Extracted paper content', mockClient)
       expect(res.ok).toBe(true)
-      if (res.ok) {
+      if (res.ok && res.data) {
         expect(res.data.title).toBe('AI Generated Guide')
         expect(res.data.faq[0].q).toBe('Question?')
       }
@@ -158,15 +148,10 @@ describe('Media Artifacts Generation', () => {
 
     it('handles exceptions thrown by AI provider gracefully', async () => {
       const errorClient: AIClient = {
-        providerId: 'custom-endpoint',
         generateJSON: async () => {
           throw new Error('Rate limit exceeded (429)')
         },
         generateText: async () => 'test',
-        streamText: async () => ({
-          textStream: new ReadableStream(),
-          fullText: Promise.resolve(''),
-        }),
       }
 
       const res = await studyGuide('Text', errorClient)
