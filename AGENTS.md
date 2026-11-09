@@ -41,6 +41,8 @@ apps/web
   src/components/      App shell + navigation model (nav.ts)
 apps/native           Tauri 2 shell (thin Rust: dialogs, fs, http, notifications)
 apps/mcp | cli | server  Other hosts over the same packages
+apps/worker          Cloudflare worker: rooms, boss raids, library share (deploy: npm run worker:deploy)
+apps/extension       Browser extension: quick-add cards, save-to-read, friction capture (M21)
 docs/                 Architecture, ADRs, native, curriculum, learning science
 scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android…)
 ```
@@ -48,6 +50,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 **Dependency rule** (never invert it):
 `apps/* → packages/{core,db,ai-adapters}`, `db → core`, `ai-adapters → core`,
 `plugins → core` only. `core` imports nothing app-specific and never `ai`.
+`apps/worker` uses `packages/db`-adjacent types only.
 
 ## 3. Hard rules — never break these
 

@@ -64,7 +64,7 @@ Add to `%APPDATA%\Claude\claude_desktop_config.json` (or `.mcp.json` for Claude 
 
 (On Windows never spawn bare `npx` — use `node --import tsx <abs path>`.)
 
-Tools: `idea_create`, `idea_search`, `idea_connect`, `idea_evolve`, `idea_list_inbox`, `note_create`, `note_search`, `review_log`, `review_stats`, `goal_woop`, `goal_list`, `focus_summary`, `quote_random`, `card_generate` · Resources: `idea://{id}`, `note://{id}`, `graph://overview`.
+Tools: 51 built-in tools across all 13 knowledge, review, focus, and cognitive domains + dynamic plugin contributions · Resources: `idea://{id}`, `note://{id}`, `graph://overview`.
 
 Inspect: `npx @modelcontextprotocol/inspector node --import tsx apps/mcp/src/index.ts`
 
@@ -82,6 +82,7 @@ Learning HUB runs **fully without AI** — `none` is the default provider, every
 | --- | --- | --- |
 | `anthropic` | API key | default model `claude-sonnet-4-5` |
 | `openai` | API key | default model `gpt-4o-mini` |
+| `google` | API key | default model `gemini-2.5-flash` (@ai-sdk/google) |
 | `openai-compatible` | API key + base URL | GLM, DeepSeek, any OpenAI-compatible endpoint |
 | `ollama` | base URL (default `http://localhost:11434/v1`) | local, free |
 | `custom-endpoint` | base URL (+ optional headers JSON) | **any** HTTP service becomes a provider — POST `{ v, feature, system, prompt, schema }`, respond `{ result }` |

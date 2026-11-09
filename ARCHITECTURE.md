@@ -38,8 +38,10 @@ learning-HUB/
 │   │   ├── app/api/**/route.ts  # REST route handlers (zod boundary, withRoute)
 │   │   └── src/components/      # client islands, command palette, transport panel…
 │   ├── server/         # Headless REST server — Node 22+ native node:http, no framework
-│   ├── mcp/            # MCP stdio server: 14 tools + 3 resources (@modelcontextprotocol/sdk)
-│   └── cli/            # terminal adapter
+│   ├── mcp/            # MCP stdio server: 51 built-in tools + plugin contributions + 3 resources (@modelcontextprotocol/sdk)
+│   ├── cli/            # terminal adapter: 25 CLI commands
+│   ├── worker/         # Cloudflare worker: rooms, boss raids, library share (deploy: npm run worker:deploy)
+│   └── extension/      # Browser extension: quick-add cards, save-to-read, friction capture (M21)
 ├── plugins/            # loaded by EVERY host at boot (example-echo is the reference)
 ├── tests/e2e/          # opaque-box E2E suite (helpers + tiers 1-4) — see docs/TEST_INFRA.md
 └── docs/               # reference documentation (see the table below)

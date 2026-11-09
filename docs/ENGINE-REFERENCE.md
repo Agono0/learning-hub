@@ -24,7 +24,7 @@ const previews = sched.preview({ card, now: new Date() }) // iterable of { grade
 
 - Input card is NOT mutated. `dueAt`/`lastReviewAt` are Date objects → serialize to ISO strings for SQLite, restore with `new Date(iso)`.
 - DEFAULT_LEECH_THRESHOLD is 0 by default (leech middleware exists: `schedulerLeechMiddleware` — use lapses tracking manually instead).
-- There is no TS optimizer in v6 — personalization: collect revlog rows; optimizer integration is deferred.
+- Personalization: on-device 21-parameter FSRS-6 optimization (`packages/core/src/fsrs-optimizer.ts`), integrated via `/api/fsrs/optimize` and the settings UI.
 
 ## AI SDK v7 — VERIFIED exports
 
