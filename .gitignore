@@ -31,6 +31,7 @@ apps/extension/dist/
 apps/worker/.wrangler/
 *.tsbuildinfo
 next-env.d.ts
+apps/web/AGENTS.md
 .eslintcache
 coverage/
 .vitest/
