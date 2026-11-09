@@ -171,7 +171,10 @@ and `docs/curriculum/`. New exercise type = schema + `grade()` in
 - Build pages from `@/ui` (`PageHeader`, `Panel`, `Button`, `TextField`, `Tabs`, `Sheet`,
   `EmptyState`, `ProgressBar`, `Markdown`…). Add to the kit when a pattern repeats twice.
 - Mobile-first: works at 360px wide, no horizontal page scroll, touch targets ≥ 44px,
-  wide content inside `.scroll-x`. Navigation comes only from `src/components/nav.ts`.
+  wide content inside `.scroll-x`. Navigation comes only from `src/components/nav.ts`
+  (exception: detail pages reached by in-app links, e.g. `/courses/new`, `/courses/course`,
+  `/courses/exam`, `/courses/lesson`, `/courses/certificate` — they must be link-reachable,
+  never orphaned).
 - Calm by default: one primary action per screen, honest empty states, no dark patterns.
 
 ## 6. Commands
