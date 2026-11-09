@@ -66,28 +66,20 @@ function base64ToBytes(base64: string): Uint8Array {
 /** DB-backed implementation: base64 bytes in the images.data column. */
 export class DbImageStore implements ImageStore {
   async put(bytes: Uint8Array, ext: string, mime: string): Promise<{ id: string; rowId: number }> {
-    const { db, images } = await import('@learning-hub/db')
+    const { createImage } = await import('@learning-hub/db')
     const cleanExt = ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'png'
     const id = `${globalThis.crypto.randomUUID()}.${cleanExt}`
-    const [row] = await db
-      .insert(images)
-      .values({
-        filename: id,
-        mime: mime || 'application/octet-stream',
-        data: bytesToBase64(bytes),
-      })
-      .returning({ id: images.id })
-    return { id, rowId: row!.id }
+    const row = createImage({
+      filename: id,
+      mime: mime || 'application/octet-stream',
+      data: bytesToBase64(bytes),
+    })
+    return { id, rowId: row.id }
   }
 
   async get(id: string): Promise<StoredImage | null> {
-    const { eq } = await import('drizzle-orm')
-    const { db, images } = await import('@learning-hub/db')
-    const [row] = await db
-      .select({ mime: images.mime, data: images.data })
-      .from(images)
-      .where(eq(images.filename, id))
-      .limit(1)
+    const { getImageByFilename } = await import('@learning-hub/db')
+    const row = getImageByFilename(id)
     if (!row) return null
     if (row.data) return { bytes: base64ToBytes(row.data), contentType: row.mime }
     // Legacy row (pre-DB-storage): the bytes live on disk under the images dir.
@@ -103,31 +95,26 @@ export class NodeFsImageStore implements ImageStore {
   async put(bytes: Uint8Array, ext: string, mime: string): Promise<{ id: string; rowId: number }> {
     const { mkdir, writeFile } = await import('node:fs/promises')
     const path = await import('node:path')
-    const { db, images, resolveImagesDir } = await import('@learning-hub/db')
+    const { createImage, resolveImagesDir } = await import('@learning-hub/db')
     const id = `${globalThis.crypto.randomUUID()}.${ext}`
     const dir = resolveImagesDir()
     await mkdir(dir, { recursive: true })
     await writeFile(path.join(/*turbopackIgnore: true*/ dir, id), bytes)
     // Register the row too (data stays NULL): get() resolves the content type
     // from row.mime, and the DB store's fallback needs the row to find the file.
-    const [row] = await db
-      .insert(images)
-      .values({ filename: id, mime: mime || 'application/octet-stream' })
-      .returning({ id: images.id })
-    return { id, rowId: row!.id }
+    const row = createImage({
+      filename: id,
+      mime: mime || 'application/octet-stream',
+    })
+    return { id, rowId: row.id }
   }
 
   async get(id: string): Promise<StoredImage | null> {
     const { readFile } = await import('node:fs/promises')
     const path = await import('node:path')
-    const { eq } = await import('drizzle-orm')
-    const { db, images, resolveImagesDir } = await import('@learning-hub/db')
+    const { getImageByFilename, resolveImagesDir } = await import('@learning-hub/db')
     // The registry row is authoritative for the content type (row.mime).
-    const [row] = await db
-      .select({ mime: images.mime })
-      .from(images)
-      .where(eq(images.filename, id))
-      .limit(1)
+    const row = getImageByFilename(id)
     if (!row) return null
     try {
       const buf = await readFile(path.join(/*turbopackIgnore: true*/ resolveImagesDir(), id))

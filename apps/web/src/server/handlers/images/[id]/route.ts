@@ -4,17 +4,12 @@
  * (src/server/storage.ts — images.data base64, with a legacy data/images
  * fallback for rows stored on disk before the DB store existed).
  */
-import { eq } from 'drizzle-orm'
-import { db, images } from '@learning-hub/db'
+import { getImage } from '@learning-hub/db'
 import { getImageStore } from '@/server/storage'
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
-  const [row] = await db
-    .select()
-    .from(images)
-    .where(eq(images.id, Number(id)))
-    .limit(1)
+  const row = getImage(Number(id))
   if (!row) return new Response('not found', { status: 404 })
   const stored = await getImageStore().get(row.filename)
   if (!stored) return new Response('image file missing', { status: 404 })
