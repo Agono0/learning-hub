@@ -9,7 +9,7 @@ Status legend:
 
 - ✅ **implemented** — shipped, with the code path
 - 🚧 **partial** — the mechanism exists in one form; a planned extension is noted
-- 📋 **planned** — on the roadmap (M3/M4/M5 of the current expansion)
+- 📋 **planned** — on the roadmap (the cognitive expansion milestones; see [docs/plan-M19-M21.md](plan-M19-M21.md))
 
 ---
 
@@ -326,9 +326,12 @@ Wish, Outcome, Obstacle, Plan beats positive fantasy.
 ### Self-Determination Theory — Deci & Ryan, 1985
 Autonomy + competence + relatedness drive durable motivation; coercive
 gamification backfires (overjustification).
-- **In Learning HUB:** XP and achievements mark milestones (no leaderboards,
-  no punitive streaks; streak freezes instead) — `packages/core/src/xp.ts`,
-  `packages/core/src/motivation.ts`.
+- **In Learning HUB:** XP and achievements mark milestones (leaderboards are
+  strictly opt-in and cohort-scoped to guilds, framed on personal-best
+  trajectories rather than global zero-sum ranking — preserving competence and
+  relatedness without social-comparison pressure; no punitive streaks; streak
+  freezes instead) — `packages/core/src/xp.ts`, `packages/core/src/motivation.ts`,
+  `apps/web/src/server/handlers/social/leaderboard/route.ts`.
 - **Status:** ✅ (design principle throughout)
 
 ### Fresh-start effect — Dai, Milkman & Riis, 2014
