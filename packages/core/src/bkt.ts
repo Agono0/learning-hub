@@ -12,7 +12,11 @@ import { MASTERY_THRESHOLD, type BKTParams } from './types'
 export const DEFAULT_BKT: BKTParams = { pInit: 0.1, pTransit: 0.15, pGuess: 0.2, pSlip: 0.1 }
 
 /** One BKT evidence step: posterior P(known | outcome) plus the learning transition. */
-export function bktUpdate(pKnown: number, correct: boolean, params: BKTParams = DEFAULT_BKT): number {
+export function bktUpdate(
+  pKnown: number,
+  correct: boolean,
+  params: BKTParams = DEFAULT_BKT,
+): number {
   const { pGuess: G, pSlip: S, pTransit: T } = params
   const conditional = correct
     ? (pKnown * (1 - S)) / (pKnown * (1 - S) + (1 - pKnown) * G)
@@ -27,5 +31,7 @@ export function isMastered(pKnown: number, attempts: number, minAttempts = 5): b
 
 /** Probability the learner is ready to unlock dependents (used by DAG gating). */
 export function unlockProbability(pKnown: number): number {
+  if (pKnown >= 0.95) return 1
+  if (pKnown <= 0.5) return 0
   return Math.max(0, Math.min(1, (pKnown - 0.5) / 0.45)) // 0.5 → 0, 0.95 → 1
 }
