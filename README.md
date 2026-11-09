@@ -173,12 +173,11 @@ Released under the [MIT License](./LICENSE). © 2026 Learning HUB contributors.
 
 ## Roadmap (deferred)
 
-Multi-device sync v1 (E2EE over the user's own cloud targets) · AI video-call
-roleplay · party boss battles · FSRS optimizer UI (the 21-parameter optimizer
-already ships in `packages/core/src/fsrs-optimizer.ts`) · browser-extension
-friction capture · full CRDT sync. Active milestone planning:
-[docs/plan-M19-M21.md](docs/plan-M19-M21.md).
+- AI video-call roleplay — deliberate: synchronous video adds hosting cost and
+  complexity; the voice tutor (offline-capable) covers the pedagogy today.
+- Full CRDT sync — LWW sync v1 is live; CRDT merge is the follow-up when
+  concurrent-edit evidence justifies it (see [docs/plan-M19-M21.md](docs/plan-M19-M21.md)).
 
-Shipped since this list was last pruned: per-card TTS, web-push reminders,
-on-device FSRS-6 weight optimization, native Windows/Android shells, E2EE
-cloud backup sync — see [CHANGELOG.md](CHANGELOG.md).
+Shipped items (Multi-device sync v1 E2EE, party boss battles, FSRS optimizer UI,
+browser-extension friction capture, per-card TTS, native Windows/Android shells)
+live in [CHANGELOG.md](CHANGELOG.md).
