@@ -34,12 +34,15 @@ export function validateHabit(habit: HabitLoopInput): HabitValidation {
   const reward = (habit.reward ?? '').trim()
 
   if (cue.length === 0) errors.push('Cue is required — when/where does the habit happen?')
-  if (response.length === 0) errors.push('Response is required — what is the two-minute version of the action?')
+  if (response.length === 0)
+    errors.push('Response is required — what is the two-minute version of the action?')
   if (cue.length > 0 && cue.length < 3) errors.push('Cue is too short to act on.')
   if (response.length > 0 && response.length < 2) errors.push('Response is too short.')
 
-  if (craving.length === 0) warnings.push('No craving stated — what feeling makes you want this? (optional)')
-  if (reward.length === 0) warnings.push('No reward stated — what immediately satisfies you after? (optional)')
+  if (craving.length === 0)
+    warnings.push('No craving stated — what feeling makes you want this? (optional)')
+  if (reward.length === 0)
+    warnings.push('No reward stated — what immediately satisfies you after? (optional)')
 
   return { ok: errors.length === 0, errors, warnings }
 }
@@ -154,5 +157,8 @@ export function dopamineSuggestion(date: Date | string, seedOffset = 0): Dopamin
     h ^= key.charCodeAt(i)
     h = Math.imul(h, 0x01000193)
   }
-  return DOPAMINE_MENU[(((h >>> 0) + seedOffset) % DOPAMINE_MENU.length + DOPAMINE_MENU.length) % DOPAMINE_MENU.length]
+  return DOPAMINE_MENU[
+    ((((h >>> 0) + seedOffset) % DOPAMINE_MENU.length) + DOPAMINE_MENU.length) %
+      DOPAMINE_MENU.length
+  ]
 }

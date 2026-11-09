@@ -14,9 +14,13 @@
     "type": "git",
     "url": "git+https://github.com/learning-hub/learning-hub.git"
   },
-  "bin": { "learning-hub": "./src/index.ts" },
+  "bin": {
+    "learning-hub": "./src/index.ts"
+  },
   "publishConfig": {
-    "bin": { "learning-hub": "./dist/index.js" }
+    "bin": {
+      "learning-hub": "./dist/index.js"
+    }
   },
   "files": [
     "dist"

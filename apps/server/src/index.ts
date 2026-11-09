@@ -56,7 +56,9 @@ async function main(): Promise<void> {
   })
 
   server.listen(config.port, config.host, () => {
-    console.log(`[server] learning-hub REST API on http://${config.host}:${config.port} (${routes.length} routes, ${webhooks.subscribed} webhook(s))`)
+    console.log(
+      `[server] learning-hub REST API on http://${config.host}:${config.port} (${routes.length} routes, ${webhooks.subscribed} webhook(s))`,
+    )
   })
 
   const shutdown = (signal: string) => {

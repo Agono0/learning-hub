@@ -15,7 +15,11 @@ export interface ServerConfig {
   host: string
 }
 
-const portSchema = z.coerce.number().int().min(1, 'port must be ≥ 1').max(65535, 'port must be ≤ 65535')
+const portSchema = z.coerce
+  .number()
+  .int()
+  .min(1, 'port must be ≥ 1')
+  .max(65535, 'port must be ≤ 65535')
 
 const hostSchema = z.string().trim().min(1, 'host must be a non-empty interface name or IP')
 
@@ -33,11 +37,18 @@ function hostFromArgv(argv: string[]): string | undefined {
 }
 
 /** Resolve with a warning (never crash) on malformed env/flag values. */
-function resolveOr(value: string | undefined, schema: z.ZodType<string | number>, fallback: string | number, what: string): string | number {
+function resolveOr(
+  value: string | undefined,
+  schema: z.ZodType<string | number>,
+  fallback: string | number,
+  what: string,
+): string | number {
   if (value === undefined || value === '') return fallback
   const parsed = schema.safeParse(value)
   if (parsed.success) return parsed.data
-  console.warn(`[server] invalid ${what} "${value}" (${parsed.error.issues[0]?.message ?? 'invalid'}) — using ${fallback}`)
+  console.warn(
+    `[server] invalid ${what} "${value}" (${parsed.error.issues[0]?.message ?? 'invalid'}) — using ${fallback}`,
+  )
   return fallback
 }
 

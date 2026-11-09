@@ -35,7 +35,12 @@ export function sendJson(res: ServerResponse, status: number, body: unknown): vo
 }
 
 /** JSON error response with the consistent `{ error, detail? }` envelope shape. */
-export function jsonError(res: ServerResponse, status: number, message: string, detail?: unknown): void {
+export function jsonError(
+  res: ServerResponse,
+  status: number,
+  message: string,
+  detail?: unknown,
+): void {
   sendJson(res, status, detail !== undefined ? { error: message, detail } : { error: message })
 }
 

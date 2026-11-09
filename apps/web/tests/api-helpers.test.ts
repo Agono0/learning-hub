@@ -5,7 +5,15 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { z } from 'zod'
-import { ApiError, aiErrorResponse, jsonError, readJson, tzOffsetFromQuery, tzOffsetSchema, withRoute } from '../src/lib/api'
+import {
+  ApiError,
+  aiErrorResponse,
+  jsonError,
+  readJson,
+  tzOffsetFromQuery,
+  tzOffsetSchema,
+  withRoute,
+} from '../src/lib/api'
 
 function jsonRequest(body: unknown): Request {
   return new Request('http://localhost/api/test', {
@@ -16,7 +24,10 @@ function jsonRequest(body: unknown): Request {
 }
 
 describe('readJson', () => {
-  const schema = z.object({ name: z.string().min(1), count: z.number().int().optional().default(0) })
+  const schema = z.object({
+    name: z.string().min(1),
+    count: z.number().int().optional().default(0),
+  })
 
   it('parses and validates a matching body', async () => {
     const parsed = await readJson(jsonRequest({ name: 'deck' }), schema)
@@ -70,13 +81,17 @@ describe('aiErrorResponse', () => {
   })
 
   it('maps the not-configured case to 400 + needsSetup (historical contract)', () => {
-    const res = aiErrorResponse(new Error('AI is not configured — pick a provider and model in Settings.'))
+    const res = aiErrorResponse(
+      new Error('AI is not configured — pick a provider and model in Settings.'),
+    )
     expect(res.status).toBe(400)
   })
 
   it('sanitizes provider errors to a generic 502 without leaking the message', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const res = aiErrorResponse(new Error('fetch failed: https://secret-endpoint.example.com/v1 model=gpt-4o 401'))
+    const res = aiErrorResponse(
+      new Error('fetch failed: https://secret-endpoint.example.com/v1 model=gpt-4o 401'),
+    )
     expect(res.status).toBe(502)
     const body = (await res.json()) as { error: string; detail: string }
     expect(body.error).toBe('AI request failed')

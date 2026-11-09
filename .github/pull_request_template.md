@@ -43,4 +43,4 @@ Closes #
 ## Docs
 
 - [ ] Relevant `docs/*.md` updated
-- [ ] `CHANGELOG.md` updated under *Unreleased* (if user-facing)
+- [ ] `CHANGELOG.md` updated under _Unreleased_ (if user-facing)

@@ -51,7 +51,14 @@ export function sleepVsRetention(days: SleepRetentionDay[]): SleepRetentionInsig
     insight = `No meaningful sleep effect yet (gap ${deltaPct == null ? '—' : round1(Math.abs(deltaPct)) + ' pp'}). Sleep still drives attention and consolidation.`
   }
 
-  return { shortSleepMean: shortMean, restMean, deltaPct, nShort: short.length, nRest: rest.length, insight }
+  return {
+    shortSleepMean: shortMean,
+    restMean,
+    deltaPct,
+    nShort: short.length,
+    nRest: rest.length,
+    insight,
+  }
 }
 
 function round1(x: number): number {
@@ -97,7 +104,7 @@ export function caffeineCutoffAdvice(bedtimeHour: number): CaffeineAdvice {
   if (!Number.isInteger(bedtimeHour) || bedtimeHour < 0 || bedtimeHour > 23) {
     throw new RangeError('bedtimeHour must be an integer 0-23')
   }
-  const cutoffHour = ((bedtimeHour - CAFFEINE_CUTOFF_HOURS_BEFORE_BED) % 24 + 24) % 24
+  const cutoffHour = (((bedtimeHour - CAFFEINE_CUTOFF_HOURS_BEFORE_BED) % 24) + 24) % 24
   return {
     cutoffHour,
     advice: `Last caffeine by ${String(cutoffHour).padStart(2, '0')}:00 — that leaves the 8h buffer before your ${String(bedtimeHour).padStart(2, '0')}:00 bedtime (half-life ~5-6h).`,

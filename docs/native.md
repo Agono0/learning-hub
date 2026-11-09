@@ -23,10 +23,10 @@ apps/native/src-tauri        thin Rust shell: dialogs, file writes, HTTP,
                              notifications, haptics, window state — no app logic
 ```
 
-| Target | Build | `/api` served by | Database |
-| --- | --- | --- | --- |
-| `web` (default) | `next dev` / `next build` | Next.js route shims (Node) | better-sqlite3, `data/learning-hub.db` |
-| `tauri` | static export → `apps/web/.next-tauri` | hub worker inside the webview | sqlite-wasm on OPFS (`opfs-sahpool`) |
+| Target          | Build                                  | `/api` served by              | Database                               |
+| --------------- | -------------------------------------- | ----------------------------- | -------------------------------------- |
+| `web` (default) | `next dev` / `next build`              | Next.js route shims (Node)    | better-sqlite3, `data/learning-hub.db` |
+| `tauri`         | static export → `apps/web/.next-tauri` | hub worker inside the webview | sqlite-wasm on OPFS (`opfs-sahpool`)   |
 
 The target is chosen by `LEARNING_HUB_TARGET=tauri` (set by the scripts
 below). In that mode `next.config.ts` drops the `.ts` route shims from the
@@ -44,19 +44,19 @@ not reachable from Web Workers, hence the hop.
 
 ## Commands
 
-| Task | Command |
-| --- | --- |
-| Windows app, hot reload | `npm run app:dev` |
-| Windows installer (NSIS + MSI) | `npm run app:build` |
-| Android on device/emulator, hot reload | `npm run android:dev` |
-| Android APK | `npm run android:build` |
-| Build the native web bundle only | `npm run web:tauri` |
-| Run that exact bundle in Chrome/Edge | `npm run preview:tauri` → http://localhost:4173 |
+| Task                                   | Command                                         |
+| -------------------------------------- | ----------------------------------------------- |
+| Windows app, hot reload                | `npm run app:dev`                               |
+| Windows installer (NSIS + MSI)         | `npm run app:build`                             |
+| Android on device/emulator, hot reload | `npm run android:dev`                           |
+| Android APK                            | `npm run android:build`                         |
+| Build the native web bundle only       | `npm run web:tauri`                             |
+| Run that exact bundle in Chrome/Edge   | `npm run preview:tauri` → http://localhost:4173 |
 
 `scripts/tauri-android.mjs` prepares the Android environment automatically:
 newest NDK under `ANDROID_HOME`, and a JDK Gradle can run on (Android Studio's
 bundled JBR, or `ANDROID_JAVA_HOME`). Very new JDKs (27+) fail inside Gradle
-with *Unsupported class file major version*.
+with _Unsupported class file major version_.
 
 ## CI
 

@@ -16,7 +16,15 @@ function errText(e: unknown): string {
 export function makeSdkClient(model: LanguageModel): AIClient {
   return {
     /** Zod-validated JSON generation. One retry with an explicit JSON reminder; then throws. */
-    async generateJSON<T>({ schema, system, prompt }: { schema: import('zod').ZodType<T>; system?: string; prompt: string }): Promise<T> {
+    async generateJSON<T>({
+      schema,
+      system,
+      prompt,
+    }: {
+      schema: import('zod').ZodType<T>
+      system?: string
+      prompt: string
+    }): Promise<T> {
       const jsonReminder = 'Return ONLY JSON matching the schema — no prose, no markdown fences.'
       try {
         const { object } = await generateObject({ model, schema, system, prompt })
@@ -42,8 +50,21 @@ export function makeSdkClient(model: LanguageModel): AIClient {
       return text
     },
     /** Token streaming over the same model (optional port method). */
-    async *streamChat({ system, prompt, messages, signal }: { system?: string; prompt?: string; messages?: ChatMessage[]; signal?: AbortSignal }) {
-      const coreMessages: ModelMessage[] = (messages ?? []).map((m) => ({ role: m.role, content: m.content }))
+    async *streamChat({
+      system,
+      prompt,
+      messages,
+      signal,
+    }: {
+      system?: string
+      prompt?: string
+      messages?: ChatMessage[]
+      signal?: AbortSignal
+    }) {
+      const coreMessages: ModelMessage[] = (messages ?? []).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
       if (prompt) coreMessages.push({ role: 'user', content: prompt })
       const result = streamText({ model, system, messages: coreMessages, abortSignal: signal })
       for await (const chunk of result.textStream) {

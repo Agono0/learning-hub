@@ -109,7 +109,7 @@ export class TypedEventBus<Events extends EventMap> implements EventBus<Events> 
     if (!list || list.length === 0) return
     for (const listener of [...list]) {
       try {
-        (listener as EventListener<Events[K]>)(payload)
+        ;(listener as EventListener<Events[K]>)(payload)
       } catch (err) {
         // Isolation contract: one broken listener never breaks the emitter
         // (or the business transaction that triggered it) nor the others.
@@ -123,7 +123,9 @@ export class TypedEventBus<Events extends EventMap> implements EventBus<Events> 
   }
 
   eventNames(): (keyof Events & string)[] {
-    return [...this.listeners.keys()].filter((event) => (this.listeners.get(event)?.length ?? 0) > 0)
+    return [...this.listeners.keys()].filter(
+      (event) => (this.listeners.get(event)?.length ?? 0) > 0,
+    )
   }
 }
 

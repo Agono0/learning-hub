@@ -39,11 +39,7 @@
     },
     "level": {
       "type": "string",
-      "enum": [
-        "beginner",
-        "intermediate",
-        "advanced"
-      ]
+      "enum": ["beginner", "intermediate", "advanced"]
     },
     "language": {
       "type": "string",
@@ -134,10 +130,7 @@
             }
           }
         },
-        "required": [
-          "slug",
-          "name"
-        ]
+        "required": ["slug", "name"]
       }
     },
     "modules": {
@@ -188,14 +181,7 @@
                 "type": {
                   "default": "concept",
                   "type": "string",
-                  "enum": [
-                    "concept",
-                    "practice",
-                    "reading",
-                    "video",
-                    "project",
-                    "review"
-                  ]
+                  "enum": ["concept", "practice", "reading", "video", "project", "review"]
                 },
                 "estMinutes": {
                   "type": "integer",
@@ -234,9 +220,7 @@
                         "maxLength": 20000
                       }
                     },
-                    "required": [
-                      "body"
-                    ]
+                    "required": ["body"]
                   }
                 },
                 "workedExamples": {
@@ -270,10 +254,7 @@
                         "maxLength": 4000
                       }
                     },
-                    "required": [
-                      "problem",
-                      "steps"
-                    ]
+                    "required": ["problem", "steps"]
                   }
                 },
                 "keyTerms": {
@@ -294,10 +275,7 @@
                         "maxLength": 2000
                       }
                     },
-                    "required": [
-                      "term",
-                      "definition"
-                    ]
+                    "required": ["term", "definition"]
                   }
                 },
                 "resources": {
@@ -318,21 +296,10 @@
                       },
                       "kind": {
                         "type": "string",
-                        "enum": [
-                          "article",
-                          "video",
-                          "book",
-                          "course",
-                          "tool",
-                          "paper",
-                          "other"
-                        ]
+                        "enum": ["article", "video", "book", "course", "tool", "paper", "other"]
                       }
                     },
-                    "required": [
-                      "title",
-                      "url"
-                    ]
+                    "required": ["title", "url"]
                   }
                 },
                 "exercises": {
@@ -398,12 +365,7 @@
                             }
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "options",
-                          "answer"
-                        ]
+                        "required": ["prompt", "type", "options", "answer"]
                       },
                       {
                         "type": "object",
@@ -459,12 +421,7 @@
                             }
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "options",
-                          "answers"
-                        ]
+                        "required": ["prompt", "type", "options", "answers"]
                       },
                       {
                         "type": "object",
@@ -504,11 +461,7 @@
                             "type": "boolean"
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "answer"
-                        ]
+                        "required": ["prompt", "type", "answer"]
                       },
                       {
                         "type": "object",
@@ -561,11 +514,7 @@
                             "maxLength": 30
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "answer"
-                        ]
+                        "required": ["prompt", "type", "answer"]
                       },
                       {
                         "type": "object",
@@ -615,11 +564,7 @@
                             "type": "boolean"
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "answers"
-                        ]
+                        "required": ["prompt", "type", "answers"]
                       },
                       {
                         "type": "object",
@@ -664,11 +609,7 @@
                             "type": "boolean"
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "text"
-                        ]
+                        "required": ["prompt", "type", "text"]
                       },
                       {
                         "type": "object",
@@ -715,11 +656,7 @@
                             }
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "items"
-                        ]
+                        "required": ["prompt", "type", "items"]
                       },
                       {
                         "type": "object",
@@ -777,11 +714,7 @@
                             "maxLength": 30
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "lines"
-                        ]
+                        "required": ["prompt", "type", "lines"]
                       },
                       {
                         "type": "object",
@@ -835,18 +768,11 @@
                                   "maxLength": 300
                                 }
                               },
-                              "required": [
-                                "left",
-                                "right"
-                              ]
+                              "required": ["left", "right"]
                             }
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "pairs"
-                        ]
+                        "required": ["prompt", "type", "pairs"]
                       },
                       {
                         "type": "object",
@@ -905,18 +831,11 @@
                                   }
                                 }
                               },
-                              "required": [
-                                "name",
-                                "items"
-                              ]
+                              "required": ["name", "items"]
                             }
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "categories"
-                        ]
+                        "required": ["prompt", "type", "categories"]
                       },
                       {
                         "type": "object",
@@ -967,11 +886,7 @@
                             "maxLength": 8000
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "rubric"
-                        ]
+                        "required": ["prompt", "type", "rubric"]
                       },
                       {
                         "type": "object",
@@ -1037,18 +952,11 @@
                                   "maxLength": 300
                                 }
                               },
-                              "required": [
-                                "call",
-                                "expected"
-                              ]
+                              "required": ["call", "expected"]
                             }
                           }
                         },
-                        "required": [
-                          "prompt",
-                          "type",
-                          "language"
-                        ]
+                        "required": ["prompt", "type", "language"]
                       }
                     ]
                   }
@@ -1064,19 +972,11 @@
                   }
                 }
               },
-              "required": [
-                "slug",
-                "title",
-                "objective"
-              ]
+              "required": ["slug", "title", "objective"]
             }
           }
         },
-        "required": [
-          "slug",
-          "title",
-          "lessons"
-        ]
+        "required": ["slug", "title", "lessons"]
       }
     },
     "projects": {
@@ -1152,20 +1052,11 @@
                   "maximum": 6000
                 }
               },
-              "required": [
-                "slug",
-                "title",
-                "description"
-              ]
+              "required": ["slug", "title", "description"]
             }
           }
         },
-        "required": [
-          "slug",
-          "title",
-          "description",
-          "stages"
-        ]
+        "required": ["slug", "title", "description", "stages"]
       }
     },
     "finalExam": {
@@ -1245,12 +1136,7 @@
                     }
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "options",
-                  "answer"
-                ]
+                "required": ["prompt", "type", "options", "answer"]
               },
               {
                 "type": "object",
@@ -1306,12 +1192,7 @@
                     }
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "options",
-                  "answers"
-                ]
+                "required": ["prompt", "type", "options", "answers"]
               },
               {
                 "type": "object",
@@ -1351,11 +1232,7 @@
                     "type": "boolean"
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "answer"
-                ]
+                "required": ["prompt", "type", "answer"]
               },
               {
                 "type": "object",
@@ -1408,11 +1285,7 @@
                     "maxLength": 30
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "answer"
-                ]
+                "required": ["prompt", "type", "answer"]
               },
               {
                 "type": "object",
@@ -1462,11 +1335,7 @@
                     "type": "boolean"
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "answers"
-                ]
+                "required": ["prompt", "type", "answers"]
               },
               {
                 "type": "object",
@@ -1511,11 +1380,7 @@
                     "type": "boolean"
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "text"
-                ]
+                "required": ["prompt", "type", "text"]
               },
               {
                 "type": "object",
@@ -1562,11 +1427,7 @@
                     }
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "items"
-                ]
+                "required": ["prompt", "type", "items"]
               },
               {
                 "type": "object",
@@ -1624,11 +1485,7 @@
                     "maxLength": 30
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "lines"
-                ]
+                "required": ["prompt", "type", "lines"]
               },
               {
                 "type": "object",
@@ -1682,18 +1539,11 @@
                           "maxLength": 300
                         }
                       },
-                      "required": [
-                        "left",
-                        "right"
-                      ]
+                      "required": ["left", "right"]
                     }
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "pairs"
-                ]
+                "required": ["prompt", "type", "pairs"]
               },
               {
                 "type": "object",
@@ -1752,18 +1602,11 @@
                           }
                         }
                       },
-                      "required": [
-                        "name",
-                        "items"
-                      ]
+                      "required": ["name", "items"]
                     }
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "categories"
-                ]
+                "required": ["prompt", "type", "categories"]
               },
               {
                 "type": "object",
@@ -1814,11 +1657,7 @@
                     "maxLength": 8000
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "rubric"
-                ]
+                "required": ["prompt", "type", "rubric"]
               },
               {
                 "type": "object",
@@ -1884,26 +1723,17 @@
                           "maxLength": 300
                         }
                       },
-                      "required": [
-                        "call",
-                        "expected"
-                      ]
+                      "required": ["call", "expected"]
                     }
                   }
                 },
-                "required": [
-                  "prompt",
-                  "type",
-                  "language"
-                ]
+                "required": ["prompt", "type", "language"]
               }
             ]
           }
         }
       },
-      "required": [
-        "exercises"
-      ]
+      "required": ["exercises"]
     },
     "certificate": {
       "default": {
@@ -1930,10 +1760,5 @@
       }
     }
   },
-  "required": [
-    "lhcf",
-    "slug",
-    "title",
-    "modules"
-  ]
+  "required": ["lhcf", "slug", "title", "modules"]
 }

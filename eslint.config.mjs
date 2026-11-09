@@ -71,4 +71,24 @@ export default tseslint.config(
       ],
     },
   },
+  // AGENTS.md rule 1: No raw fetch in UI code.
+  // Raw fetch silently breaks native apps — use apiGet/apiSend/apiUpload/apiStream/apiDownload from @/lib/transport.
+  {
+    files: [
+      'apps/web/app/**/*.{ts,tsx}',
+      'apps/web/src/components/**/*.{ts,tsx}',
+      'apps/web/src/ui/**/*.{ts,tsx}',
+      'apps/web/src/platform/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.name='fetch']",
+          message:
+            'Raw fetch in UI code breaks native apps — use apiGet/apiSend/apiUpload/apiStream/apiDownload from @/lib/transport (AGENTS.md rule 1).',
+        },
+      ],
+    },
+  },
 )

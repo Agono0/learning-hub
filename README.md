@@ -4,9 +4,9 @@
 
 **The research-backed self-learning system** — every high-effect learning method from the literature (spaced repetition, retrieval practice, interleaving, elaboration, teach-back, memory palaces…), plus addiction defense, motivation science, quotes, an AI-agent-accessible idea system, and a Coursera-style curriculum engine. Local-first. TypeScript. Any AI agent can drive it via MCP.
 
-[![CI](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml/badge.svg "CI status")](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg "MIT license")](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A522-blue.svg "Node 22+")](https://nodejs.org)
+[![CI](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml/badge.svg 'CI status')](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg 'MIT license')](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A522-blue.svg 'Node 22+')](https://nodejs.org)
 
 </div>
 
@@ -19,12 +19,12 @@
 ![Weekly report](docs/screenshots/weekly.png)
 -->
 
-| Screenshot | Description |
-| --- | --- |
-| `docs/screenshots/dashboard.png` *(add later)* | Dashboard — due count, streak, quests, daily quote |
-| `docs/screenshots/review.png` *(add later)* | Keyboard-driven review session with FSRS scheduling |
-| `docs/screenshots/focus.png` *(add later)* | Focus mode with the friction gate (10 s countdown + breathing + reflection) |
-| `docs/screenshots/weekly.png` *(add later)* | Weekly report — metrics, weakest cards, forecast, suggestions |
+| Screenshot                                     | Description                                                                 |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `docs/screenshots/dashboard.png` _(add later)_ | Dashboard — due count, streak, quests, daily quote                          |
+| `docs/screenshots/review.png` _(add later)_    | Keyboard-driven review session with FSRS scheduling                         |
+| `docs/screenshots/focus.png` _(add later)_     | Focus mode with the friction gate (10 s countdown + breathing + reflection) |
+| `docs/screenshots/weekly.png` _(add later)_    | Weekly report — metrics, weakest cards, forecast, suggestions               |
 
 ## Quick start
 
@@ -76,19 +76,19 @@ Inspect: `npx @modelcontextprotocol/inspector node --import tsx apps/mcp/src/ind
 
 ## AI is optional, not required
 
-Learning HUB runs **fully without AI** — `none` is the default provider, every AI surface shows its manual alternative, and no API key is ever needed. When you *do* want AI (Settings → AI provider):
+Learning HUB runs **fully without AI** — `none` is the default provider, every AI surface shows its manual alternative, and no API key is ever needed. When you _do_ want AI (Settings → AI provider):
 
-| Provider | Needs | Notes |
-| --- | --- | --- |
-| `anthropic` | API key | default model `claude-sonnet-4-5` |
-| `openai` | API key | default model `gpt-4o-mini` |
-| `google` | API key | default model `gemini-2.5-flash` (@ai-sdk/google) |
-| `openai-compatible` | API key + base URL | GLM, DeepSeek, any OpenAI-compatible endpoint |
-| `ollama` | base URL (default `http://localhost:11434/v1`) | local, free |
-| `custom-endpoint` | base URL (+ optional headers JSON) | **any** HTTP service becomes a provider — POST `{ v, feature, system, prompt, schema }`, respond `{ result }` |
-| `none` | nothing | **the default** |
+| Provider            | Needs                                          | Notes                                                                                                         |
+| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `anthropic`         | API key                                        | default model `claude-sonnet-4-5`                                                                             |
+| `openai`            | API key                                        | default model `gpt-4o-mini`                                                                                   |
+| `google`            | API key                                        | default model `gemini-2.5-flash` (@ai-sdk/google)                                                             |
+| `openai-compatible` | API key + base URL                             | GLM, DeepSeek, any OpenAI-compatible endpoint                                                                 |
+| `ollama`            | base URL (default `http://localhost:11434/v1`) | local, free                                                                                                   |
+| `custom-endpoint`   | base URL (+ optional headers JSON)             | **any** HTTP service becomes a provider — POST `{ v, feature, system, prompt, schema }`, respond `{ result }` |
+| `none`              | nothing                                        | **the default**                                                                                               |
 
-- **Prompt transport (copy-paste mode)** — every AI feature can be driven with no provider at all: fetch the self-contained prompt envelope (`GET /api/ai/transport?feature=…`), paste it into any chatbot, paste the raw reply back — the app strips fences, extracts the JSON and validates it with the *same* zod schema an in-process provider must satisfy.
+- **Prompt transport (copy-paste mode)** — every AI feature can be driven with no provider at all: fetch the self-contained prompt envelope (`GET /api/ai/transport?feature=…`), paste it into any chatbot, paste the raw reply back — the app strips fences, extracts the JSON and validates it with the _same_ zod schema an in-process provider must satisfy.
 - **Manual modes** — every feature has a structured manual alternative (Socratic → self-explain ladder, Feynman → teach a real person + rubric, course generator → manual curriculum builder, ideas council → four persona prompts on paper…). The invariant "every AI feature has a manual mode" is test-enforced.
 
 Full details: the provider registry, the custom-endpoint HTTP contract, the feature list and the "add a provider" checklist live in [`docs/ai-providers.md`](docs/ai-providers.md).

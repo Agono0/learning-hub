@@ -123,6 +123,8 @@ export function setupWebhooks(spec: string | undefined): WebhookSetup {
       console.error(`[webhooks] failed to subscribe "${target.event}":`, err)
     }
   }
-  console.log(`[webhooks] subscribed ${subscribed}/${targets.length} webhook(s) to the core event bus`)
+  console.log(
+    `[webhooks] subscribed ${subscribed}/${targets.length} webhook(s) to the core event bus`,
+  )
   return { targets, subscribed }
 }

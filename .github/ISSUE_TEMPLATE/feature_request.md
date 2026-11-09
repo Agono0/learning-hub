@@ -23,7 +23,7 @@ What you want to happen. If this is a learning feature, say which study techniqu
 - [ ] AI provider (see `docs/ai-providers.md`)
 
 **AI-optional check**
-If the feature uses AI: what should the *manual mode* be (the alternative shown when `provider: none`)? Every AI feature must have one.
+If the feature uses AI: what should the _manual mode_ be (the alternative shown when `provider: none`)? Every AI feature must have one.
 
 **Describe alternatives you've considered**
 Other approaches or existing tools and what they get wrong.

@@ -16,12 +16,12 @@ npx tsx apps/server/src/index.ts
 
 ## Configuration
 
-| Source | Env var | Default |
-| --- | --- | --- |
-| Port | `LEARNING_HUB_PORT` | `3300` |
-| DB file | `LEARNING_HUB_DB` | resolved by packages/db (`packages/db/src/paths.ts`): walks up from cwd to the repo root → `data/learning-hub.db` |
-| Bind host | `--host` CLI flag, else `LEARNING_HUB_HOST` | `127.0.0.1` (localhost only) |
-| Webhooks | `LEARNING_HUB_WEBHOOKS` | none |
+| Source    | Env var                                     | Default                                                                                                           |
+| --------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Port      | `LEARNING_HUB_PORT`                         | `3300`                                                                                                            |
+| DB file   | `LEARNING_HUB_DB`                           | resolved by packages/db (`packages/db/src/paths.ts`): walks up from cwd to the repo root → `data/learning-hub.db` |
+| Bind host | `--host` CLI flag, else `LEARNING_HUB_HOST` | `127.0.0.1` (localhost only)                                                                                      |
+| Webhooks  | `LEARNING_HUB_WEBHOOKS`                     | none                                                                                                              |
 
 Malformed values fall back to the default with a `[server]` warning (never crash
 at boot). The `--host` flag wins over the env var:
@@ -172,11 +172,11 @@ With no `plugins/` directory (or no valid plugins in it) this is
 Errors use the web app's envelope — `{ "error": "<message>" }`, plus `"detail"`
 when there is structured context:
 
-| Status | When |
-| --- | --- |
-| `400` | Malformed JSON body/query, zod validation failure (`detail` = per-field issues), review-engine `ValidationError` |
-| `404` | Unknown route (`{"error":"Not found: GET /nope"}`), unknown `cardId` in a review (`CardNotFoundError`) |
-| `500` | Anything else — sanitized to `{"error":"Internal error"}`; the real error is only in the server log |
+| Status | When                                                                                                             |
+| ------ | ---------------------------------------------------------------------------------------------------------------- |
+| `400`  | Malformed JSON body/query, zod validation failure (`detail` = per-field issues), review-engine `ValidationError` |
+| `404`  | Unknown route (`{"error":"Not found: GET /nope"}`), unknown `cardId` in a review (`CardNotFoundError`)           |
+| `500`  | Anything else — sanitized to `{"error":"Internal error"}`; the real error is only in the server log              |
 
 ```bash
 curl -X POST http://127.0.0.1:3300/review -H 'Content-Type: application/json' -d '{"cardId":42,"grade":9}'

@@ -34,6 +34,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Prettier format check
+        run: npm run format:check
+
+      - name: Validate commit messages
+        if: github.event_name == 'pull_request'
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+
       - name: Unit tests (all workspaces)
         run: npm test --workspaces --if-present
 

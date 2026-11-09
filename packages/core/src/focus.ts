@@ -19,7 +19,8 @@ export const COUNTDOWN_SECONDS = 10
 /** 4-7-8 breathing (Weil): inhale 4s, hold 7s, exhale 8s = 19s per cycle. */
 export const BREATH_SECONDS = { inhale: 4, hold: 7, exhale: 8 } as const
 /** Seconds in one 4-7-8 breath cycle (4 + 7 + 8 = 19). */
-export const BREATH_CYCLE_SECONDS = BREATH_SECONDS.inhale + BREATH_SECONDS.hold + BREATH_SECONDS.exhale // 19
+export const BREATH_CYCLE_SECONDS =
+  BREATH_SECONDS.inhale + BREATH_SECONDS.hold + BREATH_SECONDS.exhale // 19
 /** Breaths the user must complete before the reflection step unlocks. */
 export const BREATHS_REQUIRED = 3
 /** The reflection question the friction gate asks. */
@@ -35,13 +36,7 @@ export interface GateSession {
 
 /** Phases of the friction-gate state machine. */
 export type GatePhase =
-  | 'idle'
-  | 'focus_running'
-  | 'friction_armed'
-  | 'countdown'
-  | 'breathing'
-  | 'reflection'
-  | 'outcome'
+  'idle' | 'focus_running' | 'friction_armed' | 'countdown' | 'breathing' | 'reflection' | 'outcome'
 
 /** How a friction attempt ends. */
 export type GateOutcome = 'proceeded' | 'aborted'
@@ -70,7 +65,11 @@ export interface FrictionGate {
 
 /** Thrown on any transition the machine does not allow. */
 export class GateError extends Error {
-  constructor(readonly phase: GatePhase, readonly action: string, detail?: string) {
+  constructor(
+    readonly phase: GatePhase,
+    readonly action: string,
+    detail?: string,
+  ) {
     super(detail ?? `Action "${action}" is not allowed in phase "${phase}"`)
     this.name = 'GateError'
   }
@@ -131,7 +130,8 @@ export function tickGate(gate: FrictionGate, action: GateAction): FrictionGate {
     // ── session lifecycle ────────────────────────────────────────────────
     case 'start_session': {
       if (s.phase !== 'idle') throw new GateError(s.phase, action.type)
-      if (!(action.plannedMinutes > 0)) throw new GateError(s.phase, action.type, 'plannedMinutes must be > 0')
+      if (!(action.plannedMinutes > 0))
+        throw new GateError(s.phase, action.type, 'plannedMinutes must be > 0')
       return trail(gate, 'focus_running', {
         phase: 'focus_running',
         session: {
@@ -204,7 +204,11 @@ export function tickGate(gate: FrictionGate, action: GateAction): FrictionGate {
       if (s.phase !== 'reflection') throw new GateError(s.phase, action.type)
       const text = action.text.trim()
       if (text.length === 0) {
-        throw new GateError(s.phase, action.type, 'The reflection must be written before proceeding.')
+        throw new GateError(
+          s.phase,
+          action.type,
+          'The reflection must be written before proceeding.',
+        )
       }
       return trail(gate, 'outcome', {
         phase: 'outcome',
@@ -225,7 +229,8 @@ export function tickGate(gate: FrictionGate, action: GateAction): FrictionGate {
       })
     }
     case 'resume': {
-      if (s.phase !== 'outcome' || s.outcome !== 'proceeded') throw new GateError(s.phase, action.type)
+      if (s.phase !== 'outcome' || s.outcome !== 'proceeded')
+        throw new GateError(s.phase, action.type)
       return trail(gate, 'focus_running', {
         phase: 'focus_running',
         session: s.session,
@@ -316,8 +321,7 @@ export interface PhoneProtocolItem {
 
 /** Mere presence of your own smartphone reduces available cognitive capacity —
  * the pre-session checklist neutralizes it. */
-export const PHONE_PROTOCOL_SOURCE =
-  'Ward, Duke, Gneezy & Bos (2017): "Brain Drain" — JACR'
+export const PHONE_PROTOCOL_SOURCE = 'Ward, Duke, Gneezy & Bos (2017): "Brain Drain" — JACR'
 
 /** Pre-session phone-neutralizing checklist (Ward et al. 2017). */
 export const phoneProtocolChecklist: PhoneProtocolItem[] = [

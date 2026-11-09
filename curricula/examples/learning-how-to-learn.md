@@ -51,7 +51,13 @@ finalExam:
   exercises:
     - type: mcq
       prompt: Which activity produces the most durable learning per minute?
-      options: [Re-reading the chapter, Highlighting key sentences, Testing yourself without notes, Copying notes neatly]
+      options:
+        [
+          Re-reading the chapter,
+          Highlighting key sentences,
+          Testing yourself without notes,
+          Copying notes neatly,
+        ]
       answer: 2
       explanation: Retrieval practice (the testing effect) consistently outperforms re-reading and highlighting.
     - type: truefalse
@@ -63,10 +69,16 @@ finalExam:
       answers: [interleaving, the interleaving effect, interleaved practice]
     - type: ordering
       prompt: Order a good study session.
-      items: [Try to recall without looking, Check against the source, Explain why the answer is right, Schedule the next review]
+      items:
+        [
+          Try to recall without looking,
+          Check against the source,
+          Explain why the answer is right,
+          Schedule the next review,
+        ]
 ---
 
-A short, practical course on *how* to study, built from techniques with
+A short, practical course on _how_ to study, built from techniques with
 decades of experimental evidence behind them — and the history of where
 they came from.
 
@@ -75,6 +87,7 @@ they came from.
 How memory works, and the two habits that matter most.
 
 ### The testing effect
+
 Objective: Explain why retrieving information strengthens memory more than re-reading it
 
 ```lesson
@@ -104,7 +117,7 @@ The idea is old. Around 1620 Francis Bacon noted that reading something
 twenty times is less effective than reading it ten times while trying to
 recite it. Modern experiments confirm it: in Roediger & Karpicke (2006),
 students who practised recalling a text remembered far more of it a week
-later than students who re-read it — even though the re-readers *felt*
+later than students who re-read it — even though the re-readers _felt_
 more confident.
 
 #### Why it works
@@ -136,6 +149,7 @@ modelAnswer: After each lecture I close my notes and write down the three main i
 ```
 
 ### Spacing your practice
+
 Objective: Calculate a spaced review schedule for material you need to remember for an exam
 
 ```lesson
@@ -153,7 +167,7 @@ reflection:
 ```
 
 Hermann Ebbinghaus memorised lists of nonsense syllables and measured how
-fast he forgot them (1885). He found the *forgetting curve* — and that
+fast he forgot them (1885). He found the _forgetting curve_ — and that
 spreading repetitions over days made relearning much faster.
 
 #### How far apart?
@@ -183,6 +197,7 @@ answer: true
 Making knowledge flexible, not just memorised.
 
 ### Interleaving
+
 Objective: Compare blocked and interleaved practice and choose the right one for a skill
 
 ```lesson
@@ -215,6 +230,7 @@ categories:
 ```
 
 ### Explaining it to yourself
+
 Objective: Apply elaborative interrogation and self-explanation to a new fact
 
 ```lesson
@@ -228,7 +244,7 @@ reflection:
 
 Socrates taught by questioning — making students explain and defend ideas
 rather than receive them. Modern research calls the self-questioning version
-*elaborative interrogation* and *self-explanation* (Chi et al., 1994): learners
+_elaborative interrogation_ and _self-explanation_ (Chi et al., 1994): learners
 who explain each step to themselves understand and transfer far better.
 
 ```exercise
@@ -250,6 +266,7 @@ answers: [Socrates]
 ```
 
 ### Review: everything mixed
+
 Objective: Recall the core techniques of this course in mixed order
 
 ```lesson
