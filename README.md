@@ -118,14 +118,14 @@ flowchart LR
     subgraph surfaces ["Surfaces — one brain, many doors"]
         WEB["apps/web<br/>Next.js 16 · React 19<br/>Tailwind 4"]
         SERVE["apps/server<br/>headless REST<br/>(node:http)"]
-        MCP["apps/mcp<br/>MCP stdio server<br/>14 tools"]
-        CLI["apps/cli<br/>terminal adapter"]
+        MCP["apps/mcp<br/>MCP stdio server<br/>51 tools"]
+        CLI["apps/cli<br/>terminal adapter<br/>25 commands"]
     end
 
     subgraph packages ["Packages"]
         CORE["packages/core<br/>pure domain logic:<br/>FSRS-6 · BKT/Elo · XP · streaks<br/>linter · prompts · event bus · plugin loader"]
         AIC["packages/ai-adapters<br/>the ONLY package allowed<br/>to import the AI SDK<br/>anthropic · openai · openai-compatible<br/>ollama · custom-endpoint"]
-        DB["packages/db<br/>better-sqlite3 + drizzle-orm<br/>45 tables · WAL<br/>canonical review service<br/>(one atomic transaction)"]
+        DB["packages/db<br/>better-sqlite3 + drizzle-orm<br/>92 tables · WAL · 40 repos<br/>canonical review service<br/>(one atomic transaction)"]
     end
 
     SQLITE[("SQLite<br/>data/learning-hub.db<br/>append-only revlog / xp_events /<br/>friction_events / elo_events")]

@@ -50,6 +50,9 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(toolNames).toContain('world_market_buy')
     expect(toolNames).toContain('guild_list')
     expect(toolNames).toContain('guild_join')
+    expect(toolNames).toContain('audio_schedule')
+    expect(toolNames).toContain('cognitive_load_report')
+    expect(toolNames).toContain('boss_status')
   })
 
   it('captures and searches ideas via idea_create and idea_search', async () => {
@@ -412,5 +415,53 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     }>('guild_list', { limit: 10 })
     expect(listGuildsRes.ok).toBe(true)
     expect(listGuildsRes.guilds.some((g) => g.tag === 'ATH')).toBe(true)
+  })
+
+  it('operates audio schedule, cognitive load report, and boss battle status via telemetry-audio tools (Batch C4)', async () => {
+    // 1. audio_schedule: commute & tmr
+    const commuteRes = await client.callTool<{
+      ok: boolean
+      kind: string
+      count: number
+      queue: Array<{ id: number; spokenFront: string }>
+    }>('audio_schedule', { kind: 'commute', limit: 10 })
+    expect(commuteRes.ok).toBe(true)
+    expect(commuteRes.kind).toBe('commute')
+    expect(Array.isArray(commuteRes.queue)).toBe(true)
+
+    const tmrRes = await client.callTool<{
+      ok: boolean
+      kind: string
+      count: number
+      cues: Array<{ cardId: number; timesCuedAwake: number }>
+    }>('audio_schedule', { kind: 'tmr', action: 'mint', limit: 20 })
+    expect(tmrRes.ok).toBe(true)
+    expect(tmrRes.kind).toBe('tmr')
+    expect(Array.isArray(tmrRes.cues)).toBe(true)
+
+    // 2. cognitive_load_report
+    const cogRes = await client.callTool<{
+      ok: boolean
+      count: number
+      summary: {
+        averageCli: number
+        flowDistribution: Record<string, number>
+      }
+      events: Array<{ id: number; estimatedCli: number; flowZone: string }>
+    }>('cognitive_load_report', { limit: 15 })
+    expect(cogRes.ok).toBe(true)
+    expect(typeof cogRes.summary.averageCli).toBe('number')
+    expect(cogRes.summary.flowDistribution).toBeDefined()
+    expect(Array.isArray(cogRes.events)).toBe(true)
+
+    // 3. boss_status
+    const bossRes = await client.callTool<{
+      ok: boolean
+      active: { id: number; bossKey: string; bossName: string; currentHp: number } | null
+      roster: Array<{ key: string; name: string; maxHp: number; rewardXp: number }>
+    }>('boss_status', { includeRoster: true })
+    expect(bossRes.ok).toBe(true)
+    expect(Array.isArray(bossRes.roster)).toBe(true)
+    expect(bossRes.roster.some((b) => b.key === 'chronos')).toBe(true)
   })
 })

@@ -19,6 +19,7 @@ import { curriculumCommand } from './commands/curriculum'
 import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
 import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
 import { debateCommand, guildCommand, palaceCommand, worldCommand } from './commands/community'
+import { audioCommand, focusLoadCmd, gamesCommand } from './commands/telemetry-audio'
 import {
   db,
   awardXp,
@@ -564,9 +565,9 @@ const builtinCommands: RegisteredCommand[] = [
   },
   {
     name: 'focus',
-    description: 'start a focus session',
-    usage: '[min]',
-    run: (runArgs) => focus(runArgs[0]),
+    description: 'start a focus session or report cognitive load',
+    usage: '[min|load]',
+    run: (runArgs) => (runArgs[0] === 'load' ? focusLoadCmd(runArgs.slice(1)) : focus(runArgs[0])),
   },
   { name: 'quote', description: 'random quote', run: () => quote() },
   {
@@ -673,6 +674,18 @@ const builtinCommands: RegisteredCommand[] = [
     usage: '[list|join|leave]',
     run: (runArgs) => guildCommand(runArgs),
   },
+  {
+    name: 'audio',
+    description: 'speakable commute review and sleep TMR earcons',
+    usage: '[schedule]',
+    run: (runArgs) => audioCommand(runArgs),
+  },
+  {
+    name: 'games',
+    description: 'solo RPG boss battles and mythical boss roster',
+    usage: '[status]',
+    run: (runArgs) => gamesCommand(runArgs),
+  },
 ]
 
 async function main() {
@@ -701,5 +714,5 @@ main()
   })
   .then(() => {
     // keep long-running commands (focus) alive; exit otherwise
-    if (cmd !== 'focus') exit(process.exitCode ?? 0)
+    if (cmd !== 'focus' || args[0] === 'load') exit(process.exitCode ?? 0)
   })

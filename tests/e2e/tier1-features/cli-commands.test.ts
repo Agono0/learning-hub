@@ -243,4 +243,30 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(guildLeave.exitCode).toBe(0)
     expect(guildLeave.stdout).toContain('apprentice left their guild')
   }, 30000)
+
+  it('runs audio, focus load, and games CLI commands (Batch C4)', async () => {
+    // 1. audio schedule (commute and tmr)
+    const audioCommute = await runCli(['audio', 'schedule', '--kind', 'commute'], getActiveDbPath())
+    expect(audioCommute.exitCode).toBe(0)
+    expect(audioCommute.stdout).toMatch(/Audio Hands-Free Commute Queue|No due cards ready/)
+
+    const audioTmr = await runCli(
+      ['audio', 'schedule', '--kind', 'tmr', '--action', 'mint'],
+      getActiveDbPath(),
+    )
+    expect(audioTmr.exitCode).toBe(0)
+    expect(audioTmr.stdout).toContain('sleep TMR cues')
+
+    // 2. focus load
+    const focusLoad = await runCli(['focus', 'load'], getActiveDbPath())
+    expect(focusLoad.exitCode).toBe(0)
+    expect(focusLoad.stdout).toMatch(/Cognitive Load & Flow Telemetry|No cognitive telemetry/)
+
+    // 3. games status
+    const gamesStatus = await runCli(['games', 'status'], getActiveDbPath())
+    expect(gamesStatus.exitCode).toBe(0)
+    expect(gamesStatus.stdout).toContain('Solo RPG Boss Battle Status')
+    expect(gamesStatus.stdout).toContain('Mythical Boss Roster')
+    expect(gamesStatus.stdout).toContain('Chronos')
+  }, 20000)
 })

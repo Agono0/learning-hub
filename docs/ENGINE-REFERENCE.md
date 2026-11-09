@@ -46,11 +46,54 @@ Only `@learning-hub/ai-adapters` may import `ai` / `@ai-sdk/*` — see [ai-provi
 ## Database conventions
 
 - `import { db } from '@learning-hub/db'` — server contexts ONLY (API routes / server components). Never in client components.
-- Schema: `packages/db/src/schema.ts` (45 tables, pushed). Views `v_true_retention`, `v_daily_reviews`, `v_xp_daily` are created automatically on first client connection (raw SQL in `createDb`).
+- Schema: `packages/db/src/schema.ts` (92 tables, pushed). Views `v_true_retention`, `v_daily_reviews`, `v_xp_daily` are created automatically on first client connection (raw SQL in `createDb`).
+- Repositories: `packages/db/src/repos/*.ts` (40 domain modules). All queries across web, MCP, CLI, and headless server share these typed, transactional repositories.
 - Dates: ISO-8601 strings. Day keys: `YYYY-MM-DD` (use `dayKey(date)` from core/streaks).
 - JSON columns: `text('x', { mode: 'json' }).$type<T>()`.
 - Append-only tables: `revlog`, `xp_events`, `friction_events`, `elo_events`, `cognitive_telemetry_events`, `circadian_audio_sessions`, `dialectic_arena_debates`, `exposure_events` — INSERT only, never UPDATE/DELETE.
 - DB path resolves via `$LEARNING_HUB_DB` or walks up from cwd to the repo root → `data/learning-hub.db`. Images dir: `data/images/`.
+
+## MCP Tools Reference (51 Tools)
+
+| Category / Module | Tools Count | Registered Tools | Description |
+| --- | --- | --- | --- |
+| **Built-in Tools** (`apps/mcp/src/index.ts`) | 14 | `idea_create`, `idea_search`, `idea_connect`, `idea_evolve`, `idea_list_inbox`, `note_create`, `note_search`, `review_log`, `review_stats`, `goal_woop`, `goal_list`, `focus_summary`, `quote_random`, `card_generate` | Core Zettelkasten note/idea graph, reviews, WOOP goals, and pomodoro tracking. |
+| **Curriculum Tools** (`tools/curriculum.ts`) | 6 | `curriculum_prompt`, `curriculum_import`, `curriculum_list`, `curriculum_course`, `curriculum_next`, `curriculum_export` | LHCF course generation, mastery DAG progression, and package import/export. |
+| **Cognitive Tools** (`tools/cognitive.ts`) | 11 | `fsrs_status`, `fsrs_optimize`, `starter_list`, `starter_install`, `cloud_sync`, `cloud_status`, `workload_forecast`, `workload_balance`, `workload_catchup`, `exposure_list`, `search` | FSRS-6 scheduler tuning, review backlog smoothing, vocabulary exposure, and FTS5 search. |
+| **Lifestyle Tools** (`tools/lifestyle.ts`) | 5 | `habit_list`, `habit_checkin`, `journal_write`, `journal_search`, `physio_log` | Habit loops/streaks, daily reflection journal, and sleep/exercise/caffeine telemetry. |
+| **Learning Path Tools** (`tools/learning-path.ts`) | 5 | `reading_list`, `reading_add`, `study_plan_get`, `study_plan_set`, `gkt_session` | Incremental reading queue, weekly spaced agenda planning, and Bayesian concept DAG knowledge tracing (GKT). |
+| **Community Tools** (`tools/community.ts`) | 7 | `dialectic_arena`, `palace_list`, `palace_add_locus`, `world_state`, `world_market_buy`, `guild_list`, `guild_join` | Dialectic debate arena, spatial memory palaces/loci, virtual study world ledger, and team guilds. |
+| **Telemetry & Audio** (`tools/telemetry-audio.ts`) | 3 | `audio_schedule`, `cognitive_load_report`, `boss_status` | Commute audio review & sleep TMR scheduling, Sweller CLT cognitive load scoring, and RPG boss status. |
+
+## CLI Commands Reference (25 Commands)
+
+| Command | Usage | Description |
+| --- | --- | --- |
+| `capture` | `<text>` | Quick-capture an idea into the Zettelkasten inbox |
+| `today` | `[--all]` | Today dashboard (due reviews, habit status, streak) |
+| `stats` | — | Learning metrics (retention, FSRS stability, review counts) |
+| `review` | `[n]` | Terminal review session (1-4 grading with FSRS scheduling) |
+| `focus` | `[min\|load]` | Start a Pomodoro timer session or inspect cognitive load |
+| `quote` | — | Print a randomized historical motivational quote |
+| `search` | `<query>` | Unified FTS5 search across notes, cards, lessons, and ideas |
+| `fsrs` | `[status\|optimize]` | Inspect FSRS-6 state or optimize 21 parameters |
+| `starter` | `[list\|install]` | Inspect or install curated starter courses |
+| `sync` | `[status\|push\|pull]` | Cloud backup sync status and manual sync trigger |
+| `curriculum` | `[list\|next\|import\|export]` | Manage LHCF courses, skill unlock trees, and progress |
+| `workload` | `[forecast\|balance\|catchup]` | Review backlog load forecast and deadline smoothing |
+| `exposure` | `[list]` | Ambient vocabulary ledger and Krashen i+1 lexical coverage |
+| `habits` | `[list\|checkin\|history]` | Habit loops, streak tracking, and automaticity stages |
+| `journal` | `[write\|show]` | Daily reflection journal and gratitude logging |
+| `physio` | `[--sleep N ...]` | Record physiology metrics and view learning advice |
+| `reading` | `[list\|add\|finish]` | Incremental reading queue and document ingestion |
+| `plan` | `[today\|week\|set]` | Study plan agenda and weekly distributed template |
+| `gkt` | `[drill]` | Bayesian prerequisite DAG knowledge tracing drills |
+| `debate` | `[list\|open\|turn\|vote]` | Multi-agent dialectic arena and learner rulings |
+| `palace` | `[list\|add\|create]` | Spatial memory palace containers and loci ordering |
+| `world` | `[status\|market]` | 3D virtual study world avatar, coins, and forest |
+| `guild` | `[list\|join\|leave\|create]` | Study clans, levels, and team XP pooling |
+| `audio` | `[schedule]` | Speakable commute review queue and sleep TMR earcons |
+| `games` | `[status]` | Solo RPG boss battles and mythical boss roster |
 
 ## Project conventions
 
