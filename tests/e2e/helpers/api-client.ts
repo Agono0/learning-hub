@@ -47,13 +47,15 @@ export async function callRoute<T = unknown>(
   }
 
   const reqHeaders = new Headers(options.headers)
-  let bodyStr: string | undefined = undefined
+  let bodyValue: BodyInit | undefined = undefined
 
   if (options.body !== undefined && method !== 'GET') {
     if (typeof options.body === 'string') {
-      bodyStr = options.body
+      bodyValue = options.body
+    } else if (typeof FormData !== 'undefined' && options.body instanceof FormData) {
+      bodyValue = options.body
     } else {
-      bodyStr = JSON.stringify(options.body)
+      bodyValue = JSON.stringify(options.body)
       if (!reqHeaders.has('content-type')) {
         reqHeaders.set('content-type', 'application/json')
       }
@@ -63,7 +65,7 @@ export async function callRoute<T = unknown>(
   const req = new Request(url, {
     method,
     headers: reqHeaders,
-    body: bodyStr,
+    body: bodyValue,
   })
 
   // Next.js App Router context with async params compatibility
