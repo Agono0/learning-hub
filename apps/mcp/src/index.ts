@@ -18,6 +18,7 @@ import { z } from 'zod'
 import { json, tool, type RegisteredTool } from './tool-kit'
 import { curriculumTools } from './tools/curriculum'
 import { cognitiveTools } from './tools/cognitive'
+import { lifestyleTools } from './tools/lifestyle'
 import {
   CardNotFoundError,
   cards,
@@ -532,7 +533,12 @@ async function main() {
     )
   }
 
-  for (const registered of [...builtinTools, ...curriculumTools, ...cognitiveTools]) {
+  for (const registered of [
+    ...builtinTools,
+    ...curriculumTools,
+    ...cognitiveTools,
+    ...lifestyleTools,
+  ]) {
     server.registerTool(
       registered.name,
       { description: registered.description, inputSchema: registered.inputSchema },

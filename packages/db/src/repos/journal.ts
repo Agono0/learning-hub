@@ -67,6 +67,29 @@ export function listJournalEntriesSince(
 }
 
 /**
+ * Search journal entries by text query across smallWins, gratitude, worryDump, and aiInsight.
+ */
+export function searchJournalEntries(
+  query: string,
+  opts: { from?: string; to?: string; db?: LearningHubDB } = {},
+): JournalEntryRow[] {
+  const db = opts.db ?? getDb()
+  const q = query.toLowerCase()
+  let sql = db.select().from(journalEntries).$dynamic()
+  if (opts.from) sql = sql.where(gte(journalEntries.date, opts.from))
+  if (opts.to) sql = sql.where(lte(journalEntries.date, opts.to))
+  const allRows = sql.orderBy(desc(journalEntries.date)).all()
+  return allRows.filter((r) => {
+    return (
+      (r.smallWins && r.smallWins.toLowerCase().includes(q)) ||
+      (r.gratitude && r.gratitude.toLowerCase().includes(q)) ||
+      (r.worryDump && r.worryDump.toLowerCase().includes(q)) ||
+      (r.aiInsight && r.aiInsight.toLowerCase().includes(q))
+    )
+  })
+}
+
+/**
  * Upsert a daily journal entry. On first creation for a date, awards canonical XP.
  */
 export function upsertJournalEntry(

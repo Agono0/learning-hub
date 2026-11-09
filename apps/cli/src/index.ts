@@ -16,6 +16,7 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm'
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout, exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
+import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
 import {
   db,
   awardXp,
@@ -609,6 +610,24 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'ambient vocabulary ledger and Krashen i+1 tracking',
     usage: '[list]',
     run: () => exposureCmd(),
+  },
+  {
+    name: 'habits',
+    description: 'habit loops, streaks, and check-ins',
+    usage: '[list|checkin|history]',
+    run: (runArgs) => habitsCommand(runArgs),
+  },
+  {
+    name: 'journal',
+    description: 'daily reflection journal and mood tracking',
+    usage: '[write|show]',
+    run: (runArgs) => journalCommand(runArgs),
+  },
+  {
+    name: 'physio',
+    description: 'physiology metrics and learning advice',
+    usage: '[--sleep N --exercise N ...]',
+    run: (runArgs) => physioCommand(runArgs),
   },
 ]
 

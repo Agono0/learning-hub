@@ -66,4 +66,32 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(syncRes.exitCode).toBe(0)
     expect(syncRes.stdout).toContain('CLOUD SYNC')
   })
+
+  it('runs habits, journal, and physio CLI commands (Batch C1)', async () => {
+    // 1. habits list
+    const habitsRes = await runCli(['habits', 'list'], getActiveDbPath())
+    expect(habitsRes.exitCode).toBe(0)
+    expect(habitsRes.stdout).toMatch(/Habits|No habits found/)
+
+    // 2. journal write & show
+    const journalWrite = await runCli(
+      ['journal', 'write', '--date', '2026-11-09', '--mood', '5', '--wins', 'Shipped Batch C1 CLI'],
+      getActiveDbPath(),
+    )
+    expect(journalWrite.exitCode).toBe(0)
+    expect(journalWrite.stdout).toContain('Journal entry saved')
+
+    const journalShow = await runCli(['journal', 'show', '2026-11-09'], getActiveDbPath())
+    expect(journalShow.exitCode).toBe(0)
+    expect(journalShow.stdout).toContain('Shipped Batch C1 CLI')
+
+    // 3. physio command
+    const physioRes = await runCli(
+      ['physio', '--sleep', '7.5', '--exercise', '30', '--arousal', '6'],
+      getActiveDbPath(),
+    )
+    expect(physioRes.exitCode).toBe(0)
+    expect(physioRes.stdout).toContain('Physiology & Retention Telemetry')
+    expect(physioRes.stdout).toContain('Yerkes-Dodson zone')
+  })
 })

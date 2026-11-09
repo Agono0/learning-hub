@@ -33,6 +33,11 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(toolNames).toContain('fsrs_optimize')
     expect(toolNames).toContain('starter_install')
     expect(toolNames).toContain('cloud_sync')
+    expect(toolNames).toContain('habit_list')
+    expect(toolNames).toContain('habit_checkin')
+    expect(toolNames).toContain('journal_write')
+    expect(toolNames).toContain('journal_search')
+    expect(toolNames).toContain('physio_log')
   })
 
   it('captures and searches ideas via idea_create and idea_search', async () => {
@@ -141,5 +146,80 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     )
     expect(syncRes.ok).toBe(true)
     expect(syncRes.sync.provider).toBeDefined()
+  })
+
+  it('manages habits, journal, and physio via lifestyle tools (Batch C1)', async () => {
+    // 1. habit_list
+    const habitsRes = await client.callTool<{
+      ok: boolean
+      habits: Array<{ id: number; name: string }>
+    }>('habit_list', {})
+    expect(habitsRes.ok).toBe(true)
+    expect(Array.isArray(habitsRes.habits)).toBe(true)
+
+    // 2. habit_checkin
+    if (habitsRes.habits.length > 0) {
+      const habitId = habitsRes.habits[0].id
+      const checkin1 = await client.callTool<{ ok: boolean; created: boolean; xpAwarded: number }>(
+        'habit_checkin',
+        { habitId, date: '2026-11-09' },
+      )
+      expect(checkin1.ok).toBe(true)
+
+      // Idempotency: second checkin returns alreadyDone / created: false
+      const checkin2 = await client.callTool<{
+        ok: boolean
+        created: boolean
+        alreadyDone: boolean
+        xpAwarded: number
+      }>('habit_checkin', { habitId, date: '2026-11-09' })
+      expect(checkin2.ok).toBe(true)
+      expect(checkin2.created).toBe(false)
+      expect(checkin2.alreadyDone).toBe(true)
+      expect(checkin2.xpAwarded).toBe(0)
+    }
+
+    // 3. journal_write
+    const writeRes = await client.callTool<{ ok: boolean; entry: { date: string; mood: number } }>(
+      'journal_write',
+      {
+        date: '2026-11-09',
+        mood: 5,
+        smallWins: 'Completed MCP lifestyle tools parity test',
+        gratitude: 'Disciplined codebase and fast tests',
+      },
+    )
+    expect(writeRes.ok).toBe(true)
+    expect(writeRes.entry.date).toBe('2026-11-09')
+    expect(writeRes.entry.mood).toBe(5)
+
+    // 4. journal_search
+    const searchRes = await client.callTool<{
+      ok: boolean
+      count: number
+      entries: Array<{ date: string }>
+    }>('journal_search', { q: 'lifestyle' })
+    expect(searchRes.ok).toBe(true)
+    expect(searchRes.count).toBeGreaterThanOrEqual(1)
+    expect(searchRes.entries.some((e) => e.date === '2026-11-09')).toBe(true)
+
+    // 5. physio_log
+    const physioRes = await client.callTool<{
+      ok: boolean
+      saved: boolean
+      log: { sleepHours: number } | null
+      insights: { caffeine: { cutoffTime: number }; arousal: { zone: string } }
+    }>('physio_log', {
+      date: '2026-11-09',
+      sleepHours: 7.5,
+      sleepQuality: 4,
+      exerciseMinutes: 30,
+      arousal: 6,
+    })
+    expect(physioRes.ok).toBe(true)
+    expect(physioRes.saved).toBe(true)
+    expect(physioRes.log?.sleepHours).toBe(7.5)
+    expect(physioRes.insights.caffeine).toBeDefined()
+    expect(physioRes.insights.arousal.zone).toBeDefined()
   })
 })
