@@ -142,3 +142,4 @@ The local server listens on `http://127.0.0.1:8787` with isolated local D1 and D
   npx wrangler delete --config apps/worker/wrangler.toml
   npx wrangler d1 delete learning-hub-d1
   ```
+
