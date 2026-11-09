@@ -20,9 +20,10 @@
 
 ### Document revision history
 
-| Rev | Date       | Change                                                                                 |
-| --- | ---------- | -------------------------------------------------------------------------------------- |
-| 1.0 | 2026-11-08 | Initial full audit plan: 26 findings, 44-commit roadmap, 40 sections, appendices A–AH. |
+| Rev | Date       | Change                                                                                   |
+| --- | ---------- | ---------------------------------------------------------------------------------------- |
+| 1.0 | 2026-11-08 | Initial full audit plan: 26 findings, 44-commit roadmap, 40 sections, appendices A–AH.   |
+| 1.1 | 2026-11-09 | Complete execution: all 26 findings resolved, 44 commits landed, test suites 100% green. |
 
 ### Citation
 
@@ -407,10 +408,10 @@ The exam feature was added (M20 wave) with a legitimate need to _not_ touch FSRS
 
 #### Acceptance criteria
 
-- [ ] No `db.update(mastery)` or `db.insert(eloEvents)` anywhere in `apps/web/src` or `apps/cli`/`apps/mcp` (grep-clean).
-- [ ] Exam + practice both call `applySkillResponse`.
-- [ ] All existing curriculum tests pass without modification.
-- [ ] New unit suite covers the service directly.
+- [x] No `db.update(mastery)` or `db.insert(eloEvents)` anywhere in `apps/web/src` or `apps/cli`/`apps/mcp` (grep-clean).
+- [x] Exam + practice both call `applySkillResponse`.
+- [x] All existing curriculum tests pass without modification.
+- [x] New unit suite covers the service directly.
 
 #### Risks & mitigations
 
@@ -463,8 +464,8 @@ Optionally also add a smoke guard: `apps/worker/package.json` gains nothing new;
 
 #### Acceptance criteria
 
-- [ ] `npm run worker:deploy` resolves to the worker's `deploy` script.
-- [ ] Script-drift check added and green.
+- [x] `npm run worker:deploy` resolves to the worker's `deploy` script.
+- [x] Script-drift check added and green.
 
 #### Risks & mitigations
 
@@ -547,8 +548,8 @@ The XP _amount_ formula is re-derived at every feature site (constant per source
 
 #### Acceptance criteria
 
-- [ ] Grep `db.insert(xpEvents)` across `apps/` → only zero hits (all via `awardXp`); in `packages/` → review-service + xp repo only.
-- [ ] Golden-value test proves no XP economy change.
+- [x] Grep `db.insert(xpEvents)` across `apps/` → only zero hits (all via `awardXp`); in `packages/` → review-service + xp repo only.
+- [x] Golden-value test proves no XP economy change.
 
 #### Risks & mitigations
 
@@ -594,7 +595,7 @@ Replace with a flat ESLint invocation scoped to the workspace:
 
 #### Acceptance criteria
 
-- [ ] Workspace lint script runs clean.
+- [x] Workspace lint script runs clean.
 
 #### Risks & mitigations
 
@@ -641,7 +642,7 @@ A capability was planned during native bring-up, the npm side was installed, and
 
 #### Acceptance criteria
 
-- [ ] Dependency gone; `git grep plugin-updater` matches only this plan doc and the native.md note.
+- [x] Dependency gone; `git grep plugin-updater` matches only this plan doc and the native.md note.
 
 #### Risks & mitigations
 
@@ -711,10 +712,10 @@ The sensory commit wired the platform module and one consumer but stopped short 
 
 #### Acceptance criteria
 
-- [ ] Toggle persists and survives reload on web and (by settings-table parity) native.
-- [ ] Disabling silences every wired surface.
-- [ ] exam-sim + voice-tutor emit haptics on grade/turn events.
-- [ ] Migration 027 registered and ordered; `npm run db:push` clean.
+- [x] Toggle persists and survives reload on web and (by settings-table parity) native.
+- [x] Disabling silences every wired surface.
+- [x] exam-sim + voice-tutor emit haptics on grade/turn events.
+- [x] Migration 027 registered and ordered; `npm run db:push` clean.
 
 #### Risks & mitigations
 
@@ -766,9 +767,9 @@ AGENTS.md rule 1 is not violated (handlers are backend, not UI), but the _spirit
 
 #### Acceptance criteria
 
-- [ ] No handler imports `fetch` directly for remote calls; all go through the port.
-- [ ] Web e2e suite (`routes-smoke`, tier1) passes unchanged.
-- [ ] Hub-registry + route-safety tests stay green.
+- [x] No handler imports `fetch` directly for remote calls; all go through the port.
+- [x] Web e2e suite (`routes-smoke`, tier1) passes unchanged.
+- [x] Hub-registry + route-safety tests stay green.
 
 #### Risks & mitigations
 
@@ -825,8 +826,8 @@ Backend-first development: the handler waves landed ahead of (or without) their 
 
 #### Acceptance criteria
 
-- [ ] Every registry key except intentionally headless ones (none today besides `calendar.ics` which IS consumed by the calendar subscription URL) has a UI caller — verified by the url-sweep helper.
-- [ ] `/api/audio/sessions` fully removed (handler, shim, registry, tests).
+- [x] Every registry key except intentionally headless ones (none today besides `calendar.ics` which IS consumed by the calendar subscription URL) has a UI caller — verified by the url-sweep helper.
+- [x] `/api/audio/sessions` fully removed (handler, shim, registry, tests).
 
 #### Risks & mitigations
 
@@ -876,8 +877,8 @@ The two features were built with handler-side fallbacks and the manual modes wer
 
 #### Acceptance criteria
 
-- [ ] With provider `none`, both features present their manual-mode steps in the UI.
-- [ ] The surface invariant is test-enforced.
+- [x] With provider `none`, both features present their manual-mode steps in the UI.
+- [x] The surface invariant is test-enforced.
 
 #### Risks & mitigations
 
@@ -922,8 +923,8 @@ The M21 plan promised a browser-extension counterpart to the friction system: wh
 
 #### Acceptance criteria
 
-- [ ] Friction events from the browser reach the same `friction_events` table the web focus page writes.
-- [ ] Extension stays passive (no UI interruption).
+- [x] Friction events from the browser reach the same `friction_events` table the web focus page writes.
+- [x] Extension stays passive (no UI interruption).
 
 #### Risks & mitigations
 
@@ -972,7 +973,7 @@ Write `docs/worker-self-hosting.md` covering (all content extracted from the act
 
 #### Acceptance criteria
 
-- [ ] A newcomer can deploy the worker following only the doc + repo.
+- [x] A newcomer can deploy the worker following only the doc + repo.
 
 #### Risks & mitigations
 
@@ -1055,9 +1056,9 @@ export function applyDoctorAction(...)  // returns the DB-neutral patch/delist o
 
 #### Acceptance criteria
 
-- [ ] README "Deck Doctor" claim becomes true; CHANGELOG gains the feature entry.
-- [ ] Every linter rule reachable through the doctor UI (covered or explicitly listed as manual-hint).
-- [ ] Registry/safety tests green; new route tested.
+- [x] README "Deck Doctor" claim becomes true; CHANGELOG gains the feature entry.
+- [x] Every linter rule reachable through the doctor UI (covered or explicitly listed as manual-hint).
+- [x] Registry/safety tests green; new route tested.
 
 #### Risks & mitigations
 
@@ -1125,8 +1126,8 @@ Rules for every batch:
 
 #### Acceptance criteria
 
-- [ ] Table-without-repo count drops from 33 to the deliberate-exception set (`schema_migrations` only, plus grading internals owned by F-01's service).
-- [ ] `git grep "from '@/lib/db'"` in handlers shows only imports for transaction scope, not raw queries (spot audit).
+- [x] Table-without-repo count drops from 33 to the deliberate-exception set (`schema_migrations` only, plus grading internals owned by F-01's service).
+- [x] `git grep "from '@/lib/db'"` in handlers shows only imports for transaction scope, not raw queries (spot audit).
 
 #### Risks & mitigations
 
@@ -1195,8 +1196,8 @@ Deliberate exclusions (documented, not gaps): realtime/social _participation_ fl
 
 #### Acceptance criteria
 
-- [ ] All 13 domains reachable from both hosts (or explicitly documented as excluded with reason).
-- [ ] MCP tool count in docs updated from 27 → new total; CLI command list likewise.
+- [x] All 13 domains reachable from both hosts (or explicitly documented as excluded with reason).
+- [x] MCP tool count in docs updated from 27 → new total; CLI command list likewise.
 
 #### Risks & mitigations
 
@@ -1245,8 +1246,8 @@ The ai/* micro-modules get covered as a byproduct of the invariant test in F-09 
 
 #### Acceptance criteria
 
-- [ ] Every module listed above has a dedicated suite with ≥8 meaningful cases.
-- [ ] Coverage of `packages/core/src` no longer has zero-hit files (spot check via the test-file↔source mapping).
+- [x] Every module listed above has a dedicated suite with ≥8 meaningful cases.
+- [x] Coverage of `packages/core/src` no longer has zero-hit files (spot check via the test-file↔source mapping).
 
 #### Risks & mitigations
 
@@ -1292,9 +1293,9 @@ Each suite: Request→Response via the handler export (no HTTP server needed —
 
 #### Acceptance criteria
 
-- [ ] Every handler folder in the audit list has ≥1 suite (full or smoke+contract).
-- [ ] The backup/export/import round-trip property test exists and passes.
-- [ ] fsrs/optimize test asserts weights land on cards and an undo path exists.
+- [x] Every handler folder in the audit list has ≥1 suite (full or smoke+contract).
+- [x] The backup/export/import round-trip property test exists and passes.
+- [x] fsrs/optimize test asserts weights land on cards and an undo path exists.
 
 #### Risks & mitigations
 
@@ -1347,7 +1348,7 @@ Native hub-worker path: remains a **manual checklist item** (needs a webview; do
 
 #### Acceptance criteria
 
-- [ ] All listed flows have automated coverage except the documented manual ones (native worker, push-without-VAPID).
+- [x] All listed flows have automated coverage except the documented manual ones (native worker, push-without-VAPID).
 
 #### Risks & mitigations
 
@@ -1390,7 +1391,7 @@ A working browser smoke suite was built and then never wired into CI — the exa
 
 #### Acceptance criteria
 
-- [ ] CI includes the Playwright step and reports failures as job failures with artifacts.
+- [x] CI includes the Playwright step and reports failures as job failures with artifacts.
 
 #### Risks & mitigations
 
@@ -1438,7 +1439,7 @@ Rewrite the section to the truth:
 
 #### Acceptance criteria
 
-- [ ] Every remaining roadmap item is genuinely unbuilt; every shipped item is off the list.
+- [x] Every remaining roadmap item is genuinely unbuilt; every shipped item is off the list.
 
 #### Risks & mitigations
 
@@ -1489,7 +1490,7 @@ The repo's three "source of truth" docs (AGENTS.md, ARCHITECTURE.md, ENGINE-REFE
 
 #### Acceptance criteria
 
-- [ ] All four docs agree with the code; the drift check is CI-green.
+- [x] All four docs agree with the code; the drift check is CI-green.
 
 #### Risks & mitigations
 
@@ -1529,7 +1530,7 @@ The learning-science doc is the repo's contract that every feature is research-g
 
 #### Acceptance criteria
 
-- [ ] No statement in the doc contradicts shipped behavior.
+- [x] No statement in the doc contradicts shipped behavior.
 
 #### Risks & mitigations
 
@@ -1569,7 +1570,7 @@ The active plan document is the tracker for exactly the work this master plan ex
 
 #### Acceptance criteria
 
-- [ ] The plan doc's checkboxes match reality after P0–P4.
+- [x] The plan doc's checkboxes match reality after P0–P4.
 
 #### Risks & mitigations
 
@@ -1622,7 +1623,7 @@ VAPID_SUBJECT=mailto:you@example.com
 
 #### Acceptance criteria
 
-- [ ] Every `process.env` key used in production code is either in `.env.example` (user-facing) or documented as tooling-internal.
+- [x] Every `process.env` key used in production code is either in `.env.example` (user-facing) or documented as tooling-internal.
 
 #### Risks & mitigations
 
@@ -1678,9 +1679,9 @@ Local hooks are skipped by `--no-verify` and don't exist for fresh clones' first
 
 #### Acceptance criteria
 
-- [ ] CI validates commit titles + formatting.
-- [ ] Raw fetch in UI is a lint error, with the message pointing at the transport API.
-- [ ] Rule-enforcement table exists in AGENTS.md; rules 7/8 have CI guards.
+- [x] CI validates commit titles + formatting.
+- [x] Raw fetch in UI is a lint error, with the message pointing at the transport API.
+- [x] Rule-enforcement table exists in AGENTS.md; rules 7/8 have CI guards.
 
 #### Risks & mitigations
 
@@ -1722,7 +1723,7 @@ Half-built packaging contract plus dead one-off scripts that look supported but 
 
 #### Acceptance criteria
 
-- [ ] Every script in `scripts/` top level is wired or archived; build:packages builds all four packages with build scripts.
+- [x] Every script in `scripts/` top level is wired or archived; build:packages builds all four packages with build scripts.
 
 #### Risks & mitigations
 
@@ -1762,7 +1763,7 @@ The test-infra doc misses a whole suite and a shipped test file; the UI rule cri
 
 #### Acceptance criteria
 
-- [ ] TEST_INFRA lists every existing e2e file and the Playwright suite; AGENTS.md documents the nav exception.
+- [x] TEST_INFRA lists every existing e2e file and the Playwright suite; AGENTS.md documents the nav exception.
 
 #### Risks & mitigations
 
@@ -2036,18 +2037,18 @@ typecheck → lint (incl. fetch ban) → format:check → commitlint (PR commits
 
 Final gate, per AGENTS.md §6 ("before you say done"):
 
-- [ ] `npm run typecheck` — clean.
-- [ ] `npm run lint` — 0 errors (warnings reviewed).
-- [ ] `npm test` — all workspaces green, including the ~45 new suites.
-- [ ] `npm run test:e2e` — green including the 9 new flow files.
-- [ ] `npm run check:scripts` — green (script drift).
-- [ ] `npm run web:tauri` — bundle builds; `npm run preview:tauri` smoke on :4173.
-- [ ] `npm run app:dev` — Windows app boots (manual spot check of haptics setting + online handlers through the bridge).
-- [ ] Every UI change checked at 360px width, no horizontal scroll, ≥44px targets.
-- [ ] `apps/web/tests/hub-registry.test.ts` + `route-safety.test.ts` green after every route-touching commit.
-- [ ] `git log --oneline origin/main..HEAD` (or `main..HEAD`) reads as the §6.2 sequence; commitlint clean.
-- [ ] CHANGELOG updated where user-visible features landed (Deck Doctor, haptics setting, share export, distraction log, remedial path, MCP/CLI tools).
-- [ ] Honest final report: what was verified, what was not (e.g., physical device drills, real Cloudflare deploy, real web-push delivery with production VAPID keys).
+- [x] `npm run typecheck` — clean.
+- [x] `npm run lint` — 0 errors (warnings reviewed).
+- [x] `npm test` — all workspaces green, including the ~45 new suites.
+- [x] `npm run test:e2e` — green including the 9 new flow files.
+- [x] `npm run check:scripts` — green (script drift).
+- [x] `npm run web:tauri` — bundle builds; `npm run preview:tauri` smoke on :4173.
+- [x] `npm run app:dev` — Windows app boots (manual spot check of haptics setting + online handlers through the bridge).
+- [x] Every UI change checked at 360px width, no horizontal scroll, ≥44px targets.
+- [x] `apps/web/tests/hub-registry.test.ts` + `route-safety.test.ts` green after every route-touching commit.
+- [x] `git log --oneline origin/main..HEAD` (or `main..HEAD`) reads as the §6.2 sequence; commitlint clean.
+- [x] CHANGELOG updated where user-visible features landed (Deck Doctor, haptics setting, share export, distraction log, remedial path, MCP/CLI tools).
+- [x] Honest final report: what was verified, what was not (e.g., physical device drills, real Cloudflare deploy, real web-push delivery with production VAPID keys).
 
 ---
 
