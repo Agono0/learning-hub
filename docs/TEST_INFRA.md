@@ -6,6 +6,7 @@ This document specifies the end-to-end (E2E) testing infrastructure for Learning
 - **Terminal CLI** (`apps/cli/src/**`) — Subprocess execution of the terminal study assistant verifying CLI output formats, ASCII panels, and exit codes.
 - **Model Context Protocol (MCP)** (`apps/mcp/src/**`) — Stdio JSON-RPC 2.0 transport client testing MCP tool registration, argument schema validation, and tool execution.
 - **Database & Storage Layer** (`packages/db/src/**`) — SQLite pragmas (`foreign_keys = ON`, `journal_mode = WAL`), analytical views (`v_true_retention`, `v_daily_reviews`, `v_xp_daily`), and schema integrity.
+- **Browser UI Smoke Suite** (`apps/web/tests/ui/**`) — Real headless Chromium driving the Next.js frontend, app shell, review flows, and backup restore via Playwright (`npm run test:ui`).
 
 ---
 
@@ -43,13 +44,23 @@ tests/e2e/
 │   ├── api-focus-goals-habits.test.ts
 │   ├── api-curriculum-analytics-reading.test.ts
 │   ├── cli-commands.test.ts
-│   └── mcp-tools.test.ts
+│   ├── mcp-tools.test.ts
+│   └── curriculum-agents.test.ts
 ├── tier2-boundaries/         # Boundary limits, negative values, corner cases
-│   └── boundary-validation.test.ts
+│   ├── boundary-validation.test.ts
+│   ├── backup-roundtrip.test.ts
+│   ├── sync-api.test.ts
+│   └── import-apkg.test.ts
 ├── tier3-combinations/       # Pairwise cross-feature interactions & defect verifications
-│   └── cross-feature.test.ts
+│   ├── cross-feature.test.ts
+│   ├── world-economy.test.ts
+│   ├── dialectic-flow.test.ts
+│   ├── workload-rebalance.test.ts
+│   ├── palace3d-crud.test.ts
+│   └── images-flow.test.ts
 └── tier4-scenarios/          # Complete real-world multi-step learner workflows
-    └── application-scenarios.test.ts
+    ├── application-scenarios.test.ts
+    └── ai-streaming.test.ts
 ```
 
 ---
@@ -105,4 +116,7 @@ npx vitest run --config vitest.e2e.config.mjs tests/e2e/tier4-scenarios/
 
 # Run a specific test suite
 npx vitest run --config vitest.e2e.config.mjs tests/e2e/tier1-features/api-review.test.ts
+
+# Run the Playwright browser UI smoke suite
+npm run test:ui
 ```

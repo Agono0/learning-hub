@@ -18,6 +18,7 @@
     "build:packages": "npm run build --workspace @learning-hub/core && npm run build --workspace @learning-hub/db && npm run build --workspace @learning-hub/cli",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "vitest run --config vitest.e2e.config.mjs",
+    "test:ui": "npm run test:ui --workspace @learning-hub/web",
     "coverage": "npm run coverage --workspaces --if-present",
     "check": "npm run typecheck && npm run lint && npm run check:scripts && npm run test",
     "lint": "eslint .",
