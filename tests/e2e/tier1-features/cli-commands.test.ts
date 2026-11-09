@@ -94,4 +94,46 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(physioRes.stdout).toContain('Physiology & Retention Telemetry')
     expect(physioRes.stdout).toContain('Yerkes-Dodson zone')
   })
+
+  it('runs reading, plan, and gkt CLI commands (Batch C2)', async () => {
+    // 1. reading add & list
+    const readingAdd = await runCli(
+      [
+        'reading',
+        'add',
+        '--title',
+        'Testing Effects in Human Memory',
+        '--content',
+        'Retrieval practice produces durable consolidation over restudy.',
+        '--priority',
+        '80',
+      ],
+      getActiveDbPath(),
+    )
+    expect(readingAdd.exitCode).toBe(0)
+    expect(readingAdd.stdout).toContain('Ingested reading source')
+
+    const readingList = await runCli(['reading', 'list'], getActiveDbPath())
+    expect(readingList.exitCode).toBe(0)
+    expect(readingList.stdout).toContain('Testing Effects in Human Memory')
+
+    // 2. plan set & week
+    const planSet = await runCli(
+      ['plan', 'set', '--minutes', '300', '--rest-day', '0'],
+      getActiveDbPath(),
+    )
+    expect(planSet.exitCode).toBe(0)
+    expect(planSet.stdout).toContain('Generated and saved study plan template')
+
+    const planWeek = await runCli(['plan', 'week'], getActiveDbPath())
+    expect(planWeek.exitCode).toBe(0)
+    expect(planWeek.stdout).toContain('Weekly Study Plan')
+    expect(planWeek.stdout).toContain('Rest Day')
+
+    // 3. gkt drill
+    const gktDrill = await runCli(['gkt', 'drill', '--answer', 'true'], getActiveDbPath())
+    expect(gktDrill.exitCode).toBe(0)
+    expect(gktDrill.stdout).toContain('Graph Knowledge Tracing (GKT)')
+    expect(gktDrill.stdout).toContain('Updated mastery')
+  })
 })

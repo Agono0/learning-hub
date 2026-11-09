@@ -71,13 +71,18 @@ export type ConvertSq3rCardsResult =
  */
 export function listSources(
   opts: {
+    status?: 'queued' | 'reading' | 'done'
     limit?: number
     db?: LearningHubDB
   } = {},
 ): SourceRow[] {
   const db = opts.db ?? getDb()
   const limit = opts.limit ?? 200
-  return db.select().from(sources).orderBy(desc(sources.priority)).limit(limit).all()
+  let query = db.select().from(sources).$dynamic()
+  if (opts.status) {
+    query = query.where(eq(sources.status, opts.status))
+  }
+  return query.orderBy(desc(sources.priority)).limit(limit).all()
 }
 
 /**

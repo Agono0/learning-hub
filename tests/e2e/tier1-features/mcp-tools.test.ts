@@ -38,6 +38,11 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(toolNames).toContain('journal_write')
     expect(toolNames).toContain('journal_search')
     expect(toolNames).toContain('physio_log')
+    expect(toolNames).toContain('reading_list')
+    expect(toolNames).toContain('reading_add')
+    expect(toolNames).toContain('study_plan_get')
+    expect(toolNames).toContain('study_plan_set')
+    expect(toolNames).toContain('gkt_session')
   })
 
   it('captures and searches ideas via idea_create and idea_search', async () => {
@@ -221,5 +226,73 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(physioRes.log?.sleepHours).toBe(7.5)
     expect(physioRes.insights.caffeine).toBeDefined()
     expect(physioRes.insights.arousal.zone).toBeDefined()
+  })
+
+  it('manages reading, study-plan, and gkt via learning-path tools (Batch C2)', async () => {
+    // 1. reading_add & reading_list
+    const addSource = await client.callTool<{
+      ok: boolean
+      source: { id: number; title: string; priority: number }
+    }>('reading_add', {
+      title: 'Active Recall vs Passive Review in Medical Education',
+      content: 'Empirical study demonstrating long-term retention benefits of testing effects.',
+      kind: 'article',
+      priority: 85,
+    })
+    expect(addSource.ok).toBe(true)
+    expect(addSource.source.id).toBeDefined()
+    expect(addSource.source.priority).toBe(85)
+
+    const listReading = await client.callTool<{
+      ok: boolean
+      count: number
+      sources: Array<{ id: number; title: string }>
+    }>('reading_list', { limit: 10 })
+    expect(listReading.ok).toBe(true)
+    expect(listReading.sources.some((s) => s.title.includes('Active Recall'))).toBe(true)
+
+    // 2. study_plan_set & study_plan_get
+    const planSet = await client.callTool<{
+      ok: boolean
+      plan: { weeklyMinutes: number; weeks: number }
+      weeklyMinutes: number
+    }>('study_plan_set', {
+      weeklyMinutes: 240,
+      restDay: 0,
+    })
+    expect(planSet.ok).toBe(true)
+    expect(planSet.weeklyMinutes).toBe(240)
+
+    const planGet = await client.callTool<{
+      ok: boolean
+      weeklyMinutes: number
+      schedule: string[]
+    }>('study_plan_get', { format: 'summary' })
+    expect(planGet.ok).toBe(true)
+    expect(planGet.weeklyMinutes).toBe(240)
+    expect(Array.isArray(planGet.schedule)).toBe(true)
+
+    // 3. gkt_session
+    const gktStart = await client.callTool<{
+      ok: boolean
+      nodeCount: number
+      concepts: Array<{ id: string; title: string; mastery: number }>
+    }>('gkt_session', { action: 'start' })
+    expect(gktStart.ok).toBe(true)
+    expect(gktStart.nodeCount).toBeGreaterThanOrEqual(1)
+
+    const conceptId = gktStart.concepts[0].id
+    const gktAnswer = await client.callTool<{
+      ok: boolean
+      conceptId: string
+      passed: boolean
+      updatedMasteries: Record<string, number>
+    }>('gkt_session', {
+      action: 'answer',
+      item: conceptId,
+      correct: true,
+    })
+    expect(gktAnswer.ok).toBe(true)
+    expect(gktAnswer.updatedMasteries[conceptId]).toBeDefined()
   })
 })

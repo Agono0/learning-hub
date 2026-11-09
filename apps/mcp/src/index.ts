@@ -19,6 +19,7 @@ import { json, tool, type RegisteredTool } from './tool-kit'
 import { curriculumTools } from './tools/curriculum'
 import { cognitiveTools } from './tools/cognitive'
 import { lifestyleTools } from './tools/lifestyle'
+import { learningPathTools } from './tools/learning-path'
 import {
   CardNotFoundError,
   cards,
@@ -538,6 +539,7 @@ async function main() {
     ...curriculumTools,
     ...cognitiveTools,
     ...lifestyleTools,
+    ...learningPathTools,
   ]) {
     server.registerTool(
       registered.name,

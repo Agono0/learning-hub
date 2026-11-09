@@ -17,6 +17,7 @@ import { createInterface } from 'node:readline/promises'
 import { stdin, stdout, exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
 import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
+import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
 import {
   db,
   awardXp,
@@ -628,6 +629,24 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'physiology metrics and learning advice',
     usage: '[--sleep N --exercise N ...]',
     run: (runArgs) => physioCommand(runArgs),
+  },
+  {
+    name: 'reading',
+    description: 'incremental reading queue and ingestion',
+    usage: '[list|add|finish]',
+    run: (runArgs) => readingCommand(runArgs),
+  },
+  {
+    name: 'plan',
+    description: 'study plan agenda and weekly template',
+    usage: '[today|week|set]',
+    run: (runArgs) => planCommand(runArgs),
+  },
+  {
+    name: 'gkt',
+    description: 'Bayesian prerequisite DAG knowledge tracing',
+    usage: '[drill]',
+    run: (runArgs) => gktCommand(runArgs),
   },
 ]
 
