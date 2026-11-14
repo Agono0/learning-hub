@@ -9,7 +9,7 @@
     "apps/*"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "worker:deploy": "npm run deploy --workspace @learning-hub/worker",

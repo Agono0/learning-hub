@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/Agono0/learning-hub/actions/workflows/ci.yml/badge.svg 'CI status')](https://github.com/Agono0/learning-hub/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg 'MIT license')](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A522-blue.svg 'Node 22+')](https://nodejs.org)
+[![Node](https://img.shields.io/badge/node-%E2%89%A524-blue.svg 'Node 24+')](https://nodejs.org)
 
 </div>
 
@@ -70,7 +70,7 @@ Inspect: `npx @modelcontextprotocol/inspector node --import tsx apps/mcp/src/ind
 
 ## Headless server, Anki in/out, weekly report
 
-- **Headless REST server** — `npm run serve` exposes the same brain over Node 22+ native `http` (no web framework): `GET /today`, `GET /decks`, `POST /review`, `POST /review/batch`, `GET /stats`, `GET /plugins`, plus optional webhooks on the event bus (`LEARNING_HUB_WEBHOOKS`). Binds `127.0.0.1` by default and ships **no auth** — see [`docs/api-server.md`](docs/api-server.md) before widening the host.
+- **Headless REST server** — `npm run serve` exposes the same brain over Node 24+ native `http` (no web framework): `GET /today`, `GET /decks`, `POST /review`, `POST /review/batch`, `GET /stats`, `GET /plugins`, plus optional webhooks on the event bus (`LEARNING_HUB_WEBHOOKS`). Binds `127.0.0.1` by default and ships **no auth** — see [`docs/api-server.md`](docs/api-server.md) before widening the host.
 - **Anki import/export** — Settings → Import accepts Anki `.apkg` (≤ 50 MB), Anki plain-text exports (TSV with `#separator`/`#html` headers), and our deck JSON; invalid cards are skipped and reported, never half-inserted. Export any deck as Anki-importable `.txt` (cloze syntax restored) or full-fidelity JSON via `/api/export`.
 - **Weekly report** — `GET /api/weekly` computes metrics, weakest cards, the 30-day forecast and study suggestions over your real rows (local-day bucketed, deterministic math); suggestions are AI-optional — with a provider you get evidence-based coaching, without one you get a rule-based summary plus a copy-paste coach prompt ([`docs/ai-providers.md`](docs/ai-providers.md)).
 

@@ -4,7 +4,7 @@ Thanks for considering a contribution! This document covers dev setup, where thi
 
 ## Dev setup
 
-Requirements: **Node ≥ 22** (CI runs on Node 22), npm 11.
+Requirements: **Node ≥ 24** (CI runs on Node 24), npm 11.
 
 > Toolchain note: the `typescript` module resolves to the TS 6 JS API (`@typescript/typescript6` — TS 7.0 ships no JS API, so linters need the 6.x API side-by-side). You don't have to do anything; this is already wired up in the root manifest.
 

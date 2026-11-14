@@ -2,7 +2,7 @@
 
 A standalone, headless REST server exposing the same brain as the web app and the
 MCP server — packages/core (FSRS-6 engine, session builder, stats helpers) and
-packages/db (drizzle/SQLite + the canonical review service) — over Node 22+
+packages/db (drizzle/SQLite + the canonical review service) — over Node 24+
 native `node:http`. **No web framework**: the router is ~40 lines on top of
 `http.createServer`.
 
