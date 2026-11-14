@@ -45,12 +45,12 @@
   },
   "dependencies": {
     "@learning-hub/core": "*",
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "^13.2.0",
     "drizzle-orm": "^0.45.4",
     "ts-fsrs": "^6.0.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
+    "@types/better-sqlite3": "^9.6.0",
     "drizzle-kit": "^0.31.11",
     "vitest": "^5.1.0"
   }

@@ -1,5 +1,5 @@
 // @ts-check
-// ESLint 9 flat config. Deliberately minimal: typescript-eslint recommended with
+// ESLint flat config. Deliberately minimal: typescript-eslint recommended with
 // `no-explicit-any` as a warning — style is Prettier's job (see .prettierrc).
 import tseslint from 'typescript-eslint'
 
