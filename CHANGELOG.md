@@ -145,4 +145,4 @@ The first open-source release: the full platform (26 systems), one overhaul of t
 
 - MIT license ([`LICENSE`](LICENSE)) on every manifest, CI workflow (Node 22: typecheck → lint → unit tests → E2E → build) with issue/PR templates, contributor docs ([`CONTRIBUTING.md`](CONTRIBUTING.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), [`SECURITY.md`](SECURITY.md)), rewritten README (badges, architecture diagram, AI-optional and plugin sections), reference documentation consolidated under [`docs/`](docs/) and the system design documented in [`ARCHITECTURE.md`](ARCHITECTURE.md). Point-in-time build logs removed from the repository (preserved in git history).
 
-[0.1.0]: https://github.com/learning-hub/learning-hub/releases/tag/v0.1.0
+[0.1.0]: https://github.com/Agono0/learning-hub/releases/tag/v0.1.0

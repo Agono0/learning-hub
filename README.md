@@ -4,7 +4,7 @@
 
 **The research-backed self-learning system** — every high-effect learning method from the literature (spaced repetition, retrieval practice, interleaving, elaboration, teach-back, memory palaces…), plus addiction defense, motivation science, quotes, an AI-agent-accessible idea system, and a Coursera-style curriculum engine. Local-first. TypeScript. Any AI agent can drive it via MCP.
 
-[![CI](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml/badge.svg 'CI status')](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml)
+[![CI](https://github.com/Agono0/learning-hub/actions/workflows/ci.yml/badge.svg 'CI status')](https://github.com/Agono0/learning-hub/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg 'MIT license')](./LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-blue.svg 'Node 22+')](https://nodejs.org)
 

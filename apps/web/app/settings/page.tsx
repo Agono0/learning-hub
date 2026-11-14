@@ -349,7 +349,7 @@ export default function SettingsPage() {
               The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and must
               reply <code>{'{ "result": string | object }'}</code> —{' '}
               <a
-                href="https://github.com/learning-hub/learning-hub/blob/main/docs/ai-providers.md"
+                href="https://github.com/Agono0/learning-hub/blob/main/docs/ai-providers.md"
                 target="_blank"
                 className="underline"
               >
