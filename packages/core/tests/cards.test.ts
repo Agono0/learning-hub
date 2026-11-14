@@ -13,6 +13,7 @@ import {
   isCardAnswerCorrect,
   parseCloze,
   pickBasicFront,
+  pickCardPrompt,
   stripBulletMarker,
   syncBulletCard,
   validateCardContent,
@@ -91,6 +92,63 @@ describe('pickBasicFront (varied phrasings)', () => {
   it('falls back to the front without variants and guards negative reps', () => {
     expect(pickBasicFront({ front: 'Q' }, 7)).toBe('Q')
     expect(pickBasicFront({ front: 'Q', variants: ['V'] }, -3)).toBe('Q')
+  })
+})
+
+describe('pickCardPrompt (multi-format varied phrasings)', () => {
+  it('rotates typein questions with variant tracking', () => {
+    const card = {
+      type: 'typein',
+      content: {
+        typein: {
+          question: 'What is ATP?',
+          acceptedAnswers: ['adenosine triphosphate'],
+          variants: [
+            'Identify the cellular energy currency molecule',
+            'Name the molecule hydrolyzed for cellular work',
+          ],
+        },
+      },
+      reps: 0,
+    }
+    const r0 = pickCardPrompt(card)
+    expect(r0.text).toBe('What is ATP?')
+    expect(r0.isVariant).toBe(false)
+    expect(r0.variantIndex).toBe(0)
+    expect(r0.totalVariants).toBe(2)
+
+    const r1 = pickCardPrompt({ ...card, reps: 1 })
+    expect(r1.text).toBe('Identify the cellular energy currency molecule')
+    expect(r1.isVariant).toBe(true)
+    expect(r1.variantIndex).toBe(1)
+
+    const r2 = pickCardPrompt({ ...card, reps: 2 })
+    expect(r2.text).toBe('Name the molecule hydrolyzed for cellular work')
+    expect(r2.isVariant).toBe(true)
+
+    const r3 = pickCardPrompt({ ...card, reps: 3 })
+    expect(r3.text).toBe('What is ATP?')
+    expect(r3.isVariant).toBe(false)
+  })
+
+  it('rotates mcq questions with variants', () => {
+    const card = {
+      type: 'mcq',
+      content: {
+        mcq: {
+          question: 'Capital of France?',
+          options: ['Paris', 'Lyon', 'Marseille'],
+          correctIndex: 0,
+          variants: ['Which city serves as France’s administrative capital?'],
+        },
+      },
+      reps: 1,
+    }
+    const r1 = pickCardPrompt(card)
+    expect(r1.text).toBe('Which city serves as France’s administrative capital?')
+    expect(r1.isVariant).toBe(true)
+    expect(r1.variantIndex).toBe(1)
+    expect(r1.totalVariants).toBe(1)
   })
 })
 

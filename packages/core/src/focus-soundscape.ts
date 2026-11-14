@@ -16,8 +16,12 @@ export const soundscapePresetSchema = z.enum([
   'pink_noise',
   'brown_noise',
   'rain_ambience',
+  'rain_on_window',
+  'thunder_storm',
   'gamma_focus_40hz',
   'alpha_flow_10hz',
+  'theta_meditation_6hz',
+  'cafe_ambience',
 ])
 export type SoundscapePreset = z.infer<typeof soundscapePresetSchema>
 
@@ -61,6 +65,18 @@ export const SOUNDSCAPE_CATALOG: Record<SoundscapePreset, SoundscapeMeta> = {
     description: 'Dual-layer pink noise with randomized droplet impulse filters.',
     defaultVolume: 0.18,
   },
+  rain_on_window: {
+    id: 'rain_on_window',
+    name: 'Rain on Window',
+    description: 'Gentle droplet tapping with high-frequency acoustic glass resonance.',
+    defaultVolume: 0.16,
+  },
+  thunder_storm: {
+    id: 'thunder_storm',
+    name: 'Distant Thunderstorm',
+    description: 'Deep low-frequency Brownian rumble with periodic rolling thunder resonances.',
+    defaultVolume: 0.22,
+  },
   gamma_focus_40hz: {
     id: 'gamma_focus_40hz',
     name: '40Hz Gamma Flow Beats',
@@ -73,6 +89,20 @@ export const SOUNDSCAPE_CATALOG: Record<SoundscapePreset, SoundscapeMeta> = {
     name: '10Hz Alpha State',
     description: 'Calm relaxed alertness for prolonged reading and deep writing.',
     defaultVolume: 0.15,
+  },
+  theta_meditation_6hz: {
+    id: 'theta_meditation_6hz',
+    name: '6Hz Theta Flow',
+    description:
+      'Binaural carrier at 6Hz for associative ideation, daydreaming synthesis, and relaxation.',
+    defaultVolume: 0.12,
+  },
+  cafe_ambience: {
+    id: 'cafe_ambience',
+    name: 'Quiet Coffeehouse',
+    description:
+      'Warm acoustic bandpass filtering mimicking distant cafe murmurs and espresso warmth.',
+    defaultVolume: 0.14,
   },
 }
 
@@ -132,5 +162,40 @@ export function generateBrownianNoiseSamples(numSamples: number): Float32Array {
     output[i] = lastOut * 3.5 // Normalized
   }
 
+  return output
+}
+
+/**
+ * Generates stochastic droplet impulse clicks for rain and window precipitation.
+ * Returns an array of decaying exponential impulses scattered randomly.
+ */
+export function generateDropletImpulses(numSamples: number, density: number = 0.003): Float32Array {
+  const output = new Float32Array(numSamples)
+  const decayLen = 120 // ~2.5ms at 48kHz
+  for (let i = 0; i < numSamples; i++) {
+    if (Math.random() < density && i + decayLen < numSamples) {
+      const amp = (Math.random() * 0.4 + 0.1) * (Math.random() > 0.5 ? 1 : -1)
+      for (let d = 0; d < decayLen; d++) {
+        const decay = Math.exp(-d / 20) * Math.sin((d / 10) * Math.PI)
+        output[i + d] += amp * decay
+      }
+    }
+  }
+  return output
+}
+
+/**
+ * Generates rolling thunder burst samples with exponential envelope and low-frequency resonance.
+ */
+export function generateThunderBurstSamples(numSamples: number): Float32Array {
+  const brown = generateBrownianNoiseSamples(numSamples)
+  const output = new Float32Array(numSamples)
+  for (let i = 0; i < numSamples; i++) {
+    const progress = i / numSamples
+    const envelope =
+      Math.sin(progress * Math.PI) * 0.6 +
+      Math.sin(progress * 2 * Math.PI) * 0.3 * Math.exp(-progress * 2)
+    output[i] = brown[i]! * Math.max(0, envelope) * 1.5
+  }
   return output
 }

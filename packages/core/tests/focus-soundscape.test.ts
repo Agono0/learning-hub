@@ -3,6 +3,8 @@ import {
   generateWhiteNoiseSamples,
   generatePinkNoiseSamples,
   generateBrownianNoiseSamples,
+  generateDropletImpulses,
+  generateThunderBurstSamples,
   SOUNDSCAPE_CATALOG,
   soundscapePresetSchema,
 } from '../src/focus-soundscape'
@@ -64,6 +66,25 @@ describe('focus-soundscape', () => {
       const avgDiff = diffSum / (samples.length - 1)
       expect(avgDiff).toBeLessThan(0.2) // Brownian is much smoother than white noise
     })
+
+    it('generates stochastic droplet impulses with bounded decay', () => {
+      const samples = generateDropletImpulses(4096, 0.05)
+      expect(samples.length).toBe(4096)
+      let nonZeroCount = 0
+      for (let i = 0; i < samples.length; i++) {
+        expect(Number.isFinite(samples[i])).toBe(true)
+        if (samples[i] !== 0) nonZeroCount++
+      }
+      expect(nonZeroCount).toBeGreaterThan(0)
+    })
+
+    it('generates rolling thunder bursts with dynamic envelopes', () => {
+      const samples = generateThunderBurstSamples(2048)
+      expect(samples.length).toBe(2048)
+      for (let i = 0; i < samples.length; i++) {
+        expect(Number.isFinite(samples[i])).toBe(true)
+      }
+    })
   })
 
   describe('catalog and schemas', () => {
@@ -71,6 +92,10 @@ describe('focus-soundscape', () => {
       expect(soundscapePresetSchema.safeParse('pink_noise').success).toBe(true)
       expect(soundscapePresetSchema.safeParse('brown_noise').success).toBe(true)
       expect(soundscapePresetSchema.safeParse('rain_ambience').success).toBe(true)
+      expect(soundscapePresetSchema.safeParse('rain_on_window').success).toBe(true)
+      expect(soundscapePresetSchema.safeParse('thunder_storm').success).toBe(true)
+      expect(soundscapePresetSchema.safeParse('theta_meditation_6hz').success).toBe(true)
+      expect(soundscapePresetSchema.safeParse('cafe_ambience').success).toBe(true)
       expect(soundscapePresetSchema.safeParse('invalid_sound').success).toBe(false)
     })
 
@@ -81,8 +106,12 @@ describe('focus-soundscape', () => {
         'pink_noise',
         'brown_noise',
         'rain_ambience',
+        'rain_on_window',
+        'thunder_storm',
         'gamma_focus_40hz',
         'alpha_flow_10hz',
+        'theta_meditation_6hz',
+        'cafe_ambience',
       ] as const
       for (const preset of presets) {
         const meta = SOUNDSCAPE_CATALOG[preset]

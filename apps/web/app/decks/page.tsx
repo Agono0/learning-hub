@@ -839,6 +839,25 @@ function FormatEditor({
           value={v.rationale ?? ''}
           onChange={(e) => patch('mcq', { ...v, rationale: e.target.value })}
         />
+        <div>
+          <textarea
+            className="input min-h-[50px] text-sm"
+            placeholder={'Alternate question phrasings — one per line (optional).'}
+            value={(v.variants ?? []).join('\n')}
+            onChange={(e) => {
+              const variants = e.target.value
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+              patch('mcq', { ...v, variants: variants.length ? variants : undefined })
+            }}
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            {(v.variants?.length ?? 0) > 0
+              ? `${v.variants!.length} alternate question phrasing(s) — rotated per review`
+              : 'desirable difficulty: rotate how the question is framed'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -867,6 +886,25 @@ function FormatEditor({
             })
           }
         />
+        <div>
+          <textarea
+            className="input min-h-[50px] text-sm"
+            placeholder={'Alternate question phrasings — one per line (optional).'}
+            value={(v.variants ?? []).join('\n')}
+            onChange={(e) => {
+              const variants = e.target.value
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+              patch('typein', { ...v, variants: variants.length ? variants : undefined })
+            }}
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            {(v.variants?.length ?? 0) > 0
+              ? `${v.variants!.length} alternate question phrasing(s) — rotated per review`
+              : 'desirable difficulty: rotate how the question is framed'}
+          </p>
+        </div>
       </div>
     )
   }

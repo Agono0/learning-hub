@@ -204,7 +204,8 @@ improve long-term retention.
 - **In Learning HUB:** `formatRotation` graduates mcq → cloze → typein as
   stability grows (`packages/core/src/fsrs.ts`); difficulty band tuning in
   `packages/core/src/review.ts` (`adjustDifficulty`); per-card varied
-  phrasings are a planned M3 item.
+  phrasings (`pickCardPrompt` in `packages/core/src/cards.ts`, editable on
+  `/decks` across basic/typein/mcq, dynamic rotation & indicator badge on `/review`).
 - **Status:** ✅
 
 ### Hypercorrection — Butterfield & Metcalfe, 2001

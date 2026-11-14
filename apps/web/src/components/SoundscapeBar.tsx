@@ -8,6 +8,8 @@ import {
   generateBrownianNoiseSamples,
   generatePinkNoiseSamples,
   generateWhiteNoiseSamples,
+  generateDropletImpulses,
+  generateThunderBurstSamples,
 } from '@learning-hub/core'
 import { getSharedAudioContext, registerAudioSource } from '@/lib/audio-graph'
 
@@ -61,15 +63,27 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
         preset === 'white_noise' ||
         preset === 'pink_noise' ||
         preset === 'brown_noise' ||
-        preset === 'rain_ambience'
+        preset === 'rain_ambience' ||
+        preset === 'rain_on_window' ||
+        preset === 'thunder_storm' ||
+        preset === 'cafe_ambience'
       ) {
         let samples: Float32Array
         if (preset === 'white_noise') {
           samples = generateWhiteNoiseSamples(numSamples)
         } else if (preset === 'brown_noise') {
           samples = generateBrownianNoiseSamples(numSamples)
+        } else if (preset === 'thunder_storm') {
+          samples = generateThunderBurstSamples(numSamples)
+        } else if (preset === 'rain_on_window') {
+          const pink = generatePinkNoiseSamples(numSamples)
+          const droplets = generateDropletImpulses(numSamples, 0.008)
+          samples = new Float32Array(numSamples)
+          for (let i = 0; i < numSamples; i++) {
+            samples[i] = pink[i]! * 0.7 + droplets[i]! * 0.3
+          }
         } else {
-          // pink or rain
+          // pink, rain, or cafe
           samples = generatePinkNoiseSamples(numSamples)
         }
 
@@ -85,6 +99,29 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
           const filter = ctx.createBiquadFilter()
           filter.type = 'lowpass'
           filter.frequency.setValueAtTime(1200, ctx.currentTime)
+          source.connect(filter)
+          filter.connect(masterGainRef.current)
+          currentNodesRef.current.push(source, filter)
+        } else if (preset === 'rain_on_window') {
+          const filter = ctx.createBiquadFilter()
+          filter.type = 'bandpass'
+          filter.frequency.setValueAtTime(2400, ctx.currentTime)
+          filter.Q.setValueAtTime(1.2, ctx.currentTime)
+          source.connect(filter)
+          filter.connect(masterGainRef.current)
+          currentNodesRef.current.push(source, filter)
+        } else if (preset === 'thunder_storm') {
+          const filter = ctx.createBiquadFilter()
+          filter.type = 'lowpass'
+          filter.frequency.setValueAtTime(380, ctx.currentTime)
+          source.connect(filter)
+          filter.connect(masterGainRef.current)
+          currentNodesRef.current.push(source, filter)
+        } else if (preset === 'cafe_ambience') {
+          const filter = ctx.createBiquadFilter()
+          filter.type = 'bandpass'
+          filter.frequency.setValueAtTime(950, ctx.currentTime)
+          filter.Q.setValueAtTime(0.8, ctx.currentTime)
           source.connect(filter)
           filter.connect(masterGainRef.current)
           currentNodesRef.current.push(source, filter)
@@ -122,6 +159,25 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
         oscR.type = 'sine'
         oscL.frequency.setValueAtTime(200, ctx.currentTime)
         oscR.frequency.setValueAtTime(210, ctx.currentTime)
+
+        const merger = ctx.createChannelMerger(2)
+        oscL.connect(merger, 0, 0) // Left ear
+        oscR.connect(merger, 0, 1) // Right ear
+
+        merger.connect(masterGainRef.current)
+        oscL.start()
+        oscR.start()
+
+        currentNodesRef.current.push(oscL, oscR, merger)
+        setIsPlaying(true)
+      } else if (preset === 'theta_meditation_6hz') {
+        // 6Hz Theta binaural beat: Left = 194Hz, Right = 200Hz
+        const oscL = ctx.createOscillator()
+        const oscR = ctx.createOscillator()
+        oscL.type = 'sine'
+        oscR.type = 'sine'
+        oscL.frequency.setValueAtTime(194, ctx.currentTime)
+        oscR.frequency.setValueAtTime(200, ctx.currentTime)
 
         const merger = ctx.createChannelMerger(2)
         oscL.connect(merger, 0, 0) // Left ear
