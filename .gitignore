@@ -90,3 +90,29 @@ math-333/
 # ── Playwright (browser smoke) artifacts ───────────────────────────────────
 test-results/
 playwright-report/
+blob-report/
+playwright/.cache/
+
+# ── Extra safety nets ───────────────────────────────────────────────────────
+# Environment variants (keep .env.example tracked)
+.env.*
+!.env.example
+.dev.vars
+# Package-manager / archive output
+*.tgz
+*.tar.gz
+*.zip
+# Extra local databases
+*.sqlite
+*.sqlite3
+# Temp / backup files
+*.tmp
+*.bak
+*.swp
+# Next.js / Cloudflare / Rust extras
+.next-*/
+.vercel/
+**/target/debug/
+**/target/release/
+# Local helper scripts
+scripts/.commit-helper.sh
