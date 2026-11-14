@@ -82,12 +82,23 @@ function toPreviewRecord(items: { grade: Grade; label: string }[]): Record<Grade
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const deckId = url.searchParams.get('deckId')
+  const deckIdsParam = url.searchParams.get('deckIds')
   const courseId = url.searchParams.get('courseId')
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100)
   const mode = (url.searchParams.get('mode') ?? 'normal') as SessionMode
   const now = new Date()
 
   const filters = [eq(cards.suspended, false)]
+
+  // Multi-deck request support (interleaved queue across selected decks)
+  const requestedDeckIds = deckIdsParam
+    ? deckIdsParam
+        .split(',')
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n) && n > 0)
+    : deckId
+      ? [Number(deckId)]
+      : []
 
   // Mixed practice: a whole-course session ignores due dates (cram semantics)
   // and interleaves lessons — course cards live in the course's own deck.
@@ -104,8 +115,10 @@ export async function GET(req: Request) {
     }
     course = row
     filters.push(eq(cards.deckId, row.deckId))
-  } else if (deckId) {
-    filters.push(eq(cards.deckId, Number(deckId)))
+  } else if (requestedDeckIds.length === 1) {
+    filters.push(eq(cards.deckId, requestedDeckIds[0]!))
+  } else if (requestedDeckIds.length > 1) {
+    filters.push(inArray(cards.deckId, requestedDeckIds))
   }
   // candidates: everything due or newer (buildSession filters precisely per mode)
   const candidateRows = await db
@@ -221,11 +234,12 @@ export async function GET(req: Request) {
   // misses (rating 1–2) for restudy before the queue — the repo owns the query.
   // All-decks and course sessions interleave decks, so they carry no corrections.
   let corrections: DelayedFeedbackCorrection[] = []
-  if (deckId && !course) {
+  if (requestedDeckIds.length === 1 && !course) {
+    const singleDeckId = requestedDeckIds[0]!
     const [deck] = await db
       .select({ id: decks.id, delayedFeedback: decks.delayedFeedback })
       .from(decks)
-      .where(eq(decks.id, Number(deckId)))
+      .where(eq(decks.id, singleDeckId))
       .limit(1)
     if (deck?.delayedFeedback) {
       corrections = listDelayedFeedbackCorrections({ deckId: deck.id, now })

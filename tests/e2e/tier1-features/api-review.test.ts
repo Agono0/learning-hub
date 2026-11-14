@@ -96,4 +96,31 @@ describe('Tier 1: Review Pipeline & FSRS Scheduling', () => {
     expect(Array.isArray(res.data.forecast)).toBe(true)
     expect(res.data.forecast.length).toBe(30)
   })
+
+  it('builds an interleaved multi-deck session via GET /api/review?deckIds=...', async () => {
+    const deck2Res = await callRoute<{ deck: DeckRow }>(decksRoute.POST, {
+      method: 'POST',
+      body: { name: 'E2E Review Interleaved Deck 2' },
+    })
+    const deck2Id = deck2Res.data.deck.id
+
+    await callRoute<{ card: CardRow }>(cardsRoute.POST, {
+      method: 'POST',
+      body: {
+        deckId: deck2Id,
+        type: 'basic',
+        content: { front: 'Deck 2 Question', back: 'Deck 2 Answer' },
+        due: new Date(Date.now() - 60000).toISOString(),
+      },
+    })
+
+    const res = await callRoute<{ ok: boolean; cards: CardRow[]; mode: string }>(reviewRoute.GET, {
+      query: { deckIds: `${deckId},${deck2Id}`, mode: 'normal' },
+    })
+
+    expect(res.status).toBe(200)
+    expect(res.data.ok).toBe(true)
+    const returnedDeckIds = new Set(res.data.cards.map((c) => c.deckId))
+    expect(returnedDeckIds.has(deck2Id)).toBe(true)
+  })
 })

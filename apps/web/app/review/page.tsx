@@ -29,7 +29,12 @@ import {
   Volume2,
 } from 'lucide-react'
 import type { CardContent, CardFormat, Confidence, Grade } from '@learning-hub/core/types'
-import { clozeSegments, isCardAnswerCorrect, pickBasicFront } from '@learning-hub/core/cards'
+import {
+  clozeSegments,
+  isCardAnswerCorrect,
+  pickBasicFront,
+  pickCardPrompt,
+} from '@learning-hub/core/cards'
 import { isSpeechAvailable, speak } from '@/lib/speech'
 import {
   hapticLight,
@@ -144,7 +149,9 @@ const GRADES: { grade: Grade; label: string; color: string }[] = [
 ]
 
 /** Front/prompt text of a card (voice review + the corrections restudy list). */
-function getCardVoicePrompt(card: { content: CardContent }): string {
+function getCardVoicePrompt(card: { content: CardContent; reps?: number }): string {
+  const prompt = pickCardPrompt(card)
+  if (prompt.text) return prompt.text
   if (card.content.basic) return card.content.basic.front
   if (card.content.exercise?.prompt) return card.content.exercise.prompt
   if (card.content.typein?.question) return card.content.typein.question
@@ -177,6 +184,11 @@ function ReviewPageInner() {
   const courseIdParam = useSearchParams().get('courseId')
   const courseId = courseIdParam ? Number(courseIdParam) : null
   const [deckId, setDeckId] = useState<number | null>(null)
+  const [selectedDeckIds, setSelectedDeckIds] = useState<number[]>([])
+  const [multiDeckMode, setMultiDeckMode] = useState(false)
+  const [speedDrillActive, setSpeedDrillActive] = useState(false)
+  const [speedLimitSec, setSpeedLimitSec] = useState(8)
+  const [speedSecondsLeft, setSpeedSecondsLeft] = useState(8)
   const [mode, setMode] = useState<'normal' | 'pretest' | 'cram' | 'commute'>('normal')
   const [limit, setLimit] = useState(20)
   const [started, setStarted] = useState(false)
@@ -191,11 +203,16 @@ function ReviewPageInner() {
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const session = useQuery<SessionPayload, Error, SessionPayload>({
-    queryKey: ['review-session', deckId, courseId, limit, mode],
-    queryFn: () =>
-      apiGet<SessionPayload>(
-        `/api/review?deckId=${deckId ?? ''}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}`,
-      ),
+    queryKey: ['review-session', deckId, selectedDeckIds, multiDeckMode, courseId, limit, mode],
+    queryFn: () => {
+      const deckParam =
+        multiDeckMode && selectedDeckIds.length > 0
+          ? `deckIds=${selectedDeckIds.join(',')}`
+          : `deckId=${deckId ?? ''}`
+      return apiGet<SessionPayload>(
+        `/api/review?${deckParam}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}`,
+      )
+    },
     enabled: started,
   })
   // a mixed-practice link starts the session immediately
@@ -299,6 +316,26 @@ function ReviewPageInner() {
   }, [session.data, resetRecallTimer])
 
   const current = queue[idx]
+
+  // Speed Drill countdown timer: counts down while active card is not yet revealed
+  useEffect(() => {
+    if (!speedDrillActive || !started || finishedAt !== null || revealed || !current) return
+
+    setSpeedSecondsLeft(speedLimitSec)
+    const timer = setInterval(() => {
+      setSpeedSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          setRevealed(true)
+          hapticLight()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [speedDrillActive, started, finishedAt, revealed, idx, speedLimitSec, current])
   // delayed feedback (Butler & Roediger 2008): the "Correct these first"
   // restudy list blocks the queue until the learner dismisses it
   const corrections = session.data?.corrections ?? []
@@ -717,36 +754,85 @@ function ReviewPageInner() {
         <PageHeader title="Review" />
         <div className="panel space-y-4">
           <div>
-            <div className="label mb-2">Deck</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center justify-between mb-2">
+              <div className="label mb-0">Deck Selection</div>
               <button
-                onClick={() => setDeckId(null)}
-                className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                  deckId === null
-                    ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                    : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
-                }`}
+                type="button"
+                onClick={() => {
+                  setMultiDeckMode(!multiDeckMode)
+                  if (!multiDeckMode && deckId !== null) {
+                    setSelectedDeckIds([deckId])
+                  }
+                }}
+                className="text-xs font-medium text-indigo-400 hover:text-indigo-300"
               >
-                📚 All decks
-                <span className="ml-2 text-xs text-neutral-500">
-                  {(decksData?.decks ?? []).reduce((acc, d) => acc + d.due, 0)} due
-                </span>
+                {multiDeckMode ? '← Back to single deck' : '⇄ Interleave multiple decks'}
               </button>
-              {(decksData?.decks ?? []).map((d) => (
+            </div>
+            {!multiDeckMode ? (
+              <div className="flex flex-wrap gap-2">
                 <button
-                  key={d.id}
-                  onClick={() => setDeckId(d.id)}
+                  onClick={() => setDeckId(null)}
                   className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                    deckId === d.id
+                    deckId === null
                       ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
                       : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
                   }`}
                 >
-                  {d.emoji} {d.name}
-                  <span className="ml-2 text-xs text-neutral-500">{d.due} due</span>
+                  📚 All decks
+                  <span className="ml-2 text-xs text-neutral-500">
+                    {(decksData?.decks ?? []).reduce((acc, d) => acc + d.due, 0)} due
+                  </span>
                 </button>
-              ))}
-            </div>
+                {(decksData?.decks ?? []).map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setDeckId(d.id)}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      deckId === d.id
+                        ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
+                        : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                    }`}
+                  >
+                    {d.emoji} {d.name}
+                    <span className="ml-2 text-xs text-neutral-500">{d.due} due</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {(decksData?.decks ?? []).map((d) => {
+                    const isSelected = selectedDeckIds.includes(d.id)
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDeckIds((prev) =>
+                            isSelected ? prev.filter((id) => id !== d.id) : [...prev, d.id],
+                          )
+                        }}
+                        className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                          isSelected
+                            ? 'border-indigo-500 bg-indigo-600/20 text-indigo-200 font-medium'
+                            : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : ''}
+                        {d.emoji} {d.name}
+                        <span className="ml-2 text-xs text-neutral-500">{d.due} due</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-neutral-500">
+                  {selectedDeckIds.length > 1
+                    ? `Interleaving ${selectedDeckIds.length} decks with round-robin subject rotation (Rohrer 2020: d=0.83 over blocked practice).`
+                    : 'Select 2 or more decks to blend into an interleaved study session.'}
+                </p>
+              </div>
+            )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -803,6 +889,48 @@ function ReviewPageInner() {
                 correctly this many times (Rawson &amp; Dunlosky 2011).
               </p>
             </div>
+          </div>
+          <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3 bg-neutral-50/50 dark:bg-neutral-900/30">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-400" />
+                <span className="text-sm font-medium">⚡ Speed Drill Mode</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSpeedDrillActive(!speedDrillActive)}
+                className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors ${
+                  speedDrillActive
+                    ? 'border-amber-500 bg-amber-500/20 text-amber-300'
+                    : 'border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:text-neutral-300'
+                }`}
+              >
+                {speedDrillActive ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+            <p className="text-xs text-neutral-500 mb-2">
+              Timed retrieval sprints (Kornell 2009): enforces rapid active recall before surface
+              cues take over.
+            </p>
+            {speedDrillActive && (
+              <div className="flex items-center gap-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border) text-xs">
+                <span className="text-neutral-400">Time per card:</span>
+                {[5, 8, 10, 15].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSpeedLimitSec(s)}
+                    className={`rounded px-2 py-0.5 border ${
+                      speedLimitSec === s
+                        ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
+                        : 'border-neutral-300 dark:border-neutral-700 text-neutral-400'
+                    }`}
+                  >
+                    {s}s
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -883,6 +1011,15 @@ function ReviewPageInner() {
               {blindGraded.length > 0 && (
                 <div className="text-xs text-amber-400">
                   {blindGraded.length} graded blind — corrections surface at your next session.
+                </div>
+              )}
+              {speedDrillActive && stats.total > 0 && (
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-300">
+                  <Zap className="h-3.5 w-3.5 text-amber-400" />
+                  <span>
+                    Speed Drill Sprint: {stats.total} cards · {stats.accuracy}% accuracy under{' '}
+                    {speedLimitSec}s pressure
+                  </span>
                 </div>
               )}
             </div>
@@ -1048,6 +1185,28 @@ function ReviewPageInner() {
                 <p className="mt-1 text-[11px] italic text-amber-300/75">
                   {hyperNotice.contrastNote}
                 </p>
+              </div>
+            )}
+            {speedDrillActive && (
+              <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
+                <div className="flex items-center justify-between text-xs font-semibold text-amber-300">
+                  <span className="flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5 text-amber-400" /> Speed Drill Sprint
+                  </span>
+                  <span className="font-mono text-sm">{speedSecondsLeft}s</span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                  <div
+                    className={`h-full transition-all duration-1000 ${
+                      speedSecondsLeft > 4
+                        ? 'bg-emerald-500'
+                        : speedSecondsLeft > 2
+                          ? 'bg-amber-500'
+                          : 'bg-red-500'
+                    }`}
+                    style={{ width: `${Math.min(100, (speedSecondsLeft / speedLimitSec) * 100)}%` }}
+                  />
+                </div>
               </div>
             )}
             <CardFront
@@ -1284,9 +1443,18 @@ function CardFront(props: {
 
   if (content.basic) {
     // desirable difficulty: rotate front phrasings across exposures
-    const front = pickBasicFront(content.basic, card.reps)
+    const promptInfo = pickCardPrompt(card)
+    const front = promptInfo.text || pickBasicFront(content.basic, card.reps)
     return (
       <div className="space-y-4">
+        {promptInfo.isVariant && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-400">
+            <Sparkles className="h-3 w-3" />
+            <span>
+              Alternate phrasing ({promptInfo.variantIndex + 1}/{promptInfo.totalVariants + 1})
+            </span>
+          </div>
+        )}
         {/* dual coding: the image is part of the prompt, never the answer */}
         {content.basic.imageId != null && (
           <img
@@ -1368,9 +1536,19 @@ function CardFront(props: {
   }
 
   if (content.typein) {
+    const promptInfo = pickCardPrompt(card)
+    const question = promptInfo.text || content.typein.question
     return (
       <div className="space-y-4">
-        <div className="text-xl font-medium">{content.typein.question}</div>
+        {promptInfo.isVariant && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-400">
+            <Sparkles className="h-3 w-3" />
+            <span>
+              Alternate phrasing ({promptInfo.variantIndex + 1}/{promptInfo.totalVariants + 1})
+            </span>
+          </div>
+        )}
+        <div className="text-xl font-medium">{question}</div>
         <input
           ref={props.inputRef}
           value={props.typeinValue}
@@ -1393,9 +1571,19 @@ function CardFront(props: {
   }
 
   if (content.mcq) {
+    const promptInfo = pickCardPrompt(card)
+    const question = promptInfo.text || content.mcq.question
     return (
       <div className="space-y-4">
-        <div className="text-xl font-medium">{content.mcq.question}</div>
+        {promptInfo.isVariant && (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-400">
+            <Sparkles className="h-3 w-3" />
+            <span>
+              Alternate phrasing ({promptInfo.variantIndex + 1}/{promptInfo.totalVariants + 1})
+            </span>
+          </div>
+        )}
+        <div className="text-xl font-medium">{question}</div>
         {!revealed && (
           <div className="text-sm text-neutral-500">
             options appear after you commit — recall first (stepwise MCQ)
