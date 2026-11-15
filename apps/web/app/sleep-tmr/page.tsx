@@ -17,7 +17,15 @@ import { Moon, ShieldCheck, Sparkles, Volume2 } from 'lucide-react'
 import { earconPartials, nextTmrCueDelayMs, type TmrEarcon } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
-import { Button, Callout, EmptyState, PageHeader, Panel, Skeleton } from '@/ui'
+import {
+  Button,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  Skeleton,
+  SleepConsolidationHUD,
+} from '@/ui'
 
 interface TmrCueItem {
   cardId: number
@@ -204,6 +212,16 @@ export default function SleepTmrPage() {
         title="Sleep Replay (TMR)"
         subtitle="Soft audio cues paired with today's cards, replayed during sleep to support overnight consolidation."
         icon={<Moon className="h-5 w-5" />}
+      />
+
+      <SleepConsolidationHUD
+        activeCuesCount={cues.length}
+        playedCuesCount={playedCount}
+        currentFrequency={currentFreq}
+        isNightMode={nightMode}
+        onToggleNightMode={() => (nightMode ? exitNight() : void startNight())}
+        onMintQueue={() => mintRecent.mutate()}
+        isMinting={mintRecent.isPending}
       />
 
       <Callout tone="accent" title="Set a safe volume first">
