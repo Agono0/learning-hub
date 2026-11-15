@@ -216,6 +216,20 @@ function openSqliteWasmDatabase(
 ): SqliteWasmDatabase {
   let db: WasmDb
   if (typeof source === 'string') {
+    // If a nested path is passed in Node/WASM, ensure its parent directory exists
+    // in Emscripten's virtual filesystem (MEMFS) if the FS API is exposed.
+    const wasmFs = (sqlite3 as unknown as { wasm?: { fs?: { mkdirTree?: (d: string) => void } }; fs?: { mkdirTree?: (d: string) => void } })
+    const fsApi = wasmFs.wasm?.fs ?? wasmFs.fs
+    if (fsApi && typeof fsApi.mkdirTree === 'function' && source.includes('/') && !source.startsWith(':memory:')) {
+      const dir = source.slice(0, source.lastIndexOf('/'))
+      if (dir && dir !== '/') {
+        try {
+          fsApi.mkdirTree(dir)
+        } catch {
+          /* ignore if directory already exists */
+        }
+      }
+    }
     // flags 'c' = create-if-missing + readwrite (better-sqlite3's default mode)
     db = new sqlite3.oo1.DB(source, options?.readonly ? 'r' : 'c', options?.vfs ?? null)
   } else {

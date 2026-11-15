@@ -59,8 +59,13 @@ function uniqueFile(label: string): string {
   return path.join(tmpDir, `${label}-${nextId}-${process.pid}.db`)
 }
 
+function uniqueWasmFile(label: string): string {
+  nextId += 1
+  return `${label}-${nextId}-${process.pid}.db`
+}
+
 function createWasmDb(label: string): SqliteWasmDatabase {
-  const db = createSqliteWasmDb(uniqueFile(label))
+  const db = createSqliteWasmDb(uniqueWasmFile(label))
   openDbs.push(db)
   return db
 }
@@ -173,7 +178,7 @@ describe('(a) shim CRUD parity vs better-sqlite3', () => {
   })
 
   it('persistence: data survives close + reopen on a real file (Node default VFS)', () => {
-    const file = uniqueFile('persist')
+    const file = uniqueWasmFile('persist')
     const db1 = createSqliteWasmDb(file)
     db1.exec('CREATE TABLE p (x TEXT)')
     db1.prepare('INSERT INTO p (x) VALUES (?)').run('durable')
