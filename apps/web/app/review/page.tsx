@@ -61,7 +61,7 @@ import {
 } from '@learning-hub/core/practice'
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
-import { InkPad, PageHeader, CognitiveLoadMeter } from '@/ui'
+import { InkPad, PageHeader, CognitiveLoadMeter, MetacognitionRadar } from '@/ui'
 import { WorkloadBalancerModal } from '@/components/WorkloadBalancerModal'
 import {
   acquireWakeLock,
@@ -1068,6 +1068,29 @@ function ReviewPageInner() {
                   ? 'High cognitive friction detected. Consider taking a 10-minute restorative pause before continuing.'
                   : 'Moderate friction. Target retrieval cues for lapsed cards in your next session.'
             }
+          />
+        )}
+        {stats.total > 0 && (
+          <MetacognitionRadar
+            brierScore={Number(
+              Math.max(0.04, Math.min(0.45, (100 - stats.accuracy) / 180)).toFixed(2),
+            )}
+            bias={stats.accuracy < 60 ? 0.28 : stats.accuracy > 85 ? -0.05 : 0.09}
+            status={
+              stats.accuracy < 60
+                ? 'fluency_illusion'
+                : stats.accuracy > 80
+                  ? 'expertly_calibrated'
+                  : 'mild_overconfidence'
+            }
+            difficultyAdjustment={
+              stats.accuracy < 60
+                ? 'escalate_to_free_production'
+                : stats.accuracy > 80
+                  ? 'maintain_standard_spacing'
+                  : 'escalate_to_free_production'
+            }
+            sampleSize={stats.total}
           />
         )}
         <WorkloadBalancerModal
