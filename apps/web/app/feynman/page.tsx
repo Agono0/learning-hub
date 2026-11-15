@@ -14,9 +14,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { GraduationCap, Send, Sparkles } from 'lucide-react'
+import type { FeynmanDiagnosticReport } from '@learning-hub/core'
 import { TransportPanel, useAiStatus, type ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { FeynmanExplanationCard, PageHeader } from '@/ui'
 
 interface Msg {
   /** stable client-side identity — the message list grows during a session */
@@ -72,6 +73,46 @@ export default function FeynmanPage() {
     enabled: manual && started,
   })
   const [deckId, setDeckId] = useState<number | ''>('')
+  const [initialConfidence, setInitialConfidence] = useState(4)
+  const [feynmanReport, setFeynmanReport] = useState<FeynmanDiagnosticReport | null>(null)
+
+  const runEvaluation = async (c: string, e: string, conf: number) => {
+    if (!c.trim() || !e.trim()) return
+    try {
+      const res = await apiSend<{ ok?: boolean; report?: FeynmanDiagnosticReport }>(
+        '/api/cognitive/feynman-eval',
+        'POST',
+        {
+          concept: c.trim(),
+          explanation: e.trim(),
+          initialConfidence: conf,
+        },
+      )
+      if (res.ok && res.report) {
+        setFeynmanReport(res.report)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleSaveCard = async (card: { front: string; back: string; tags: string[] }) => {
+    try {
+      const dId = typeof deckId === 'number' ? deckId : (decksData?.decks?.[0]?.id ?? 1)
+      await apiSend('/api/cards?bulk=1', 'PUT', {
+        deckId: dId,
+        items: [
+          {
+            type: 'basic',
+            content: { basic: { front: card.front, back: card.back } },
+            tags: card.tags,
+          },
+        ],
+      })
+    } catch {
+      // ignore
+    }
+  }
 
   const start = () => {
     if (!concept.trim() || !explanation.trim()) return
@@ -82,6 +123,7 @@ export default function FeynmanPage() {
     }
     setStarted(true)
     setMessages([first])
+    void runEvaluation(concept, explanation, initialConfidence)
     if (manual) {
       // no AI: the explanation sits in the transcript; follow-ups are self-asked
       setFollowUps(0)
@@ -195,6 +237,7 @@ export default function FeynmanPage() {
         gaps: body.score!.gaps,
       })
       setGapCards(body.score!.suggestedCards ?? [])
+      void runEvaluation(concept, explanation, initialConfidence)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -215,6 +258,7 @@ export default function FeynmanPage() {
         .filter(Boolean),
     })
     setGapCards([])
+    void runEvaluation(concept, explanation, initialConfidence)
   }
 
   const resetAll = () => {
@@ -230,6 +274,8 @@ export default function FeynmanPage() {
     setSelfCards('')
     setSavedCards(null)
     setFollowUps(0)
+    setFeynmanReport(null)
+    setInitialConfidence(4)
   }
 
   if (!started) {
@@ -264,10 +310,55 @@ export default function FeynmanPage() {
               placeholder="Explain it plainly. Jargon will be questioned…"
             />
           </div>
-          <button className="btn" onClick={start} disabled={!concept.trim() || !explanation.trim()}>
-            <GraduationCap className="h-4 w-4" /> Start teaching
-          </button>
+          <div className="space-y-1.5">
+            <label className="label mb-1 block">
+              Pre-Explanation Confidence (Rozenblit & Keil Calibration)
+            </label>
+            <div className="grid grid-cols-5 gap-1.5 text-xs">
+              {[
+                { val: 1, label: '1 - Clueless' },
+                { val: 2, label: '2 - Novice' },
+                { val: 3, label: '3 - Familiar' },
+                { val: 4, label: '4 - Confident' },
+                { val: 5, label: '5 - Expert' },
+              ].map(({ val, label }) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setInitialConfidence(val)}
+                  className={`rounded-lg border px-2 py-1.5 text-center transition-colors ${
+                    initialConfidence === val
+                      ? 'border-indigo-500 bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
+                      : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-400'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="btn"
+              onClick={start}
+              disabled={!concept.trim() || !explanation.trim()}
+            >
+              <GraduationCap className="h-4 w-4" /> Start teaching
+            </button>
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              onClick={() => void runEvaluation(concept, explanation, initialConfidence)}
+              disabled={!concept.trim() || !explanation.trim()}
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Analyze Readability & Jargon
+            </button>
+          </div>
         </div>
+
+        {feynmanReport && (
+          <FeynmanExplanationCard report={feynmanReport} onSaveGapCard={handleSaveCard} />
+        )}
       </div>
     )
   }
@@ -316,6 +407,22 @@ export default function FeynmanPage() {
         {error && (
           <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
             {error}
+          </div>
+        )}
+        {feynmanReport && feynmanReport.socraticProbes.length > 0 && !grade && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-neutral-100 pt-2 dark:border-(--hub-border)">
+            <span className="text-[11px] font-medium text-neutral-400">Socratic probes:</span>
+            {feynmanReport.socraticProbes.slice(0, 2).map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setInput(p.prompt)}
+                className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-300"
+                title={p.prompt}
+              >
+                {p.prompt}
+              </button>
+            ))}
           </div>
         )}
         <form
@@ -402,6 +509,13 @@ export default function FeynmanPage() {
 
       {grade && (
         <div className="celebrate panel space-y-4">
+          {feynmanReport && (
+            <FeynmanExplanationCard
+              report={feynmanReport}
+              onSelectProbe={(probe) => setInput(probe.prompt)}
+              onSaveGapCard={handleSaveCard}
+            />
+          )}
           <div className="flex items-center gap-4">
             <div className="text-4xl font-bold text-indigo-500">{grade.coverage}%</div>
             <div className="text-sm text-neutral-500">
