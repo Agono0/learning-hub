@@ -38,10 +38,24 @@ import {
 } from 'lucide-react'
 import { evaluateMatchingGame } from '@learning-hub/core/games'
 import { BOSS_ROSTER, type BossProfile } from '@learning-hub/core/boss'
+import type {
+  GenerationEvaluationResult,
+  GenerationLadder,
+  GenerationTier,
+} from '@learning-hub/core/generation'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, PageHeader, Panel, ProgressBar, Tabs, TextField } from '@/ui'
+import {
+  Badge,
+  Button,
+  GenerationMatrixHUD,
+  PageHeader,
+  Panel,
+  ProgressBar,
+  Tabs,
+  TextField,
+} from '@/ui'
 
-type GameTab = 'matching' | 'boss' | 'duels' | 'social'
+type GameTab = 'matching' | 'generation' | 'boss' | 'duels' | 'social'
 
 interface DeckInfo {
   id: number
@@ -135,6 +149,7 @@ export default function GamesPage() {
         onChange={setActiveTab}
         items={[
           { key: 'matching', label: 'Matching Pairs', icon: <Brain className="h-4 w-4" /> },
+          { key: 'generation', label: 'Generation Matrix', icon: <Sparkles className="h-4 w-4" /> },
           { key: 'boss', label: 'Boss Battle', icon: <Swords className="h-4 w-4" /> },
           { key: 'duels', label: '1v1 Review Duels', icon: <Flame className="h-4 w-4" /> },
           { key: 'social', label: 'Friend Leaderboard', icon: <Users className="h-4 w-4" /> },
@@ -142,6 +157,7 @@ export default function GamesPage() {
       />
 
       {activeTab === 'matching' && <MatchingGameSection />}
+      {activeTab === 'generation' && <GenerationLadderSection />}
       {activeTab === 'boss' && <BossBattleSection />}
       {activeTab === 'duels' && <DuelsArenaSection />}
       {activeTab === 'social' && <SocialLeaderboardSection />}
@@ -380,6 +396,129 @@ function Chip({ pair, matched }: { pair: MatchingPair; matched: boolean }) {
       }`}
     >
       {pair.right}
+    </div>
+  )
+}
+
+/* ========================================================================= */
+/* Generation Matrix Ladder Section (Slamecka & Graf 1978)                   */
+/* ========================================================================= */
+
+function GenerationLadderSection() {
+  const [tier, setTier] = useState<GenerationTier>('stem_completion')
+  const [concept, setConcept] = useState('Active Recall')
+  const [explanation, setExplanation] = useState(
+    'Retrieving memories strengthens synaptic connections and reduces forgetting curve decay',
+  )
+  const [evaluationResult, setEvaluationResult] = useState<GenerationEvaluationResult | null>(null)
+  const [startTime, setStartTime] = useState(Date.now())
+
+  const { data } = useQuery<{ ok?: boolean; ladder: GenerationLadder }>({
+    queryKey: ['generation-ladder', concept, explanation, tier],
+    queryFn: () =>
+      apiSend<{ ok?: boolean; ladder: GenerationLadder }>('/api/cognitive/generation', 'POST', {
+        concept,
+        explanation,
+        tier,
+      }),
+  })
+
+  const handleSubmitAttempt = async (attempt: string) => {
+    const latencyMs = Date.now() - startTime
+    const res = await apiSend<{ ok?: boolean; result: GenerationEvaluationResult }>(
+      '/api/cognitive/generation',
+      'POST',
+      {
+        concept,
+        tier,
+        expectedAnswer: explanation,
+        userAttempt: attempt,
+        latencyMs,
+      },
+    )
+    if (res.ok && res.result) {
+      setEvaluationResult(res.result)
+    }
+  }
+
+  const handleAdvanceTier = () => {
+    if (evaluationResult?.recommendedNextTier) {
+      setTier(evaluationResult.recommendedNextTier)
+    } else {
+      const nextMap: Record<GenerationTier, GenerationTier> = {
+        stem_completion: 'semantic_anagram',
+        semantic_anagram: 'reverse_query',
+        reverse_query: 'analogy_synthesis',
+        analogy_synthesis: 'stem_completion',
+      }
+      setTier(nextMap[tier])
+    }
+    setEvaluationResult(null)
+    setStartTime(Date.now())
+  }
+
+  const presets = [
+    {
+      concept: 'Spaced Repetition',
+      explanation:
+        'Expanding review intervals optimize consolidation right before memory traces decay',
+    },
+    {
+      concept: 'Interleaving',
+      explanation:
+        'Alternating distinct problem categories deepens discrimination capacity and flexible transfer',
+    },
+    {
+      concept: 'Dual Coding',
+      explanation:
+        'Integrating verbal explanations with spatial diagrams forms dual retrieval pathways in memory',
+    },
+    {
+      concept: 'Feynman Technique',
+      explanation:
+        'Explaining concepts in plain language without jargon exposes illusions of explanatory depth',
+    },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <Panel className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+            Choose a concept to generate from memory:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map((p) => (
+              <button
+                key={p.concept}
+                type="button"
+                onClick={() => {
+                  setConcept(p.concept)
+                  setExplanation(p.explanation)
+                  setEvaluationResult(null)
+                  setStartTime(Date.now())
+                }}
+                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  concept === p.concept
+                    ? 'border-indigo-500 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                    : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-400'
+                }`}
+              >
+                {p.concept}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Panel>
+
+      {data?.ladder && (
+        <GenerationMatrixHUD
+          ladder={data.ladder}
+          onSubmitAttempt={handleSubmitAttempt}
+          evaluationResult={evaluationResult}
+          onAdvanceTier={handleAdvanceTier}
+        />
+      )}
     </div>
   )
 }
