@@ -4,10 +4,14 @@
  * - 30-Tier Seasonal Motivation Pass
  * - 1v1 Review Duel Match Records
  */
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { calculateGuildLevel, calculateSeasonProgress } from '@learning-hub/core/guilds'
 import { getDb } from '../index'
 import { guildMembers, guilds, reviewDuels, seasonalProgress } from '../schema'
+import { withTransaction } from '../transaction'
+
+/** Number of tiers in a seasonal pass (matches the season handler and core). */
+export const SEASON_TIERS = 30
 
 export interface GuildRow {
   id: number
@@ -27,36 +31,45 @@ export function createGuild(data: {
   leaderAlias: string
   avatarEmoji?: string
 }): GuildRow {
-  const db = getDb()
-  const [guild] = db
-    .insert(guilds)
-    .values({
-      name: data.name,
-      tag: data.tag.toUpperCase(),
-      description: data.description ?? null,
-      totalXp: 0,
-      level: 1,
-      avatarEmoji: data.avatarEmoji ?? '🛡️',
-    })
-    .returning()
-    .all()
+  return withTransaction((db) => {
+    const [guild] = db
+      .insert(guilds)
+      .values({
+        name: data.name,
+        tag: data.tag.toUpperCase(),
+        description: data.description ?? null,
+        totalXp: 0,
+        level: 1,
+        avatarEmoji: data.avatarEmoji ?? '🛡️',
+      })
+      .returning()
+      .all()
 
-  // Add the creator as leader
-  db.insert(guildMembers)
-    .values({
-      guildId: guild!.id,
-      alias: data.leaderAlias,
-      role: 'leader',
-      xpContributed: 0,
-    })
-    .run()
+    // The creator leads the new guild (moving them out of any previous one).
+    const existing = db
+      .select()
+      .from(guildMembers)
+      .where(eq(guildMembers.alias, data.leaderAlias))
+      .get()
+    if (existing) {
+      db.update(guildMembers)
+        .set({ guildId: guild!.id, role: 'leader', xpContributed: 0 })
+        .where(eq(guildMembers.id, existing.id))
+        .run()
+    } else {
+      db.insert(guildMembers)
+        .values({ guildId: guild!.id, alias: data.leaderAlias, role: 'leader', xpContributed: 0 })
+        .run()
+    }
 
-  return guild as GuildRow
+    return guild as GuildRow
+  }, getDb())
 }
 
 export function getGuild(id: number): GuildRow | null {
   const db = getDb()
-  return db.select().from(guilds).where(eq(guilds.id, id)).get() as GuildRow | null
+  if (!Number.isInteger(id) || id <= 0) return null
+  return (db.select().from(guilds).where(eq(guilds.id, id)).get() as GuildRow | undefined) ?? null
 }
 
 export function listGuilds(limit = 20): GuildRow[] {
@@ -64,56 +77,73 @@ export function listGuilds(limit = 20): GuildRow[] {
   return db.select().from(guilds).orderBy(desc(guilds.totalXp)).limit(limit).all() as GuildRow[]
 }
 
+/**
+ * Joins `alias` to a guild. Members belong to one guild at a time, so joining
+ * another guild moves them (their per-guild contribution restarts at 0).
+ * Re-joining the guild you're already in is a no-op — it never demotes a leader.
+ * Returns false when the guild doesn't exist.
+ */
 export function joinGuild(guildId: number, alias: string): boolean {
-  const db = getDb()
-  const existing = db.select().from(guildMembers).where(eq(guildMembers.alias, alias)).get()
+  return withTransaction((db) => {
+    if (!db.select({ id: guilds.id }).from(guilds).where(eq(guilds.id, guildId)).get()) return false
+    const existing = db.select().from(guildMembers).where(eq(guildMembers.alias, alias)).get()
 
-  if (existing) {
-    // Already in a clan or this clan
-    db.update(guildMembers)
-      .set({ guildId, role: 'member' })
-      .where(eq(guildMembers.id, existing.id))
-      .run()
+    if (existing) {
+      if (existing.guildId === guildId) return true
+      db.update(guildMembers)
+        .set({ guildId, role: 'member', xpContributed: 0 })
+        .where(eq(guildMembers.id, existing.id))
+        .run()
+      return true
+    }
+
+    db.insert(guildMembers).values({ guildId, alias, role: 'member', xpContributed: 0 }).run()
     return true
-  }
-
-  db.insert(guildMembers)
-    .values({
-      guildId,
-      alias,
-      role: 'member',
-      xpContributed: 0,
-    })
-    .run()
-
-  return true
+  }, getDb())
 }
 
-export function contributeGuildXp(guildId: number, alias: string, xp: number): void {
+/**
+ * Remove an alias from whatever guild they belong to.
+ * Returns true if a membership was removed.
+ */
+export function leaveGuild(alias: string): boolean {
   const db = getDb()
-  // 1. Update member contribution
-  db.update(guildMembers)
-    .set({
-      xpContributed: sql`${guildMembers.xpContributed} + ${xp}`,
-    })
-    .where(eq(guildMembers.alias, alias))
-    .run()
+  const res = db.delete(guildMembers).where(eq(guildMembers.alias, alias)).run()
+  return (res?.changes ?? 0) > 0
+}
 
-  // 2. Update clan total XP & recalculate clan level
-  db.update(guilds)
-    .set({
-      totalXp: sql`${guilds.totalXp} + ${xp}`,
-    })
-    .where(eq(guilds.id, guildId))
-    .run()
+/**
+ * Pools `xp` from a member into their guild and recomputes the guild level,
+ * atomically. Only members of `guildId` can contribute to it, and only a
+ * positive whole amount. Returns whether anything was credited.
+ */
+export function contributeGuildXp(guildId: number, alias: string, xp: number): boolean {
+  if (!Number.isFinite(xp) || xp <= 0) return false
+  const amount = Math.floor(xp)
+  if (amount <= 0) return false
 
-  const updated = getGuild(guildId)
-  if (updated) {
-    const milestone = calculateGuildLevel(updated.totalXp)
-    if (milestone.level !== updated.level) {
-      db.update(guilds).set({ level: milestone.level }).where(eq(guilds.id, guildId)).run()
+  return withTransaction((db) => {
+    const member = db
+      .update(guildMembers)
+      .set({ xpContributed: sql`${guildMembers.xpContributed} + ${amount}` })
+      .where(and(eq(guildMembers.alias, alias), eq(guildMembers.guildId, guildId)))
+      .run()
+    if (member.changes === 0) return false
+
+    db.update(guilds)
+      .set({ totalXp: sql`${guilds.totalXp} + ${amount}` })
+      .where(eq(guilds.id, guildId))
+      .run()
+
+    const updated = db.select().from(guilds).where(eq(guilds.id, guildId)).get()
+    if (updated) {
+      const milestone = calculateGuildLevel(updated.totalXp)
+      if (milestone.level !== updated.level) {
+        db.update(guilds).set({ level: milestone.level }).where(eq(guilds.id, guildId)).run()
+      }
     }
-  }
+    return true
+  }, getDb())
 }
 
 export function listGuildMembers(guildId: number) {
@@ -149,8 +179,9 @@ export function getSeasonalProgress(seasonId = 'season-1') {
 
 export function addSeasonXp(xp: number, seasonId = 'season-1') {
   const current = getSeasonalProgress(seasonId)
-  const newXp = current.seasonXp + xp
-  const { currentTier } = calculateSeasonProgress(newXp, 30)
+  if (!Number.isFinite(xp) || xp <= 0) return current
+  const newXp = current.seasonXp + Math.floor(xp)
+  const { currentTier } = calculateSeasonProgress(newXp, SEASON_TIERS)
 
   const db = getDb()
   db.update(seasonalProgress)
@@ -166,6 +197,7 @@ export function addSeasonXp(xp: number, seasonId = 'season-1') {
 }
 
 export function claimSeasonReward(tier: number, seasonId = 'season-1'): boolean {
+  if (!Number.isInteger(tier) || tier < 1 || tier > SEASON_TIERS) return false
   const current = getSeasonalProgress(seasonId)
   if (current.tier < tier) return false
 

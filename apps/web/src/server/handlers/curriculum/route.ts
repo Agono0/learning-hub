@@ -6,12 +6,11 @@
  */
 import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, courses, lessons, sources, tracks, units, xpEvents } from '@learning-hub/db'
+import { awardXp, db, courses, getSource, lessons, tracks, units } from '@learning-hub/db'
 import {
   generateCoursePrompt,
   generatedCourseSchema,
   parseGeneratedCourse,
-  XP_REWARDS,
 } from '@learning-hub/core'
 import { requireAI, AIUnavailableError, type AIClient } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
@@ -80,7 +79,7 @@ export const POST = withRoute(async (req: Request) => {
   }
   let pdfText: string | undefined
   if (body.pdfId) {
-    const [src] = await db.select().from(sources).where(eq(sources.id, body.pdfId)).limit(1)
+    const src = getSource(body.pdfId)
     if (!src) return Response.json({ error: 'source not found' }, { status: 404 })
     pdfText = src.content
   }
@@ -117,13 +116,8 @@ export const PATCH = withRoute(async (req: Request) => {
       .update(lessons)
       .set({ completedAt: new Date().toISOString() })
       .where(eq(lessons.id, lesson.id))
-    await db
-      .insert(xpEvents)
-      .values({
-        source: 'lesson',
-        amount: XP_REWARDS.lesson,
-        meta: { lessonId: lesson.id, title: lesson.title },
-      })
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'lesson', meta: { lessonId: lesson.id, title: lesson.title } })
   }
   return Response.json({ ok: true, completed: true })
 })

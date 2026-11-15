@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/learning-hub/learning-hub.git"
+    "url": "git+https://github.com/Agono0/learning-hub.git"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",

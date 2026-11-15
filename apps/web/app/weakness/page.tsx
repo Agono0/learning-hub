@@ -1,0 +1,392 @@
+'use client'
+
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  GitFork,
+  Layers,
+  Sparkles,
+  Split,
+} from 'lucide-react'
+import type { ConfusionPair, TopicDecayForecast, LeechDecomposition } from '@learning-hub/core'
+import { apiGet, apiSend } from '@/lib/transport'
+import {
+  Button,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  ProgressBar,
+  Skeleton,
+  Tabs,
+  useToast,
+} from '@/ui'
+import Link from 'next/link'
+
+interface WeaknessV2Data {
+  ok: boolean
+  confusionPairs: ConfusionPair[]
+  topicForecasts: TopicDecayForecast[]
+  leechDecompositions: LeechDecomposition[]
+  totalCards: number
+  leechCount: number
+}
+
+export default function WeaknessRadarPage() {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [activeTab, setActiveTab] = useState<'pairs' | 'forecast' | 'leeches'>('pairs')
+  const [appliedCards, setAppliedCards] = useState<Set<number>>(new Set())
+
+  const { data, isLoading, isError, refetch } = useQuery<WeaknessV2Data>({
+    queryKey: ['curriculum', 'skills', 'weakness-v2'],
+    queryFn: () => apiGet('/api/curriculum/skills/weakness-v2'),
+  })
+
+  const applyDecompMutation = useMutation({
+    mutationFn: (variables: {
+      cardId: number
+      candidates: Array<{ front: string; back: string; format: 'basic' | 'cloze' }>
+    }) =>
+      apiSend('/api/curriculum/skills/weakness-v2', 'POST', {
+        action: 'apply_decomposition',
+        originalCardId: variables.cardId,
+        candidates: variables.candidates,
+      }),
+    onSuccess: (_, variables) => {
+      setAppliedCards((prev) => new Set([...prev, variables.cardId]))
+      toast({
+        title: 'Leech decomposed',
+        description: `Created ${variables.candidates.length} atomic flashcards in your deck.`,
+        tone: 'success',
+      })
+      void queryClient.invalidateQueries({ queryKey: ['curriculum', 'skills', 'weakness-v2'] })
+    },
+    onError: (err) => {
+      toast({
+        title: 'Failed to decompose card',
+        description: err instanceof Error ? err.message : String(err),
+        tone: 'danger',
+      })
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-4xl space-y-6 py-6">
+        <PageHeader
+          title="Weakness Radar v2"
+          subtitle="Semantic interference, forward topic decay forecasts, and atomic leech decomposition."
+        />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="container max-w-4xl space-y-6 py-6">
+        <PageHeader
+          title="Weakness Radar v2"
+          subtitle="Semantic interference, forward topic decay forecasts, and atomic leech decomposition."
+        />
+        <EmptyState
+          title="Failed to load weakness data"
+          action={<Button onClick={() => void refetch()}>Retry</Button>}
+        >
+          Could not connect to the memory analytics engine. Please retry.
+        </EmptyState>
+      </div>
+    )
+  }
+
+  const { confusionPairs, topicForecasts, leechDecompositions } = data
+
+  return (
+    <div className="container max-w-4xl space-y-6 py-6">
+      <PageHeader
+        title="Weakness Radar v2"
+        subtitle="Semantic interference matrix, forward retention decay forecasting, and 1-click leech atomic decomposition."
+      />
+
+      {/* Top metric overview */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Panel className="p-4 text-center">
+          <div className="text-2xl font-bold text-amber-500">{confusionPairs.length}</div>
+          <div className="text-xs text-neutral-500">Confusion Pairs</div>
+        </Panel>
+        <Panel className="p-4 text-center">
+          <div className="text-2xl font-bold text-rose-500">{data.leechCount}</div>
+          <div className="text-xs text-neutral-500">Active Leeches</div>
+        </Panel>
+        <Panel className="p-4 text-center">
+          <div className="text-2xl font-bold text-indigo-500">{topicForecasts.length}</div>
+          <div className="text-xs text-neutral-500">Tracked Topics</div>
+        </Panel>
+        <Panel className="p-4 text-center">
+          <div className="text-2xl font-bold text-emerald-500">{data.totalCards}</div>
+          <div className="text-xs text-neutral-500">Total Cards</div>
+        </Panel>
+      </div>
+
+      <Tabs
+        label="Weakness Radar Sections"
+        value={activeTab}
+        onChange={(val) => setActiveTab(val)}
+        items={[
+          {
+            key: 'pairs',
+            label: `Confusion Pairs (${confusionPairs.length})`,
+          },
+          {
+            key: 'forecast',
+            label: `Retention Forecasts (${topicForecasts.length})`,
+          },
+          {
+            key: 'leeches',
+            label: `Leech Decomposer (${leechDecompositions.length})`,
+          },
+        ]}
+      />
+
+      {/* TAB 1: CONFUSION PAIRS */}
+      {activeTab === 'pairs' && (
+        <div className="space-y-4">
+          <Callout tone="accent" title="Semantic Interference (Underwood 1957)">
+            When two similar concepts are reviewed in close temporal proximity, the memory traces
+            interfere. The radar detects card pairs where failing Card A significantly correlates
+            with failing Card B.
+          </Callout>
+
+          {confusionPairs.length === 0 ? (
+            <EmptyState title="No confusion pairs detected">
+              Keep reviewing cards! When sequential failures cluster around related cards, the radar
+              will highlight interference pairs here.
+            </EmptyState>
+          ) : (
+            <div className="space-y-4">
+              {confusionPairs.map((pair) => (
+                <Panel key={`${pair.cardIdA}-${pair.cardIdB}`} className="p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2 dark:border-(--hub-border)">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        {pair.failCoOccurrenceCount} Co-Occurring Lapses
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                      Interference Probability: {Math.round(pair.interferenceProbability * 100)}%
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/50">
+                      <div className="text-xs font-medium text-neutral-400">
+                        Card A (#{pair.cardIdA})
+                      </div>
+                      <div className="mt-1 text-sm font-medium">{pair.previewA}</div>
+                    </div>
+                    <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/50">
+                      <div className="text-xs font-medium text-neutral-400">
+                        Card B (#{pair.cardIdB})
+                      </div>
+                      <div className="mt-1 text-sm font-medium">{pair.previewB}</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-indigo-50/70 p-3 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
+                    <div className="flex items-center gap-1.5 font-semibold mb-1">
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                      Contrast Drill Cue:
+                    </div>
+                    {pair.contrastPrompt}
+                  </div>
+                </Panel>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: RETENTION FORECAST */}
+      {activeTab === 'forecast' && (
+        <div className="space-y-4">
+          <Callout tone="accent" title="FSRS Retrievability Decay Trajectory">
+            Projects forward memory retrievability R(t) = (1 + factor * t / S)^(-0.5) over 7, 14,
+            and 30 days if no reviews take place. Use this to prioritize decks before retention
+            drops below 80%.
+          </Callout>
+
+          {topicForecasts.length === 0 ? (
+            <EmptyState title="No topics available">
+              Create decks or import courses to view topic retention trajectories.
+            </EmptyState>
+          ) : (
+            <div className="space-y-4">
+              {topicForecasts.map((topic) => {
+                const cur = Math.round(topic.currentRetention * 100)
+                const d7 = Math.round(topic.projectedRetention7d * 100)
+                const d14 = Math.round(topic.projectedRetention14d * 100)
+                const d30 = Math.round(topic.projectedRetention30d * 100)
+
+                return (
+                  <Panel key={topic.deckId} className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Layers className="h-4 w-4 text-indigo-500" />
+                        <span className="font-semibold">{topic.deckName}</span>
+                      </div>
+                      {topic.urgentCardsCount > 0 && (
+                        <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                          {topic.urgentCardsCount} due now
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-neutral-500">Current Retention:</span>
+                        <span
+                          className={`font-semibold ${cur >= 85 ? 'text-emerald-500' : cur >= 70 ? 'text-amber-500' : 'text-rose-500'}`}
+                        >
+                          {cur}%
+                        </span>
+                      </div>
+                      <ProgressBar value={cur} className="h-2" />
+
+                      <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
+                        <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
+                          <div className="text-[10px] text-neutral-400">In 7 Days</div>
+                          <div
+                            className={`font-semibold ${d7 >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}
+                          >
+                            {d7}%
+                          </div>
+                        </div>
+                        <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
+                          <div className="text-[10px] text-neutral-400">In 14 Days</div>
+                          <div
+                            className={`font-semibold ${d14 >= 75 ? 'text-emerald-500' : 'text-amber-500'}`}
+                          >
+                            {d14}%
+                          </div>
+                        </div>
+                        <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
+                          <div className="text-[10px] text-neutral-400">In 30 Days</div>
+                          <div
+                            className={`font-semibold ${d30 >= 70 ? 'text-amber-500' : 'text-rose-500'}`}
+                          >
+                            {d30}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <Link
+                        href={`/review?deckId=${topic.deckId}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                      >
+                        Review Deck <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </Panel>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: LEECH ATOMIC DECOMPOSER */}
+      {activeTab === 'leeches' && (
+        <div className="space-y-4">
+          <Callout tone="accent" title="Wozniak's Rule 1: Minimum Information Principle">
+            Leeches occur when cards encode multiple facts simultaneously or lack clear retrieval
+            cues. The decomposer breaks complex cards into single-fact atomic cards to eliminate
+            cognitive bottlenecks.
+          </Callout>
+
+          {leechDecompositions.length === 0 ? (
+            <EmptyState title="No leeches found">
+              None of your cards have reached 5 lapses. Great retention!
+            </EmptyState>
+          ) : (
+            <div className="space-y-4">
+              {leechDecompositions.map((leech) => {
+                const isDone = appliedCards.has(leech.cardId)
+                return (
+                  <Panel key={leech.cardId} className="p-4 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2 dark:border-(--hub-border)">
+                      <div className="flex items-center gap-2">
+                        <Split className="h-4 w-4 text-rose-500" />
+                        <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                          Leech Card #{leech.cardId} · {leech.lapses} Lapses
+                        </span>
+                      </div>
+                      {isDone ? (
+                        <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Decomposed
+                        </span>
+                      ) : (
+                        <Button
+                          onClick={() =>
+                            applyDecompMutation.mutate({
+                              cardId: leech.cardId,
+                              candidates: leech.candidates,
+                            })
+                          }
+                          disabled={applyDecompMutation.isPending}
+                        >
+                          <GitFork className="h-3.5 w-3.5 mr-1" />
+                          Apply Split ({leech.candidates.length} Cards)
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900/50">
+                      <div className="font-semibold text-neutral-400 mb-1">Overloaded Leech:</div>
+                      <div className="font-medium text-sm text-neutral-800 dark:text-neutral-200">
+                        {leech.originalFront}
+                      </div>
+                      <div className="mt-1 text-neutral-600 dark:text-neutral-400 border-t border-neutral-200 pt-1 dark:border-neutral-800">
+                        {leech.originalBack}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Proposed Atomic Replacements:
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {leech.candidates.map((cand, idx) => (
+                          <div
+                            key={idx}
+                            className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5 text-xs dark:border-indigo-950/60 dark:bg-indigo-950/20"
+                          >
+                            <div className="font-semibold text-indigo-700 dark:text-indigo-300">
+                              {cand.front}
+                            </div>
+                            <div className="mt-1 text-neutral-700 dark:text-neutral-300">
+                              {cand.back}
+                            </div>
+                            <div className="mt-1.5 text-[10px] text-neutral-400 italic">
+                              {cand.rationale}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Panel>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

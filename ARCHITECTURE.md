@@ -38,8 +38,10 @@ learning-HUB/
 │   │   ├── app/api/**/route.ts  # REST route handlers (zod boundary, withRoute)
 │   │   └── src/components/      # client islands, command palette, transport panel…
 │   ├── server/         # Headless REST server — Node 22+ native node:http, no framework
-│   ├── mcp/            # MCP stdio server: 14 tools + 3 resources (@modelcontextprotocol/sdk)
-│   └── cli/            # terminal adapter
+│   ├── mcp/            # MCP stdio server: 51 built-in tools + plugin contributions + 3 resources (@modelcontextprotocol/sdk)
+│   ├── cli/            # terminal adapter: 25 CLI commands
+│   ├── worker/         # Cloudflare worker: rooms, boss raids, library share (deploy: npm run worker:deploy)
+│   └── extension/      # Browser extension: quick-add cards, save-to-read, friction capture (M21)
 ├── plugins/            # loaded by EVERY host at boot (example-echo is the reference)
 ├── tests/e2e/          # opaque-box E2E suite (helpers + tiers 1-4) — see docs/TEST_INFRA.md
 └── docs/               # reference documentation (see the table below)
@@ -61,14 +63,14 @@ plugins/*  →  packages/core only
 
 ### Reference documentation
 
-| Document | Contents |
-| --- | --- |
+| Document                                               | Contents                                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
 | [`docs/ENGINE-REFERENCE.md`](docs/ENGINE-REFERENCE.md) | Verified third-party APIs (ts-fsrs 6, AI SDK 7, MCP SDK) + DB/project conventions |
-| [`docs/TEST_INFRA.md`](docs/TEST_INFRA.md) | The E2E harness: isolation strategy, tiers, execution commands |
-| [`docs/ai-providers.md`](docs/ai-providers.md) | AI port + registry, custom-endpoint HTTP contract, prompt transport, manual modes |
-| [`docs/plugins.md`](docs/plugins.md) | Plugin contract, event catalog, MCP/CLI contributions, distribution, testing |
-| [`docs/api-server.md`](docs/api-server.md) | Headless server: endpoints, env config, webhooks, auth model |
-| [`docs/PLAN-RESEARCH.md`](docs/PLAN-RESEARCH.md) | The research behind each subsystem, with primary sources |
+| [`docs/TEST_INFRA.md`](docs/TEST_INFRA.md)             | The E2E harness: isolation strategy, tiers, execution commands                    |
+| [`docs/ai-providers.md`](docs/ai-providers.md)         | AI port + registry, custom-endpoint HTTP contract, prompt transport, manual modes |
+| [`docs/plugins.md`](docs/plugins.md)                   | Plugin contract, event catalog, MCP/CLI contributions, distribution, testing      |
+| [`docs/api-server.md`](docs/api-server.md)             | Headless server: endpoints, env config, webhooks, auth model                      |
+| [`docs/PLAN-RESEARCH.md`](docs/PLAN-RESEARCH.md)       | The research behind each subsystem, with primary sources                          |
 
 ## The canonical review pipeline
 
@@ -83,7 +85,7 @@ Every surface — Web UI, headless REST server, MCP tool, CLI, matching games �
    - streak update (existing `current`/`best` preserved, freezes/amulet rules applied),
    - Elo ladder + BKT mastery updates for the card's skills (`elo_events` append-only),
    - commitment-contract / quest bookkeeping where applicable.
-   Any failure rolls the whole grade back — a review either fully lands or not at all.
+     Any failure rolls the whole grade back — a review either fully lands or not at all.
 4. **After the commit** — `review.completed` (per card) and `review.batch.completed` are emitted on the event bus. Listeners therefore always observe durable state and can never corrupt the transaction that produced the fact.
 
 This is also the reason the append-only tables exist: `revlog`, `xp_events`, `friction_events`, `elo_events` are INSERT-only, and the derived stat views (`v_true_retention`, `v_daily_reviews`, `v_xp_daily`) are computed over them by SQL — true retention is never an editable number.
@@ -92,7 +94,7 @@ This is also the reason the append-only tables exist: `revlog`, `xp_events`, `fr
 
 `packages/core/src/events.ts` defines a typed, synchronous, in-process bus over the `HubEventMap` catalog. Design rules:
 
-- **Facts, not commands.** Payloads are small serializable facts committed by their emitter (`review.completed` `{ cardId, grade, xpEarned }`, `streak.updated`, `streak.broken`, `card.created`, `focus.completed`, `quest.completed`, `goal.completed`, `habit.checked`, `achievement.unlocked`, `review.batch.completed`). An emitter publishes *after* its transaction commits.
+- **Facts, not commands.** Payloads are small serializable facts committed by their emitter (`review.completed` `{ cardId, grade, xpEarned }`, `streak.updated`, `streak.broken`, `card.created`, `focus.completed`, `quest.completed`, `goal.completed`, `habit.checked`, `achievement.unlocked`, `review.batch.completed`). An emitter publishes _after_ its transaction commits.
 - **Adding a catalog entry is how a new extension point is born.** The emitter lives in the subsystem that commits the fact; never repurpose an existing event's payload shape — add a new event.
 - **Synchronous dispatch, listener isolation.** `emit` returns after every listener has run; a throwing listener is caught, logged (`[events] listener for "<event>" threw:`) and never breaks the emitter, the transaction, or the other listeners. Listeners added during an emit take effect on the next emit (snapshot iteration).
 - **Consumers:**

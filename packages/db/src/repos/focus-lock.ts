@@ -4,7 +4,7 @@
  * Coordinates active session state, commitment-lock early exits with mandatory
  * 60s cooldown and reflection, allowlists, and companion extension bridge pairing.
  */
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import {
   COOLDOWN_SECONDS,
   DEFAULT_ALLOWED_DOMAINS,
@@ -31,6 +31,45 @@ function generateSecureToken(): string {
   // Base64URL
   const base64 = btoa(binary)
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/**
+ * The session currently in progress: not completed AND not ended. A session
+ * that was abandoned or exited early has `endedAt` set and is never "open",
+ * even though `completed` stays false.
+ */
+export function getOpenFocusSession(
+  database?: DbOrTx,
+): typeof focusSessions.$inferSelect | undefined {
+  const conn = database ?? getDb()
+  return conn
+    .select()
+    .from(focusSessions)
+    .where(and(eq(focusSessions.completed, false), isNull(focusSessions.endedAt)))
+    .orderBy(desc(focusSessions.id))
+    .limit(1)
+    .get()
+}
+
+/**
+ * Closes a Max Focus session whose lock ran out while nobody was watching
+ * (app closed). It ended at `lockedUntil`; it is NOT marked completed because
+ * completion (and its XP) is only granted through the session-end route.
+ * Returns true if the session was closed.
+ */
+export function closeExpiredMaxSession(
+  session: typeof focusSessions.$inferSelect,
+  conn: DbOrTx,
+  now: Date = new Date(),
+): boolean {
+  if (session.mode !== 'max' || !session.lockedUntil || session.endedAt) return false
+  if (new Date(session.lockedUntil).getTime() > now.getTime()) return false
+  conn
+    .update(focusSessions)
+    .set({ endedAt: session.lockedUntil, actualMinutes: session.plannedMinutes })
+    .where(eq(focusSessions.id, session.id))
+    .run()
+  return true
 }
 
 /**
@@ -108,13 +147,7 @@ export function recordFocusBridgeHeartbeat(extensionId?: string, database?: DbOr
 export function getActiveFocusLock(database?: DbOrTx): FocusLockStatus {
   const conn = database ?? getDb()
   const bridge = getOrCreateFocusBridge(conn)
-  const activeSession = conn
-    .select()
-    .from(focusSessions)
-    .where(eq(focusSessions.completed, false))
-    .orderBy(desc(focusSessions.id))
-    .limit(1)
-    .get()
+  const activeSession = getOpenFocusSession(conn)
 
   if (!activeSession || activeSession.endedAt) {
     return {
@@ -210,15 +243,10 @@ export function startMaxFocusSession(
 
   return withTransaction((tx) => {
     // Check if an existing uncompleted session is still active
-    const existing = tx
-      .select()
-      .from(focusSessions)
-      .where(eq(focusSessions.completed, false))
-      .orderBy(desc(focusSessions.id))
-      .limit(1)
-      .get()
+    const existing = getOpenFocusSession(tx)
 
-    if (existing && !existing.endedAt) {
+    // A lock that expired while the app was closed must not block a new one.
+    if (existing && !closeExpiredMaxSession(existing, tx)) {
       throw new Error(
         `Focus session #${existing.id} is already in progress. Complete or exit it before starting Max Focus.`,
       )
@@ -328,13 +356,7 @@ export function requestMaxFocusEarlyExit(database?: LearningHubDB): { lock: Focu
   const conn = database ?? getDb()
 
   return withTransaction((tx) => {
-    const session = tx
-      .select()
-      .from(focusSessions)
-      .where(eq(focusSessions.completed, false))
-      .orderBy(desc(focusSessions.id))
-      .limit(1)
-      .get()
+    const session = getOpenFocusSession(tx)
 
     if (!session || session.endedAt || session.mode !== 'max') {
       throw new Error('No active Max Focus session to exit.')
@@ -363,13 +385,7 @@ export function confirmMaxFocusEarlyExit(
   const conn = database ?? getDb()
 
   return withTransaction((tx) => {
-    const session = tx
-      .select()
-      .from(focusSessions)
-      .where(eq(focusSessions.completed, false))
-      .orderBy(desc(focusSessions.id))
-      .limit(1)
-      .get()
+    const session = getOpenFocusSession(tx)
 
     if (!session || session.endedAt || session.mode !== 'max') {
       throw new Error('No active Max Focus session to exit.')
@@ -434,13 +450,7 @@ export function cancelMaxFocusEarlyExit(database?: LearningHubDB): { lock: Focus
   const conn = database ?? getDb()
 
   return withTransaction((tx) => {
-    const session = tx
-      .select()
-      .from(focusSessions)
-      .where(eq(focusSessions.completed, false))
-      .orderBy(desc(focusSessions.id))
-      .limit(1)
-      .get()
+    const session = getOpenFocusSession(tx)
 
     if (!session || session.endedAt || session.mode !== 'max') {
       return { lock: getActiveFocusLock(tx) }

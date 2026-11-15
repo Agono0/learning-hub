@@ -40,7 +40,7 @@ modules:
               `SELECT *` returns every column — handy for exploring, but name your columns in real code.
         keyTerms:
           - { term: Table, definition: A named set of rows that all share the same columns. }
-          - { term: Column, definition: "A named field with a type, e.g. price REAL." }
+          - { term: Column, definition: 'A named field with a type, e.g. price REAL.' }
         exercises:
           - type: parsons
             prompt: Arrange the query that lists every product's name.
@@ -68,11 +68,11 @@ modules:
               ```
         workedExamples:
           - title: The three cheapest books
-            problem: "Table products(name, category, price). List the three cheapest books."
+            problem: 'Table products(name, category, price). List the three cheapest books.'
             steps:
               - "Filter to books: WHERE category = 'book'"
-              - "Sort cheapest first: ORDER BY price ASC"
-              - "Keep three: LIMIT 3"
+              - 'Sort cheapest first: ORDER BY price ASC'
+              - 'Keep three: LIMIT 3'
             answer: "SELECT name, price FROM products WHERE category = 'book' ORDER BY price ASC LIMIT 3;"
         exercises:
           - type: mcq
@@ -81,9 +81,9 @@ modules:
             answer: 1
           - type: cloze
             prompt: Complete the query that returns the 10 most expensive products.
-            text: "SELECT name FROM products ORDER BY price {{DESC}} LIMIT {{10}};"
+            text: 'SELECT name FROM products ORDER BY price {{DESC}} LIMIT {{10}};'
           - type: truefalse
-            prompt: "LIMIT 5 without ORDER BY always returns the same five rows."
+            prompt: 'LIMIT 5 without ORDER BY always returns the same five rows.'
             answer: false
             explanation: Without ORDER BY the database may return rows in any order.
   - slug: combining
@@ -105,8 +105,12 @@ modules:
               - { left: LEFT JOIN, right: All left rows plus matches (or NULL) }
           - type: freetext
             prompt: You want every customer, including those with no orders. Which join do you use, and why?
-            rubric: [Chooses LEFT JOIN with customers on the left, Explains that unmatched customers are kept with NULLs]
-            modelAnswer: "customers LEFT JOIN orders — LEFT JOIN keeps all customers and shows NULL for those without orders."
+            rubric:
+              [
+                Chooses LEFT JOIN with customers on the left,
+                Explains that unmatched customers are kept with NULLs,
+              ]
+            modelAnswer: 'customers LEFT JOIN orders — LEFT JOIN keeps all customers and shows NULL for those without orders.'
       - slug: group-by
         title: GROUP BY and aggregates
         objective: Calculate totals per group with GROUP BY
@@ -117,7 +121,7 @@ modules:
               Aggregate functions (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX`) collapse many rows into one value. `GROUP BY` makes one result row per group; `HAVING` filters groups.
         exercises:
           - type: numeric
-            prompt: "Orders amounts for one customer: 10, 20, 30. What does AVG(amount) return?"
+            prompt: 'Orders amounts for one customer: 10, 20, 30. What does AVG(amount) return?'
             answer: 20
           - type: multi
             prompt: Which are aggregate functions?
@@ -148,5 +152,5 @@ finalExam:
       prompt: Which join keeps all rows from the left table?
       answers: [LEFT JOIN, left outer join, left join]
     - type: truefalse
-      prompt: "SELECT * returns every column of the table."
+      prompt: 'SELECT * returns every column of the table.'
       answer: true

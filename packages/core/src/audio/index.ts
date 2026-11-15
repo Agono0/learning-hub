@@ -174,6 +174,33 @@ export function evaluateSpokenAnswer(spoken: string, expected: string): SpeechGr
 }
 
 /**
+ * Resamples an audio buffer (Float32Array) from any input sample rate to 16,000 Hz mono PCM,
+ * suitable for on-device automatic speech recognition (Whisper).
+ */
+export function resampleTo16k(input: Float32Array, inputSampleRate: number): Float32Array {
+  if (inputSampleRate === 16000) {
+    return new Float32Array(input)
+  }
+  if (inputSampleRate <= 0 || input.length === 0) {
+    return new Float32Array(0)
+  }
+
+  const ratio = inputSampleRate / 16000
+  const outputLength = Math.round(input.length / ratio)
+  const output = new Float32Array(outputLength)
+
+  for (let i = 0; i < outputLength; i++) {
+    const originalPos = i * ratio
+    const indexLow = Math.floor(originalPos)
+    const indexHigh = Math.min(input.length - 1, Math.ceil(originalPos))
+    const fraction = originalPos - indexLow
+    output[i] = input[indexLow]! * (1 - fraction) + input[indexHigh]! * fraction
+  }
+
+  return output
+}
+
+/**
  * Generates an audio narration script for commute/hands-free spaced repetition.
  */
 export function generateAudioDigestScript(

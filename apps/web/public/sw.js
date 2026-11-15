@@ -128,16 +128,30 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = (event.notification.data && event.notification.data.url) || '/'
+  const data = event.notification.data || {}
+  const url = data.url || '/'
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.navigate(url)
-          return client.focus()
+    Promise.all([
+      // Engagement telemetry (F-08④): fire-and-forget, never blocks or delays
+      // opening the app — a failed POST must not make a notification click fail.
+      fetch('/api/reminders/click', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          reminderLogId: data.reminderLogId,
+          kind: data.kind,
+          actionUrl: url,
+        }),
+      }).catch(() => {}),
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        for (const client of clients) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(url)
+            return client.focus()
+          }
         }
-      }
-      return self.clients.openWindow(url)
-    }),
+        return self.clients.openWindow(url)
+      }),
+    ]),
   )
 })

@@ -74,8 +74,10 @@ export function TransportPanel({
   params?: Record<string, string | number | undefined>
   /** Called with the validated structured result (json) or text reply. */
   onValidated?: (data: unknown, kind: 'json' | 'text') => void
+  /** Start expanded (default) or collapsed to just the header row. */
   defaultOpen?: boolean
 }) {
+  const [open, setOpen] = useState(defaultOpen)
   const cleanParams: Record<string, string> = {}
   for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined && v !== null && String(v).trim() !== '') cleanParams[k] = String(v)
@@ -132,60 +134,71 @@ export function TransportPanel({
           )}
           Copy envelope
         </button>
-        {t.manual && (
+        {open && t.manual && (
           <button className="btn-ghost text-xs" onClick={() => setShowSteps((v) => !v)}>
             {showSteps ? 'Hide' : 'Show'} manual mode
           </button>
         )}
-      </div>
-
-      <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300">
-        {t.envelope.system}
-        {'\n\n── user ──\n'}
-        {t.envelope.prompt}
-      </pre>
-      {t.envelope.schema && (
-        <p className="text-[11px] text-neutral-500">
-          Expected reply shape: <code>{t.envelope.schema}</code>
-        </p>
-      )}
-
-      <textarea
-        className="input min-h-20 text-xs"
-        placeholder="Paste the chatbot's (or your own) reply here…"
-        value={pasted}
-        onChange={(e) => setPasted(e.target.value)}
-      />
-      <div className="flex items-center gap-2">
         <button
-          className="btn text-xs"
-          disabled={!pasted.trim() || validate.isPending}
-          onClick={() => validate.mutate(pasted)}
+          className="btn-ghost ml-auto text-xs"
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
         >
-          <ClipboardPaste className="h-3.5 w-3.5" />{' '}
-          {validate.isPending ? 'Validating…' : 'Validate & use'}
+          {open ? 'Hide' : 'Show'} prompt
         </button>
-        {validate.data?.ok === true && (
-          <span className="text-xs text-emerald-500">
-            Validated{validate.data.kind === 'json' ? ' JSON' : ''}.
-          </span>
-        )}
-        {validate.data?.ok === false && (
-          <span className="text-xs text-amber-500">{validate.data.error}</span>
-        )}
-        {validate.isError && <span className="text-xs text-amber-500">network error</span>}
       </div>
 
-      {showSteps && t.manual && (
-        <div className="space-y-1 text-xs text-neutral-400">
-          <div className="font-medium text-neutral-300">{t.manual.title}</div>
-          <p>{t.manual.summary}</p>
-          <ol className="list-decimal space-y-1 pl-5">
-            {t.manual.steps.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ol>
-        </div>
+      {open && (
+        <>
+          <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300">
+            {t.envelope.system}
+            {'\n\n── user ──\n'}
+            {t.envelope.prompt}
+          </pre>
+          {t.envelope.schema && (
+            <p className="text-[11px] text-neutral-500">
+              Expected reply shape: <code>{t.envelope.schema}</code>
+            </p>
+          )}
+
+          <textarea
+            className="input min-h-20 text-xs"
+            placeholder="Paste the chatbot's (or your own) reply here…"
+            value={pasted}
+            onChange={(e) => setPasted(e.target.value)}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              className="btn text-xs"
+              disabled={!pasted.trim() || validate.isPending}
+              onClick={() => validate.mutate(pasted)}
+            >
+              <ClipboardPaste className="h-3.5 w-3.5" />{' '}
+              {validate.isPending ? 'Validating…' : 'Validate & use'}
+            </button>
+            {validate.data?.ok === true && (
+              <span className="text-xs text-emerald-500">
+                Validated{validate.data.kind === 'json' ? ' JSON' : ''}.
+              </span>
+            )}
+            {validate.data?.ok === false && (
+              <span className="text-xs text-amber-500">{validate.data.error}</span>
+            )}
+            {validate.isError && <span className="text-xs text-amber-500">network error</span>}
+          </div>
+
+          {showSteps && t.manual && (
+            <div className="space-y-1 text-xs text-neutral-400">
+              <div className="font-medium text-neutral-300">{t.manual.title}</div>
+              <p>{t.manual.summary}</p>
+              <ol className="list-decimal space-y-1 pl-5">
+                {t.manual.steps.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

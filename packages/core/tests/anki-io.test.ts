@@ -15,11 +15,9 @@ import {
   formatAnkiTxt,
   exportDeckToJSON,
   parseHubDeckJson,
-  type DeckExportCard,
   type DeckExportInput,
 } from '../src/anki-export'
 import { validateCardContent } from '../src/cards'
-import type { CardContent } from '../src/types'
 
 /** Re-parse an exported deck through the ParsedCard → export-card mapping the API route uses. */
 function parsedToExport(deck: ReturnType<typeof parseAnkiTxt>): DeckExportInput {

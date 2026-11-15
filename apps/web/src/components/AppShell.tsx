@@ -32,7 +32,7 @@ import { NotificationBell } from './NotificationBell'
 import { CommandPalette, openCommandPalette } from './CommandPalette'
 import { QuickHudModal } from './QuickHudModal'
 import { OnboardingWizard } from './OnboardingWizard'
-import { apiGet, apiSend } from '@/lib/transport'
+import { apiGet, apiSend, hubStoragePersistent, onHubStoragePersistence } from '@/lib/transport'
 import { initReminderScheduler } from '@/platform/reminders'
 import { useToast } from '@/ui'
 
@@ -522,6 +522,30 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
   )
 }
 
+/**
+ * Honest warning when the native app could not open persistent storage (no
+ * OPFS in this webview): everything still works, but nothing survives a
+ * restart — the user should export a backup before closing.
+ */
+function StorageWarning() {
+  const [persistent, setPersistent] = useState<boolean | null>(() => hubStoragePersistent())
+  useEffect(() => onHubStoragePersistence(setPersistent), [])
+  if (persistent !== false) return null
+  return (
+    <div
+      role="status"
+      className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+    >
+      Storage is temporary on this device — your progress will be lost when the app closes. Export a
+      backup from{' '}
+      <Link href="/backup" className="underline">
+        Backup
+      </Link>{' '}
+      before quitting.
+    </div>
+  )
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
@@ -539,7 +563,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <QuickHudModal />
       <OnboardingWizard />
       <main className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0">
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">{children}</div>
+        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+          <StorageWarning />
+          {children}
+        </div>
       </main>
     </div>
   )

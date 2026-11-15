@@ -11,11 +11,23 @@
  */
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FilePlus2, Layers, Pencil, Plus, Sparkles, Trash2, Upload, Wand2, X } from 'lucide-react'
+import {
+  FilePlus2,
+  Layers,
+  Pencil,
+  Plus,
+  Sparkles,
+  Stethoscope,
+  Trash2,
+  Upload,
+  Wand2,
+  X,
+} from 'lucide-react'
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import type { LintResult } from '@learning-hub/core/linter'
 import { parseCloze, validateCardContent } from '@learning-hub/core/cards'
 import { leitnerBox, leitnerHistogram } from '@learning-hub/core/fsrs'
+import { DeckDoctorSheet } from '@/components/DeckDoctorSheet'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import { PageHeader } from '@/ui'
@@ -96,6 +108,38 @@ export default function DecksPage() {
   const [editing, setEditing] = useState<CardRow | 'new' | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [doctorDeckId, setDoctorDeckId] = useState<number | null>(null)
+  const [shareNote, setShareNote] = useState<string | null>(null)
+
+  // Share this deck as an lh-share/v1 string (F-08②): the import side lives
+  // on the Online page; export mirrors its hint copy.
+  const shareDeck = useMutation({
+    mutationFn: (deckId: number) =>
+      apiSend<{ ok: boolean; shareString: string }>('/api/share/export', 'POST', {
+        type: 'deck',
+        id: deckId,
+      }),
+    onSuccess: (data) => {
+      void navigator.clipboard
+        ?.writeText(data.shareString)
+        .then(() =>
+          setShareNote('Share string copied. Paste it on another device (Online → Import).'),
+        )
+        .catch(() =>
+          setShareNote('Copy failed — the share string is shown in the browser console.'),
+        )
+      if (!navigator.clipboard) {
+        // Clipboard unavailable: log so the string is still reachable.
+        console.log('[share] deck share string:', data.shareString)
+        setShareNote('Clipboard unavailable — share string printed to the console.')
+      }
+      setTimeout(() => setShareNote(null), 6000)
+    },
+    onError: (err) => {
+      setShareNote(err instanceof Error ? err.message : 'Export failed')
+      setTimeout(() => setShareNote(null), 6000)
+    },
+  })
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
     queryKey: ['decks'],
@@ -190,6 +234,14 @@ export default function DecksPage() {
             </button>
             <button className="btn-ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
               <Wand2 className="h-4 w-4" /> AI generate
+            </button>
+            <button
+              className="btn-ghost flex items-center gap-1.5"
+              onClick={() => setDoctorDeckId(activeDeck)}
+              disabled={!activeDeck}
+              title="Run Deck Doctor health inspection and one-click fixes"
+            >
+              <Stethoscope className="h-4 w-4 text-indigo-400" /> Doctor
             </button>
           </div>
         }
@@ -334,7 +386,16 @@ export default function DecksPage() {
                 Reset weights
               </button>
             )}
+            <button
+              className="btn-ghost py-1 text-xs"
+              disabled={shareDeck.isPending}
+              title="Copy an lh-share/v1 string for this deck — import it on another device via Online → Import"
+              onClick={() => shareDeck.mutate(selectedDeckObj.id)}
+            >
+              <Upload className="h-3.5 w-3.5" /> Share…
+            </button>
             {deckFsrsNote && <span className="text-neutral-500">{deckFsrsNote}</span>}
+            {shareNote && <span className="text-indigo-400">{shareNote}</span>}
           </div>
         )}
       </div>
@@ -442,6 +503,13 @@ export default function DecksPage() {
           onGenerated={invalidate}
         />
       )}
+      <DeckDoctorSheet
+        deckId={doctorDeckId}
+        deckName={doctorDeckId ? deckName(doctorDeckId) : undefined}
+        open={doctorDeckId !== null}
+        onClose={() => setDoctorDeckId(null)}
+        onApplied={invalidate}
+      />
     </div>
   )
 }
@@ -771,6 +839,25 @@ function FormatEditor({
           value={v.rationale ?? ''}
           onChange={(e) => patch('mcq', { ...v, rationale: e.target.value })}
         />
+        <div>
+          <textarea
+            className="input min-h-[50px] text-sm"
+            placeholder={'Alternate question phrasings — one per line (optional).'}
+            value={(v.variants ?? []).join('\n')}
+            onChange={(e) => {
+              const variants = e.target.value
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+              patch('mcq', { ...v, variants: variants.length ? variants : undefined })
+            }}
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            {(v.variants?.length ?? 0) > 0
+              ? `${v.variants!.length} alternate question phrasing(s) — rotated per review`
+              : 'desirable difficulty: rotate how the question is framed'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -799,6 +886,25 @@ function FormatEditor({
             })
           }
         />
+        <div>
+          <textarea
+            className="input min-h-[50px] text-sm"
+            placeholder={'Alternate question phrasings — one per line (optional).'}
+            value={(v.variants ?? []).join('\n')}
+            onChange={(e) => {
+              const variants = e.target.value
+                .split('\n')
+                .map((s) => s.trim())
+                .filter(Boolean)
+              patch('typein', { ...v, variants: variants.length ? variants : undefined })
+            }}
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            {(v.variants?.length ?? 0) > 0
+              ? `${v.variants!.length} alternate question phrasing(s) — rotated per review`
+              : 'desirable difficulty: rotate how the question is framed'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -1272,7 +1378,7 @@ function AiGenerateModal({
   // manual mode: validated transport cards → regular bulk insert (no AI in the loop)
   const insertManual = useMutation({
     mutationFn: async (cards: { text: string; answers: string[]; hint?: string }[]) => {
-      const body = await apiSend<{ ok?: boolean; created?: number[]; error?: string }>(
+      const body = await apiSend<{ ok?: boolean; created?: number; error?: string }>(
         '/api/cards?bulk=1',
         'PUT',
         {
@@ -1286,7 +1392,7 @@ function AiGenerateModal({
         },
       )
       if (!body.ok) throw new Error(body.error ?? 'saving cards failed')
-      return body.created!.length
+      return body.created ?? 0 // the bulk route returns a count (ids are in cardIds)
     },
     onSuccess: (n) => {
       setCreated(n)

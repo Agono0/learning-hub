@@ -21,6 +21,7 @@ import {
   Eye,
   Lock,
   PartyPopper,
+  Sparkles,
 } from 'lucide-react'
 import { curriculumApi, curriculumKeys, type LessonView } from '@/lib/curriculum-api'
 import { useIdParam } from '@/lib/use-id-param'
@@ -148,6 +149,8 @@ function Lesson() {
   const pending = useStudyTimer(id)
   const [reflections, setReflections] = useState<string[]>([])
   const [answered, setAnswered] = useState(0)
+  const [pretestOpen, setPretestOpen] = useState(false)
+  const [pretestDone, setPretestDone] = useState(false)
   const { data, isLoading, error } = useQuery({
     queryKey: curriculumKeys.lesson(id ?? 0),
     queryFn: () => curriculumApi.lesson(id!),
@@ -233,6 +236,63 @@ function Lesson() {
         <Callout tone="accent" title="In a nutshell">
           <Markdown>{content.summary}</Markdown>
         </Callout>
+      )}
+
+      {exercises.length > 0 && !done && (
+        <section className="space-y-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 dark:border-indigo-500/30">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-indigo-300 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-amber-400" />
+                Priming Pretest (Pretesting Effect)
+              </h2>
+              <p className="mt-0.5 text-xs text-neutral-400">
+                Attempting to answer before study boosts retention (d &approx; 0.30; Richland &amp;
+                Kornell 2009) by opening curiosity gaps. Pretest guesses NEVER affect your Elo
+                rating or mastery scores!
+              </p>
+            </div>
+            {pretestOpen ? (
+              <button
+                type="button"
+                onClick={() => setPretestOpen(false)}
+                className="text-xs text-neutral-400 hover:text-neutral-200"
+              >
+                Skip pretest &darr;
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPretestOpen(true)}
+                className="btn-ghost text-xs border border-indigo-500/40 text-indigo-300"
+              >
+                Take Priming Pretest
+              </button>
+            )}
+          </div>
+
+          {pretestOpen && (
+            <div className="space-y-3 pt-2">
+              <ExercisePractice
+                cardId={exercises[0].cardId}
+                exercise={exercises[0].exercise}
+                isPretest
+                onAnswered={() => setPretestDone(true)}
+              />
+              {pretestDone && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setPretestOpen(false)}
+                    className="btn text-xs"
+                  >
+                    Continue to Lesson Theory &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       )}
 
       {(content.theory ?? []).map((section, i) => (

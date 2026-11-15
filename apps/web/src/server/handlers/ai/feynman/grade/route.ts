@@ -7,8 +7,8 @@
  */
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { db, cards, chatSessions, decks, xpEvents } from '@learning-hub/db'
-import { FEYNMAN_GRADER, XP_REWARDS, feynmanGradeSchema } from '@learning-hub/core'
+import { awardXp, cards, db, decks, getChatSession, gradeChatSession } from '@learning-hub/db'
+import { FEYNMAN_GRADER, feynmanGradeSchema } from '@learning-hub/core'
 import { requireAI, AIUnavailableError } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
 
@@ -19,12 +19,7 @@ const feynmanPostSchema = z.object({
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, feynmanPostSchema)
-
-  const [session] = await db
-    .select()
-    .from(chatSessions)
-    .where(eq(chatSessions.id, body.sessionId))
-    .limit(1)
+  const session = getChatSession(body.sessionId)
   if (!session) return Response.json({ error: 'session not found' }, { status: 404 })
 
   const transcript = ((session.messages as { role: string; content: string }[]) ?? [])
@@ -57,10 +52,7 @@ export const POST = withRoute(async (req: Request) => {
       prompt: `Concept the learner was teaching: ${session.title ?? session.contextType ?? 'unknown'}\n\nTeach-back transcript:\n${transcript.slice(0, 16000)}`,
     })
 
-    await db
-      .update(chatSessions)
-      .set({ score: score as unknown as Record<string, unknown> })
-      .where(eq(chatSessions.id, session.id))
+    gradeChatSession(session.id, score as unknown as Record<string, unknown>)
 
     // gap-cards from the grader's suggestions
     let deckId = body.deckId ?? null
@@ -91,11 +83,8 @@ export const POST = withRoute(async (req: Request) => {
       createdCards.push(card!.id)
     }
 
-    await db.insert(xpEvents).values({
-      source: 'teachback',
-      amount: XP_REWARDS.teachback,
-      meta: { sessionId: session.id, coverage: score.coverage },
-    })
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'teachback', meta: { sessionId: session.id, coverage: score.coverage } })
 
     return Response.json({ ok: true, score, createdCards, deckId })
   } catch (e) {

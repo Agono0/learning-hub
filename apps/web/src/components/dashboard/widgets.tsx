@@ -15,14 +15,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import {
   Activity,
-  ArrowDown,
-  ArrowUp,
+  BookOpen,
   CalendarClock,
   CirclePlay,
+  ExternalLink,
+  FileText,
   Flame,
+  Pickaxe,
   Quote as QuoteIcon,
   Repeat2,
-  RotateCcw,
   Sparkles,
   Telescope,
   Timer,
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { useToast } from '@/ui'
+import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 export interface WidgetProps {
@@ -302,6 +304,97 @@ function InsightsWidget(_props: WidgetProps) {
   )
 }
 
+/** One row of GET /api/insights/untested (mirrors core's untestedMaterialItemSchema). */
+interface UntestedItem {
+  kind: 'source' | 'note'
+  id: number
+  title: string
+  lastOpenedAt: string | null
+  excerpt: string
+  href: string
+}
+
+/** Rows shown before the quiet "+N more" footer (the API already caps at 20). */
+const UNTESTED_MAX_ROWS = 5
+
+/**
+ * "Read but never tested" — the fluency-illusion guard (Roediger & Karpicke
+ * 2006: retrieval, not rereading, changes memory). Lists sources/notes with
+ * content but zero linked cards, most-recently-opened first; each row opens
+ * the material or pre-fills the card miner from its excerpt.
+ */
+function UntestedMaterialWidget(_props: WidgetProps) {
+  const [mineText, setMineText] = React.useState<string | null>(null)
+  const { data, isLoading } = useQuery<{ items: UntestedItem[] }>({
+    queryKey: ['insights-untested'],
+    queryFn: () => apiGet('/api/insights/untested'),
+    staleTime: 60_000,
+  })
+  const items = data?.items ?? []
+  return (
+    <section className="panel h-full">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <BookOpen className="h-3.5 w-3.5" /> Read but never tested
+      </div>
+      {isLoading ? (
+        <p className="mt-3 text-sm text-neutral-500">Checking what you never tested…</p>
+      ) : items.length === 0 ? (
+        <p className="mt-3 text-sm text-neutral-500">
+          Everything you&apos;ve read has at least one card — no fluency illusions here.
+        </p>
+      ) : (
+        <>
+          <ul className="mt-3 space-y-2">
+            {items.slice(0, UNTESTED_MAX_ROWS).map((it) => (
+              <li key={`${it.kind}-${it.id}`} className="rounded-lg px-1 py-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  {it.kind === 'source' ? (
+                    <BookOpen className="h-4 w-4 shrink-0 text-indigo-400" />
+                  ) : (
+                    <FileText className="h-4 w-4 shrink-0 text-amber-400" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">{it.title}</span>
+                  {it.lastOpenedAt && (
+                    <span className="shrink-0 text-[10px] text-neutral-400">
+                      opened{' '}
+                      {new Date(it.lastOpenedAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <Link href={it.href} className="btn-ghost text-xs">
+                    <ExternalLink className="h-3 w-3" /> Open
+                  </Link>
+                  <button
+                    type="button"
+                    className="btn-ghost text-xs"
+                    onClick={() => setMineText(it.excerpt)}
+                  >
+                    <Pickaxe className="h-3 w-3" /> Mine cards
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {items.length > UNTESTED_MAX_ROWS && (
+            <p className="mt-2 text-[10px] text-neutral-500">
+              and {items.length - UNTESTED_MAX_ROWS} more read-but-untested items.
+            </p>
+          )}
+        </>
+      )}
+      <CardMinerSheet
+        open={mineText !== null}
+        initialText={mineText ?? ''}
+        onClose={() => setMineText(null)}
+      />
+    </section>
+  )
+}
+
 /* ── registry ─────────────────────────────────────────────────────────────── */
 
 export const BUILT_IN_WIDGETS: WidgetDef[] = [
@@ -311,6 +404,12 @@ export const BUILT_IN_WIDGETS: WidgetDef[] = [
   { id: 'agenda', title: "Today's agenda", span: 'half', component: AgendaWidget },
   { id: 'timeline', title: 'Activity', span: 'half', component: ActivityTimelineWidget },
   { id: 'insights', title: 'Insights', span: 'half', component: InsightsWidget },
+  {
+    id: 'untested',
+    title: 'Read but never tested',
+    span: 'half',
+    component: UntestedMaterialWidget,
+  },
 ]
 
 export const DEFAULT_ORDER = BUILT_IN_WIDGETS.map((w) => w.id)

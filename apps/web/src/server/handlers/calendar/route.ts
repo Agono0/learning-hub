@@ -6,7 +6,7 @@
 import { asc, gte, sql } from 'drizzle-orm'
 import { toICS, type IcsEvent } from '@learning-hub/core'
 import { db } from '@/lib/db'
-import { cards, examDates, studyPlans } from '@learning-hub/db'
+import { cards, examDates, getSavedStudyPlan } from '@learning-hub/db'
 import { withRoute } from '@/lib/api'
 
 function dayKey(d: Date): string {
@@ -40,12 +40,7 @@ export const GET = withRoute(async () => {
 
   // 2. Study-plan weekly blocks projected over the next 30 days.
   try {
-    const [plan] = db
-      .select()
-      .from(studyPlans)
-      .orderBy(sql`${studyPlans.id} DESC`)
-      .limit(1)
-      .all()
+    const plan = getSavedStudyPlan()
     type PlanBlock = { day: number; minutes: number; label?: string }
     const blocks =
       (plan?.plan as { blocks?: PlanBlock[] } | null)?.blocks?.filter(

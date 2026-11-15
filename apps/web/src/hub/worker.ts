@@ -38,6 +38,7 @@ import { matchRoute } from './handlers-registry'
 import type { HubFromWorker, HubInitMessage, HubRequestMessage, HubToWorker } from './protocol'
 import { ensurePluginsLoaded } from '@/lib/plugins'
 import { setNetworkFetch } from '@learning-hub/ai-adapters'
+import { setRemoteFetch } from '../server/net'
 import { createBridgedFetch, type NetBridge } from './net-bridge'
 
 /** DedicatedWorkerGlobalScope with the protocol's typed postMessage. */
@@ -67,13 +68,18 @@ interface WasmModuleWithPool {
  * Bootstrap the DB exactly once. Throws on failure — the message loop replies
  * `ready-error` and keeps the worker alive for diagnostics.
  */
-async function boot(msg: HubInitMessage): Promise<void> {
+/** Boots the backend; resolves whether storage is persistent (OPFS pool active). */
+async function boot(msg: HubInitMessage): Promise<{ persistent: boolean }> {
   const dbPath = msg.dbPath || '/learning-hub.db'
 
   // 0. AI provider traffic → main thread → tauri-plugin-http (no webview CORS).
   if (msg.nativeNet) {
     netBridge = createBridgedFetch((message, transfer) => ctx.postMessage(message, transfer))
     setNetworkFetch(netBridge.fetch)
+    // Handler-level outbound calls (online/social sync etc.) ride the SAME
+    // bridge — otherwise they'd run as webview fetch and depend on remote
+    // servers sending CORS headers (F-07).
+    setRemoteFetch(netBridge.fetch)
   }
   const vfs = msg.vfs || 'opfs-sahpool'
 
@@ -121,6 +127,7 @@ async function boot(msg: HubInitMessage): Promise<void> {
   }
 
   ready = true
+  return { persistent: poolActive }
 }
 
 /** Rebuild the handler-facing Request from a protocol message. */
@@ -244,7 +251,7 @@ ctx.addEventListener('message', (event) => {
   const msg = event.data
   if (msg?.type === 'init') {
     boot(msg)
-      .then(() => ctx.postMessage({ type: 'ready' }))
+      .then(({ persistent }) => ctx.postMessage({ type: 'ready', persistent }))
       .catch((err) =>
         ctx.postMessage({
           type: 'ready-error',

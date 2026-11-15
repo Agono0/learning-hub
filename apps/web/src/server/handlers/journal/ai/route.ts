@@ -1,7 +1,5 @@
-import { eq, gte } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { journalEntries, withTransaction } from '@learning-hub/db'
+import { getJournalEntry, listJournalEntriesSince, setJournalAiInsight } from '@learning-hub/db'
 import { dayKey } from '@learning-hub/core'
 import { getAISettingsFromDb, getActiveAIClientFromDb, type AIClient } from '@/lib/ai'
 import { aiErrorResponse, readJson, tzOffsetFromQuery, tzOffsetSchema, withRoute } from '@/lib/api'
@@ -14,7 +12,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const tz = tzOffsetFromQuery(req)
   const date = url.searchParams.get('date') ?? dayKey(new Date(), tz)
-  const [entry] = db.select().from(journalEntries).where(eq(journalEntries.date, date)).all()
+  const entry = getJournalEntry(date)
   return Response.json({ date, aiInsight: entry?.aiInsight ?? null, configuredHint: null })
 }
 
@@ -78,12 +76,7 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   const since = dayKey(new Date(Date.now() - 7 * 86_400_000), body.tzOffset)
-  const week = db
-    .select()
-    .from(journalEntries)
-    .where(gte(journalEntries.date, since))
-    .all()
-    .sort((a, b) => (a.date < b.date ? -1 : 1))
+  const week = listJournalEntriesSince(since)
 
   if (week.length === 0) {
     return Response.json({
@@ -95,17 +88,7 @@ export const POST = withRoute(async (req: Request) => {
   if (!client) {
     // manual mode: reflection prompts replace the AI insight (never dead-ends)
     const insight = manualReflection(date, week)
-    withTransaction((tx) => {
-      const entry = tx.select().from(journalEntries).where(eq(journalEntries.date, date)).get()
-      if (entry) {
-        tx.update(journalEntries)
-          .set({ aiInsight: insight })
-          .where(eq(journalEntries.id, entry.id))
-          .run()
-      } else {
-        tx.insert(journalEntries).values({ date, aiInsight: insight }).run()
-      }
-    })
+    setJournalAiInsight(date, insight)
     return Response.json({ ok: true, mode: 'manual', insight, date })
   }
 
@@ -129,17 +112,7 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   // upsert: persist the insight even for a day without an entry yet
-  withTransaction((tx) => {
-    const entry = tx.select().from(journalEntries).where(eq(journalEntries.date, date)).get()
-    if (entry) {
-      tx.update(journalEntries)
-        .set({ aiInsight: insight })
-        .where(eq(journalEntries.id, entry.id))
-        .run()
-    } else {
-      tx.insert(journalEntries).values({ date, aiInsight: insight }).run()
-    }
-  })
+  setJournalAiInsight(date, insight)
 
   return Response.json({ ok: true, mode: 'ai', insight, date })
 })

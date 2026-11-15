@@ -12,7 +12,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { matchRoute, registeredRoutes } from '@/hub/handlers-registry'
+import { matchRoute } from '@/hub/handlers-registry'
 import { ALL_NAV_ITEMS } from '@/components/nav'
 
 const WEB_ROOT = resolve(__dirname, '..')
@@ -68,7 +68,6 @@ function extractTransportCalls(filePath: string): DiscoveredCall[] {
       const rawArg = match[2].trim()
 
       // Strip outer quotes or backticks
-      const quote = rawArg[0]
       let urlPattern = rawArg.slice(1, -1)
 
       // Strip query string if present
@@ -134,7 +133,6 @@ describe('Route Safety & Transport Scan', () => {
   })
 
   it('ensures transport call paths resolve against registered API routes', () => {
-    const registryPatterns = registeredRoutes().map((r) => r.path)
     const unmatchedCalls: DiscoveredCall[] = []
 
     for (const call of allCalls) {

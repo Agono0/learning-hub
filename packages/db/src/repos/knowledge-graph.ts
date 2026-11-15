@@ -3,10 +3,22 @@
  * - Curriculum Concept Dependencies (Prerequisite Graph)
  * - Anki Note & Card Synchronization Mappings
  */
-import { desc, eq, or } from 'drizzle-orm'
+import { and, desc, eq, or } from 'drizzle-orm'
 import type { AnkiSyncMode } from '@learning-hub/core/anki-connect'
+import { willCreateCycle } from '@learning-hub/core/knowledge-graph'
 import { getDb } from '../index'
 import { ankiSyncMappings, conceptDependencies } from '../schema'
+import { withTransaction } from '../transaction'
+
+/** Thrown when an edge would make the prerequisite graph cyclic (incl. A → A). */
+export class ConceptCycleError extends Error {
+  constructor(from: string, to: string) {
+    super(
+      `Adding "${from}" → "${to}" would create a circular dependency in the prerequisite graph.`,
+    )
+    this.name = 'ConceptCycleError'
+  }
+}
 
 export interface ConceptDependencyRow {
   id: number
@@ -16,23 +28,51 @@ export interface ConceptDependencyRow {
   createdAt: string
 }
 
+/**
+ * Adds a prerequisite edge source → target. Names are trimmed; an existing
+ * identical edge is updated (strength) instead of duplicated; and the cycle
+ * check runs in the same transaction as the write, so the graph stays a DAG.
+ * Throws {@link ConceptCycleError}.
+ */
 export function addConceptDependency(data: {
   sourceConcept: string
   targetConcept: string
   strength?: number
 }): ConceptDependencyRow {
-  const db = getDb()
-  const [created] = db
-    .insert(conceptDependencies)
-    .values({
-      sourceConcept: data.sourceConcept,
-      targetConcept: data.targetConcept,
-      strength: data.strength ?? 1.0,
-    })
-    .returning()
-    .all()
+  const from = data.sourceConcept.trim()
+  const to = data.targetConcept.trim()
+  const strength = Math.min(1, Math.max(0, data.strength ?? 1.0))
 
-  return created as ConceptDependencyRow
+  return withTransaction((tx) => {
+    const existing = tx
+      .select()
+      .from(conceptDependencies)
+      .where(
+        and(eq(conceptDependencies.sourceConcept, from), eq(conceptDependencies.targetConcept, to)),
+      )
+      .get()
+    if (existing) {
+      tx.update(conceptDependencies)
+        .set({ strength })
+        .where(eq(conceptDependencies.id, existing.id))
+        .run()
+      return { ...existing, strength } as ConceptDependencyRow
+    }
+
+    const edges = tx
+      .select({ from: conceptDependencies.sourceConcept, to: conceptDependencies.targetConcept })
+      .from(conceptDependencies)
+      .all()
+      .map((e) => ({ ...e, strength: 1 }))
+    if (willCreateCycle(edges, { from, to, strength })) throw new ConceptCycleError(from, to)
+
+    const [created] = tx
+      .insert(conceptDependencies)
+      .values({ sourceConcept: from, targetConcept: to, strength })
+      .returning()
+      .all()
+    return created as ConceptDependencyRow
+  }, getDb())
 }
 
 export function listConceptDependencies(concept?: string): ConceptDependencyRow[] {

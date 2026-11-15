@@ -16,24 +16,32 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm'
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout, exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
+import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
+import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
+import { debateCommand, guildCommand, palaceCommand, worldCommand } from './commands/community'
+import { audioCommand, focusLoadCmd, gamesCommand } from './commands/telemetry-audio'
 import {
   db,
+  awardXp,
   cards,
   executeCloudSync,
   executeReview,
   focusSessions,
   getFsrsStatus,
+  getRandomQuote,
   getStarterCatalogStatus,
   getSyncConfig,
   ideas,
   installStarterPack,
   optimizeAndPersistFsrs,
   quests,
-  quotes,
   searchAll,
   streaks,
+  withTransaction,
+  getWordExposureSummaries,
   xpEvents,
 } from '@learning-hub/db'
+import { balanceWorkload, catchUpBacklog, forecastWorkload } from '@learning-hub/core/workload'
 import {
   clozeSegments,
   dayKey,
@@ -133,11 +141,7 @@ async function today() {
     .from(quests)
     .where(eq(quests.date, dayKey(now)))
     .limit(1)
-  const [quote] = await db
-    .select()
-    .from(quotes)
-    .orderBy(sql`random()`)
-    .limit(1)
+  const quote = getRandomQuote()
   const [streakRow] = await db.select().from(streaks).limit(1)
   const lines = [
     `Due cards:   ${Number(dueCount ?? 0)}`,
@@ -299,11 +303,8 @@ async function focus(minutesArg?: string) {
       .update(focusSessions)
       .set({ endedAt: new Date().toISOString(), actualMinutes, completed: true })
       .where(eq(focusSessions.id, session!.id))
-    await db.insert(xpEvents).values({
-      source: 'focus',
-      amount: XP_REWARDS.focusSession,
-      meta: { sessionId: session!.id },
-    })
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'focus', meta: { sessionId: session!.id } })
     console.log(`\n✅ Focus complete: ${actualMinutes} min. +${XP_REWARDS.focusSession} XP`)
     exit(0)
   }
@@ -333,11 +334,7 @@ async function focus(minutesArg?: string) {
 }
 
 async function quote() {
-  const [q] = await db
-    .select()
-    .from(quotes)
-    .orderBy(sql`random()`)
-    .limit(1)
+  const q = getRandomQuote()
   if (!q) {
     console.log('No quotes in the database — run `learning-hub starter install` first.')
     return
@@ -448,6 +445,91 @@ async function syncCmd(runArgs: string[]) {
   process.exitCode = 1
 }
 
+async function workloadCmd(runArgs: string[]) {
+  const sub = runArgs[0] || 'forecast'
+  const cardRows = db
+    .select({
+      id: cards.id,
+      due: cards.due,
+      stability: cards.stability,
+      scheduledDays: cards.scheduledDays,
+      state: cards.state,
+      lapses: cards.lapses,
+    })
+    .from(cards)
+    .where(eq(cards.suspended, false))
+    .all()
+
+  const cardItems = cardRows.map((r) => ({
+    id: r.id,
+    due: r.due,
+    stability: r.stability ?? 0,
+    intervalDays: r.scheduledDays ?? 0,
+    state: r.state ?? 0,
+    lapses: r.lapses ?? 0,
+  }))
+
+  const now = new Date()
+
+  if (sub === 'forecast') {
+    const forecast = forecastWorkload(cardItems, 14, now)
+    const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0).length
+    console.log(
+      panel('14-Day Workload Forecast', [
+        `Total active cards: ${cardItems.length}`,
+        `Overdue right now:  ${overdue}`,
+        '',
+        ...forecast.map((f) => `  ${f.day}: ${'#'.repeat(Math.min(f.count, 30))} (${f.count})`),
+      ]),
+    )
+    return
+  }
+
+  if (sub === 'balance') {
+    const { shifts } = balanceWorkload(cardItems, { days: 14, easyDays: [0, 6], asOf: now })
+    if (shifts.length > 0) {
+      withTransaction((tx) => {
+        for (const s of shifts) {
+          tx.update(cards).set({ due: s.newDue }).where(eq(cards.id, s.cardId)).run()
+        }
+      })
+    }
+    console.log(`✔ Smoothed ${shifts.length} review due dates without compromising retention.`)
+    return
+  }
+
+  if (sub === 'catchup') {
+    const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0)
+    const shifts = catchUpBacklog(overdue, 30, now)
+    if (shifts.length > 0) {
+      withTransaction((tx) => {
+        for (const s of shifts) {
+          tx.update(cards).set({ due: s.newDue }).where(eq(cards.id, s.cardId)).run()
+        }
+      })
+    }
+    console.log(
+      `✔ Rescheduled ${shifts.length} overdue cards (lowest stability prioritized first).`,
+    )
+    return
+  }
+
+  console.log('Usage: learning-hub workload [forecast|balance|catchup]')
+}
+
+function exposureCmd() {
+  const words = getWordExposureSummaries(20)
+  if (words.length === 0) {
+    console.log('No ambient vocabulary encounters recorded yet.')
+    return
+  }
+  const lines = words.map((w) => {
+    const tag = w.eligibleForPromotion ? '[Ready for SRS]' : ''
+    return `${w.normalized.padEnd(20)} ${String(w.encounterCount).padStart(3)}x (${w.distinctDays} days) ${tag}`
+  })
+  console.log(panel('Ambient Vocabulary Ledger (Krashen i+1)', lines))
+}
+
 // ─── Command registry ───────────────────────────────────────────────────────
 //
 // Built-ins as data + plugin contributions merged at dispatch time. With zero
@@ -483,9 +565,9 @@ const builtinCommands: RegisteredCommand[] = [
   },
   {
     name: 'focus',
-    description: 'start a focus session',
-    usage: '[min]',
-    run: (runArgs) => focus(runArgs[0]),
+    description: 'start a focus session or report cognitive load',
+    usage: '[min|load]',
+    run: (runArgs) => (runArgs[0] === 'load' ? focusLoadCmd(runArgs.slice(1)) : focus(runArgs[0])),
   },
   { name: 'quote', description: 'random quote', run: () => quote() },
   {
@@ -520,6 +602,90 @@ const builtinCommands: RegisteredCommand[] = [
       process.exitCode = curriculumCommand(runArgs)
     },
   },
+  {
+    name: 'workload',
+    description: 'forecast, smooth, or catch up review backlog',
+    usage: '[forecast|balance|catchup]',
+    run: (runArgs) => workloadCmd(runArgs),
+  },
+  {
+    name: 'exposure',
+    description: 'ambient vocabulary ledger and Krashen i+1 tracking',
+    usage: '[list]',
+    run: () => exposureCmd(),
+  },
+  {
+    name: 'habits',
+    description: 'habit loops, streaks, and check-ins',
+    usage: '[list|checkin|history]',
+    run: (runArgs) => habitsCommand(runArgs),
+  },
+  {
+    name: 'journal',
+    description: 'daily reflection journal and mood tracking',
+    usage: '[write|show]',
+    run: (runArgs) => journalCommand(runArgs),
+  },
+  {
+    name: 'physio',
+    description: 'physiology metrics and learning advice',
+    usage: '[--sleep N --exercise N ...]',
+    run: (runArgs) => physioCommand(runArgs),
+  },
+  {
+    name: 'reading',
+    description: 'incremental reading queue and ingestion',
+    usage: '[list|add|finish]',
+    run: (runArgs) => readingCommand(runArgs),
+  },
+  {
+    name: 'plan',
+    description: 'study plan agenda and weekly template',
+    usage: '[today|week|set]',
+    run: (runArgs) => planCommand(runArgs),
+  },
+  {
+    name: 'gkt',
+    description: 'Bayesian prerequisite DAG knowledge tracing',
+    usage: '[drill]',
+    run: (runArgs) => gktCommand(runArgs),
+  },
+  {
+    name: 'debate',
+    description: 'multi-agent dialectic arena and learner ruling',
+    usage: '[list|open|turn|vote]',
+    run: (runArgs) => debateCommand(runArgs),
+  },
+  {
+    name: 'palace',
+    description: 'spatial memory palace and loci ordering',
+    usage: '[list|add]',
+    run: (runArgs) => palaceCommand(runArgs),
+  },
+  {
+    name: 'world',
+    description: '3D virtual study world, coins, and forest',
+    usage: '[status|market]',
+    run: (runArgs) => worldCommand(runArgs),
+  },
+  {
+    name: 'guild',
+    description: 'study clans, levels, and team XP pooling',
+    usage: '[list|join|leave]',
+    run: (runArgs) => guildCommand(runArgs),
+  },
+  {
+    name: 'audio',
+    description: 'speakable commute review and sleep TMR earcons',
+    usage: '[schedule]',
+    run: (runArgs) => audioCommand(runArgs),
+  },
+  {
+    name: 'games',
+    description: 'solo RPG boss battles and mythical boss roster',
+    usage: '[status]',
+    run: (runArgs) => gamesCommand(runArgs),
+  },
 ]
 
 async function main() {
@@ -548,5 +714,5 @@ main()
   })
   .then(() => {
     // keep long-running commands (focus) alive; exit otherwise
-    if (cmd !== 'focus') exit(process.exitCode ?? 0)
+    if (cmd !== 'focus' || args[0] === 'load') exit(process.exitCode ?? 0)
   })

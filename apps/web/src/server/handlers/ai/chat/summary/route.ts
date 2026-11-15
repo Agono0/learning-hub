@@ -5,14 +5,12 @@
  * editor. Works with no provider (manual mode = the raw transcript excerpt).
  */
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
 import {
   TUTOR_SUMMARY_SYSTEM,
   tutorSessionSummarySchema,
   tutorSummaryPrompt,
 } from '@learning-hub/core'
-import { db } from '@/lib/db'
-import { chatSessions } from '@learning-hub/db'
+import { getChatSession } from '@learning-hub/db'
 import { requireAI, AIUnavailableError, type AIClient } from '@/lib/ai'
 import { aiErrorResponse, readJson, withRoute } from '@/lib/api'
 
@@ -36,11 +34,7 @@ function transcriptOf(messages: unknown): string {
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, summarySchema)
-  const [session] = await db
-    .select()
-    .from(chatSessions)
-    .where(eq(chatSessions.id, body.sessionId))
-    .limit(1)
+  const session = getChatSession(body.sessionId)
   if (!session) return Response.json({ ok: false, error: 'Session not found' }, { status: 404 })
 
   const transcript = transcriptOf(session.messages)

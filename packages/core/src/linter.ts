@@ -101,7 +101,11 @@ export function cardFrontText(content: CardContent): string {
   return ''
 }
 
-function cardAnswerText(content: CardContent): string {
+/**
+ * The answer a card expects, per format — the counterpart of {@link cardFrontText}
+ * (audio review speaks it after the recall pause). Returns '' for non-textual formats.
+ */
+export function cardAnswerText(content: CardContent): string {
   if (content.basic) return content.basic.back
   if (content.typein) return content.typein.acceptedAnswers[0] ?? ''
   if (content.mcq) return content.mcq.options[content.mcq.correctIndex] ?? ''

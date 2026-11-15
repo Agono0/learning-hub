@@ -6,6 +6,7 @@
 import type { FriendStats } from '@learning-hub/core/share'
 import { listFriends, updateFriendSync } from '@learning-hub/db'
 import { withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 
 interface GistFile {
   content?: string
@@ -17,14 +18,15 @@ async function fetchFriendStats(gistUrl: string): Promise<FriendStats> {
   let json: unknown
 
   if (gistUrl.includes('gist.githubusercontent.com')) {
-    const res = await fetch(gistUrl, { signal: AbortSignal.timeout(6000) })
+    // remoteFetch → native HTTP bridge under Tauri (webview CORS-free).
+    const res = await remoteFetch(gistUrl, { signal: AbortSignal.timeout(6000) })
     if (!res.ok) throw new Error(`gist fetch failed (${res.status})`)
     json = await res.json()
   } else {
     // GitHub API URL (https://gist.github.com/user/id or …/id) → API resource
     const id = gistUrl.split('/').pop() ?? ''
     if (!/^[0-9a-f]+$/.test(id)) throw new Error('unrecognized gist url')
-    const res = await fetch(`https://api.github.com/gists/${id}`, {
+    const res = await remoteFetch(`https://api.github.com/gists/${id}`, {
       headers: { accept: 'application/vnd.github+json', 'user-agent': 'learning-hub' },
       signal: AbortSignal.timeout(6000),
     })

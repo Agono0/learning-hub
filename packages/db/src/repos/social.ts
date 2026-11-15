@@ -3,12 +3,18 @@
  *
  * Solo boss battles derived from revlog, and decentralized Gist friend connections.
  */
-import { desc, eq, gt, gte, sql } from 'drizzle-orm'
-import { BOSS_ROSTER, calculateCombatTurn, type BossBattleState } from '@learning-hub/core/boss'
+import { and, desc, eq, gt, gte, sql } from 'drizzle-orm'
+import { BOSS_ROSTER, calculateCombatTurn } from '@learning-hub/core/boss'
+import { computeLevel } from '@learning-hub/core/motivation'
 import type { FriendStats } from '@learning-hub/core/share'
+import { liveStreak } from '@learning-hub/core/streaks'
 import { getDb, type LearningHubDB } from '../index'
-import { bossBattles, friends, revlog, userSettings, xpEvents } from '../schema'
+import { bossBattles, friends, onlineIdentity, revlog, streaks, xpEvents } from '../schema'
 import { withTransaction } from '../transaction'
+import { awardXp } from './xp'
+
+/** SQL predicate: this revlog row has not been undone (undone reviews never count). */
+const notUndone = sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`
 
 export function getActiveBossBattle(
   database?: LearningHubDB,
@@ -73,63 +79,63 @@ export function syncBossBattleProgress(database?: LearningHubDB): {
   combatSummary?: unknown
 } {
   const conn = database ?? getDb()
-  const active = getActiveBossBattle(conn)
-  if (!active) return { battle: null }
 
-  const boss = BOSS_ROSTER[active.bossKey] ?? BOSS_ROSTER.chronos!
-
-  // Fetch all reviews performed since battle start
-  const reviews = conn
-    .select({
-      id: revlog.id,
-      grade: revlog.rating,
-      timeMs: revlog.elapsedDays, // review elapsed time
-    })
-    .from(revlog)
-    .where(gt(revlog.id, active.revlogStartId))
-    .all()
-
-  const turn = calculateCombatTurn(reviews, boss)
-  const currentHp = Math.max(0, active.maxHp - turn.playerDamageDealt)
-  const playerHp = Math.max(0, 100 - turn.bossDamageDealt)
-  const nowIso = new Date().toISOString()
-
-  let status: 'active' | 'victory' | 'defeat' = 'active'
-  let endedAt: string | null = null
-
-  if (currentHp === 0) {
-    status = 'victory'
-    endedAt = nowIso
-  } else if (playerHp === 0) {
-    status = 'defeat'
-    endedAt = nowIso
-  }
-
+  // Read and write in one transaction so two concurrent syncs can't both
+  // observe "active" and both pay the victory bounty.
   return withTransaction((tx) => {
-    tx.update(bossBattles)
-      .set({
-        currentHp,
-        playerHp,
-        status,
-        endedAt,
-      })
-      .where(eq(bossBattles.id, active.id))
+    const active = tx
+      .select()
+      .from(bossBattles)
+      .where(eq(bossBattles.status, 'active'))
+      .orderBy(desc(bossBattles.id))
+      .limit(1)
+      .get()
+    if (!active) return { battle: null }
+
+    const boss = BOSS_ROSTER[active.bossKey] ?? BOSS_ROSTER.chronos!
+
+    // Every (non-undone) review since the battle started. `timeMs` is the
+    // answer time — the speed bonus is "answered in under 4 s".
+    const reviews = tx
+      .select({ id: revlog.id, grade: revlog.rating, timeMs: revlog.timeMs })
+      .from(revlog)
+      .where(and(gt(revlog.id, active.revlogStartId), notUndone))
+      .all()
+
+    const turn = calculateCombatTurn(reviews, boss)
+    const currentHp = Math.max(0, active.maxHp - turn.playerDamageDealt)
+    const playerHp = Math.max(0, 100 - turn.bossDamageDealt)
+    const nowIso = new Date().toISOString()
+
+    let status: 'active' | 'victory' | 'defeat' = 'active'
+    let endedAt: string | null = null
+    if (currentHp === 0) {
+      status = 'victory'
+      endedAt = nowIso
+    } else if (playerHp === 0) {
+      status = 'defeat'
+      endedAt = nowIso
+    }
+
+    const res = tx
+      .update(bossBattles)
+      .set({ currentHp, playerHp, status, endedAt })
+      .where(and(eq(bossBattles.id, active.id), eq(bossBattles.status, 'active')))
       .run()
 
-    // If victory, award boss bounty XP
-    if (status === 'victory' && active.status === 'active') {
-      tx.insert(xpEvents)
-        .values({
-          source: 'boss',
-          amount: boss.rewardXp,
-          meta: { bossKey: boss.key, bossName: boss.name },
-          createdAt: nowIso,
-        })
-        .run()
+    // Bounty is paid exactly once: on the transition out of 'active'.
+    if (status === 'victory' && res.changes > 0) {
+      // Rule 7: XP via the canonical awardXp path (repos/xp.ts); boss bounty
+      // is a dynamic amount → passed explicitly.
+      awardXp(tx, {
+        source: 'boss',
+        amount: boss.rewardXp,
+        meta: { bossKey: boss.key, bossName: boss.name, battleId: active.id },
+        atMs: new Date(nowIso).getTime(),
+      })
     }
 
     const updated = tx.select().from(bossBattles).where(eq(bossBattles.id, active.id)).get()!
-
     return { battle: updated, combatSummary: turn }
   }, conn)
 }
@@ -186,10 +192,11 @@ export function generateUserStatsEnvelope(database?: LearningHubDB): FriendStats
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // 1. Total reviews
+  // 1. Total reviews (undone reviews don't count)
   const [totalRow] = conn
     .select({ count: sql<number>`count(*)` })
     .from(revlog)
+    .where(notUndone)
     .all()
   const totalReviews = totalRow?.count ?? 0
 
@@ -201,25 +208,35 @@ export function generateUserStatsEnvelope(database?: LearningHubDB): FriendStats
     .all()
   const weeklyXp = xpRow?.total ?? 0
 
-  // 3. Level estimate (every 250 XP = 1 level)
+  // 3. Level — the same curve the app shows the user (friends must see the same number)
   const [allTimeXpRow] = conn
     .select({ total: sql<number>`coalesce(sum(${xpEvents.amount}), 0)` })
     .from(xpEvents)
     .all()
-  const allTimeXp = allTimeXpRow?.total ?? 0
-  const level = Math.max(1, Math.floor(allTimeXp / 250) + 1)
+  const level = computeLevel(allTimeXpRow?.total ?? 0).level
 
-  // 4. Streak
-  const [streakDays] = conn
-    .select({ count: sql<number>`count(distinct substr(${revlog.reviewedAt}, 1, 10))` })
-    .from(revlog)
-    .all()
-  const streak = Math.min(streakDays?.count ?? 0, 999)
+  // 4. Streak — the live consecutive-day streak, not "distinct days ever"
+  const row = conn.select().from(streaks).limit(1).get()
+  const streak = row
+    ? liveStreak(
+        {
+          current: row.current,
+          best: row.best,
+          lastActiveDate: row.lastActiveDate,
+          freezes: row.freezes,
+          weekendAmulet: Boolean(row.weekendAmulet),
+        },
+        now,
+      )
+    : 0
+
+  // 5. Public alias (read-only — never creates an identity as a side effect)
+  const alias = conn.select({ alias: onlineIdentity.alias }).from(onlineIdentity).limit(1).get()
 
   return {
     v: 1,
     schema: 'lh-stats/v1',
-    username: 'Learner',
+    username: alias?.alias?.trim() || 'Learner',
     streak,
     weeklyXp,
     totalReviews,

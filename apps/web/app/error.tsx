@@ -7,7 +7,13 @@
 import { useEffect } from 'react'
 import { AlertTriangle, Home, RotateCcw } from 'lucide-react'
 
-export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function ErrorPage({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   useEffect(() => {
     // report to the console so devtools/server logs keep the stack
     console.error(error)
@@ -18,7 +24,9 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
       <AlertTriangle className="mx-auto h-10 w-10 text-amber-400" />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
-        <p className="mt-1 text-sm text-neutral-500">An unexpected error interrupted this page. Your data is safe — try again.</p>
+        <p className="mt-1 text-sm text-neutral-500">
+          An unexpected error interrupted this page. Your data is safe — try again.
+        </p>
         {error.digest && <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>}
       </div>
       <div className="flex items-center justify-center gap-2">

@@ -1,8 +1,6 @@
-import { and, desc, eq, gte, lte } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { journalEntries, xpEvents } from '@learning-hub/db'
-import { XP_REWARDS, dayKey, validateJournalEntry } from '@learning-hub/core'
+import { listJournalEntries, upsertJournalEntry } from '@learning-hub/db'
+import { dayKey, validateJournalEntry } from '@learning-hub/core'
 import { readJson, tzOffsetFromQuery, tzOffsetSchema, withRoute } from '@/lib/api'
 
 /** GET /api/journal?from=YYYY-MM-DD&to=YYYY-MM-DD&tzOffset=N — entries in range (default: today). */
@@ -11,12 +9,7 @@ export async function GET(req: Request) {
   const tz = tzOffsetFromQuery(req)
   const from = url.searchParams.get('from') ?? dayKey(new Date(), tz)
   const to = url.searchParams.get('to') ?? from
-  const rows = db
-    .select()
-    .from(journalEntries)
-    .where(and(gte(journalEntries.date, from), lte(journalEntries.date, to)))
-    .orderBy(desc(journalEntries.date))
-    .all()
+  const rows = listJournalEntries({ from, to })
   return Response.json({ entries: rows, from, to })
 }
 
@@ -53,33 +46,16 @@ export const POST = withRoute(async (req: Request) => {
       { status: 400 },
     )
 
-  const [existing] = db.select().from(journalEntries).where(eq(journalEntries.date, date)).all()
+  const res = upsertJournalEntry({
+    date,
+    mood,
+    smallWins,
+    gratitude,
+    worryDump,
+  })
 
-  if (existing) {
-    const [row] = db
-      .update(journalEntries)
-      .set({
-        mood: mood ?? existing.mood,
-        smallWins: smallWins ?? existing.smallWins,
-        gratitude: gratitude ?? existing.gratitude,
-        worryDump: worryDump ?? existing.worryDump,
-      })
-      .where(eq(journalEntries.id, existing.id))
-      .returning()
-      .all()
-    return Response.json({ entry: row, created: false, xpAwarded: 0 })
-  }
-
-  const [row] = db
-    .insert(journalEntries)
-    .values({ date, mood, smallWins, gratitude, worryDump })
-    .returning()
-    .all()
-  db.insert(xpEvents)
-    .values({ source: 'journal', amount: XP_REWARDS.journal, meta: { date } })
-    .run()
   return Response.json(
-    { entry: row, created: true, xpAwarded: XP_REWARDS.journal },
-    { status: 201 },
+    { entry: res.entry, created: res.created, xpAwarded: res.xpAwarded },
+    { status: res.created ? 201 : 200 },
   )
 })

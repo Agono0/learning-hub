@@ -1,9 +1,9 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeAll } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { eventBus, type HubEventMap } from '@learning-hub/core'
 import * as schema from '../src/schema'
-import { getRawDb } from '../src/index'
+import { initDb, type RawSqliteHandle } from '../src/index'
 import { executeBatchReview } from '../src/review-service'
 
 /**
@@ -13,16 +13,26 @@ import { executeBatchReview } from '../src/review-service'
  * in card order, with the committed payload.
  */
 
+// Hermetic DDL source: the canonical schema bootstrapped in memory through the
+// production initDb pipeline. Never open the developer database
+// (data/learning-hub.db) from tests — parallel vitest workers opening it
+// concurrently race on the WAL sidecar files and intermittently fail with
+// SQLITE_IOERR on Windows (zero-mutation invariant, docs/TEST_INFRA.md).
+let ddlSource: RawSqliteHandle
+beforeAll(async () => {
+  ddlSource = (await initDb({ path: ':memory:' })).$client
+})
+
 function createTestDb() {
   const sqlite = new Database(':memory:')
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
-  const ddls = getRawDb()
+  const ddls = ddlSource
     .prepare(
       "SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
     )
     .all('table')
-    .map((r) => r.sql as string)
+    .map((r) => (r as { sql: string }).sql)
   for (const ddl of ddls) sqlite.exec(ddl)
 
   const db = drizzle(sqlite, { schema })
@@ -45,8 +55,8 @@ function createTestDb() {
       .values({
         id: cardId,
         deckId: 1,
-        type: 'qa',
-        content: { front: `Front ${cardId}`, back: `Back ${cardId}` },
+        type: 'basic',
+        content: { basic: { front: `Front ${cardId}`, back: `Back ${cardId}` } },
         due: now.toISOString(),
         state: 0,
         stability: 0,

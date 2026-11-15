@@ -3,8 +3,9 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/transport'
+import { setHapticsEnabled } from '@/platform/haptics'
 
-export type ThemePreference = 'dark' | 'light' | 'system'
+export type ThemePreference = 'dark' | 'light' | 'system' | 'e-ink'
 
 export const THEME_STORAGE_KEY = 'lh-theme'
 
@@ -24,7 +25,7 @@ export const PALETTES: Array<{ id: PaletteId; label: string; swatch: string[] }>
 ]
 
 export function normalizeThemePreference(raw: string | null | undefined): ThemePreference {
-  if (raw === 'light' || raw === 'system') return raw
+  if (raw === 'light' || raw === 'system' || raw === 'e-ink') return raw
   return 'dark'
 }
 
@@ -33,6 +34,7 @@ export function normalizePalette(raw: string | null | undefined): PaletteId {
 }
 
 export function resolveIsDark(pref: ThemePreference): boolean {
+  if (pref === 'e-ink') return false
   if (pref === 'dark') return true
   if (pref === 'light') return false
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
@@ -48,9 +50,11 @@ export function applyThemePreference(pref: ThemePreference): void {
   } catch {
     // ignore storage restrictions
   }
+  const isEInk = pref === 'e-ink'
   const isDark = resolveIsDark(pref)
   document.documentElement.classList.toggle('dark', isDark)
-  document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
+  document.documentElement.classList.toggle('theme-e-ink', isEInk)
+  document.documentElement.style.colorScheme = isEInk ? 'light' : isDark ? 'dark' : 'light'
 }
 
 function readStoredPalette(): PaletteId {
@@ -97,7 +101,7 @@ export function setPalette(palette: PaletteId): void {
  * pre-paint by the init script in app/layout.tsx.
  */
 export function ThemeSync() {
-  const { data } = useQuery<{ settings?: { theme?: string } }>({
+  const { data } = useQuery<{ settings?: { theme?: string; hapticsEnabled?: boolean } }>({
     queryKey: ['settings'],
     queryFn: () => apiGet('/api/settings'),
     staleTime: 30_000,
@@ -123,6 +127,14 @@ export function ThemeSync() {
     mql.addEventListener('change', onChange)
     return () => mql.removeEventListener('change', onChange)
   }, [data?.settings?.theme])
+
+  // Apply the persisted haptics opt-out once settings arrive (undefined until
+  // loaded → keep the default-on so early session haptics behave as shipped).
+  useEffect(() => {
+    if (data?.settings?.hapticsEnabled !== undefined) {
+      setHapticsEnabled(data.settings.hapticsEnabled)
+    }
+  }, [data?.settings?.hapticsEnabled])
 
   return null
 }

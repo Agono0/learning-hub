@@ -89,9 +89,11 @@ export const REFLECTION_PROMPTS: string[] = [
 
 /** Rotate 3 prompts per week — deterministic from the week start date. */
 export function weeklyPrompts(weekStartDate: string): string[] {
-  const weekIndex = Math.floor(Date.parse(weekStartDate + 'T00:00:00Z') / (7 * DAY_MS))
+  const parsed = Date.parse(weekStartDate + 'T00:00:00Z')
+  // An unparseable date falls back to week 0 rather than yielding undefined prompts.
+  const weekIndex = Number.isFinite(parsed) ? Math.floor(parsed / (7 * DAY_MS)) : 0
   const n = REFLECTION_PROMPTS.length
-  return [0, 1, 2].map((i) => REFLECTION_PROMPTS[((weekIndex * 3 + i) % n + n) % n])
+  return [0, 1, 2].map((i) => REFLECTION_PROMPTS[(((weekIndex * 3 + i) % n) + n) % n])
 }
 
 function addDays(isoDate: string, n: number): string {
@@ -148,7 +150,10 @@ export function aggregateWeek(weekStartDate: string, data: WeekData): WeeklySumm
   )
 
   const moods = days.map((d) => d.mood).filter((m): m is number => m != null)
-  const moodAvg = moods.length === 0 ? null : Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 10) / 10
+  const moodAvg =
+    moods.length === 0
+      ? null
+      : Math.round((moods.reduce((a, b) => a + b, 0) / moods.length) * 10) / 10
 
   return { weekStart: start, days, totals, moodAvg, prompts: weeklyPrompts(start) }
 }
@@ -172,12 +177,18 @@ const MOOD_EMOJI = ['distressed', 'sad', 'okay', 'good', 'great'] as const
 
 /** Emoji for a 1-5 mood value (Daylio scale), clamped. */
 export function moodEmoji(mood: number): string {
-  return ['😞', '🙁', '😐', '🙂', '😄'][Math.min(4, Math.max(0, mood - 1))]
+  return ['😞', '🙁', '😐', '🙂', '😄'][moodIndex(mood)]!
+}
+
+/** 1-5 mood → 0-4 index; rounds fractional moods, clamps, and maps NaN to neutral. */
+function moodIndex(mood: number): number {
+  if (!Number.isFinite(mood)) return 2
+  return Math.min(4, Math.max(0, Math.round(mood) - 1))
 }
 
 /** Label for a 1-5 mood value, clamped. */
 export function moodLabel(mood: number): string {
-  return MOOD_EMOJI[Math.min(4, Math.max(0, mood - 1))]
+  return MOOD_EMOJI[moodIndex(mood)]!
 }
 
 /**
@@ -194,6 +205,7 @@ export function validateJournalEntry(entry: JournalEntryInput): JournalValidatio
     (entry.smallWins ?? '').trim().length > 0 ||
     (entry.gratitude ?? '').trim().length > 0 ||
     (entry.worryDump ?? '').trim().length > 0
-  if (!hasText && entry.mood == null) errors.push('Write something — a small win, a gratitude, or a worry dump.')
+  if (!hasText && entry.mood == null)
+    errors.push('Write something — a small win, a gratitude, or a worry dump.')
   return { ok: errors.length === 0, errors }
 }

@@ -3,7 +3,8 @@
  *
  * Provides queries for due cards audio scripts and hands-free commute session logs.
  */
-import { and, desc, eq, lte } from 'drizzle-orm'
+import { and, asc, desc, eq, lte } from 'drizzle-orm'
+import { cardAnswerText, cardFrontText, type CardContent } from '@learning-hub/core'
 import { audioSessions, cards, decks } from '../schema'
 import { getDb, type LearningHubDB } from '../index'
 
@@ -44,13 +45,45 @@ export function listAudioSessions(
   return conn.select().from(audioSessions).orderBy(desc(audioSessions.createdAt)).limit(limit).all()
 }
 
+/** Spoken stand-in for a cloze blank — TTS engines read '___' as 'underscore'. */
+const SPOKEN_BLANK = 'blank'
+
+/** One malformed legacy row (e.g. a cloze missing `text`) must not fail the whole queue. */
+function safeText(read: () => string): string {
+  try {
+    const v = read()
+    return typeof v === 'string' ? v : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Due, unsuspended cards as speakable prompt/answer pairs, most overdue first.
+ *
+ * Text comes from the canonical per-format helpers (`cardFrontText` /
+ * `cardAnswerText`) — `CardContent` is nested (`{ basic: { front, back } }`,
+ * `{ cloze: { text, answers } }`, …), so reading flat `content.front` made every
+ * card speak a placeholder. Legacy flat `{ front, back }` rows still work.
+ * Formats with no text (image occlusion, sketches) are skipped, so fewer than
+ * `limit` rows may come back. `stability` (FSRS S, days) lets callers pace the
+ * recall pause; `spokenFront` replaces cloze blanks with a speakable word.
+ */
 export function getDueCardsForAudio(
   limit = 20,
   deckId?: number,
   database?: LearningHubDB,
-): Array<{ id: number; front: string; back: string; deckName?: string }> {
+): Array<{
+  id: number
+  front: string
+  back: string
+  spokenFront: string
+  deckName?: string
+  stability: number
+}> {
   const conn = database ?? getDb()
   const nowIso = new Date().toISOString()
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(Number.isFinite(limit) ? limit : 20)))
 
   const conditions = [lte(cards.due, nowIso), eq(cards.suspended, false)]
   if (deckId) {
@@ -63,28 +96,33 @@ export function getDueCardsForAudio(
       content: cards.content,
       deckId: cards.deckId,
       deckName: decks.name,
+      stability: cards.stability,
     })
     .from(cards)
     .leftJoin(decks, eq(cards.deckId, decks.id))
     .where(and(...conditions))
-    .limit(limit)
+    .orderBy(asc(cards.due), asc(cards.id))
+    .limit(safeLimit)
     .all()
 
-  return rows.map((r) => {
-    let front = 'Card Prompt'
-    let back = 'Card Answer'
-
-    if (r.content && typeof r.content === 'object') {
-      const c = r.content as any
-      front = c.front || c.prompt || c.question || 'Card Prompt'
-      back = c.back || c.answer || 'Card Answer'
-    }
-
-    return {
+  const out: ReturnType<typeof getDueCardsForAudio> = []
+  for (const r of rows) {
+    const content = (r.content ?? {}) as CardContent & { front?: unknown; back?: unknown }
+    const front =
+      safeText(() => cardFrontText(content)) ||
+      (typeof content.front === 'string' ? content.front : '')
+    const back =
+      safeText(() => cardAnswerText(content)) ||
+      (typeof content.back === 'string' ? content.back : '')
+    if (!front.trim()) continue
+    out.push({
       id: r.id,
       front,
       back,
+      spokenFront: front.replace(/_{3,}/g, SPOKEN_BLANK),
       deckName: r.deckName ?? undefined,
-    }
-  })
+      stability: r.stability ?? 0,
+    })
+  }
+  return out
 }

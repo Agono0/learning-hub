@@ -110,6 +110,10 @@ export default function TutorPage() {
   const { data: aiStatus } = useAiStatus()
   const manual = aiStatus?.configured === false // provider 'none' → self-explain mode
   const { data: manualData } = useManualMode('tutor-grade', Boolean(manual))
+  // Rule 9 (F-09): the summary's manual mode — its guided steps render when
+  // the AI summary degrades (provider none / needsSetup) instead of only the
+  // raw transcript excerpt.
+  const { data: summaryManualData } = useManualMode('tutor-session-summary', true)
 
   const { data: notesData } = useQuery<{ notes: NoteRow[] }>({
     queryKey: ['notes-for-tutor'],
@@ -152,7 +156,7 @@ export default function TutorPage() {
     queryFn: () => apiGet<{ decks: DeckRow[] }>('/api/decks'),
   })
 
-  const { data: sessionsData, refetch: refetchSessions } = useQuery<{ sessions: SessionRow[] }>({
+  const { data: sessionsData } = useQuery<{ sessions: SessionRow[] }>({
     queryKey: ['tutor-sessions'],
     queryFn: () => apiGet<{ sessions: SessionRow[] }>('/api/ai/chat/sessions'),
     enabled: sessionsOpen,
@@ -189,6 +193,8 @@ export default function TutorPage() {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setStreaming(false)
+      // the server created/updated this session — keep the sessions list current
+      void queryClient.invalidateQueries({ queryKey: ['tutor-sessions'] })
     }
   }
 
@@ -406,7 +412,10 @@ export default function TutorPage() {
         </div>
       )}
 
-      {!manual && sessionId != null && messages.length >= 2 && (
+      {sessionId != null && messages.length >= 2 && (
+        // Provider-none users get this too: the summary POST has an explicit
+        // manual mode (raw transcript structured for self-review) and the
+        // guided steps render beneath it (rule 9, F-09).
         <div className="panel space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -426,6 +435,19 @@ export default function TutorPage() {
           {summary && (
             <div className="space-y-3 text-sm">
               <p className="text-neutral-600 dark:text-neutral-300">{summary.summary}</p>
+              {summary.usedAI === false && summaryManualData?.manual && (
+                <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+                  <div className="label mb-1">Do it by hand — {summaryManualData.manual.title}</div>
+                  <p className="mb-2 text-xs text-neutral-500">
+                    {summaryManualData.manual.summary}
+                  </p>
+                  <ol className="list-decimal space-y-1 pl-5 text-xs text-neutral-500">
+                    {summaryManualData.manual.steps.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
               {summary.gaps.length > 0 && (
                 <div>
                   <div className="label mb-1">Gaps</div>

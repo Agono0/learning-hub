@@ -15,11 +15,11 @@ repetition (FSRS-6), curricula you can import from any AI, a practice engine,
 mastery tracking (BKT + Elo), focus/habit/motivation tools, notes, reading and
 AI tutors. It ships as:
 
-| Target | Runs | Backend | Database |
-| --- | --- | --- | --- |
-| Web | `npm run dev` | Next.js route shims → handlers (Node) | better-sqlite3, `data/learning-hub.db` |
-| Windows / Android | Tauri 2 (`apps/native`) | **same handlers** in a webview Web Worker | sqlite-wasm on OPFS |
-| Agents | `apps/mcp` (MCP), `apps/cli`, `apps/server` | same `packages/*` | same DB |
+| Target            | Runs                                        | Backend                                   | Database                               |
+| ----------------- | ------------------------------------------- | ----------------------------------------- | -------------------------------------- |
+| Web               | `npm run dev`                               | Next.js route shims → handlers (Node)     | better-sqlite3, `data/learning-hub.db` |
+| Windows / Android | Tauri 2 (`apps/native`)                     | **same handlers** in a webview Web Worker | sqlite-wasm on OPFS                    |
+| Agents            | `apps/mcp` (MCP), `apps/cli`, `apps/server` | same `packages/*`                         | same DB                                |
 
 One codebase, every platform. Why: [docs/adr/0001](docs/adr/0001-one-codebase-hub-worker.md).
 
@@ -41,6 +41,8 @@ apps/web
   src/components/      App shell + navigation model (nav.ts)
 apps/native           Tauri 2 shell (thin Rust: dialogs, fs, http, notifications)
 apps/mcp | cli | server  Other hosts over the same packages
+apps/worker          Cloudflare worker: rooms, boss raids, library share (deploy: npm run worker:deploy)
+apps/extension       Browser extension: quick-add cards, save-to-read, friction capture (M21)
 docs/                 Architecture, ADRs, native, curriculum, learning science
 scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android…)
 ```
@@ -48,6 +50,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 **Dependency rule** (never invert it):
 `apps/* → packages/{core,db,ai-adapters}`, `db → core`, `ai-adapters → core`,
 `plugins → core` only. `core` imports nothing app-specific and never `ai`.
+`apps/worker` uses `packages/db`-adjacent types only.
 
 ## 3. Hard rules — never break these
 
@@ -71,6 +74,24 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 11. **Untrusted content never renders as HTML.** Use `<Markdown>` from `@/ui` (no raw HTML).
 12. **Never commit secrets or build output** — keystores, `.env`, `target/`, `.next*/` (see `.gitignore`).
 13. **Don't weaken tests to make them pass.** Fix the code, or explain in the PR why the test was wrong.
+
+### Rule enforcement table
+
+| Rule | Statement                           | Enforcement mechanism                                                                                          |
+| ---- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1    | No raw `fetch` in UI code           | ESLint `no-restricted-syntax` on `apps/web/{app,src/{components,ui,platform}}`                                 |
+| 2    | Handlers runtime-neutral            | ESLint `no-restricted-imports` (Node builtins banned in web handlers/hub/lib)                                  |
+| 3    | API routes registered in hub        | Test: `apps/web/tests/hub-registry.test.ts`                                                                    |
+| 4    | Schema changes = migration          | Idempotent migration runner (`packages/db/src/migrations/index.ts`) + DDL clone tests                          |
+| 5    | zod at every boundary               | Zod validation in `readJson`, `readQuery`, MCP argument schemas, CLI inputs                                    |
+| 6    | Multi-row writes transactional      | `withTransaction` sync wrapper + SQLite `BEGIN IMMEDIATE`                                                      |
+| 7    | One grading path                    | Structural guard (`packages/db/tests/rules-guard.test.ts`) + `review-service.ts` / `mastery-service.ts`        |
+| 8    | Append-only tables stay append-only | Structural guard (`packages/db/tests/rules-guard.test.ts` asserts no UPDATE/DELETE on revlog, xp_events, etc.) |
+| 9    | Every AI feature has manual mode    | Test: `apps/web/tests/manual-mode-surface.test.ts` & `apps/web/tests/search-nl-api.test.ts`                    |
+| 10   | Never change native origin          | Code review + OPFS storage scope invariant                                                                     |
+| 11   | Untrusted content never raw HTML    | `<Markdown>` sanitizer from `@/ui` (ReactMarkdown with no dangerous HTML)                                      |
+| 12   | Never commit secrets                | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                            |
+| 13   | Don't weaken tests to pass          | CI pull request review & conventional commits                                                                  |
 
 ## 4. Workflow
 
@@ -115,8 +136,13 @@ navigation. Then replace the TODOs. Without the scaffolder, do these by hand:
 - **New column on an existing table:** add it to `schema.ts` **and** a migration:
   ```ts
   // packages/db/src/migrations/00N-short-name.ts
-  export const shortName: Migration = { id: N, name: 'short-name',
-    up(ctx) { ctx.addColumn('lessons', 'est_minutes', 'INTEGER') } }
+  export const shortName: Migration = {
+    id: N,
+    name: 'short-name',
+    up(ctx) {
+      ctx.addColumn('lessons', 'est_minutes', 'INTEGER')
+    },
+  }
   ```
   then append it to `MIGRATIONS` in `migrations/index.ts`.
 - **Non-drizzle objects** (FTS5 virtual tables, triggers, views): a migration using
@@ -145,22 +171,25 @@ and `docs/curriculum/`. New exercise type = schema + `grade()` in
 - Build pages from `@/ui` (`PageHeader`, `Panel`, `Button`, `TextField`, `Tabs`, `Sheet`,
   `EmptyState`, `ProgressBar`, `Markdown`…). Add to the kit when a pattern repeats twice.
 - Mobile-first: works at 360px wide, no horizontal page scroll, touch targets ≥ 44px,
-  wide content inside `.scroll-x`. Navigation comes only from `src/components/nav.ts`.
+  wide content inside `.scroll-x`. Navigation comes only from `src/components/nav.ts`
+  (exception: detail pages reached by in-app links, e.g. `/courses/new`, `/courses/course`,
+  `/courses/exam`, `/courses/lesson`, `/courses/certificate` — they must be link-reachable,
+  never orphaned).
 - Calm by default: one primary action per screen, honest empty states, no dark patterns.
 
 ## 6. Commands
 
-| Purpose | Command |
-| --- | --- |
-| Install | `npm install` |
-| Dev (web) | `npm run db:push && npm run db:seed && npm run dev` |
-| Typecheck / lint | `npm run typecheck` · `npm run lint` |
-| Unit tests (all workspaces) | `npm test` |
-| E2E | `npm run test:e2e` |
-| Native web bundle | `npm run web:tauri` (then `npm run preview:tauri` → :4173) |
-| Windows app | `npm run app:dev` / `npm run app:build` |
-| Android | `npm run android:dev` / `npm run android:build` |
-| Scaffold a feature | `npm run new:feature -- <name>` |
+| Purpose                     | Command                                                    |
+| --------------------------- | ---------------------------------------------------------- |
+| Install                     | `npm install`                                              |
+| Dev (web)                   | `npm run db:push && npm run db:seed && npm run dev`        |
+| Typecheck / lint            | `npm run typecheck` · `npm run lint`                       |
+| Unit tests (all workspaces) | `npm test`                                                 |
+| E2E                         | `npm run test:e2e`                                         |
+| Native web bundle           | `npm run web:tauri` (then `npm run preview:tauri` → :4173) |
+| Windows app                 | `npm run app:dev` / `npm run app:build`                    |
+| Android                     | `npm run android:dev` / `npm run android:build`            |
+| Scaffold a feature          | `npm run new:feature -- <name>`                            |
 
 Before you say "done": typecheck, lint (0 errors), the tests for what you touched, and —
 for UI — check it at phone width. Report honestly what you did **not** verify.

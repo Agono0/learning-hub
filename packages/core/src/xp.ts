@@ -26,16 +26,16 @@ export function levelProgress(xp: number): number {
   const cur = xpForLevel(level)
   const next = xpForLevel(level + 1)
   if (next === cur) return 1
-  return Math.min(1, (xp - cur) / (next - cur))
+  return Math.min(1, Math.max(0, (xp - cur) / (next - cur)))
 }
 
 /** XP awarded per event (science-first: depth over time). */
 export const XP_REWARDS = {
-  review: 2,          // per completed review
-  reviewRecall: 5,    // extra for confident-correct (Good/Easy + sure)
+  review: 2, // per completed review
+  reviewRecall: 5, // extra for confident-correct (Good/Easy + sure)
   lesson: 30,
   teachback: 60,
-  focusSession: 40,   // completed focus block
+  focusSession: 40, // completed focus block
   quest: 50,
   habit: 10,
   journal: 15,
@@ -43,4 +43,5 @@ export const XP_REWARDS = {
   ideaEvolve: 25,
   courseComplete: 500,
   achievement: 100,
+  debate: 35, // judged debate ruling or protégé explanation (dialectic arena)
 } as const

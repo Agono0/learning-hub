@@ -20,6 +20,7 @@ import { and, eq, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   db,
+  cardEmbeddings,
   cards,
   courses,
   decks,
@@ -31,8 +32,10 @@ import {
 } from '@learning-hub/db'
 import {
   buildSession,
+  checkHypercorrection,
   dayKey,
   interleaveBy,
+  interleaveBySemanticDistance,
   previewGrades,
   type Confidence,
   type Grade,
@@ -79,12 +82,23 @@ function toPreviewRecord(items: { grade: Grade; label: string }[]): Record<Grade
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const deckId = url.searchParams.get('deckId')
+  const deckIdsParam = url.searchParams.get('deckIds')
   const courseId = url.searchParams.get('courseId')
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100)
   const mode = (url.searchParams.get('mode') ?? 'normal') as SessionMode
   const now = new Date()
 
   const filters = [eq(cards.suspended, false)]
+
+  // Multi-deck request support (interleaved queue across selected decks)
+  const requestedDeckIds = deckIdsParam
+    ? deckIdsParam
+        .split(',')
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n) && n > 0)
+    : deckId
+      ? [Number(deckId)]
+      : []
 
   // Mixed practice: a whole-course session ignores due dates (cram semantics)
   // and interleaves lessons — course cards live in the course's own deck.
@@ -101,8 +115,10 @@ export async function GET(req: Request) {
     }
     course = row
     filters.push(eq(cards.deckId, row.deckId))
-  } else if (deckId) {
-    filters.push(eq(cards.deckId, Number(deckId)))
+  } else if (requestedDeckIds.length === 1) {
+    filters.push(eq(cards.deckId, requestedDeckIds[0]!))
+  } else if (requestedDeckIds.length > 1) {
+    filters.push(inArray(cards.deckId, requestedDeckIds))
   }
   // candidates: everything due or newer (buildSession filters precisely per mode)
   const candidateRows = await db
@@ -158,6 +174,25 @@ export async function GET(req: Request) {
     .map((r) => sessionCards.find((c) => c.id === r.id))
     .filter((c) => c !== undefined)
 
+  // Contrastive semantic interleaving (Kornell & Bjork 2008): if card embeddings are indexed,
+  // interleave to avoid concept clumping; otherwise keep weak-first buildSession order.
+  const cardIds = ordered.map((c) => c.id)
+  let interleaved = ordered
+  if (!course && cardIds.length > 2) {
+    const embRows = await db
+      .select({ cardId: cardEmbeddings.cardId, embedding: cardEmbeddings.embedding })
+      .from(cardEmbeddings)
+      .where(inArray(cardEmbeddings.cardId, cardIds))
+    if (embRows.length > 0) {
+      const embMap = new Map(embRows.map((r) => [r.cardId, r.embedding]))
+      const cardsWithEmb = ordered.map((c) => ({
+        ...c,
+        embedding: embMap.get(c.id),
+      }))
+      interleaved = interleaveBySemanticDistance(cardsWithEmb)
+    }
+  }
+
   // Mixed practice: alternate lessons while keeping the per-lesson priority
   // (weak-first) intact. sourceKey is `lhcf:<course>/<lesson>/<n>` for course
   // cards; anything else stays a single group.
@@ -166,7 +201,7 @@ export async function GET(req: Request) {
         const parts = (c.sourceKey ?? '').split('/')
         return parts.length >= 2 && parts[0]!.startsWith('lhcf:') ? parts[1]! : ''
       })
-    : ordered
+    : interleaved
 
   const globalCfg = await globalFsrsConfig()
   const deckIds = [...new Set(mixed.map((c) => c.deckId))]
@@ -199,11 +234,12 @@ export async function GET(req: Request) {
   // misses (rating 1–2) for restudy before the queue — the repo owns the query.
   // All-decks and course sessions interleave decks, so they carry no corrections.
   let corrections: DelayedFeedbackCorrection[] = []
-  if (deckId && !course) {
+  if (requestedDeckIds.length === 1 && !course) {
+    const singleDeckId = requestedDeckIds[0]!
     const [deck] = await db
       .select({ id: decks.id, delayedFeedback: decks.delayedFeedback })
       .from(decks)
-      .where(eq(decks.id, Number(deckId)))
+      .where(eq(decks.id, singleDeckId))
       .limit(1)
     if (deck?.delayedFeedback) {
       corrections = listDelayedFeedbackCorrections({ deckId: deck.id, now })
@@ -249,6 +285,23 @@ export const POST = withRoute(async (req: Request) => {
     }),
   )
 
+  const cardContent =
+    typeof result.card.content === 'object' && result.card.content
+      ? (result.card.content as Record<string, unknown>)
+      : null
+  const rawBack =
+    cardContent?.back ??
+    (cardContent?.basic as Record<string, unknown> | undefined)?.back ??
+    (cardContent?.typein as { acceptedAnswers?: string[] } | undefined)?.acceptedAnswers?.[0] ??
+    ''
+  const correctAnswer = String(rawBack)
+  const hypercorrection = checkHypercorrection({
+    cardId: result.card.id,
+    confidence: body.confidence === 1 ? 5 : 1,
+    grade: body.grade,
+    correctAnswer,
+  })
+
   return Response.json({
     ok: true,
     card: result.card,
@@ -261,6 +314,7 @@ export const POST = withRoute(async (req: Request) => {
     streak: { current: result.streak.current, best: result.streak.best },
     elo: result.elo,
     retrievability: result.retrievability,
+    hypercorrection,
     day: dayKey(now, body.tzOffset),
   })
 })

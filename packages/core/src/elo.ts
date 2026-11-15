@@ -28,13 +28,15 @@ export function eloUpdate(
   itemAttempts: number,
   opts?: { k0?: number; decay?: number },
 ): EloUpdate {
+  // A NaN or out-of-range outcome would poison both ratings permanently.
+  const o = Number.isFinite(outcome) ? clamp(outcome, 0, 1) : 0.5
   const k0 = opts?.k0 ?? 32
   const decay = opts?.decay ?? 400
   const expected = 1 / (1 + Math.pow(10, (itemDifficulty - learnerRating) / 400))
   const kLearner = k0 / (1 + learnerAttempts / decay)
   const kItem = k0 / (1 + itemAttempts / decay)
-  const ratingAfter = clamp(learnerRating + kLearner * (outcome - expected), 100, 3000)
-  const itemDifficultyAfter = clamp(itemDifficulty + kItem * (expected - outcome), 100, 3000)
+  const ratingAfter = clamp(learnerRating + kLearner * (o - expected), 100, 3000)
+  const itemDifficultyAfter = clamp(itemDifficulty + kItem * (expected - o), 100, 3000)
   return {
     ratingBefore: learnerRating,
     ratingAfter,
@@ -46,7 +48,7 @@ export function eloUpdate(
 
 /** chess.com-style streak bonus: +5 rating points per streak step, capped. */
 export function streakBonus(currentStreak: number, cap = 10): number {
-  return Math.min(currentStreak, cap) * 5
+  return Math.max(0, Math.min(currentStreak, cap)) * 5
 }
 
 function clamp(x: number, lo: number, hi: number): number {

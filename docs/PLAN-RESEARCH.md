@@ -10,7 +10,7 @@ The research baseline for the design: ~120 web-searched studies up to 2026, dist
 - Interleaved math practice **d=0.83** (Rohrer 2020 RCT: 61 % vs 38 % delayed test) — [PsycNet](https://psycnet.apa.org/doiLanding?doi=10.1037%2Fedu0000367)
 - Drawing effect g=0.63 (Maddox 2024 meta); method of loci g≈0.65; loci training 26→62 words with durable neural change (Dresler 2017, Neuron)
 - Teach-back/protégé effect g≈0.56 (Kobayashi 2019) → Feynman mode
-- **AI guardrails decide outcomes**: Harvard guardrailed tutor = 2× learning in less time (Nature Sci Rep 2025); Wharton unguarded tutor *hurt* exam scores (Bastani, PNAS) → iron rule: no answer before a retrieval attempt
+- **AI guardrails decide outcomes**: Harvard guardrailed tutor = 2× learning in less time (Nature Sci Rep 2025); Wharton unguarded tutor _hurt_ exam scores (Bastani, PNAS) → iron rule: no answer before a retrieval attempt
 - Med students: >80 % use Anki; use associated with higher USMLE scores (Gilbert 2023)
 - 20 Rules of Formulating Knowledge (Wozniak) → card linter — [supermemo.com](https://www.supermemo.com/en/blog/twenty-rules-of-formulating-knowledge)
 - Math proofs: definition-first mastery (Nielsen); proof-step decomposition cards; worked examples d≈0.4 (Barbieri 2023)

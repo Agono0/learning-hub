@@ -1,8 +1,6 @@
-import { and, eq, gte, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { habitLogs, habits } from '@learning-hub/db'
-import { dayKey, solidifying, stackChainOrder, validateHabit } from '@learning-hub/core'
+import { createHabit, listHabits } from '@learning-hub/db'
+import { validateHabit } from '@learning-hub/core'
 import { readJson, tzOffsetFromQuery, withRoute } from '@/lib/api'
 
 /** GET /api/habits?all=1&tzOffset=N — habits with chain order, today's state, solidifying stage and 90-day log dates. */
@@ -10,33 +8,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const includeArchived = url.searchParams.get('all') === '1'
   const tz = tzOffsetFromQuery(req)
-  const rows = includeArchived
-    ? db.select().from(habits).all()
-    : db.select().from(habits).where(eq(habits.archived, false)).all()
-
-  const cutoff = dayKey(new Date(Date.now() - 90 * 86_400_000), tz)
-  const today = dayKey(new Date(), tz)
-
-  const withStats = rows.map((h) => {
-    const logs = db
-      .select({ date: habitLogs.date })
-      .from(habitLogs)
-      .where(and(eq(habitLogs.habitId, h.id), gte(habitLogs.date, cutoff)))
-      .all()
-    const logDates = logs.map((l) => l.date)
-    return {
-      ...h,
-      logDates,
-      todayDone: logDates.includes(today),
-      solidifying: solidifying(logDates, today),
-    }
-  })
-
-  return Response.json({
-    habits: stackChainOrder(withStats),
-    today,
-    stageThresholds: { solidifying: 21, automatic: 60 },
-  })
+  const result = listHabits({ includeArchived, tzOffset: tz })
+  return Response.json(result)
 }
 
 const createHabitSchema = z.object({
@@ -75,23 +48,15 @@ export const POST = withRoute(async (req: Request) => {
       { status: 400 },
     )
 
-  const [maxOrder] = db
-    .select({ max: sql<number>`coalesce(max(${habits.order}), 0)` })
-    .from(habits)
-    .all()
-  const [row] = db
-    .insert(habits)
-    .values({
-      name,
-      cue,
-      cueType: trimOrNull(body.cueType),
-      craving,
-      response,
-      reward,
-      anchor: trimOrNull(body.anchor),
-      order: (maxOrder?.max ?? 0) + 1,
-    })
-    .returning()
-    .all()
+  const row = createHabit({
+    name,
+    cue,
+    cueType: trimOrNull(body.cueType),
+    craving,
+    response,
+    reward,
+    anchor: trimOrNull(body.anchor),
+  })
+
   return Response.json({ habit: row, warnings: validation.warnings }, { status: 201 })
 })

@@ -5,6 +5,7 @@ import {
   levenshteinDistance,
   normalizeSpeechText,
   phoneticSimplify,
+  resampleTo16k,
 } from '../src/audio/index'
 
 describe('Audio & Speech Spaced Repetition Domain', () => {
@@ -67,5 +68,26 @@ describe('Audio & Speech Spaced Repetition Domain', () => {
     expect(script.cues[3]!.phase).toBe('answer')
     expect(script.cues[3]!.text).toBe('Tokyo')
     expect(script.cues.at(-1)!.phase).toBe('outro')
+  })
+
+  it('resampleTo16k resamples arbitrary sample rates to 16 kHz accurately', () => {
+    // 48 kHz sine wave input (1 second = 48,000 samples)
+    const inRate = 48000
+    const inSamples = 48000
+    const input = new Float32Array(inSamples)
+    for (let i = 0; i < inSamples; i++) {
+      input[i] = Math.sin((2 * Math.PI * 440 * i) / inRate)
+    }
+
+    const resampled = resampleTo16k(input, inRate)
+    expect(resampled.length).toBe(16000) // Exactly 16k samples for 1 second!
+    expect(resampled[0]).toBeCloseTo(0, 1)
+
+    // Identity when input rate is already 16k
+    const same = resampleTo16k(input.subarray(0, 100), 16000)
+    expect(same.length).toBe(100)
+
+    // Empty input returns empty Float32Array
+    expect(resampleTo16k(new Float32Array(0), 44100).length).toBe(0)
   })
 })

@@ -15,6 +15,11 @@ export interface TimelineEntry {
   detail: string | null
 }
 
+/** `snake_case_id` → `snake case id` (all underscores, not just the first). */
+export function humanize(code: string): string {
+  return code.replace(/_+/g, ' ').trim()
+}
+
 interface RawRow {
   at: string
   kind: TimelineEntry['kind']
@@ -30,13 +35,9 @@ export function getActivityTimeline(days = 14, limit = 60): TimelineEntry[] {
   const rows: RawRow[] = []
 
   try {
-    const xp = db.all<{
-      at: string
-      source: string
-      amount: number
-      meta: Record<string, unknown> | null
-    }>(
-      sql`SELECT created_at AS at, source, amount, meta FROM xp_events WHERE created_at >= ${since} ORDER BY created_at DESC LIMIT 200`,
+    // Focus XP is folded into the focus_sessions entry below (one row per session, not two).
+    const xp = db.all<{ at: string; source: string; amount: number }>(
+      sql`SELECT created_at AS at, source, amount FROM xp_events WHERE created_at >= ${since} AND source != 'focus' ORDER BY created_at DESC LIMIT 200`,
     )
     for (const r of xp) {
       const label =
@@ -46,19 +47,10 @@ export function getActivityTimeline(days = 14, limit = 60): TimelineEntry[] {
             ? 'Achievement unlocked'
             : r.source === 'habit'
               ? 'Habit checked in'
-              : r.source === 'focus'
-                ? 'Focus session'
-                : `XP · ${r.source}`
+              : `XP · ${humanize(r.source)}`
       rows.push({
         at: r.at,
-        kind:
-          r.source === 'achievement'
-            ? 'achievement'
-            : r.source === 'habit'
-              ? 'habit'
-              : r.source === 'focus'
-                ? 'focus'
-                : 'xp',
+        kind: r.source === 'achievement' ? 'achievement' : r.source === 'habit' ? 'habit' : 'xp',
         title: label,
         detail: `${r.amount >= 0 ? '+' : ''}${r.amount} XP`,
       })
@@ -68,15 +60,29 @@ export function getActivityTimeline(days = 14, limit = 60): TimelineEntry[] {
   }
 
   try {
-    const focus = db.all<{ at: string; minutes: number; task: string | null; completed: number }>(
-      sql`SELECT ended_at AS at, coalesce(actual_minutes, planned_minutes) AS minutes, task, completed FROM focus_sessions WHERE coalesce(ended_at, started_at) >= ${since} ORDER BY coalesce(ended_at, started_at) DESC LIMIT 100`,
+    // Only finished sessions are facts; a running one has no end time yet.
+    const focus = db.all<{
+      at: string
+      minutes: number
+      task: string | null
+      completed: number
+      xp: number | null
+    }>(
+      sql`SELECT f.ended_at AS at, coalesce(f.actual_minutes, f.planned_minutes) AS minutes, f.task, f.completed,
+            (SELECT sum(x.amount) FROM xp_events x WHERE x.source = 'focus' AND json_extract(x.meta, '$.sessionId') = f.id) AS xp
+          FROM focus_sessions f
+          WHERE f.ended_at IS NOT NULL AND f.ended_at >= ${since}
+          ORDER BY f.ended_at DESC LIMIT 100`,
     )
     for (const r of focus) {
+      const parts = [`${Math.round(r.minutes)} min`]
+      if (r.task) parts.push(r.task)
+      if (r.xp) parts.push(`+${r.xp} XP`)
       rows.push({
         at: r.at,
         kind: 'focus',
         title: r.completed ? 'Focus session completed' : 'Focus session ended',
-        detail: `${Math.round(r.minutes)} min${r.task ? ` · ${r.task}` : ''}`,
+        detail: parts.join(' · '),
       })
     }
   } catch {
@@ -91,7 +97,7 @@ export function getActivityTimeline(days = 14, limit = 60): TimelineEntry[] {
       rows.push({
         at: r.at,
         kind: 'tree',
-        title: `Planted a ${r.treeType.replace('tree_', '').replace('_', ' ')}`,
+        title: `Planted a ${humanize(r.treeType.replace(/^tree_/, ''))}`,
         detail: `${r.durationMinutes} min of verified focus`,
       })
     }
@@ -108,7 +114,7 @@ export function getActivityTimeline(days = 14, limit = 60): TimelineEntry[] {
         at: r.at,
         kind: 'coin',
         title: r.amount >= 0 ? `+${r.amount} study coins` : `${r.amount} study coins`,
-        detail: r.reason.replace('_', ' '),
+        detail: humanize(r.reason),
       })
     }
   } catch {
@@ -120,7 +126,12 @@ export function getActivityTimeline(days = 14, limit = 60): TimelineEntry[] {
       sql`SELECT created_at AS at, trigger FROM friction_events WHERE created_at >= ${since} ORDER BY created_at DESC LIMIT 50`,
     )
     for (const r of friction) {
-      rows.push({ at: r.at, kind: 'friction', title: 'Distraction caught', detail: r.trigger })
+      rows.push({
+        at: r.at,
+        kind: 'friction',
+        title: 'Distraction caught',
+        detail: humanize(r.trigger),
+      })
     }
   } catch {
     /* ignore */

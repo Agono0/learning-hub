@@ -59,8 +59,13 @@ function uniqueFile(label: string): string {
   return path.join(tmpDir, `${label}-${nextId}-${process.pid}.db`)
 }
 
+function uniqueWasmFile(label: string): string {
+  nextId += 1
+  return `${label}-${nextId}-${process.pid}.db`
+}
+
 function createWasmDb(label: string): SqliteWasmDatabase {
-  const db = createSqliteWasmDb(uniqueFile(label))
+  const db = createSqliteWasmDb(uniqueWasmFile(label))
   openDbs.push(db)
   return db
 }
@@ -173,7 +178,7 @@ describe('(a) shim CRUD parity vs better-sqlite3', () => {
   })
 
   it('persistence: data survives close + reopen on a real file (Node default VFS)', () => {
-    const file = uniqueFile('persist')
+    const file = uniqueWasmFile('persist')
     const db1 = createSqliteWasmDb(file)
     db1.exec('CREATE TABLE p (x TEXT)')
     db1.prepare('INSERT INTO p (x) VALUES (?)').run('durable')
@@ -268,8 +273,8 @@ describe('(b) drizzle insert/select/update/delete over the shim', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'Q', back: 'A' },
+        type: 'basic',
+        content: { basic: { front: 'Q', back: 'A' } },
         tags: [],
         due: now.toISOString(),
         createdAt: now.toISOString(),
@@ -303,7 +308,7 @@ describe('(b) drizzle insert/select/update/delete over the shim', () => {
     // select (json columns are parsed by drizzle)
     const card = db.select().from(schema.cards).where(eq(schema.cards.id, 1)).get()
     expect(card).toBeDefined()
-    expect(card!.content).toEqual({ front: 'Q', back: 'A' })
+    expect(card!.content).toEqual({ basic: { front: 'Q', back: 'A' } })
     expect(card!.tags).toEqual([])
     expect(card!.suspended).toBe(false)
     expect(card!.deckId).toBe(1)
@@ -364,8 +369,8 @@ describe('(d) executeReview end-to-end over sqlite-wasm', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'What is SQLite?', back: 'Embedded database' },
+        type: 'basic',
+        content: { basic: { front: 'What is SQLite?', back: 'Embedded database' } },
         tags: [],
         skillId: 7, // exercises the Elo/mastery branch too
         due: now.toISOString(),
@@ -439,8 +444,8 @@ describe('(e) backup-style raw reads through the shim', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'F', back: 'B' },
+        type: 'basic',
+        content: { basic: { front: 'F', back: 'B' } },
         tags: ['x'],
         due: now.toISOString(),
         createdAt: now.toISOString(),
@@ -462,7 +467,7 @@ describe('(e) backup-style raw reads through the shim', () => {
     const cards = wa.prepare('SELECT * FROM "cards"').all() as Record<string, unknown>[]
     expect(cards).toHaveLength(1)
     expect(cards[0]!.deck_id).toBe(1)
-    expect(cards[0]!.content).toBe(JSON.stringify({ front: 'F', back: 'B' })) // raw TEXT (round-trip bytes)
+    expect(cards[0]!.content).toBe(JSON.stringify({ basic: { front: 'F', back: 'B' } })) // raw TEXT (round-trip bytes)
 
     // pragma foreign_key_list reads (backup restore-order helper)
     const fks = wa.pragma('foreign_key_list("cards")') as { table: string }[]

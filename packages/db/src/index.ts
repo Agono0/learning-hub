@@ -510,6 +510,7 @@ export { schema, resolveDbPath, resolveImagesDir }
 export * from './schema'
 export * from './transaction'
 export * from './review-service'
+export * from './mastery-service'
 export * from './backup'
 export * from './sync'
 export * from './cloud-sync'

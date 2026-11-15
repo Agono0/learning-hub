@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createEventBus, eventBus, type EventBus, type HubEventMap } from '../src/events'
 
 /** Small local catalog for bus-level tests (the real one is HubEventMap). */

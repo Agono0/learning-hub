@@ -22,6 +22,7 @@ const practiceSchema = z.object({
   answer: z.unknown(),
   confidence: z.union([z.literal(0), z.literal(1)]).optional(),
   timeMs: z.number().int().min(0).max(3_600_000).optional(),
+  pretest: z.boolean().optional(),
 })
 
 export const POST = withRoute(async (req: Request) => {
@@ -31,6 +32,18 @@ export const POST = withRoute(async (req: Request) => {
   if (!card || !exercise) return notFound('exercise card')
 
   const result = gradeExercise(exercise, body.answer)
+
+  // Lesson Pretesting effect (Richland, Kornell & Kao 2009):
+  // Pretesting primes cognitive curiosity without altering BKT mastery or Elo (Rule 7)
+  if (body.pretest) {
+    return Response.json({
+      result,
+      pretest: true,
+      explanation: exercise.explanation ?? null,
+      review: null,
+    })
+  }
+
   if (result.pending) return Response.json({ result, review: null })
 
   const review = await executeReview({

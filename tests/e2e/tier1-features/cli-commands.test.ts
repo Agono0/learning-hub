@@ -66,4 +66,207 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(syncRes.exitCode).toBe(0)
     expect(syncRes.stdout).toContain('CLOUD SYNC')
   })
+
+  it('runs habits, journal, and physio CLI commands (Batch C1)', async () => {
+    // 1. habits list
+    const habitsRes = await runCli(['habits', 'list'], getActiveDbPath())
+    expect(habitsRes.exitCode).toBe(0)
+    expect(habitsRes.stdout).toMatch(/Habits|No habits found/)
+
+    // 2. journal write & show
+    const journalWrite = await runCli(
+      ['journal', 'write', '--date', '2026-11-09', '--mood', '5', '--wins', 'Shipped Batch C1 CLI'],
+      getActiveDbPath(),
+    )
+    expect(journalWrite.exitCode).toBe(0)
+    expect(journalWrite.stdout).toContain('Journal entry saved')
+
+    const journalShow = await runCli(['journal', 'show', '2026-11-09'], getActiveDbPath())
+    expect(journalShow.exitCode).toBe(0)
+    expect(journalShow.stdout).toContain('Shipped Batch C1 CLI')
+
+    // 3. physio command
+    const physioRes = await runCli(
+      ['physio', '--sleep', '7.5', '--exercise', '30', '--arousal', '6'],
+      getActiveDbPath(),
+    )
+    expect(physioRes.exitCode).toBe(0)
+    expect(physioRes.stdout).toContain('Physiology & Retention Telemetry')
+    expect(physioRes.stdout).toContain('Yerkes-Dodson zone')
+  }, 20000)
+
+  it('runs reading, plan, and gkt CLI commands (Batch C2)', async () => {
+    // 1. reading add & list
+    const readingAdd = await runCli(
+      [
+        'reading',
+        'add',
+        '--title',
+        'Testing Effects in Human Memory',
+        '--content',
+        'Retrieval practice produces durable consolidation over restudy.',
+        '--priority',
+        '80',
+      ],
+      getActiveDbPath(),
+    )
+    expect(readingAdd.exitCode).toBe(0)
+    expect(readingAdd.stdout).toContain('Ingested reading source')
+
+    const readingList = await runCli(['reading', 'list'], getActiveDbPath())
+    expect(readingList.exitCode).toBe(0)
+    expect(readingList.stdout).toContain('Testing Effects in Human Memory')
+
+    // 2. plan set & week
+    const planSet = await runCli(
+      ['plan', 'set', '--minutes', '300', '--rest-day', '0'],
+      getActiveDbPath(),
+    )
+    expect(planSet.exitCode).toBe(0)
+    expect(planSet.stdout).toContain('Generated and saved study plan template')
+
+    const planWeek = await runCli(['plan', 'week'], getActiveDbPath())
+    expect(planWeek.exitCode).toBe(0)
+    expect(planWeek.stdout).toContain('Weekly Study Plan')
+    expect(planWeek.stdout).toContain('Rest Day')
+
+    // 3. gkt drill
+    const gktDrill = await runCli(['gkt', 'drill', '--answer', 'true'], getActiveDbPath())
+    expect(gktDrill.exitCode).toBe(0)
+    expect(gktDrill.stdout).toContain('Graph Knowledge Tracing (GKT)')
+    expect(gktDrill.stdout).toContain('Updated mastery')
+  }, 20000)
+
+  it('runs debate, palace, world, and guild CLI commands (Batch C3)', async () => {
+    // 1. debate open, turn, list
+    const debateOpen = await runCli(
+      [
+        'debate',
+        'open',
+        '--topic',
+        'Desirable Difficulties in Schema Formation',
+        '--thesis',
+        'Cognitivist',
+        '--antithesis',
+        'DirectInstructionist',
+      ],
+      getActiveDbPath(),
+    )
+    expect(debateOpen.exitCode).toBe(0)
+    expect(debateOpen.stdout).toContain('Opened debate')
+    expect(debateOpen.stdout).toContain('Desirable Difficulties')
+
+    const debateTurn = await runCli(
+      [
+        'debate',
+        'turn',
+        '1',
+        '--content',
+        'Varied and interleaved practice enhances transfer to novel domains.',
+        '--speaker',
+        'thesis_agent',
+        '--name',
+        'Cognitivist',
+      ],
+      getActiveDbPath(),
+    )
+    expect(debateTurn.exitCode).toBe(0)
+    expect(debateTurn.stdout).toContain('Appended turn')
+
+    const debateList = await runCli(['debate', 'list'], getActiveDbPath())
+    expect(debateList.exitCode).toBe(0)
+    expect(debateList.stdout).toContain('Dialectic Arena Debates')
+    expect(debateList.stdout).toContain('Desirable Difficulties')
+
+    // 2. palace create, add, list
+    const palaceCreate = await runCli(
+      ['palace', 'create', 'Renaissance Memory Hall'],
+      getActiveDbPath(),
+    )
+    expect(palaceCreate.exitCode).toBe(0)
+    expect(palaceCreate.stdout).toContain('Created palace')
+    expect(palaceCreate.stdout).toContain('Renaissance Memory Hall')
+
+    const palaceAdd = await runCli(
+      [
+        'palace',
+        'add',
+        '1',
+        '--locus',
+        'Fountain Courtyard',
+        '--image',
+        'Gleaming obsidian fountain with cascading droplets',
+      ],
+      getActiveDbPath(),
+    )
+    expect(palaceAdd.exitCode).toBe(0)
+    expect(palaceAdd.stdout).toContain('Added locus station')
+    expect(palaceAdd.stdout).toContain('Fountain Courtyard')
+
+    const palaceList = await runCli(['palace', 'list'], getActiveDbPath())
+    expect(palaceList.exitCode).toBe(0)
+    expect(palaceList.stdout).toContain('Memory Palaces')
+    expect(palaceList.stdout).toContain('Renaissance Memory Hall')
+
+    // 3. world status & market
+    const worldStatus = await runCli(['world', 'status'], getActiveDbPath())
+    expect(worldStatus.exitCode).toBe(0)
+    expect(worldStatus.stdout).toContain('Study World Status')
+    expect(worldStatus.stdout).toContain('Study Coins')
+
+    const worldMarket = await runCli(['world', 'market'], getActiveDbPath())
+    expect(worldMarket.exitCode).toBe(0)
+    expect(worldMarket.stdout).toContain('Study World Market Catalog')
+
+    // 4. guild create, list, join, leave
+    const guildCreate = await runCli(
+      ['guild', 'create', 'Polymath Society', '--tag', 'POLY', '--leader', 'scholar'],
+      getActiveDbPath(),
+    )
+    expect(guildCreate.exitCode).toBe(0)
+    expect(guildCreate.stdout).toContain('Created guild')
+    expect(guildCreate.stdout).toContain('[POLY]')
+
+    const guildList = await runCli(['guild', 'list'], getActiveDbPath())
+    expect(guildList.exitCode).toBe(0)
+    expect(guildList.stdout).toContain('Study Guilds')
+    expect(guildList.stdout).toContain('Polymath Society')
+
+    const guildJoin = await runCli(
+      ['guild', 'join', '1', '--alias', 'apprentice'],
+      getActiveDbPath(),
+    )
+    expect(guildJoin.exitCode).toBe(0)
+    expect(guildJoin.stdout).toContain('apprentice joined guild #1')
+
+    const guildLeave = await runCli(['guild', 'leave', '--alias', 'apprentice'], getActiveDbPath())
+    expect(guildLeave.exitCode).toBe(0)
+    expect(guildLeave.stdout).toContain('apprentice left their guild')
+  }, 60000)
+
+  it('runs audio, focus load, and games CLI commands (Batch C4)', async () => {
+    // 1. audio schedule (commute and tmr)
+    const audioCommute = await runCli(['audio', 'schedule', '--kind', 'commute'], getActiveDbPath())
+    expect(audioCommute.exitCode).toBe(0)
+    expect(audioCommute.stdout).toMatch(/Audio Hands-Free Commute Queue|No due cards ready/)
+
+    const audioTmr = await runCli(
+      ['audio', 'schedule', '--kind', 'tmr', '--action', 'mint'],
+      getActiveDbPath(),
+    )
+    expect(audioTmr.exitCode).toBe(0)
+    expect(audioTmr.stdout).toContain('sleep TMR cues')
+
+    // 2. focus load
+    const focusLoad = await runCli(['focus', 'load'], getActiveDbPath())
+    expect(focusLoad.exitCode).toBe(0)
+    expect(focusLoad.stdout).toMatch(/Cognitive Load & Flow Telemetry|No cognitive telemetry/)
+
+    // 3. games status
+    const gamesStatus = await runCli(['games', 'status'], getActiveDbPath())
+    expect(gamesStatus.exitCode).toBe(0)
+    expect(gamesStatus.stdout).toContain('Solo RPG Boss Battle Status')
+    expect(gamesStatus.stdout).toContain('Mythical Boss Roster')
+    expect(gamesStatus.stdout).toContain('Chronos')
+  }, 60000)
 })

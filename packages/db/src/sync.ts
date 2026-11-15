@@ -30,19 +30,6 @@ import {
 import { getRawDb, type RawSqliteHandle } from './index'
 import { ValidationError } from './review-service'
 
-export type SyncProviderKind = 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
-
-export interface SyncConfigRecord {
-  provider: SyncProviderKind
-  config: Record<string, string>
-  encryptionEnabled: boolean
-  hasPassphrase: boolean
-  passphrase?: string | null
-  lastSyncedAt: string | null
-  lastSyncRevision: string | null
-  updatedAt: string
-}
-
 export interface MergeResult {
   tablesProcessed: number
   inserted: number
@@ -59,6 +46,10 @@ const APPEND_ONLY_TABLES = new Set([
   'friction_events',
   'course_exam_attempts',
   'study_coin_ledger',
+  'cognitive_telemetry_events',
+  'circadian_audio_sessions',
+  'dialectic_arena_debates',
+  'exposure_events',
 ])
 
 const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs', 'focus_bridge'])
@@ -204,29 +195,23 @@ export function computeRecordNaturalKey(
       return `id:${str(row['id'])}`
     case 'forest_plots':
       return `u:${str(row['user_id'])}:tree:${str(row['tree_type'])}:at:${str(row['created_at'])}`
+    case 'circadian_audio_sessions':
+      return `mode:${str(row['session_mode'])}:at:${str(row['created_at'])}`
+    case 'cognitive_telemetry_events':
+      return `card:${str(row['card_id'])}:at:${str(row['created_at'])}:load:${str(row['estimated_cli'])}`
+    case 'dialectic_arena_debates':
+      return `topic:${str(row['topic'])}:at:${str(row['created_at'])}`
+    case 'concept_dag_nodes':
+      return `id:${str(row['id'])}`
+    case 'concept_dag_edges':
+      return `prereq:${str(row['prerequisite_id'])}:dep:${str(row['dependent_id'])}`
+    case 'tmr_cues':
+      return `card:${str(row['card_id'])}`
+    case 'palace_3d_scenes':
+      return `palace:${str(row['palace_id'])}`
     default:
       return null
   }
-}
-
-/** Record a deletion tombstone so future cloud merges respect intentional deletes. */
-export function recordDeletionTombstone(
-  tableName: string,
-  recordKey: string,
-  database: RawSqliteHandle = getRawDb(),
-): void {
-  const hasTable = database
-    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sync_tombstones'")
-    .get()
-  if (!hasTable) return
-  const deletedAt = new Date().toISOString()
-  database
-    .prepare(
-      `INSERT INTO "sync_tombstones" (table_name, record_key, deleted_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(table_name, record_key) DO UPDATE SET deleted_at = excluded.deleted_at`,
-    )
-    .run(tableName, recordKey, deletedAt)
 }
 
 interface UniqueIndexSpec {
@@ -728,6 +713,54 @@ export async function mergeBackup(
         }
 
         // 4b. Mutable tables: matched local row -> domain/LWW update
+        if (table === 'tmr_cues' && matchedLocal) {
+          const cardId = matchedLocal['card_id'] as number
+          const awakeA = Number(matchedLocal['times_cued_awake'] ?? 0)
+          const awakeB = Number(remapped['times_cued_awake'] ?? 0)
+          const sleepA = Number(matchedLocal['times_cued_sleep'] ?? 0)
+          const sleepB = Number(remapped['times_cued_sleep'] ?? 0)
+          const lastSleepA = str(matchedLocal['last_sleep_cue_at'])
+          const lastSleepB = str(remapped['last_sleep_cue_at'])
+          const merged: Record<string, unknown> = {
+            ...matchedLocal,
+            times_cued_awake: Math.max(awakeA, awakeB),
+            times_cued_sleep: Math.max(sleepA, sleepB),
+            last_sleep_cue_at: (lastSleepA > lastSleepB ? lastSleepA : lastSleepB) || null,
+            overnight_gain_score:
+              remapped['overnight_gain_score'] ?? matchedLocal['overnight_gain_score'],
+          }
+          const updateCols = columns.filter((c) => c !== 'card_id')
+          database
+            .prepare(
+              `UPDATE "tmr_cues"
+               SET ${updateCols.map((c) => `"${c}" = ?`).join(', ')}
+               WHERE card_id = ?`,
+            )
+            .run(...updateCols.map((c) => normalizeBackupValue(merged[c] as never)), cardId)
+          Object.assign(matchedLocal, merged)
+          updated += 1
+          continue
+        }
+
+        if (table === 'palace_3d_scenes' && matchedLocal) {
+          const palaceId = matchedLocal['palace_id'] as number
+          const incTs = str(remapped['updated_at'])
+          const locTs = str(matchedLocal['updated_at'])
+          if (incTs > locTs) {
+            const updateCols = columns.filter((c) => c !== 'palace_id')
+            database
+              .prepare(
+                `UPDATE "palace_3d_scenes"
+                 SET ${updateCols.map((c) => `"${c}" = ?`).join(', ')}
+                 WHERE palace_id = ?`,
+              )
+              .run(...updateCols.map((c) => normalizeBackupValue(remapped[c] as never)), palaceId)
+            Object.assign(matchedLocal, { ...remapped, palace_id: palaceId })
+            updated += 1
+          }
+          continue
+        }
+
         if (matchedLocal && singleIntPk && typeof matchedLocal['id'] === 'number') {
           const localId = matchedLocal['id']
           if (typeof rawInc['id'] === 'number') {
@@ -942,242 +975,22 @@ export async function mergeBackup(
   }
 }
 
-// ─── Device-local Cloud Sync config helpers ─────────────────────────────────
+// ─── Device-local Cloud Sync config & roster re-exports ─────────────────────
 
-const SECRET_CONFIG_KEYS = new Set([
-  'accessToken',
-  'refreshToken',
-  'token',
-  'password',
-  'clientSecret',
-])
-
-/** Read device-local sync configuration; masks secrets when `maskSecrets` is true. */
-export function getSyncConfig(
-  opts: { maskSecrets?: boolean; database?: RawSqliteHandle } = {},
-): SyncConfigRecord {
-  const database = opts.database ?? getRawDb()
-  const row = database.prepare('SELECT * FROM "sync_configs" WHERE id = ?').get('default') as
-    | {
-        provider: string
-        config_json: string
-        encryption_enabled: number
-        passphrase: string | null
-        last_synced_at: string | null
-        last_sync_revision: string | null
-        updated_at: string
-      }
-    | undefined
-
-  if (!row) {
-    return {
-      provider: 'none',
-      config: {},
-      encryptionEnabled: false,
-      hasPassphrase: false,
-      passphrase: opts.maskSecrets ? undefined : null,
-      lastSyncedAt: null,
-      lastSyncRevision: null,
-      updatedAt: '',
-    }
-  }
-
-  let parsedConfig: Record<string, string> = {}
-  try {
-    const raw = JSON.parse(row.config_json) as Record<string, unknown>
-    for (const [k, v] of Object.entries(raw)) {
-      if (typeof v === 'string') parsedConfig[k] = v
-    }
-  } catch {
-    parsedConfig = {}
-  }
-
-  if (opts.maskSecrets) {
-    const masked: Record<string, string> = {}
-    for (const [k, v] of Object.entries(parsedConfig)) {
-      if (SECRET_CONFIG_KEYS.has(k) && v.length > 0) {
-        masked[k] = v.length <= 8 ? '••••' : `${v.slice(0, 4)}••••${v.slice(-3)}`
-        masked[`has_${k}`] = 'true'
-      } else {
-        masked[k] = v
-      }
-    }
-    parsedConfig = masked
-  }
-
-  return {
-    provider: (row.provider as SyncProviderKind) || 'none',
-    config: parsedConfig,
-    encryptionEnabled: Boolean(row.encryption_enabled),
-    hasPassphrase: Boolean(row.passphrase),
-    passphrase: opts.maskSecrets ? undefined : row.passphrase,
-    lastSyncedAt: row.last_synced_at,
-    lastSyncRevision: row.last_sync_revision,
-    updatedAt: row.updated_at,
-  }
-}
-
-/** Upsert device-local sync configuration, keeping existing secrets when empty strings are sent. */
-export function saveSyncConfig(
-  patch: {
-    provider?: SyncProviderKind
-    config?: Record<string, string>
-    encryptionEnabled?: boolean
-    passphrase?: string | null
-    lastSyncedAt?: string | null
-    lastSyncRevision?: string | null
-  },
-  database: RawSqliteHandle = getRawDb(),
-): SyncConfigRecord {
-  const current = getSyncConfig({ maskSecrets: false, database })
-  const nextProvider = patch.provider ?? current.provider
-  const nextConfig: Record<string, string> = { ...current.config }
-  if (patch.config) {
-    for (const [k, v] of Object.entries(patch.config)) {
-      if (k.startsWith('has_')) continue
-      // Keep existing secret when empty or masked placeholder is submitted
-      if (SECRET_CONFIG_KEYS.has(k) && (v === '' || v.includes('••••'))) continue
-      nextConfig[k] = v
-    }
-  }
-
-  const nextEncryption =
-    patch.encryptionEnabled !== undefined ? patch.encryptionEnabled : current.encryptionEnabled
-  let nextPassphrase = current.passphrase ?? null
-  if (patch.passphrase !== undefined) {
-    if (patch.passphrase === null) nextPassphrase = null
-    else if (patch.passphrase !== '' && !patch.passphrase.includes('••••')) {
-      nextPassphrase = patch.passphrase
-    }
-  }
-
-  const updatedAt = new Date().toISOString()
-  const lastSyncedAt = patch.lastSyncedAt !== undefined ? patch.lastSyncedAt : current.lastSyncedAt
-  const lastSyncRevision =
-    patch.lastSyncRevision !== undefined ? patch.lastSyncRevision : current.lastSyncRevision
-
-  database
-    .prepare(
-      `INSERT INTO "sync_configs" (id, provider, config_json, encryption_enabled, passphrase, last_synced_at, last_sync_revision, updated_at)
-       VALUES ('default', ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         provider = excluded.provider,
-         config_json = excluded.config_json,
-         encryption_enabled = excluded.encryption_enabled,
-         passphrase = excluded.passphrase,
-         last_synced_at = excluded.last_synced_at,
-         last_sync_revision = excluded.last_sync_revision,
-         updated_at = excluded.updated_at`,
-    )
-    .run(
-      nextProvider,
-      JSON.stringify(nextConfig),
-      nextEncryption ? 1 : 0,
-      nextPassphrase,
-      lastSyncedAt,
-      lastSyncRevision,
-      updatedAt,
-    )
-
-  return getSyncConfig({ maskSecrets: false, database })
-}
-
-// ─── Sync device roster (M19) ───────────────────────────────────────────────
-//
-// Device identity lives client-side (stable localStorage UUID) so rows merge
-// cleanly across snapshots: every device upserts its own row before pushing,
-// and after a pull each device sees who else shares its target.
-
-export interface SyncDeviceInput {
-  deviceId: string
-  name: string
-  platform?: string | null
-}
-
-export interface SyncDeviceRow {
-  deviceId: string
-  name: string
-  platform: string | null
-  lastPushAt: string | null
-  lastPullAt: string | null
-  lastRevision: string | null
-  createdAt: string
-}
-
-/**
- * Insert or refresh this device's roster row. Idempotent: re-syncing from the
- * same device only updates the label/platform, never duplicates rows.
- */
-export function upsertSyncDevice(
-  device: SyncDeviceInput,
-  database: RawSqliteHandle = getRawDb(),
-): void {
-  if (!device.deviceId.trim() || !device.name.trim()) {
-    throw new ValidationError('sync device requires deviceId and name')
-  }
-  database
-    .prepare(
-      `INSERT INTO "sync_devices" (device_id, name, platform, created_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(device_id) DO UPDATE SET
-         name = excluded.name,
-         platform = excluded.platform`,
-    )
-    .run(device.deviceId, device.name, device.platform ?? null, new Date().toISOString())
-}
-
-/** Record that this device pushed or pulled at `revision` (no-op if unknown device). */
-export function touchSyncDevice(
-  deviceId: string,
-  action: 'push' | 'pull',
-  revision: string | null,
-  database: RawSqliteHandle = getRawDb(),
-): void {
-  const at = new Date().toISOString()
-  database
-    .prepare(
-      action === 'push'
-        ? `UPDATE "sync_devices" SET last_push_at = ?, last_revision = ? WHERE device_id = ?`
-        : `UPDATE "sync_devices" SET last_pull_at = ?, last_revision = ? WHERE device_id = ?`,
-    )
-    .run(at, revision, deviceId)
-}
-
-/**
- * The device roster sharing this sync target, most-recently-active first.
- * `thisDeviceId` (the caller's localStorage UUID) marks which row is "here".
- */
-export function listSyncDevices(
-  thisDeviceId?: string | null,
-  database: RawSqliteHandle = getRawDb(),
-): Array<SyncDeviceRow & { isThisDevice: boolean }> {
-  const hasTable = database
-    .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sync_devices'`)
-    .get()
-  if (!hasTable) return []
-  const rows = database
-    .prepare(
-      `SELECT device_id, name, platform, last_push_at, last_pull_at, last_revision, created_at
-       FROM "sync_devices"
-       ORDER BY COALESCE(last_push_at, last_pull_at, created_at) DESC`,
-    )
-    .all() as {
-    device_id: string
-    name: string
-    platform: string | null
-    last_push_at: string | null
-    last_pull_at: string | null
-    last_revision: string | null
-    created_at: string
-  }[]
-  return rows.map((r) => ({
-    deviceId: r.device_id,
-    name: r.name,
-    platform: r.platform,
-    lastPushAt: r.last_push_at,
-    lastPullAt: r.last_pull_at,
-    lastRevision: r.last_revision,
-    createdAt: r.created_at,
-    isThisDevice: r.device_id === thisDeviceId,
-  }))
-}
+export {
+  SECRET_CONFIG_KEYS,
+  getSyncConfig,
+  saveSyncConfig,
+  upsertSyncDevice,
+  touchSyncDevice,
+  listSyncDevices,
+  recordDeletionTombstone,
+  recordTombstone,
+  listTombstones,
+  deleteTombstone,
+  type SyncProviderKind,
+  type SyncConfigRecord,
+  type SyncDeviceInput,
+  type SyncDeviceRow,
+  type SyncTombstoneRow,
+} from './repos/sync-meta'

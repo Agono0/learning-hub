@@ -2,13 +2,61 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Route, Target } from 'lucide-react'
-import { apiGet, apiSend } from '@/lib/transport'
+import { apiGet } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
 import { PageHeader } from '@/ui'
+
+/** Response of GET /api/review/stats (append-only revlog aggregates). */
+interface ReviewStatsResponse {
+  trueRetention: { total: number; retained: number; retention_pct: number | null }
+  today: { day: string; reviews: number; correct: number; avgTimeMs: number | null }
+  forecast: { date: string; count: number }[]
+}
+
+/** Today's review activity — the only UI consumer of /api/review/stats (F-08①). */
+function TodayStatsPanel() {
+  const q = useQuery({
+    queryKey: ['review-stats'],
+    queryFn: () => apiGet<ReviewStatsResponse>('/api/review/stats'),
+  })
+  const t = q.data?.today
+  const correctPct = t && t.reviews > 0 ? Math.round((t.correct / t.reviews) * 100) : null
+  return (
+    <div className="panel grid grid-cols-3 gap-3 text-center">
+      <div>
+        <p className="text-2xl font-bold tabular-nums">{t?.reviews ?? '…'}</p>
+        <p className="text-xs text-neutral-500">reviews today</p>
+      </div>
+      <div>
+        <p className="text-2xl font-bold tabular-nums text-emerald-400">{correctPct ?? '—'}</p>
+        <p className="text-xs text-neutral-500">% correct today</p>
+      </div>
+      <div>
+        <p className="text-2xl font-bold tabular-nums">
+          {t?.avgTimeMs != null ? `${Math.round(t.avgTimeMs / 100) / 10}s` : '—'}
+        </p>
+        <p className="text-xs text-neutral-500">avg per review</p>
+      </div>
+      {t && t.reviews === 0 && (
+        <p className="col-span-3 text-xs text-neutral-500">
+          No reviews yet today — stats appear after your first session.
+        </p>
+      )}
+    </div>
+  )
+}
 
 interface AnalyticsResponse {
   forecast: { date: string; count: number }[]
   calibration: { bucket: string; predicted: number | null; actual: number | null; n: number }[]
+  calibrationMetrics?: {
+    brierScore: number | null
+    meanPredicted: number | null
+    meanActual: number | null
+    bias: number | null
+    status: 'well-calibrated' | 'overconfident' | 'underconfident' | 'insufficient-data'
+    interpretation: string
+  }
   calibrationNote: string | null
   calibrationTrainer: {
     overconfidentTotal: number
@@ -87,6 +135,9 @@ export default function AnalyticsPage() {
       />
 
       <InsightsSection />
+
+      {/* today's counts — /api/review/stats (F-08①) */}
+      <TodayStatsPanel />
 
       {/* true retention + learning score */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -180,8 +231,120 @@ export default function AnalyticsPage() {
       </div>
 
       {/* calibration */}
-      <div className="panel space-y-2">
-        <p className="label">Calibration — predicted vs actual</p>
+      <div className="panel space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="label font-bold text-neutral-100">
+              Metacognitive Calibration &amp; Reliability Diagram
+            </p>
+            <p className="text-xs text-neutral-500">
+              Murphy (1973) &amp; Lichtenstein (1982): Measures whether your predicted memory
+              retention matches reality.
+            </p>
+          </div>
+          {d?.calibrationMetrics?.brierScore != null && (
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-semibold text-neutral-200">
+                Brier Score:{' '}
+                <strong className="text-indigo-400">{d.calibrationMetrics.brierScore}</strong>
+              </span>
+              <span
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                  d.calibrationMetrics.status === 'well-calibrated'
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                    : d.calibrationMetrics.status === 'overconfident'
+                      ? 'bg-rose-950 text-rose-300 border border-rose-800/50'
+                      : 'bg-indigo-950 text-indigo-300 border border-indigo-800/50'
+                }`}
+              >
+                {d.calibrationMetrics.bias != null
+                  ? `${d.calibrationMetrics.bias > 0 ? '+' : ''}${Math.round(d.calibrationMetrics.bias * 100)}% bias`
+                  : d.calibrationMetrics.status}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {d?.calibrationMetrics?.interpretation && (
+          <p className="text-xs text-neutral-400 border-l-2 border-indigo-500/60 pl-2.5">
+            {d.calibrationMetrics.interpretation}
+          </p>
+        )}
+
+        {/* Visual Reliability Diagram (SVG: Expected vs Empirical Accuracy) */}
+        {d && d.calibration.some((c) => c.actual != null) && (
+          <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-neutral-400">
+              <span>Reliability Curve (Dashed line = Ideal y=x calibration)</span>
+              <span className="text-[10px] text-neutral-500">x: predicted | y: empirical</span>
+            </div>
+            <div className="h-40 w-full flex items-center justify-center">
+              <svg
+                viewBox="0 0 240 140"
+                className="h-full w-full max-w-md overflow-visible select-none"
+              >
+                {/* Grid lines */}
+                <line x1="30" y1="120" x2="220" y2="120" stroke="#333" strokeWidth="1" />
+                <line x1="30" y1="20" x2="30" y2="120" stroke="#333" strokeWidth="1" />
+                {/* 45 degree perfect calibration line */}
+                <line
+                  x1="30"
+                  y1="120"
+                  x2="220"
+                  y2="20"
+                  stroke="#555"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                />
+
+                {/* Plot points from calibration buckets */}
+                {d.calibration.map((c) => {
+                  if (c.actual == null || c.predicted == null) return null
+                  // Map predicted [0.5..1.0] -> x [30..220]
+                  const x = 30 + ((c.predicted - 0.5) / 0.5) * 190
+                  // Map actual [0.5..1.0] -> y [120..20]
+                  const y = 120 - Math.max(0, Math.min(1, (c.actual - 0.5) / 0.5)) * 100
+                  return (
+                    <g key={c.bucket} className="cursor-pointer group">
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r="4"
+                        fill="#818cf8"
+                        stroke="#312e81"
+                        strokeWidth="1.5"
+                      />
+                      <text
+                        x={x}
+                        y={y - 7}
+                        textAnchor="middle"
+                        fill="#c7d2fe"
+                        fontSize="8"
+                        className="font-mono"
+                      >
+                        {Math.round(c.actual * 100)}%
+                      </text>
+                    </g>
+                  )
+                })}
+                {/* Axes labels */}
+                <text x="30" y="132" fill="#777" fontSize="8">
+                  50%
+                </text>
+                <text x="210" y="132" fill="#777" fontSize="8">
+                  100%
+                </text>
+                <text x="12" y="24" fill="#777" fontSize="8">
+                  100%
+                </text>
+                <text x="16" y="120" fill="#777" fontSize="8">
+                  50%
+                </text>
+              </svg>
+            </div>
+          </div>
+        )}
+
         {d?.calibrationNote && <p className="text-xs text-amber-400">{d.calibrationNote}</p>}
         <table className="w-full text-left text-xs">
           <thead className="text-neutral-500">

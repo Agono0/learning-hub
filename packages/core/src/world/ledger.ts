@@ -43,7 +43,6 @@ export function sha256Hex(ascii: string): string {
 
   for (let blockIndex = 0; blockIndex < words[lengthProperty]; blockIndex += 16) {
     const w: number[] = words.slice(blockIndex, blockIndex + 16)
-    const oldHash = hash.slice(0)
 
     for (i = 16; i < 64; i++) {
       const s0 =

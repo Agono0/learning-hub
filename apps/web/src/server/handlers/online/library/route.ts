@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { communityItemSchema } from '@learning-hub/core/online'
 import { getDefaultOnlineServer, getOnlineIdentity } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 
 const publishSchema = z.object({
   type: z.enum(['deck', 'course']),
@@ -52,7 +53,8 @@ export const GET = withRoute(async (req: Request) => {
     if (q) targetUrl.searchParams.set('q', q)
     if (type) targetUrl.searchParams.set('type', type)
 
-    const res = await fetch(targetUrl.toString(), {
+    // remoteFetch → native HTTP bridge under Tauri (webview CORS-free).
+    const res = await remoteFetch(targetUrl.toString(), {
       signal: AbortSignal.timeout(4000),
     })
 
@@ -85,7 +87,7 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   try {
-    const res = await fetch(`${server}/api/v1/library/publish`, {
+    const res = await remoteFetch(`${server}/api/v1/library/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

@@ -61,6 +61,12 @@ export async function deliverNotification(candidate: ReminderCandidate): Promise
         icon: '/icons/icon-192.png',
       })
       notif.onclick = () => {
+        // Engagement telemetry (F-08④): fire-and-forget — the click must
+        // never be delayed or blocked by a failed POST.
+        void apiSend('/api/reminders/click', 'POST', {
+          kind: candidate.kind,
+          actionUrl: candidate.actionUrl,
+        }).catch(() => {})
         window.focus()
         if (candidate.actionUrl) {
           window.location.href = candidate.actionUrl

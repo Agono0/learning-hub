@@ -4,10 +4,19 @@ declare namespace chrome {
     const onStartup: { addListener(cb: () => void): void }
     const onMessage: {
       addListener(
-        cb: (msg: any, sender: any, sendResponse: (res?: any) => void) => boolean | void,
+        cb: (
+          msg: unknown,
+          sender: MessageSender,
+          sendResponse: (res?: unknown) => void,
+        ) => boolean | void,
       ): void
     }
-    function sendMessage(msg: any): Promise<any>
+    interface MessageSender {
+      id?: string
+      url?: string
+      tab?: chrome.tabs.Tab
+    }
+    function sendMessage(msg: unknown): Promise<unknown>
     function getURL(path: string): string
     const id: string
   }
@@ -37,8 +46,10 @@ declare namespace chrome {
   }
   namespace storage {
     interface StorageArea {
-      get(keys?: string | string[] | Record<string, any> | null): Promise<Record<string, any>>
-      set(items: Record<string, any>): Promise<void>
+      get(
+        keys?: string | readonly string[] | Record<string, unknown> | null,
+      ): Promise<Record<string, unknown>>
+      set(items: Record<string, unknown>): Promise<void>
       remove(keys: string | string[]): Promise<void>
     }
     const local: StorageArea
@@ -61,6 +72,7 @@ declare namespace chrome {
     interface Tab {
       id?: number
       url?: string
+      title?: string
       status?: string
     }
     interface TabChangeInfo {
@@ -70,6 +82,38 @@ declare namespace chrome {
     function update(tabId: number, updateProperties: { url?: string }): Promise<Tab>
     const onUpdated: {
       addListener(cb: (tabId: number, changeInfo: TabChangeInfo, tab: Tab) => void): void
+    }
+  }
+  namespace contextMenus {
+    interface CreateProperties {
+      id?: string
+      title?: string
+      contexts?: Array<'all' | 'page' | 'selection' | 'link' | 'image'>
+      parentId?: string
+    }
+    interface OnClickData {
+      menuItemId: string | number
+      selectionText?: string
+      linkUrl?: string
+      pageUrl?: string
+    }
+    function create(createProperties: CreateProperties, callback?: () => void): void
+    function removeAll(callback?: () => void): void
+    const onClicked: {
+      addListener(cb: (info: OnClickData, tab?: tabs.Tab) => void): void
+    }
+  }
+  namespace webNavigation {
+    interface BeforeNavigateDetails {
+      tabId: number
+      url: string
+      processId?: number
+      frameId: number
+      parentFrameId?: number
+      timeStamp: number
+    }
+    const onBeforeNavigate: {
+      addListener(cb: (details: BeforeNavigateDetails) => void): void
     }
   }
 }

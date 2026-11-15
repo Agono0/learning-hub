@@ -22,7 +22,7 @@ export type Transaction = BetterSQLiteTransaction<
 >
 
 /** Excludes promise-like types, so an async callback is a compile-time error. */
-export type NonPromise<T> = T extends PromiseLike<any> ? never : T
+export type NonPromise<T> = T extends PromiseLike<unknown> ? never : T
 
 /**
  * Run an atomic transaction synchronously using better-sqlite3 with BEGIN IMMEDIATE behavior.

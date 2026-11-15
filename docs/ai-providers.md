@@ -41,7 +41,7 @@ registerAIProvider('my-provider', (settings) => ({
   descriptive error for a name that was never registered — callers show the
   manual mode instead.
 - `listAIProviders()` → `['none', 'anthropic', 'openai', 'openai-compatible',
-  'ollama', 'custom-endpoint']` once the adapters package has been imported.
+'ollama', 'custom-endpoint']` once the adapters package has been imported.
 - Settings are `{ provider, model, baseUrl?, apiKey?, headers? }` and come from
   the `user_settings` row (`aiProvider`, `aiModel`, `aiBaseUrl`, `aiApiKey`,
   `aiHeaders` columns).
@@ -52,7 +52,12 @@ registerAIProvider('my-provider', (settings) => ({
 interface AIClient {
   generateJSON<T>(opts: { schema: ZodType<T>; system?: string; prompt: string }): Promise<T>
   generateText(opts: { system?: string; prompt: string }): Promise<string>
-  streamChat?(opts: { system?: string; prompt?: string; messages?: ChatMessage[]; signal?: AbortSignal }): AsyncIterable<string>
+  streamChat?(opts: {
+    system?: string
+    prompt?: string
+    messages?: ChatMessage[]
+    signal?: AbortSignal
+  }): AsyncIterable<string>
 }
 ```
 
@@ -106,15 +111,15 @@ implementation.
 
 ## 3. The built-in providers (`@learning-hub/ai-adapters`)
 
-| name                | needs                                    | default model (blank = must be set in Settings) |
-| ------------------- | ---------------------------------------- | ----------------------------------------------- |
-| `anthropic`         | API key                                  | `claude-sonnet-4-5`                             |
-| `openai`            | API key                                  | `gpt-4o-mini`                                   |
-| `google`            | API key (AI Studio free tier supported)  | `gemini-2.5-flash`                              |
-| `openai-compatible` | API key + base URL                       | — (endpoint-specific, e.g. Groq / OpenRouter)   |
-| `ollama`            | base URL (default `http://localhost:11434/v1`) | `llama3.1`                                 |
-| `custom-endpoint`   | base URL (+ optional headers JSON)       | — (not sent; free-form label)                   |
-| `none`              | nothing — **the default**                | —                                               |
+| name                | needs                                          | default model (blank = must be set in Settings) |
+| ------------------- | ---------------------------------------------- | ----------------------------------------------- |
+| `anthropic`         | API key                                        | `claude-sonnet-4-5`                             |
+| `openai`            | API key                                        | `gpt-4o-mini`                                   |
+| `google`            | API key (AI Studio free tier supported)        | `gemini-2.5-flash`                              |
+| `openai-compatible` | API key + base URL                             | — (endpoint-specific, e.g. Groq / OpenRouter)   |
+| `ollama`            | base URL (default `http://localhost:11434/v1`) | `llama3.1`                                      |
+| `custom-endpoint`   | base URL (+ optional headers JSON)             | — (not sent; free-form label)                   |
+| `none`              | nothing — **the default**                      | —                                               |
 
 Registration is a side effect of importing the package:
 
@@ -143,20 +148,20 @@ used.
 
 Features and params:
 
-| feature                    | kind | params                               |
-| -------------------------- | ---- | ------------------------------------ |
-| `tutor-grade`              | text | `context`/`contextId`, `attempt`, `topic` |
-| `feynman-student`          | text | `concept`, `explanation`             |
-| `feynman-grader`           | json | `sessionId` (server reads the transcript) |
-| `course-generator`         | json | `topic`, `pdfId`, `depth`            |
-| `cloze-generator`          | json | `text` or `pdfId`                    |
-| `coach`                    | json | `date`, `tzOffset` (server reads the week) |
-| `council-optimist`         | text | `ideaId`                             |
-| `council-skeptic`          | text | `ideaId`                             |
-| `council-domain-expert`    | text | `ideaId`                             |
-| `council-devils-advocate`  | text | `ideaId`                             |
-| `brainwrite`               | json | `topic`, `ideas` (newline/`\|`-separated) |
-| `freetext-rubric`          | json | `question`, `rubric` (`\|\|`-separated), `answer`, `modelAnswer?` |
+| feature                   | kind | params                                                            |
+| ------------------------- | ---- | ----------------------------------------------------------------- |
+| `tutor-grade`             | text | `context`/`contextId`, `attempt`, `topic`                         |
+| `feynman-student`         | text | `concept`, `explanation`                                          |
+| `feynman-grader`          | json | `sessionId` (server reads the transcript)                         |
+| `course-generator`        | json | `topic`, `pdfId`, `depth`                                         |
+| `cloze-generator`         | json | `text` or `pdfId`                                                 |
+| `coach`                   | json | `date`, `tzOffset` (server reads the week)                        |
+| `council-optimist`        | text | `ideaId`                                                          |
+| `council-skeptic`         | text | `ideaId`                                                          |
+| `council-domain-expert`   | text | `ideaId`                                                          |
+| `council-devils-advocate` | text | `ideaId`                                                          |
+| `brainwrite`              | json | `topic`, `ideas` (newline/`\|`-separated)                         |
+| `freetext-rubric`         | json | `question`, `rubric` (`\|\|`-separated), `answer`, `modelAnswer?` |
 
 ## 5. Manual modes (provider `none`, the default)
 
@@ -190,5 +195,5 @@ The invariant is test-enforced: every entry in `AI_FEATURES` must have a
 3. If it needs Settings fields beyond model/baseUrl/apiKey/headers, extend
    `user_settings` + the settings API zod schema — `custom-endpoint` shows the
    pattern (`aiHeaders`).
-4. If it introduces a new *feature* (not just a provider), add it to
+4. If it introduces a new _feature_ (not just a provider), add it to
    `AI_FEATURES` **and** `MANUAL_MODES` — the pair is the contract.

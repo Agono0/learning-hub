@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals"],
+    "paths": {
+      "@/*": ["../../apps/web/src/*"],
+      "@learning-hub/core": ["../../packages/core/src/index.ts"],
+      "@learning-hub/core/*": ["../../packages/core/src/*"],
+      "@learning-hub/db": ["../../packages/db/src/index.ts"],
+      "@learning-hub/db/*": ["../../packages/db/src/*"],
+      "@learning-hub/ai-adapters": ["../../packages/ai-adapters/src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

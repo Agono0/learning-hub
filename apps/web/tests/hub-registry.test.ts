@@ -52,6 +52,20 @@ describe('hub handler registry', () => {
     expect(missing).toEqual([])
   })
 
+  it('has a Next.js shim for every registered handler method (web target)', () => {
+    // The reverse direction: a handler registered for the native hub but with no
+    // app/api shim works in Tauri yet 404s in the browser.
+    const shimmed = new Set<string>()
+    for (const file of files) {
+      const rel = relative(API_DIR, file).split(sep).slice(0, -1).join('/')
+      for (const method of exportedMethods(file)) shimmed.add(`${method} /api/${rel}`)
+    }
+    const missing = registeredRoutes()
+      .map((r) => `${r.method} ${r.path}`)
+      .filter((key) => !shimmed.has(key))
+    expect(missing).toEqual([])
+  })
+
   it('prefers literal segments over dynamic ones', () => {
     const literal = matchRoute('POST', '/api/cards/bullet')
     expect(literal?.params).toEqual({})

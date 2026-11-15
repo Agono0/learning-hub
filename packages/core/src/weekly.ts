@@ -224,12 +224,20 @@ export function computeWeeklyReportMetrics(raw: WeeklyReportRaw): WeeklyReportMe
   const slotOf = (iso: string): number | null => {
     const ms = parseMs(iso)
     if (ms == null) return null
-    const slot = Math.round((Date.parse(dayKey(new Date(ms), offsetMinutes) + 'T00:00:00Z') - startMs) / DAY_MS)
+    const slot = Math.round(
+      (Date.parse(dayKey(new Date(ms), offsetMinutes) + 'T00:00:00Z') - startMs) / DAY_MS,
+    )
     return slot >= 0 && slot < 7 ? slot : null
   }
 
   // reviews per local day + week-scoped true retention (state >= 2 = real review)
-  const days: WeeklyDayRow[] = keys.map((date) => ({ date, reviews: 0, correct: 0, xp: 0, focusMinutes: 0 }))
+  const days: WeeklyDayRow[] = keys.map((date) => ({
+    date,
+    reviews: 0,
+    correct: 0,
+    xp: 0,
+    focusMinutes: 0,
+  }))
   let retentionTotal = 0
   let retentionRetained = 0
   for (const r of raw.reviews) {
@@ -293,7 +301,12 @@ export function computeWeeklyReportMetrics(raw: WeeklyReportRaw): WeeklyReportMe
   }
 
   // weakest cards: current retrievability ascending, lapses as tie-break
-  const nowMs = raw.now == null ? Date.now() : (typeof raw.now === 'string' ? Date.parse(raw.now) : raw.now.getTime())
+  const nowMs =
+    raw.now == null
+      ? Date.now()
+      : typeof raw.now === 'string'
+        ? Date.parse(raw.now)
+        : raw.now.getTime()
   const limit = Math.max(1, Math.floor(raw.weakestLimit ?? 5))
   const ranked: WeakCard[] = []
   for (const c of raw.cards) {
@@ -303,7 +316,8 @@ export function computeWeeklyReportMetrics(raw: WeeklyReportRaw): WeeklyReportMe
     if (!history) continue // brand-new cards have no memory strength to measure
     const stability = c.stability ?? 0
     const elapsedDays = lastReviewMs == null ? 0 : Math.max(0, (nowMs - lastReviewMs) / DAY_MS)
-    const retrievability = stability > 0 && lastReviewMs != null ? calculateRetrievability(stability, elapsedDays) : null
+    const retrievability =
+      stability > 0 && lastReviewMs != null ? calculateRetrievability(stability, elapsedDays) : null
     ranked.push({
       id: c.id,
       label: c.label ?? '',
@@ -328,7 +342,8 @@ export function computeWeeklyReportMetrics(raw: WeeklyReportRaw): WeeklyReportMe
   // upcoming load: cards due on each of the NEXT 7 local days (today..+6; overdue folds into today)
   const endMs = Date.parse(weekEnd + 'T00:00:00Z')
   const forecast: WeeklyForecastBucket[] = []
-  for (let i = 0; i < 7; i++) forecast.push({ date: dayKey(new Date(endMs + i * DAY_MS)), count: 0 })
+  for (let i = 0; i < 7; i++)
+    forecast.push({ date: dayKey(new Date(endMs + i * DAY_MS)), count: 0 })
   for (const c of raw.cards) {
     if (c.suspended) continue
     const dueMs = parseMs(c.due)
@@ -374,7 +389,9 @@ export function computeWeeklyReportMetrics(raw: WeeklyReportRaw): WeeklyReportMe
     streakAtRiskToday: streak.atRisk ? 'yes' : 'no',
     weakestCard: weakestCards[0]
       ? `${weakestCards[0].label || `card #${weakestCards[0].id}`} — retrievability ${
-          weakestCards[0].retrievability == null ? 'n/a' : `${round1(weakestCards[0].retrievability * 100)}%`
+          weakestCards[0].retrievability == null
+            ? 'n/a'
+            : `${round1(weakestCards[0].retrievability * 100)}%`
         }, ${weakestCards[0].lapses} lapse(s)`
       : null,
     cardsDueNext7Days: upcomingTotal,
@@ -414,21 +431,24 @@ export function ruleBasedSuggestions(m: WeeklyReportMetrics): WeeklySuggestion[]
     out.push({
       title: 'Protect your streak — one card is enough',
       evidence: `streak at ${m.streak.current} day(s), last active ${m.streak.lastActiveDate ?? 'unknown'}, and 0 reviews today (${m.weekEnd}).`,
-      action: 'Do at least one card review before your local midnight — an emergency 1-card review keeps the chain alive.',
+      action:
+        'Do at least one card review before your local midnight — an emergency 1-card review keeps the chain alive.',
     })
   }
   if (m.totals.reviews === 0) {
     out.push({
       title: 'Rebuild the habit small',
       evidence: `0 reviews and ${m.totals.xp} XP logged across the whole week (${m.weekStart} … ${m.weekEnd}).`,
-      action: 'Start with a single 5-minute session today: clear the smallest deck due queue and stop there.',
+      action:
+        'Start with a single 5-minute session today: clear the smallest deck due queue and stop there.',
     })
   }
   if (m.trueRetention.rate != null && m.trueRetention.rate < 0.9) {
     out.push({
       title: 'Quality before volume',
       evidence: `true retention is ${m.trueRetention.pct}% over ${m.trueRetention.total} mature review(s) — below the 90% target.`,
-      action: 'Pause new cards for a few days and relearn the lapses first; accuracy recovers, then volume returns.',
+      action:
+        'Pause new cards for a few days and relearn the lapses first; accuracy recovers, then volume returns.',
     })
   }
   if (m.weakestCards.length > 0 && m.weakestCards[0]) {
@@ -438,7 +458,8 @@ export function ruleBasedSuggestions(m: WeeklyReportMetrics): WeeklySuggestion[]
       out.push({
         title: 'Drill your leakiest cards',
         evidence: `"${w.label || `card #${w.id}`}" sits at ${pctStr(w.retrievability)} retrievability with ${w.lapses} lapse(s) — ${m.weakestCards.length} weak card(s) found.`,
-        action: 'Relearn the 3 weakest cards today and rewrite the memory hook (a sharper image or example) for each one.',
+        action:
+          'Relearn the 3 weakest cards today and rewrite the memory hook (a sharper image or example) for each one.',
       })
     }
   }
@@ -458,7 +479,8 @@ export function ruleBasedSuggestions(m: WeeklyReportMetrics): WeeklySuggestion[]
       out.push({
         title: 'Recalibrate your confidence',
         evidence: `the scheduler predicted ${pctStr(predicted)} recall but you kept ${pctStr(actual)} across ${m.calibration.n} scored review(s) (overconfidence +${round1(delta * 100)}pts).`,
-        action: 'Grade honestly — press Again the moment recall wobbles, and treat Easy as earned only after clean recalls.',
+        action:
+          'Grade honestly — press Again the moment recall wobbles, and treat Easy as earned only after clean recalls.',
       })
     }
   }
@@ -469,7 +491,8 @@ export function ruleBasedSuggestions(m: WeeklyReportMetrics): WeeklySuggestion[]
       out.push({
         title: 'Trust your memory (it beats the model)',
         evidence: `the scheduler predicted ${pctStr(predicted)} recall but you kept ${pctStr(actual)} across ${m.calibration.n} scored review(s).`,
-        action: 'Lower desired retention toward 0.85 in Settings to cut review volume — your actual recall is comfortably above the model.',
+        action:
+          'Lower desired retention toward 0.85 in Settings to cut review volume — your actual recall is comfortably above the model.',
       })
     }
   }
@@ -485,7 +508,8 @@ export function ruleBasedSuggestions(m: WeeklyReportMetrics): WeeklySuggestion[]
     out.push({
       title: 'Keep doing exactly this',
       evidence: `${m.trueRetention.pct}% true retention on ${m.totals.reviews} review(s) is at or above target.`,
-      action: 'Same schedule next week — protect the daily review block before adding anything new.',
+      action:
+        'Same schedule next week — protect the daily review block before adding anything new.',
     })
   }
   if (m.totals.focusMinutes >= 120) {
@@ -510,17 +534,20 @@ export function ruleBasedSuggestions(m: WeeklyReportMetrics): WeeklySuggestion[]
     {
       title: 'Plan the review block',
       evidence: `${m.totals.reviews} review(s) and ${m.totals.xp} XP this week; ${m.upcomingTotal} card(s) already due in the next 7 days.`,
-      action: 'Put three fixed review slots in next week’s calendar and let the scheduler’s due queue decide the size.',
+      action:
+        'Put three fixed review slots in next week’s calendar and let the scheduler’s due queue decide the size.',
     },
     {
       title: 'Clear the backlog before adding anything',
       evidence: `${m.upcomingTotal} card(s) due in the next 7 days; ${m.streak.freezes} streak freeze(s) banked.`,
-      action: 'Work only the due queue next week — no new cards until the backlog is under half this size.',
+      action:
+        'Work only the due queue next week — no new cards until the backlog is under half this size.',
     },
     {
       title: 'Bank the wins where you can see them',
       evidence: `${m.totals.xp} XP earned across ${m.streak.daysActive} active day(s) this week.`,
-      action: 'Write one journal sentence per active day naming what made it work — visible wins drive the next week.',
+      action:
+        'Write one journal sentence per active day naming what made it work — visible wins drive the next week.',
     },
   ]
   for (const f of fillers) {
@@ -550,7 +577,10 @@ const weakCardSchema = z.object({
   due: z.string(),
 })
 
-const forecastBucketSchema = z.object({ date: z.string().regex(dayKeyRegex), count: z.number().int() })
+const forecastBucketSchema = z.object({
+  date: z.string().regex(dayKeyRegex),
+  count: z.number().int(),
+})
 
 /** The weekly metrics block of the API response. */
 export const weeklyMetricsSchema = z.object({

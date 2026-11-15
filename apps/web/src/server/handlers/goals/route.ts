@@ -1,13 +1,11 @@
-import { desc } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '@/lib/db'
-import { goals } from '@learning-hub/db'
+import { createGoal, listGoals } from '@learning-hub/db'
 import { MAX_IF_THEN_CHARS, validateWoopGoal } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
 /** GET /api/goals — WOOP goals, newest first. */
 export async function GET() {
-  const rows = db.select().from(goals).orderBy(desc(goals.createdAt)).all()
+  const rows = listGoals()
   return Response.json({ goals: rows })
 }
 
@@ -51,10 +49,14 @@ export const POST = withRoute(async (req: Request) => {
     )
   }
 
-  const [row] = db
-    .insert(goals)
-    .values({ wish: wish.trim(), outcome, obstacle, ifThenPlan, ifCondition, thenAction, dueDate })
-    .returning()
-    .all()
+  const row = createGoal({
+    wish: wish.trim(),
+    outcome,
+    obstacle,
+    ifThenPlan,
+    ifCondition,
+    thenAction,
+    dueDate,
+  })
   return Response.json({ goal: row }, { status: 201 })
 })

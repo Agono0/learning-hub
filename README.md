@@ -4,9 +4,9 @@
 
 **The research-backed self-learning system** — every high-effect learning method from the literature (spaced repetition, retrieval practice, interleaving, elaboration, teach-back, memory palaces…), plus addiction defense, motivation science, quotes, an AI-agent-accessible idea system, and a Coursera-style curriculum engine. Local-first. TypeScript. Any AI agent can drive it via MCP.
 
-[![CI](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml/badge.svg "CI status")](https://github.com/learning-hub/learning-hub/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg "MIT license")](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A522-blue.svg "Node 22+")](https://nodejs.org)
+[![CI](https://github.com/Agono0/learning-hub/actions/workflows/ci.yml/badge.svg 'CI status')](https://github.com/Agono0/learning-hub/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg 'MIT license')](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A524-blue.svg 'Node 24+')](https://nodejs.org)
 
 </div>
 
@@ -19,12 +19,12 @@
 ![Weekly report](docs/screenshots/weekly.png)
 -->
 
-| Screenshot | Description |
-| --- | --- |
-| `docs/screenshots/dashboard.png` *(add later)* | Dashboard — due count, streak, quests, daily quote |
-| `docs/screenshots/review.png` *(add later)* | Keyboard-driven review session with FSRS scheduling |
-| `docs/screenshots/focus.png` *(add later)* | Focus mode with the friction gate (10 s countdown + breathing + reflection) |
-| `docs/screenshots/weekly.png` *(add later)* | Weekly report — metrics, weakest cards, forecast, suggestions |
+| Screenshot                                     | Description                                                                 |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `docs/screenshots/dashboard.png` _(add later)_ | Dashboard — due count, streak, quests, daily quote                          |
+| `docs/screenshots/review.png` _(add later)_    | Keyboard-driven review session with FSRS scheduling                         |
+| `docs/screenshots/focus.png` _(add later)_     | Focus mode with the friction gate (10 s countdown + breathing + reflection) |
+| `docs/screenshots/weekly.png` _(add later)_    | Weekly report — metrics, weakest cards, forecast, suggestions               |
 
 ## Quick start
 
@@ -64,30 +64,31 @@ Add to `%APPDATA%\Claude\claude_desktop_config.json` (or `.mcp.json` for Claude 
 
 (On Windows never spawn bare `npx` — use `node --import tsx <abs path>`.)
 
-Tools: `idea_create`, `idea_search`, `idea_connect`, `idea_evolve`, `idea_list_inbox`, `note_create`, `note_search`, `review_log`, `review_stats`, `goal_woop`, `goal_list`, `focus_summary`, `quote_random`, `card_generate` · Resources: `idea://{id}`, `note://{id}`, `graph://overview`.
+Tools: 51 built-in tools across all 13 knowledge, review, focus, and cognitive domains + dynamic plugin contributions · Resources: `idea://{id}`, `note://{id}`, `graph://overview`.
 
 Inspect: `npx @modelcontextprotocol/inspector node --import tsx apps/mcp/src/index.ts`
 
 ## Headless server, Anki in/out, weekly report
 
-- **Headless REST server** — `npm run serve` exposes the same brain over Node 22+ native `http` (no web framework): `GET /today`, `GET /decks`, `POST /review`, `POST /review/batch`, `GET /stats`, `GET /plugins`, plus optional webhooks on the event bus (`LEARNING_HUB_WEBHOOKS`). Binds `127.0.0.1` by default and ships **no auth** — see [`docs/api-server.md`](docs/api-server.md) before widening the host.
+- **Headless REST server** — `npm run serve` exposes the same brain over Node 24+ native `http` (no web framework): `GET /today`, `GET /decks`, `POST /review`, `POST /review/batch`, `GET /stats`, `GET /plugins`, plus optional webhooks on the event bus (`LEARNING_HUB_WEBHOOKS`). Binds `127.0.0.1` by default and ships **no auth** — see [`docs/api-server.md`](docs/api-server.md) before widening the host.
 - **Anki import/export** — Settings → Import accepts Anki `.apkg` (≤ 50 MB), Anki plain-text exports (TSV with `#separator`/`#html` headers), and our deck JSON; invalid cards are skipped and reported, never half-inserted. Export any deck as Anki-importable `.txt` (cloze syntax restored) or full-fidelity JSON via `/api/export`.
 - **Weekly report** — `GET /api/weekly` computes metrics, weakest cards, the 30-day forecast and study suggestions over your real rows (local-day bucketed, deterministic math); suggestions are AI-optional — with a provider you get evidence-based coaching, without one you get a rule-based summary plus a copy-paste coach prompt ([`docs/ai-providers.md`](docs/ai-providers.md)).
 
 ## AI is optional, not required
 
-Learning HUB runs **fully without AI** — `none` is the default provider, every AI surface shows its manual alternative, and no API key is ever needed. When you *do* want AI (Settings → AI provider):
+Learning HUB runs **fully without AI** — `none` is the default provider, every AI surface shows its manual alternative, and no API key is ever needed. When you _do_ want AI (Settings → AI provider):
 
-| Provider | Needs | Notes |
-| --- | --- | --- |
-| `anthropic` | API key | default model `claude-sonnet-4-5` |
-| `openai` | API key | default model `gpt-4o-mini` |
-| `openai-compatible` | API key + base URL | GLM, DeepSeek, any OpenAI-compatible endpoint |
-| `ollama` | base URL (default `http://localhost:11434/v1`) | local, free |
-| `custom-endpoint` | base URL (+ optional headers JSON) | **any** HTTP service becomes a provider — POST `{ v, feature, system, prompt, schema }`, respond `{ result }` |
-| `none` | nothing | **the default** |
+| Provider            | Needs                                          | Notes                                                                                                         |
+| ------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `anthropic`         | API key                                        | default model `claude-sonnet-4-5`                                                                             |
+| `openai`            | API key                                        | default model `gpt-4o-mini`                                                                                   |
+| `google`            | API key                                        | default model `gemini-2.5-flash` (@ai-sdk/google)                                                             |
+| `openai-compatible` | API key + base URL                             | GLM, DeepSeek, any OpenAI-compatible endpoint                                                                 |
+| `ollama`            | base URL (default `http://localhost:11434/v1`) | local, free                                                                                                   |
+| `custom-endpoint`   | base URL (+ optional headers JSON)             | **any** HTTP service becomes a provider — POST `{ v, feature, system, prompt, schema }`, respond `{ result }` |
+| `none`              | nothing                                        | **the default**                                                                                               |
 
-- **Prompt transport (copy-paste mode)** — every AI feature can be driven with no provider at all: fetch the self-contained prompt envelope (`GET /api/ai/transport?feature=…`), paste it into any chatbot, paste the raw reply back — the app strips fences, extracts the JSON and validates it with the *same* zod schema an in-process provider must satisfy.
+- **Prompt transport (copy-paste mode)** — every AI feature can be driven with no provider at all: fetch the self-contained prompt envelope (`GET /api/ai/transport?feature=…`), paste it into any chatbot, paste the raw reply back — the app strips fences, extracts the JSON and validates it with the _same_ zod schema an in-process provider must satisfy.
 - **Manual modes** — every feature has a structured manual alternative (Socratic → self-explain ladder, Feynman → teach a real person + rubric, course generator → manual curriculum builder, ideas council → four persona prompts on paper…). The invariant "every AI feature has a manual mode" is test-enforced.
 
 Full details: the provider registry, the custom-endpoint HTTP contract, the feature list and the "add a provider" checklist live in [`docs/ai-providers.md`](docs/ai-providers.md).
@@ -118,14 +119,14 @@ flowchart LR
     subgraph surfaces ["Surfaces — one brain, many doors"]
         WEB["apps/web<br/>Next.js 16 · React 19<br/>Tailwind 4"]
         SERVE["apps/server<br/>headless REST<br/>(node:http)"]
-        MCP["apps/mcp<br/>MCP stdio server<br/>14 tools"]
-        CLI["apps/cli<br/>terminal adapter"]
+        MCP["apps/mcp<br/>MCP stdio server<br/>51 tools"]
+        CLI["apps/cli<br/>terminal adapter<br/>25 commands"]
     end
 
     subgraph packages ["Packages"]
         CORE["packages/core<br/>pure domain logic:<br/>FSRS-6 · BKT/Elo · XP · streaks<br/>linter · prompts · event bus · plugin loader"]
         AIC["packages/ai-adapters<br/>the ONLY package allowed<br/>to import the AI SDK<br/>anthropic · openai · openai-compatible<br/>ollama · custom-endpoint"]
-        DB["packages/db<br/>better-sqlite3 + drizzle-orm<br/>45 tables · WAL<br/>canonical review service<br/>(one atomic transaction)"]
+        DB["packages/db<br/>better-sqlite3 + drizzle-orm<br/>92 tables · WAL · 40 repos<br/>canonical review service<br/>(one atomic transaction)"]
     end
 
     SQLITE[("SQLite<br/>data/learning-hub.db<br/>append-only revlog / xp_events /<br/>friction_events / elo_events")]
@@ -173,12 +174,11 @@ Released under the [MIT License](./LICENSE). © 2026 Learning HUB contributors.
 
 ## Roadmap (deferred)
 
-Multi-device sync v1 (E2EE over the user's own cloud targets) · AI video-call
-roleplay · party boss battles · FSRS optimizer UI (the 21-parameter optimizer
-already ships in `packages/core/src/fsrs-optimizer.ts`) · browser-extension
-friction capture · full CRDT sync. Active milestone planning:
-[docs/plan-M19-M21.md](docs/plan-M19-M21.md).
+- AI video-call roleplay — deliberate: synchronous video adds hosting cost and
+  complexity; the voice tutor (offline-capable) covers the pedagogy today.
+- Full CRDT sync — LWW sync v1 is live; CRDT merge is the follow-up when
+  concurrent-edit evidence justifies it (see [docs/plan-M19-M21.md](docs/plan-M19-M21.md)).
 
-Shipped since this list was last pruned: per-card TTS, web-push reminders,
-on-device FSRS-6 weight optimization, native Windows/Android shells, E2EE
-cloud backup sync — see [CHANGELOG.md](CHANGELOG.md).
+Shipped items (Multi-device sync v1 E2EE, party boss battles, FSRS optimizer UI,
+browser-extension friction capture, per-card TTS, native Windows/Android shells)
+live in [CHANGELOG.md](CHANGELOG.md).

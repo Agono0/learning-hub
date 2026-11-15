@@ -28,8 +28,8 @@ import { z } from 'zod'
 import { definePlugin } from '@learning-hub/core'
 
 export default definePlugin({
-  name: 'my-plugin',       // unique, stable — also the dedupe key
-  version: '1.0.0',        // shown in boot logs and help
+  name: 'my-plugin', // unique, stable — also the dedupe key
+  version: '1.0.0', // shown in boot logs and help
   description: 'One line.',
   setup(ctx) {
     // 1. react to platform events (typed payloads)
@@ -47,7 +47,7 @@ export default definePlugin({
     ctx.mcpTools.push({
       name: 'my_tool',
       description: 'Agent-facing tool.',
-      inputSchema: { phrase: z.string() },          // zod raw shape
+      inputSchema: { phrase: z.string() }, // zod raw shape
       handler: ({ phrase }) => ({ content: [{ type: 'text', text: phrase }] }),
     })
   },
@@ -60,12 +60,12 @@ malformed plugin fails at load time with a precise message. `setup` may be
 
 What `ctx` gives you (`PluginContext` in `packages/core/src/plugin.ts`):
 
-| member         | type                          | notes                                                        |
-| -------------- | ----------------------------- | ------------------------------------------------------------ |
-| `ctx.events`   | `Pick<EventBus, 'on' \| 'off' \| 'once'>` | The shared platform bus, subscribe-side only. Plugins never `emit`. |
-| `ctx.logger`   | `PluginLogger`                | Console wrapper prefixed `[plugin:<name>]` — use it instead of bare `console`. |
-| `ctx.mcpTools` | `McpToolContribution[]`       | Push MCP tools here during `setup`.                          |
-| `ctx.cliCommands` | `CliCommandContribution[]` | Push CLI commands here during `setup`.                       |
+| member            | type                                      | notes                                                                          |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
+| `ctx.events`      | `Pick<EventBus, 'on' \| 'off' \| 'once'>` | The shared platform bus, subscribe-side only. Plugins never `emit`.            |
+| `ctx.logger`      | `PluginLogger`                            | Console wrapper prefixed `[plugin:<name>]` — use it instead of bare `console`. |
+| `ctx.mcpTools`    | `McpToolContribution[]`                   | Push MCP tools here during `setup`.                                            |
+| `ctx.cliCommands` | `CliCommandContribution[]`                | Push CLI commands here during `setup`.                                         |
 
 `ctx.events.on(...)` returns an unsubscribe function; `off(listener)` and
 `once(event, listener)` behave as expected.
@@ -77,18 +77,18 @@ in `packages/core/src/events.ts` is how a new extension point is born — the
 emitter belongs in the subsystem that commits the fact, **after** the commit,
 so listeners always observe durable state.
 
-| event                     | payload                                | emitted by                                            |
-| ------------------------- | -------------------------------------- | ----------------------------------------------------- |
-| `review.completed`        | `{ cardId, grade, xpEarned }`          | review engine, per card, after the transaction commits |
-| `review.batch.completed`  | `{ count }`                            | review engine, once per successful transaction         |
-| `streak.updated`          | `{ current, best }`                    | streak machinery (when the streak row changes)         |
-| `streak.broken`           | `{}`                                   | streak machinery                                       |
-| `card.created`            | `{ deckId, count }`                    | card generators, once per created batch                |
-| `focus.completed`         | `{ durationMs }`                       | web focus-complete route                               |
-| `quest.completed`         | `{ questId }`                          | web quest-complete route (quest date is the id)        |
-| `goal.completed`          | `{ goalId }`                           | goal completion flows                                  |
-| `habit.checked`           | `{ habitId }`                          | habit check-off flows                                  |
-| `achievement.unlocked`    | `{ achievementId }`                    | achievement unlocks (the badge `key`)                  |
+| event                    | payload                       | emitted by                                             |
+| ------------------------ | ----------------------------- | ------------------------------------------------------ |
+| `review.completed`       | `{ cardId, grade, xpEarned }` | review engine, per card, after the transaction commits |
+| `review.batch.completed` | `{ count }`                   | review engine, once per successful transaction         |
+| `streak.updated`         | `{ current, best }`           | streak machinery (when the streak row changes)         |
+| `streak.broken`          | `{}`                          | streak machinery                                       |
+| `card.created`           | `{ deckId, count }`           | card generators, once per created batch                |
+| `focus.completed`        | `{ durationMs }`              | web focus-complete route                               |
+| `quest.completed`        | `{ questId }`                 | web quest-complete route (quest date is the id)        |
+| `goal.completed`         | `{ goalId }`                  | goal completion flows                                  |
+| `habit.checked`          | `{ habitId }`                 | habit check-off flows                                  |
+| `achievement.unlocked`   | `{ achievementId }`           | achievement unlocks (the badge `key`)                  |
 
 Dispatch is **synchronous**: `emit` returns after every listener has run.
 A throwing listener is isolated — caught, logged via `console.error` as
@@ -100,9 +100,10 @@ an emit take effect on the NEXT emit (each emit iterates a snapshot).
 
 ```ts
 ctx.mcpTools.push({
-  name: 'plugin_stats',                    // snake_case like built-in tools
+  name: 'plugin_stats', // snake_case like built-in tools
   description: 'Weekly learning stats for the current user.',
-  inputSchema: {                            // zod RAW SHAPE (not z.object)
+  inputSchema: {
+    // zod RAW SHAPE (not z.object)
     week: z.number().int().min(1).max(52).default(1),
   },
   handler: async ({ week }) => ({
@@ -125,7 +126,7 @@ ctx.mcpTools.push({
 
 ```ts
 ctx.cliCommands.push({
-  name: 'hub-echo',                         // invoked as `learning-hub hub-echo …`
+  name: 'hub-echo', // invoked as `learning-hub hub-echo …`
   description: 'echo the given arguments back',
   run: (args) => console.log(args.join(' ')),
 })

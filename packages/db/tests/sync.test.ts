@@ -147,7 +147,7 @@ describe('Smart Merge, Secret Isolation & Free Cloud Sync', () => {
       })
       .run()
     await executeReview(
-      { cardId: 1, grade: 4, confidence: 2, timeMs: 1800 },
+      { cardId: 1, grade: 4, confidence: 1, timeMs: 1800 },
       { db: phone.db as never, now: new Date('2026-10-01T12:00:00.000Z') },
     )
 
@@ -206,7 +206,7 @@ describe('Smart Merge, Secret Isolation & Free Cloud Sync', () => {
       { db: devA.db as never, now: new Date('2026-10-02T10:00:00.000Z') },
     )
     await executeReview(
-      { cardId: 10, grade: 4, confidence: 2, timeMs: 1900 },
+      { cardId: 10, grade: 4, confidence: 1, timeMs: 1900 },
       { db: devB.db as never, now: new Date('2026-10-05T10:00:00.000Z') },
     )
 

@@ -56,6 +56,7 @@ export function ExercisePractice({
   index,
   total,
   onAnswered,
+  isPretest,
 }: {
   cardId: number
   exercise: Exercise
@@ -63,6 +64,7 @@ export function ExercisePractice({
   index?: number
   total?: number
   onAnswered?: (response: PracticeResponse) => void
+  isPretest?: boolean
 }) {
   const [value, setValue] = useState<AnswerValue | undefined>(() => defaultAnswer(exercise))
   const [confidence, setConfidence] = useState<0 | 1>(1)
@@ -81,6 +83,7 @@ export function ExercisePractice({
         answer: value ?? defaultAnswer(exercise),
         confidence,
         timeMs: Date.now() - startedAt,
+        pretest: isPretest,
       })
       setResponse(r)
       onAnswered?.(r)
@@ -98,6 +101,7 @@ export function ExercisePractice({
     <article className="panel space-y-4" aria-label={`Exercise ${index ?? ''}`}>
       <header className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
         <Badge tone="accent">{TYPE_LABEL[exercise.type]}</Badge>
+        {isPretest && <Badge tone="neutral">Priming Pretest</Badge>}
         {index !== undefined && total !== undefined && (
           <span>
             {index} of {total}
@@ -191,11 +195,15 @@ export function ExercisePractice({
                 : result && result.score > 0
                   ? `Partly right (${Math.round(result.score * 100)}%)`
                   : 'Not yet'}
-            {response.review && (
+            {response.review ? (
               <span className="ml-auto text-xs font-normal text-neutral-500">
                 Next review {dueLabel(response.review.due)}
               </span>
-            )}
+            ) : isPretest ? (
+              <span className="ml-auto text-xs font-medium text-indigo-400">
+                Mind primed for study (Excluded from Elo/BKT)
+              </span>
+            ) : null}
           </div>
           {/* the header already says "Correct" — don't repeat a bare "Correct." line */}
           {result?.feedback

@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculateMatchingAccuracy,
-  calculateMatchingXp,
   cardSides,
   evaluateMatchingGame,
   generateMapping,
@@ -26,12 +25,26 @@ function gameCard(overrides: Partial<GameCard> = {}): GameCard {
 describe('cardSides', () => {
   it('extracts sides per format', () => {
     expect(cardSides({ basic: { front: 'Q', back: 'A' } })).toEqual({ left: 'Q', right: 'A' })
-    expect(cardSides({ mcq: { question: 'Q', options: ['a', 'b'], correctIndex: 1 } })).toEqual({ left: 'Q', right: 'b' })
-    expect(cardSides({ typein: { question: 'Q', acceptedAnswers: ['x', 'xx'] } })).toEqual({ left: 'Q', right: 'x' })
-    expect(cardSides({ cloze: { text: 'a {{c1::b}} c', answers: ['b'], mode: 'basic' } })).toEqual({ left: 'a ___ c', right: 'b' })
-    expect(cardSides({ grammar: { sentence: 'S', pattern: 'P', target: 'T' } })).toEqual({ left: 'S', right: 'T' })
+    expect(cardSides({ mcq: { question: 'Q', options: ['a', 'b'], correctIndex: 1 } })).toEqual({
+      left: 'Q',
+      right: 'b',
+    })
+    expect(cardSides({ typein: { question: 'Q', acceptedAnswers: ['x', 'xx'] } })).toEqual({
+      left: 'Q',
+      right: 'x',
+    })
+    expect(cardSides({ cloze: { text: 'a {{c1::b}} c', answers: ['b'], mode: 'basic' } })).toEqual({
+      left: 'a ___ c',
+      right: 'b',
+    })
+    expect(cardSides({ grammar: { sentence: 'S', pattern: 'P', target: 'T' } })).toEqual({
+      left: 'S',
+      right: 'T',
+    })
     expect(
-      cardSides({ proof_step: { theorem: 'T', proofSteps: ['s1'], stepIndex: 0, justification: 'hyp' } }),
+      cardSides({
+        proof_step: { theorem: 'T', proofSteps: ['s1'], stepIndex: 0, justification: 'hyp' },
+      }),
     ).toEqual({ left: 'T — step 1', right: 'hyp' })
   })
 
@@ -56,7 +69,9 @@ describe('generateMatchingPairs', () => {
     expect(out.pairs.map((p) => p.cardId).sort()).toEqual([1, 2, 3])
     // lefts stable, rights is a permutation of the same pairs
     expect(out.lefts).toEqual(out.pairs)
-    expect([...out.rights].sort((a, b) => a.cardId - b.cardId)).toEqual([...out.pairs].sort((a, b) => a.cardId - b.cardId))
+    expect([...out.rights].sort((a, b) => a.cardId - b.cardId)).toEqual(
+      [...out.pairs].sort((a, b) => a.cardId - b.cardId),
+    )
   })
 
   it('caps at maxPairs', () => {
@@ -77,7 +92,11 @@ describe('generateMapping', () => {
     gameCard({ id: 2, tags: ['verbs'], content: { basic: { front: 'finir', back: 'to finish' } } }),
     gameCard({ id: 3, tags: ['nouns'], content: { basic: { front: 'maison', back: 'house' } } }),
     gameCard({ id: 4, tags: ['nouns'], content: { basic: { front: 'livre', back: 'book' } } }),
-    gameCard({ id: 5, tags: ['ai'], content: { basic: { front: 'utility', back: 'tag skipped' } } }),
+    gameCard({
+      id: 5,
+      tags: ['ai'],
+      content: { basic: { front: 'utility', back: 'tag skipped' } },
+    }),
   ]
 
   it('groups by first meaningful tag and reports playability', () => {
@@ -161,4 +180,3 @@ describe('calculateMatchingXp & evaluateMatchingGame (DEF-007)', () => {
     expect(res.xp).toBe(8)
   })
 })
-

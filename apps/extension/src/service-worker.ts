@@ -5,28 +5,20 @@
  * applies Declarative Net Request rules, and fail-closed guards active sessions.
  */
 import { buildDnrRules } from '@learning-hub/core/focus-lock'
+import {
+  buildCardCreate,
+  buildReaderIngest,
+  captureEndpoints,
+  resolveDeck,
+  sendToFirst,
+} from './capture'
+import { buildFrictionReport, decideFriction } from './friction'
+import { DEFAULT_PORT, STATE_KEYS, parseStoredState, type ExtensionState } from './state'
 
-interface ExtensionState {
-  pairingToken?: string
-  loopbackPort?: number
-  lastKnownLock?: {
-    active: boolean
-    endsAt: string | null
-    domains: string[]
-  } | null
-  lastCheckedAt?: number
-}
-
-const DEFAULT_PORT = 47615
 const ALARM_NAME = 'lh-focus-poll'
 
 async function getState(): Promise<ExtensionState> {
-  const data = await chrome.storage.local.get(['pairingToken', 'loopbackPort', 'lastKnownLock'])
-  return {
-    pairingToken: data.pairingToken,
-    loopbackPort: data.loopbackPort || DEFAULT_PORT,
-    lastKnownLock: data.lastKnownLock || null,
-  }
+  return parseStoredState(await chrome.storage.local.get(STATE_KEYS))
 }
 
 async function saveState(patch: Partial<ExtensionState>): Promise<void> {
@@ -147,13 +139,55 @@ async function syncLockStatus(): Promise<void> {
 
 // ─── Event Listeners ────────────────────────────────────────────────────────
 
+function setupContextMenus(): void {
+  try {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: 'lh-save-reader',
+        title: 'Save to Learning HUB Reader',
+        contexts: ['page', 'link'],
+      })
+      chrome.contextMenus.create({
+        id: 'lh-create-card',
+        title: 'Create Flashcard from "%s"',
+        contexts: ['selection'],
+      })
+    })
+  } catch {
+    // Context menus not supported in this runtime
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.alarms.create(ALARM_NAME, { periodInMinutes: 0.5 })
   void syncLockStatus()
+  setupContextMenus()
 })
 
 chrome.runtime.onStartup.addListener(() => {
   void syncLockStatus()
+  setupContextMenus()
+})
+
+chrome.contextMenus?.onClicked.addListener(async (info, tab) => {
+  const state = await getState()
+  const bases = captureEndpoints(state.loopbackPort || DEFAULT_PORT)
+
+  if (info.menuItemId === 'lh-save-reader') {
+    // A link click saves the link target, so only use the tab title for the page itself.
+    const targetUrl = info.linkUrl || info.pageUrl || tab?.url
+    const title = info.linkUrl ? undefined : tab?.title
+    const req = buildReaderIngest(targetUrl, title)
+    if (req) await sendToFirst(fetch, bases, req)
+    return
+  }
+
+  if (info.menuItemId === 'lh-create-card') {
+    const target = await resolveDeck(fetch, bases)
+    if (!target) return // no backend reachable, or no deck to put the card in
+    const req = buildCardCreate(info.selectionText, target.deckId, info.pageUrl || tab?.url)
+    if (req) await sendToFirst(fetch, [target.base], req)
+  }
 })
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -183,4 +217,22 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, _tab) => {
       chrome.tabs.update(tabId, { url: chrome.runtime.getURL('blocked.html?reason=settings') })
     }
   }
+})
+
+// ─── Friction capture (F-10) ────────────────────────────────────────────────
+// onBeforeNavigate reports the ORIGINAL target before DNR rewrites it to
+// blocked.html — exactly the attempt we want to record. Fire-and-forget: the
+// report can never block or slow the navigation itself.
+chrome.webNavigation?.onBeforeNavigate?.addListener((details) => {
+  void (async () => {
+    try {
+      const state = await getState()
+      const decision = decideFriction(state.lastKnownLock, details.url, Date.now())
+      if (!decision.record || !decision.payload) return
+      const req = buildFrictionReport({ ...decision, record: true, payload: decision.payload })
+      await sendToFirst(fetch, captureEndpoints(state.loopbackPort || DEFAULT_PORT), req)
+    } catch {
+      // Telemetry must never surface as an extension error.
+    }
+  })()
 })

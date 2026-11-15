@@ -5,16 +5,12 @@ import {
   parseDelimitedRows,
   parseTags,
   sanitizeAnkiHtml,
-  expandReversedCards,
   expandClozeCard,
 } from '../src/anki'
 import {
-  clozeSegments,
   evaluateClozeAnswer,
-  evaluateTypeinAnswer,
   isCardAnswerCorrect,
-  normalizeAnswer,
-  parseCloze,
+  isCardFormat,
   validateCardContent,
 } from '../src/cards'
 
@@ -167,10 +163,7 @@ describe('Anki Metadata Comments & Header Variation Tests', () => {
     expect(res.cards[0]!.back).toBe('Back')
 
     // Document BUG 6 fix: If unknown separator name is given, it falls back to autodetected delimiter
-    const unknownSepInput = [
-      '#separator:unknown_custom_separator',
-      'Front\tBack\ttags',
-    ].join('\n')
+    const unknownSepInput = ['#separator:unknown_custom_separator', 'Front\tBack\ttags'].join('\n')
     const badSepRes = parseAnkiDecks(unknownSepInput)
     expect(badSepRes.metadata.separator).toBe('\t')
     expect(badSepRes.cards[0]!.front).toBe('Front')
@@ -279,10 +272,8 @@ describe('Card Generation & validateCardContent Conformance', () => {
     const input = '#separator:tab\n#notetype:Basic (and reversed card)\nFront\tBack\ttags'
     const res = parseAnkiDecks(input, { expandReversed: false })
     expect(res.cards[0]!.classification).toBe('reversed')
-    // Attempting to validate with classification as format fails because 'reversed' is not in CardFormat
-    const val = validateCardContent(res.cards[0]!.classification as any, res.cards[0]!.content)
-    expect(val.ok).toBe(false)
-    expect(val.errors[0]).toBe('unknown format: reversed')
+    // 'reversed' is an import classification, not a storable CardFormat
+    expect(isCardFormat(res.cards[0]!.classification)).toBe(false)
     // The content itself is actually basic format
     const basicVal = validateCardContent('basic', res.cards[0]!.content)
     expect(basicVal.ok).toBe(true)

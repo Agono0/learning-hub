@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { makeRoomCode } from '@learning-hub/core/online'
 import { getDefaultOnlineServer, getOnlineIdentity } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 
 const createRoomSchema = z.object({
   title: z.string().min(1).max(80),
@@ -23,7 +24,8 @@ export const GET = withRoute(async (req: Request) => {
   }
 
   try {
-    const res = await fetch(`${server}/api/v1/rooms/${code}/info`, {
+    // remoteFetch → native HTTP bridge under Tauri (webview CORS-free).
+    const res = await remoteFetch(`${server}/api/v1/rooms/${code}/info`, {
       signal: AbortSignal.timeout(4000),
     })
     if (res.ok) {
@@ -50,21 +52,32 @@ export const GET = withRoute(async (req: Request) => {
   })
 })
 
+/**
+ * The worker server's create-room reply. It is remote input: the code is
+ * spliced into a WebSocket URL, so it must be a plain room code (no '/', '?',
+ * or '..' that could redirect the socket elsewhere on the server).
+ */
+const remoteRoomSchema = z.object({
+  code: z.string().regex(/^[A-Za-z0-9_-]{4,32}$/),
+  room: z.record(z.string(), z.unknown()),
+})
+
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, createRoomSchema)
   const server = getDefaultOnlineServer()
   const identity = getOnlineIdentity()
 
   try {
-    const res = await fetch(`${server}/api/v1/rooms/create`, {
+    const res = await remoteFetch(`${server}/api/v1/rooms/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(5000),
     })
 
-    if (res.ok) {
-      const data = (await res.json()) as any
+    const parsed = res.ok ? remoteRoomSchema.safeParse(await res.json()) : null
+    if (parsed?.success) {
+      const data = parsed.data
       const wsUrl = `${server.replace(/^http/, 'ws')}/api/v1/rooms/${data.code}/ws`
       return Response.json({
         ok: true,
@@ -75,7 +88,7 @@ export const POST = withRoute(async (req: Request) => {
       })
     }
   } catch {
-    // Fallback to local room code if worker unreachable
+    // Fallback to a local room code if the worker is unreachable or replied garbage
   }
 
   const localCode = makeRoomCode()

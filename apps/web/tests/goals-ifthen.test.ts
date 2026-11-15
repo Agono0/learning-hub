@@ -16,8 +16,13 @@ import { join } from 'node:path'
 const tempDbFile = join(mkdtempSync(join(tmpdir(), 'lh-goals-ifthen-')), 'goals.db')
 process.env.LEARNING_HUB_DB = tempDbFile
 
-type Modules = Record<string, any>
-const M: Modules = {}
+type Modules = {
+  goals: typeof import('../app/api/goals/route')
+  goalsId: typeof import('../app/api/goals/[id]/route')
+  db: typeof import('@learning-hub/db')
+}
+// Assigned in beforeAll, after LEARNING_HUB_DB points at the temp database.
+let M: Modules
 
 function post(url: string, body: unknown): Request {
   return new Request(`http://localhost${url}`, {
@@ -39,9 +44,11 @@ function patch(url: string, body: unknown): Request {
 const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) })
 
 beforeAll(async () => {
-  M.goals = await import('../app/api/goals/route')
-  M.goalsId = await import('../app/api/goals/[id]/route')
-  M.db = await import('@learning-hub/db')
+  M = {
+    goals: await import('../app/api/goals/route'),
+    goalsId: await import('../app/api/goals/[id]/route'),
+    db: await import('@learning-hub/db'),
+  }
 })
 
 describe('POST /api/goals — structured if-then fields', () => {

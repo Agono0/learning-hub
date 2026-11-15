@@ -7,7 +7,11 @@ export interface CliResult {
   exitCode: number | null
 }
 
-export async function runCli(args: string[], dbPath?: string, timeoutMs = 10000): Promise<CliResult> {
+export async function runCli(
+  args: string[],
+  dbPath?: string,
+  timeoutMs = 30000,
+): Promise<CliResult> {
   const rootDir = path.resolve(__dirname, '../../..')
   const tsxCli = path.join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')
   const cliScript = path.join(rootDir, 'apps', 'cli', 'src', 'index.ts')

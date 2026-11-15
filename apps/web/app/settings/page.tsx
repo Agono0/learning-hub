@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Bell,
+  BookOpen,
   Command,
   Globe,
   Layout,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Sun,
   TreePine,
+  Vibrate,
   Wand2,
 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
@@ -120,6 +122,7 @@ interface SettingsRow {
   hasCustomWeights?: boolean
   sessionMinutes: number
   theme: string
+  hapticsEnabled?: boolean
   remindersEnabled?: boolean
   remindersQuietStart?: string
   remindersQuietEnd?: string
@@ -161,6 +164,7 @@ export default function SettingsPage() {
   const [retention, setRetention] = useState(0.9)
   const [sessionMinutes, setSessionMinutes] = useState(25)
   const [theme, setTheme] = useState<ThemePreference>('dark')
+  const [hapticsOn, setHapticsOn] = useState(true)
   const palette = usePalette()
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [weightsDraft, setWeightsDraft] = useState('')
@@ -186,6 +190,7 @@ export default function SettingsPage() {
     setRetention(s.desiredRetention)
     setSessionMinutes(s.sessionMinutes)
     setTheme(normalizeThemePreference(s.theme))
+    if (s.hapticsEnabled !== undefined) setHapticsOn(s.hapticsEnabled)
     setWeightsDraft(
       s.fsrsWeights && s.fsrsWeights.length === 21
         ? s.fsrsWeights.map((w) => Number(w.toFixed(4))).join(', ')
@@ -266,6 +271,7 @@ export default function SettingsPage() {
         desiredRetention: retention,
         sessionMinutes,
         theme: overrideTheme ?? theme,
+        hapticsEnabled: hapticsOn,
         remindersEnabled,
         remindersQuietStart,
         remindersQuietEnd,
@@ -343,7 +349,7 @@ export default function SettingsPage() {
               The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and must
               reply <code>{'{ "result": string | object }'}</code> —{' '}
               <a
-                href="https://github.com/learning-hub/learning-hub/blob/main/docs/ai-providers.md"
+                href="https://github.com/Agono0/learning-hub/blob/main/docs/ai-providers.md"
                 target="_blank"
                 className="underline"
               >
@@ -526,6 +532,7 @@ export default function SettingsPage() {
                 { key: 'dark', label: 'Dark', icon: Moon },
                 { key: 'light', label: 'Light', icon: Sun },
                 { key: 'system', label: 'System', icon: Monitor },
+                { key: 'e-ink', label: 'E-Ink Zen', icon: BookOpen },
               ] as const
             ).map((opt) => {
               const Icon = opt.icon
@@ -597,6 +604,30 @@ export default function SettingsPage() {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      {/* Sensory — haptics opt-out (F-06): vibration feedback stays calm by default. */}
+      <section className="panel space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="label flex items-center gap-2">
+              <Vibrate className="h-4 w-4 text-indigo-400" />
+              Haptics
+            </div>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              Vibration feedback on grading and session boundaries. Off = completely silent.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hapticsOn}
+              onChange={(e) => setHapticsOn(e.target.checked)}
+              className="accent-indigo-500"
+            />
+            {hapticsOn ? 'Enabled' : 'Disabled'}
+          </label>
         </div>
       </section>
 
@@ -868,6 +899,39 @@ export default function SettingsPage() {
   )
 }
 
+type IdentityMode = 'device_key' | 'magic_link' | 'offline'
+
+const IDENTITY_MODES: ReadonlyArray<{ id: IdentityMode; title: string; desc: string }> = [
+  {
+    id: 'offline',
+    title: 'Offline Mode',
+    desc: 'Zero network traffic. All features run strictly local on your device.',
+  },
+  {
+    id: 'device_key',
+    title: 'Device Key (Recommended)',
+    desc: 'Anonymous cryptographic keypair generated locally. Zero emails or passwords.',
+  },
+  {
+    id: 'magic_link',
+    title: 'Magic Link',
+    desc: 'Optional email-based sync for multi-device learners.',
+  },
+]
+
+/** GET /api/anki/connect — mapped cards (only the count is shown here). */
+interface AnkiMappingsResponse {
+  ok: boolean
+  count: number
+  mappings: Array<{
+    cardId: number
+    ankiNoteId: number
+    ankiCardId: number | null
+    syncMode: string
+    lastSyncAt: string
+  }>
+}
+
 function OnlineIdentitySection() {
   const qc = useQueryClient()
   const identityQuery = useQuery({
@@ -891,7 +955,7 @@ function OnlineIdentitySection() {
       }>('/api/online/identity'),
   })
 
-  const [mode, setMode] = useState<'device_key' | 'magic_link' | 'offline'>('offline')
+  const [mode, setMode] = useState<IdentityMode>('offline')
   const [alias, setAlias] = useState('')
   const [serverUrl, setServerUrl] = useState('')
   const [showLeaderboard, setShowLeaderboard] = useState(true)
@@ -956,27 +1020,11 @@ function OnlineIdentitySection() {
         <div>
           <label className="label mb-1 block">Identity Mode</label>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {[
-              {
-                id: 'offline',
-                title: 'Offline Mode',
-                desc: 'Zero network traffic. All features run strictly local on your device.',
-              },
-              {
-                id: 'device_key',
-                title: 'Device Key (Recommended)',
-                desc: 'Anonymous cryptographic keypair generated locally. Zero emails or passwords.',
-              },
-              {
-                id: 'magic_link',
-                title: 'Magic Link',
-                desc: 'Optional email-based sync for multi-device learners.',
-              },
-            ].map((opt) => (
+            {IDENTITY_MODES.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => setMode(opt.id as any)}
+                onClick={() => setMode(opt.id)}
                 className={`rounded-lg border p-3 text-left transition-all ${
                   mode === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
@@ -1125,9 +1173,9 @@ function AnkiConnectSection() {
   const [testStatus, setTestStatus] = useState<string | null>(null)
   const [isTesting, setIsTesting] = useState(false)
 
-  const ankiQuery = useQuery<{ ok: boolean; count: number; mappings: any[] }>({
+  const ankiQuery = useQuery<AnkiMappingsResponse>({
     queryKey: ['anki-mappings'],
-    queryFn: () => apiGet<{ ok: boolean; count: number; mappings: any[] }>('/api/anki/connect'),
+    queryFn: () => apiGet<AnkiMappingsResponse>('/api/anki/connect'),
   })
 
   const testConnection = async () => {

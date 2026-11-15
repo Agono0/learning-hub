@@ -1,9 +1,8 @@
 /**
  * /api/canvas — freeform JSON canvases (items + edges), full CRUD.
  */
-import { desc } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, canvases } from '@learning-hub/db'
+import { createCanvas, listCanvases } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 const createCanvasSchema = z.object({
@@ -13,19 +12,16 @@ const createCanvasSchema = z.object({
 })
 
 export async function GET() {
-  const rows = await db.select().from(canvases).orderBy(desc(canvases.updatedAt)).limit(50)
+  const rows = listCanvases({ limit: 50 })
   return Response.json({ canvases: rows })
 }
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, createCanvasSchema)
-  const [canvas] = await db
-    .insert(canvases)
-    .values({
-      title: body.title?.trim() || 'Untitled canvas',
-      scope: body.scope ?? 'free',
-      scopeId: body.scopeId ?? null,
-    })
-    .returning()
+  const canvas = createCanvas({
+    title: body.title,
+    scope: body.scope,
+    scopeId: body.scopeId,
+  })
   return Response.json({ ok: true, canvas })
 })

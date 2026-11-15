@@ -8,7 +8,9 @@ import { interleaveProblemSets, theoremToCards } from '../src/math'
 describe('theoremToCards', () => {
   const input = {
     theorem: { name: 'Lagrange', statement: '|H| divides |G| for H ≤ G finite' },
-    definitions: [{ term: 'subgroup', meaning: 'a subset closed under the group operation and inverses' }],
+    definitions: [
+      { term: 'subgroup', meaning: 'a subset closed under the group operation and inverses' },
+    ],
     lemmas: [
       { name: 'Cosets partition', statement: 'left cosets of H partition G' },
       { name: 'Equal size', statement: 'every coset has |H| elements' },
@@ -61,11 +63,7 @@ describe('theoremToCards', () => {
 
 describe('interleaveProblemSets', () => {
   it('round-robins sets preserving within-set order', () => {
-    const out = interleaveProblemSets([
-      ['A1', 'A2', 'A3'],
-      ['B1', 'B2'],
-      ['C1'],
-    ])
+    const out = interleaveProblemSets([['A1', 'A2', 'A3'], ['B1', 'B2'], ['C1']])
     expect(out).toEqual(['A1', 'B1', 'C1', 'A2', 'B2', 'A3'])
   })
 

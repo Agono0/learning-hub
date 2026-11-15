@@ -14,7 +14,7 @@ import {
   extractYoutubeVideoId,
   parseYoutubeCaptionPayload,
 } from '@learning-hub/core'
-import { db, sources } from '@learning-hub/db'
+import { createSource } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 const ingestSchema = z.discriminatedUnion('mode', [
@@ -102,16 +102,13 @@ export const POST = withRoute(async (req: Request) => {
       )
     }
 
-    const [source] = await db
-      .insert(sources)
-      .values({
-        kind: 'article',
-        title: body.title || extracted.title,
-        url: body.url,
-        content: extracted.content,
-        priority,
-      })
-      .returning()
+    const source = createSource({
+      kind: 'article',
+      title: body.title || extracted.title,
+      url: body.url,
+      content: extracted.content,
+      priority,
+    })
     return Response.json({ ok: true, source, characters: extracted.content.length })
   }
 
@@ -181,16 +178,13 @@ export const POST = withRoute(async (req: Request) => {
       )
     }
 
-    const [source] = await db
-      .insert(sources)
-      .values({
-        kind: 'youtube',
-        title: body.title || pageTitle,
-        url: canonicalUrl,
-        content: transcript,
-        priority,
-      })
-      .returning()
+    const source = createSource({
+      kind: 'youtube',
+      title: body.title || pageTitle,
+      url: canonicalUrl,
+      content: transcript,
+      priority,
+    })
     return Response.json({ ok: true, source, characters: transcript.length })
   }
 
@@ -202,15 +196,12 @@ export const POST = withRoute(async (req: Request) => {
     } catch (err) {
       throw new ApiError(400, err instanceof Error ? err.message : 'Invalid EPUB')
     }
-    const [source] = await db
-      .insert(sources)
-      .values({
-        kind: 'epub',
-        title: body.title || extracted.title,
-        content: extracted.content,
-        priority,
-      })
-      .returning()
+    const source = createSource({
+      kind: 'epub',
+      title: body.title || extracted.title,
+      content: extracted.content,
+      priority,
+    })
     return Response.json({
       ok: true,
       source,
@@ -219,15 +210,12 @@ export const POST = withRoute(async (req: Request) => {
     })
   }
 
-  const [source] = await db
-    .insert(sources)
-    .values({
-      kind: 'markdown',
-      title: body.title,
-      url: body.url || null,
-      content: body.content,
-      priority,
-    })
-    .returning()
+  const source = createSource({
+    kind: 'markdown',
+    title: body.title,
+    url: body.url || null,
+    content: body.content,
+    priority,
+  })
   return Response.json({ ok: true, source, characters: body.content.length })
 })

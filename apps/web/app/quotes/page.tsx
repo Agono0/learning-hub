@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Quote, Search, Star } from 'lucide-react'
-import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
 

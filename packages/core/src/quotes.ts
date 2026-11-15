@@ -30,9 +30,9 @@ export function dailyQuote<T extends QuoteLike>(quotes: T[], date: Date | string
  */
 export const MILESTONE_TAGS: Record<string, string[]> = {
   'level-up': ['mastery', 'discipline'],
-  'streak': ['persistence', 'discipline'],
-  'achievement': ['mastery', 'persistence'],
-  'comeback': ['persistence', 'learning'],
+  streak: ['persistence', 'discipline'],
+  achievement: ['mastery', 'persistence'],
+  comeback: ['persistence', 'learning'],
 }
 
 /** Deterministic quote for a milestone kind, preferring its MILESTONE_TAGS. */

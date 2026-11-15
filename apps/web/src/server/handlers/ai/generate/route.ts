@@ -6,8 +6,7 @@
  * a sanitized 502 (raw upstream messages never reach the client).
  */
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
-import { db, cards, sources, withTransaction } from '@learning-hub/db'
+import { cards, getSource, withTransaction } from '@learning-hub/db'
 import {
   CLOZE_GENERATOR_SYSTEM,
   clozeCardsSchema,
@@ -94,7 +93,7 @@ export const POST = withRoute(async (req: Request) => {
     const depth = payload.depth ? String(payload.depth) : undefined
     let pdfText: string | undefined
     if (pdfId) {
-      const [src] = await db.select().from(sources).where(eq(sources.id, pdfId)).limit(1)
+      const src = getSource(pdfId)
       if (!src) return Response.json({ error: 'source not found' }, { status: 404 })
       pdfText = src.content
     }

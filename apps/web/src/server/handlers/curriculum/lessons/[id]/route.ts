@@ -7,13 +7,7 @@
  */
 import { z } from 'zod'
 import { XP_REWARDS } from '@learning-hub/core'
-import {
-  completeLesson,
-  getLessonView,
-  reopenLesson,
-  startLesson,
-  xpEvents,
-} from '@learning-hub/db'
+import { awardXp, completeLesson, getLessonView, reopenLesson, startLesson } from '@learning-hub/db'
 import { db } from '@/lib/db'
 import { readJson, withRoute } from '@/lib/api'
 import { notFound, routeId, type IdContext } from '../../_shared'
@@ -54,13 +48,8 @@ export const POST = withRoute(async (req: Request, ctx: IdContext) => {
     timeSpentSec: body.timeSpentSec,
   })
   if (firstTime) {
-    db.insert(xpEvents)
-      .values({
-        source: 'lesson',
-        amount: XP_REWARDS.lesson,
-        meta: { lessonId: id, title: view.lesson.title },
-      })
-      .run()
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+    awardXp(db, { source: 'lesson', meta: { lessonId: id, title: view.lesson.title } })
   }
   return Response.json({
     ok: true,

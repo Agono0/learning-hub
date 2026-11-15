@@ -25,7 +25,6 @@ import * as analytics from '../server/handlers/analytics/route'
 import * as ankiConnect from '../server/handlers/anki/connect/route'
 import * as audioDigest from '../server/handlers/audio/digest/route'
 import * as audioGrade from '../server/handlers/audio/grade/route'
-import * as audioSessions from '../server/handlers/audio/sessions/route'
 import * as backup from '../server/handlers/backup/route'
 import * as canvasId from '../server/handlers/canvas/[id]/route'
 import * as canvas from '../server/handlers/canvas/route'
@@ -43,6 +42,7 @@ import * as curriculumGlossary from '../server/handlers/curriculum/glossary/rout
 import * as curriculum from '../server/handlers/curriculum/route'
 import * as dashboard from '../server/handlers/dashboard/route'
 import * as decksId from '../server/handlers/decks/[id]/route'
+import * as decksDoctor from '../server/handlers/decks/doctor/route'
 import * as decks from '../server/handlers/decks/route'
 import * as distractions from '../server/handlers/distractions/route'
 import * as embeddingsSearch from '../server/handlers/embeddings/search/route'
@@ -62,6 +62,7 @@ import * as games from '../server/handlers/games/route'
 import * as search from '../server/handlers/search/route'
 import * as searchNl from '../server/handlers/search/nl/route'
 import * as insights from '../server/handlers/insights/route'
+import * as insightsUntested from '../server/handlers/insights/untested/route'
 import * as timeline from '../server/handlers/timeline/route'
 import * as onlineRaids from '../server/handlers/online/raids/route'
 import * as socialFriendsSync from '../server/handlers/social/leaderboard/sync/route'
@@ -143,6 +144,18 @@ import * as curriculumCourseCertificate from '../server/handlers/curriculum/cour
 import * as curriculumLessonId from '../server/handlers/curriculum/lessons/[id]/route'
 import * as curriculumPractice from '../server/handlers/curriculum/practice/route'
 import * as curriculumStageId from '../server/handlers/curriculum/stages/[id]/route'
+import * as audioCircadianCommute from '../server/handlers/audio/circadian/commute/route'
+import * as audioTmrCues from '../server/handlers/audio/tmr/cues/route'
+import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
+import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
+import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
+import * as dialecticArena from '../server/handlers/dialectic/arena/route'
+import * as ingestMultimodal from '../server/handlers/ingest/multimodal/route'
+import * as curriculumSkillsWeaknessV2 from '../server/handlers/curriculum/skills/weakness-v2/route'
+import * as tutorVoiceSession from '../server/handlers/tutor/voice-session/route'
+import * as curriculumExamSimulator from '../server/handlers/curriculum/exam/simulator/route'
+import * as workload from '../server/handlers/workload/route'
+import * as readingExposure from '../server/handlers/reading/exposure/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -188,7 +201,6 @@ add('analytics', analytics)
 add('anki/connect', ankiConnect)
 add('audio/digest', audioDigest)
 add('audio/grade', audioGrade)
-add('audio/sessions', audioSessions)
 add('backup', backup)
 add('canvas', canvas)
 add('canvas/[id]', canvasId)
@@ -207,6 +219,7 @@ add('curriculum/skills', curriculumSkills)
 add('dashboard', dashboard)
 add('decks', decks)
 add('decks/[id]', decksId)
+add('decks/doctor', decksDoctor)
 add('distractions', distractions)
 add('embeddings/search', embeddingsSearch)
 add('embeddings/index', embeddingsIndex)
@@ -271,6 +284,7 @@ add('review/undo', reviewUndo)
 add('search', search)
 add('search/nl', searchNl)
 add('insights', insights)
+add('insights/untested', insightsUntested)
 add('timeline', timeline)
 add('online/raids', onlineRaids)
 add('social/leaderboard/sync', socialFriendsSync)
@@ -306,6 +320,18 @@ add('world/plots', worldPlots)
 add('world/verify/review', worldVerifyReview)
 add('world/verify/focus', worldVerifyFocus)
 add('world/settings', worldSettings)
+add('audio/circadian/commute', audioCircadianCommute)
+add('audio/tmr/cues', audioTmrCues)
+add('cognitive/gkt', cognitiveGkt)
+add('cognitive/load', cognitiveLoad)
+add('spatial/palace-3d', spatialPalace3d)
+add('dialectic/arena', dialecticArena)
+add('ingest/multimodal', ingestMultimodal)
+add('curriculum/skills/weakness-v2', curriculumSkillsWeaknessV2)
+add('tutor/voice-session', tutorVoiceSession)
+add('curriculum/exam/simulator', curriculumExamSimulator)
+add('workload', workload)
+add('reading/exposure', readingExposure)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

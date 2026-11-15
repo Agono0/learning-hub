@@ -6,11 +6,21 @@
  * Uses throwaway :memory: databases built from the real schema DDL — the app
  * database itself is never opened for writing.
  */
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
-import { getRawDb } from '../src/index'
+import { initDb, type RawSqliteHandle } from '../src/index'
 import { backupAll, restoreAll, BACKUP_VERSION, type BackupFile } from '../src/backup'
 import { ValidationError } from '../src/review-service'
+
+// Hermetic DDL source: the canonical schema bootstrapped in memory through the
+// production initDb pipeline. Never open the developer database
+// (data/learning-hub.db) from tests — parallel vitest workers opening it
+// concurrently race on the WAL sidecar files and intermittently fail with
+// SQLITE_IOERR on Windows (zero-mutation invariant, docs/TEST_INFRA.md).
+let ddlSource: RawSqliteHandle
+beforeAll(async () => {
+  ddlSource = (await initDb({ path: ':memory:' })).$client
+})
 
 /** Fresh schema-complete :memory: database (DDL copied from the app DB). */
 function createTestDb(): Database.Database {
@@ -21,7 +31,7 @@ function createTestDb(): Database.Database {
   // (their internal _data/_idx/_content tables are reserved names that cannot
   // be cloned here; the source-table triggers rebuild them from the restored
   // rows).
-  const ddls = getRawDb()
+  const ddls = ddlSource
     .prepare(
       "SELECT sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
     )

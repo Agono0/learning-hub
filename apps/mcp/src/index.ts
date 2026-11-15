@@ -17,6 +17,11 @@ import { and, desc, eq, like, lte, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { json, tool, type RegisteredTool } from './tool-kit'
 import { curriculumTools } from './tools/curriculum'
+import { cognitiveTools } from './tools/cognitive'
+import { lifestyleTools } from './tools/lifestyle'
+import { learningPathTools } from './tools/learning-path'
+import { communityTools } from './tools/community'
+import { telemetryAudioTools } from './tools/telemetry-audio'
 import {
   CardNotFoundError,
   cards,
@@ -27,6 +32,7 @@ import {
   focusSessions,
   frictionEvents,
   getFsrsStatus,
+  getRandomQuote,
   getStarterCatalogStatus,
   getSyncConfig,
   goals,
@@ -36,7 +42,6 @@ import {
   notes,
   noteLinks,
   optimizeAndPersistFsrs,
-  quotes,
   searchAll,
 } from '@learning-hub/db'
 import {
@@ -410,11 +415,7 @@ const builtinTools: RegisteredTool[] = [
 
   // ── Quotes ──
   tool('quote_random', 'A random motivational quote (with its context).', {}, async () => {
-    const [quote] = await db
-      .select()
-      .from(quotes)
-      .orderBy(sql`random()`)
-      .limit(1)
+    const quote = getRandomQuote()
     return json({ quote: quote ?? null })
   }),
 
@@ -535,7 +536,15 @@ async function main() {
     )
   }
 
-  for (const registered of [...builtinTools, ...curriculumTools]) {
+  for (const registered of [
+    ...builtinTools,
+    ...curriculumTools,
+    ...cognitiveTools,
+    ...lifestyleTools,
+    ...learningPathTools,
+    ...communityTools,
+    ...telemetryAudioTools,
+  ]) {
     server.registerTool(
       registered.name,
       { description: registered.description, inputSchema: registered.inputSchema },

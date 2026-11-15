@@ -10,8 +10,6 @@ import {
   dueQueueSelector,
   forecastNext30Days,
   formatRotation,
-  FSRS6_DEFAULT_DECAY,
-  FSRS6_DEFAULT_FACTOR,
   fsrsToCardRow,
   leechCandidates,
   leitnerBox,

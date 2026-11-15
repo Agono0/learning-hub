@@ -234,11 +234,15 @@ const contentSchemas = {
       options: z.array(z.string().min(1)).min(2),
       correctIndex: z.number().int().min(0),
       rationale: z.string().optional(),
+      // desirable difficulty (Bjork): alternate phrasings, rotated per exposure
+      variants: z.array(z.string().min(1)).max(5).optional(),
     })
     .refine((v) => v.correctIndex < v.options.length, 'correctIndex out of bounds'),
   typein: z.object({
     question: z.string().min(1),
     acceptedAnswers: z.array(z.string().min(1)).min(1),
+    // desirable difficulty (Bjork): alternate phrasings, rotated per exposure
+    variants: z.array(z.string().min(1)).max(5).optional(),
   }),
   occlusion: z.object({
     imageId: z.number().int().min(1),
@@ -284,6 +288,11 @@ export type ValidatedContent =
   { ok: true; data: CardContent; errors: [] } | { ok: false; data: null; errors: string[] }
 
 /** Validate card content for a format; returns zod issue strings on failure. */
+/** Type guard: `v` names a card format this build can validate and render. */
+export function isCardFormat(v: unknown): v is CardFormat {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(contentSchemas, v)
+}
+
 export function validateCardContent(format: CardFormat, content: unknown): ValidatedContent {
   const schema = contentSchemas[format]
   if (!schema) return { ok: false, data: null, errors: [`unknown format: ${format}`] }
@@ -315,6 +324,79 @@ export function pickBasicFront(
   const pool = [basic.front, ...(basic.variants ?? [])]
   const k = Math.max(0, Math.floor(reps))
   return pool[k % pool.length]!
+}
+
+/**
+ * Picks the active prompt/question text for any card format, rotating across
+ * alternate phrasings (Bjork desirable difficulties) as `reps` advances.
+ * Prevents pattern-matching on accidental surface cues.
+ */
+export function pickCardPrompt(card: { type?: string; content: CardContent; reps?: number }): {
+  text: string
+  isVariant: boolean
+  variantIndex: number
+  totalVariants: number
+} {
+  const reps = Math.max(0, Math.floor(card.reps ?? 0))
+  const { content } = card
+
+  if (content.basic) {
+    const pool = [content.basic.front, ...(content.basic.variants ?? [])]
+    const idx = reps % pool.length
+    return {
+      text: pool[idx]!,
+      isVariant: idx > 0,
+      variantIndex: idx,
+      totalVariants: pool.length - 1,
+    }
+  }
+
+  if (content.typein) {
+    const pool = [content.typein.question, ...(content.typein.variants ?? [])]
+    const idx = reps % pool.length
+    return {
+      text: pool[idx]!,
+      isVariant: idx > 0,
+      variantIndex: idx,
+      totalVariants: pool.length - 1,
+    }
+  }
+
+  if (content.mcq) {
+    const pool = [content.mcq.question, ...(content.mcq.variants ?? [])]
+    const idx = reps % pool.length
+    return {
+      text: pool[idx]!,
+      isVariant: idx > 0,
+      variantIndex: idx,
+      totalVariants: pool.length - 1,
+    }
+  }
+
+  if (content.cloze) {
+    return {
+      text: content.cloze.text,
+      isVariant: false,
+      variantIndex: 0,
+      totalVariants: 0,
+    }
+  }
+
+  if (content.exercise) {
+    return {
+      text: content.exercise.prompt,
+      isVariant: false,
+      variantIndex: 0,
+      totalVariants: 0,
+    }
+  }
+
+  return {
+    text: '',
+    isVariant: false,
+    variantIndex: 0,
+    totalVariants: 0,
+  }
 }
 
 /**

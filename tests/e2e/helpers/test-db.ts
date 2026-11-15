@@ -24,7 +24,7 @@ export function createIsolatedTestDb(suiteName: string): TestDbContext {
   const rootDir = path.resolve(__dirname, '../../..')
   const baseDbPath = path.join(rootDir, 'data', 'learning-hub.db')
   const testDir = path.join(rootDir, 'data', 'test-dbs')
-  
+
   if (!existsSync(testDir)) {
     mkdirSync(testDir, { recursive: true })
   }

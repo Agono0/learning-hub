@@ -9,7 +9,7 @@
  *
  * CLIENT component — uses `@/lib/transport` and `<Markdown>` exclusively (Hard Rules #1, #11).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BookOpen,
@@ -26,6 +26,8 @@ import {
   Upload,
   Video,
 } from 'lucide-react'
+import { extractIncidentalGlossTokens } from '@learning-hub/core'
+import { tokenizeText } from '@learning-hub/core/exposure'
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
@@ -75,7 +77,7 @@ interface Sq3rSession {
 }
 
 type IngestTab = 'file' | 'url' | 'youtube' | 'markdown'
-type StudyMode = 'incremental' | 'sq3r'
+type StudyMode = 'incremental' | 'sq3r' | 'exposure'
 type Sq3rStep = 'survey' | 'question' | 'read' | 'recite' | 'review'
 
 function manualGhostHint(mode: 'define' | 'simplify' | 'flashcard', selected: string): string {
@@ -88,6 +90,26 @@ function manualGhostHint(mode: 'define' | 'simplify' | 'flashcard', selected: st
     case 'flashcard':
       return `Manual mode — no AI configured. Make the card by hand from ${quote}: click "→ cards" on any highlight below or use SQ3R Review mode to convert your Q&As directly into cards.`
   }
+}
+
+/** Response of GET /api/reading/exposure (+ coverage from POST action 'analyze'). */
+type ExposureLedger = {
+  ok: boolean
+  words: Array<{
+    normalized: string
+    sampleToken: string
+    encounterCount: number
+    distinctDays: number
+    eligibleForPromotion: boolean
+    isAlreadyCard: boolean
+  }>
+  coverageAnalysis?: {
+    totalTokens: number
+    knownCount: number
+    coveragePercent: number
+    zone: 'optimal' | 'frustration' | 'effortless'
+    unknownTokens: Array<{ token: string; count: number }>
+  } | null
 }
 
 export default function ReadingPage() {
@@ -156,6 +178,90 @@ export default function ReadingPage() {
       apiGet<{ resurface: (Highlight & { sourceTitle: string | null })[] }>(
         '/api/reading/highlights?mode=resurface&limit=10',
       ),
+  })
+
+  const { data: vocabCards } = useQuery<{
+    cards: Array<{ id: number; front?: string; back?: string; content?: Record<string, unknown> }>
+  }>({
+    queryKey: ['vocab-cards'],
+    queryFn: () => apiGet('/api/cards?limit=200'),
+  })
+
+  const incidentalGloss = useMemo(() => {
+    const text = detail?.source?.content || detail?.fragment?.text || ''
+    if (!text || !vocabCards?.cards) return []
+    const map = new Map<string, { cardId: number; definition: string }>()
+    for (const c of vocabCards.cards) {
+      const front = (c.front || (c.content?.front as string) || '').trim().toLowerCase()
+      const back = (c.back || (c.content?.back as string) || '').trim()
+      if (front && back && front.length > 2) {
+        map.set(front, { cardId: c.id, definition: back })
+      }
+    }
+    const tokens = extractIncidentalGlossTokens(text, map)
+    const matched = tokens.filter((t) => !t.isKnown && t.definition)
+    const unique = new Map<string, { word: string; cardId: number; definition: string }>()
+    for (const m of matched) {
+      if (!unique.has(m.normalized)) {
+        unique.set(m.normalized, { word: m.word, cardId: m.cardId!, definition: m.definition! })
+      }
+    }
+    return Array.from(unique.values())
+  }, [detail?.source?.content, detail?.fragment?.text, vocabCards?.cards])
+
+  const recordedFragmentRef = useRef<string>('')
+  useEffect(() => {
+    const text = detail?.fragment?.text
+    if (!text || !detail?.source?.id || recordedFragmentRef.current === text) return
+    recordedFragmentRef.current = text
+    // Same tokenizer (incl. stop-words) the server uses for coverage, capped per fragment.
+    const words = tokenizeText(text).slice(0, 100)
+    if (words.length > 0) {
+      void apiSend('/api/reading/exposure', 'POST', {
+        action: 'record_batch',
+        tokens: words,
+        sourceType: 'reading',
+        sourceId: detail.source.id,
+        contextSnippet: text.slice(0, 200),
+      })
+    }
+  }, [detail?.fragment?.text, detail?.source?.id])
+
+  const exposureQuery = useQuery<ExposureLedger>({
+    queryKey: ['reading-exposure', detail?.source?.id, detail?.fragment?.text?.slice(0, 50)],
+    queryFn: async () => {
+      const ledger = await apiGet<ExposureLedger>('/api/reading/exposure?limit=40')
+      const text = detail?.fragment?.text
+      if (!text) return ledger
+      // POST so the whole fragment is analysed — a query string would truncate it.
+      const { coverageAnalysis } = await apiSend<Pick<ExposureLedger, 'coverageAnalysis'>>(
+        '/api/reading/exposure',
+        'POST',
+        { action: 'analyze', text },
+      )
+      return { ...ledger, coverageAnalysis }
+    },
+  })
+
+  const promoteWord = useMutation({
+    mutationFn: async ({ token, snippet }: { token: string; snippet?: string }) => {
+      return apiSend('/api/reading/exposure', 'POST', {
+        action: 'promote',
+        token,
+        contextSnippet: snippet,
+      })
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['reading-exposure'] })
+      void qc.invalidateQueries({ queryKey: ['vocab-cards'] })
+      void qc.invalidateQueries({ queryKey: ['cards'] })
+      setFeedback({ kind: 'ok', text: 'Word promoted to FSRS flashcard!' })
+    },
+    onError: (e) =>
+      setFeedback({
+        kind: 'error',
+        text: e instanceof Error ? e.message : 'Could not create card',
+      }),
   })
 
   const [selected, setSelected] = useState('')
@@ -527,6 +633,11 @@ export default function ReadingPage() {
                       label: 'SQ3R Guided Study',
                       icon: <ListChecks className="h-3.5 w-3.5" />,
                     },
+                    {
+                      key: 'exposure',
+                      label: 'Vocabulary Ledger',
+                      icon: <Sparkles className="h-3.5 w-3.5" />,
+                    },
                   ]}
                 />
                 <div className="flex items-center gap-2">
@@ -561,6 +672,52 @@ export default function ReadingPage() {
                       {Math.round(source.position)}%
                     </span>
                   </div>
+                  {exposureQuery.data?.coverageAnalysis && (
+                    <div className="mt-2.5 flex items-center gap-2 text-xs">
+                      <span className="text-neutral-400">Lexical Coverage:</span>
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
+                          exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/50'
+                            : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                              ? 'bg-rose-950/80 text-rose-300 border border-rose-700/50'
+                              : 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
+                        }`}
+                      >
+                        {exposureQuery.data.coverageAnalysis.coveragePercent}% (
+                        {exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                          ? 'Optimal Krashen i+1 (95–98%)'
+                          : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                            ? 'Frustration (<95% - gloss recommended)'
+                            : 'Effortless (>98%)'}
+                        )
+                      </span>
+                    </div>
+                  )}
+                  {incidentalGloss.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-2.5 text-xs">
+                      <div className="flex items-center justify-between font-medium text-indigo-300">
+                        <span>Incidental Vocabulary (Krashen i+1)</span>
+                        <span className="text-[10px] opacity-75">
+                          {incidentalGloss.length} in text
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {incidentalGloss.map((item) => (
+                          <span
+                            key={item.word}
+                            className="inline-flex items-center gap-1 rounded bg-black/30 px-2 py-0.5 text-[11px]"
+                            title={`Definition: ${item.definition}`}
+                          >
+                            <span className="font-semibold text-neutral-200">{item.word}</span>
+                            <span className="max-w-[120px] truncate text-[10px] text-neutral-400">
+                              — {item.definition}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div
                     className="mt-3 max-h-[48vh] overflow-y-auto text-sm leading-relaxed selection:bg-indigo-500/30"
                     onMouseUp={() => setSelected(window.getSelection()?.toString() ?? '')}
@@ -608,7 +765,7 @@ export default function ReadingPage() {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : studyMode === 'sq3r' ? (
                 /* ─── Guided SQ3R Mode (Robinson 1946) ─── */
                 <div className="panel space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -917,6 +1074,117 @@ export default function ReadingPage() {
                       </div>
                     </div>
                   )}
+                </div>
+              ) : (
+                /* ─── Ambient Exposure Ledger & Lexical Coverage ─── */
+                <div className="panel space-y-4">
+                  <div>
+                    <h2 className="font-semibold text-neutral-100 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-amber-400" />
+                      Ambient Vocabulary &amp; Incidental Exposure Ledger
+                    </h2>
+                    <p className="mt-1 text-xs text-neutral-400">
+                      Grounded in Krashen&apos;s comprehensible input (1985) and incidental
+                      vocabulary research (Nation 2001, Webb 2007). Words encountered naturally
+                      across 5+ spaced sessions over &ge;3 distinct days acquire deep conceptual
+                      anchoring.
+                    </p>
+                  </div>
+
+                  {exposureQuery.data?.coverageAnalysis && (
+                    <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-neutral-200">
+                          Current Reading Text Lexical Coverage
+                        </span>
+                        <span className="font-bold text-neutral-100">
+                          {exposureQuery.data.coverageAnalysis.coveragePercent}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-neutral-800 overflow-hidden">
+                        <div
+                          style={{
+                            width: `${Math.min(100, exposureQuery.data.coverageAnalysis.coveragePercent)}%`,
+                          }}
+                          className={`h-full ${
+                            exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                              ? 'bg-emerald-500'
+                              : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                                ? 'bg-rose-500'
+                                : 'bg-indigo-500'
+                          }`}
+                        />
+                      </div>
+                      <p className="text-[11px] text-neutral-400">
+                        {exposureQuery.data.coverageAnalysis.zone === 'optimal'
+                          ? 'Optimal Krashen i+1 band (95–98% known): reading flows smoothly while unfamiliar words are inferred from context.'
+                          : exposureQuery.data.coverageAnalysis.zone === 'frustration'
+                            ? 'Frustration band (<95% known): density of novel terms may hinder comprehension. Consider checking gloss definitions.'
+                            : 'Fluency band (>98% known): effortless extensive reading for consolidation.'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold text-neutral-300">
+                      <span>Words You Keep Meeting ({exposureQuery.data?.words?.length ?? 0})</span>
+                      <span className="text-[11px] text-neutral-500">
+                        Threshold: &ge;5 encounters across &ge;3 days
+                      </span>
+                    </div>
+
+                    {(exposureQuery.data?.words ?? []).length === 0 ? (
+                      <p className="py-6 text-center text-xs text-neutral-500">
+                        No vocabulary encounters recorded yet. Start reading to build your ambient
+                        exposure ledger!
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-950/40">
+                        {(exposureQuery.data?.words ?? []).map((word) => (
+                          <div
+                            key={word.normalized}
+                            className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs hover:bg-neutral-900/40 transition-colors"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-neutral-200 text-sm">
+                                  {word.normalized}
+                                </span>
+                                {word.eligibleForPromotion ? (
+                                  <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-medium">
+                                    Ready for SRS ({word.encounterCount}x / {word.distinctDays}d)
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-neutral-500">
+                                    {word.encounterCount} encounters &bull; {word.distinctDays} days
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {word.isAlreadyCard ? (
+                              <span className="text-[11px] text-emerald-400">Already a card</span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={promoteWord.isPending}
+                                onClick={() =>
+                                  promoteWord.mutate({
+                                    token: word.normalized,
+                                    snippet: `Encountered ${word.encounterCount} times across reading.`,
+                                  })
+                                }
+                                className="btn-ghost text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
+                              >
+                                <Plus className="h-3.5 w-3.5 text-indigo-400" />
+                                Turn into Card
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

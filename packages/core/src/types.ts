@@ -48,8 +48,20 @@ export type CardContent = {
     mode: 'basic' | 'typein' | 'enumeration'
     hint?: string
   }
-  mcq?: { question: string; options: string[]; correctIndex: number; rationale?: string }
-  typein?: { question: string; acceptedAnswers: string[] }
+  mcq?: {
+    question: string
+    options: string[]
+    correctIndex: number
+    rationale?: string
+    /** Alternate question phrasings (Bjork desirable difficulty). */
+    variants?: string[]
+  }
+  typein?: {
+    question: string
+    acceptedAnswers: string[]
+    /** Alternate question phrasings (Bjork desirable difficulty). */
+    variants?: string[]
+  }
   occlusion?: {
     imageId: number
     rects: (Rect & { id: string; label?: string })[]
@@ -122,6 +134,7 @@ export type XPSource =
   | 'journal'
   | 'idea'
   | 'boss'
+  | 'debate'
 
 /** One daily quest with its progress toward the target. */
 export interface QuestItem {

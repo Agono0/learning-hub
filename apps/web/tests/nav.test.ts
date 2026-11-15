@@ -11,9 +11,18 @@ import { normalizeThemePreference } from '../src/components/ThemeSync'
 describe('navigation model & theme helpers', () => {
   it('preserves all routes across the 4 canonical scaffolder groups', () => {
     expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
-    // 29: the canonical set plus /search (Search Everything, M18)
-    expect(ALL_NAV_ITEMS).toHaveLength(29)
+    // 38: the canonical set plus /search (M18) + ultimate cognitive expansion routes + v2 features
+    expect(ALL_NAV_ITEMS).toHaveLength(38)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/search')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/audio-commute')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/sleep-tmr')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/palace-3d')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/constellation')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/debate')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/ingest')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/weakness')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/voice-tutor')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/exam-sim')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })

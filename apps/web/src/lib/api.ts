@@ -97,6 +97,31 @@ export async function readJson<T>(req: Request, schema: z.ZodType<T>): Promise<T
   return parsed.data
 }
 
+/**
+ * Validate a request's query string with a zod schema (zod at every boundary).
+ * Params arrive as strings — use `z.coerce.number()` for numbers. Empty values
+ * (`?limit=`) are dropped so `.optional()` / `.default()` apply instead of
+ * coercing '' to 0. Throws ApiError(400) with flattened issues on failure.
+ */
+export function readQuery<T>(req: Request, schema: z.ZodType<T>): T {
+  const params: Record<string, string> = {}
+  for (const [key, value] of new URL(req.url).searchParams) {
+    if (value !== '') params[key] = value
+  }
+  const parsed = schema.safeParse(params)
+  if (!parsed.success) {
+    throw new ApiError(
+      400,
+      'Invalid query parameters',
+      parsed.error.issues.map((issue) => ({
+        path: issue.path.map(String).join('.'),
+        message: issue.message,
+      })),
+    )
+  }
+  return parsed.data
+}
+
 /** JSON error response with a consistent `{ error, detail? }` shape. */
 export function jsonError(status: number, message: string, detail?: unknown): Response {
   return Response.json(detail !== undefined ? { error: message, detail } : { error: message }, {
@@ -133,10 +158,20 @@ export async function normalizeRouteContext<C>(context: C): Promise<C> {
  * serve from a Next.js route OR a non-Node runtime; the 2nd argument is
  * normalized via {@link normalizeRouteContext} before the handler sees it.
  */
+/**
+ * The wrapped handler's call signature. A handler that declares no context
+ * (C stays `unknown`) can be called with just the request — tests, the hub
+ * registry and scripts do; a handler that needs `{ params }` keeps the
+ * context argument required.
+ */
+export type WrappedRoute<C> = unknown extends C
+  ? (req: Request, context?: unknown) => Promise<Response>
+  : (req: Request, context: C) => Promise<Response>
+
 export function withRoute<C = unknown>(
   handler: (req: Request, context: C) => Promise<Response>,
-): (req: Request, context: C) => Promise<Response> {
-  return async (req, context) => {
+): WrappedRoute<C> {
+  const wrapped = async (req: Request, context: C): Promise<Response> => {
     try {
       return await handler(req, await normalizeRouteContext(context))
     } catch (err) {
@@ -147,4 +182,7 @@ export function withRoute<C = unknown>(
       return jsonError(500, 'Internal error')
     }
   }
+  // Both branches of WrappedRoute accept (req, context: C); TS can't narrow a
+  // conditional return type inside the body, hence the one assertion.
+  return wrapped as WrappedRoute<C>
 }

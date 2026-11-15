@@ -268,7 +268,7 @@ export default function CanvasPage() {
               onBoardPointerMove(e)
               onPointerMove(e)
             }}
-            onPointerUp={(e) => {
+            onPointerUp={() => {
               onBoardPointerUp()
               onPointerUp()
             }}

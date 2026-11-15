@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { ensurePluginsLoaded } from '@/lib/plugins'
-import { focusSessions, xpEvents, withTransaction, updateStreakInTx } from '@learning-hub/db'
+import { awardXp, focusSessions, withTransaction, updateStreakInTx } from '@learning-hub/db'
 import { XP_REWARDS, eventBus } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
@@ -41,10 +41,11 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
     const [row] = tx
       .update(focusSessions)
       .set({
-        endedAt: new Date().toISOString(),
+        // Re-PATCHing an ended session (e.g. adding mood/notes) keeps its end time.
+        endedAt: existing.endedAt ?? new Date().toISOString(),
         actualMinutes: actualMinutes ?? existing.actualMinutes,
         leaks: body.leaks ?? existing.leaks,
-        completed: body.completed ?? existing.completed,
+        completed: existing.endedAt ? existing.completed : (body.completed ?? existing.completed),
         mood: body.mood !== undefined ? body.mood : existing.mood,
         notes,
       })
@@ -53,15 +54,15 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
       .all()
 
     let xpAwarded = 0
-    if ((body.completed ?? existing.completed) && !existing.completed) {
+    // XP only for the transition of a still-open session to completed — an
+    // abandoned or early-exited session (endedAt set) can't be completed later.
+    if (body.completed && !existing.completed && !existing.endedAt) {
+      // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
+      awardXp(tx, {
+        source: 'focus',
+        meta: { sessionId, plannedMinutes: existing.plannedMinutes, task: existing.task },
+      })
       xpAwarded = XP_REWARDS.focusSession
-      tx.insert(xpEvents)
-        .values({
-          source: 'focus',
-          amount: xpAwarded,
-          meta: { sessionId, plannedMinutes: existing.plannedMinutes, task: existing.task },
-        })
-        .run()
       // focus work counts toward the streak
       updateStreakInTx(tx, new Date())
     }

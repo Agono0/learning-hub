@@ -8,13 +8,11 @@
     "declarativeNetRequestWithHostAccess",
     "storage",
     "alarms",
-    "tabs"
+    "tabs",
+    "contextMenus",
+    "webNavigation"
   ],
-  "host_permissions": [
-    "http://127.0.0.1/*",
-    "http://localhost/*",
-    "<all_urls>"
-  ],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*", "<all_urls>"],
   "background": {
     "service_worker": "service-worker.js"
   },
@@ -29,4 +27,3 @@
     }
   ]
 }
-

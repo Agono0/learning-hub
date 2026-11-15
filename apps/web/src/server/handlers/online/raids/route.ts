@@ -7,6 +7,7 @@
 import { z } from 'zod'
 import { getDefaultOnlineServer, getOnlineIdentity } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 
 const createRaidSchema = z.object({
   bossKey: z.string().min(1).max(40).optional().default('chronos'),
@@ -18,7 +19,8 @@ export const POST = withRoute(async (req: Request) => {
   const identity = getOnlineIdentity()
 
   try {
-    const res = await fetch(`${server}/api/v1/raids/create`, {
+    // remoteFetch → native HTTP bridge under Tauri (webview CORS-free).
+    const res = await remoteFetch(`${server}/api/v1/raids/create`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ bossKey: body.bossKey }),

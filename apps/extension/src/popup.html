@@ -1,108 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Learning HUB Focus</title>
-  <style>
-    :root {
-      --bg: #09090b;
-      --card: #141417;
-      --border: #27272a;
-      --text: #f4f4f5;
-      --muted: #a1a1aa;
-      --primary: #6366f1;
-    }
-    body {
-      width: 320px;
-      margin: 0;
-      padding: 16px;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      box-sizing: border-box;
-    }
-    h2 {
-      font-size: 16px;
-      margin: 0 0 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .status-active {
-      background: rgba(16, 185, 129, 0.2);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .status-idle {
-      background: rgba(161, 161, 170, 0.15);
-      color: var(--muted);
-      border: 1px solid rgba(161, 161, 170, 0.2);
-    }
-    label {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 10px;
-      margin-bottom: 4px;
-    }
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 8px 10px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 13px;
-    }
-    button {
-      margin-top: 14px;
-      width: 100%;
-      padding: 9px;
-      background: var(--primary);
-      border: none;
-      border-radius: 6px;
-      color: #fff;
-      font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .msg {
-      font-size: 12px;
-      margin-top: 8px;
-      text-align: center;
-      color: #34d399;
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <h2>🛡️ Learning HUB Focus</h2>
-  <div id="status-container">
-    Status: <span id="status-badge" class="status-badge status-idle">Idle</span>
-  </div>
-  <div id="active-info" style="display: none; margin-top: 10px; font-size: 12px; color: var(--muted);">
-    Ends at: <span id="ends-at" style="color: var(--text); font-weight: 600;"></span>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Learning HUB Focus</title>
+    <style>
+      :root {
+        --bg: #09090b;
+        --card: #141417;
+        --border: #27272a;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --primary: #6366f1;
+      }
+      body {
+        width: 320px;
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-sizing: border-box;
+      }
+      h2 {
+        font-size: 16px;
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .status-active {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      .status-idle {
+        background: rgba(161, 161, 170, 0.15);
+        color: var(--muted);
+        border: 1px solid rgba(161, 161, 170, 0.2);
+      }
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 10px;
+        margin-bottom: 4px;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 13px;
+      }
+      button {
+        margin-top: 14px;
+        width: 100%;
+        padding: 9px;
+        background: var(--primary);
+        border: none;
+        border-radius: 6px;
+        color: #fff;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .msg {
+        font-size: 12px;
+        margin-top: 8px;
+        text-align: center;
+        color: #34d399;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🛡️ Learning HUB Focus</h2>
+    <div id="status-container">
+      Status: <span id="status-badge" class="status-badge status-idle">Idle</span>
+    </div>
+    <div id="friction-container" style="margin-top: 6px; font-size: 12px; color: var(--muted)">
+      Friction capture: <span id="friction-badge" style="font-weight: 500">off</span>
+    </div>
+    <div
+      id="active-info"
+      style="display: none; margin-top: 10px; font-size: 12px; color: var(--muted)"
+    >
+      Ends at: <span id="ends-at" style="color: var(--text); font-weight: 600"></span>
+    </div>
 
-  <form id="pairing-form">
-    <label for="pairing-token">Pairing Token (from App Settings):</label>
-    <input type="text" id="pairing-token" placeholder="Paste token here…" autocomplete="off" />
-    <label for="loopback-port">Loopback Port:</label>
-    <input type="number" id="loopback-port" value="47615" />
-    <button type="submit">Save Pairing</button>
-  </form>
-  <div id="saved-msg" class="msg">Saved & connected!</div>
+    <form id="pairing-form">
+      <label for="pairing-token">Pairing Token (from App Settings):</label>
+      <input type="text" id="pairing-token" placeholder="Paste token here…" autocomplete="off" />
+      <label for="loopback-port">Loopback Port:</label>
+      <input type="number" id="loopback-port" value="47615" />
+      <button type="submit">Save Pairing</button>
+    </form>
+    <div id="saved-msg" class="msg">Saved & connected!</div>
 
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>
-

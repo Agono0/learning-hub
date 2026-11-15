@@ -57,6 +57,114 @@ const KIND_COLOR: Record<GraphNode['kind'], string> = {
   card: '#94a3b8',
 }
 
+/** GET /api/curriculum/graph/remedial — honest verdict from real skill mastery. */
+interface RemedialResponse {
+  ok: boolean
+  result: {
+    blocked: boolean
+    conceptId: string
+    remedialConceptId: string | null
+    reason: string
+  } | null
+  prereqs: { name: string; masteryPct: number | null; attempts: number }[]
+  message?: string
+}
+
+/**
+ * Live remedial check (F-08⑥): pick a target concept, see whether its
+ * prerequisites are below the mastery bar. Verdicts come from real skill
+ * mastery only — when no prerequisite has practice data, the panel says so
+ * instead of fabricating a verdict. Unblocked concepts link straight to
+ * practice; blocked ones name the prereq to refresh.
+ */
+function RemedialCheckPanel({ targets }: { targets: string[] }) {
+  const router = useRouter()
+  const [concept, setConcept] = useState('')
+  const check = useMutation({
+    mutationFn: (target: string) =>
+      apiGet<RemedialResponse>(
+        `/api/curriculum/graph/remedial?conceptId=${encodeURIComponent(target)}`,
+      ),
+  })
+  const r = check.data
+
+  return (
+    <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-sm font-semibold text-indigo-300">
+        <Sparkles className="h-4 w-4" />
+        Remedial check
+      </div>
+      <p className="text-xs text-neutral-400">
+        Below 70% mastery on a prerequisite blocks the target until you refresh the foundation.
+      </p>
+      {targets.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="input h-9 max-w-xs text-xs"
+            value={concept}
+            onChange={(e) => setConcept(e.target.value)}
+            aria-label="Concept to check"
+          >
+            <option value="">Pick a concept…</option>
+            {targets.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn text-xs"
+            disabled={!concept || check.isPending}
+            onClick={() => check.mutate(concept)}
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Check
+          </button>
+        </div>
+      ) : (
+        <p className="text-xs text-neutral-500">
+          No prerequisite chains registered yet — add dependencies above to enable remedial checks.
+        </p>
+      )}
+      {check.isPending && <p className="text-xs text-neutral-500">Checking prerequisites…</p>}
+      {r?.message && <p className="text-xs text-neutral-500">{r.message}</p>}
+      {r?.result && (
+        <div
+          className={`flex items-start gap-2 rounded-lg p-2.5 text-xs ${
+            r.result.blocked
+              ? 'border border-amber-500/30 bg-amber-500/10 text-amber-200'
+              : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+          }`}
+        >
+          <AlertTriangle
+            className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${r.result.blocked ? 'text-amber-400' : 'text-emerald-400'}`}
+          />
+          <span className="min-w-0 flex-1">{r.result.reason}</span>
+          <button
+            type="button"
+            onClick={() => router.push(r.result!.blocked ? '/review' : '/courses')}
+            className="btn-ghost shrink-0 text-xs"
+          >
+            {r.result.blocked ? 'Refresh foundation' : 'Open courses'}
+          </button>
+        </div>
+      )}
+      {r?.prereqs && r.prereqs.length > 0 && (
+        <p className="text-[11px] text-neutral-500">
+          Prerequisites:{' '}
+          {r.prereqs
+            .map((p) =>
+              p.masteryPct == null
+                ? `${p.name} (no data)`
+                : `${p.name} ${Math.round(p.masteryPct * 100)}%`,
+            )
+            .join(' · ')}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function GraphPage() {
   const router = useRouter()
   const qc = useQueryClient()
@@ -322,27 +430,8 @@ export default function GraphPage() {
               )}
             </div>
 
-            {/* Remedial Remediation Fast-Track Banner */}
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-indigo-300">
-                <Sparkles className="h-4 w-4" />
-                Adaptive Remedial Pause Active
-              </div>
-              <p className="text-xs text-neutral-400">
-                If prerequisite stability slips below 70% or incurs 3+ recent lapses, Learning HUB
-                automatically inserts a remedial practice loop before allowing you to test dependent
-                advanced skills.
-              </p>
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => router.push('/review')}
-                  className="btn text-xs flex items-center gap-1.5"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" /> Start Remedial Practice
-                </button>
-              </div>
-            </div>
+            {/* Remedial status — a live check against real skill mastery (F-08⑥) */}
+            <RemedialCheckPanel targets={[...new Set(deps.map((d) => d.targetConcept))]} />
           </div>
         </div>
       )}

@@ -63,9 +63,9 @@ describe('buildGrammarCard', () => {
   })
 
   it('throws when the target is not in the sentence', () => {
-    expect(() =>
-      buildGrammarCard({ sentence: 'I go home', pattern: 'p', target: 'walk' }),
-    ).toThrow(/not found/)
+    expect(() => buildGrammarCard({ sentence: 'I go home', pattern: 'p', target: 'walk' })).toThrow(
+      /not found/,
+    )
   })
 })
 

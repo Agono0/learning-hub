@@ -49,6 +49,14 @@ export default function PlannerPage() {
     queryKey: ['study-plan'],
     queryFn: () => apiGet<PlannerData>('/api/study-plan'),
   })
+  // Reminder engagement (F-08④): notification clicks vs sends, trailing week.
+  const engagement = useQuery<{
+    ok: boolean
+    engagement?: { sent: number; clicked: number; engagementPct: number }
+  }>({
+    queryKey: ['reminder-engagement'],
+    queryFn: () => apiGet('/api/reminders/log?limit=1'),
+  })
   const [weeklyMinutes, setWeeklyMinutes] = useState(180)
   const [restDay, setRestDay] = useState<number | ''>('')
   const [touched, setTouched] = useState(false)
@@ -84,6 +92,14 @@ export default function PlannerPage() {
         title="Study planner"
         subtitle="Course workload + exam dates → a weekly plan you can keep"
       />
+
+      {engagement.data?.engagement && engagement.data.engagement.sent > 0 && (
+        <p className="text-xs text-neutral-500">
+          Reminder engagement (7 days): {engagement.data.engagement.clicked} of{' '}
+          {engagement.data.engagement.sent} notifications opened (
+          {engagement.data.engagement.engagementPct}%).
+        </p>
+      )}
 
       <Panel title="Build the plan">
         <div className="flex flex-wrap items-end gap-3">

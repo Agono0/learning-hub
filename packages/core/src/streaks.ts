@@ -59,7 +59,9 @@ export function recordActivity(state: StreakState, today: Date, offsetMinutes = 
   const key = dayKey(today, offsetMinutes)
   if (state.lastActiveDate && key <= state.lastActiveDate) return state // already counted today or earlier
   const gapDays = state.lastActiveDate
-    ? Math.round((Date.parse(key + 'T00:00:00Z') - Date.parse(state.lastActiveDate + 'T00:00:00Z')) / DAY_MS)
+    ? Math.round(
+        (Date.parse(key + 'T00:00:00Z') - Date.parse(state.lastActiveDate + 'T00:00:00Z')) / DAY_MS,
+      )
     : Infinity
   if (state.lastActiveDate === null || gapDays === 1) {
     const current = state.current + 1
@@ -69,7 +71,13 @@ export function recordActivity(state: StreakState, today: Date, offsetMinutes = 
     // missed exactly one day — try protections in order: freeze → weekend amulet
     if (state.freezes > 0) {
       const current = state.current + 1
-      return { ...state, freezes: state.freezes - 1, current, best: Math.max(state.best, current), lastActiveDate: key }
+      return {
+        ...state,
+        freezes: state.freezes - 1,
+        current,
+        best: Math.max(state.best, current),
+        lastActiveDate: key,
+      }
     }
     if (state.weekendAmulet && isWeekend(today, offsetMinutes)) {
       const current = state.current + 1
@@ -78,6 +86,18 @@ export function recordActivity(state: StreakState, today: Date, offsetMinutes = 
   }
   // streak broken — fresh start framing (fresh-start effect, not guilt)
   return { ...state, current: 1, best: state.best, lastActiveDate: key }
+}
+
+/**
+ * The streak as it stands right now: the stored `current` only while it is
+ * still alive — i.e. activity today would extend it under the same rules as
+ * {@link recordActivity} (consecutive day, freeze, weekend amulet). A stored
+ * streak whose gap can no longer be bridged reads as 0.
+ */
+export function liveStreak(state: StreakState, now: Date, offsetMinutes = 0): number {
+  if (!state.lastActiveDate || state.current <= 0) return 0
+  if (dayKey(now, offsetMinutes) <= state.lastActiveDate) return state.current
+  return recordActivity(state, now, offsetMinutes).current > state.current ? state.current : 0
 }
 
 /** Emergency 1-card review still counts: same as recordActivity. */

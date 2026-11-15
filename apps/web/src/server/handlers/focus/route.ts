@@ -1,26 +1,21 @@
-import { desc, eq } from 'drizzle-orm'
+import { desc } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/db'
-import { focusSessions } from '@learning-hub/db'
+import { focusSessions, getOpenFocusSession } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 /** GET /api/focus — recent sessions (newest first) + the currently running one. */
-export async function GET() {
+export const GET = withRoute(async () => {
   const rows = db
     .select()
     .from(focusSessions)
     .orderBy(desc(focusSessions.startedAt))
     .limit(20)
     .all()
-  const [running] = db
-    .select()
-    .from(focusSessions)
-    .where(eq(focusSessions.completed, false))
-    .orderBy(desc(focusSessions.startedAt))
-    .limit(1)
-    .all()
-  return Response.json({ sessions: rows, running: running ?? null })
-}
+  // "running" = not completed AND not ended; abandoned/exited sessions keep
+  // completed=false but have endedAt, and must not be restored as live.
+  return Response.json({ sessions: rows, running: getOpenFocusSession() ?? null })
+})
 
 const startSessionSchema = z.object({
   plannedMinutes: z

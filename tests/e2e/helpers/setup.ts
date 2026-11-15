@@ -41,7 +41,9 @@ export function getActiveDbPath(): string {
 
 afterAll(() => {
   try {
-    const globalDb = (globalThis as unknown as { __learningHubDb?: any }).__learningHubDb
+    // The db package caches its connection here; close the native handle.
+    const globalDb = (globalThis as { __learningHubDb?: { $client?: { close?: () => void } } })
+      .__learningHubDb
     if (globalDb?.$client?.close) {
       globalDb.$client.close()
     }

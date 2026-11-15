@@ -49,13 +49,20 @@
             {
               "title": "Average of two numbers",
               "problem": "Write `average(a, b)` that returns the mean of two numbers.",
-              "steps": ["Add the two parameters: `a + b`", "Divide the sum by 2", "Return the result"],
+              "steps": [
+                "Add the two parameters: `a + b`",
+                "Divide the sum by 2",
+                "Return the result"
+              ],
               "answer": "function average(a, b) { return (a + b) / 2 }"
             }
           ],
           "keyTerms": [
             { "term": "Parameter", "definition": "A named input in a function's definition." },
-            { "term": "Argument", "definition": "The actual value passed when the function is called." }
+            {
+              "term": "Argument",
+              "definition": "The actual value passed when the function is called."
+            }
           ],
           "exercises": [
             {
@@ -77,7 +84,12 @@
               "prompt": "What does `function f() { 1 + 1 }` return when called?",
               "options": ["2", "undefined", "null", "An error"],
               "answer": 1,
-              "why": ["There is no return statement", "Without return a function returns undefined", "null is never returned implicitly", "The function is valid"],
+              "why": [
+                "There is no return statement",
+                "Without return a function returns undefined",
+                "null is never returned implicitly",
+                "The function is valid"
+              ],
               "explanation": "Without a `return` statement a function returns `undefined`."
             },
             {
@@ -104,7 +116,9 @@
           "estMinutes": 20,
           "skills": ["arrow-functions"],
           "theory": [
-            { "body": "```js\nconst double = (x) => x * 2\n```\nWith a single expression body, the value is returned automatically." }
+            {
+              "body": "```js\nconst double = (x) => x * 2\n```\nWith a single expression body, the value is returned automatically."
+            }
           ],
           "exercises": [
             {
@@ -131,7 +145,9 @@
           "estMinutes": 25,
           "skills": ["array-methods"],
           "theory": [
-            { "body": "`map` transforms every element; `filter` keeps elements that pass a test. Both return **new** arrays." }
+            {
+              "body": "`map` transforms every element; `filter` keeps elements that pass a test. Both return **new** arrays."
+            }
           ],
           "exercises": [
             {
@@ -166,8 +182,18 @@
       "description": "Build a small library of functions that turn raw scores into a report.",
       "skills": ["functions", "array-methods"],
       "stages": [
-        { "slug": "average", "title": "Average score", "description": "Write `average(scores)` using reduce or a loop.", "checklist": ["Handles an empty array"] },
-        { "slug": "letter-grades", "title": "Letter grades", "description": "Map each score to A–F with a pure function.", "checklist": ["Uses map", "No mutation of the input"] }
+        {
+          "slug": "average",
+          "title": "Average score",
+          "description": "Write `average(scores)` using reduce or a loop.",
+          "checklist": ["Handles an empty array"]
+        },
+        {
+          "slug": "letter-grades",
+          "title": "Letter grades",
+          "description": "Map each score to A–F with a pure function.",
+          "checklist": ["Uses map", "No mutation of the input"]
+        }
       ]
     }
   ],
@@ -176,7 +202,11 @@
     "minutes": 20,
     "exercises": [
       { "type": "truefalse", "prompt": "`filter` changes the original array.", "answer": false },
-      { "type": "typein", "prompt": "Which keyword sends a value back from a function?", "answers": ["return"] },
+      {
+        "type": "typein",
+        "prompt": "Which keyword sends a value back from a function?",
+        "answers": ["return"]
+      },
       {
         "type": "code",
         "prompt": "Write `sum(xs)` that adds every number in an array.",

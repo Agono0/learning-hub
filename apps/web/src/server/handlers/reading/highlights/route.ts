@@ -9,16 +9,16 @@
  * POST { sourceId, text?, max? } → extract highlight candidates from text or source
  * PATCH { id, action: 'keep'|'discard' } → triage
  */
-import { eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, highlights, sources } from '@learning-hub/db'
 import {
-  extractHighlightCandidates,
-  resurfaceHighlights,
-  resurfaceSeen,
-  triageUpdate,
-  type HighlightRow,
-} from '@learning-hub/core'
+  createHighlightCandidates,
+  getSource,
+  listHighlights,
+  markHighlightsSeen,
+  resurfaceHighlightsQuery,
+  triageHighlight,
+} from '@learning-hub/db'
+import { extractHighlightCandidates } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
 const resurfaceParamsSchema = z.object({
@@ -46,27 +46,16 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const parsed = resurfaceParamsSchema.safeParse(Object.fromEntries(url.searchParams))
   const mode = url.searchParams.get('mode')
-  const rows = await db.select().from(highlights)
   if (mode === 'resurface') {
     const limit = parsed.success ? (parsed.data.limit ?? 10) : 10
-    const resurfaced = resurfaceHighlights(rows as HighlightRow[], new Date(), limit)
-    const withSource = await Promise.all(
-      resurfaced.map(async (h) => {
-        const [src] = await db
-          .select({ title: sources.title })
-          .from(sources)
-          .where(eq(sources.id, h.sourceId))
-          .limit(1)
-        return { ...h, sourceTitle: src?.title ?? null }
-      }),
-    )
+    const resurfaced = resurfaceHighlightsQuery({ limit })
     // read-only: strength/lastReviewedAt are NOT touched here anymore — the
     // client opts in via POST { seenIds } (passive reads must not inflate memory)
-    return Response.json({ resurface: withSource })
+    return Response.json({ resurface: resurfaced })
   }
   const sourceId = url.searchParams.get('sourceId')
-  const filtered = sourceId ? rows.filter((r) => r.sourceId === Number(sourceId)) : rows
-  return Response.json({ highlights: filtered })
+  const rows = listHighlights(sourceId ? { sourceId: Number(sourceId) } : {})
+  return Response.json({ highlights: rows })
 }
 
 export const POST = withRoute(async (req: Request) => {
@@ -74,32 +63,15 @@ export const POST = withRoute(async (req: Request) => {
 
   if ('seenIds' in body) {
     // explicit resurface-seen: promote-if-known for the shown highlights only
-    const rows = db.select().from(highlights).where(inArray(highlights.id, body.seenIds)).all()
-    const updated: number[] = []
-    for (const h of rows) {
-      const update = resurfaceSeen(h as HighlightRow, new Date())
-      db.update(highlights).set(update).where(eq(highlights.id, h.id)).run()
-      updated.push(h.id)
-    }
+    const updated = markHighlightsSeen(body.seenIds)
     return Response.json({ ok: true, seen: updated })
   }
 
-  const [source] = await db.select().from(sources).where(eq(sources.id, body.sourceId)).limit(1)
+  const source = getSource(body.sourceId)
   if (!source) return Response.json({ error: 'source not found' }, { status: 404 })
   const text = body.text?.trim() || source.content
   const candidates = extractHighlightCandidates(text, body.max ?? 8)
-  const createdRows = db.transaction((tx) => {
-    const out: (typeof highlights.$inferSelect)[] = []
-    for (const candidate of candidates) {
-      const [row] = tx
-        .insert(highlights)
-        .values({ sourceId: source.id, text: candidate, strength: 0.5, triaged: 0 })
-        .returning()
-        .all()
-      if (row) out.push(row)
-    }
-    return out
-  })
+  const createdRows = createHighlightCandidates(source.id, candidates)
   return Response.json({
     ok: true,
     created: createdRows.length,
@@ -110,9 +82,7 @@ export const POST = withRoute(async (req: Request) => {
 
 export const PATCH = withRoute(async (req: Request) => {
   const body = await readJson(req, triageSchema)
-  const [row] = await db.select().from(highlights).where(eq(highlights.id, body.id)).limit(1)
-  if (!row) return Response.json({ error: 'not found' }, { status: 404 })
-  const update = triageUpdate(row as HighlightRow, body.action, new Date())
-  await db.update(highlights).set(update).where(eq(highlights.id, body.id))
+  const update = triageHighlight(body.id, body.action)
+  if (!update) return Response.json({ error: 'not found' }, { status: 404 })
   return Response.json({ ok: true, ...update })
 })

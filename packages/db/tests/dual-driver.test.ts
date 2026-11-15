@@ -84,8 +84,8 @@ function seedReviewFixtures(db: dbpkg.LearningHubDB, now: Date): void {
     .values({
       id: 1,
       deckId: 1,
-      type: 'qa',
-      content: { front: 'What is SQLite?', back: 'Embedded database' },
+      type: 'basic',
+      content: { basic: { front: 'What is SQLite?', back: 'Embedded database' } },
       tags: [],
       skillId: 7, // exercises the Elo/mastery branch too
       due: now.toISOString(),
@@ -268,8 +268,8 @@ describe('(c) `db` lazy Proxy transparency', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'Q', back: 'A' },
+        type: 'basic',
+        content: { basic: { front: 'Q', back: 'A' } },
         tags: [],
         due: NOW.toISOString(),
         createdAt: NOW.toISOString(),

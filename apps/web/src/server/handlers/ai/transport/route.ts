@@ -13,7 +13,7 @@
  */
 import { z } from 'zod'
 import { eq, gte } from 'drizzle-orm'
-import { db, chatSessions, ideas, journalEntries, notes, sources } from '@learning-hub/db'
+import { db, getChatSession, getIdea, getSource, journalEntries, notes } from '@learning-hub/db'
 import {
   AI_FEATURES,
   brainwritePrompt,
@@ -58,11 +58,7 @@ async function buildPrompt(
       const sessionId = Number(params.get('sessionId') ?? 0)
       if (!sessionId)
         throw new Error('sessionId query param required for the feynman-grader envelope')
-      const [session] = await db
-        .select()
-        .from(chatSessions)
-        .where(eq(chatSessions.id, sessionId))
-        .limit(1)
+      const session = getChatSession(sessionId)
       if (!session) throw new Error(`chat session ${sessionId} not found`)
       const transcript = ((session.messages as { role: string; content: string }[]) ?? [])
         .map((m) => `${m.role === 'user' ? 'Learner' : 'Student-questioner'}: ${m.content}`)
@@ -73,7 +69,7 @@ async function buildPrompt(
       const pdfId = Number(params.get('pdfId') ?? 0)
       let pdfText: string | undefined
       if (pdfId) {
-        const [src] = await db.select().from(sources).where(eq(sources.id, pdfId)).limit(1)
+        const src = getSource(pdfId)
         if (!src) throw new Error(`source ${pdfId} not found`)
         pdfText = src.content
       }
@@ -87,7 +83,7 @@ async function buildPrompt(
       const pdfId = Number(params.get('pdfId') ?? 0)
       let source = text('text')
       if (!source && pdfId) {
-        const [src] = await db.select().from(sources).where(eq(sources.id, pdfId)).limit(1)
+        const src = getSource(pdfId)
         if (!src) throw new Error(`source ${pdfId} not found`)
         source = src.content
       }
@@ -119,7 +115,7 @@ async function buildPrompt(
         throw new Error(
           `ideaId query param required for ${feature.name} (or copy the prompt with your idea inline)`,
         )
-      const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId)).limit(1)
+      const idea = getIdea(ideaId)
       if (!idea) throw new Error(`idea ${ideaId} not found`)
       return `Idea under review: "${idea.title}"\n${idea.content || '(no description yet)'}\n\nGive your persona's assessment of this idea.`
     }

@@ -8,6 +8,7 @@
  */
 import React, { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { EmptyState, PageHeader, Panel } from '@/ui'
@@ -32,6 +33,11 @@ interface NlSearchResponse extends SearchResponse {
   plan?: { queries: string[]; kinds: string[] }
 }
 
+/** Manual-mode envelope from GET /api/ai/transport?feature=nl-search (rule 9). */
+interface ManualEnvelope {
+  manual: { title: string; summary: string; steps: string[] } | null
+}
+
 const KIND_LABELS: Record<string, string> = {
   note: 'Notes',
   card: 'Cards',
@@ -53,6 +59,34 @@ const KIND_LABELS: Record<string, string> = {
 }
 
 const ALL_KINDS = Object.keys(KIND_LABELS)
+
+/**
+ * Search tips (F-09, rule 9): the nl-search manual mode's guided steps,
+ * shown alongside the keyword-split results when no AI planner is configured.
+ * Guidance, never a gate — results stay visible above and below.
+ */
+function SearchTipsStrip() {
+  const { data } = useQuery<ManualEnvelope>({
+    queryKey: ['ai-transport-manual', 'nl-search'],
+    queryFn: () => apiGet<ManualEnvelope>('/api/ai/transport?feature=nl-search'),
+    staleTime: 60_000,
+  })
+  const m = data?.manual
+  if (!m) return null
+  return (
+    <details className="mt-2 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)">
+      <summary className="cursor-pointer text-neutral-600 dark:text-neutral-300">
+        Search tips — {m.title}
+      </summary>
+      <p className="mt-1.5 text-neutral-500">{m.summary}</p>
+      <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-neutral-500">
+        {m.steps.map((s, i) => (
+          <li key={i}>{s}</li>
+        ))}
+      </ol>
+    </details>
+  )
+}
 
 function SearchPageInner() {
   const router = useRouter()
@@ -176,6 +210,7 @@ function SearchPageInner() {
             )}
           </div>
         )}
+        {nl?.needsSetup && <SearchTipsStrip />}
 
         {/* Kind chips */}
         {presentKinds.length > 0 && (

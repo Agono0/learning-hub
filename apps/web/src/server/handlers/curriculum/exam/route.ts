@@ -8,15 +8,16 @@
  */
 import { and, desc, eq, lte } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, cards, examDates, mastery, eloEvents, skills } from '@learning-hub/db'
 import {
-  applyReviewToMastery,
-  buildMockExam,
-  eloUpdate,
-  examCountdownPlan,
-  outcomeFrom,
-  type MockCard,
-} from '@learning-hub/core'
+  db,
+  cards,
+  examDates,
+  mastery,
+  skills,
+  withTransaction,
+  applySkillResponse,
+} from '@learning-hub/db'
+import { buildMockExam, examCountdownPlan, outcomeFrom, type MockCard } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
 
 const examPostSchema = z.object({
@@ -119,64 +120,32 @@ export const POST = withRoute(async (req: Request) => {
   if (action === 'submit') {
     const results = body.results ?? []
     if (!results.length) return Response.json({ error: 'results required' }, { status: 400 })
-    const graded: { cardId: number; skillId: number | null; pKnownAfter: number }[] = []
+    // Rule 7: mastery/Elo writes go through the ONE canonical path
+    // (packages/db/src/mastery-service.ts) — the handler owns no grading math.
+    // Async reads resolve before the (strictly synchronous) transaction.
+    const cardsById = new Map<number, typeof cards.$inferSelect>()
     for (const r of results) {
-      const [card] = await db.select().from(cards).where(eq(cards.id, r.cardId)).limit(1)
-      if (!card) continue
-      const outcome = r.outcome ?? (r.grade ? outcomeFrom(r.grade, r.confidence ?? 1) : 0)
-      const correct = outcome >= 0.5
-      if (card.skillId) {
-        const [row] = await db
-          .select()
-          .from(mastery)
-          .where(eq(mastery.skillId, card.skillId))
-          .limit(1)
-        const before = row ?? { pKnown: 0.1, attempts: 0, correct: 0 }
-        const after = applyReviewToMastery(before, correct)
-        if (row) {
-          const elo = eloUpdate(row.elo, 1000, outcome, row.attempts, 0)
-          await db
-            .update(mastery)
-            .set({
-              pKnown: after.pKnown,
-              attempts: after.attempts,
-              correct: after.correct,
-              elo: elo.ratingAfter,
-              updatedAt: new Date().toISOString(),
-            })
-            .where(eq(mastery.skillId, card.skillId))
-          await db.insert(eloEvents).values({
-            skillId: card.skillId,
-            ratingBefore: elo.ratingBefore,
-            ratingAfter: elo.ratingAfter,
-            itemDifficulty: elo.itemDifficultyBefore,
-            outcome,
-          })
-        } else {
-          const elo = eloUpdate(1000, 1000, outcome, 0, 0)
-          await db
-            .insert(mastery)
-            .values({
-              skillId: card.skillId,
-              pKnown: after.pKnown,
-              attempts: after.attempts,
-              correct: after.correct,
-              elo: elo.ratingAfter,
-            })
-            .onConflictDoNothing()
-          await db.insert(eloEvents).values({
-            skillId: card.skillId,
-            ratingBefore: elo.ratingBefore,
-            ratingAfter: elo.ratingAfter,
-            itemDifficulty: elo.itemDifficultyBefore,
-            outcome,
-          })
-        }
-        graded.push({ cardId: card.id, skillId: card.skillId, pKnownAfter: after.pKnown })
-      } else {
-        graded.push({ cardId: card.id, skillId: null, pKnownAfter: 0 })
+      if (!cardsById.has(r.cardId)) {
+        const [card] = await db.select().from(cards).where(eq(cards.id, r.cardId)).limit(1)
+        if (card) cardsById.set(card.id, card)
       }
     }
+    const graded = withTransaction((tx) => {
+      const out: { cardId: number; skillId: number | null; pKnownAfter: number }[] = []
+      for (const r of results) {
+        const card = cardsById.get(r.cardId)
+        if (!card) continue
+        const outcome = r.outcome ?? (r.grade ? outcomeFrom(r.grade, r.confidence ?? 1) : 0)
+        const correct = outcome >= 0.5
+        if (card.skillId) {
+          const applied = applySkillResponse(tx, { skillId: card.skillId, outcome, correct })
+          out.push({ cardId: card.id, skillId: card.skillId, pKnownAfter: applied.pKnownAfter })
+        } else {
+          out.push({ cardId: card.id, skillId: null, pKnownAfter: 0 })
+        }
+      }
+      return out
+    })
     return Response.json({ ok: true, graded })
   }
 

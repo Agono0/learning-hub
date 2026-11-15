@@ -11,9 +11,9 @@ import {
   evaluateTypeinAnswer,
   interleaveQueue,
   isCardAnswerCorrect,
-  normalizeAnswer,
   parseCloze,
   pickBasicFront,
+  pickCardPrompt,
   stripBulletMarker,
   syncBulletCard,
   validateCardContent,
@@ -92,6 +92,63 @@ describe('pickBasicFront (varied phrasings)', () => {
   it('falls back to the front without variants and guards negative reps', () => {
     expect(pickBasicFront({ front: 'Q' }, 7)).toBe('Q')
     expect(pickBasicFront({ front: 'Q', variants: ['V'] }, -3)).toBe('Q')
+  })
+})
+
+describe('pickCardPrompt (multi-format varied phrasings)', () => {
+  it('rotates typein questions with variant tracking', () => {
+    const card = {
+      type: 'typein',
+      content: {
+        typein: {
+          question: 'What is ATP?',
+          acceptedAnswers: ['adenosine triphosphate'],
+          variants: [
+            'Identify the cellular energy currency molecule',
+            'Name the molecule hydrolyzed for cellular work',
+          ],
+        },
+      },
+      reps: 0,
+    }
+    const r0 = pickCardPrompt(card)
+    expect(r0.text).toBe('What is ATP?')
+    expect(r0.isVariant).toBe(false)
+    expect(r0.variantIndex).toBe(0)
+    expect(r0.totalVariants).toBe(2)
+
+    const r1 = pickCardPrompt({ ...card, reps: 1 })
+    expect(r1.text).toBe('Identify the cellular energy currency molecule')
+    expect(r1.isVariant).toBe(true)
+    expect(r1.variantIndex).toBe(1)
+
+    const r2 = pickCardPrompt({ ...card, reps: 2 })
+    expect(r2.text).toBe('Name the molecule hydrolyzed for cellular work')
+    expect(r2.isVariant).toBe(true)
+
+    const r3 = pickCardPrompt({ ...card, reps: 3 })
+    expect(r3.text).toBe('What is ATP?')
+    expect(r3.isVariant).toBe(false)
+  })
+
+  it('rotates mcq questions with variants', () => {
+    const card = {
+      type: 'mcq',
+      content: {
+        mcq: {
+          question: 'Capital of France?',
+          options: ['Paris', 'Lyon', 'Marseille'],
+          correctIndex: 0,
+          variants: ['Which city serves as France’s administrative capital?'],
+        },
+      },
+      reps: 1,
+    }
+    const r1 = pickCardPrompt(card)
+    expect(r1.text).toBe('Which city serves as France’s administrative capital?')
+    expect(r1.isVariant).toBe(true)
+    expect(r1.variantIndex).toBe(1)
+    expect(r1.totalVariants).toBe(1)
   })
 })
 
@@ -309,12 +366,12 @@ describe('evaluateClozeAnswer & evaluateTypeinAnswer (DEF-002)', () => {
 
 describe('property: cloze parse → segments agree on answers', () => {
   it('every parsed answer appears as a segment answer', () => {
-    const answerArb = fc.string({ minLength: 1, maxLength: 8 }).filter((s) => !/[{}]/.test(s))
+    const answerArb = fc.string({ minLength: 1, maxLength: 8 }).filter((s) => !/[{}:]/.test(s))
     const textArb = fc
       .tuple(
         answerArb,
         answerArb,
-        fc.string({ maxLength: 10 }).filter((s) => !/[{}]/.test(s)),
+        fc.string({ maxLength: 10 }).filter((s) => !/[{}:]/.test(s)),
       )
       .map(([a1, a2, filler]) => `${filler} {{c1::${a1}}} mid {{c2::${a2}}} end`)
     fc.assert(
@@ -326,5 +383,17 @@ describe('property: cloze parse → segments agree on answers', () => {
         expect(parsed.text).toBe(text)
       }),
     )
+  })
+})
+
+describe('isCardFormat', async () => {
+  const { isCardFormat } = await import('../src/cards')
+  it('accepts every storable format and rejects everything else', () => {
+    for (const f of ['basic', 'cloze', 'mcq', 'typein', 'occlusion', 'exercise']) {
+      expect(isCardFormat(f)).toBe(true)
+    }
+    for (const bad of ['qa', 'reversed', '', 'toString', '__proto__', 1, null, undefined]) {
+      expect(isCardFormat(bad)).toBe(false)
+    }
   })
 })

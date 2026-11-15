@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { beforeAll, describe, it, expect, beforeEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { eq } from 'drizzle-orm'
 import * as schema from '../src/schema'
-import { getRawDb } from '../src/index'
+import { initDb, type RawSqliteHandle } from '../src/index'
 import {
   executeReview,
   executeBatchReview,
@@ -11,17 +11,27 @@ import {
   ValidationError,
 } from '../src/review-service'
 
+// Hermetic DDL source: the canonical schema bootstrapped in memory through the
+// production initDb pipeline. Never open the developer database
+// (data/learning-hub.db) from tests — parallel vitest workers opening it
+// concurrently race on the WAL sidecar files and intermittently fail with
+// SQLITE_IOERR on Windows (zero-mutation invariant, docs/TEST_INFRA.md).
+let ddlSource: RawSqliteHandle
+beforeAll(async () => {
+  ddlSource = (await initDb({ path: ':memory:' })).$client
+})
+
 function createTestDb() {
   const sqlite = new Database(':memory:')
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
 
-  const ddls = getRawDb()
+  const ddls = ddlSource
     .prepare(
       "SELECT sql FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'fts_%' AND sql IS NOT NULL",
     )
     .all('table')
-    .map((r: any) => r.sql as string)
+    .map((r) => (r as { sql: string }).sql)
 
   for (const ddl of ddls) {
     sqlite.exec(ddl)
@@ -66,8 +76,8 @@ describe('canonical review-service', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'What is SQLite?', back: 'Embedded database' },
+        type: 'basic',
+        content: { basic: { front: 'What is SQLite?', back: 'Embedded database' } },
         due: now.toISOString(),
         state: 0,
         stability: 0,
@@ -86,7 +96,7 @@ describe('canonical review-service', () => {
         timeMs: 4000,
         today: now,
       },
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     // Card should advance
@@ -141,8 +151,8 @@ describe('canonical review-service', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'Q', back: 'A' },
+        type: 'basic',
+        content: { basic: { front: 'Q', back: 'A' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -150,7 +160,7 @@ describe('canonical review-service', () => {
 
     const result = await executeReview(
       { cardId: 1, grade: 3, confidence: 1, today: now },
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     // DEF-001 assertion: current is incremented to 11 (NOT reset to 1), best is preserved at 15
@@ -187,8 +197,8 @@ describe('canonical review-service', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'Q', back: 'A' },
+        type: 'basic',
+        content: { basic: { front: 'Q', back: 'A' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -196,7 +206,7 @@ describe('canonical review-service', () => {
 
     const result = await executeReview(
       { cardId: 1, grade: 3, confidence: 1, today: now },
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     // Consecutive afternoon review increments current to 11 and does not reset to 1
@@ -228,8 +238,8 @@ describe('canonical review-service', () => {
       .values({
         id: 1,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'Q', back: 'A' },
+        type: 'basic',
+        content: { basic: { front: 'Q', back: 'A' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -237,7 +247,7 @@ describe('canonical review-service', () => {
 
     const result = await executeReview(
       { cardId: 1, grade: 3, confidence: 1, today: now },
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     // Current resets to 1, but historical best remains 25
@@ -247,7 +257,7 @@ describe('canonical review-service', () => {
 
   it('T4: transaction atomicity: rolls back all tables on error', async () => {
     // Attempt review on non-existent card
-    await expect(executeReview({ cardId: 9999, grade: 3 }, { db: testDb as any })).rejects.toThrow(
+    await expect(executeReview({ cardId: 9999, grade: 3 }, { db: testDb })).rejects.toThrow(
       CardNotFoundError,
     )
 
@@ -270,8 +280,8 @@ describe('canonical review-service', () => {
       .values({
         id: 2,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'Q', back: 'A' },
+        type: 'basic',
+        content: { basic: { front: 'Q', back: 'A' } },
         due: now.toISOString(),
         state: 2, // Review state
         stability: 5.0,
@@ -283,7 +293,7 @@ describe('canonical review-service', () => {
 
     const result = await executeReview(
       { cardId: 2, grade: 3, confidence: 1, today: now },
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     // At elapsedDays = 5 and stability = 5, retrievability target is ~0.9
@@ -329,8 +339,8 @@ describe('canonical review-service', () => {
         id: 3,
         deckId: 1,
         skillId: 42,
-        type: 'qa',
-        content: { front: 'Schrödinger eq', back: 'H psi = E psi' },
+        type: 'basic',
+        content: { basic: { front: 'Schrödinger eq', back: 'H psi = E psi' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -338,7 +348,7 @@ describe('canonical review-service', () => {
 
     const result = await executeReview(
       { cardId: 3, grade: 4, confidence: 1, today: now },
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     // Elo result present
@@ -375,8 +385,8 @@ describe('canonical review-service', () => {
       .values({
         id: 10,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'C10', back: 'A10' },
+        type: 'basic',
+        content: { basic: { front: 'C10', back: 'A10' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -387,8 +397,8 @@ describe('canonical review-service', () => {
       .values({
         id: 11,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'C11', back: 'A11' },
+        type: 'basic',
+        content: { basic: { front: 'C11', back: 'A11' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -399,7 +409,7 @@ describe('canonical review-service', () => {
         { cardId: 10, grade: 3, confidence: 1 },
         { cardId: 11, grade: 4, confidence: 1 },
       ],
-      { db: testDb as any, now },
+      { db: testDb, now },
     )
 
     expect(results).toHaveLength(2)
@@ -422,8 +432,8 @@ describe('canonical review-service', () => {
       .values({
         id: 20,
         deckId: 1,
-        type: 'qa',
-        content: { front: 'C20', back: 'A20' },
+        type: 'basic',
+        content: { basic: { front: 'C20', back: 'A20' } },
         due: now.toISOString(),
         createdAt: now.toISOString(),
       })
@@ -436,7 +446,7 @@ describe('canonical review-service', () => {
           { cardId: 20, grade: 3, confidence: 1 },
           { cardId: 999, grade: 3, confidence: 1 },
         ],
-        { db: testDb as any, now },
+        { db: testDb, now },
       ),
     ).rejects.toThrow(CardNotFoundError)
 
@@ -450,12 +460,16 @@ describe('canonical review-service', () => {
   })
 
   it('T9: rejects invalid inputs with ValidationError', async () => {
-    await expect(executeReview({ cardId: 0, grade: 3 }, { db: testDb as any })).rejects.toThrow(
+    await expect(executeReview({ cardId: 0, grade: 3 }, { db: testDb })).rejects.toThrow(
       ValidationError,
     )
 
+    // Untyped callers (MCP, CLI, HTTP) can send any number: the type forbids
+    // grade 5, and the service must still reject it at runtime.
+    const outOfRange = { cardId: 1, grade: 5 }
     await expect(
-      executeReview({ cardId: 1, grade: 5 as any }, { db: testDb as any }),
+      // @ts-expect-error grade must be 1-4
+      executeReview(outOfRange, { db: testDb }),
     ).rejects.toThrow(ValidationError)
   })
 })

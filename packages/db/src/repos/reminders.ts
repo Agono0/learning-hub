@@ -20,16 +20,18 @@ import {
   cards,
   courses,
   examDates,
-  focusSessions,
   frictionEvents,
   ideas,
   reminderClicks,
   reminderLog,
   revlog,
   pushSubscriptions,
+  streaks,
   userSettings,
   xpEvents,
 } from '../schema'
+import { liveStreak } from '@learning-hub/core/streaks'
+import { getOpenFocusSession } from './focus-lock'
 
 export function getOrCreateUserSettings(conn: LearningHubDB): typeof userSettings.$inferSelect {
   const existing = conn.select().from(userSettings).where(eq(userSettings.id, 'default')).get()
@@ -98,21 +100,25 @@ export function collectUserFacts(database?: LearningHubDB): UserFacts {
     .all()
   const todayXp = xpRow?.total ?? 0
 
-  // 4. Current streak (estimate from distinct review days)
-  const [distinctDaysRow] = conn
-    .select({ count: sql<number>`count(distinct substr(${revlog.reviewedAt}, 1, 10))` })
-    .from(revlog)
-    .all()
-  const currentStreak = Math.min(distinctDaysRow?.count ?? 0, 30)
+  // 4. Current streak — the real consecutive-day streak (with freezes/amulet),
+  //    not "number of distinct days ever reviewed".
+  const streakRow = conn.select().from(streaks).limit(1).get()
+  const currentStreak = streakRow
+    ? liveStreak(
+        {
+          current: streakRow.current,
+          best: streakRow.best,
+          lastActiveDate: streakRow.lastActiveDate,
+          freezes: streakRow.freezes,
+          weekendAmulet: Boolean(streakRow.weekendAmulet),
+        },
+        now,
+      )
+    : 0
 
-  // 5. Active focus session duration
-  const activeFocus = conn
-    .select()
-    .from(focusSessions)
-    .where(eq(focusSessions.completed, false))
-    .orderBy(desc(focusSessions.id))
-    .limit(1)
-    .get()
+  // 5. Active focus session duration — only a session still running counts;
+  //    an abandoned one keeps completed=false but has endedAt set.
+  const activeFocus = getOpenFocusSession(conn)
   let continuousFocusMinutes = 0
   if (activeFocus && activeFocus.startedAt) {
     const startMs = new Date(activeFocus.startedAt).getTime()
@@ -285,6 +291,33 @@ export function listRecentReminderLogs(
 ): (typeof reminderLog.$inferSelect)[] {
   const conn = database ?? getDb()
   return conn.select().from(reminderLog).orderBy(desc(reminderLog.id)).limit(limit).all()
+}
+
+/**
+ * Engagement stat (F-08④): clicks in the window vs reminders sent in the same
+ * window — both append-only tables, read-only here. `windowDays` counts
+ * UTC days back from now (default 7).
+ */
+export function reminderEngagement(
+  windowDays = 7,
+  database?: LearningHubDB,
+): { sent: number; clicked: number; engagementPct: number } {
+  const conn = database ?? getDb()
+  const since = new Date(Date.now() - windowDays * 86_400_000).toISOString()
+  const sent =
+    conn
+      .select({ n: sql<number>`count(*)` })
+      .from(reminderLog)
+      .where(gte(reminderLog.sentAt, since))
+      .get()?.n ?? 0
+  const clicked =
+    conn
+      .select({ n: sql<number>`count(*)` })
+      .from(reminderClicks)
+      .where(gte(reminderClicks.clickedAt, since))
+      .get()?.n ?? 0
+  const engagementPct = sent > 0 ? Math.round((clicked / sent) * 100) : 0
+  return { sent, clicked, engagementPct }
 }
 
 // ── Web-push subscriptions (M18) ─────────────────────────────────────────────

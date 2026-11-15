@@ -13,10 +13,9 @@
     "@learning-hub/core": "*"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.308",
-    "esbuild": "^0.25.0",
-    "typescript": "^5.8.2",
-    "vitest": "^3.0.7"
+    "@types/chrome": "^0.3.7",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }
-
