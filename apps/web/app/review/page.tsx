@@ -61,7 +61,7 @@ import {
 } from '@learning-hub/core/practice'
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
-import { InkPad, PageHeader } from '@/ui'
+import { InkPad, PageHeader, CognitiveLoadMeter } from '@/ui'
 import { WorkloadBalancerModal } from '@/components/WorkloadBalancerModal'
 import {
   acquireWakeLock,
@@ -1048,6 +1048,28 @@ function ReviewPageInner() {
             </a>
           </div>
         </div>
+        {stats.total > 0 && (
+          <CognitiveLoadMeter
+            totalLoad={Math.min(100, Math.max(20, Math.round(100 - (stats.accuracy - 50) * 0.8)))}
+            zone={
+              stats.accuracy >= 80
+                ? 'optimal_flow'
+                : stats.accuracy <= 55
+                  ? 'overload'
+                  : 'underload'
+            }
+            germaneLoad={Math.round((stats.accuracy / 100) * 45)}
+            intrinsicLoad={35}
+            extraneousLoad={10}
+            recommendation={
+              stats.accuracy >= 80
+                ? 'High schema integration achieved. Your working memory was in an optimal consolidation window.'
+                : stats.accuracy <= 55
+                  ? 'High cognitive friction detected. Consider taking a 10-minute restorative pause before continuing.'
+                  : 'Moderate friction. Target retrieval cues for lapsed cards in your next session.'
+            }
+          />
+        )}
         <WorkloadBalancerModal
           isOpen={showWorkloadModal}
           onClose={() => setShowWorkloadModal(false)}

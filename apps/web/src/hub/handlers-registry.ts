@@ -148,6 +148,7 @@ import * as audioCircadianCommute from '../server/handlers/audio/circadian/commu
 import * as audioTmrCues from '../server/handlers/audio/tmr/cues/route'
 import * as cognitiveDualCoding from '../server/handlers/cognitive/dual-coding/route'
 import * as cognitiveFlowState from '../server/handlers/cognitive/flow-state/route'
+import * as cognitiveInterleaving from '../server/handlers/cognitive/interleaving/route'
 import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
 import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
 import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
@@ -326,6 +327,7 @@ add('audio/circadian/commute', audioCircadianCommute)
 add('audio/tmr/cues', audioTmrCues)
 add('cognitive/dual-coding', cognitiveDualCoding)
 add('cognitive/flow-state', cognitiveFlowState)
+add('cognitive/interleaving', cognitiveInterleaving)
 add('cognitive/gkt', cognitiveGkt)
 add('cognitive/load', cognitiveLoad)
 add('spatial/palace-3d', spatialPalace3d)

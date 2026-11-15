@@ -30,7 +30,7 @@ import { leitnerBox, leitnerHistogram } from '@learning-hub/core/fsrs'
 import { DeckDoctorSheet } from '@/components/DeckDoctorSheet'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { PageHeader, LeitnerProgression, type LeitnerBoxData } from '@/ui'
 
 interface DeckInfo {
   id: number
@@ -155,6 +155,35 @@ export default function DecksPage() {
       return apiGet<{ cards: CardRow[] }>(`/api/cards?${params}`)
     },
   })
+
+  const [selectedBox, setSelectedBox] = useState<number | undefined>(undefined)
+
+  const leitnerBoxes: LeitnerBoxData[] = useMemo(() => {
+    const counts = leitnerHistogram(cards.data?.cards ?? [])
+    const titles = [
+      'New / Learning',
+      'Apprentice (Young)',
+      'Solidifying (Young)',
+      'Proficient (Mature)',
+      'Mastered (Permanent)',
+    ]
+    const intervals = ['1 day', '3 days', '7 days', '14 days', '30+ days']
+    const retentions = [0.65, 0.75, 0.85, 0.92, 0.98]
+
+    return counts.map((count, i) => ({
+      level: i + 1,
+      title: titles[i] ?? `Box ${i + 1}`,
+      count,
+      interval: intervals[i] ?? '—',
+      estimatedRetention: retentions[i],
+    }))
+  }, [cards.data?.cards])
+
+  const displayedCards = useMemo(() => {
+    const list = cards.data?.cards ?? []
+    if (!selectedBox) return list
+    return list.filter((c) => leitnerBox(c) === selectedBox)
+  }, [cards.data?.cards, selectedBox])
 
   const createDeck = useMutation({
     mutationFn: () => apiSend('/api/decks', 'POST', { name: newDeckName }),
@@ -425,31 +454,20 @@ export default function DecksPage() {
             <option value="3">relearning</option>
           </select>
           <span className="ml-auto text-xs text-neutral-500">
-            {cards.data?.cards.length ?? 0} cards
+            {selectedBox
+              ? `${displayedCards.length} of ${cards.data?.cards.length ?? 0} cards (Box ${selectedBox})`
+              : `${cards.data?.cards.length ?? 0} cards`}
           </span>
         </div>
         {(cards.data?.cards.length ?? 0) > 0 && (
-          <div
-            className="flex flex-wrap gap-2"
-            title="Leitner boxes: 1 new/learning · 2–3 young · 4–5 mature (Leitner 1972, as a view over FSRS state)"
-          >
-            {leitnerHistogram(cards.data?.cards ?? []).map((count, i) => (
-              <span
-                key={i}
-                className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs ${
-                  count === 0
-                    ? 'border-neutral-200 text-neutral-400 dark:border-(--hub-border)'
-                    : 'border-neutral-300 text-neutral-600 dark:border-(--hub-border-strong) dark:text-neutral-300'
-                }`}
-              >
-                box {i + 1}
-                <span className="font-semibold">{count}</span>
-              </span>
-            ))}
-          </div>
+          <LeitnerProgression
+            boxes={leitnerBoxes}
+            selectedLevel={selectedBox}
+            onSelectBox={(lvl) => setSelectedBox((prev) => (prev === lvl ? undefined : lvl))}
+          />
         )}
         <div className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
-          {(cards.data?.cards ?? []).map((card) => (
+          {displayedCards.map((card) => (
             <div key={card.id} className="flex items-center gap-3 py-2 text-sm">
               <BoxChip box={leitnerBox(card)} />
               <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:bg-(--hub-panel-2)">
