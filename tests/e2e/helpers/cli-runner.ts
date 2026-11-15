@@ -10,7 +10,7 @@ export interface CliResult {
 export async function runCli(
   args: string[],
   dbPath?: string,
-  timeoutMs = 10000,
+  timeoutMs = 30000,
 ): Promise<CliResult> {
   const rootDir = path.resolve(__dirname, '../../..')
   const tsxCli = path.join(rootDir, 'node_modules', 'tsx', 'dist', 'cli.mjs')

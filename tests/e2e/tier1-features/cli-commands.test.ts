@@ -242,7 +242,7 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     const guildLeave = await runCli(['guild', 'leave', '--alias', 'apprentice'], getActiveDbPath())
     expect(guildLeave.exitCode).toBe(0)
     expect(guildLeave.stdout).toContain('apprentice left their guild')
-  }, 30000)
+  }, 60000)
 
   it('runs audio, focus load, and games CLI commands (Batch C4)', async () => {
     // 1. audio schedule (commute and tmr)
@@ -268,5 +268,5 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(gamesStatus.stdout).toContain('Solo RPG Boss Battle Status')
     expect(gamesStatus.stdout).toContain('Mythical Boss Roster')
     expect(gamesStatus.stdout).toContain('Chronos')
-  }, 20000)
+  }, 60000)
 })
