@@ -18,6 +18,7 @@ export { CognitiveLoadMeter, type CognitiveLoadMeterProps } from './CognitiveLoa
 export { MetacognitionRadar, type MetacognitionRadarProps } from './MetacognitionRadar'
 export { SleepConsolidationHUD, type SleepConsolidationHUDProps } from './SleepConsolidationHUD'
 export { FeynmanExplanationCard, type FeynmanExplanationCardProps } from './FeynmanExplanationCard'
+export { GenerationMatrixHUD, type GenerationMatrixHUDProps } from './GenerationMatrixHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'

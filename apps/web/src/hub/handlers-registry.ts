@@ -152,6 +152,7 @@ import * as cognitiveInterleaving from '../server/handlers/cognitive/interleavin
 import * as cognitiveMetacognition from '../server/handlers/cognitive/metacognition/route'
 import * as cognitiveTmr from '../server/handlers/cognitive/tmr/route'
 import * as cognitiveFeynmanEval from '../server/handlers/cognitive/feynman-eval/route'
+import * as cognitiveGeneration from '../server/handlers/cognitive/generation/route'
 import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
 import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
 import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
@@ -334,6 +335,7 @@ add('cognitive/interleaving', cognitiveInterleaving)
 add('cognitive/metacognition', cognitiveMetacognition)
 add('cognitive/tmr', cognitiveTmr)
 add('cognitive/feynman-eval', cognitiveFeynmanEval)
+add('cognitive/generation', cognitiveGeneration)
 add('cognitive/gkt', cognitiveGkt)
 add('cognitive/load', cognitiveLoad)
 add('spatial/palace-3d', spatialPalace3d)
