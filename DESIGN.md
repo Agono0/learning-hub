@@ -11,6 +11,7 @@
 
 Learning HUB is a research-backed, high-retention learning environment (FSRS-6, BKT, Elo).
 Its visual atmosphere is **Calm by Default**:
+
 - **Zero Distraction:** Uncluttered layouts, generous whitespace, single primary focal point per screen.
 - **Tactile Elevation:** Layered surfaces using soft tinted borders and diffused ambient luminescence rather than heavy drop-shadows.
 - **Responsive & Mobile-First:** Designed for 360px minimum width (phone in one hand) up to 4K ultra-wide displays. Touch targets $\ge 44\text{px}$.
@@ -22,20 +23,21 @@ Its visual atmosphere is **Calm by Default**:
 
 Hardcoded hex colors in application views are strictly forbidden. UI components resolve through semantic roles:
 
-| Token | Semantic Role | Dark Mode (Calm Palette) | Light Mode Contrast |
-|---|---|---|---|
-| `--hub-bg` | App viewport background | `#0e120f` | Deep base canvas |
-| `--hub-sunken` | Inset wells, code blocks, input fills | `#101411` | Subtle recess |
-| `--hub-panel` | Base cards, navigation bars, toolbars | `#151a16` | Layer 1 elevation |
-| `--hub-panel-2` | Floating menus, dialogs, hover cards | `#1c221d` | Layer 2 elevation |
-| `--hub-border` | Subtle structural hairpins (1px) | `#262e28` | 15% opacity tint |
-| `--hub-border-strong` | Active, focused, or selected boundaries | `#3a443c` | 35% opacity tint |
-| `--ac-strong` | Primary action buttons, active tabs | `#56735f` | Sage emerald focus |
-| `--ac-mid` | Secondary accents, progress fills | `#6d8f79` | Harmonious mid-tone |
-| `--ac-soft` | Badge backgrounds, subtle glows | `#a7c3b0` | Tinted indicator wash |
-| `--ac-deep` | Deep accent well / banner tint | `#2c3a31` | Low-luminance accent |
+| Token                 | Semantic Role                           | Dark Mode (Calm Palette) | Light Mode Contrast   |
+| --------------------- | --------------------------------------- | ------------------------ | --------------------- |
+| `--hub-bg`            | App viewport background                 | `#0e120f`                | Deep base canvas      |
+| `--hub-sunken`        | Inset wells, code blocks, input fills   | `#101411`                | Subtle recess         |
+| `--hub-panel`         | Base cards, navigation bars, toolbars   | `#151a16`                | Layer 1 elevation     |
+| `--hub-panel-2`       | Floating menus, dialogs, hover cards    | `#1c221d`                | Layer 2 elevation     |
+| `--hub-border`        | Subtle structural hairpins (1px)        | `#262e28`                | 15% opacity tint      |
+| `--hub-border-strong` | Active, focused, or selected boundaries | `#3a443c`                | 35% opacity tint      |
+| `--ac-strong`         | Primary action buttons, active tabs     | `#56735f`                | Sage emerald focus    |
+| `--ac-mid`            | Secondary accents, progress fills       | `#6d8f79`                | Harmonious mid-tone   |
+| `--ac-soft`           | Badge backgrounds, subtle glows         | `#a7c3b0`                | Tinted indicator wash |
+| `--ac-deep`           | Deep accent well / banner tint          | `#2c3a31`                | Low-luminance accent  |
 
 ### Status Tokens
+
 - **Success / Mastery ($\ge 90\%$):** Emerald (`#10b981`, soft `#064e3b20`)
 - **Warning / Review Due Soon:** Amber (`#f59e0b`, soft `#78350f20`)
 - **Danger / Lapse / Critical:** Rose (`#f43f5e`, soft `#88133720`)
@@ -48,20 +50,21 @@ Hardcoded hex colors in application views are strictly forbidden. UI components 
 Font Stack: `ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`.
 Monospace: `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`.
 
-| Role | Size | Line Height | Tracking | Weight | Usage |
-|---|---|---|---|---|---|
-| **Display Title** | 2rem (32px) | 1.2 | -0.025em | 700 (Bold) | Top-level dashboard headers |
-| **Page Title** | 1.5rem (24px) | 1.25 | -0.02em | 600 (Semibold) | PageHeader titles |
-| **Section Header** | 1.125rem (18px) | 1.35 | -0.015em | 600 (Semibold) | Panel / card section titles |
-| **Body (Default)** | 0.9375rem (15px) | 1.5 | normal | 400 (Regular) | Primary content, cards, notes |
-| **Body Small** | 0.8125rem (13px) | 1.45 | normal | 400 / 500 | Metadata, helper texts, secondary info |
-| **Caption / Micro** | 0.6875rem (11px) | 1.4 | +0.02em | 600 (Uppercase) | Badges, tags, metric pill labels |
+| Role                | Size             | Line Height | Tracking | Weight          | Usage                                  |
+| ------------------- | ---------------- | ----------- | -------- | --------------- | -------------------------------------- |
+| **Display Title**   | 2rem (32px)      | 1.2         | -0.025em | 700 (Bold)      | Top-level dashboard headers            |
+| **Page Title**      | 1.5rem (24px)    | 1.25        | -0.02em  | 600 (Semibold)  | PageHeader titles                      |
+| **Section Header**  | 1.125rem (18px)  | 1.35        | -0.015em | 600 (Semibold)  | Panel / card section titles            |
+| **Body (Default)**  | 0.9375rem (15px) | 1.5         | normal   | 400 (Regular)   | Primary content, cards, notes          |
+| **Body Small**      | 0.8125rem (13px) | 1.45        | normal   | 400 / 500       | Metadata, helper texts, secondary info |
+| **Caption / Micro** | 0.6875rem (11px) | 1.4         | +0.02em  | 600 (Uppercase) | Badges, tags, metric pill labels       |
 
 ---
 
 ## 4. Depth, Elevation & Border Rims
 
 Rather than heavy artificial drop shadows, Learning HUB uses **Ambient Layering**:
+
 1. **Layer 0 (Canvas):** `bg-hub-bg`
 2. **Layer 1 (Panels & Cards):** `bg-hub-panel border border-hub-border rounded-xl shadow-sm`
 3. **Layer 2 (Hover / Elevated Popovers):** `bg-hub-panel-2 border border-hub-border-strong rounded-2xl shadow-md`
@@ -82,6 +85,7 @@ Rather than heavy artificial drop shadows, Learning HUB uses **Ambient Layering*
 ## 6. Standard Component Recipes (`@/ui`)
 
 ### Button (`@/ui/Button`)
+
 - `primary`: Solid accent fill with crisp white text and soft glow on hover.
 - `secondary`: Subdued panel background with `border-hub-border`.
 - `ghost`: Transparent background, hover tint.
@@ -89,15 +93,18 @@ Rather than heavy artificial drop shadows, Learning HUB uses **Ambient Layering*
 - Minimum touch target: `min-h-[44px]` on mobile.
 
 ### Panel (`@/ui/Panel`)
+
 - Encapsulates discrete semantic sections.
 - Rounded corners: `rounded-xl` or `rounded-2xl`.
 - Padding: `p-4 sm:p-6`.
 
 ### Badge (`@/ui/Badge`)
+
 - Compact metadata tag with optional pulsing live status dot.
 - Pill shape (`rounded-full px-2.5 py-0.5 text-xs font-medium`).
 
 ### Card / StatCard (`@/ui/StatCard`)
+
 - KPI display: primary value, secondary label, trend chip (`+12%`), icon badge.
 
 ---
