@@ -437,3 +437,55 @@ html.theme-e-ink .panel {
   border-color: #000000 !important;
   background-color: #ffffff !important;
 }
+
+/* ── getdesign.md High-Aesthetic Elevation & Glassmorphism ────────────────── */
+.panel-glass {
+  @apply rounded-xl border border-neutral-200/70 bg-white/80 backdrop-blur-md transition-all
+    dark:border-(--hub-border)/80 dark:bg-(--hub-panel)/80;
+}
+
+.panel-elevated {
+  @apply rounded-xl border border-neutral-200/80 bg-white shadow-sm transition-all
+    hover:border-neutral-300 hover:shadow-md
+    dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong) dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)];
+}
+
+.panel-interactive {
+  @apply rounded-xl border border-neutral-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer dark:border-(--hub-border) dark:bg-(--hub-panel);
+}
+
+/* Subtle glow pulse for active badges and indicators */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Shimmer highlight for active learning streaks & achievements */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, currentColor 0%, var(--ac-soft) 50%, currentColor 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}

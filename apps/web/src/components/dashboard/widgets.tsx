@@ -30,7 +30,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { useToast } from '@/ui'
+import { Badge, StatCard, useToast } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
@@ -64,50 +64,87 @@ function StatsWidget({ data: d }: WidgetProps) {
   const questDone = d.quest?.completed ?? false
   return (
     <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div className="panel">
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <Repeat2 className="h-3.5 w-3.5" /> Due now
-        </div>
-        <div className="mt-1 text-2xl font-bold">{d.dueCount}</div>
-      </div>
-      <div className="panel">
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <Flame className="h-3.5 w-3.5" /> Streak
-        </div>
-        <div className="mt-1 text-2xl font-bold">
-          {d.streak.current}{' '}
-          <span className="text-sm font-normal text-neutral-500">/ best {d.streak.best}</span>
-        </div>
-        <div className="mt-1 text-[10px] text-neutral-500">
-          ❄️ {d.streak.freezes} freezes {d.streak.weekendAmulet ? '· 🧿 amulet' : ''}
-        </div>
-      </div>
-      <div className="panel">
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <Zap className="h-3.5 w-3.5" /> Total XP
-        </div>
-        <div className="mt-1 text-2xl font-bold">{d.xpTotal}</div>
-        <div className="mt-2 h-1.5 rounded-full bg-neutral-200 dark:bg-(--hub-border)">
-          <div
-            className="h-full rounded-full bg-indigo-500"
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
-        </div>
-        <div className="mt-1 text-[10px] text-neutral-500">
-          Level {level} → {level + 1}
-        </div>
-      </div>
-      <div className="panel">
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <Timer className="h-3.5 w-3.5" /> Daily quest
-        </div>
-        <div className="mt-1 text-2xl font-bold">
-          {questDone ? '✅' : d.quest ? 'In progress' : 'Not started'}
-        </div>
-        <Link href="/motivation" className="mt-1 text-[10px] text-indigo-400 hover:underline">
-          view quests →
-        </Link>
-      </div>
+      <StatCard
+        label="Due now"
+        value={d.dueCount}
+        icon={<Repeat2 className="h-4 w-4" />}
+        accent={d.dueCount > 0 ? 'indigo' : 'emerald'}
+        badge={
+          d.dueCount > 0 ? (
+            <Badge tone="accent" dot pulse>
+              Ready
+            </Badge>
+          ) : (
+            <Badge tone="success" dot>
+              Clean
+            </Badge>
+          )
+        }
+        hint={d.dueCount > 0 ? 'Cards scheduled for review' : 'All caught up for now'}
+      />
+      <StatCard
+        label="Streak"
+        value={
+          <span className="flex items-baseline gap-1.5">
+            {d.streak.current}
+            <span className="text-sm font-normal text-neutral-500">/ {d.streak.best}d</span>
+          </span>
+        }
+        icon={<Flame className="h-4 w-4" />}
+        accent="amber"
+        badge={
+          d.streak.current > 0 ? (
+            <Badge tone="warning" dot pulse>
+              Active
+            </Badge>
+          ) : undefined
+        }
+        hint={`❄️ ${d.streak.freezes} freezes ${d.streak.weekendAmulet ? '· 🧿 amulet' : ''}`}
+      />
+      <StatCard
+        label="Total XP"
+        value={d.xpTotal.toLocaleString()}
+        icon={<Zap className="h-4 w-4" />}
+        accent="indigo"
+        progress={{
+          value: progress,
+          max: 1,
+          label: `Level ${level} → ${level + 1}`,
+        }}
+      />
+      <StatCard
+        label="Daily quest"
+        value={
+          questDone ? (
+            <span className="text-emerald-600 dark:text-emerald-400">Done</span>
+          ) : d.quest ? (
+            'In progress'
+          ) : (
+            'Not started'
+          )
+        }
+        icon={<Timer className="h-4 w-4" />}
+        accent={questDone ? 'emerald' : 'neutral'}
+        badge={
+          questDone ? (
+            <Badge tone="success" dot>
+              Done
+            </Badge>
+          ) : d.quest ? (
+            <Badge tone="accent" dot pulse>
+              Live
+            </Badge>
+          ) : undefined
+        }
+        hint={
+          <Link
+            href="/motivation"
+            className="text-xs text-indigo-500 hover:underline dark:text-indigo-400"
+          >
+            view quests →
+          </Link>
+        }
+      />
     </section>
   )
 }

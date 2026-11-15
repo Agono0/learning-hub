@@ -29,26 +29,50 @@ const BADGE_TONE = {
   success: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-300',
   warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   danger: 'bg-rose-600/15 text-rose-700 dark:text-rose-300',
+  violet: 'bg-purple-600/15 text-purple-700 dark:text-purple-300',
+  cyan: 'bg-cyan-600/15 text-cyan-700 dark:text-cyan-300',
 } as const
 
-/** Small status pill. */
+const BADGE_DOT = {
+  neutral: 'bg-neutral-400 dark:bg-neutral-500',
+  accent: 'bg-indigo-500',
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-500',
+  danger: 'bg-rose-500',
+  violet: 'bg-purple-500',
+  cyan: 'bg-cyan-500',
+} as const
+
+/** Small status pill with optional dot indicator and pulse animation. */
 export function Badge({
   tone = 'neutral',
+  dot = false,
+  pulse = false,
+  icon,
   children,
   className,
 }: {
   tone?: keyof typeof BADGE_TONE
+  dot?: boolean
+  pulse?: boolean
+  icon?: ReactNode
   children: ReactNode
   className?: string
 }) {
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium',
         BADGE_TONE[tone],
         className,
       )}
     >
+      {dot && (
+        <span
+          className={cx('h-1.5 w-1.5 rounded-full', BADGE_DOT[tone], pulse && 'animate-glow-pulse')}
+        />
+      )}
+      {icon}
       {children}
     </span>
   )
