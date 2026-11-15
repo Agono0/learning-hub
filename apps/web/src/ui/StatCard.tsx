@@ -81,7 +81,7 @@ export function StatCard({
           ? (e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                onClick()
+                onClick?.()
               }
             }
           : undefined

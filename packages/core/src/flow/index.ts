@@ -12,8 +12,8 @@ import { z } from 'zod'
  * - Sweller (1988): Cognitive Load Theory (intrinsic vs extraneous load).
  */
 
-export const flowZoneSchema = z.enum(['flow', 'boredom', 'anxiety', 'fatigue'])
-export type FlowZone = z.infer<typeof flowZoneSchema>
+export const ultradianFlowZoneSchema = z.enum(['flow', 'boredom', 'anxiety', 'fatigue'])
+export type UltradianFlowZone = z.infer<typeof ultradianFlowZoneSchema>
 
 export const sessionTelemetrySchema = z.object({
   accuracy: z.number().min(0).max(1),
@@ -27,7 +27,7 @@ export const sessionTelemetrySchema = z.object({
 export type SessionTelemetry = z.infer<typeof sessionTelemetrySchema>
 
 export const flowStateEvaluationSchema = z.object({
-  zone: flowZoneSchema,
+  zone: ultradianFlowZoneSchema,
   flowScore: z.number().min(0).max(100),
   challengeSkillRatio: z.number().positive(),
   ultradianPhase: z.enum(['peak_focus', 'sustained_effort', 'restorative_break_due']),
@@ -80,7 +80,7 @@ export function evaluateFlowState(telemetry: SessionTelemetry): FlowStateEvaluat
   }
 
   // Zone determination
-  let zone: FlowZone
+  let zone: UltradianFlowZone
   let recommendation: string
   let suggestedAction: 'continue' | 'increase_difficulty' | 'ease_difficulty' | 'take_rest'
 
