@@ -21,8 +21,6 @@ import {
   type RelearnCandidate,
 } from '@learning-hub/core'
 import { cards, db, deriveMeasuredBehavior, revlog } from '@learning-hub/db'
-import { desc, eq } from 'drizzle-orm'
-import { cards, db, revlog } from '@learning-hub/db'
 import { asc, desc, eq } from 'drizzle-orm'
 
 function parseFlag(args: string[], flag: string): string | undefined {

@@ -11,6 +11,7 @@ import { normalizeThemePreference } from '../src/components/ThemeSync'
 describe('navigation model & theme helpers', () => {
   it('preserves all routes across the 4 canonical scaffolder groups', () => {
     expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
+<<<<<<< HEAD
     // Self-consistency instead of a magic count: every new page PR has to
     // remember to bump the old hardcoded number (it drifted twice), so assert
     // the invariants that actually matter — uniqueness, icons, primary
@@ -28,6 +29,10 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-coding')).toBe(true)
     // 42: canonical set + expansion routes (bump on every new page PR)
     expect(ALL_NAV_ITEMS).toHaveLength(42)
+=======
+    // 43: canonical set + expansion routes (bump on every new page PR)
+    expect(ALL_NAV_ITEMS).toHaveLength(43)
+>>>>>>> 4266e1a (test(web): bump nav count for the pretest-lab route after #27)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/search')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/workload')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/audio-commute')).toBe(true)
