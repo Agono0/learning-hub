@@ -74,9 +74,18 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 11. **Untrusted content never renders as HTML.** Use `<Markdown>` from `@/ui` (no raw HTML).
 12. **Never commit secrets or build output** — keystores, `.env`, `target/`, `.next*/` (see `.gitignore`).
 13. **Don't weaken tests to make them pass.** Fix the code, or explain in the PR why the test was wrong.
-14. **Autonomous push & zero breakage.** Always push changes autonomously without waiting for routine confirmation. Strictly verify that code does not break (`npm run check` and `npm run build`) before pushing.
+14. **Autonomous push & zero breakage.** Always push changes autonomously without waiting for routine confirmation. Strictly verify that code does not break (`npm run check`) before pushing.
 15. **CI completion before merge.** Before merging any pull request, wait for all GitHub Actions CI checks to finish and verify that they succeed. Never merge while CI is running, failing, or cancelled.
 16. **Continuous pipelined productivity.** While CI runs, do not wait idly. Immediately advance to the next priority task, feature, or verification on the project in parallel.
+17. **No local builds — ever.** Local verification is type check + test check ONLY:
+    `npm run typecheck`, `npm run lint`, `npm test`. Never run `npm run build`
+    (or `web:tauri`, `app:build`, `android:build`, `worker:deploy`) on a local
+    machine — every build happens in CI. A green typecheck + test run is the
+    pre-push gate; a green CI build is the pre-merge gate.
+18. **Pull before push.** Other agents work on this repo concurrently. Before
+    every push: `git fetch` origin, rebase your branch onto `origin/main`,
+    resolve any conflicts locally, and re-run the verification gate
+    (`npm run check`) — then push. Never force-push shared branches.
 
 ### Rule enforcement table
 
@@ -95,9 +104,11 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 | 11   | Untrusted content never raw HTML    | `<Markdown>` sanitizer from `@/ui` (ReactMarkdown with no dangerous HTML)                                      |
 | 12   | Never commit secrets                | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                            |
 | 13   | Don't weaken tests to pass          | CI pull request review & conventional commits                                                                  |
-| 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`, `npm run build`) before push                                         |
+| 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`) before push                                                          |
 | 15   | CI completion before merge          | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                 |
 | 16   | Continuous pipelined productivity   | Overlap active development cycles while remote CI verifies previous PR batches                                 |
+| 17   | No local builds — ever              | Pre-push gate = typecheck + lint + tests only; builds run in CI (GitHub Actions)                               |
+| 18   | Pull before push                    | `git fetch` + rebase onto `origin/main` + re-verify before every push; no force-pushes                         |
 
 ## 4. Workflow
 
@@ -112,7 +123,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 6. **Commit atomically** with Conventional Commits (commitlint-enforced):
    `feat(core/curriculum): add LHCF slug validation` — one logical change per commit.
 7. **Pre-merge checklist:** `.github/pull_request_template.md`.
-8. **Autonomous push & verification:** Verify locally (`npm run check`, `npm run build`), then push branch directly and open PR autonomously.
+8. **Autonomous push & verification:** Verify locally (`npm run check` — typecheck, lint, tests; **never build locally**, rule 17), then `git fetch` + rebase onto `origin/main` (rule 18), push branch and open PR autonomously.
 9. **Wait for CI green gate:** Verify remote GitHub Actions CI completion (`gh pr checks`) before merging. Never merge while CI is running or failing.
 10. **Pipelined productivity:** While remote CI executes on a pending PR, immediately begin the next task or feature in parallel.
 
@@ -201,7 +212,8 @@ and `docs/curriculum/`. New exercise type = schema + `grade()` in
 | Scaffold a feature          | `npm run new:feature -- <name>`                            |
 
 Before you say "done": typecheck, lint (0 errors), the tests for what you touched, and —
-for UI — check it at phone width. Report honestly what you did **not** verify.
+for UI — check it at phone width. **No local builds** (rule 17): CI builds it. Report
+honestly what you did **not** verify.
 
 ## 7. Where to learn more
 
