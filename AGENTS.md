@@ -188,6 +188,8 @@ and `docs/curriculum/`. New exercise type = schema + `grade()` in
 
 ### UI
 
+- **Load `.claude/skills/ui-signature/SKILL.md` before any UI work** — it is the design
+  law (tokens, motion, kit-first, the 12-point review gate).
 - Build pages from `@/ui` (`PageHeader`, `Panel`, `Button`, `TextField`, `Tabs`, `Sheet`,
   `EmptyState`, `ProgressBar`, `Markdown`…). Add to the kit when a pattern repeats twice.
 - Mobile-first: works at 360px wide, no horizontal page scroll, touch targets ≥ 44px,
@@ -218,6 +220,9 @@ honestly what you did **not** verify.
 ## 7. Where to learn more
 
 Start from the [docs/README.md](docs/README.md) index, then:
+[.claude/skills/README.md](.claude/skills/README.md) (the vendored design/engineering skill
+library — `ui-signature` is the load-first UI law) ·
+[docs/ui-design-signature.md](docs/ui-design-signature.md) (the design language, human-readable) ·
 [ARCHITECTURE.md](ARCHITECTURE.md) · [CONTRIBUTING.md](CONTRIBUTING.md) ·
 [docs/learning-science.md](docs/learning-science.md) (every technique → code link) ·
 [docs/curriculum/](docs/curriculum/) (LHCF contract; regenerate with `npm run docs:curriculum`) ·
