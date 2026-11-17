@@ -9,12 +9,16 @@ import { z } from 'zod'
 import {
   cards,
   db,
+  deriveMeasuredBehavior,
   getWordExposureSummaries,
   recordExposureBatch,
   revlog,
   withTransaction,
 } from '@learning-hub/db'
 import {
+  auditDesirableDifficulty,
+  auditInterleaving,
+  auditSpacing,
   balanceWorkload,
   cardPreviewText,
   catchUpBacklog,
@@ -468,6 +472,33 @@ export const cognitiveTools: RegisteredTool[] = [
         advisory: plan.advisory,
         cues: plan.cues,
         unscheduledCardIds: plan.unscheduledCardIds,
+      })
+    },
+  ),
+
+  tool(
+    'difficulty_audit',
+    "Dunlosky et al. (2013) Desirable-Difficulty Audit: score the learner's technique mix against the monograph utility table (practice testing/spacing high; rereading/highlighting low), quantify fluency-illusion risk, audit measured spacing + deck interleaving from revlog, and emit an exact-arithmetic substitution plan.",
+    {
+      windowDays: z.number().int().min(1).max(28).default(7),
+      minutesByTechnique: z
+        .record(z.string(), z.number().min(0).max(10000))
+        .describe(
+          'Self-reported minutes per technique id (practice_testing, rereading, …); telemetry cannot see these',
+        ),
+      tzOffset: z.number().int().min(-720).max(840).default(0),
+    },
+    async ({ windowDays, minutesByTechnique, tzOffset }) => {
+      const measured = deriveMeasuredBehavior(tzOffset, windowDays)
+      const spacing = auditSpacing(measured, windowDays)
+      const interleaving = auditInterleaving(measured)
+      const report = auditDesirableDifficulty({ windowDays, minutesByTechnique }, measured)
+      return json({
+        ok: true,
+        measured,
+        spacingVerdict: spacing.verdict,
+        interleavingVerdict: interleaving.verdict,
+        report,
       })
     },
   ),

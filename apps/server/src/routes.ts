@@ -13,6 +13,7 @@ import {
   db,
   decks,
   cards,
+  deriveMeasuredBehavior,
   revlog,
   streaks,
   executeReview,
@@ -34,6 +35,10 @@ import {
   generationTrialInputSchema,
   feynmanEvaluationInputSchema,
   buildTonightPlan,
+  auditDesirableDifficulty,
+  auditInterleaving,
+  auditSpacing,
+  SELF_REPORT_PROMPTS,
   judgmentOfLearningSchema,
   prioritizeRelearningQueue,
   sleepProfileSchema,
@@ -357,6 +362,50 @@ async function getMetacognition(
   sendJson(res, 200, { ok: true, trialsCount: trials.length, report })
 }
 
+/** GET /cognitive/difficulty-audit — measured telemetry audits + prompt catalog. */
+async function getDifficultyAudit(
+  _req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+): Promise<void> {
+  const q = readQuery(
+    url,
+    z.object({ tzOffset: z.coerce.number().int().min(-720).max(840).optional() }),
+  )
+  const measured = deriveMeasuredBehavior(q.tzOffset ?? 0, 7)
+  sendJson(res, 200, {
+    ok: true,
+    measured,
+    spacing: auditSpacing(measured, 7),
+    interleaving: auditInterleaving(measured),
+    techniqueMix: {
+      measurable: false,
+      note: 'Technique minutes (rereading, highlighting, retrieval…) are invisible to telemetry — submit them via POST for the full audit.',
+      prompts: SELF_REPORT_PROMPTS,
+    },
+    windowDays: 7,
+  })
+}
+
+/** POST /cognitive/difficulty-audit — full integrated audit (self-report + measured). */
+async function postDifficultyAudit(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(
+    req,
+    z.object({
+      windowDays: z.number().int().min(1).max(28).default(7),
+      minutesByTechnique: z.record(z.string(), z.number().min(0).max(10000)),
+      tzOffset: z.number().int().min(-720).max(840).optional(),
+    }),
+  )
+  // Measured telemetry is always recomputed server-side.
+  const measured = deriveMeasuredBehavior(body.tzOffset ?? 0, body.windowDays)
+  const report = auditDesirableDifficulty(
+    { windowDays: body.windowDays, minutesByTechnique: body.minutesByTechnique },
+    measured,
+  )
+  sendJson(res, 200, { ok: true, report, measured })
+}
+
 /** POST /cognitive/metacognition — evaluates metacognitive calibration from provided trial payload. */
 async function postMetacognition(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJson(req, metacognitionBodySchema)
@@ -582,6 +631,18 @@ export const routes: Route[] = [
     summary:
       "tonight's TMR consolidation plan from FSRS state (?bedtime=&wakeTime=&chronotype=&sleepDebtHours=&limit=)",
     handler: getTmrPlan,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/difficulty-audit',
+    summary: 'measured desirable-difficulty telemetry audits (?tzOffset=)',
+    handler: getDifficultyAudit,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/difficulty-audit',
+    summary: 'full Dunlosky technique audit from self-reported minutes',
+    handler: postDifficultyAudit,
   },
 ]
 

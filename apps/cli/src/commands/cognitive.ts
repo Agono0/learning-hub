@@ -5,6 +5,7 @@
  * 3. metacognition: Koriat & Bjork (2005) Calibration & Glenn Brier score.
  */
 import {
+  auditDesirableDifficulty,
   createGenerationLadder,
   evaluateFeynmanExplanation,
   evaluateGenerationTrial,
@@ -17,7 +18,7 @@ import {
   type JudgmentOfLearning,
   type RelearnCandidate,
 } from '@learning-hub/core'
-import { cards, db, revlog } from '@learning-hub/db'
+import { cards, db, deriveMeasuredBehavior, revlog } from '@learning-hub/db'
 import { desc, eq } from 'drizzle-orm'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -251,4 +252,64 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
   console.error(
     `Unknown subcommand: ${sub}. Usage: learning-hub metacognition [stats|hypercorrection]`,
   )
+}
+
+/**
+ * `difficulty audit` — Dunlosky et al. (2013) desirable-difficulty audit over
+ * measured revlog telemetry plus optional self-reported technique minutes.
+ *
+ * Flags: --reread --highlight --summarize --mnemonic --imagery --testing
+ *        --spaced --interleaved --explain --interrogate (minutes each)
+ */
+export async function difficultyCommand(args: string[]): Promise<void> {
+  const sub = args[0] || 'audit'
+  if (sub !== 'audit') {
+    console.error(
+      `Unknown subcommand: ${sub}. Usage: learning-hub difficulty audit [--testing 90] [--reread 120] …`,
+    )
+    return
+  }
+
+  const minutesByTechnique: Record<string, number> = {
+    practice_testing: Number(parseFlag(args, '--testing') ?? '0'),
+    distributed_practice: Number(parseFlag(args, '--spaced') ?? '0'),
+    interleaved_practice: Number(parseFlag(args, '--interleaved') ?? '0'),
+    self_explanation: Number(parseFlag(args, '--explain') ?? '0'),
+    elaborative_interrogation: Number(parseFlag(args, '--interrogate') ?? '0'),
+    rereading: Number(parseFlag(args, '--reread') ?? '0'),
+    highlighting: Number(parseFlag(args, '--highlight') ?? '0'),
+    summarization: Number(parseFlag(args, '--summarize') ?? '0'),
+    keyword_mnemonic: Number(parseFlag(args, '--mnemonic') ?? '0'),
+    imagery_for_text: Number(parseFlag(args, '--imagery') ?? '0'),
+  }
+
+  const measured = deriveMeasuredBehavior(0, 7)
+  const report = auditDesirableDifficulty({ windowDays: 7, minutesByTechnique }, measured)
+
+  console.log(`
+📊 Desirable-Difficulty Audit (Dunlosky et al. 2013)`)
+  console.log(
+    `Composite Index:       ${report.compositeIndex} / 100 (dividend 60% + telemetry health 40%)`,
+  )
+  console.log(
+    `Difficulty Dividend:   ${report.mix.totalMinutes > 0 ? report.mix.difficultyDividend : '—'} (self-reported ${report.mix.totalMinutes} min)`,
+  )
+  console.log(
+    `Fluency-Illusion Risk: ${Math.round(report.risk.risk * 100)}% (${report.risk.label})`,
+  )
+  console.log(`Spacing (measured):    ${report.spacing.verdict} — ${report.spacing.guidance}`)
+  console.log(
+    `Interleaving (meas.):  ${report.interleaving.verdict} — ${report.interleaving.guidance}`,
+  )
+  console.log(`Next best action:      ${report.nextBestAction}`)
+  if (report.substitutions.length > 0) {
+    console.log('\nSubstitution plan:')
+    for (const s of report.substitutions) {
+      console.log(
+        `  ${s.fromLabel} → ${s.toLabel}: move ${s.minutesToMove} min/week (+${s.dividendDelta} pts)`,
+      )
+      console.log(`    ${s.how}`)
+    }
+  }
+  for (const d of report.risk.drivers) console.log(`  • ${d}`)
 }

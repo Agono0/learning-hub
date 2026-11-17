@@ -13,6 +13,7 @@ import {
   DatabaseBackup,
   Dumbbell,
   Eye,
+  Gauge,
   FileCheck,
   Flame,
   Globe,
@@ -122,6 +123,7 @@ export const NAV: NavGroup[] = [
     defaultCollapsed: true,
     items: [
       { href: '/mindmap', label: 'Mind Map', icon: Network },
+      { href: '/difficulty', label: 'Difficulty Audit', icon: Gauge },
       { href: '/ideas', label: 'Ideas', icon: Lightbulb },
       { href: '/quotes', label: 'Quotes', icon: Quote },
       { href: '/analytics', label: 'Analytics', icon: Route },

@@ -307,6 +307,28 @@ study time.
   page panel).
 - **Status:** ✅
 
+### Desirable-Difficulty Audit — Dunlosky et al. (2013)
+
+The ten-technique utility monograph turned into a weekly audit of the
+learner's actual behavior: technique mix vs the evidence table, fluency-illusion
+risk, spacing and interleaving verdicts from real telemetry, and a
+substitution plan with exact utility deltas.
+
+- **Evidence:** Dunlosky, Rawson, Marsh, Nathan & Wegner (2013,
+  _Psychological Science in the Public Interest_) rated practice testing and
+  distributed practice HIGH; interleaving, self-explanation and elaborative
+  interrogation MODERATE; rereading, highlighting, summarization, keyword
+  mnemonics and imagery LOW — the low-utility set being precisely the fluency
+  traps Bjork & Bjork (2011) warn about.
+- **In Learning HUB:** `packages/core/src/difficulty-audit` (utility table,
+  dividend, risk, spacing/interleaving audits, substitution plan);
+  `packages/db/src/repos/difficulty-audit.ts` (measured telemetry derivation
+  shared by every host); `/api/cognitive/difficulty-audit` (web), the
+  `difficulty_audit` MCP tool, `learning-hub difficulty audit` CLI command,
+  and `GET/POST /cognitive/difficulty-audit` (headless server); rendered on
+  `/difficulty` via `DifficultyAuditStudio.tsx` and `DesirableDifficultyHUD`.
+- **Status:** ✅
+
 ---
 
 ## 5. Method traditions (practitioners)

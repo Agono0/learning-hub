@@ -118,6 +118,41 @@ describe('Headless REST Server Cognitive Routes', () => {
     expect(data.report.status).toBeDefined()
   })
 
+  it('GET /cognitive/difficulty-audit returns measured spacing + interleaving audits', async () => {
+    const res = await fetch(`${baseUrl}/cognitive/difficulty-audit?tzOffset=0`)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(data.measured).toBeDefined()
+    expect(Array.isArray(data.measured.retrievalMinutesByDay)).toBe(true)
+    expect(data.measured.retrievalMinutesByDay).toHaveLength(7)
+    expect(typeof data.spacing.verdict).toBe('string')
+    expect(typeof data.interleaving.verdict).toBe('string')
+    // The honesty boundary: technique mix is NOT measurable from telemetry.
+    expect(data.techniqueMix.measurable).toBe(false)
+    expect(Array.isArray(data.techniqueMix.prompts)).toBe(true)
+  })
+
+  it('POST /cognitive/difficulty-audit scores a self-reported mix against Dunlosky utilities', async () => {
+    const res = await fetch(`${baseUrl}/cognitive/difficulty-audit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        windowDays: 7,
+        minutesByTechnique: { rereading: 180, highlighting: 90, practice_testing: 30 },
+      }),
+    })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(data.report.mix.status).toBe('fluency_trap')
+    expect(data.report.compositeIndex).toBeGreaterThan(0)
+    expect(data.report.substitutions.length).toBeGreaterThan(0)
+    const top = data.report.substitutions[0]
+    expect(top.toId).toBe('practice_testing')
+    expect(typeof top.dividendDelta).toBe('number')
+  })
+
   it('GET /cognitive/metacognition evaluates calibration from revlog', async () => {
     const res = await fetch(`${baseUrl}/cognitive/metacognition?limit=50`)
     expect(res.status).toBe(200)

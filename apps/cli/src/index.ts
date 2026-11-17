@@ -25,7 +25,12 @@ import {
   gamesCommand,
   tmrPlanCommand,
 } from './commands/telemetry-audio'
-import { feynmanCommand, generationCommand, metacognitionCommand } from './commands/cognitive'
+import {
+  difficultyCommand,
+  feynmanCommand,
+  generationCommand,
+  metacognitionCommand,
+} from './commands/cognitive'
 import {
   db,
   awardXp,
@@ -713,6 +718,12 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Koriat-Bjork calibration, Brier score, and hypercorrection crucible',
     usage: '[stats|hypercorrection]',
     run: (runArgs) => metacognitionCommand(runArgs),
+  },
+  {
+    name: 'difficulty',
+    description: 'Dunlosky (2013) desirable-difficulty audit of your technique mix',
+    usage: 'audit [--testing 90 --reread 120 …]',
+    run: (runArgs) => difficultyCommand(runArgs),
   },
 ]
 
