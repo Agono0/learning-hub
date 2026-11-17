@@ -246,7 +246,7 @@ export function AudioCommuteStudio({
       >
         <Headphones className="h-12 w-12 text-indigo-400 mb-4 animate-bounce" />
         <h3 className="text-base font-bold">Commute Audio Session Complete!</h3>
-        <p className="text-xs text-slate-400 mt-1 max-w-sm">
+        <p className="text-xs text-faint mt-1 max-w-sm">
           You completed all queued audio commute cards hands-free. Graded {gradedCardsCount} cards
           with voice and earcon recall.
         </p>
@@ -270,11 +270,11 @@ export function AudioCommuteStudio({
           <div>
             <h2 className="text-base font-bold tracking-tight flex items-center gap-2">
               Hands-Free Commute Audio Studio
-              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-status-success-text">
                 Voice & Earcon Engine
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-faint">
               Speak your answers or grades: &quot;Easy&quot;, &quot;Good&quot;, &quot;Hard&quot;,
               &quot;Repeat&quot;, &quot;Flip&quot;.
             </p>
@@ -292,9 +292,7 @@ export function AudioCommuteStudio({
                 onClick={() => setSpeechRate(rate)}
                 className={cx(
                   'rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all',
-                  speechRate === rate
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white',
+                  speechRate === rate ? 'bg-indigo-600 text-white' : 'text-faint hover:text-white',
                 )}
               >
                 {rate}x
@@ -310,8 +308,8 @@ export function AudioCommuteStudio({
             className={cx(
               'flex h-9 w-9 items-center justify-center rounded-xl border transition-all',
               isListening
-                ? 'bg-rose-500/20 border-rose-500 text-rose-400 animate-pulse'
-                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white',
+                ? 'bg-rose-500/20 border-rose-500 text-danger-text animate-pulse'
+                : 'bg-white/5 border-white/10 text-faint hover:text-white',
             )}
           >
             {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
@@ -326,14 +324,14 @@ export function AudioCommuteStudio({
           <span className="rounded-full bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-400">
             {currentCard.deckName || 'Deck Review'}
           </span>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-faint">
             Card {currentIndex + 1} of {cards.length}
           </span>
         </div>
 
         {/* Card Front Question */}
         <div className="rounded-2xl border border-white/10 bg-slate-900/90 p-8 shadow-xl max-w-xl w-full">
-          <p className="text-xs uppercase font-semibold text-slate-400 tracking-wider mb-2">
+          <p className="text-xs uppercase font-semibold text-faint tracking-wider mb-2">
             Prompt (Front)
           </p>
           <h3 className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
@@ -352,18 +350,18 @@ export function AudioCommuteStudio({
 
           {/* Revealed Back Answer */}
           {isRevealed && (
-            <div className="mt-6 border-t border-white/10 pt-6 animate-in fade-in slide-in-from-top-2">
+            <div className="mt-6 border-t border-white/10 pt-6 animate-fade-in">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs uppercase font-semibold text-emerald-400 tracking-wider">
+                <span className="text-xs uppercase font-semibold text-status-success-text tracking-wider">
                   Target Answer (Back)
                 </span>
                 {spokenMatchPct !== null && (
-                  <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                  <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-status-success-text">
                     {spokenMatchPct}% Spoken Recall Match
                   </span>
                 )}
               </div>
-              <p className="text-lg font-semibold text-emerald-300 leading-relaxed">
+              <p className="text-lg font-semibold text-status-success-text leading-relaxed">
                 {currentCard.back}
               </p>
             </div>
@@ -378,7 +376,7 @@ export function AudioCommuteStudio({
             <button
               type="button"
               onClick={() => handleGrade(1)}
-              className="flex flex-col items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/10 py-3 text-xs font-bold text-rose-400 hover:bg-rose-500/20 active:scale-95 transition-all"
+              className="flex flex-col items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/10 py-3 text-xs font-bold text-danger-text hover:bg-rose-500/20 active:scale-95 transition-all"
             >
               <span className="text-base font-black">Again</span>
               <span className="text-[10px] opacity-75 mt-0.5">&quot;Again&quot;</span>
@@ -386,7 +384,7 @@ export function AudioCommuteStudio({
             <button
               type="button"
               onClick={() => handleGrade(2)}
-              className="flex flex-col items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 py-3 text-xs font-bold text-amber-400 hover:bg-amber-500/20 active:scale-95 transition-all"
+              className="flex flex-col items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 py-3 text-xs font-bold text-status-warning-text hover:bg-amber-500/20 active:scale-95 transition-all"
             >
               <span className="text-base font-black">Hard</span>
               <span className="text-[10px] opacity-75 mt-0.5">&quot;Hard&quot;</span>
@@ -394,7 +392,7 @@ export function AudioCommuteStudio({
             <button
               type="button"
               onClick={() => handleGrade(3)}
-              className="flex flex-col items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 py-3 text-xs font-bold text-sky-400 hover:bg-sky-500/20 active:scale-95 transition-all"
+              className="flex flex-col items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 py-3 text-xs font-bold text-status-info-text hover:bg-sky-500/20 active:scale-95 transition-all"
             >
               <span className="text-base font-black">Good</span>
               <span className="text-[10px] opacity-75 mt-0.5">&quot;Good&quot;</span>
@@ -402,7 +400,7 @@ export function AudioCommuteStudio({
             <button
               type="button"
               onClick={() => handleGrade(4)}
-              className="flex flex-col items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 active:scale-95 transition-all"
+              className="flex flex-col items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-xs font-bold text-status-success-text hover:bg-emerald-500/20 active:scale-95 transition-all"
             >
               <span className="text-base font-black">Easy</span>
               <span className="text-[10px] opacity-75 mt-0.5">&quot;Easy&quot;</span>
@@ -421,7 +419,7 @@ export function AudioCommuteStudio({
             <button
               type="button"
               onClick={handleNextCard}
-              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all active:scale-95"
             >
               <SkipForward className="h-4 w-4" />
               <span>Skip (&quot;Skip&quot;)</span>
@@ -430,7 +428,7 @@ export function AudioCommuteStudio({
         )}
 
         {/* Bottom Status bar */}
-        <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+        <div className="mt-4 flex items-center justify-between text-xs text-faint">
           <div className="flex items-center gap-2">
             <button
               type="button"

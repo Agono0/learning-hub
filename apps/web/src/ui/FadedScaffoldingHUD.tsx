@@ -75,7 +75,7 @@ export function FadedScaffoldingHUD({
             <Brain className="h-4 w-4" />
           </span>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
               Cognitive Load Theory (Renkl-Atkinson Fading)
             </span>
             <span className="text-xs font-bold text-white">
@@ -87,13 +87,13 @@ export function FadedScaffoldingHUD({
         {/* Dynamic Cognitive Health Badge */}
         <div className="flex items-center gap-3">
           {isOverloaded ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-extrabold text-amber-300 animate-pulse">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-extrabold text-status-warning-text animate-pulse">
+              <AlertTriangle className="h-3.5 w-3.5 text-status-warning-text" />
               Cognitive Overload Risk ({Math.round(overloadProbability * 100)}%)
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300">
-              <Zap className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-status-success-text">
+              <Zap className="h-3.5 w-3.5 text-status-success-text" />
               Optimal Flow State
             </span>
           )}
@@ -110,56 +110,60 @@ export function FadedScaffoldingHUD({
       {/* Cognitive Load Telemetry Bar */}
       <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5 sm:grid-cols-4 bg-slate-900/50 text-center text-xs">
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Intrinsic Load (IL)
           </span>
           <div className="flex items-center justify-center gap-1.5">
-            <span className="font-mono text-base font-black text-sky-300">{intrinsicLoad}</span>
-            <span className="text-[10px] text-slate-400 font-mono">/ {wmCap}</span>
+            <span className="font-mono text-base font-black text-status-info-text">
+              {intrinsicLoad}
+            </span>
+            <span className="text-[10px] text-faint font-mono">/ {wmCap}</span>
           </div>
-          <span className="text-[10px] text-slate-500">
-            Interactivity: {elementInteractivity}/5
-          </span>
+          <span className="text-[10px] text-tertiary">Interactivity: {elementInteractivity}/5</span>
         </div>
 
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Extraneous Load (EL)
           </span>
           <div className="flex items-center justify-center gap-1.5">
-            <span className="font-mono text-base font-black text-rose-300">{extraneousLoad}</span>
-            <span className="text-[10px] text-slate-400 font-mono">/ {wmCap}</span>
+            <span className="font-mono text-base font-black text-danger-text">
+              {extraneousLoad}
+            </span>
+            <span className="text-[10px] text-faint font-mono">/ {wmCap}</span>
           </div>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-tertiary">
             {extraneousLoad > 1.2 ? 'Split Attention High' : 'Minimal Noise'}
           </span>
         </div>
 
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Germane Load (GL)
           </span>
           <div className="flex items-center justify-center gap-1.5">
-            <span className="font-mono text-base font-black text-emerald-300">{germaneLoad}</span>
-            <span className="text-[10px] text-slate-400 font-mono">/ {wmCap}</span>
+            <span className="font-mono text-base font-black text-status-success-text">
+              {germaneLoad}
+            </span>
+            <span className="text-[10px] text-faint font-mono">/ {wmCap}</span>
           </div>
-          <span className="text-[10px] text-slate-500">Schema Construction</span>
+          <span className="text-[10px] text-tertiary">Schema Construction</span>
         </div>
 
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Working Memory Budget
           </span>
           <div className="flex items-center justify-center gap-1.5">
             <span
               className={cx(
                 'font-mono text-base font-black',
-                totalLoad > wmCap ? 'text-amber-400' : 'text-indigo-300',
+                totalLoad > wmCap ? 'text-status-warning-text' : 'text-indigo-300',
               )}
             >
               {totalLoad}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">/ {wmCap} Chunks</span>
+            <span className="text-[10px] text-faint font-mono">/ {wmCap} Chunks</span>
           </div>
           <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
             <div
@@ -194,7 +198,7 @@ export function FadedScaffoldingHUD({
                   'flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-all text-xs',
                   isActive
                     ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white',
+                    : 'bg-white/5 text-secondary hover:bg-white/10 hover:text-white',
                 )}
                 title={s.desc}
               >
@@ -214,7 +218,7 @@ export function FadedScaffoldingHUD({
         {/* Fading Strategy Switcher */}
         {stage === 2 || stage === 3 ? (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-slate-400">Strategy:</span>
+            <span className="text-[11px] font-medium text-faint">Strategy:</span>
             <div className="inline-flex rounded-lg bg-slate-800 p-0.5 text-xs">
               <button
                 onClick={() => onStrategyChange?.('backward')}
@@ -222,7 +226,7 @@ export function FadedScaffoldingHUD({
                   'rounded-md px-2.5 py-1 text-[11px] font-bold transition-all',
                   strategy === 'backward'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white',
+                    : 'text-faint hover:text-white',
                 )}
               >
                 Backward (Atkinson)
@@ -233,7 +237,7 @@ export function FadedScaffoldingHUD({
                   'rounded-md px-2.5 py-1 text-[11px] font-bold transition-all',
                   strategy === 'forward'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-slate-400 hover:text-white',
+                    : 'text-faint hover:text-white',
                 )}
               >
                 Forward / Lemma

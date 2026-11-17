@@ -291,13 +291,13 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5">
         <div className="flex items-center gap-2">
           <Waves
-            className={`h-4 w-4 ${isPlaying ? 'text-emerald-500 dark:text-emerald-400 animate-pulse' : 'text-neutral-400'}`}
+            className={`h-4 w-4 ${isPlaying ? 'text-status-success-text dark:text-status-success-text animate-pulse' : 'text-faint'}`}
           />
-          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-secondary">
             Procedural Bio-Acoustic Soundscape
           </span>
           {isPlaying && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-status-success-text">
               Active
             </span>
           )}
@@ -306,7 +306,7 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
         {/* Volume slider & visualizer */}
         <div className="flex items-center gap-3">
           <canvas ref={canvasRef} width={64} height={20} className="rounded" />
-          <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+          <div className="flex items-center gap-1.5 text-xs text-tertiary">
             {volume > 0 ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
             <input
               type="range"
@@ -338,7 +338,7 @@ export function SoundscapeBar({ className = '' }: { className?: string }) {
               className={`rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
                 isSelected
                   ? 'bg-emerald-500 text-white font-medium shadow-sm dark:bg-emerald-600'
-                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                  : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-secondary dark:hover:bg-neutral-700'
               }`}
             >
               <div className="truncate font-medium">{p.label}</div>

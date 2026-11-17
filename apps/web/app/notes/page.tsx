@@ -145,7 +145,7 @@ export default function NotesPage() {
             {(list?.notes ?? []).map((n) => (
               <button
                 key={n.id}
-                className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${activeId === n.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+                className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${activeId === n.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
                 onClick={() => setActiveId(n.id)}
               >
                 {n.title}
@@ -156,7 +156,7 @@ export default function NotesPage() {
 
         <section className="space-y-3">
           {activeId == null ? (
-            <div className="panel text-sm text-neutral-500">Pick or create a note.</div>
+            <div className="panel text-sm text-tertiary">Pick or create a note.</div>
           ) : (
             <>
               <div className="panel space-y-3">
@@ -224,7 +224,7 @@ export default function NotesPage() {
                     <Save className="h-4 w-4" /> Save
                   </button>
                   <button
-                    className="btn-ghost text-xs text-red-400"
+                    className="btn-ghost text-xs text-danger-text"
                     onClick={() => activeId && deleteNote.mutate(activeId)}
                   >
                     Delete
@@ -245,7 +245,7 @@ export default function NotesPage() {
                   {Object.entries(SUPERTAG_TEMPLATES[supertag as SupertagKey].fields).map(
                     ([field, placeholder]) => (
                       <div key={field} className="flex items-center gap-2">
-                        <span className="w-28 shrink-0 text-xs text-neutral-500">{field}</span>
+                        <span className="w-28 shrink-0 text-xs text-tertiary">{field}</span>
                         <input
                           className="input text-sm"
                           placeholder={placeholder}
@@ -261,7 +261,7 @@ export default function NotesPage() {
               <div className="panel space-y-2">
                 <div className="label">Bullets — any bullet can BE a card</div>
                 {bullets.length === 0 && (
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-tertiary">
                     No bullets yet — write "- something" and save.
                   </p>
                 )}
@@ -269,7 +269,7 @@ export default function NotesPage() {
                   <div key={b.id} className="flex items-center gap-2 text-sm">
                     <span className="flex-1">{b.content}</span>
                     {b.cardId ? (
-                      <span className="text-xs text-emerald-500">card #{b.cardId}</span>
+                      <span className="text-xs text-status-success-text">card #{b.cardId}</span>
                     ) : (
                       <button
                         className="btn-ghost text-xs"
@@ -282,7 +282,7 @@ export default function NotesPage() {
                   </div>
                 ))}
                 {bulletToCard.isError && (
-                  <p className="text-xs text-amber-500">
+                  <p className="text-xs text-status-warning-text">
                     Card service not reachable (/api/cards/bullet may not be deployed yet).
                   </p>
                 )}
@@ -295,7 +295,7 @@ export default function NotesPage() {
           <div className="panel">
             <div className="label mb-2">Backlinks</div>
             {backlinks.length === 0 && (
-              <p className="text-xs text-neutral-500">Nothing links here yet.</p>
+              <p className="text-xs text-tertiary">Nothing links here yet.</p>
             )}
             {backlinks.map((b) => (
               <button
@@ -303,7 +303,7 @@ export default function NotesPage() {
                 className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline"
                 onClick={() => setActiveId(b.fromNoteId)}
               >
-                {b.fromTitle} <span className="text-neutral-500">({b.type})</span>
+                {b.fromTitle} <span className="text-tertiary">({b.type})</span>
               </button>
             ))}
           </div>

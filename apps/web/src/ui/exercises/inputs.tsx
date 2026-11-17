@@ -40,7 +40,7 @@ const optionClass = (selected: boolean, disabled?: boolean) =>
     'flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left text-sm transition-colors',
     selected
       ? 'border-indigo-500 bg-indigo-600/10'
-      : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#18181c]',
+      : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)',
     disabled && 'pointer-events-none opacity-80',
   )
 
@@ -90,7 +90,7 @@ function MultiInput({ exercise, value, onChange, disabled }: InputProps<'multi'>
   }
   return (
     <div className="space-y-2">
-      <p className="text-xs text-neutral-500">Select all that apply.</p>
+      <p className="text-xs text-tertiary">Select all that apply.</p>
       {order.map((i) => (
         <button
           key={i}
@@ -153,7 +153,7 @@ function NumericInput({ exercise, value, onChange, disabled }: InputProps<'numer
           if (e.target.value.trim() !== '' && Number.isFinite(n)) onChange({ value: n })
         }}
       />
-      {exercise.unit && <span className="text-sm text-neutral-500">{exercise.unit}</span>}
+      {exercise.unit && <span className="text-sm text-tertiary">{exercise.unit}</span>}
     </label>
   )
 }
@@ -228,7 +228,7 @@ function Reorder({
           key={itemIndex}
           className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-2 dark:border-(--hub-border)"
         >
-          <span className="w-5 text-xs tabular-nums text-neutral-400">{pos + 1}</span>
+          <span className="w-5 text-xs tabular-nums text-faint">{pos + 1}</span>
           <span
             className={cx('min-w-0 flex-1 text-sm', mono && 'whitespace-pre font-mono text-[13px]')}
           >
@@ -239,7 +239,7 @@ function Reorder({
             aria-label="Move up"
             disabled={disabled || pos === 0}
             onClick={() => onMove(pos, pos - 1)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-[#1e1e23]"
+            className="grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-(--hub-panel-2)"
           >
             <ArrowUp className="h-4 w-4" />
           </button>
@@ -248,7 +248,7 @@ function Reorder({
             aria-label="Move down"
             disabled={disabled || pos === order.length - 1}
             onClick={() => onMove(pos, pos + 1)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-[#1e1e23]"
+            className="grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-(--hub-panel-2)"
           >
             <ArrowDown className="h-4 w-4" />
           </button>
@@ -295,7 +295,7 @@ function ParsonsInput({ exercise, value, onChange, disabled }: InputProps<'parso
     <div className="grid gap-3 md:grid-cols-2">
       <div className="space-y-2">
         <div className="label">Available lines — tap to add</div>
-        {remaining.length === 0 && <p className="text-xs text-neutral-500">All lines placed.</p>}
+        {remaining.length === 0 && <p className="text-xs text-tertiary">All lines placed.</p>}
         {remaining.map((line, i) => (
           <button
             key={`${line}-${i}`}
@@ -313,7 +313,7 @@ function ParsonsInput({ exercise, value, onChange, disabled }: InputProps<'parso
           Your program{exercise.language ? ` (${exercise.language})` : ''}
         </div>
         {chosen.length === 0 ? (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             Tap lines on the left to build the program in order.
           </p>
         ) : (
@@ -510,7 +510,7 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
                 <button
                   type="button"
                   onClick={() => setShowPromptTransport((s) => !s)}
-                  className="btn-ghost py-1 text-xs text-neutral-500"
+                  className="btn-ghost py-1 text-xs text-tertiary"
                 >
                   {showPromptTransport ? 'Hide copy/paste prompt' : 'Copy/paste AI prompt'}
                 </button>
@@ -537,7 +537,7 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
               {coachFeedback}
             </div>
           )}
-          {coachError && <p className="text-xs text-amber-500">{coachError}</p>}
+          {coachError && <p className="text-xs text-status-warning-text">{coachError}</p>}
 
           {showPromptTransport && !disabled && (
             <TransportPanel
@@ -624,14 +624,14 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
           </button>
           {run && (
             <div className="space-y-2 text-sm" aria-live="polite">
-              {run.error && <p className="text-rose-500">{run.error}</p>}
+              {run.error && <p className="text-danger-text">{run.error}</p>}
               {run.results.map((r, i) => (
                 <div key={i} className="space-y-1.5">
                   <div className="flex items-start gap-2">
                     {r.passed ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success-text" />
                     ) : (
-                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger-text" />
                     )}
                     <code className="text-[12px]">
                       {r.call} → {r.error ? `error: ${r.error}` : JSON.stringify(r.actual)}
@@ -658,7 +658,7 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
                             <tr>
                               <td
                                 colSpan={r.columns.length}
-                                className="px-2.5 py-1.5 text-neutral-500"
+                                className="px-2.5 py-1.5 text-tertiary"
                               >
                                 (0 rows returned)
                               </td>
@@ -672,7 +672,7 @@ function CodeInput({ exercise, value, onChange, disabled }: InputProps<'code'>) 
                                 {row.map((cell, ci) => (
                                   <td key={ci} className="px-2.5 py-1">
                                     {cell === null ? (
-                                      <span className="italic text-neutral-400">NULL</span>
+                                      <span className="italic text-faint">NULL</span>
                                     ) : (
                                       String(cell)
                                     )}

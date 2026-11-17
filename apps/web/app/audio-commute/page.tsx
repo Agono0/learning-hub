@@ -310,7 +310,7 @@ export default function AudioCommutePage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             viewMode === 'studio'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Mic className="h-4 w-4" />
@@ -323,7 +323,7 @@ export default function AudioCommutePage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             viewMode === 'classic'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Headphones className="h-4 w-4" />
@@ -367,7 +367,7 @@ export default function AudioCommutePage() {
               <div className="space-y-3 text-sm">
                 <p>You graded {inputs.length} cards hands-free.</p>
                 {saveSession.isPending ? (
-                  <p className="text-neutral-500">Saving your reviews…</p>
+                  <p className="text-tertiary">Saving your reviews…</p>
                 ) : saveSession.isError ? (
                   <Callout tone="danger" title="Your reviews were not saved">
                     <Button variant="ghost" onClick={() => saveSession.mutate(inputs)}>
@@ -403,7 +403,7 @@ export default function AudioCommutePage() {
               title={`Card ${currentIndex + 1} of ${cues.length}`}
               actions={
                 current?.deckName ? (
-                  <span className="text-xs text-neutral-500">{current.deckName}</span>
+                  <span className="text-xs text-tertiary">{current.deckName}</span>
                 ) : null
               }
             >
@@ -414,21 +414,21 @@ export default function AudioCommutePage() {
                       <div className="font-mono text-2xl font-bold text-indigo-500">
                         {(pauseRemainingMs / 1000).toFixed(1)}s
                       </div>
-                      <div className="text-[10px] uppercase tracking-wider text-neutral-500">
+                      <div className="text-[10px] uppercase tracking-wider text-tertiary">
                         recall
                       </div>
                     </div>
                   ) : phase === 'prompt' ? (
                     <Volume2 className="h-9 w-9 animate-pulse text-indigo-500" />
                   ) : phase === 'answer' || phase === 'grading' ? (
-                    <CheckCircle2 className="h-9 w-9 text-emerald-500" />
+                    <CheckCircle2 className="h-9 w-9 text-status-success-text" />
                   ) : (
-                    <Headphones className="h-9 w-9 text-neutral-400" />
+                    <Headphones className="h-9 w-9 text-faint" />
                   )}
                 </div>
                 <p className="max-w-md text-sm font-medium">{current?.promptText}</p>
                 {phase === 'answer' || phase === 'grading' ? (
-                  <p className="max-w-md rounded-lg bg-emerald-600/10 px-3 py-1.5 text-sm text-emerald-700 dark:text-emerald-300">
+                  <p className="max-w-md rounded-lg bg-emerald-600/10 px-3 py-1.5 text-sm text-emerald-700 dark:text-status-success-text">
                     {current?.answerText}
                   </p>
                 ) : null}
@@ -447,7 +447,7 @@ export default function AudioCommutePage() {
                       </Button>
                     ))}
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-tertiary">
                     <Button
                       variant="ghost"
                       icon={<Pause className="h-4 w-4" />}

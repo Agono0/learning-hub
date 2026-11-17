@@ -37,10 +37,12 @@ export interface StatCardProps {
 
 const ACCENT_STYLES = {
   indigo: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-  emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-  amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-  rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
-  neutral: 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20',
+  emerald:
+    'bg-emerald-500/10 text-status-success-text dark:text-status-success-text border-emerald-500/20',
+  amber:
+    'bg-amber-500/10 text-status-warning-text dark:text-status-warning-text border-amber-500/20',
+  rose: 'bg-rose-500/10 text-rose-600 dark:text-danger-text border-rose-500/20',
+  neutral: 'bg-neutral-500/10 text-neutral-600 dark:text-faint border-neutral-500/20',
 } as const
 
 const VARIANT_STYLES = {
@@ -104,9 +106,7 @@ export function StatCard({
               {icon}
             </div>
           )}
-          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {label}
-          </span>
+          <span className="text-xs font-medium text-tertiary dark:text-faint">{label}</span>
         </div>
 
         {badge && <div>{badge}</div>}
@@ -116,10 +116,10 @@ export function StatCard({
             className={cx(
               'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
               trend.direction === 'up'
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                ? 'bg-emerald-500/10 text-status-success-text dark:text-status-success-text'
                 : trend.direction === 'down'
-                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                  : 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400',
+                  ? 'bg-rose-500/10 text-rose-600 dark:text-danger-text'
+                  : 'bg-neutral-500/10 text-neutral-600 dark:text-faint',
             )}
           >
             {trend.direction === 'up' && <ArrowUp className="h-3 w-3" />}
@@ -144,7 +144,7 @@ export function StatCard({
             />
           </div>
           {progress.label && (
-            <div className="flex justify-between text-[10px] text-neutral-500 dark:text-neutral-400">
+            <div className="flex justify-between text-[10px] text-tertiary dark:text-faint">
               <span>{progress.label}</span>
               <span>{pct}%</span>
             </div>
@@ -152,7 +152,7 @@ export function StatCard({
         </div>
       )}
 
-      {hint && <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-tertiary dark:text-faint">{hint}</div>}
     </div>
   )
 }

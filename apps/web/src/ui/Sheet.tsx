@@ -65,7 +65,7 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
           <button
             onClick={onClose}
             aria-label="Close"
-            className="grid h-10 w-10 place-items-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+            className="grid h-10 w-10 place-items-center rounded-full text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
           >
             <X className="h-5 w-5" />
           </button>

@@ -83,14 +83,14 @@ export default function QuotesPage() {
             </p>
             <p className="mt-3 text-sm text-indigo-300">— {daily.data.quote.author}</p>
             {daily.data.quote.context && (
-              <p className="mt-1 text-xs text-neutral-500">{daily.data.quote.context}</p>
+              <p className="mt-1 text-xs text-tertiary">{daily.data.quote.context}</p>
             )}
             <p className="mt-2 text-[10px] uppercase tracking-widest text-neutral-600">
               quote of the day · {daily.data.date} · stable all day
             </p>
           </>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-tertiary">
             No quotes yet — run <code>npm run db:seed</code> or add one below.
           </p>
         )}
@@ -141,7 +141,7 @@ export default function QuotesPage() {
       {/* filters */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-tertiary" />
           <input
             className="input w-56 pl-8"
             placeholder="Search…"
@@ -150,7 +150,7 @@ export default function QuotesPage() {
           />
         </div>
         <button
-          className={`rounded-full px-3 py-1 text-xs ${tag === 'all' ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'}`}
+          className={`rounded-full px-3 py-1 text-xs ${tag === 'all' ? 'bg-indigo-600 text-white' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
           onClick={() => setTag('all')}
         >
           all
@@ -158,14 +158,14 @@ export default function QuotesPage() {
         {TAGS.map((t) => (
           <button
             key={t}
-            className={`rounded-full px-3 py-1 text-xs ${tag === t ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'}`}
+            className={`rounded-full px-3 py-1 text-xs ${tag === t ? 'bg-indigo-600 text-white' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
             onClick={() => setTag(t)}
           >
             {t}
           </button>
         ))}
         <button
-          className={`ml-auto rounded-full px-3 py-1 text-xs ${showFavorites ? 'bg-amber-500/20 text-amber-400' : 'text-neutral-500'}`}
+          className={`ml-auto rounded-full px-3 py-1 text-xs ${showFavorites ? 'bg-amber-500/20 text-status-warning-text' : 'text-tertiary'}`}
           onClick={() => setShowFavorites((v) => !v)}
         >
           <Star className="mr-1 inline h-3.5 w-3.5" /> favorites
@@ -182,13 +182,13 @@ export default function QuotesPage() {
                 — {q.author}
                 {q.isUserAdded ? ' (yours)' : ''}
               </p>
-              {q.context && <p className="text-[11px] text-neutral-500">{q.context}</p>}
+              {q.context && <p className="text-[11px] text-tertiary">{q.context}</p>}
               <div className="mt-1 flex items-center justify-between">
                 <div className="flex flex-wrap gap-1">
                   {(q.tags ?? []).map((t) => (
                     <span
                       key={t}
-                      className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-(--hub-panel-2) dark:text-neutral-400"
+                      className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-(--hub-panel-2) dark:text-faint"
                     >
                       {t}
                     </span>
@@ -196,7 +196,7 @@ export default function QuotesPage() {
                 </div>
                 <button onClick={() => toggleFavorite.mutate(q)} aria-label="favorite">
                   <Star
-                    className={`h-4 w-4 ${q.favorite ? 'fill-amber-400 text-amber-400' : 'text-neutral-600'}`}
+                    className={`h-4 w-4 ${q.favorite ? 'fill-amber-400 text-status-warning-text' : 'text-neutral-600'}`}
                   />
                 </button>
               </div>
@@ -204,7 +204,7 @@ export default function QuotesPage() {
           </div>
         ))}
         {all.data && filtered.length === 0 && (
-          <p className="text-sm text-neutral-500">Nothing matches — clear the filters.</p>
+          <p className="text-sm text-tertiary">Nothing matches — clear the filters.</p>
         )}
       </div>
     </div>

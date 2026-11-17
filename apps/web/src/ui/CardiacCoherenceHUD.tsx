@@ -50,21 +50,21 @@ export function CardiacCoherenceHUD({
   // Visual meter styling based on coherence tier
   const tierColors = {
     high: {
-      badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+      badge: 'bg-emerald-500/10 text-status-success-text border-emerald-500/30',
       ring: 'stroke-emerald-400',
       fill: 'fill-emerald-500/20',
       glow: 'shadow-emerald-500/20',
       label: 'High Coherence',
     },
     moderate: {
-      badge: 'bg-sky-500/10 text-sky-400 border-sky-500/30',
+      badge: 'bg-sky-500/10 text-status-info-text border-sky-500/30',
       ring: 'stroke-sky-400',
       fill: 'fill-sky-500/20',
       glow: 'shadow-sky-500/20',
       label: 'Moderate Coherence',
     },
     low: {
-      badge: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+      badge: 'bg-amber-500/10 text-status-warning-text border-amber-500/30',
       ring: 'stroke-amber-400',
       fill: 'fill-amber-500/20',
       glow: 'shadow-amber-500/20',
@@ -73,10 +73,22 @@ export function CardiacCoherenceHUD({
   }[coherenceTier]
 
   const autonomicLabels = {
-    sympathetic_stress: { label: 'Sympathetic Stress', color: 'text-rose-400', icon: ShieldAlert },
-    balanced_readiness: { label: 'Balanced Readiness', color: 'text-emerald-400', icon: Activity },
-    deep_parasympathetic: { label: 'Deep Parasympathetic', color: 'text-teal-400', icon: Sparkles },
-    fatigued: { label: 'Autonomic Fatigue', color: 'text-amber-400', icon: Heart },
+    sympathetic_stress: {
+      label: 'Sympathetic Stress',
+      color: 'text-danger-text',
+      icon: ShieldAlert,
+    },
+    balanced_readiness: {
+      label: 'Balanced Readiness',
+      color: 'text-status-success-text',
+      icon: Activity,
+    },
+    deep_parasympathetic: {
+      label: 'Deep Parasympathetic',
+      color: 'text-status-success-text',
+      icon: Sparkles,
+    },
+    fatigued: { label: 'Autonomic Fatigue', color: 'text-status-warning-text', icon: Heart },
   }[autonomicState]
 
   const StateIcon = autonomicLabels.icon
@@ -125,7 +137,7 @@ export function CardiacCoherenceHUD({
               <span className="text-base font-bold text-white tracking-tight">
                 {Math.round(coherenceRatio * 100)}%
               </span>
-              <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+              <span className="text-[10px] uppercase font-semibold text-faint tracking-wider">
                 Coherence
               </span>
             </div>
@@ -142,7 +154,7 @@ export function CardiacCoherenceHUD({
                 <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
                 {tierColors.label}
               </span>
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-faint">
                 <StateIcon className={cx('h-3.5 w-3.5', autonomicLabels.color)} />
                 {autonomicLabels.label}
               </span>
@@ -150,7 +162,7 @@ export function CardiacCoherenceHUD({
 
             <p className="text-sm font-medium text-slate-200">
               {isBreathingActive ? (
-                <span className="text-emerald-300">Pacer Active: {protocolName}</span>
+                <span className="text-status-success-text">Pacer Active: {protocolName}</span>
               ) : (
                 <span>
                   Cognitive Readiness Score:{' '}
@@ -159,7 +171,7 @@ export function CardiacCoherenceHUD({
               )}
             </p>
 
-            <div className="flex items-center gap-3 text-xs text-slate-400">
+            <div className="flex items-center gap-3 text-xs text-faint">
               <span>
                 BPM: <strong className="text-slate-200">{heartRateBpm}</strong>
               </span>
@@ -186,8 +198,8 @@ export function CardiacCoherenceHUD({
 
       {/* Recommendation footer */}
       {metrics.recommendation && (
-        <div className="mt-4 border-t border-white/5 pt-3 text-xs leading-relaxed text-slate-400">
-          <span className="font-semibold text-slate-300">Autonomic Insight:</span>{' '}
+        <div className="mt-4 border-t border-white/5 pt-3 text-xs leading-relaxed text-faint">
+          <span className="font-semibold text-secondary">Autonomic Insight:</span>{' '}
           {metrics.recommendation}
         </div>
       )}

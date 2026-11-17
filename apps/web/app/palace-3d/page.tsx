@@ -312,7 +312,7 @@ export default function Palace3dPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
               viewMode === 'studio'
                 ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : 'text-faint hover:text-white'
             }`}
           >
             <Move3d className="h-3.5 w-3.5" />
@@ -324,7 +324,7 @@ export default function Palace3dPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
               viewMode === 'classic'
                 ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : 'text-faint hover:text-white'
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
@@ -409,11 +409,11 @@ export default function Palace3dPage() {
             {saveLayout.isError ? (
               <p className="text-xs text-rose-600">{errorText(saveLayout.error)}</p>
             ) : saveLayout.isSuccess ? (
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 Layout saved (including your current position as the start).
               </p>
             ) : !sceneQuery.data?.persisted || archetypeOverride ? (
-              <p className="text-xs text-neutral-500">Preview — not saved yet.</p>
+              <p className="text-xs text-tertiary">Preview — not saved yet.</p>
             ) : null}
           </Panel>
 
@@ -428,7 +428,7 @@ export default function Palace3dPage() {
               <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-950 dark:border-(--hub-border)">
                 <div ref={mountRef} className="h-[340px] w-full md:h-[460px]" />
                 <div className="absolute left-2 top-2 flex items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-[11px] text-neutral-300">
-                  <Compass className="h-3.5 w-3.5 text-sky-400" />
+                  <Compass className="h-3.5 w-3.5 text-status-info-text" />
                   <span>
                     ({cameraPos[0]}, {cameraPos[2]}) ·{' '}
                     {Math.round(((((yaw * 180) / Math.PI) % 360) + 360) % 360)}°
@@ -525,11 +525,11 @@ export default function Palace3dPage() {
                           <span className="truncate font-semibold">
                             {i + 1}. {loc.title}
                           </span>
-                          <span className="shrink-0 font-mono text-[10px] text-neutral-500">
+                          <span className="shrink-0 font-mono text-[10px] text-tertiary">
                             [{loc.position[0]}, {loc.position[2]}]
                           </span>
                         </div>
-                        <p className="text-neutral-500">
+                        <p className="text-tertiary">
                           {loc.cardId ? `Linked card #${loc.cardId}` : 'No card linked'}
                         </p>
                       </button>

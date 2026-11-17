@@ -40,15 +40,15 @@ export default function PretestPage() {
       />
 
       {q.isError ? (
-        <div className="panel text-sm text-rose-600 dark:text-rose-400">
+        <div className="panel text-sm text-rose-600 dark:text-danger-text">
           Could not load pretest candidates.
         </div>
       ) : q.isLoading || !q.data ? (
-        <div className="panel text-sm text-neutral-500 dark:text-neutral-400">
+        <div className="panel text-sm text-tertiary dark:text-faint">
           Ranking your young, fragile cards…
         </div>
       ) : q.data.sampleSize === 0 ? (
-        <div className="panel text-sm text-neutral-500 dark:text-neutral-400">
+        <div className="panel text-sm text-tertiary dark:text-faint">
           <Sparkles className="mr-1.5 inline h-4 w-4 text-indigo-400" />
           No young cards to pretest yet — the protocol targets new material (stability &lt; 3 days).
           Import or create cards, then come back.
@@ -56,7 +56,7 @@ export default function PretestPage() {
       ) : (
         <>
           <PretestingLab candidates={q.data.candidates} />
-          <p className="px-1 text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="px-1 text-xs text-tertiary dark:text-faint">
             Protocol: {q.data.protocol.name} · {q.data.protocol.citation}. {q.data.protocol.note}
           </p>
         </>

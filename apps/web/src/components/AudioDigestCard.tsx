@@ -36,11 +36,11 @@ interface DigestResponse {
 }
 
 const PHASE_TONE: Record<DigestCue['phase'], string> = {
-  intro: 'text-neutral-500 dark:text-neutral-400',
+  intro: 'text-tertiary dark:text-faint',
   prompt: 'text-neutral-800 dark:text-neutral-100 font-semibold',
-  pause: 'text-neutral-400 italic',
-  answer: 'text-emerald-700 dark:text-emerald-300',
-  outro: 'text-neutral-500 dark:text-neutral-400',
+  pause: 'text-faint italic',
+  answer: 'text-emerald-700 dark:text-status-success-text',
+  outro: 'text-tertiary dark:text-faint',
 }
 
 /**
@@ -91,7 +91,7 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
           Hands-free digest
         </h3>
         {q.data?.script && (
-          <span className="inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+          <span className="inline-flex items-center gap-1 text-xs text-tertiary dark:text-faint">
             <Clock className="h-3.5 w-3.5" />
             {q.data.script.cardCount} cards · ~{minutes} min
           </span>
@@ -101,9 +101,11 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
       {q.isLoading ? (
         <div className="h-16 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       ) : q.isError ? (
-        <p className="text-xs text-rose-600 dark:text-rose-400">Could not generate the digest.</p>
+        <p className="text-xs text-rose-600 dark:text-danger-text">
+          Could not generate the digest.
+        </p>
       ) : cues.length === 0 ? (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="text-xs text-tertiary dark:text-faint">
           Nothing due to narrate — the digest fills from your due queue.
         </p>
       ) : (
@@ -129,7 +131,7 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
             )}
           </div>
           {!isSpeechAvailable() && (
-            <p className="text-[11px] text-neutral-500">
+            <p className="text-[11px] text-tertiary">
               Speech is unavailable here — read the script below, or open the full commute studio.
             </p>
           )}
@@ -143,7 +145,7 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
                   playing && i === cursor && 'border-indigo-400 bg-indigo-500/5',
                 )}
               >
-                <span className="mr-1.5 font-mono text-[10px] uppercase text-neutral-400">
+                <span className="mr-1.5 font-mono text-[10px] uppercase text-faint">
                   {cue.phase}
                 </span>
                 {cue.text}

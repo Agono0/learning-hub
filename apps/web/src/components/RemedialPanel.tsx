@@ -46,7 +46,7 @@ export function RemedialPanel({ concepts = [], className }: RemedialPanelProps) 
         <ShieldCheck className="h-4 w-4 text-indigo-500" />
         Prerequisite check
       </h3>
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+      <p className="text-xs text-tertiary dark:text-faint">
         The knowledge graph can pause a concept whose prerequisites are still weak — better 3 days
         on a foundation than 3 weeks re-learning a collapsed floor.
       </p>
@@ -65,7 +65,7 @@ export function RemedialPanel({ concepts = [], className }: RemedialPanelProps) 
           ))}
         </select>
       ) : (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="text-xs text-tertiary dark:text-faint">
           Import a curriculum to enable prerequisite checks — the graph builds from course units.
         </p>
       )}
@@ -74,15 +74,15 @@ export function RemedialPanel({ concepts = [], className }: RemedialPanelProps) 
         <div className="h-12 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       )}
       {q.isError && (
-        <p className="text-xs text-rose-600 dark:text-rose-400">Check failed — retry.</p>
+        <p className="text-xs text-rose-600 dark:text-danger-text">Check failed — retry.</p>
       )}
       {q.data?.result && (
         <div
           className={cx(
             'flex items-start gap-2.5 rounded-xl border p-3 text-xs',
             q.data.result.blocked
-              ? 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300'
-              : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300',
+              ? 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-status-warning-text'
+              : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-status-success-text',
           )}
         >
           {q.data.result.blocked ? (

@@ -63,7 +63,7 @@ export default function DifficultyPage() {
 
       {q.isError ? (
         <Panel title="Could not load telemetry">
-          <p className="text-sm text-rose-600 dark:text-rose-400">
+          <p className="text-sm text-rose-600 dark:text-danger-text">
             The measured audit failed to load. Review some cards and reload — the audit needs
             review-log telemetry for spacing and interleaving.
           </p>
@@ -86,10 +86,10 @@ export default function DifficultyPage() {
       {/* Evidence reference */}
       <section className="space-y-3" aria-label="Evidence reference">
         <h2 className="flex items-center gap-2 px-1 text-sm font-bold text-neutral-700 dark:text-neutral-200">
-          <ClipboardList className="h-4 w-4 text-neutral-500" />
+          <ClipboardList className="h-4 w-4 text-tertiary" />
           The evidence table this audit scores against
         </h2>
-        <div className="panel space-y-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+        <div className="panel space-y-2 text-xs leading-relaxed text-neutral-600 dark:text-secondary">
           <p>
             <strong>High utility:</strong> practice testing and distributed practice — robust across
             ages, materials, and retention intervals.
@@ -103,7 +103,7 @@ export default function DifficultyPage() {
             imagery — the techniques that <em>feel</em> most productive while creating fluency
             illusions (Bjork &amp; Bjork 2011).
           </p>
-          <p className="text-neutral-500 dark:text-neutral-400">
+          <p className="text-tertiary dark:text-faint">
             Source: Dunlosky, Rawson, Marsh, Nathan &amp; Wegner (2013),{' '}
             <em>Psychological Science in the Public Interest</em>. The audit maps each technique's
             rating to a utility score and weights your logged minutes — see{' '}
@@ -113,7 +113,7 @@ export default function DifficultyPage() {
       </section>
 
       {/* Honest data-source banner */}
-      <div className="panel flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+      <div className="panel flex flex-wrap items-center gap-2 text-xs text-tertiary dark:text-faint">
         <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
         <span>
           Measured: retrieval minutes, session spacing, deck interleaving (review log).

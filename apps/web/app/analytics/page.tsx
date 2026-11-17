@@ -25,20 +25,22 @@ function TodayStatsPanel() {
     <div className="panel grid grid-cols-3 gap-3 text-center">
       <div>
         <p className="text-2xl font-bold tabular-nums">{t?.reviews ?? '…'}</p>
-        <p className="text-xs text-neutral-500">reviews today</p>
+        <p className="text-xs text-tertiary">reviews today</p>
       </div>
       <div>
-        <p className="text-2xl font-bold tabular-nums text-emerald-400">{correctPct ?? '—'}</p>
-        <p className="text-xs text-neutral-500">% correct today</p>
+        <p className="text-2xl font-bold tabular-nums text-status-success-text">
+          {correctPct ?? '—'}
+        </p>
+        <p className="text-xs text-tertiary">% correct today</p>
       </div>
       <div>
         <p className="text-2xl font-bold tabular-nums">
           {t?.avgTimeMs != null ? `${Math.round(t.avgTimeMs / 100) / 10}s` : '—'}
         </p>
-        <p className="text-xs text-neutral-500">avg per review</p>
+        <p className="text-xs text-tertiary">avg per review</p>
       </div>
       {t && t.reviews === 0 && (
-        <p className="col-span-3 text-xs text-neutral-500">
+        <p className="col-span-3 text-xs text-tertiary">
           No reviews yet today — stats appear after your first session.
         </p>
       )}
@@ -143,10 +145,10 @@ export default function AnalyticsPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="panel space-y-1 text-center">
           <p className="label">True retention (reviews you passed)</p>
-          <p className="text-5xl font-bold tabular-nums text-emerald-400">
+          <p className="text-5xl font-bold tabular-nums text-status-success-text">
             {d?.trueRetention.retentionPct != null ? `${d.trueRetention.retentionPct}%` : '—'}
           </p>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             {d?.trueRetention.totalReviews ?? 0} mature reviews · target 90%
           </p>
         </div>
@@ -157,7 +159,7 @@ export default function AnalyticsPage() {
               background: `conic-gradient(#6366f1 ${Math.round(score * 3.6)}deg, #26262b 0deg)`,
             }}
           >
-            <div className="grid h-20 w-20 place-items-center rounded-full bg-[#141417] text-2xl font-bold tabular-nums">
+            <div className="grid h-20 w-20 place-items-center rounded-full bg-neutral-50 dark:bg-(--hub-sunken) text-2xl font-bold tabular-nums">
               {d?.learningScore.score ?? '…'}
             </div>
           </div>
@@ -169,16 +171,14 @@ export default function AnalyticsPage() {
               { k: 'volume 30%', v: d?.learningScore.components.volume ?? 0 },
             ].map((c) => (
               <div key={c.k} className="flex items-center gap-2">
-                <span className="w-24 shrink-0 text-neutral-500">{c.k}</span>
+                <span className="w-24 shrink-0 text-tertiary">{c.k}</span>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                   <div
                     className="h-full rounded-full bg-indigo-500"
                     style={{ width: `${Math.round(c.v)}%` }}
                   />
                 </div>
-                <span className="w-8 text-right tabular-nums text-neutral-400">
-                  {Math.round(c.v)}
-                </span>
+                <span className="w-8 text-right tabular-nums text-faint">{Math.round(c.v)}</span>
               </div>
             ))}
           </div>
@@ -225,7 +225,7 @@ export default function AnalyticsPage() {
             />
           ))}
           {(d?.heatmap.length ?? 0) === 0 && (
-            <p className="text-sm text-neutral-500">No reviews logged yet.</p>
+            <p className="text-sm text-tertiary">No reviews logged yet.</p>
           )}
         </div>
       </div>
@@ -237,7 +237,7 @@ export default function AnalyticsPage() {
             <p className="label font-bold text-neutral-100">
               Metacognitive Calibration &amp; Reliability Diagram
             </p>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Murphy (1973) &amp; Lichtenstein (1982): Measures whether your predicted memory
               retention matches reality.
             </p>
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
         </div>
 
         {d?.calibrationMetrics?.interpretation && (
-          <p className="text-xs text-neutral-400 border-l-2 border-indigo-500/60 pl-2.5">
+          <p className="text-xs text-faint border-l-2 border-indigo-500/60 pl-2.5">
             {d.calibrationMetrics.interpretation}
           </p>
         )}
@@ -274,9 +274,9 @@ export default function AnalyticsPage() {
         {/* Visual Reliability Diagram (SVG: Expected vs Empirical Accuracy) */}
         {d && d.calibration.some((c) => c.actual != null) && (
           <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-neutral-400">
+            <div className="flex items-center justify-between text-xs text-faint">
               <span>Reliability Curve (Dashed line = Ideal y=x calibration)</span>
-              <span className="text-[10px] text-neutral-500">x: predicted | y: empirical</span>
+              <span className="text-[10px] text-tertiary">x: predicted | y: empirical</span>
             </div>
             <div className="h-40 w-full flex items-center justify-center">
               <svg
@@ -345,9 +345,11 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {d?.calibrationNote && <p className="text-xs text-amber-400">{d.calibrationNote}</p>}
+        {d?.calibrationNote && (
+          <p className="text-xs text-status-warning-text">{d.calibrationNote}</p>
+        )}
         <table className="w-full text-left text-xs">
-          <thead className="text-neutral-500">
+          <thead className="text-tertiary">
             <tr>
               <th className="py-1 pr-3">predicted</th>
               <th className="py-1 pr-3">actual</th>
@@ -355,13 +357,13 @@ export default function AnalyticsPage() {
               <th className="py-1">read</th>
             </tr>
           </thead>
-          <tbody className="text-neutral-300">
+          <tbody className="text-secondary">
             {(d?.calibration ?? []).map((c) => (
               <tr key={c.bucket} className="border-t border-neutral-200 dark:border-(--hub-border)">
                 <td className="py-1.5 pr-3 tabular-nums">{c.bucket}</td>
                 <td className="py-1.5 pr-3 tabular-nums">{pct(c.actual)}</td>
                 <td className="py-1.5 pr-3 tabular-nums">{c.n}</td>
-                <td className="py-1 text-neutral-500">
+                <td className="py-1 text-tertiary">
                   {c.n === 0
                     ? 'no data'
                     : c.actual != null && c.predicted != null && c.actual + 0.05 >= c.predicted
@@ -379,7 +381,7 @@ export default function AnalyticsPage() {
         <p className="label">Calibration trainer — sure but wrong</p>
         {d && d.calibrationTrainer.cards.length > 0 ? (
           <>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               {d.calibrationTrainer.overconfidentTotal} card(s) you marked “sure” but failed.
               Confident errors are corrected best by an immediate retest — drill them now (the
               review session already retries confident-wrong cards first).
@@ -388,7 +390,9 @@ export default function AnalyticsPage() {
               {d.calibrationTrainer.cards.map((c) => (
                 <li key={c.cardId} className="flex items-center gap-2">
                   <span className="min-w-0 flex-1 truncate">{c.preview}</span>
-                  <span className="shrink-0 text-xs text-amber-400">×{c.overconfident}</span>
+                  <span className="shrink-0 text-xs text-status-warning-text">
+                    ×{c.overconfident}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -397,7 +401,7 @@ export default function AnalyticsPage() {
             </a>
           </>
         ) : (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             {d && d.calibrationTrainer.reviewedCards > 0
               ? 'No confident-wrong answers recently — calibration looks healthy.'
               : 'Answer some reviews (with the sure/unsure mark) and the drill list fills here.'}
@@ -429,7 +433,7 @@ export default function AnalyticsPage() {
           <span>18h</span>
           <span>23h</span>
         </div>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           bar height = correct rate · green = your prime hours (≥90%)
         </p>
       </div>
@@ -454,17 +458,15 @@ export default function AnalyticsPage() {
           <span>18h</span>
           <span>23h</span>
         </div>
-        <p className="text-xs text-neutral-500">{bestHoursSentence(d?.hourAccuracy ?? [])}</p>
-        <p className="text-xs text-neutral-500">
-          grey slots have under 10 reviews — not enough data
-        </p>
+        <p className="text-xs text-tertiary">{bestHoursSentence(d?.hourAccuracy ?? [])}</p>
+        <p className="text-xs text-tertiary">grey slots have under 10 reviews — not enough data</p>
       </div>
 
       {/* focus-leak trend */}
       <div className="panel space-y-2">
         <p className="label">Focus leaks — tab switches per day (honesty first)</p>
         {(d?.focusLeakTrend.length ?? 0) === 0 ? (
-          <p className="text-sm text-neutral-500">No focus sessions yet.</p>
+          <p className="text-sm text-tertiary">No focus sessions yet.</p>
         ) : (
           <div className="flex h-20 items-end gap-1">
             {d?.focusLeakTrend.map((l) => (
@@ -482,7 +484,7 @@ export default function AnalyticsPage() {
           </div>
         )}
         {d?.focusLeakTrend.slice(-3).map((l) => (
-          <p key={l.date} className="text-xs text-neutral-500">
+          <p key={l.date} className="text-xs text-tertiary">
             {l.date}: {l.leaks} leaks / {l.sessions} session(s){' '}
             {l.avgPerSession != null ? `· avg ${l.avgPerSession}` : ''}
           </p>

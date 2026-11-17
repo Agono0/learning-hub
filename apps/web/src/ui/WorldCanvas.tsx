@@ -169,7 +169,7 @@ export const WorldCanvas = React.forwardRef<WorldCanvasHandle, WorldCanvasProps>
           className={`flex flex-col items-center justify-center bg-emerald-950/20 text-emerald-300 p-6 rounded-2xl border border-emerald-800/30 text-center ${props.className ?? ''}`}
         >
           <p className="font-semibold text-lg mb-1">🌲 Forest of Focus</p>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-faint">
             WebGL is not active or supported on this device. 3D rendering gracefully falling back to
             standard calm timer.
           </p>

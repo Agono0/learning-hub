@@ -212,7 +212,7 @@ export function SleepConsolidationStudio({
         isNightActive
           ? 'bg-black text-amber-100 border-amber-950 p-6 shadow-2xl min-h-[620px]'
           : 'bg-slate-950 text-white border-white/10 p-6 shadow-2xl min-h-[620px]',
-        redShiftMode && isNightActive && 'text-amber-300',
+        redShiftMode && isNightActive && 'text-status-warning-text',
         className,
       )}
     >
@@ -254,8 +254,8 @@ export function SleepConsolidationStudio({
             className={cx(
               'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all',
               redShiftMode
-                ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                : 'bg-white/5 border-white/10 text-slate-400 hover:text-white',
+                ? 'bg-amber-500/20 border-amber-500/50 text-status-warning-text'
+                : 'bg-white/5 border-white/10 text-faint hover:text-white',
             )}
           >
             {redShiftMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -271,7 +271,7 @@ export function SleepConsolidationStudio({
             <Bed className="h-4 w-4 text-indigo-400" /> SWS Replay Windows ({sleepHours}h Sleep
             Target)
           </span>
-          <span className="text-emerald-400 font-medium text-[11px]">
+          <span className="text-status-success-text font-medium text-[11px]">
             +22.4% Predicted Synaptic Gain
           </span>
         </div>
@@ -306,7 +306,7 @@ export function SleepConsolidationStudio({
           </svg>
         </div>
 
-        <div className="flex justify-between items-center text-[10px] text-slate-400 mt-2 px-1">
+        <div className="flex justify-between items-center text-[10px] text-faint mt-2 px-1">
           <span>0h (Sleep Onset)</span>
           <span className="text-indigo-400 font-semibold">Cycle 1 (Peak SWS)</span>
           <span>Cycle 2</span>
@@ -321,12 +321,12 @@ export function SleepConsolidationStudio({
           <span className="font-semibold opacity-75">
             Queued Earcons for Replay ({cues.length} Cards)
           </span>
-          <span className="text-[11px] text-slate-400">Click to preview soft partials</span>
+          <span className="text-[11px] text-faint">Click to preview soft partials</span>
         </div>
 
         <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
           {cues.length === 0 ? (
-            <div className="rounded-xl border border-white/5 bg-white/5 p-4 text-center text-xs text-slate-400">
+            <div className="rounded-xl border border-white/5 bg-white/5 p-4 text-center text-xs text-faint">
               No recent cards queued. Review items in the regular review session to mint nocturnal
               earcons.
             </div>
@@ -347,8 +347,8 @@ export function SleepConsolidationStudio({
                       className={cx(
                         'flex h-7 w-7 items-center justify-center rounded-lg border transition-all active:scale-95',
                         isPlaying
-                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-                          : 'bg-white/10 border-white/10 text-slate-300 hover:text-white',
+                          ? 'bg-emerald-500/20 border-emerald-500 text-status-success-text'
+                          : 'bg-white/10 border-white/10 text-secondary hover:text-white',
                       )}
                     >
                       {isPlaying ? (
@@ -361,14 +361,14 @@ export function SleepConsolidationStudio({
                       <p className="font-medium line-clamp-1">
                         {cue.frontText || `Card #${cue.cardId}`}
                       </p>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-faint">
                         {cue.earcon.baseFrequency} Hz • {cue.earcon.harmonicType.replace('_', ' ')}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                    <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-status-success-text">
                       +{audit.predictedRetentionBoostPct}% Recall
                     </span>
                   </div>
@@ -403,9 +403,10 @@ export function SleepConsolidationStudio({
         <div className="space-y-1 sm:col-span-2">
           <div className="flex justify-between text-[11px] font-semibold opacity-75">
             <span className="flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> Whisper Volume Ceiling
+              <ShieldCheck className="h-3.5 w-3.5 text-status-success-text" /> Whisper Volume
+              Ceiling
             </span>
-            <span className="text-emerald-400">{volumeDba} dBA (Safe Sub-Arousal)</span>
+            <span className="text-status-success-text">{volumeDba} dBA (Safe Sub-Arousal)</span>
           </div>
           <input
             type="range"
@@ -416,7 +417,7 @@ export function SleepConsolidationStudio({
             onChange={(e) => setVolumeDba(Number(e.target.value))}
             className="w-full accent-indigo-500"
           />
-          <p className="text-[10px] text-slate-400">
+          <p className="text-[10px] text-faint">
             Capped under 42 dBA to ensure no micro-arousals disrupt deep restorative sleep.
           </p>
         </div>
@@ -424,9 +425,9 @@ export function SleepConsolidationStudio({
 
       {/* Bottom Night Mode Activation CTA */}
       <div className="relative z-10 mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-white/10 pt-4">
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-faint">
           {isNightActive ? (
-            <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+            <span className="text-status-success-text font-semibold flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
               Night Session Active • Replayed {replayedCount} cues safely
             </span>

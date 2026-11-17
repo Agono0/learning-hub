@@ -149,7 +149,7 @@ export default function JournalPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             viewMode === 'metacognitive'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Sparkles className="h-4 w-4" />
@@ -162,7 +162,7 @@ export default function JournalPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             viewMode === 'daily'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <PenLine className="h-4 w-4" />
@@ -175,7 +175,7 @@ export default function JournalPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             viewMode === 'weekly'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Calendar className="h-4 w-4" />
@@ -220,7 +220,9 @@ export default function JournalPage() {
         <div className="panel space-y-3">
           <div className="flex items-center justify-between">
             <p className="label">{today}</p>
-            {savedMsg && <span className="celebrate text-xs text-emerald-400">{savedMsg}</span>}
+            {savedMsg && (
+              <span className="celebrate text-xs text-status-success-text">{savedMsg}</span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -230,7 +232,7 @@ export default function JournalPage() {
                 className={`h-11 w-11 rounded-full text-xl transition-colors ${
                   shownMood === i + 1
                     ? 'bg-indigo-600/30 ring-2 ring-indigo-400'
-                    : 'hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'
+                    : 'hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'
                 }`}
                 onClick={() => setMood(i + 1)}
                 aria-label={`mood ${i + 1}`}
@@ -275,7 +277,7 @@ export default function JournalPage() {
 
           {aiResult && (
             <div
-              className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-amber-300'}`}
+              className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-status-warning-text'}`}
             >
               <Sparkles className="mr-2 inline h-4 w-4" />
               {aiResult.text}
@@ -293,11 +295,11 @@ export default function JournalPage() {
                   key={d.date}
                   className={`rounded-lg p-2 ${d.date === today ? 'bg-indigo-600/15' : ''}`}
                 >
-                  <p className="text-[10px] text-neutral-500">{d.date.slice(8)}</p>
+                  <p className="text-[10px] text-tertiary">{d.date.slice(8)}</p>
                   <p className="text-lg">
                     {d.mood != null ? MOODS[Math.min(4, Math.max(0, d.mood - 1))] : '·'}
                   </p>
-                  <p className="text-[10px] text-neutral-500">{d.reviews} rev</p>
+                  <p className="text-[10px] text-tertiary">{d.reviews} rev</p>
                 </div>
               ))}
             </div>
@@ -319,7 +321,7 @@ export default function JournalPage() {
                   className="rounded-lg border border-neutral-200 p-2 text-center dark:border-(--hub-border)"
                 >
                   <p className="text-xl font-bold tabular-nums">{s.v}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-neutral-500">{s.k}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-tertiary">{s.k}</p>
                 </div>
               ))}
             </div>
@@ -328,7 +330,7 @@ export default function JournalPage() {
               {weekly.data?.prompts.map((p, i) => (
                 <li
                   key={i}
-                  className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300"
+                  className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-(--hub-sunken) dark:text-secondary"
                 >
                   {p}
                 </li>

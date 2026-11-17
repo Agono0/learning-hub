@@ -171,7 +171,7 @@ export function InkPad({
 
   return (
     <div
-      className={`relative rounded-xl border border-neutral-700/60 bg-[#141416] p-2 overflow-hidden shadow-inner ${className}`}
+      className={`relative rounded-xl border border-neutral-700/60 bg-neutral-900 p-2 overflow-hidden shadow-inner ${className}`}
     >
       <div className="relative w-full" style={{ height }}>
         <canvas
@@ -185,7 +185,7 @@ export function InkPad({
         />
 
         {!hasContent && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-neutral-500">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-neutral-400">
             <span className="flex items-center gap-1.5 opacity-60">
               <PenTool className="h-3.5 w-3.5" />
               {placeholder}

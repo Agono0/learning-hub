@@ -67,7 +67,7 @@ const TIER_CONFIG: Record<
     shortLabel: 'T1: Stem',
     multiplier: 1.35,
     description: 'Reconstruct words from anchored phonetic stems and vowel masks.',
-    color: 'text-sky-500',
+    color: 'text-status-info-text',
     bgLight: 'bg-sky-50',
     bgDark: 'dark:bg-sky-950/30',
   },
@@ -87,7 +87,7 @@ const TIER_CONFIG: Record<
     shortLabel: 'T3: Reverse',
     multiplier: 1.8,
     description: 'Formulate the mechanistic core question this concept answers.',
-    color: 'text-amber-500',
+    color: 'text-status-warning-text',
     bgLight: 'bg-amber-50',
     bgDark: 'dark:bg-amber-950/30',
   },
@@ -97,7 +97,7 @@ const TIER_CONFIG: Record<
     shortLabel: 'T4: Analogy',
     multiplier: 2.1,
     description: 'Map this abstract rule to a tangible real-world physical metaphor.',
-    color: 'text-emerald-500',
+    color: 'text-status-success-text',
     bgLight: 'bg-emerald-50',
     bgDark: 'dark:bg-emerald-950/30',
   },
@@ -320,7 +320,7 @@ export function GenerationPracticeModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-labelledby="generation-modal-title"
@@ -345,7 +345,7 @@ export function GenerationPracticeModal({
                   {activeTierConfig.multiplier}x Multiplier
                 </Badge>
               </h2>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="text-xs text-tertiary dark:text-faint">
                 Slamecka &amp; Graf (1978) Desirable Difficulties Protocol
               </p>
             </div>
@@ -355,7 +355,7 @@ export function GenerationPracticeModal({
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800 transition"
+              className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800 transition"
               aria-label={soundEnabled ? 'Disable audio cues' : 'Enable audio cues'}
               title={soundEnabled ? 'Mute sound' : 'Unmute sound'}
             >
@@ -364,7 +364,7 @@ export function GenerationPracticeModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800 transition"
+              className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800 transition"
               aria-label="Close dialog"
             >
               <X className="h-5 w-5" />
@@ -387,18 +387,20 @@ export function GenerationPracticeModal({
                 className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                   isCurrent
                     ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs border border-neutral-200 dark:border-neutral-700'
-                    : 'text-neutral-600 dark:text-neutral-400 hover:bg-white/50 dark:hover:bg-neutral-800/50'
+                    : 'text-neutral-600 dark:text-faint hover:bg-white/50 dark:hover:bg-neutral-800/50'
                 }`}
               >
                 <span className="flex items-center gap-1.5 truncate">
-                  {hasPassed && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
+                  {hasPassed && (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />
+                  )}
                   <span className="truncate">{cfg.shortLabel}</span>
                 </span>
                 <span
                   className={`text-[10px] font-mono px-1 py-0.5 rounded ${
                     isCurrent
                       ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
-                      : 'text-neutral-400'
+                      : 'text-faint'
                   }`}
                 >
                   {cfg.multiplier}x
@@ -413,17 +415,15 @@ export function GenerationPracticeModal({
           {/* Concept Header Card */}
           <div className="rounded-xl p-4 bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200/80 dark:border-neutral-700/60">
             <div className="flex items-baseline justify-between gap-2 mb-1">
-              <span className="text-xs uppercase tracking-wider font-semibold text-neutral-500 dark:text-neutral-400">
+              <span className="text-xs uppercase tracking-wider font-semibold text-tertiary dark:text-faint">
                 Target Concept
               </span>
-              <span className="text-xs font-mono text-neutral-400">
-                Tier {activeTierConfig.level}/4
-              </span>
+              <span className="text-xs font-mono text-faint">Tier {activeTierConfig.level}/4</span>
             </div>
             <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
               {ladder.concept}
             </h3>
-            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+            <p className="mt-1 text-xs text-neutral-600 dark:text-faint">
               {activeTierConfig.description}
             </p>
           </div>
@@ -439,7 +439,7 @@ export function GenerationPracticeModal({
 
             {/* Masked display for Tier 1 Stem Completion */}
             {ladder.tier === 'stem_completion' && ladder.maskedTarget && (
-              <div className="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 text-sm font-mono text-sky-900 dark:text-sky-300 leading-relaxed select-all">
+              <div className="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 text-sm font-mono text-sky-900 dark:text-status-info-text leading-relaxed select-all">
                 {ladder.maskedTarget}
               </div>
             )}
@@ -450,7 +450,7 @@ export function GenerationPracticeModal({
                 {/* Available tokens pool */}
                 <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-neutral-100/60 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-700/50 min-h-[52px]">
                   {availableTokens.length === 0 ? (
-                    <span className="text-xs text-neutral-400 italic">
+                    <span className="text-xs text-faint italic">
                       All tokens placed in reconstruction.
                     </span>
                   ) : (
@@ -470,13 +470,13 @@ export function GenerationPracticeModal({
                 {/* Selected tokens assembly */}
                 {selectedTokens.length > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-500">
+                    <span className="text-xs text-tertiary">
                       Arranged sequence (click word to return):
                     </span>
                     <button
                       type="button"
                       onClick={handleResetTokens}
-                      className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 flex items-center gap-1 transition"
+                      className="text-xs text-tertiary hover:text-neutral-700 dark:hover:text-secondary flex items-center gap-1 transition"
                     >
                       <RotateCcw className="h-3 w-3" /> Reset tokens
                     </button>
@@ -521,7 +521,7 @@ export function GenerationPracticeModal({
                 disabled={isSubmitting}
                 className="w-full rounded-xl p-3.5 text-sm bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition resize-none"
               />
-              <div className="absolute right-2.5 bottom-2.5 text-[11px] text-neutral-400 font-mono flex items-center gap-1">
+              <div className="absolute right-2.5 bottom-2.5 text-[11px] text-faint font-mono flex items-center gap-1">
                 <Keyboard className="h-3 w-3" />
                 <span>Ctrl+Enter</span>
               </div>
@@ -532,18 +532,18 @@ export function GenerationPracticeModal({
               <button
                 type="button"
                 onClick={() => setShowHint(!showHint)}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 flex items-center gap-1 transition"
+                className="text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 flex items-center gap-1 transition"
               >
                 <HelpCircle className="h-3.5 w-3.5" />
                 <span>{showHint ? 'Hide Hint' : 'Desirable Difficulty Hint'}</span>
               </button>
-              <span className="text-neutral-400 text-[11px]">
+              <span className="text-faint text-[11px]">
                 {userAttempt.trim().split(/\s+/).filter(Boolean).length} words
               </span>
             </div>
 
             {showHint && (
-              <div className="p-3 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 animate-in fade-in duration-100">
+              <div className="p-3 rounded-lg bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-status-warning-text animate-fade-in">
                 {ladder.hint}
               </div>
             )}
@@ -552,7 +552,7 @@ export function GenerationPracticeModal({
           {/* Evaluation Feedback Panel */}
           {evaluation && (
             <div
-              className={`p-4 rounded-xl border animate-in zoom-in-95 duration-150 ${
+              className={`p-4 rounded-xl border animate-scale-in ${
                 evaluation.isCorrect
                   ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-100'
                   : 'bg-rose-50/80 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/50 text-rose-900 dark:text-rose-100'
@@ -561,9 +561,9 @@ export function GenerationPracticeModal({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-2">
                   {evaluation.isCorrect ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="h-5 w-5 text-status-success-text dark:text-status-success-text shrink-0" />
                   ) : (
-                    <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-rose-600 dark:text-danger-text shrink-0" />
                   )}
                   <div>
                     <h4 className="text-sm font-semibold">
@@ -579,7 +579,7 @@ export function GenerationPracticeModal({
                   <div className="text-xs font-mono font-bold">
                     {Math.round(evaluation.similarityScore * 100)}% match
                   </div>
-                  <div className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                  <div className="text-[11px] font-mono text-status-success-text dark:text-status-success-text">
                     +{evaluation.retentionMultiplier.toFixed(2)}x boost
                   </div>
                 </div>
@@ -587,7 +587,7 @@ export function GenerationPracticeModal({
 
               {!evaluation.isCorrect && (
                 <div className="mt-3 pt-3 border-t border-rose-200 dark:border-rose-900/40 text-xs">
-                  <span className="font-semibold block text-neutral-700 dark:text-neutral-300 mb-1">
+                  <span className="font-semibold block text-neutral-700 dark:text-secondary mb-1">
                     Target Canon:
                   </span>
                   <div className="font-mono text-neutral-800 dark:text-neutral-200 bg-white/60 dark:bg-neutral-900/60 p-2 rounded border border-rose-100 dark:border-rose-950">
@@ -613,9 +613,9 @@ export function GenerationPracticeModal({
           {/* Multi-trial Summary Strip */}
           {trialsHistory.length > 0 && (
             <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center justify-between text-xs text-neutral-500 mb-2">
+              <div className="flex items-center justify-between text-xs text-tertiary mb-2">
                 <span className="flex items-center gap-1">
-                  <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                  <Trophy className="h-3.5 w-3.5 text-status-warning-text" />
                   Session Generation Progress:
                 </span>
                 <span className="font-mono">
@@ -642,7 +642,7 @@ export function GenerationPracticeModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 rounded-lg transition"
+            className="px-4 py-2 text-xs font-medium text-neutral-700 dark:text-secondary hover:bg-neutral-200/60 dark:hover:bg-neutral-800 rounded-lg transition"
           >
             Finish Practice
           </button>

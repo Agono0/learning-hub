@@ -136,7 +136,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
         <h3 className="flex items-center gap-2 text-sm font-bold text-white">
           <FlaskConical className="h-4 w-4 text-indigo-400" /> The pretesting protocol
         </h3>
-        <p className="mt-1 text-xs leading-relaxed text-slate-400">
+        <p className="mt-1 text-xs leading-relaxed text-faint">
           Guess <em>before</em> you study. A wrong guess followed by immediate study encodes better
           than study alone (Kornell, Hays &amp; Bjork 2009) — the failure is the point, as long as
           feedback follows and the study resolves the question.
@@ -149,7 +149,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
           className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5"
           key={sessionId + '-' + active.cardId}
         >
-          <div className="flex items-center justify-between text-xs text-slate-400">
+          <div className="flex items-center justify-between text-xs text-faint">
             <span className="font-mono">
               card #{active.cardId} · {active.kind.replace(/_/g, ' ')}
             </span>
@@ -157,8 +157,8 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
               className={cx(
                 'rounded-full border px-2 py-0.5 text-[10px] font-bold',
                 candidate.solidPretest
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                  : 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text'
+                  : 'border-amber-500/40 bg-amber-500/10 text-status-warning-text',
               )}
             >
               {candidate.solidPretest
@@ -182,7 +182,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white placeholder:text-slate-500"
               />
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-slate-400">Confidence in this guess:</span>
+                <span className="text-xs text-faint">Confidence in this guess:</span>
                 {CONFIDENCE_STEPS.map((c) => (
                   <button
                     key={c}
@@ -214,7 +214,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
             <div className="mt-3 space-y-3">
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5">
                 <div className="flex items-start gap-2">
-                  <Zap className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <Zap className="mt-0.5 h-4 w-4 shrink-0 text-status-warning-text" />
                   <div className="text-xs leading-relaxed text-amber-100">
                     {sessionState.lastFeedback}
                     {sessionState.lastShockConfidence !== null &&
@@ -228,11 +228,11 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
                 </div>
               </div>
               <div className="rounded-xl border border-slate-700 bg-slate-950 p-3.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint">
                   Study this now
                 </span>
                 <p className="mt-1.5 text-sm font-semibold text-white">{candidate.target}</p>
-                <p className="mt-1 text-xs text-slate-400">Original question: {candidate.front}</p>
+                <p className="mt-1 text-xs text-faint">Original question: {candidate.front}</p>
               </div>
               <button
                 type="button"
@@ -247,7 +247,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
           {sessionState.phase === 'retest' && (
             <div className="mt-3 space-y-3">
               <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-3.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-status-info-text">
                   Successive relearning · {active.successfulRecalls}/{active.criterionRecalls}{' '}
                   consecutive recalls
                 </span>
@@ -287,13 +287,13 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
         </div>
       ) : (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 text-center">
-          <Brain className="mx-auto h-8 w-8 text-emerald-400" />
+          <Brain className="mx-auto h-8 w-8 text-status-success-text" />
           <h3 className="mt-2 text-base font-bold text-white">
             {candidates.length === 0
               ? 'No pretest candidates yet'
               : 'All criteria met — session complete'}
           </h3>
-          <p className="mx-auto mt-1 max-w-md text-sm text-slate-400">
+          <p className="mx-auto mt-1 max-w-md text-sm text-faint">
             {candidates.length === 0
               ? 'Pretesting works on young, fragile cards. Review some material first — new cards will appear here ranked by fragility.'
               : `${report.cards.length} cards ran the protocol with ${Math.round(report.protocolCompliance * 100)}% full compliance.`}
@@ -313,38 +313,39 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
       {/* Session telemetry */}
       <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
         <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-center">
-          <span className="block text-[10px] uppercase text-slate-400">Compliance</span>
-          <span className="font-mono text-lg font-black text-emerald-300">
+          <span className="block text-[10px] uppercase text-faint">Compliance</span>
+          <span className="font-mono text-lg font-black text-status-success-text">
             {Math.round(report.protocolCompliance * 100)}%
           </span>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-center">
-          <span className="block text-[10px] uppercase text-slate-400">Mean multiplier</span>
+          <span className="block text-[10px] uppercase text-faint">Mean multiplier</span>
           <span className="font-mono text-lg font-black text-indigo-300">
             ×{report.meanPredictedMultiplier}
           </span>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-center">
-          <span className="block text-[10px] uppercase text-slate-400">HC targets</span>
-          <span className="font-mono text-lg font-black text-amber-300">
+          <span className="block text-[10px] uppercase text-faint">HC targets</span>
+          <span className="font-mono text-lg font-black text-status-warning-text">
             {report.hypercorrectionTargets.length}
           </span>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-center">
-          <span className="block text-[10px] uppercase text-slate-400">Relearn queue</span>
-          <span className="font-mono text-lg font-black text-sky-300">
+          <span className="block text-[10px] uppercase text-faint">Relearn queue</span>
+          <span className="font-mono text-lg font-black text-status-info-text">
             {report.relearningQueue.length}
           </span>
         </div>
       </div>
-      <p className="text-xs leading-relaxed text-slate-400">{report.guidance}</p>
+      <p className="text-xs leading-relaxed text-faint">{report.guidance}</p>
 
       {report.hypercorrectionTargets.length > 0 && (
         <div className="rounded-2xl border border-amber-500/25 bg-amber-500/5 p-4">
           <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-            <Target className="h-4 w-4 text-amber-400" /> Retest these confident misses first
+            <Target className="h-4 w-4 text-status-warning-text" /> Retest these confident misses
+            first
           </h3>
-          <ul className="mt-2 space-y-1.5 text-xs text-slate-300">
+          <ul className="mt-2 space-y-1.5 text-xs text-secondary">
             {report.hypercorrectionTargets.map((t, i) => (
               <li key={i} className="font-mono">
                 card #{t.cardId} · {Math.round(t.confidence * 100)}% confident · "

@@ -325,7 +325,7 @@ export function UniversalIngestStudio() {
           />
 
           <div className="flex items-center justify-between pt-2">
-            <span className="text-xs text-neutral-500">
+            <span className="text-xs text-tertiary">
               {rawText.length.toLocaleString()} characters ·{' '}
               {rawText.split(/\r?\n/).filter(Boolean).length} lines
             </span>
@@ -373,11 +373,11 @@ export function UniversalIngestStudio() {
                 >
                   Select All
                 </button>
-                <span className="text-neutral-400">·</span>
+                <span className="text-faint">·</span>
                 <button
                   type="button"
                   onClick={() => selectAll(false)}
-                  className="text-xs text-neutral-500 hover:underline"
+                  className="text-xs text-tertiary hover:underline"
                 >
                   Deselect All
                 </button>
@@ -424,7 +424,7 @@ export function UniversalIngestStudio() {
             {saveMutation.isSuccess && saveMutation.data ? (
               <Callout tone="success" title="Flashcards Successfully Saved">
                 <div className="flex items-center gap-2 text-xs">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                   <span>
                     Saved <strong>{saveMutation.data.created} cards</strong> directly to your review
                     queue.
@@ -461,14 +461,14 @@ export function UniversalIngestStudio() {
                           onChange={() => toggleSelectCard(card.id)}
                           className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
                         />
-                        <span className="font-semibold text-neutral-600 dark:text-neutral-400">
+                        <span className="font-semibold text-neutral-600 dark:text-faint">
                           Card #{idx + 1}
                         </span>
                         <Badge tone={card.format === 'cloze' ? 'accent' : 'neutral'}>
                           {card.format.toUpperCase()}
                         </Badge>
                         {card.sourceReference ? (
-                          <span className="text-[10px] text-neutral-400 font-mono">
+                          <span className="text-[10px] text-faint font-mono">
                             {card.sourceReference}
                           </span>
                         ) : null}
@@ -478,7 +478,7 @@ export function UniversalIngestStudio() {
                         <button
                           type="button"
                           onClick={() => setEditingCardId(isEditing ? null : card.id)}
-                          className="p-1 text-neutral-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded"
+                          className="p-1 text-tertiary hover:text-indigo-600 dark:hover:text-indigo-400 rounded"
                           title="Edit Card"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
@@ -486,7 +486,7 @@ export function UniversalIngestStudio() {
                         <button
                           type="button"
                           onClick={() => removeCard(card.id)}
-                          className="p-1 text-neutral-400 hover:text-rose-600 dark:hover:text-rose-400 rounded"
+                          className="p-1 text-faint hover:text-rose-600 dark:hover:text-danger-text rounded"
                           title="Remove Card"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -497,7 +497,7 @@ export function UniversalIngestStudio() {
                     {isEditing ? (
                       <div className="space-y-2 pt-1 border-t border-neutral-100 dark:border-neutral-800">
                         <div>
-                          <label className="text-[10px] font-semibold text-neutral-500 uppercase">
+                          <label className="text-[10px] font-semibold text-tertiary uppercase">
                             Question / Front
                           </label>
                           <textarea
@@ -508,7 +508,7 @@ export function UniversalIngestStudio() {
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-semibold text-neutral-500 uppercase">
+                          <label className="text-[10px] font-semibold text-tertiary uppercase">
                             Answer / Back
                           </label>
                           <textarea
@@ -524,7 +524,7 @@ export function UniversalIngestStudio() {
                         <div className="whitespace-pre-wrap break-words font-medium text-neutral-900 dark:text-neutral-100">
                           {card.front}
                         </div>
-                        <div className="whitespace-pre-wrap break-words rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 p-2 font-mono text-emerald-800 dark:text-emerald-300">
+                        <div className="whitespace-pre-wrap break-words rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 p-2 font-mono text-emerald-800 dark:text-status-success-text">
                           {card.back}
                         </div>
                       </>

@@ -25,16 +25,16 @@ export default function SelfExplanationPage() {
         subtitle="Harness Chi's Self-Explanation Effect (1989) and Aleven's Rule-Naming Strategy (2002): actively articulate the governing invariant behind every derivation step and invert boundary constraints to expose failure points."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-300">
-              <Brain className="h-3.5 w-3.5 text-sky-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
+              <Brain className="h-3.5 w-3.5 text-status-info-text" />
               <span>Chi et al. (1989)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              <Target className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+              <Target className="h-3.5 w-3.5 text-status-success-text" />
               <span>Aleven (2002)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-              <Zap className="h-3.5 w-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text">
+              <Zap className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Renkl Inversion</span>
             </span>
           </div>
@@ -45,16 +45,16 @@ export default function SelfExplanationPage() {
       <SelfExplanationStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur-md">
+      <div className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md">
         <div className="flex items-center gap-2.5 mb-3">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">
+          <Sparkles className="h-5 w-5 text-ac-text" />
+          <h3 className="text-sm font-bold text-strong">
             Learning Science Foundations: Generative Schema Construction
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground leading-relaxed">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-tertiary leading-relaxed">
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               The Self-Explanation Effect (Chi et al. 1989)
             </span>
             <p>
@@ -64,7 +64,7 @@ export default function SelfExplanationPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Rule Naming &amp; Cognitive Tutoring (Aleven &amp; Koedinger 2002)
             </span>
             <p>
@@ -74,7 +74,7 @@ export default function SelfExplanationPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Schema Inversion &amp; Boundary Testing (Renkl 2002)
             </span>
             <p>

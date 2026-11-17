@@ -113,8 +113,8 @@ export default function DashboardPage() {
 
       {nudge && (
         <div className="panel">
-          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
-            <Sprout className="h-4 w-4 shrink-0 text-emerald-500" />
+          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-secondary">
+            <Sprout className="h-4 w-4 shrink-0 text-status-success-text" />
             <span>Fresh start: {nudge.label}</span>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                     aria-label={`Move ${cell.title} earlier`}
                     disabled={rowIdx === 0 && cell.id === order[0]}
                     onClick={() => move(cell.id, -1)}
-                    className="rounded-md border border-neutral-200 bg-white p-1 text-neutral-400 shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
+                    className="rounded-md border border-neutral-200 bg-white p-1 text-faint shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
                   >
                     <ArrowUp className="h-3 w-3" />
                   </button>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
                     aria-label={`Move ${cell.title} later`}
                     disabled={cell.id === order[order.length - 1]}
                     onClick={() => move(cell.id, 1)}
-                    className="rounded-md border border-neutral-200 bg-white p-1 text-neutral-400 shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
+                    className="rounded-md border border-neutral-200 bg-white p-1 text-faint shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
                   >
                     <ArrowDown className="h-3 w-3" />
                   </button>

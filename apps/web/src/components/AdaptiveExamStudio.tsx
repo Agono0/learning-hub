@@ -305,11 +305,11 @@ export function AdaptiveExamStudio({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-white tracking-tight">{examConfig.title}</h2>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
                 Item Response Theory
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-faint">
               Computerized Adaptive Testing & Successive Relearning Remediation (Rawson & Dunlosky
               2011)
             </p>
@@ -340,7 +340,7 @@ export function AdaptiveExamStudio({
           <button
             type="button"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
             title="Toggle Audio Cues"
           >
             {soundEnabled ? (
@@ -365,7 +365,7 @@ export function AdaptiveExamStudio({
               <h3 className="text-xl font-bold text-white tracking-tight">
                 High-Stakes Adaptive Examination
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
+              <p className="text-xs text-secondary leading-relaxed max-w-md mx-auto">
                 Unlike static quizzes, questions adapt to your latent ability (θ) in real time using
                 3-Parameter Logistic IRT. Every incorrect response is routed into a Successive
                 Relearning verification buffer.
@@ -374,7 +374,7 @@ export function AdaptiveExamStudio({
 
             <div className="grid grid-cols-3 gap-3 text-left">
               <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint block mb-1">
                   Stopping Rule
                 </span>
                 <span className="text-xs font-semibold text-slate-200">
@@ -382,7 +382,7 @@ export function AdaptiveExamStudio({
                 </span>
               </div>
               <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint block mb-1">
                   Time Budget
                 </span>
                 <span className="text-xs font-semibold text-slate-200">
@@ -390,7 +390,7 @@ export function AdaptiveExamStudio({
                 </span>
               </div>
               <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint block mb-1">
                   Pass Standard
                 </span>
                 <span className="text-xs font-semibold text-slate-200">
@@ -432,7 +432,7 @@ export function AdaptiveExamStudio({
                   <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-300">
                     Bloom: {currentItem.bloomLevel}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">
+                  <span className="text-xs text-faint font-medium">
                     Difficulty b = {currentItem.difficulty.toFixed(2)} · Discrimination a ={' '}
                     {currentItem.discrimination.toFixed(2)}
                   </span>
@@ -452,8 +452,8 @@ export function AdaptiveExamStudio({
                   className={cx(
                     'flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all',
                     flaggedQuestions.has(currentItem.id)
-                      ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
-                      : 'border-white/10 bg-white/5 text-slate-400 hover:text-white',
+                      ? 'border-amber-500/40 bg-amber-500/20 text-status-warning-text'
+                      : 'border-white/10 bg-white/5 text-faint hover:text-white',
                   )}
                 >
                   <Flag className="h-3 w-3" />
@@ -466,7 +466,7 @@ export function AdaptiveExamStudio({
               </h3>
 
               {/* Distractor Elimination Hint */}
-              <p className="text-[11px] text-slate-400 italic">
+              <p className="text-[11px] text-faint italic">
                 Tip: Click the cross icon to strike through distractors you have ruled out.
               </p>
 
@@ -499,7 +499,7 @@ export function AdaptiveExamStudio({
                             'flex h-6 w-6 items-center justify-center rounded-lg text-xs font-bold font-mono transition-all',
                             isSelected
                               ? 'bg-indigo-500 text-white'
-                              : 'bg-white/10 text-slate-400 group-hover:text-white',
+                              : 'bg-white/10 text-faint group-hover:text-white',
                           )}
                         >
                           {String.fromCharCode(65 + i)}
@@ -512,8 +512,8 @@ export function AdaptiveExamStudio({
                         type="button"
                         onClick={(e) => handleToggleEliminate(e, i)}
                         className={cx(
-                          'p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all text-[11px]',
-                          isEliminated ? 'text-rose-400' : 'opacity-0 group-hover:opacity-100',
+                          'p-1 rounded-md text-faint hover:text-danger-text hover:bg-rose-500/10 transition-all text-[11px]',
+                          isEliminated ? 'text-danger-text' : 'opacity-0 group-hover:opacity-100',
                         )}
                         title={isEliminated ? 'Restore option' : 'Eliminate distractor'}
                       >
@@ -542,11 +542,11 @@ export function AdaptiveExamStudio({
 
         {/* POST-EXAM DIAGNOSTIC AUTOPSY */}
         {isExamCompleted && diagnosticReport && (
-          <div className="space-y-6 animate-fadeIn">
+          <div className="space-y-6 animate-fade-in">
             <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
                     Diagnostic Autopsy & Mastery Verdict
                   </span>
                   <h3 className="text-lg font-bold text-white tracking-tight">
@@ -562,10 +562,10 @@ export function AdaptiveExamStudio({
                     className={cx(
                       'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold',
                       diagnosticReport.masteryStatus === 'certified_mastery'
-                        ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                        ? 'border-emerald-500/40 bg-emerald-500/15 text-status-success-text'
                         : diagnosticReport.masteryStatus === 'provisional_pass'
-                          ? 'border-sky-500/40 bg-sky-500/15 text-sky-300'
-                          : 'border-rose-500/40 bg-rose-500/15 text-rose-300',
+                          ? 'border-sky-500/40 bg-sky-500/15 text-status-info-text'
+                          : 'border-rose-500/40 bg-rose-500/15 text-danger-text',
                     )}
                   >
                     <Award className="h-4 w-4" />
@@ -579,7 +579,7 @@ export function AdaptiveExamStudio({
                   <button
                     type="button"
                     onClick={handleStartExam}
-                    className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-all"
+                    className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-secondary hover:text-white transition-all"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     <span>Retake</span>
@@ -590,7 +590,7 @@ export function AdaptiveExamStudio({
               {/* High-level stats */}
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="rounded-xl border border-white/5 bg-slate-950 p-3">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">
+                  <span className="text-[10px] font-bold uppercase text-faint block mb-0.5">
                     Percentile Rank
                   </span>
                   <span className="font-mono text-base font-black text-indigo-300">
@@ -598,7 +598,7 @@ export function AdaptiveExamStudio({
                   </span>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-950 p-3">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">
+                  <span className="text-[10px] font-bold uppercase text-faint block mb-0.5">
                     Raw Accuracy
                   </span>
                   <span className="font-mono text-base font-black text-white">
@@ -606,7 +606,7 @@ export function AdaptiveExamStudio({
                   </span>
                 </div>
                 <div className="rounded-xl border border-white/5 bg-slate-950 p-3">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">
+                  <span className="text-[10px] font-bold uppercase text-faint block mb-0.5">
                     Administered Items
                   </span>
                   <span className="font-mono text-base font-black text-white">
@@ -617,7 +617,7 @@ export function AdaptiveExamStudio({
 
               {/* Bloom Taxonomy Breakdown */}
               <div className="space-y-2 pt-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint block">
                   Bloom Cognitive Taxonomy Performance
                 </span>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 text-xs">
@@ -630,7 +630,7 @@ export function AdaptiveExamStudio({
                           key={level}
                           className="rounded-xl border border-white/5 bg-slate-950 p-2.5 text-center"
                         >
-                          <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                          <span className="text-[10px] font-bold uppercase text-faint block mb-1">
                             {level}
                           </span>
                           <span className="font-mono font-bold text-white">
@@ -644,7 +644,7 @@ export function AdaptiveExamStudio({
               </div>
 
               {/* Summary note */}
-              <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 text-xs text-slate-300">
+              <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 text-xs text-secondary">
                 {diagnosticReport.pedagogicalSummary}
               </div>
             </div>
@@ -654,20 +654,20 @@ export function AdaptiveExamStudio({
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-6 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/10 pb-3">
                   <div className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4 text-amber-400" />
+                    <RefreshCw className="h-4 w-4 text-status-warning-text" />
                     <h3 className="text-sm font-bold text-white tracking-tight">
                       Successive Relearning Criterion Crucible (Rawson & Dunlosky 2011)
                     </h3>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-amber-300">
+                    <span className="text-xs font-bold text-status-warning-text">
                       Criterion: 2 Consecutive Correct Recalls
                     </span>
                     <button
                       type="button"
                       onClick={handleExportRemedialCards}
-                      className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 transition-all shadow-sm"
+                      className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-status-warning-text hover:bg-amber-500/20 transition-all shadow-sm"
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>Export to FSRS Deck</span>
@@ -676,7 +676,7 @@ export function AdaptiveExamStudio({
                 </div>
 
                 {relearningNotice && (
-                  <p className="text-xs font-semibold text-emerald-400 animate-fadeIn">
+                  <p className="text-xs font-semibold text-status-success-text animate-fade-in">
                     {relearningNotice}
                   </p>
                 )}
@@ -685,12 +685,12 @@ export function AdaptiveExamStudio({
                 {activeRelearningItem ? (
                   <div className="rounded-xl border border-white/10 bg-slate-900/90 p-5 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-faint">
                         Pending Items: {pendingRelearning.length} | Consecutive Streaks:{' '}
                         {activeRelearningItem.criterionConsecutiveSuccesses}/
                         {activeRelearningItem.targetCriterion}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="text-xs text-faint font-mono">
                         Difficulty b = {activeRelearningItem.questionItem.difficulty.toFixed(2)}
                       </span>
                     </div>
@@ -700,7 +700,7 @@ export function AdaptiveExamStudio({
                     </p>
 
                     <div className="rounded-lg border border-white/5 bg-slate-950 p-3 text-xs text-slate-300 space-y-1">
-                      <span className="font-bold text-emerald-400">Target Answer:</span>
+                      <span className="font-bold text-status-success-text">Target Answer:</span>
                       <p>
                         {
                           activeRelearningItem.questionItem.options[
@@ -714,22 +714,22 @@ export function AdaptiveExamStudio({
                       <button
                         type="button"
                         onClick={() => handleRelearningAttempt(false)}
-                        className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/20 transition-all"
+                        className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-bold text-danger-text hover:bg-rose-500/20 transition-all"
                       >
                         Reset Streak (Incorrect)
                       </button>
                       <button
                         type="button"
                         onClick={() => handleRelearningAttempt(true)}
-                        className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20 transition-all"
+                        className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-status-success-text hover:bg-emerald-500/20 transition-all"
                       >
                         Correct Recall (+1 Streak)
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-xs font-bold text-emerald-300">
-                    <CheckCircle2 className="h-5 w-5 mx-auto mb-1 text-emerald-400" />
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center text-xs font-bold text-status-success-text">
+                    <CheckCircle2 className="h-5 w-5 mx-auto mb-1 text-status-success-text" />
                     All missed items have achieved the Successive Relearning criterion!
                   </div>
                 )}

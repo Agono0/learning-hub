@@ -55,7 +55,7 @@ export function DualCodingAnalyzer({ className }: DualCodingAnalyzerProps) {
         <Eye className="h-4 w-4 text-indigo-500" />
         Dual-coding analyzer
       </h3>
-      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+      <p className="text-xs text-tertiary dark:text-faint">
         Paivio (1971/1986): verbal + visual traces are additive in recall. Score a concept&apos;s
         text for dual-coding viability before you draw it.
       </p>
@@ -67,7 +67,7 @@ export function DualCodingAnalyzer({ className }: DualCodingAnalyzerProps) {
         aria-label="Text to analyze for dual-coding viability"
         className="w-full rounded-xl border border-neutral-300 bg-transparent p-3 text-sm text-neutral-800 dark:border-(--hub-border) dark:text-neutral-100"
       />
-      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-neutral-300">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-secondary">
         <label className="inline-flex items-center gap-1.5">
           <input
             type="checkbox"
@@ -94,7 +94,7 @@ export function DualCodingAnalyzer({ className }: DualCodingAnalyzerProps) {
             'inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors',
             text.trim().length >= 8 && !deep.isPending
               ? 'bg-indigo-600 text-white hover:bg-indigo-500'
-              : 'cursor-not-allowed bg-neutral-200 text-neutral-500 dark:bg-neutral-800',
+              : 'cursor-not-allowed bg-neutral-200 text-tertiary dark:bg-neutral-800',
           )}
         >
           <Sparkles className="h-3.5 w-3.5" />
@@ -105,44 +105,42 @@ export function DualCodingAnalyzer({ className }: DualCodingAnalyzerProps) {
       {analysis ? (
         <div className="space-y-2 rounded-xl border border-neutral-200 p-3 text-xs dark:border-(--hub-border)">
           <div className="flex items-center justify-between">
-            <span className="text-neutral-500 dark:text-neutral-400">Dual-coded</span>
+            <span className="text-tertiary dark:text-faint">Dual-coded</span>
             <span
               className={cx(
                 'font-mono font-bold',
                 analysis.isDualCoded
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-amber-600 dark:text-amber-400',
+                  ? 'text-status-success-text dark:text-status-success-text'
+                  : 'text-status-warning-text dark:text-status-warning-text',
               )}
             >
               {analysis.isDualCoded ? 'yes' : 'verbal only'}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-neutral-500 dark:text-neutral-400">
-              Verbal / visual retention
-            </span>
+            <span className="text-tertiary dark:text-faint">Verbal / visual retention</span>
             <span className="font-mono font-bold text-neutral-700 dark:text-neutral-200">
               {Math.round(analysis.verbalRetention * 100)}% /{' '}
               {Math.round(analysis.visualRetention * 100)}%
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-neutral-500 dark:text-neutral-400">Composite retention</span>
+            <span className="text-tertiary dark:text-faint">Composite retention</span>
             <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
               {Math.round(analysis.compositeRetention * 100)}%
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-neutral-500 dark:text-neutral-400">Forgetting reduction</span>
-            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="text-tertiary dark:text-faint">Forgetting reduction</span>
+            <span className="font-mono font-bold text-status-success-text dark:text-status-success-text">
               ×{analysis.forgettingReductionFactor.toFixed(2)}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-neutral-500 dark:text-neutral-400">Recommended modality</span>
+            <span className="text-tertiary dark:text-faint">Recommended modality</span>
             <span className="font-mono font-bold text-white">{analysis.recommendedModality}</span>
           </div>
-          <p className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2 leading-relaxed text-neutral-600 dark:text-neutral-300">
+          <p className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2 leading-relaxed text-neutral-600 dark:text-secondary">
             {analysis.visualPromptSuggestion}
           </p>
         </div>

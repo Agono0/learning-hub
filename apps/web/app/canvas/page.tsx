@@ -230,7 +230,7 @@ export default function CanvasPage() {
       <DualCodingAnalyzer className="mt-4" />
 
       {!activeId ? (
-        <div className="panel text-sm text-neutral-500">Create or pick a canvas.</div>
+        <div className="panel text-sm text-tertiary">Create or pick a canvas.</div>
       ) : (
         <>
           <div className="mb-2 flex items-center gap-2 text-xs">
@@ -242,7 +242,7 @@ export default function CanvasPage() {
             >
               −
             </button>
-            <span className="w-12 text-center text-neutral-500">{Math.round(zoom * 100)}%</span>
+            <span className="w-12 text-center text-tertiary">{Math.round(zoom * 100)}%</span>
             <button
               type="button"
               className="btn-ghost border px-2 py-1"
@@ -261,7 +261,7 @@ export default function CanvasPage() {
             >
               Reset view
             </button>
-            <span className="text-neutral-400">scroll = zoom · drag empty space = pan</span>
+            <span className="text-faint">scroll = zoom · drag empty space = pan</span>
           </div>
           <div
             ref={boardRef}
@@ -307,10 +307,10 @@ export default function CanvasPage() {
                       )
                     }
                   />
-                  <div className="flex justify-between text-[10px] text-neutral-400">
+                  <div className="flex justify-between text-[10px] text-faint">
                     <span>{item.kind}</span>
                     <button
-                      className="hover:text-red-400"
+                      className="hover:text-danger-text"
                       onClick={(e) => {
                         e.stopPropagation()
                         setItems((xs) => xs.filter((x) => x.id !== item.id))
@@ -340,12 +340,12 @@ export default function CanvasPage() {
                 const from = items.find((i) => i.id === e.from)?.text.slice(0, 24) ?? '?'
                 const to = items.find((i) => i.id === e.to)?.text.slice(0, 24) ?? '?'
                 return (
-                  <div key={e.id} className="flex items-center gap-2 text-xs text-neutral-400">
+                  <div key={e.id} className="flex items-center gap-2 text-xs text-faint">
                     <span className="flex-1 truncate">
                       {from} → {to}
                     </span>
                     <button
-                      className="hover:text-red-400"
+                      className="hover:text-danger-text"
                       onClick={() => setEdges((es) => es.filter((x) => x.id !== e.id))}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -355,7 +355,7 @@ export default function CanvasPage() {
               })}
               <div className="pt-2">
                 <button
-                  className="btn-ghost text-xs text-red-400"
+                  className="btn-ghost text-xs text-danger-text"
                   onClick={() => activeId && deleteCanvas.mutate(activeId)}
                 >
                   Delete canvas

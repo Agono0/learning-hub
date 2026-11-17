@@ -53,7 +53,7 @@ export function AnalogicalTransferHUD({
     if (systematicity >= 80) {
       return (
         <Badge tone="success" className="gap-1.5 px-2.5 py-0.5">
-          <Sparkles className="h-3 w-3 text-emerald-400" />
+          <Sparkles className="h-3 w-3 text-status-success-text" />
           <span>High Systematicity ({systematicity}/100)</span>
         </Badge>
       )
@@ -61,14 +61,14 @@ export function AnalogicalTransferHUD({
     if (systematicity >= 50) {
       return (
         <Badge tone="warning" className="gap-1.5 px-2.5 py-0.5">
-          <Share2 className="h-3 w-3 text-amber-400" />
+          <Share2 className="h-3 w-3 text-status-warning-text" />
           <span>Relational Alignment ({systematicity}/100)</span>
         </Badge>
       )
     }
     return (
       <Badge tone="neutral" className="gap-1.5 px-2.5 py-0.5">
-        <GitCompare className="h-3 w-3 text-slate-400" />
+        <GitCompare className="h-3 w-3 text-faint" />
         <span>Awaiting Mapping ({systematicity}/100)</span>
       </Badge>
     )
@@ -81,12 +81,12 @@ export function AnalogicalTransferHUD({
       {/* Top Bar: Cross-Domain Mapping Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/25">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-status-info-text ring-1 ring-sky-500/25">
             <GitCompare className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
+              <span className="text-xs font-semibold tracking-wider text-faint uppercase">
                 Cross-Domain Isomorphism
               </span>
               <Badge tone="cyan" className="text-[10px]">
@@ -105,12 +105,12 @@ export function AnalogicalTransferHUD({
         {/* Metric 1: Gentner Systematicity Score */}
         <div className="flex flex-col rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Systematicity</span>
-            <Network className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-xs text-faint font-medium">Systematicity</span>
+            <Network className="h-3.5 w-3.5 text-status-info-text" />
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-extrabold text-slate-100">{systematicity}</span>
-            <span className="text-xs text-slate-500">/ 100</span>
+            <span className="text-xs text-tertiary">/ 100</span>
           </div>
           <div className="mt-2">
             <ProgressBar value={systematicity / 100} />
@@ -120,12 +120,12 @@ export function AnalogicalTransferHUD({
         {/* Metric 2: Spontaneous Transfer Forecast */}
         <div className="flex flex-col rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Transfer Forecast</span>
-            <Brain className="h-3.5 w-3.5 text-violet-400" />
+            <span className="text-xs text-faint font-medium">Transfer Forecast</span>
+            <Brain className="h-3.5 w-3.5 text-indigo-400" />
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-extrabold text-slate-100">{transferProb}%</span>
-            <span className="text-xs text-slate-500">spontaneous</span>
+            <span className="text-xs text-tertiary">spontaneous</span>
           </div>
           <div className="mt-2">
             <ProgressBar value={transferProb / 100} />
@@ -135,12 +135,12 @@ export function AnalogicalTransferHUD({
         {/* Metric 3: Entity 1-to-1 Alignment */}
         <div className="flex flex-col rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Entity Alignment</span>
-            <Target className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="text-xs text-faint font-medium">Entity Alignment</span>
+            <Target className="h-3.5 w-3.5 text-status-success-text" />
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-extrabold text-slate-100">{entityAcc}%</span>
-            <span className="text-xs text-slate-500">nodes matched</span>
+            <span className="text-xs text-tertiary">nodes matched</span>
           </div>
           <div className="mt-2">
             <ProgressBar value={entityAcc / 100} />
@@ -150,12 +150,12 @@ export function AnalogicalTransferHUD({
         {/* Metric 4: Predicate Preservation */}
         <div className="flex flex-col rounded-xl border border-slate-800/60 bg-slate-950/40 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Predicate Match</span>
-            <CheckCircle2 className="h-3.5 w-3.5 text-sky-400" />
+            <span className="text-xs text-faint font-medium">Predicate Match</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-status-info-text" />
           </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-extrabold text-slate-100">{predAcc}%</span>
-            <span className="text-xs text-slate-500">relations intact</span>
+            <span className="text-xs text-tertiary">relations intact</span>
           </div>
           <div className="mt-2">
             <ProgressBar value={predAcc / 100} />
@@ -164,18 +164,18 @@ export function AnalogicalTransferHUD({
       </div>
 
       {/* Sub-Banner: FSRS Retention & Inductive Learning Guidance */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-900/30 bg-cyan-950/20 px-3.5 py-2.5 text-xs text-slate-300">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-900/30 bg-sky-950/20 px-3.5 py-2.5 text-xs text-slate-300">
         <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-cyan-400" />
+          <Zap className="h-4 w-4 text-status-info-text" />
           <span>
             <strong>FSRS Analogical Generalization:</strong> Inducing relational schemas increases
             initial stability by{' '}
-            <span className="font-semibold text-emerald-400">{stabilityBonus}x</span>, conferring
-            deep resistance to contextual forgetting.
+            <span className="font-semibold text-status-success-text">{stabilityBonus}x</span>,
+            conferring deep resistance to contextual forgetting.
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-slate-400">
-          <HelpCircle className="h-3.5 w-3.5 text-slate-500" />
+        <div className="flex items-center gap-1.5 text-faint">
+          <HelpCircle className="h-3.5 w-3.5 text-tertiary" />
           <span>Gentner (1983) Systematicity Principle</span>
         </div>
       </div>

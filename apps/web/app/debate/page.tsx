@@ -289,10 +289,10 @@ export default function DebateArenaPage() {
                             className={`space-y-1 rounded-xl border p-3 ${
                               thesis
                                 ? 'border-sky-500/30 bg-sky-500/5'
-                                : 'border-violet-500/30 bg-violet-500/5'
+                                : 'border-indigo-500/30 bg-indigo-500/5'
                             }`}
                           >
-                            <div className="text-xs font-semibold text-neutral-500">
+                            <div className="text-xs font-semibold text-tertiary">
                               Turn {i + 1} · {t.speakerName}
                             </div>
                             <p className="text-sm leading-relaxed">{t.argumentText}</p>
@@ -339,8 +339,8 @@ export default function DebateArenaPage() {
                         role="status"
                         className={`flex items-start gap-2 rounded-xl p-3 text-sm ${
                           flagResult.correct
-                            ? 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                            ? 'bg-emerald-600/10 text-emerald-700 dark:text-status-success-text'
+                            : 'bg-amber-500/10 text-amber-700 dark:text-status-warning-text'
                         }`}
                       >
                         {flagResult.correct ? (
@@ -403,7 +403,7 @@ export default function DebateArenaPage() {
                 </EmptyState>
               ) : (
                 <Panel title="Alex (a fellow learner)">
-                  <p className="rounded-xl bg-violet-500/10 p-3 text-sm">
+                  <p className="rounded-xl bg-indigo-500/10 p-3 text-sm">
                     “{caseMeta.protegeQuestion}”
                   </p>
                   <TextArea

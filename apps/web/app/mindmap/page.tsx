@@ -230,7 +230,7 @@ export default function MindmapPage() {
                     setIsExportModalOpen(true)
                   }}
                 >
-                  <Sparkles className="mr-1.5 h-4 w-4 text-amber-300" />
+                  <Sparkles className="mr-1.5 h-4 w-4 text-status-warning-text" />
                   Generate Cards
                 </Button>
               )}
@@ -247,7 +247,7 @@ export default function MindmapPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
               studioMode === 'studio'
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : 'text-faint hover:text-white'
             }`}
           >
             <Move3d className="h-3.5 w-3.5" />
@@ -259,7 +259,7 @@ export default function MindmapPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
               studioMode === 'classic'
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
+                : 'text-faint hover:text-white'
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
@@ -272,7 +272,7 @@ export default function MindmapPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-2.5">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-faint">
                 Selected Map:
               </span>
               <select
@@ -302,7 +302,7 @@ export default function MindmapPage() {
                 <Button
                   variant="ghost"
                   onClick={() => deleteMutation.mutate(selectedId)}
-                  className="text-rose-400 hover:text-rose-300"
+                  className="text-danger-text hover:text-danger-text"
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   Delete
@@ -348,7 +348,7 @@ export default function MindmapPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
           {/* Saved Mindmaps Sidebar */}
           <Panel className="lg:col-span-1 p-3 space-y-2">
-            <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 px-2 py-1">
+            <div className="text-xs font-semibold uppercase tracking-wider text-faint px-2 py-1">
               Saved Maps ({mindmapsData?.mindmaps?.length ?? 0})
             </div>
 
@@ -362,7 +362,7 @@ export default function MindmapPage() {
                     className={`group flex items-center justify-between rounded-lg px-3 py-2 text-xs cursor-pointer transition-colors ${
                       isSelected
                         ? 'bg-indigo-600/20 text-indigo-300 font-medium border border-indigo-500/30'
-                        : 'text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-200'
+                        : 'text-faint hover:bg-neutral-800/60 hover:text-neutral-200'
                     }`}
                   >
                     <span className="truncate flex-1">{m.title}</span>
@@ -372,7 +372,7 @@ export default function MindmapPage() {
                         e.stopPropagation()
                         deleteMutation.mutate(m.id)
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-danger-text"
                       title="Delete map"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -382,7 +382,7 @@ export default function MindmapPage() {
               })}
 
               {(!mindmapsData?.mindmaps || mindmapsData.mindmaps.length === 0) && (
-                <p className="px-2 py-4 text-xs text-neutral-500">No saved mind maps yet.</p>
+                <p className="px-2 py-4 text-xs text-tertiary">No saved mind maps yet.</p>
               )}
             </div>
           </Panel>
@@ -406,7 +406,7 @@ export default function MindmapPage() {
                     className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
                       viewMode === 'visual'
                         ? 'bg-indigo-600 text-white font-medium'
-                        : 'text-neutral-400 hover:text-neutral-200'
+                        : 'text-faint hover:text-neutral-200'
                     }`}
                   >
                     <Network className="h-3.5 w-3.5" />
@@ -418,7 +418,7 @@ export default function MindmapPage() {
                     className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
                       viewMode === 'outline'
                         ? 'bg-indigo-600 text-white font-medium'
-                        : 'text-neutral-400 hover:text-neutral-200'
+                        : 'text-faint hover:text-neutral-200'
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5" />
@@ -429,7 +429,7 @@ export default function MindmapPage() {
 
               {viewMode === 'outline' ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-tertiary">
                     Write or paste your concepts in Markdown nested lists. Indent subtopics with 2
                     spaces.
                   </p>
@@ -523,16 +523,16 @@ export default function MindmapPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl border border-neutral-700 bg-neutral-900 p-6 shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-neutral-100 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-400" />
+              <Sparkles className="h-5 w-5 text-status-warning-text" />
               Generate Flashcards
             </h3>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-faint">
               Extract high-yield definition cards and subtopic recall cards directly into one of
               your spaced repetition decks.
             </p>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-neutral-300 block">
+              <label className="text-xs font-semibold text-secondary block">
                 Select target deck:
               </label>
               <select

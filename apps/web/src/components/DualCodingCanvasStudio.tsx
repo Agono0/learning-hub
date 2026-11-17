@@ -504,7 +504,7 @@ export function DualCodingCanvasStudio({
                 Retention Boost
               </Badge>
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-tertiary dark:text-faint">
               Allan Paivio (1971) Dual-Trace Synthesis · Independent Verbal &amp; Imagistic
               Retention
             </p>
@@ -515,7 +515,7 @@ export function DualCodingCanvasStudio({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+            className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
             aria-label="Close studio"
           >
             <X className="h-5 w-5" />
@@ -526,33 +526,33 @@ export function DualCodingCanvasStudio({
       {/* Paivio Formula Telemetry Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/40 text-xs">
         <div>
-          <span className="font-semibold text-neutral-600 dark:text-neutral-400 block">
+          <span className="font-semibold text-neutral-600 dark:text-faint block">
             Verbal Trace Only (P_v):
           </span>
           <div className="text-lg font-mono font-bold text-neutral-900 dark:text-neutral-100">
             {Math.round(analysis.verbalRetention * 100)}%
           </div>
-          <span className="text-[11px] text-neutral-500">Language channel alone</span>
+          <span className="text-[11px] text-tertiary">Language channel alone</span>
         </div>
 
         <div>
-          <span className="font-semibold text-neutral-600 dark:text-neutral-400 block">
+          <span className="font-semibold text-neutral-600 dark:text-faint block">
             Dual-Coded Trace (1 - (1-Pv)(1-Pimg)):
           </span>
-          <div className="text-lg font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <div className="text-lg font-mono font-bold text-status-success-text dark:text-status-success-text">
             {Math.round(analysis.compositeRetention * 100)}%
           </div>
-          <span className="text-[11px] text-neutral-500">Composite dual recall</span>
+          <span className="text-[11px] text-tertiary">Composite dual recall</span>
         </div>
 
         <div>
-          <span className="font-semibold text-neutral-600 dark:text-neutral-400 block">
+          <span className="font-semibold text-neutral-600 dark:text-faint block">
             Forgetting Reduction:
           </span>
           <div className="text-lg font-mono font-bold text-indigo-600 dark:text-indigo-400">
             {analysis.forgettingReductionFactor.toFixed(1)}x Less Forgetting
           </div>
-          <span className="text-[11px] text-neutral-500">Mayer &amp; Paivio retention gain</span>
+          <span className="text-[11px] text-tertiary">Mayer &amp; Paivio retention gain</span>
         </div>
       </div>
 
@@ -563,7 +563,7 @@ export function DualCodingCanvasStudio({
           <div className="space-y-1.5">
             <label
               htmlFor="dual-coding-concept-input"
-              className="block text-xs font-semibold uppercase tracking-wider text-neutral-500"
+              className="block text-xs font-semibold uppercase tracking-wider text-tertiary"
             >
               Verbal Concept / Cue
             </label>
@@ -580,7 +580,7 @@ export function DualCodingCanvasStudio({
           <div className="space-y-1.5">
             <label
               htmlFor="dual-coding-verbal-input"
-              className="block text-xs font-semibold uppercase tracking-wider text-neutral-500"
+              className="block text-xs font-semibold uppercase tracking-wider text-tertiary"
             >
               Verbal Proposition / Definition
             </label>
@@ -597,41 +597,41 @@ export function DualCodingCanvasStudio({
           {/* AI Recommended Modality & Guidance */}
           <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-700/60 text-xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+              <span className="font-semibold text-neutral-700 dark:text-secondary flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
                 Recommended Visual Modality:
               </span>
               <Badge tone="accent">{analysis.recommendedModality.replace('_', ' ')}</Badge>
             </div>
-            <p className="text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
+            <p className="text-neutral-600 dark:text-faint text-[11px] leading-relaxed">
               {analysis.visualPromptSuggestion}
             </p>
           </div>
 
           {/* Preset Diagram Quick Buttons */}
           <div className="space-y-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 block">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-tertiary block">
               Quick Structural Templates:
             </span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => handleApplyPreset('flow')}
-                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition"
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-secondary transition"
               >
                 Sequential Flow (A → B → C)
               </button>
               <button
                 type="button"
                 onClick={() => handleApplyPreset('matrix')}
-                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition"
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-secondary transition"
               >
                 2x2 Matrix
               </button>
               <button
                 type="button"
                 onClick={() => handleApplyPreset('hierarchy')}
-                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition"
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-secondary transition"
               >
                 Hierarchy Tree
               </button>
@@ -651,7 +651,7 @@ export function DualCodingCanvasStudio({
                 className={`p-1.5 rounded-lg transition ${
                   activeTool === 'pen'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400'
+                    : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Pen Tool"
                 aria-label="Pen Tool"
@@ -664,7 +664,7 @@ export function DualCodingCanvasStudio({
                 className={`p-1.5 rounded-lg transition ${
                   activeTool === 'rect'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400'
+                    : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Rectangle Box"
                 aria-label="Rectangle Box"
@@ -677,7 +677,7 @@ export function DualCodingCanvasStudio({
                 className={`p-1.5 rounded-lg transition ${
                   activeTool === 'circle'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400'
+                    : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Circle Node"
                 aria-label="Circle Node"
@@ -690,7 +690,7 @@ export function DualCodingCanvasStudio({
                 className={`p-1.5 rounded-lg transition ${
                   activeTool === 'arrow'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400'
+                    : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Arrow Pointer"
                 aria-label="Arrow Pointer"
@@ -724,7 +724,7 @@ export function DualCodingCanvasStudio({
                 type="button"
                 onClick={handleUndo}
                 disabled={elements.length === 0}
-                className="p-1.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 disabled:opacity-40 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50 transition"
+                className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint disabled:opacity-40 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50 transition"
                 title="Undo"
                 aria-label="Undo last element"
               >
@@ -734,7 +734,7 @@ export function DualCodingCanvasStudio({
                 type="button"
                 onClick={handleClear}
                 disabled={elements.length === 0}
-                className="text-xs px-2 py-1 text-neutral-500 hover:text-rose-600 dark:text-neutral-400 disabled:opacity-40 transition"
+                className="text-xs px-2 py-1 text-tertiary hover:text-rose-600 dark:text-faint disabled:opacity-40 transition"
               >
                 Clear
               </button>
@@ -785,7 +785,7 @@ export function DualCodingCanvasStudio({
             </svg>
 
             {elements.length === 0 && !isDrawing && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-neutral-500 p-4 text-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-tertiary p-4 text-center">
                 <Palette className="h-8 w-8 mb-2 opacity-40 text-indigo-400" />
                 <span className="text-xs font-medium">
                   Draw your visual anchor or click a template above
@@ -797,7 +797,7 @@ export function DualCodingCanvasStudio({
             )}
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-neutral-400 px-1">
+          <div className="flex items-center justify-between text-[11px] text-faint px-1">
             <span>600x400 vector resolution · Touch &amp; stylus compatible</span>
             <span>{elements.length} visual entities</span>
           </div>
@@ -811,7 +811,7 @@ export function DualCodingCanvasStudio({
             <select
               value={selectedDeckId}
               onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : '')}
-              className="text-xs py-1.5 px-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300"
+              className="text-xs py-1.5 px-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-secondary"
             >
               {decksData.decks.map((d) => (
                 <option key={d.id} value={d.id}>

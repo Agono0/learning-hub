@@ -175,10 +175,12 @@ export default function WeeklyPage() {
               key={t.k}
               className={`panel space-y-1 ${danger ? 'ring-1 ring-amber-500/60' : ''}`}
             >
-              <Icon className={`h-4 w-4 ${danger ? 'text-amber-400' : 'text-indigo-400'}`} />
+              <Icon
+                className={`h-4 w-4 ${danger ? 'text-status-warning-text' : 'text-indigo-400'}`}
+              />
               <p className="text-2xl font-bold tabular-nums">{t.value}</p>
-              <p className="text-[11px] leading-tight text-neutral-500">
-                <span className="font-medium text-neutral-400">{t.label}</span>
+              <p className="text-[11px] leading-tight text-tertiary">
+                <span className="font-medium text-faint">{t.label}</span>
                 {t.sub ? ` — ${t.sub}` : ''}
               </p>
             </div>
@@ -209,7 +211,7 @@ export default function WeeklyPage() {
           ))}
         </div>
         <table className="w-full text-left text-xs">
-          <thead className="text-neutral-500">
+          <thead className="text-tertiary">
             <tr>
               <th className="py-1 pr-3">day</th>
               <th className="py-1 pr-3">reviews</th>
@@ -219,7 +221,7 @@ export default function WeeklyPage() {
               <th className="py-1">focus min</th>
             </tr>
           </thead>
-          <tbody className="text-neutral-300">
+          <tbody className="text-secondary">
             {(m?.days ?? []).map((d) => (
               <tr key={d.date} className="border-t border-neutral-200 dark:border-(--hub-border)">
                 <td className="py-1.5 pr-3">
@@ -236,7 +238,7 @@ export default function WeeklyPage() {
             ))}
           </tbody>
         </table>
-        <p className="text-xs text-neutral-500">green bar = ≥90% passed that day</p>
+        <p className="text-xs text-tertiary">green bar = ≥90% passed that day</p>
       </div>
 
       {/* weakest cards */}
@@ -245,20 +247,20 @@ export default function WeeklyPage() {
           <TrendingDown className="h-3.5 w-3.5" /> Weakest cards — lowest retrievability first
         </p>
         {(m?.weakestCards.length ?? 0) === 0 ? (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-tertiary">
             No reviewed cards yet — weak spots appear once you log reviews.
           </p>
         ) : (
           <ul className="space-y-1.5">
             {m?.weakestCards.map((w) => (
               <li key={w.id} className="flex items-center gap-2 text-sm">
-                <span className="w-10 shrink-0 rounded bg-neutral-200 px-1 text-center text-xs font-semibold tabular-nums text-rose-400 dark:bg-(--hub-border)">
+                <span className="w-10 shrink-0 rounded bg-neutral-200 px-1 text-center text-xs font-semibold tabular-nums text-danger-text dark:bg-(--hub-border)">
                   {pct(w.retrievability)}
                 </span>
                 <span className="min-w-0 flex-1 truncate" title={w.label}>
                   {w.label || `card #${w.id}`}
                 </span>
-                <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
+                <span className="shrink-0 text-xs text-tertiary tabular-nums">
                   {w.lapses} lapse(s) · D {w.difficulty == null ? '—' : Math.round(w.difficulty)}
                 </span>
               </li>
@@ -304,32 +306,34 @@ export default function WeeklyPage() {
               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
                 s.mode === 'ai'
                   ? 'bg-indigo-500/15 text-indigo-300'
-                  : 'bg-neutral-500/15 text-neutral-400'
+                  : 'bg-neutral-500/15 text-faint'
               }`}
             >
               {s.mode === 'ai' ? 'AI coach' : 'manual mode (rule-based)'}
             </span>
           )}
         </div>
-        {s?.error && <p className="text-xs text-amber-400">{s.error}</p>}
-        {q.isLoading && <p className="text-sm text-neutral-500">Computing your week…</p>}
+        {s?.error && <p className="text-xs text-status-warning-text">{s.error}</p>}
+        {q.isLoading && <p className="text-sm text-tertiary">Computing your week…</p>}
         {(transport?.ok ? transport.suggestions! : (s?.suggestions ?? [])).map((sug, i) => (
           <div
             key={i}
             className={`rounded-lg border p-3 text-sm ${transport?.ok ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-neutral-200 dark:border-(--hub-border)'}`}
           >
             <p className="font-medium">{sug.title}</p>
-            <p className="mt-1 text-xs text-neutral-500">{sug.evidence}</p>
-            <p className="mt-1 text-xs text-neutral-300">{sug.action}</p>
+            <p className="mt-1 text-xs text-tertiary">{sug.evidence}</p>
+            <p className="mt-1 text-xs text-secondary">{sug.action}</p>
           </div>
         ))}
-        {transport?.ok === false && <p className="text-xs text-amber-500">{transport.error}</p>}
+        {transport?.ok === false && (
+          <p className="text-xs text-status-warning-text">{transport.error}</p>
+        )}
 
         {/* prompt transport: only shown in manual mode — copy envelope, paste the reply back */}
         {s?.mode === 'manual' && s.envelope && (
           <div className="space-y-2 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-(--hub-border-strong)">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-neutral-400">
+              <span className="text-xs font-medium text-faint">
                 Prompt transport — paste into any AI, no provider needed
               </span>
               <button
@@ -345,20 +349,20 @@ export default function WeeklyPage() {
                 title="Copy the envelope JSON — paste it into any chatbot"
               >
                 {copied ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <Check className="h-3.5 w-3.5 text-status-success-text" />
                 ) : (
                   <ClipboardCopy className="h-3.5 w-3.5" />
                 )}
                 Copy envelope
               </button>
             </div>
-            <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300">
+            <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-secondary">
               {s.envelope.system}
               {'\n\n── user ──\n'}
               {s.envelope.prompt}
             </pre>
             {s.envelope.schema && (
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-tertiary">
                 Expected reply shape: <code>{s.envelope.schema}</code>
               </p>
             )}
@@ -377,7 +381,7 @@ export default function WeeklyPage() {
                 <ClipboardPaste className="h-3.5 w-3.5" />{' '}
                 {validate.isPending ? 'Validating…' : 'Validate & use'}
               </button>
-              <span className="text-[11px] text-neutral-500">
+              <span className="text-[11px] text-tertiary">
                 POSTs <code>{'{ feature: "coach", result }'}</code> to /api/ai/transport
               </span>
             </div>

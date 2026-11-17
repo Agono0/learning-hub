@@ -19,7 +19,7 @@ export function PageHeader({ title, subtitle, actions, icon }: PageHeaderProps) 
           {icon}
           {title}
         </h1>
-        {subtitle && <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>}
+        {subtitle && <p className="mt-1 text-sm text-tertiary">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

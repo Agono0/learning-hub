@@ -32,9 +32,7 @@ import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
 const WorldCanvas = dynamic(() => import('@/ui/WorldCanvas').then((m) => m.WorldCanvas), {
   ssr: false,
   loading: () => (
-    <div className="grid h-full w-full place-items-center text-sm text-slate-400">
-      Loading world…
-    </div>
+    <div className="grid h-full w-full place-items-center text-sm text-faint">Loading world…</div>
   ),
 })
 
@@ -102,15 +100,15 @@ const CATEGORY_ICON: Record<MarketItem['category'], typeof User> = {
 const RARITY_CARD: Record<MarketItem['rarity'], string> = {
   common: 'border-slate-700/60 hover:border-slate-500',
   rare: 'border-sky-500/30 hover:border-sky-400/60',
-  epic: 'border-purple-500/30 hover:border-purple-400/60',
+  epic: 'border-indigo-500/30 hover:border-indigo-400/60',
   legendary: 'border-amber-500/30 hover:border-amber-400/60',
 }
 
 const RARITY_THUMB: Record<MarketItem['rarity'], string> = {
-  common: 'from-slate-700/40 to-slate-900 text-slate-300',
-  rare: 'from-sky-600/25 to-slate-900 text-sky-300',
-  epic: 'from-purple-600/25 to-slate-900 text-purple-300',
-  legendary: 'from-amber-500/25 to-slate-900 text-amber-300',
+  common: 'from-slate-700/40 to-slate-900 text-secondary',
+  rare: 'from-sky-600/25 to-slate-900 text-status-info-text',
+  epic: 'from-indigo-600/25 to-slate-900 text-indigo-300',
+  legendary: 'from-amber-500/25 to-slate-900 text-status-warning-text',
 }
 
 export default function WorldPage() {
@@ -403,10 +401,10 @@ export default function WorldPage() {
           subtitle="Immersive low-poly study sanctuary. Grow trees with verified focus, customize your scholar, and spend study coins in the marketplace."
         />
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 font-medium">
-            <Coins className="w-5 h-5 text-amber-400" />
+          <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-status-warning-text font-medium">
+            <Coins className="w-5 h-5 text-status-warning-text" />
             <span>{worldState?.balance ?? 0}</span>
-            <span className="text-xs text-amber-400/80 uppercase tracking-wider font-semibold">
+            <span className="text-xs text-status-warning-text/80 uppercase tracking-wider font-semibold">
               Coins
             </span>
           </div>
@@ -448,7 +446,7 @@ export default function WorldPage() {
             {/* In-Canvas Top Overlay Controls */}
             <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
               <div className="flex items-center gap-2 pointer-events-auto bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/50 text-xs text-slate-300">
-                <Compass className="w-4 h-4 text-emerald-400" />
+                <Compass className="w-4 h-4 text-status-success-text" />
                 <span className="capitalize">{viewMode.replace('_', ' ')} Mode</span>
               </div>
 
@@ -471,9 +469,9 @@ export default function WorldPage() {
                   className="btn-ghost bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-xs p-1.5 rounded-lg"
                 >
                   {soundscape === 'none' ? (
-                    <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+                    <VolumeX className="w-3.5 h-3.5 text-faint" />
                   ) : (
-                    <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <Volume2 className="w-3.5 h-3.5 text-status-success-text" />
                   )}
                 </button>
               </div>
@@ -482,7 +480,7 @@ export default function WorldPage() {
             {/* In-Canvas Bottom Floating HUD */}
             <div className="absolute bottom-4 left-4 right-4 pointer-events-none flex justify-center">
               <div className="pointer-events-auto flex items-center gap-4 bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-700/60 shadow-xl">
-                <div className="text-3xl font-mono font-bold tracking-wider text-emerald-400">
+                <div className="text-3xl font-mono font-bold tracking-wider text-status-success-text">
                   {formatTime(secondsLeft)}
                 </div>
 
@@ -497,14 +495,14 @@ export default function WorldPage() {
                   ) : (
                     <button
                       onClick={handlePauseTimer}
-                      className="btn-ghost border border-amber-500/50 text-amber-400 text-xs px-3 py-2 flex items-center gap-1 rounded-lg"
+                      className="btn-ghost border border-amber-500/50 text-status-warning-text text-xs px-3 py-2 flex items-center gap-1 rounded-lg"
                     >
                       <Pause className="w-4 h-4 mr-1.5" /> Pause
                     </button>
                   )}
                   <button
                     onClick={handleResetTimer}
-                    className="btn-ghost border border-slate-700 text-slate-400 text-xs p-2 rounded-lg"
+                    className="btn-ghost border border-slate-700 text-faint text-xs p-2 rounded-lg"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </button>
@@ -518,7 +516,7 @@ export default function WorldPage() {
             <Panel
               title={
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-400" /> 3D Timer Theme
+                  <Sparkles className="w-5 h-5 text-status-warning-text" /> 3D Timer Theme
                 </div>
               }
             >
@@ -538,12 +536,12 @@ export default function WorldPage() {
                       onClick={() => handleChangeTheme(t.id as typeof selectedTheme)}
                       className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
                         active
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-status-success-text'
                           : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
                       }`}
                     >
                       <Icon
-                        className={`w-4 h-4 ${active ? 'text-emerald-400' : 'text-slate-400'}`}
+                        className={`w-4 h-4 ${active ? 'text-status-success-text' : 'text-faint'}`}
                       />
                       <span>{t.label}</span>
                     </button>
@@ -555,7 +553,7 @@ export default function WorldPage() {
             <Panel
               title={
                 <div className="flex items-center gap-2">
-                  <TreePine className="w-5 h-5 text-emerald-400" /> Study Sprints
+                  <TreePine className="w-5 h-5 text-status-success-text" /> Study Sprints
                 </div>
               }
             >
@@ -572,17 +570,17 @@ export default function WorldPage() {
                     className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
                       plannedMinutes === dur.mins
                         ? 'bg-emerald-600 text-white border-emerald-500 font-semibold'
-                        : 'btn-ghost border-slate-700 text-slate-300'
+                        : 'btn-ghost border-slate-700 text-secondary'
                     }`}
                   >
                     {dur.label}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-slate-400 mt-3 leading-relaxed">
+              <p className="text-xs text-faint mt-3 leading-relaxed">
                 Completing a verified study block earns{' '}
-                <strong className="text-amber-400">+30 Study Coins</strong> and plants a permanent
-                tree in your 3D sanctuary.
+                <strong className="text-status-warning-text">+30 Study Coins</strong> and plants a
+                permanent tree in your 3D sanctuary.
               </p>
             </Panel>
 
@@ -595,13 +593,13 @@ export default function WorldPage() {
             >
               <div className="space-y-3 mt-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Character:</span>
+                  <span className="text-faint">Character:</span>
                   <span className="font-semibold text-slate-200 capitalize">
                     {worldState?.avatar.characterId.replace('char_', '')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Headwear:</span>
+                  <span className="text-faint">Headwear:</span>
                   <span className="font-semibold text-slate-200 capitalize">
                     {worldState?.avatar.equippedHead
                       ? worldState.avatar.equippedHead.replace('head_', '').replace('_', ' ')
@@ -609,7 +607,7 @@ export default function WorldPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Handheld:</span>
+                  <span className="text-faint">Handheld:</span>
                   <span className="font-semibold text-slate-200 capitalize">
                     {worldState?.avatar.equippedHand
                       ? worldState.avatar.equippedHand.replace('hand_', '')
@@ -617,10 +615,10 @@ export default function WorldPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Companion:</span>
+                  <span className="text-faint">Companion:</span>
                   {worldState?.avatar.equippedCompanion ? (
                     <button
-                      className="font-semibold text-emerald-300 capitalize hover:text-emerald-200"
+                      className="font-semibold text-status-success-text capitalize hover:text-emerald-200"
                       onClick={() => handleEquipCompanion(null)}
                       title="Dismiss companion"
                     >
@@ -659,11 +657,11 @@ export default function WorldPage() {
                   className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
                     active
                       ? 'bg-emerald-600 text-white border-emerald-500 font-semibold'
-                      : 'btn-ghost border-slate-700 text-slate-300'
+                      : 'btn-ghost border-slate-700 text-secondary'
                   }`}
                 >
                   {f.label}
-                  <span className={`ml-1.5 ${active ? 'text-emerald-100' : 'text-slate-500'}`}>
+                  <span className={`ml-1.5 ${active ? 'text-emerald-100' : 'text-tertiary'}`}>
                     {count}
                   </span>
                 </button>
@@ -701,11 +699,11 @@ export default function WorldPage() {
                   <div className="p-4 flex flex-col justify-between flex-1 space-y-3">
                     <div className="space-y-1.5">
                       <h3 className="font-semibold text-sm text-slate-100">{item.name}</h3>
-                      <p className="text-xs text-slate-400 leading-relaxed">{item.description}</p>
+                      <p className="text-xs text-faint leading-relaxed">{item.description}</p>
                     </div>
 
                     <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm">
+                      <div className="flex items-center gap-1.5 text-status-warning-text font-bold text-sm">
                         <Coins className="w-4 h-4" />
                         {item.priceCoins === 0 ? 'Free' : item.priceCoins}
                       </div>
@@ -756,7 +754,7 @@ export default function WorldPage() {
           {worldState?.plots.length === 0 ? (
             <EmptyState
               title="No trees planted yet"
-              icon={<TreePine className="w-12 h-12 text-slate-500" />}
+              icon={<TreePine className="w-12 h-12 text-tertiary" />}
             >
               <p>Complete verified focus sessions in the 3D World to grow your forest sanctuary.</p>
             </EmptyState>
@@ -768,15 +766,13 @@ export default function WorldPage() {
                   className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-emerald-400 font-medium text-sm capitalize">
+                    <span className="text-status-success-text font-medium text-sm capitalize">
                       {plot.treeType.replace('tree_', '').replace('_', ' ')}
                     </span>
                     <Badge tone="success">{plot.growthStage}</Badge>
                   </div>
-                  <div className="text-xs text-slate-400">
-                    Duration: {plot.durationMinutes} mins
-                  </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-faint">Duration: {plot.durationMinutes} mins</div>
+                  <div className="text-xs text-tertiary">
                     Planted: {new Date(plot.createdAt).toLocaleDateString()}
                   </div>
                 </div>

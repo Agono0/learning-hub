@@ -81,23 +81,23 @@ export function MetacognitiveCalibrationHUD({
   }
 
   const getBiasColor = () => {
-    if (absoluteOverconfidenceBias > 0.2) return 'text-rose-500'
-    if (absoluteOverconfidenceBias > 0.08) return 'text-amber-500'
-    if (absoluteOverconfidenceBias < -0.15) return 'text-sky-500'
-    return 'text-emerald-500'
+    if (absoluteOverconfidenceBias > 0.2) return 'text-danger-text'
+    if (absoluteOverconfidenceBias > 0.08) return 'text-status-warning-text'
+    if (absoluteOverconfidenceBias < -0.15) return 'text-status-info-text'
+    return 'text-status-success-text'
   }
 
   return (
-    <div className="rounded-xl border border-border/80 bg-card/60 p-4 shadow-sm backdrop-blur-md">
+    <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white/60 dark:bg-(--hub-panel)/60 p-4 shadow-sm backdrop-blur-md">
       {/* Top Header & Status */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/10 text-ac-text">
             <Brain className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Metacognitive Calibration HUD</h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="text-sm font-semibold text-strong">Metacognitive Calibration HUD</h3>
+            <p className="text-xs text-tertiary">
               Nelson-Narens Monitoring & Butterfield Hypercorrection Dynamics
             </p>
           </div>
@@ -107,7 +107,7 @@ export function MetacognitiveCalibrationHUD({
           {getStatusBadge()}
           {hypercorrectionCount > 0 && (
             <Badge tone="warning" className="flex items-center gap-1">
-              <Zap className="h-3 w-3 fill-amber-500 text-amber-500" />
+              <Zap className="h-3 w-3 fill-amber-500 text-status-warning-text" />
               <span>
                 {hypercorrectionCount} Hypercorrection{hypercorrectionCount > 1 ? 's' : ''}
               </span>
@@ -118,9 +118,9 @@ export function MetacognitiveCalibrationHUD({
 
       {/* Epistemic Shock Alert Banner (Triggered on High-Confidence Error) */}
       {isHypercorrectionTriggered && (
-        <div className="mt-3 animate-in fade-in-50 slide-in-from-top-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-amber-600 dark:text-amber-400">
+        <div className="mt-3 animate-fade-in rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-status-warning-text dark:text-status-warning-text">
           <div className="flex items-start gap-2.5">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-warning-text" />
             <div className="text-xs">
               <span className="font-semibold">
                 Epistemic Prediction Error Triggered (Shock:{' '}
@@ -130,7 +130,7 @@ export function MetacognitiveCalibrationHUD({
               triggers maximal neurocognitive attention surge (Butterfield & Metcalfe 2001) for
               rapid long-term memory correction.
               {currentIllusion && (
-                <div className="mt-1 font-medium text-amber-700 dark:text-amber-300">
+                <div className="mt-1 font-medium text-amber-700 dark:text-status-warning-text">
                   Root Illusion: {ILLUSION_NAMES[currentIllusion] ?? currentIllusion}
                 </div>
               )}
@@ -142,28 +142,28 @@ export function MetacognitiveCalibrationHUD({
       {/* Metric Tiles Grid */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {/* Metric 1: MCI Composite Score */}
-        <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/50 dark:bg-(--hub-panel)/50 p-2.5">
+          <div className="flex items-center justify-between text-xs text-tertiary">
             <span>Calibration (MCI)</span>
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <Sparkles className="h-3.5 w-3.5 text-ac-text" />
           </div>
-          <div className="mt-1 text-lg font-bold text-foreground">
+          <div className="mt-1 text-lg font-bold text-strong">
             {metacognitiveCalibrationIndex}
-            <span className="text-xs font-normal text-muted-foreground">/100</span>
+            <span className="text-xs font-normal text-tertiary">/100</span>
           </div>
           <ProgressBar value={metacognitiveCalibrationIndex / 100} className="mt-1.5 h-1.5" />
         </div>
 
         {/* Metric 2: Goodman-Kruskal Gamma */}
-        <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/50 dark:bg-(--hub-panel)/50 p-2.5">
+          <div className="flex items-center justify-between text-xs text-tertiary">
             <span>Resolution (γ)</span>
-            <TrendingUp className="h-3.5 w-3.5 text-sky-500" />
+            <TrendingUp className="h-3.5 w-3.5 text-status-info-text" />
           </div>
-          <div className="mt-1 text-lg font-bold text-foreground">
+          <div className="mt-1 text-lg font-bold text-strong">
             {goodmanKruskalGamma >= 0 ? `+${goodmanKruskalGamma}` : goodmanKruskalGamma}
           </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-[10px] text-tertiary">
             {goodmanKruskalGamma >= 0.5
               ? 'High Discrimination'
               : goodmanKruskalGamma >= 0
@@ -173,25 +173,25 @@ export function MetacognitiveCalibrationHUD({
         </div>
 
         {/* Metric 3: Confidence Bias */}
-        <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/50 dark:bg-(--hub-panel)/50 p-2.5">
+          <div className="flex items-center justify-between text-xs text-tertiary">
             <span>Confidence Bias</span>
-            <Brain className="h-3.5 w-3.5 text-purple-500" />
+            <Brain className="h-3.5 w-3.5 text-indigo-500" />
           </div>
           <div className={`mt-1 text-lg font-bold ${getBiasColor()}`}>{getBiasLabel()}</div>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-[10px] text-tertiary">
             Conf {Math.round(meanConfidence * 100)}% vs Acc {Math.round(overallAccuracy * 100)}%
           </p>
         </div>
 
         {/* Metric 4: Glenn Brier Quadratic Score */}
-        <div className="rounded-lg border border-border/50 bg-background/50 p-2.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/50 dark:bg-(--hub-panel)/50 p-2.5">
+          <div className="flex items-center justify-between text-xs text-tertiary">
             <span>Brier Quadratic</span>
-            <Zap className="h-3.5 w-3.5 text-amber-500" />
+            <Zap className="h-3.5 w-3.5 text-status-warning-text" />
           </div>
-          <div className="mt-1 text-lg font-bold text-foreground">{brierScore.toFixed(3)}</div>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <div className="mt-1 text-lg font-bold text-strong">{brierScore.toFixed(3)}</div>
+          <p className="mt-1 text-[10px] text-tertiary">
             {brierScore < 0.15
               ? 'Pinpoint Accuracy'
               : brierScore < 0.3

@@ -230,7 +230,7 @@ export function DualCodingStudio({
       />
 
       {/* Workspace Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/50 dark:border-(--hub-border)/50 pb-2">
         <div className="flex flex-wrap gap-1.5">
           <Button
             variant={activeTab === 'schematizer' ? 'primary' : 'ghost'}
@@ -239,7 +239,7 @@ export function DualCodingStudio({
               setActiveTab('schematizer')
             }}
           >
-            <Layers className="mr-1.5 h-4 w-4 text-primary" /> Visual Schematizer
+            <Layers className="mr-1.5 h-4 w-4 text-ac-text" /> Visual Schematizer
           </Button>
 
           <Button
@@ -249,7 +249,7 @@ export function DualCodingStudio({
               setActiveTab('mayer_audit')
             }}
           >
-            <Zap className="mr-1.5 h-4 w-4 text-amber-500" /> Mayer CTML Audit
+            <Zap className="mr-1.5 h-4 w-4 text-status-warning-text" /> Mayer CTML Audit
           </Button>
 
           <Button
@@ -259,7 +259,7 @@ export function DualCodingStudio({
               setActiveTab('segmented_tour')
             }}
           >
-            <Compass className="mr-1.5 h-4 w-4 text-emerald-500" /> Segmented Tour
+            <Compass className="mr-1.5 h-4 w-4 text-status-success-text" /> Segmented Tour
           </Button>
 
           <Button
@@ -269,15 +269,15 @@ export function DualCodingStudio({
               setActiveTab('fsrs_deck')
             }}
           >
-            <Sparkles className="mr-1.5 h-4 w-4 text-violet-500" /> FSRS Cards ({fsrsCards.length})
+            <Sparkles className="mr-1.5 h-4 w-4 text-indigo-500" /> FSRS Cards ({fsrsCards.length})
           </Button>
         </div>
 
         {/* Schema Selector Dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium">Domain Schema:</span>
+          <span className="text-xs text-tertiary font-medium">Domain Schema:</span>
           <select
-            className="rounded-lg border border-border/80 bg-background px-2.5 py-1 text-xs font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+            className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs font-medium text-strong focus:outline-hidden focus:ring-1 focus:ring-(--ac-strong)"
             value={currentSchema.id}
             onChange={(e) => handleSelectSchema(e.target.value)}
           >
@@ -296,17 +296,17 @@ export function DualCodingStudio({
           {/* Left Column: Verbal Propositions / Logogens (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-3">
             <Panel className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-2">
                 <div className="flex items-center gap-2">
-                  <Type className="h-4 w-4 text-primary" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Type className="h-4 w-4 text-ac-text" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-strong">
                     Verbal Logogens ({currentSchema.logogens.length})
                   </h4>
                 </div>
                 <Badge tone="cyan">{currentSchema.domain.replace('_', ' ')}</Badge>
               </div>
 
-              <p className="text-[11px] text-muted-foreground leading-tight">
+              <p className="text-[11px] text-tertiary leading-tight">
                 Click any proposition to highlight its grounding visual imagen on the diagram:
               </p>
 
@@ -324,8 +324,8 @@ export function DualCodingStudio({
                       onClick={() => handleSelectLogogen(logogen.id)}
                       className={`cursor-pointer rounded-xl border p-3 transition-all ${
                         isSelected
-                          ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/40'
-                          : 'border-border/60 bg-card hover:border-primary/50 hover:bg-muted/30'
+                          ? 'border-(--ac-strong) bg-indigo-600/10 shadow-sm ring-1 ring-(--ac-strong)/40'
+                          : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) hover:border-(--ac-strong)/50 bg-neutral-100/30 dark:bg-(--hub-panel-2)/30'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -333,13 +333,13 @@ export function DualCodingStudio({
                           {logogen.modality.replace('_', ' ')}
                         </Badge>
                         {hasLink && (
-                          <span className="flex items-center gap-1 text-[10px] font-mono font-medium text-emerald-500">
+                          <span className="flex items-center gap-1 text-[10px] font-mono font-medium text-status-success-text">
                             <LinkIcon className="h-3 w-3" /> Grounded
                           </span>
                         )}
                       </div>
 
-                      <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+                      <p className="text-xs text-body leading-relaxed font-medium">
                         {logogen.text}
                       </p>
 
@@ -348,7 +348,7 @@ export function DualCodingStudio({
                           {logogen.keyTokens.map((t) => (
                             <span
                               key={t}
-                              className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground"
+                              className="rounded bg-neutral-100 dark:bg-(--hub-panel-2) px-1.5 py-0.5 text-[9px] font-mono text-tertiary"
                             >
                               {t}
                             </span>
@@ -365,10 +365,10 @@ export function DualCodingStudio({
           {/* Right Column: Visuospatial Diagram Stage / Imagens (7 cols) */}
           <div className="lg:col-span-7 flex flex-col gap-3">
             <Panel className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+              <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-2">
                 <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-sky-500" />
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Eye className="h-4 w-4 text-status-info-text" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-strong">
                     Visuospatial Imagens Canvas
                   </h4>
                 </div>
@@ -393,8 +393,8 @@ export function DualCodingStudio({
 
               {/* Link Creation Sub-Panel */}
               {isLinking && (
-                <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+                <div className="rounded-xl border border-(--ac-strong)/40 bg-indigo-600/5 p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-strong">
                     <span>Create Referential Binding:</span>
                     <Badge tone="violet">{newRelation}</Badge>
                   </div>
@@ -407,8 +407,8 @@ export function DualCodingStudio({
                           onClick={() => setNewRelation(rel)}
                           className={`rounded border px-2 py-1 text-[11px] font-medium ${
                             newRelation === rel
-                              ? 'border-primary bg-primary text-primary-foreground font-semibold'
-                              : 'border-border/60 bg-card hover:bg-muted'
+                              ? 'border-(--ac-strong) bg-indigo-600 text-white font-semibold'
+                              : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) bg-neutral-100 dark:bg-(--hub-panel-2)'
                           }`}
                         >
                           {rel.replace('_', ' ')}
@@ -428,7 +428,7 @@ export function DualCodingStudio({
               )}
 
               {/* Interactive 2D Visuospatial Diagram */}
-              <div className="relative aspect-video w-full rounded-xl border border-border/70 bg-background/80 p-4 shadow-inner overflow-hidden select-none">
+              <div className="relative aspect-video w-full rounded-xl border border-neutral-200/70 dark:border-(--hub-border)/70 bg-white/80 dark:bg-(--hub-panel)/80 p-4 shadow-inner overflow-hidden select-none">
                 {/* SVG Connections Layer */}
                 <svg className="absolute inset-0 h-full w-full pointer-events-none">
                   {currentSchema.referentialLinks.map((link) => {
@@ -447,7 +447,7 @@ export function DualCodingStudio({
                           r="18"
                           fill="none"
                           stroke={isHighlight ? 'currentColor' : 'transparent'}
-                          className="text-primary/40 animate-pulse"
+                          className="text-ac-text/40 animate-pulse"
                           strokeWidth="2"
                         />
                       </g>
@@ -480,7 +480,7 @@ export function DualCodingStudio({
                             ? 'border-sky-500 bg-sky-500/20 shadow-md ring-2 ring-sky-500/60 scale-105'
                             : isSignaled
                               ? 'border-emerald-500/80 bg-emerald-500/10 shadow-sm'
-                              : 'border-border/80 bg-card hover:border-primary hover:bg-muted/40 shadow-2xs'
+                              : 'border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) hover:border-(--ac-strong) bg-neutral-100/40 dark:bg-(--hub-panel-2)/40 shadow-2xs'
                         }`}
                       >
                         {/* Pulsing indicator if signaled */}
@@ -491,16 +491,16 @@ export function DualCodingStudio({
                           </span>
                         )}
 
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-tertiary truncate">
                           {imagen.shape.replace('_', ' ')}
                         </div>
-                        <div className="mt-0.5 text-xs font-bold text-foreground truncate">
+                        <div className="mt-0.5 text-xs font-bold text-strong truncate">
                           {imagen.label}
                         </div>
 
                         {/* Hover Details Popover */}
                         {isHovered && (
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-20 whitespace-nowrap rounded-lg border border-border bg-popover px-2.5 py-1 text-[10px] text-popover-foreground shadow-lg">
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-20 whitespace-nowrap rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel-2) px-2.5 py-1 text-[10px] text-tertiary shadow-lg">
                             <span>
                               Coords: ({imagen.x}, {imagen.y}) • Shape: {imagen.shape}
                             </span>
@@ -513,12 +513,12 @@ export function DualCodingStudio({
               </div>
 
               {/* Referential Invariant Note */}
-              <div className="rounded-lg border border-border/40 bg-muted/20 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
+              <div className="rounded-lg border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2.5 text-xs text-tertiary flex items-center justify-between">
                 <span>
                   Spatial Contiguity Principle: Integrated labels near graphics eliminate
                   split-attention.
                 </span>
-                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span className="font-mono text-status-success-text dark:text-status-success-text font-semibold">
                   Mayer (2014) Validated
                 </span>
               </div>
@@ -535,10 +535,10 @@ export function DualCodingStudio({
             <Panel className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">
+                  <h4 className="text-sm font-semibold text-strong">
                     Mayer Cognitive Theory of Multimedia Learning (CTML) Audit
                   </h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     Rigorous verification of the 12 multimedia learning science principles.
                   </p>
                 </div>
@@ -601,22 +601,18 @@ export function DualCodingStudio({
                 ].map((item) => (
                   <div
                     key={item.name}
-                    className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-1.5"
+                    className="rounded-xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-3.5 space-y-1.5"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <div className="font-semibold text-foreground flex items-center gap-2">
+                      <div className="font-semibold text-strong flex items-center gap-2">
                         <span>{item.name}</span>
-                        <span className="text-[11px] font-normal text-muted-foreground">
-                          ({item.rule})
-                        </span>
+                        <span className="text-[11px] font-normal text-tertiary">({item.rule})</span>
                       </div>
                       <Badge tone={item.status === 'Compliant' ? 'success' : 'warning'}>
                         {item.score}%
                       </Badge>
                     </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      {item.details}
-                    </p>
+                    <p className="text-[11px] text-tertiary leading-relaxed">{item.details}</p>
                   </div>
                 ))}
               </div>
@@ -626,13 +622,13 @@ export function DualCodingStudio({
           {/* Right Column: Violations & Evidence-Based Recommendations (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <Panel className="p-4 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" /> Identified Violations
+              <h4 className="text-xs font-bold uppercase tracking-wider text-strong flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-status-warning-text" /> Identified Violations
               </h4>
 
               {audit.identifiedViolations.length === 0 ? (
-                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs text-status-success-text dark:text-status-success-text flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-text" />
                   <span>No CTML principle violations detected in active schema!</span>
                 </div>
               ) : (
@@ -640,7 +636,7 @@ export function DualCodingStudio({
                   {audit.identifiedViolations.map((v, i) => (
                     <div
                       key={i}
-                      className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-300"
+                      className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-status-warning-text"
                     >
                       {v}
                     </div>
@@ -650,13 +646,16 @@ export function DualCodingStudio({
             </Panel>
 
             <Panel className="p-4 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" /> Learning Science Recommendations
+              <h4 className="text-xs font-bold uppercase tracking-wider text-strong flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-ac-text" /> Learning Science Recommendations
               </h4>
-              <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+              <div className="space-y-2 text-xs text-tertiary leading-relaxed">
                 {audit.evidenceBasedRecommendations.length > 0 ? (
                   audit.evidenceBasedRecommendations.map((r, i) => (
-                    <div key={i} className="rounded-md border border-border/40 bg-muted/20 p-2.5">
+                    <div
+                      key={i}
+                      className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2.5"
+                    >
                       {r}
                     </div>
                   ))
@@ -678,13 +677,13 @@ export function DualCodingStudio({
           {/* Left Column: Tour Stepper & Audio Player (7 cols) */}
           <div className="lg:col-span-7 flex flex-col gap-4">
             <Panel className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">
+                  <h4 className="text-sm font-semibold text-strong">
                     Segmented Process Tour (Step {currentStepIdx + 1} of{' '}
                     {currentSchema.stageSteps.length})
                   </h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     Learner-paced segmentation eliminates temporal split-attention.
                   </p>
                 </div>
@@ -692,11 +691,11 @@ export function DualCodingStudio({
               </div>
 
               {/* Active Step Hero Card */}
-              <div className="rounded-2xl border border-primary/40 bg-primary/5 p-5 space-y-3">
-                <div className="text-[10px] font-bold uppercase text-primary tracking-wider">
+              <div className="rounded-2xl border border-(--ac-strong)/40 bg-indigo-600/5 p-5 space-y-3">
+                <div className="text-[10px] font-bold uppercase text-ac-text tracking-wider">
                   Active Operational Phase:
                 </div>
-                <h3 className="text-base font-bold text-foreground leading-snug">
+                <h3 className="text-base font-bold text-strong leading-snug">
                   {currentSchema.stageSteps[currentStepIdx]}
                 </h3>
               </div>
@@ -718,8 +717,8 @@ export function DualCodingStudio({
                       }}
                       className={`h-2.5 rounded-full transition-all ${
                         idx === currentStepIdx
-                          ? 'w-6 bg-primary'
-                          : 'w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                          ? 'w-6 bg-indigo-600'
+                          : 'w-2.5 bg-neutral-100 dark:bg-(--hub-panel-2)-foreground/30 bg-neutral-100 dark:bg-(--hub-panel-2)-foreground/50'
                       }`}
                     />
                   ))}
@@ -739,7 +738,7 @@ export function DualCodingStudio({
           {/* Right Column: Step Telemetry & Context (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <Panel className="p-4 space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-strong">
                 All Process Steps
               </h4>
               <div className="space-y-2">
@@ -752,8 +751,8 @@ export function DualCodingStudio({
                     }}
                     className={`cursor-pointer rounded-lg border p-2.5 text-xs transition-all ${
                       idx === currentStepIdx
-                        ? 'border-primary bg-primary/10 font-semibold text-foreground shadow-xs'
-                        : 'border-border/50 bg-card text-muted-foreground hover:bg-muted/30'
+                        ? 'border-(--ac-strong) bg-indigo-600/10 font-semibold text-strong shadow-xs'
+                        : 'border-neutral-200/50 dark:border-(--hub-border)/50 bg-white dark:bg-(--hub-panel) text-tertiary bg-neutral-100/30 dark:bg-(--hub-panel-2)/30'
                     }`}
                   >
                     {step}
@@ -769,12 +768,12 @@ export function DualCodingStudio({
       {activeTab === 'fsrs_deck' && (
         <div className="flex flex-col gap-4">
           <Panel className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-4">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">
+                <h4 className="text-sm font-semibold text-strong">
                   FSRS Dual-Coded Flashcard Deck
                 </h4>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-tertiary">
                   Cards generated with initial stability scaled by the Paivio Additive Multiplier.
                 </p>
               </div>
@@ -794,7 +793,7 @@ export function DualCodingStudio({
             </div>
 
             {copyStatus && (
-              <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-status-success-text dark:text-status-success-text">
                 {copyStatus}
               </div>
             )}
@@ -804,44 +803,47 @@ export function DualCodingStudio({
               {fsrsCards.map((card) => (
                 <div
                   key={card.id}
-                  className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:border-primary/50 transition-all"
+                  className="flex flex-col justify-between rounded-xl border border-neutral-200/70 dark:border-(--hub-border)/70 bg-white dark:bg-(--hub-panel) p-4 shadow-2xs hover:border-(--ac-strong)/50 transition-all"
                 >
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                    <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-2">
                       <Badge tone="cyan">{card.tags[1] ?? 'Dual-Coded'}</Badge>
-                      <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      <span className="font-mono text-xs font-bold text-status-success-text dark:text-status-success-text">
                         Initial S: {card.suggestedInitialStability}d
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                      <div className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                         Front Dual-Coded Stimulus
                       </div>
-                      <div className="text-xs text-foreground/90 font-medium">
+                      <div className="text-xs text-body font-medium">
                         <Markdown>{card.front}</Markdown>
                       </div>
                     </div>
 
-                    <div className="space-y-1 pt-2 border-t border-border/30">
-                      <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                    <div className="space-y-1 pt-2 border-t border-neutral-200/30 dark:border-(--hub-border)/30">
+                      <div className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                         Back Referential Synthesis
                       </div>
-                      <div className="text-xs text-foreground/80">
+                      <div className="text-xs text-body">
                         <Markdown>{card.back}</Markdown>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-[10px] text-muted-foreground">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40 text-[10px] text-tertiary">
                     <div className="flex flex-wrap gap-1">
                       {card.tags.map((t) => (
-                        <span key={t} className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                        <span
+                          key={t}
+                          className="rounded bg-neutral-100 dark:bg-(--hub-panel-2) px-1.5 py-0.5 font-mono"
+                        >
                           #{t}
                         </span>
                       ))}
                     </div>
-                    <span className="font-mono text-primary font-bold">
+                    <span className="font-mono text-ac-text font-bold">
                       {card.metadata.retentionMultiplier}x Boost
                     </span>
                   </div>

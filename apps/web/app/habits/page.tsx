@@ -36,9 +36,9 @@ interface HabitsResponse {
 }
 
 const STAGE_COLOR: Record<string, string> = {
-  forming: 'text-amber-400',
-  solidifying: 'text-sky-400',
-  automatic: 'text-emerald-400',
+  forming: 'text-status-warning-text',
+  solidifying: 'text-status-info-text',
+  automatic: 'text-status-success-text',
 }
 
 const EMPTY_FORM = {
@@ -114,7 +114,7 @@ export default function HabitsPage() {
         title="Habits"
         subtitle="Cue → craving → response → reward. Tiny versions count."
         actions={
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-tertiary">
             today:{' '}
             <span className="font-semibold text-indigo-400">
               {doneToday}/{habits.length}
@@ -129,9 +129,7 @@ export default function HabitsPage() {
           <Link2 className="h-3.5 w-3.5" /> Today — the stack, in chain order
         </p>
         {habits.length === 0 ? (
-          <p className="text-sm text-neutral-500">
-            No habits yet. Create the first tiny one below.
-          </p>
+          <p className="text-sm text-tertiary">No habits yet. Create the first tiny one below.</p>
         ) : (
           <ul className="space-y-2">
             {habits.map((h, i) => (
@@ -142,8 +140,8 @@ export default function HabitsPage() {
                 <button
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
                     h.todayDone
-                      ? `border-emerald-500 bg-emerald-500/20 text-emerald-400 ${celebrated === h.id ? 'celebrate' : ''}`
-                      : 'border-neutral-300 text-neutral-500 hover:border-indigo-400 dark:border-(--hub-border)'
+                      ? `border-emerald-500 bg-emerald-500/20 text-status-success-text ${celebrated === h.id ? 'celebrate' : ''}`
+                      : 'border-neutral-300 text-tertiary hover:border-indigo-400 dark:border-(--hub-border)'
                   }`}
                   onClick={() => checkin.mutate(h.id)}
                   disabled={checkin.isPending}
@@ -162,7 +160,7 @@ export default function HabitsPage() {
                     ) : null}
                     {h.name}
                   </p>
-                  <p className="truncate text-xs text-neutral-500">
+                  <p className="truncate text-xs text-tertiary">
                     {h.cue ? `cue: ${h.cue}` : 'no cue yet'} · {h.response ?? 'no tiny version yet'}
                   </p>
                 </div>
@@ -199,7 +197,7 @@ export default function HabitsPage() {
           <div className="space-y-1">
             {habits.map((h) => (
               <div key={h.id} className="flex items-center gap-1">
-                <span className="w-28 shrink-0 truncate text-xs text-neutral-500">{h.name}</span>
+                <span className="w-28 shrink-0 truncate text-xs text-tertiary">{h.name}</span>
                 <div className="flex gap-px">
                   {days.map((d) => {
                     const done = h.logDates.includes(d)
@@ -207,7 +205,7 @@ export default function HabitsPage() {
                       <span
                         key={d}
                         title={`${d}: ${done ? 'done' : '—'}`}
-                        className={`h-3 w-3 rounded-[2px] ${done ? 'bg-emerald-500' : 'bg-neutral-200 dark:bg-[#1c1c22]'}`}
+                        className={`h-3 w-3 rounded-[2px] ${done ? 'bg-emerald-500' : 'bg-neutral-200 dark:bg-(--hub-panel-2)'}`}
                       />
                     )
                   })}
@@ -272,7 +270,7 @@ export default function HabitsPage() {
             onChange={(e) => setForm({ ...form, anchor: e.target.value })}
           />
         </div>
-        {formError && <p className="text-sm text-rose-400">{formError}</p>}
+        {formError && <p className="text-sm text-danger-text">{formError}</p>}
         <button
           className="btn"
           onClick={() => createHabit.mutate()}
@@ -289,7 +287,7 @@ export default function HabitsPage() {
           {(['all', 'move', 'create', 'connect', 'soothe'] as const).map((t) => (
             <button
               key={t}
-              className={`rounded-full px-3 py-1 text-xs ${dopamineFilter === t ? 'bg-indigo-600 text-white' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'}`}
+              className={`rounded-full px-3 py-1 text-xs ${dopamineFilter === t ? 'bg-indigo-600 text-white' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
               onClick={() => setDopamineFilter(t)}
             >
               {t}
@@ -303,7 +301,7 @@ export default function HabitsPage() {
               className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
             >
               <p className="text-neutral-700 dark:text-neutral-200">{d.label}</p>
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-tertiary">
                 {d.type} · ~{d.minutes} min
               </p>
             </li>

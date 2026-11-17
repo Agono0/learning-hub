@@ -148,7 +148,7 @@ function DistractionAppsPanel() {
   return (
     <div className="panel space-y-3">
       <p className="label">Distraction apps</p>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-tertiary">
         These are logged when a focus session catches you switching to them.
       </p>
       <div className="flex gap-2">
@@ -171,19 +171,19 @@ function DistractionAppsPanel() {
         </button>
       </div>
       {rows.length === 0 ? (
-        <p className="text-xs text-neutral-500">Nothing logged yet.</p>
+        <p className="text-xs text-tertiary">Nothing logged yet.</p>
       ) : (
         <ul className="space-y-1">
           {rows.map((r) => (
             <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0 truncate text-neutral-700 dark:text-neutral-200">
                 {r.name}
-                <span className="ml-2 text-[10px] uppercase tracking-wide text-neutral-500">
+                <span className="ml-2 text-[10px] uppercase tracking-wide text-tertiary">
                   {r.kind}
                 </span>
               </span>
               <button
-                className="btn-ghost px-2 py-1 text-neutral-500 hover:text-red-400"
+                className="btn-ghost px-2 py-1 text-tertiary hover:text-danger-text"
                 title={`Remove ${r.name}`}
                 onClick={() => remove.mutate(r.id)}
               >
@@ -591,8 +591,8 @@ export default function FocusPage() {
               type="button"
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === 'standard'
-                  ? 'bg-white shadow text-neutral-900 dark:bg-[#202025] dark:text-white'
-                  : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  ? 'bg-white shadow text-neutral-900 dark:bg-(--hub-panel-2) dark:text-white'
+                  : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
               onClick={() => setActiveTab('standard')}
             >
@@ -603,7 +603,7 @@ export default function FocusPage() {
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === 'max'
                   ? 'bg-indigo-600 text-white shadow'
-                  : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
               }`}
               onClick={() => setActiveTab('max')}
             >
@@ -645,7 +645,7 @@ export default function FocusPage() {
                     {p.label} {p.focus}/{p.breakMinutes}
                   </button>
                 ))}
-                <label className="ml-auto flex items-center gap-2 text-sm text-neutral-500">
+                <label className="ml-auto flex items-center gap-2 text-sm text-tertiary">
                   custom
                   <input
                     type="number"
@@ -669,7 +669,7 @@ export default function FocusPage() {
               />
 
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-emerald-400" aria-live="polite">
+                <p className="text-sm font-medium text-status-success-text" aria-live="polite">
                   {finishLine}
                 </p>
                 <button
@@ -689,7 +689,7 @@ export default function FocusPage() {
                   {phoneProtocolChecklist.map((item) => (
                     <label
                       key={item.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300"
+                      className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-secondary"
                     >
                       <input
                         type="checkbox"
@@ -714,7 +714,7 @@ export default function FocusPage() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="btn-ghost border border-emerald-500/30 text-emerald-400 text-xs py-1 px-2.5 flex items-center"
+                    className="btn-ghost border border-emerald-500/30 text-status-success-text text-xs py-1 px-2.5 flex items-center"
                     onClick={() => setShow3DMode(!show3DMode)}
                   >
                     <TreePine className="h-3.5 w-3.5 mr-1" />
@@ -722,7 +722,7 @@ export default function FocusPage() {
                   </button>
                   <Link
                     href="/world"
-                    className="btn-ghost border border-neutral-200 dark:border-(--hub-border) text-neutral-400 text-xs py-1 px-2.5"
+                    className="btn-ghost border border-neutral-200 dark:border-(--hub-border) text-faint text-xs py-1 px-2.5"
                   >
                     3D Sanctuary →
                   </Link>
@@ -746,10 +746,12 @@ export default function FocusPage() {
               <div className="text-6xl font-bold tabular-nums tracking-tight">
                 {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
               </div>
-              <div className="flex items-center justify-center gap-6 text-sm text-neutral-500">
+              <div className="flex items-center justify-center gap-6 text-sm text-tertiary">
                 <span>
                   tab switches:{' '}
-                  <span className={leaks > 0 ? 'font-semibold text-amber-400' : ''}>{leaks}</span>{' '}
+                  <span className={leaks > 0 ? 'font-semibold text-status-warning-text' : ''}>
+                    {leaks}
+                  </span>{' '}
                   (honest count via Page Visibility)
                 </span>
               </div>
@@ -762,7 +764,7 @@ export default function FocusPage() {
                   End early → friction gate
                 </button>
                 <button
-                  className="btn-ghost border border-amber-500/40 text-amber-500"
+                  className="btn-ghost border border-amber-500/40 text-status-warning-text"
                   onClick={() => armGate('relapse')}
                 >
                   Log relapse → friction gate
@@ -775,11 +777,11 @@ export default function FocusPage() {
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-6 text-center backdrop-blur">
               {gate.state.phase === 'countdown' && (
                 <div className="space-y-4">
-                  <p className="text-lg text-neutral-300">
+                  <p className="text-lg text-secondary">
                     {gate.state.trigger === 'relapse' ? 'Before you go back…' : 'Ending early?'}
                   </p>
                   <div className="text-8xl font-bold tabular-nums">{gate.state.secondsLeft}</div>
-                  <p className="max-w-sm text-sm text-neutral-500">
+                  <p className="max-w-sm text-sm text-tertiary">
                     The gate is not a punishment — it separates the impulse from the action.{' '}
                     {FRICTION_PROMPT.split('.')[0]} in a moment.
                   </p>
@@ -788,7 +790,7 @@ export default function FocusPage() {
 
               {gate.state.phase === 'breathing' && (
                 <div className="space-y-6">
-                  <p className="text-lg text-neutral-300">
+                  <p className="text-lg text-secondary">
                     Breath {gate.state.breathNumber} of 3 — 4-7-8
                   </p>
                   <div className="breathe mx-auto grid h-40 w-40 place-items-center rounded-full bg-indigo-500/20 text-xl font-semibold text-indigo-200">
@@ -815,10 +817,7 @@ export default function FocusPage() {
                     >
                       <CheckCircle2 className="h-4 w-4" /> I will do that instead — proceed
                     </button>
-                    <button
-                      className="btn-ghost text-neutral-400"
-                      onClick={() => void finishGate(false)}
-                    >
+                    <button className="btn-ghost text-faint" onClick={() => void finishGate(false)}>
                       <XCircle className="h-4 w-4" /> Abort the session
                     </button>
                   </div>
@@ -829,7 +828,7 @@ export default function FocusPage() {
               )}
 
               {gate.state.phase === 'outcome' && (
-                <p className="text-xl text-neutral-300">
+                <p className="text-xl text-secondary">
                   {gate.state.outcome === 'proceeded'
                     ? 'Good choice. Resuming…'
                     : 'Session closed. No guilt — fresh start framing.'}
@@ -855,14 +854,14 @@ export default function FocusPage() {
                 <h2 className="text-2xl font-bold tracking-tight text-white">
                   {activeLock.task || 'Deep Learning Lockdown'}
                 </h2>
-                <p className="text-sm text-neutral-400 mt-1">
+                <p className="text-sm text-faint mt-1">
                   Committed until {new Date(activeLock.endsAt ?? '').toLocaleTimeString()}
                 </p>
               </div>
 
               {/* Allowlist Snapshot Notice */}
               <div className="mx-auto max-w-lg rounded-xl border border-neutral-800 bg-neutral-950/60 p-3.5 text-left text-xs">
-                <div className="font-semibold text-neutral-300 mb-1 flex items-center gap-1.5">
+                <div className="font-semibold text-secondary mb-1 flex items-center gap-1.5">
                   <Globe className="h-3.5 w-3.5 text-indigo-400" />
                   Allowed Destinations:
                 </div>
@@ -899,7 +898,7 @@ export default function FocusPage() {
                 <div className="pt-2">
                   <button
                     type="button"
-                    className="btn-ghost border border-rose-500/30 text-rose-400 hover:bg-rose-950/20 text-xs"
+                    className="btn-ghost border border-rose-500/30 text-danger-text hover:bg-rose-950/20 text-xs"
                     onClick={() => requestEarlyExitMutation.mutate()}
                     disabled={requestEarlyExitMutation.isPending}
                   >
@@ -910,11 +909,11 @@ export default function FocusPage() {
 
               {activeLock.exitState === 'cooldown' && (
                 <div className="mx-auto max-w-md space-y-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 text-left">
-                  <div className="flex items-center gap-2 text-amber-300 font-semibold text-sm">
+                  <div className="flex items-center gap-2 text-status-warning-text font-semibold text-sm">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     Early Exit Cooldown: {activeLock.cooldownRemainingSec}s remaining
                   </div>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-faint">
                     Take a slow breath. Ulysses contracts separate sudden impulses from deliberate
                     actions. Why do you want to break focus?
                   </p>
@@ -938,11 +937,11 @@ export default function FocusPage() {
 
               {activeLock.exitState === 'can_confirm' && (
                 <div className="mx-auto max-w-md space-y-3 rounded-xl border border-rose-500/40 bg-rose-950/20 p-4 text-left">
-                  <div className="flex items-center gap-2 text-rose-300 font-semibold text-sm">
+                  <div className="flex items-center gap-2 text-danger-text font-semibold text-sm">
                     <ShieldAlert className="h-4 w-4 shrink-0" />
                     Cooldown Complete — State Your Reflection
                   </div>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-faint">
                     Type at least 20 characters explaining the reason for ending early. It will be
                     logged to your friction history.
                   </p>
@@ -986,7 +985,7 @@ export default function FocusPage() {
                     <h2 className="text-base font-bold text-neutral-100">
                       Precommitment Ulysses Lockdown
                     </h2>
-                    <p className="text-xs text-neutral-400 mt-0.5">
+                    <p className="text-xs text-faint mt-0.5">
                       Chrome opens only allowlisted domains and learning video on YouTube. Windows
                       watchdog minimizes all other desktop apps.
                     </p>
@@ -1004,7 +1003,7 @@ export default function FocusPage() {
                         className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition ${
                           maxMinutes === m
                             ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
-                            : 'border-neutral-200 text-neutral-400 hover:border-neutral-300 dark:border-(--hub-border)'
+                            : 'border-neutral-200 text-faint hover:border-neutral-300 dark:border-(--hub-border)'
                         }`}
                         onClick={() => setMaxMinutes(m)}
                       >
@@ -1071,7 +1070,7 @@ export default function FocusPage() {
                             type="button"
                             onClick={() => setExtraDomains(extraDomains.filter((x) => x !== d))}
                           >
-                            <X className="h-3 w-3 hover:text-rose-400" />
+                            <X className="h-3 w-3 hover:text-danger-text" />
                           </button>
                         </span>
                       ))}
@@ -1108,7 +1107,7 @@ export default function FocusPage() {
                             type="button"
                             onClick={() => setExtraApps(extraApps.filter((x) => x !== a))}
                           >
-                            <X className="h-3 w-3 hover:text-rose-400" />
+                            <X className="h-3 w-3 hover:text-danger-text" />
                           </button>
                         </span>
                       ))}
@@ -1141,12 +1140,10 @@ export default function FocusPage() {
                       Extension Connected
                     </span>
                   ) : (
-                    <span className="text-neutral-500 text-[11px]">
-                      Awaiting Extension Heartbeat
-                    </span>
+                    <span className="text-tertiary text-[11px]">Awaiting Extension Heartbeat</span>
                   )}
                 </div>
-                <p className="text-neutral-400 text-[11px] leading-relaxed">
+                <p className="text-faint text-[11px] leading-relaxed">
                   Install the Learning HUB companion extension in Chrome from{' '}
                   <code className="text-neutral-300 bg-neutral-800 px-1 py-0.5 rounded">
                     apps/extension/dist
@@ -1175,9 +1172,9 @@ export default function FocusPage() {
       <div className="panel">
         <p className="label mb-3">Session history</p>
         {history.isLoading ? (
-          <p className="text-sm text-neutral-500">Loading…</p>
+          <p className="text-sm text-tertiary">Loading…</p>
         ) : (history.data?.sessions.length ?? 0) === 0 ? (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-tertiary">
             No sessions yet — start your first protected block.
           </p>
         ) : (
@@ -1193,16 +1190,16 @@ export default function FocusPage() {
                     )}
                     {s.task ?? 'Focus session'}
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-tertiary">
                     {new Date(s.startedAt).toLocaleString()} · planned {s.plannedMinutes}m
                     {s.actualMinutes != null ? ` · actual ${s.actualMinutes}m` : ''}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3 text-xs">
-                  <span className={s.leaks > 0 ? 'text-amber-500' : 'text-neutral-500'}>
+                  <span className={s.leaks > 0 ? 'text-status-warning-text' : 'text-tertiary'}>
                     {s.leaks} leaks
                   </span>
-                  <span className={s.completed ? 'text-emerald-500' : 'text-neutral-500'}>
+                  <span className={s.completed ? 'text-status-success-text' : 'text-tertiary'}>
                     {s.completed ? 'completed' : 'ended early'}
                   </span>
                 </div>
@@ -1230,15 +1227,15 @@ export default function FocusPage() {
                   key={s.id}
                   className={`flex items-start gap-3 rounded-lg p-2 ${done ? 'opacity-50' : ''}`}
                 >
-                  <span className="mt-0.5 text-xs text-neutral-500">{i + 1}.</span>
+                  <span className="mt-0.5 text-xs text-tertiary">{i + 1}.</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
                       {s.label}
                     </p>
-                    <p className="text-xs text-neutral-500">{s.detail}</p>
+                    <p className="text-xs text-tertiary">{s.detail}</p>
                   </div>
                   {done ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                   ) : (
                     <button className="btn-ghost text-xs" onClick={() => detoxStep.mutate(s.id)}>
                       Mark done

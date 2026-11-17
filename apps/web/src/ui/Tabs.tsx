@@ -56,7 +56,7 @@ export function Tabs<K extends string>({ items, value, onChange, label }: TabsPr
               'flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors',
               active
                 ? 'bg-white font-medium text-neutral-900 shadow-sm dark:bg-(--hub-border) dark:text-neutral-100'
-                : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200',
+                : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200',
             )}
           >
             {item.icon}

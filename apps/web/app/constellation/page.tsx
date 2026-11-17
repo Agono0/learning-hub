@@ -372,7 +372,7 @@ export default function ConstellationPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
               viewMode === 'studio'
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-faint hover:text-white'
             }`}
           >
             <Move3d className="h-3.5 w-3.5" />
@@ -384,7 +384,7 @@ export default function ConstellationPage() {
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
               viewMode === 'classic'
                 ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                : 'text-faint hover:text-white'
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
@@ -431,7 +431,7 @@ export default function ConstellationPage() {
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /> Learning (60–80%)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Weak (&lt; 60%)
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> Weak (&lt; 60%)
             </span>
           </div>
         </div>
@@ -457,7 +457,7 @@ export default function ConstellationPage() {
           </p>
           <div className="grid gap-3 text-xs sm:grid-cols-2">
             <div>
-              <div className="font-semibold text-neutral-500">Builds on</div>
+              <div className="font-semibold text-tertiary">Builds on</div>
               {prerequisites.length ? (
                 <ul className="mt-1 space-y-0.5">
                   {prerequisites.map((e) => (
@@ -465,11 +465,11 @@ export default function ConstellationPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-neutral-500">No prerequisites linked.</p>
+                <p className="mt-1 text-tertiary">No prerequisites linked.</p>
               )}
             </div>
             <div>
-              <div className="font-semibold text-neutral-500">Unlocks</div>
+              <div className="font-semibold text-tertiary">Unlocks</div>
               {dependents.length ? (
                 <ul className="mt-1 space-y-0.5">
                   {dependents.map((e) => (
@@ -477,7 +477,7 @@ export default function ConstellationPage() {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-neutral-500">Nothing depends on this yet.</p>
+                <p className="mt-1 text-tertiary">Nothing depends on this yet.</p>
               )}
             </div>
           </div>
@@ -509,7 +509,7 @@ export default function ConstellationPage() {
               </span>
             </Callout>
           ) : evaluate.isSuccess ? (
-            <p className="text-xs text-neutral-500">Recorded — the graph has been updated.</p>
+            <p className="text-xs text-tertiary">Recorded — the graph has been updated.</p>
           ) : null}
         </Panel>
       ) : null}
@@ -536,7 +536,7 @@ export default function ConstellationPage() {
                 >
                   <div className="flex items-center justify-between gap-2 font-semibold">
                     <span className="truncate">{node.title}</span>
-                    <span className={b === 'weak' ? 'text-rose-600' : 'text-sky-600'}>
+                    <span className={b === 'weak' ? 'text-rose-600' : 'text-status-info-text'}>
                       {Math.round(node.masteryProb * 100)}%
                     </span>
                   </div>

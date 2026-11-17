@@ -125,14 +125,14 @@ export function CommandPalette() {
           className="w-full border-b border-neutral-200 bg-transparent px-4 py-3 text-sm outline-none dark:border-(--hub-border)"
         />
         <Command.List className="max-h-[50dvh] overflow-y-auto p-2">
-          <Command.Empty className="px-3 py-6 text-center text-sm text-neutral-500">
+          <Command.Empty className="px-3 py-6 text-center text-sm text-tertiary">
             {isFetching ? 'Searching…' : debounced ? 'No matches — try fewer words.' : null}
           </Command.Empty>
 
           {debounced && (
             <Command.Group
               heading={
-                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                <span className="px-2 text-[10px] uppercase tracking-widest text-faint">
                   Search
                 </span>
               }
@@ -142,7 +142,7 @@ export function CommandPalette() {
                 onSelect={() => go(`/search?q=${encodeURIComponent(debounced)}`)}
                 className="cursor-pointer rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <SearchIcon className="h-4 w-4 shrink-0 text-neutral-400" />
+                <SearchIcon className="h-4 w-4 shrink-0 text-faint" />
                 Search everything for “{debounced}”
               </Command.Item>
             </Command.Group>
@@ -151,7 +151,7 @@ export function CommandPalette() {
           {(data?.hits.length ?? 0) > 0 && (
             <Command.Group
               heading={
-                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                <span className="px-2 text-[10px] uppercase tracking-widest text-faint">
                   Results · {data!.mode === 'fts5' ? 'full-text' : 'substring'}
                 </span>
               }
@@ -166,10 +166,10 @@ export function CommandPalette() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{hit.title}</span>
                     {hit.snippet && hit.snippet !== hit.title && (
-                      <span className="block truncate text-xs text-neutral-500">{hit.snippet}</span>
+                      <span className="block truncate text-xs text-tertiary">{hit.snippet}</span>
                     )}
                   </span>
-                  <span className="ml-2 shrink-0 text-[10px] uppercase text-neutral-400">
+                  <span className="ml-2 shrink-0 text-[10px] uppercase text-faint">
                     {KIND_LABEL[hit.kind]}
                   </span>
                 </Command.Item>
@@ -180,7 +180,7 @@ export function CommandPalette() {
           {debounced.length === 0 && (
             <Command.Group
               heading={
-                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                <span className="px-2 text-[10px] uppercase tracking-widest text-faint">
                   Actions
                 </span>
               }
@@ -190,14 +190,14 @@ export function CommandPalette() {
                 onSelect={() => go('/review')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <ReviewIcon className="h-4 w-4 shrink-0 text-neutral-400" /> Start a review session
+                <ReviewIcon className="h-4 w-4 shrink-0 text-faint" /> Start a review session
               </Command.Item>
               <Command.Item
                 value="action start focus session"
                 onSelect={() => go('/focus')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Timer className="h-4 w-4 shrink-0 text-neutral-400" /> Start a focus session
+                <Timer className="h-4 w-4 shrink-0 text-faint" /> Start a focus session
               </Command.Item>
               <Command.Item
                 value="action capture a thought quick hud"
@@ -207,57 +207,56 @@ export function CommandPalette() {
                 }}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Zap className="h-4 w-4 shrink-0 text-neutral-400" /> Capture a thought (HUD)
+                <Zap className="h-4 w-4 shrink-0 text-faint" /> Capture a thought (HUD)
               </Command.Item>
               <Command.Item
                 value="action start commute audio hands free"
                 onSelect={() => go('/audio-commute')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Headphones className="h-4 w-4 shrink-0 text-neutral-400" /> Start Commute Audio
+                <Headphones className="h-4 w-4 shrink-0 text-faint" /> Start Commute Audio
               </Command.Item>
               <Command.Item
                 value="action start sleep targeted memory reactivation tmr"
                 onSelect={() => go('/sleep-tmr')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Moon className="h-4 w-4 shrink-0 text-neutral-400" /> Start Sleep TMR
+                <Moon className="h-4 w-4 shrink-0 text-faint" /> Start Sleep TMR
               </Command.Item>
               <Command.Item
                 value="action enter 3d memory palace loci"
                 onSelect={() => go('/palace-3d')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Box className="h-4 w-4 shrink-0 text-neutral-400" /> Enter 3D Memory Palace
+                <Box className="h-4 w-4 shrink-0 text-faint" /> Enter 3D Memory Palace
               </Command.Item>
               <Command.Item
                 value="action view knowledge constellation galaxy"
                 onSelect={() => go('/constellation')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Sparkles className="h-4 w-4 shrink-0 text-neutral-400" /> Open Knowledge
-                Constellation
+                <Sparkles className="h-4 w-4 shrink-0 text-faint" /> Open Knowledge Constellation
               </Command.Item>
               <Command.Item
                 value="action start socratic voice tutor oral exam"
                 onSelect={() => go('/voice-tutor')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Mic className="h-4 w-4 shrink-0 text-neutral-400" /> Start Socratic Voice Tutor
+                <Mic className="h-4 w-4 shrink-0 text-faint" /> Start Socratic Voice Tutor
               </Command.Item>
               <Command.Item
                 value="action take timed mock exam simulator"
                 onSelect={() => go('/exam-sim')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <FileCheck className="h-4 w-4 shrink-0 text-neutral-400" /> Take Timed Mock Exam
+                <FileCheck className="h-4 w-4 shrink-0 text-faint" /> Take Timed Mock Exam
               </Command.Item>
               <Command.Item
                 value="action open weakness radar v2 confusion pairs"
                 onSelect={() => go('/weakness')}
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
-                <Radar className="h-4 w-4 shrink-0 text-neutral-400" /> Open Weakness Radar v2
+                <Radar className="h-4 w-4 shrink-0 text-faint" /> Open Weakness Radar v2
               </Command.Item>
               {(paletteActions ?? []).map((a) => (
                 <Command.Item
@@ -272,7 +271,7 @@ export function CommandPalette() {
                   }}
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
                 >
-                  <Zap className="h-4 w-4 shrink-0 text-neutral-400" /> {a.label}
+                  <Zap className="h-4 w-4 shrink-0 text-faint" /> {a.label}
                 </Command.Item>
               ))}
             </Command.Group>
@@ -282,7 +281,7 @@ export function CommandPalette() {
             <Command.Group
               key={section.group}
               heading={
-                <span className="px-2 text-[10px] uppercase tracking-widest text-neutral-400">
+                <span className="px-2 text-[10px] uppercase tracking-widest text-faint">
                   {section.group}
                 </span>
               }
@@ -296,7 +295,7 @@ export function CommandPalette() {
                     onSelect={() => go(item.href)}
                     className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
                   >
-                    <Icon className="h-4 w-4 shrink-0 text-neutral-400" />
+                    <Icon className="h-4 w-4 shrink-0 text-faint" />
                     {item.label}
                   </Command.Item>
                 )

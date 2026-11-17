@@ -25,16 +25,16 @@ export default function FlexibilityPage() {
         subtitle="Harness Spiro's Cognitive Flexibility Theory (1988) and De Bono's Six Thinking Hats (1985): criss-cross complex conceptual landscapes, re-represent ill-structured problems from orthogonal lenses, and conquer reductive oversimplification traps."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-300">
-              <Layers className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
+              <Layers className="h-3.5 w-3.5 text-status-info-text" />
               <span>Spiro CFT (1988)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-violet-300">
-              <Compass className="h-3.5 w-3.5 text-violet-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+              <Compass className="h-3.5 w-3.5 text-indigo-400" />
               <span>De Bono (1985)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-              <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text">
+              <ShieldAlert className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Feltovich (1989)</span>
             </span>
           </div>
@@ -44,11 +44,11 @@ export default function FlexibilityPage() {
       {/* Scientific Foundation Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 font-bold text-xs text-cyan-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 font-bold text-xs text-status-info-text uppercase tracking-wider">
             <Layers className="h-4 w-4" />
             <span>Landscape Criss-Crossing</span>
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-slate-300">
+          <p className="mt-2 text-xs leading-relaxed text-secondary">
             Advanced knowledge in ill-structured domains cannot be learned through a single neat
             taxonomy. Learners must criss-cross the conceptual landscape by revisiting identical
             cases through multiple thematic routes.
@@ -56,11 +56,11 @@ export default function FlexibilityPage() {
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 font-bold text-xs text-violet-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 font-bold text-xs text-indigo-400 uppercase tracking-wider">
             <Brain className="h-4 w-4" />
             <span>Multi-Perspective Dispersion</span>
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-slate-300">
+          <p className="mt-2 text-xs leading-relaxed text-secondary">
             Fixating on a single thinking style (e.g. only empirical data or risk avoidance) creates
             cognitive rigidity. Tracking Shannon entropy across all six hats fosters
             high-dimensional cognitive flexibility.
@@ -68,11 +68,11 @@ export default function FlexibilityPage() {
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 font-bold text-xs text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 font-bold text-xs text-status-success-text uppercase tracking-wider">
             <Sparkles className="h-4 w-4" />
             <span>Reductive Trap Immunity</span>
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-slate-300">
+          <p className="mt-2 text-xs leading-relaxed text-secondary">
             Oversimplification traps like Additivity Bias (assuming linear effects) lead to
             catastrophic architectural failures. Disproving these biases yields robust,
             context-resilient transfer.

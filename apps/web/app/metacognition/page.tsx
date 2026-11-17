@@ -25,12 +25,12 @@ export default function MetacognitionPage() {
         subtitle="Calibrate subjective confidence against empirical recall, pierce fluency illusions, and exploit the Butterfield hypercorrection effect on high-confidence errors."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-300">
-              <Brain className="h-3.5 w-3.5 text-purple-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+              <Brain className="h-3.5 w-3.5 text-indigo-400" />
               <span>Nelson-Narens (1990)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-              <Flame className="h-3.5 w-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text">
+              <Flame className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Hypercorrection (Butterfield 2001)</span>
             </span>
           </div>
@@ -41,16 +41,16 @@ export default function MetacognitionPage() {
       <MetacognitionStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur-md">
+      <div className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md">
         <div className="flex items-center gap-2.5 mb-3">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">
+          <Sparkles className="h-5 w-5 text-ac-text" />
+          <h3 className="text-sm font-bold text-strong">
             Learning Science Foundations & Psychometrics
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground leading-relaxed">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-tertiary leading-relaxed">
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Dual-Level Metacognition (Nelson & Narens 1990)
             </span>
             <p>
@@ -60,7 +60,7 @@ export default function MetacognitionPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Hypercorrection Surprise (Butterfield & Metcalfe 2001)
             </span>
             <p>
@@ -70,7 +70,7 @@ export default function MetacognitionPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Murphy Brier Partition & Gamma Resolution
             </span>
             <p>

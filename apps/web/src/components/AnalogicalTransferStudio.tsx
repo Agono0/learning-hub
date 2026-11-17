@@ -175,14 +175,14 @@ export function AnalogicalTransferStudio({
       <div className="flex flex-wrap items-center justify-between gap-4">
         {/* Suite Quick Selector */}
         <div className="flex items-center gap-2">
-          <label htmlFor="suite-select" className="text-xs font-semibold text-slate-400">
+          <label htmlFor="suite-select" className="text-xs font-semibold text-faint">
             Analogical Problem Suite:
           </label>
           <select
             id="suite-select"
             value={sessionState.currentSuiteId}
             onChange={(e) => handleSelectSuite(e.target.value)}
-            className="rounded-xl border border-slate-700 bg-slate-800/90 px-3 py-1.5 text-xs font-bold text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="rounded-xl border border-slate-700 bg-slate-800/90 px-3 py-1.5 text-xs font-bold text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
           >
             {Object.entries(initialSuites).map(([id, s]) => (
               <option key={id} value={id}>
@@ -203,10 +203,10 @@ export function AnalogicalTransferStudio({
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
               activeTab === 'isomorphic_mapping'
                 ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-faint hover:text-slate-200'
             }`}
           >
-            <GitCompare className="h-3.5 w-3.5 text-cyan-400" />
+            <GitCompare className="h-3.5 w-3.5 text-status-info-text" />
             <span>Isomorphic Mapping</span>
           </button>
           <button
@@ -218,10 +218,10 @@ export function AnalogicalTransferStudio({
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
               activeTab === 'convergence_schema'
                 ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-faint hover:text-slate-200'
             }`}
           >
-            <Layers className="h-3.5 w-3.5 text-violet-400" />
+            <Layers className="h-3.5 w-3.5 text-indigo-400" />
             <span>Convergence Schema</span>
           </button>
           <button
@@ -233,10 +233,10 @@ export function AnalogicalTransferStudio({
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
               activeTab === 'false_analogy_crucible'
                 ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-faint hover:text-slate-200'
             }`}
           >
-            <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+            <AlertTriangle className="h-3.5 w-3.5 text-danger-text" />
             <span>False Analogy Decoy</span>
           </button>
           <button
@@ -248,10 +248,10 @@ export function AnalogicalTransferStudio({
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
               activeTab === 'fsrs_deck'
                 ? 'bg-slate-800 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'text-faint hover:text-slate-200'
             }`}
           >
-            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
             <span>FSRS Schema Deck ({fsrsCards.length})</span>
           </button>
         </div>
@@ -263,7 +263,7 @@ export function AnalogicalTransferStudio({
           {/* Base Analog Selector Sub-Bar */}
           <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/40 p-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Select Base Domain Analog:</span>
+              <span className="text-xs text-faint">Select Base Domain Analog:</span>
               <div className="flex gap-1.5">
                 {currentSuite.baseAnalogs.map((base, idx) => (
                   <button
@@ -272,7 +272,7 @@ export function AnalogicalTransferStudio({
                     onClick={() => handleSelectBaseAnalog(idx)}
                     className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
                       sessionState.selectedBaseAnalogIndex === idx
-                        ? 'bg-cyan-600 text-white'
+                        ? 'bg-sky-600 text-white'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
@@ -294,7 +294,7 @@ export function AnalogicalTransferStudio({
           {/* Side-by-Side Domain Panels */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Left Column: Source Base Domain */}
-            <Panel className="p-6 border-cyan-900/40">
+            <Panel className="p-6 border-sky-900/40">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div>
                   <Badge tone="cyan" className="text-[10px]">
@@ -312,7 +312,7 @@ export function AnalogicalTransferStudio({
 
               {/* Base Entities & Interactive Mapping Target Picker */}
               <div className="mt-5">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint">
                   Base Entities &rarr; Map to Target:
                 </span>
                 <div className="mt-3 space-y-3">
@@ -337,7 +337,9 @@ export function AnalogicalTransferStudio({
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="text-xs font-bold text-slate-100">{baseEnt.name}</span>
-                            <span className="ml-2 text-[10px] text-cyan-400">({baseEnt.role})</span>
+                            <span className="ml-2 text-[10px] text-status-info-text">
+                              ({baseEnt.role})
+                            </span>
                           </div>
                           {isEvaluated && (
                             <Badge tone={isMatch ? 'success' : 'danger'} className="text-[10px]">
@@ -362,7 +364,7 @@ export function AnalogicalTransferStudio({
                         <div className="mt-3 flex items-center gap-2">
                           <label
                             htmlFor={`target-entity-select-${baseEnt.id}`}
-                            className="text-xs text-slate-400"
+                            className="text-xs text-faint"
                           >
                             Corresponds to:
                           </label>
@@ -371,7 +373,7 @@ export function AnalogicalTransferStudio({
                             value={currentMapping}
                             onChange={(e) => handleSetEntityMapping(baseEnt.id, e.target.value)}
                             disabled={isEvaluated}
-                            className="flex-1 rounded-lg border border-slate-700 bg-slate-800/90 px-2.5 py-1 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                            className="flex-1 rounded-lg border border-slate-700 bg-slate-800/90 px-2.5 py-1 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
                           >
                             <option value="">-- Select Target Entity --</option>
                             {currentSuite.targetProblem.entities.map((targetEnt) => (
@@ -389,7 +391,7 @@ export function AnalogicalTransferStudio({
             </Panel>
 
             {/* Right Column: Target Problem Domain */}
-            <Panel className="p-6 border-violet-900/40">
+            <Panel className="p-6 border-indigo-900/40">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div>
                   <Badge tone="violet" className="text-[10px]">
@@ -407,7 +409,7 @@ export function AnalogicalTransferStudio({
 
               {/* Target Entities Display */}
               <div className="mt-5">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint">
                   Target Domain Entities:
                 </span>
                 <div className="mt-3 space-y-3">
@@ -418,7 +420,7 @@ export function AnalogicalTransferStudio({
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-slate-100">{targetEnt.name}</span>
-                        <span className="text-[10px] text-violet-400">({targetEnt.role})</span>
+                        <span className="text-[10px] text-indigo-400">({targetEnt.role})</span>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {targetEnt.surfaceAttributes.map((attr) => (
@@ -440,10 +442,10 @@ export function AnalogicalTransferStudio({
           {/* Relational Predicate Correspondence Mapping Bar */}
           <Panel className="p-6">
             <h4 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <Network className="h-4 w-4 text-cyan-400" />
+              <Network className="h-4 w-4 text-status-info-text" />
               <span>Gentner Higher-Order Predicate Preservation</span>
             </h4>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-faint">
               True analogies preserve systems of relational predicates (causal results, threshold
               boundaries) rather than isolated objects.
             </p>
@@ -466,11 +468,11 @@ export function AnalogicalTransferStudio({
                         <Badge tone="cyan" className="text-[10px]">
                           {basePred.predicateType}
                         </Badge>
-                        <span className="text-xs font-mono font-bold text-slate-300">
+                        <span className="text-xs font-mono font-bold text-secondary">
                           {basePred.predicateName}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                      <p className="mt-2 text-xs text-faint leading-relaxed">
                         {basePred.higherOrderExplanation}
                       </p>
                     </div>
@@ -478,7 +480,7 @@ export function AnalogicalTransferStudio({
                     <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-2">
                       <label
                         htmlFor={`predicate-select-${basePred.id}`}
-                        className="text-xs text-slate-400"
+                        className="text-xs text-faint"
                       >
                         Target Predicate:
                       </label>
@@ -487,7 +489,7 @@ export function AnalogicalTransferStudio({
                         value={mappedTargetPredId}
                         onChange={(e) => handleSetPredicateMapping(basePred.id, e.target.value)}
                         disabled={isEvaluated}
-                        className="flex-1 rounded-lg border border-slate-700 bg-slate-800/90 px-2.5 py-1 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                        className="flex-1 rounded-lg border border-slate-700 bg-slate-800/90 px-2.5 py-1 text-xs font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
                       >
                         <option value="">-- Match Relational Predicate --</option>
                         {targetMatches.map((tp) => (
@@ -504,7 +506,7 @@ export function AnalogicalTransferStudio({
 
             {/* Abstract Convergence Schema Synthesis Input */}
             <div className="mt-6">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold text-secondary">
                 Articulate the Domain-Invariant Convergence Schema:
               </label>
               <textarea
@@ -513,7 +515,7 @@ export function AnalogicalTransferStudio({
                 disabled={!!currentTelemetry}
                 placeholder="State the underlying principle in abstract terms (e.g., 'Subdivide a large force into multiple sub-threshold fractions so they do not destroy the intervening medium, and synchronize them to converge on the target')..."
                 rows={3}
-                className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-200 placeholder-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
               />
             </div>
 
@@ -525,7 +527,7 @@ export function AnalogicalTransferStudio({
                   Object.keys(sessionState.activeEntityMappings).length === 0 ||
                   schemaText.trim().length === 0
                 }
-                className="gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 px-6"
+                className="gap-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 px-6"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Evaluate Structure Mapping</span>
@@ -541,11 +543,11 @@ export function AnalogicalTransferStudio({
                     Systematicity: {currentTelemetry.systematicityScore}/100
                   </Badge>
                 </div>
-                <p className="mt-2 text-xs text-slate-300 leading-relaxed">
+                <p className="mt-2 text-xs text-secondary leading-relaxed">
                   {currentTelemetry.feedbackMessage}
                 </p>
-                <div className="mt-3 pt-2.5 border-t border-slate-800 text-xs text-slate-400">
-                  <strong className="text-cyan-400">Canonical Solution:</strong>{' '}
+                <div className="mt-3 pt-2.5 border-t border-slate-800 text-xs text-faint">
+                  <strong className="text-status-info-text">Canonical Solution:</strong>{' '}
                   {currentSuite.targetProblem.solutionProcedure}
                 </div>
               </div>
@@ -559,10 +561,10 @@ export function AnalogicalTransferStudio({
         <Panel className="p-6">
           <div className="border-b border-slate-800 pb-4">
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <Layers className="h-4 w-4 text-violet-400" />
+              <Layers className="h-4 w-4 text-indigo-400" />
               <span>Multi-Analog Convergence Schema Synthesis (Gick & Holyoak 1983)</span>
             </h3>
-            <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+            <p className="mt-1 text-xs text-faint leading-relaxed">
               When learners examine only ONE analog, spontaneous transfer occurs in only 30% of
               cases. When comparing TWO diverse analogs, spontaneous transfer surges to over 80% as
               superficial narratives drop away and the abstract relational schema crystallizes.
@@ -579,10 +581,10 @@ export function AnalogicalTransferStudio({
               <h4 className="mt-2 text-sm font-bold text-slate-100">
                 {currentSuite.baseAnalogs[0]?.scenarioTitle}
               </h4>
-              <p className="mt-2 flex-1 text-xs text-slate-400 leading-relaxed">
+              <p className="mt-2 flex-1 text-xs text-faint leading-relaxed">
                 {currentSuite.baseAnalogs[0]?.narrativeDescription}
               </p>
-              <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] font-semibold text-cyan-300">
+              <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] font-semibold text-status-info-text">
                 Procedure: {currentSuite.baseAnalogs[0]?.solutionProcedure}
               </div>
             </div>
@@ -595,11 +597,11 @@ export function AnalogicalTransferStudio({
               <h4 className="mt-2 text-sm font-bold text-slate-100">
                 {currentSuite.baseAnalogs[1]?.scenarioTitle ?? 'Radial Water Streams'}
               </h4>
-              <p className="mt-2 flex-1 text-xs text-slate-400 leading-relaxed">
+              <p className="mt-2 flex-1 text-xs text-faint leading-relaxed">
                 {currentSuite.baseAnalogs[1]?.narrativeDescription ??
                   'Small water hoses deployed in a radial circle prevent soil collapse while delivering adequate extinguishing water.'}
               </p>
-              <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] font-semibold text-violet-300">
+              <div className="mt-3 pt-2 border-t border-slate-800/80 text-[11px] font-semibold text-indigo-300">
                 Procedure:{' '}
                 {currentSuite.baseAnalogs[1]?.solutionProcedure ?? 'Converge radial streams.'}
               </div>
@@ -613,10 +615,10 @@ export function AnalogicalTransferStudio({
               <h4 className="mt-2 text-sm font-bold text-slate-100">
                 {currentSuite.targetProblem.scenarioTitle}
               </h4>
-              <p className="mt-2 flex-1 text-xs text-slate-400 leading-relaxed">
+              <p className="mt-2 flex-1 text-xs text-faint leading-relaxed">
                 {currentSuite.targetProblem.narrativeDescription}
               </p>
-              <div className="mt-3 pt-2 border-t border-emerald-900/40 text-[11px] font-semibold text-emerald-300">
+              <div className="mt-3 pt-2 border-t border-emerald-900/40 text-[11px] font-semibold text-status-success-text">
                 Procedure: {currentSuite.targetProblem.solutionProcedure}
               </div>
             </div>
@@ -625,7 +627,7 @@ export function AnalogicalTransferStudio({
           {/* Unified Abstract Schema Card */}
           <div className="mt-6 rounded-xl border border-slate-700 bg-slate-900/90 p-5">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-400" />
+              <Sparkles className="h-4 w-4 text-status-warning-text" />
               <h4 className="text-sm font-bold text-slate-100">
                 {currentSuite.convergenceSchema.schemaName}
               </h4>
@@ -633,20 +635,20 @@ export function AnalogicalTransferStudio({
 
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3 text-xs">
               <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800">
-                <span className="font-bold text-slate-400">Abstract Goal:</span>
-                <p className="mt-1 text-slate-300">{currentSuite.convergenceSchema.abstractGoal}</p>
+                <span className="font-bold text-faint">Abstract Goal:</span>
+                <p className="mt-1 text-secondary">{currentSuite.convergenceSchema.abstractGoal}</p>
               </div>
 
               <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800">
-                <span className="font-bold text-slate-400">Abstract Obstacle:</span>
-                <p className="mt-1 text-slate-300">
+                <span className="font-bold text-faint">Abstract Obstacle:</span>
+                <p className="mt-1 text-secondary">
                   {currentSuite.convergenceSchema.abstractObstacle}
                 </p>
               </div>
 
               <div className="rounded-lg bg-slate-950/60 p-3 border border-slate-800">
-                <span className="font-bold text-slate-400">Abstract Solution:</span>
-                <p className="mt-1 text-slate-300">
+                <span className="font-bold text-faint">Abstract Solution:</span>
+                <p className="mt-1 text-secondary">
                   {currentSuite.convergenceSchema.abstractSolution}
                 </p>
               </div>
@@ -665,10 +667,10 @@ export function AnalogicalTransferStudio({
         <Panel className="p-6">
           <div className="border-b border-slate-800 pb-4">
             <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-rose-400" />
+              <AlertTriangle className="h-4 w-4 text-danger-text" />
               <span>False Analogy Decoy Inspector (Novick 1988 Negative Transfer)</span>
             </h3>
-            <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+            <p className="mt-1 text-xs text-faint leading-relaxed">
               Novices frequently fall for surface traps (e.g. matching words like
               &apos;stomach&apos;, &apos;doctor&apos;, &apos;tissue&apos;) even when the relational
               causal structure is completely broken. Inspect the negative transfer trap below:
@@ -687,13 +689,13 @@ export function AnalogicalTransferStudio({
               </div>
             </div>
 
-            <p className="mt-3 text-xs leading-relaxed text-slate-300">
+            <p className="mt-3 text-xs leading-relaxed text-secondary">
               {currentSuite.falseAnalogyDecoy.narrative}
             </p>
 
             {/* Surface matching keywords that fool novices */}
             <div className="mt-4">
-              <span className="text-xs font-semibold text-slate-400">
+              <span className="text-xs font-semibold text-faint">
                 Surface Vocabulary That Triggers False Matching:
               </span>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -710,11 +712,11 @@ export function AnalogicalTransferStudio({
 
             {/* Why the relational predicate fails */}
             <div className="mt-4 rounded-xl bg-slate-900/80 p-4 border border-slate-800 text-xs text-slate-300">
-              <strong className="text-rose-400">Why Relational Mapping Breaks Down:</strong>
+              <strong className="text-danger-text">Why Relational Mapping Breaks Down:</strong>
               <p className="mt-1 leading-relaxed">
                 {currentSuite.falseAnalogyDecoy.brokenPredicateReason}
               </p>
-              <div className="mt-2.5 pt-2 border-t border-slate-800 text-slate-400">
+              <div className="mt-2.5 pt-2 border-t border-slate-800 text-faint">
                 <strong>Novice Cognitive Trap:</strong>{' '}
                 {currentSuite.falseAnalogyDecoy.noviceTrapExplanation}
               </div>
@@ -729,10 +731,10 @@ export function AnalogicalTransferStudio({
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div>
               <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-amber-400" />
+                <Sparkles className="h-4 w-4 text-status-warning-text" />
                 <span>FSRS Analogical Generalization Review Deck</span>
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-faint">
                 Cross-domain flashcards created from structure-mapping sessions. Memory stability is
                 multiplied by your Gentner Systematicity score.
               </p>
@@ -744,7 +746,7 @@ export function AnalogicalTransferStudio({
                 disabled={fsrsCards.length === 0}
                 className="gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs py-2"
               >
-                <Copy className="h-3.5 w-3.5 text-slate-400" />
+                <Copy className="h-3.5 w-3.5 text-faint" />
                 <span>Copy JSON</span>
               </Button>
               <Button
@@ -765,10 +767,10 @@ export function AnalogicalTransferStudio({
           )}
 
           {fsrsCards.length === 0 ? (
-            <div className="mt-8 flex flex-col items-center justify-center p-8 text-center text-slate-400">
+            <div className="mt-8 flex flex-col items-center justify-center p-8 text-center text-faint">
               <BookOpen className="h-10 w-10 text-slate-600 mb-3" />
-              <p className="text-sm font-semibold text-slate-300">No Evaluated Suites Yet</p>
-              <p className="mt-1 text-xs text-slate-500 max-w-sm">
+              <p className="text-sm font-semibold text-secondary">No Evaluated Suites Yet</p>
+              <p className="mt-1 text-xs text-tertiary max-w-sm">
                 Perform structure mapping in the Isomorphic Mapping stage to synthesize cross-domain
                 transfer flashcards with elevated initial memory stability.
               </p>
@@ -784,18 +786,18 @@ export function AnalogicalTransferStudio({
                     <Badge tone="cyan" className="text-[10px]">
                       Stability: {card.suggestedStabilityDays} days
                     </Badge>
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-tertiary font-mono">
                       {card.schemaCategory}
                     </span>
                   </div>
 
                   <div className="mt-3 flex-1 text-xs">
-                    <div className="font-semibold text-slate-300 mb-1">Front Prompt:</div>
+                    <div className="font-semibold text-secondary mb-1">Front Prompt:</div>
                     <div className="rounded-lg bg-slate-900/60 p-2.5 text-slate-300 border border-slate-800/60">
                       <Markdown>{card.front}</Markdown>
                     </div>
 
-                    <div className="font-semibold text-slate-300 mt-3 mb-1">Back Solution:</div>
+                    <div className="font-semibold text-secondary mt-3 mb-1">Back Solution:</div>
                     <div className="rounded-lg bg-slate-900/60 p-2.5 text-slate-300 border border-slate-800/60">
                       <Markdown>{card.back}</Markdown>
                     </div>

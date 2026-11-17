@@ -229,28 +229,28 @@ export function BreathingCoherenceStudio({
   // Visual phase theme colors
   const phaseColors = {
     inhale: {
-      text: 'text-cyan-400',
-      border: 'border-cyan-500/40',
+      text: 'text-status-info-text',
+      border: 'border-sky-500/40',
       glow: 'shadow-cyan-500/30',
-      gradient: 'from-cyan-500/30 via-sky-500/10 to-transparent',
-      orbBg: 'bg-gradient-to-tr from-cyan-600 via-sky-500 to-teal-400',
+      gradient: 'from-sky-500/30 via-sky-500/10 to-transparent',
+      orbBg: 'bg-gradient-to-tr from-sky-600 via-sky-500 to-emerald-400',
     },
     hold: {
-      text: 'text-emerald-400',
+      text: 'text-status-success-text',
       border: 'border-emerald-500/40',
       glow: 'shadow-emerald-500/30',
-      gradient: 'from-emerald-500/30 via-teal-500/10 to-transparent',
-      orbBg: 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-green-400',
+      gradient: 'from-emerald-500/30 via-emerald-500/10 to-transparent',
+      orbBg: 'bg-gradient-to-tr from-emerald-600 via-emerald-500 to-green-400',
     },
     exhale: {
       text: 'text-indigo-400',
       border: 'border-indigo-500/40',
       glow: 'shadow-indigo-500/30',
-      gradient: 'from-indigo-500/30 via-purple-500/10 to-transparent',
-      orbBg: 'bg-gradient-to-tr from-indigo-600 via-purple-500 to-violet-400',
+      gradient: 'from-indigo-500/30 via-indigo-500/10 to-transparent',
+      orbBg: 'bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-400',
     },
     pause: {
-      text: 'text-slate-400',
+      text: 'text-faint',
       border: 'border-slate-500/40',
       glow: 'shadow-slate-500/20',
       gradient: 'from-slate-500/20 via-slate-600/10 to-transparent',
@@ -276,11 +276,11 @@ export function BreathingCoherenceStudio({
           <div>
             <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
               Autonomic Resonance & Cardiac Coherence Studio
-              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-status-success-text">
                 0.1 Hz Neurovisceral
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-faint">
               Synchronize baroreflex oscillations and vagal tone before cognitive work.
             </p>
           </div>
@@ -292,7 +292,7 @@ export function BreathingCoherenceStudio({
             type="button"
             onClick={() => setSoundEnabled((v) => !v)}
             title={soundEnabled ? 'Mute Chimes' : 'Enable Chimes'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
           >
             {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </button>
@@ -300,7 +300,7 @@ export function BreathingCoherenceStudio({
             type="button"
             onClick={toggleFullScreen}
             title={isFullScreen ? 'Exit Full Screen' : 'Full Screen Focus'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
           >
             {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
@@ -325,7 +325,7 @@ export function BreathingCoherenceStudio({
                 'flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all',
                 isSelected
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200 disabled:opacity-50',
+                  : 'bg-white/5 text-faint hover:bg-white/10 hover:text-slate-200 disabled:opacity-50',
               )}
             >
               <span>{p.name}</span>
@@ -396,39 +396,39 @@ export function BreathingCoherenceStudio({
       {/* Live Coherence & Autonomic Status Dock */}
       <div className="relative z-10 grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:grid-cols-4">
         <div className="space-y-1">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Heart className="h-3.5 w-3.5 text-rose-400" /> Heart Rate
+          <span className="text-[11px] font-semibold text-faint uppercase tracking-wider flex items-center gap-1">
+            <Heart className="h-3.5 w-3.5 text-danger-text" /> Heart Rate
           </span>
           <p className="text-lg font-bold text-white">
-            {metrics.heartRateBpm} <span className="text-xs font-normal text-slate-400">BPM</span>
+            {metrics.heartRateBpm} <span className="text-xs font-normal text-faint">BPM</span>
           </p>
-          <p className="text-[10px] text-slate-400">IBI: {metrics.meanIbiMs} ms</p>
+          <p className="text-[10px] text-faint">IBI: {metrics.meanIbiMs} ms</p>
         </div>
 
         <div className="space-y-1">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Activity className="h-3.5 w-3.5 text-cyan-400" /> Vagal RMSSD
+          <span className="text-[11px] font-semibold text-faint uppercase tracking-wider flex items-center gap-1">
+            <Activity className="h-3.5 w-3.5 text-status-info-text" /> Vagal RMSSD
           </span>
-          <p className="text-lg font-bold text-cyan-300">
-            {metrics.rmssd} <span className="text-xs font-normal text-slate-400">ms</span>
+          <p className="text-lg font-bold text-status-info-text">
+            {metrics.rmssd} <span className="text-xs font-normal text-faint">ms</span>
           </p>
-          <p className="text-[10px] text-slate-400">SDNN: {metrics.sdnn} ms</p>
+          <p className="text-[10px] text-faint">SDNN: {metrics.sdnn} ms</p>
         </div>
 
         <div className="space-y-1">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Coherence Ratio
+          <span className="text-[11px] font-semibold text-faint uppercase tracking-wider flex items-center gap-1">
+            <Sparkles className="h-3.5 w-3.5 text-status-success-text" /> Coherence Ratio
           </span>
-          <p className="text-lg font-bold text-emerald-400">
+          <p className="text-lg font-bold text-status-success-text">
             {Math.round(metrics.coherenceRatio * 100)}%
           </p>
-          <span className="inline-block rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold text-emerald-400 uppercase">
+          <span className="inline-block rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-semibold text-status-success-text uppercase">
             {metrics.coherenceTier}
           </span>
         </div>
 
         <div className="space-y-1">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+          <span className="text-[11px] font-semibold text-faint uppercase tracking-wider flex items-center gap-1">
             <Zap className="h-3.5 w-3.5 text-indigo-400" /> Cognitive Readiness
           </span>
           <p className="text-lg font-bold text-indigo-300">{metrics.cognitiveReadinessScore}/100</p>
@@ -444,10 +444,10 @@ export function BreathingCoherenceStudio({
 
       {/* Completion Modal / Banner */}
       {isCompleted && (
-        <div className="relative z-20 mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/80 p-5 shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
+        <div className="relative z-20 mt-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/80 p-5 shadow-2xl backdrop-blur-md animate-fade-in-up">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-8 w-8 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="h-8 w-8 text-status-success-text shrink-0" />
               <div>
                 <h3 className="text-sm font-bold text-white">
                   Pre-Study Resonance Priming Complete!
@@ -478,7 +478,7 @@ export function BreathingCoherenceStudio({
       <div className="relative z-10 mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-white/10 pt-4">
         {/* Progress Bar & Countdown */}
         <div className="space-y-1.5 sm:w-1/2">
-          <div className="flex justify-between text-xs text-slate-400">
+          <div className="flex justify-between text-xs text-faint">
             <span>Session Progress</span>
             <span className="font-semibold text-white">
               {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}{' '}
@@ -487,7 +487,7 @@ export function BreathingCoherenceStudio({
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
             <div
-              className="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-300 ease-out"
+              className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 transition-all duration-300 ease-out"
               style={{ width: `${totalProgress * 100}%` }}
             />
           </div>
@@ -499,7 +499,7 @@ export function BreathingCoherenceStudio({
             type="button"
             onClick={resetSession}
             title="Reset Session"
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all active:scale-95"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Reset</span>

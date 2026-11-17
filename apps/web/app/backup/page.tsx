@@ -417,12 +417,12 @@ export default function BackupPage() {
             <Cloud className="h-4 w-4 text-indigo-400" />
             <span className="text-sm font-semibold">Free Cloud Sync</span>
             {encryptionEnabled && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-status-success-text">
                 <Lock className="h-3 w-3" /> AES-256-GCM E2EE
               </span>
             )}
           </div>
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-tertiary">
             {lastSynced
               ? `Last synced ${new Date(lastSynced).toLocaleString()}`
               : 'Not synced yet — choose a free provider below'}
@@ -431,7 +431,7 @@ export default function BackupPage() {
 
         {(syncQuery.data?.devices?.length ?? 0) > 0 && (
           <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
-            <div className="text-xs font-semibold text-neutral-500">
+            <div className="text-xs font-semibold text-tertiary">
               Devices on this target ({syncQuery.data!.devices.length})
             </div>
             <ul className="mt-2 space-y-1.5">
@@ -441,10 +441,10 @@ export default function BackupPage() {
                   className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs"
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <Laptop className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                    <Laptop className="h-3.5 w-3.5 shrink-0 text-faint" />
                     <span className="truncate font-medium">{d.name}</span>
                     {d.platform && (
-                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-[#1a1a1f]">
+                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-tertiary dark:bg-(--hub-panel-2)">
                         {d.platform}
                       </span>
                     )}
@@ -454,7 +454,7 @@ export default function BackupPage() {
                       </span>
                     )}
                   </span>
-                  <span className="text-[11px] text-neutral-500">
+                  <span className="text-[11px] text-tertiary">
                     {d.lastPushAt
                       ? `pushed ${new Date(d.lastPushAt).toLocaleString()}`
                       : d.lastPullAt
@@ -469,7 +469,7 @@ export default function BackupPage() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 text-xs">
-            <span className="font-medium text-neutral-400">Cloud provider (100% serverless)</span>
+            <span className="font-medium text-faint">Cloud provider (100% serverless)</span>
             <select
               className="input w-full"
               value={provider}
@@ -484,7 +484,7 @@ export default function BackupPage() {
           </label>
 
           <div className="space-y-1 text-xs">
-            <label className="flex items-center gap-2 font-medium text-neutral-400">
+            <label className="flex items-center gap-2 font-medium text-faint">
               <input
                 type="checkbox"
                 checked={encryptionEnabled}
@@ -510,9 +510,7 @@ export default function BackupPage() {
         {provider === 'github' && (
           <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">
-                Personal Access Token (`gist` or `repo` scope)
-              </span>
+              <span className="text-faint">Personal Access Token (`gist` or `repo` scope)</span>
               <input
                 type="password"
                 className="input w-full"
@@ -522,7 +520,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Storage target</span>
+              <span className="text-faint">Storage target</span>
               <select
                 className="input w-full"
                 value={cfg['target'] || 'gist'}
@@ -535,7 +533,7 @@ export default function BackupPage() {
             {(cfg['target'] || 'gist') === 'gist' ? (
               <>
                 <label className="space-y-1 text-xs">
-                  <span className="text-neutral-400">
+                  <span className="text-faint">
                     Gist ID (leave blank on first device — copy to second device)
                   </span>
                   <input
@@ -546,7 +544,7 @@ export default function BackupPage() {
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="text-neutral-400">Filename</span>
+                  <span className="text-faint">Filename</span>
                   <input
                     className="input w-full"
                     placeholder="learning-hub-sync.json"
@@ -558,7 +556,7 @@ export default function BackupPage() {
             ) : (
               <>
                 <label className="space-y-1 text-xs">
-                  <span className="text-neutral-400">Private repo (`owner/name`)</span>
+                  <span className="text-faint">Private repo (`owner/name`)</span>
                   <input
                     className="input w-full"
                     placeholder="alice/my-learning-sync"
@@ -567,7 +565,7 @@ export default function BackupPage() {
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="text-neutral-400">File path in repo</span>
+                  <span className="text-faint">File path in repo</span>
                   <input
                     className="input w-full"
                     placeholder="learning-hub-sync.json"
@@ -583,7 +581,7 @@ export default function BackupPage() {
         {provider === 'dropbox' && (
           <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Dropbox Access Token</span>
+              <span className="text-faint">Dropbox Access Token</span>
               <input
                 type="password"
                 className="input w-full"
@@ -593,7 +591,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Dropbox file path</span>
+              <span className="text-faint">Dropbox file path</span>
               <input
                 className="input w-full"
                 placeholder="/learning-hub-sync.json"
@@ -602,9 +600,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">
-                Optional App Key (for long-lived refresh token)
-              </span>
+              <span className="text-faint">Optional App Key (for long-lived refresh token)</span>
               <input
                 className="input w-full"
                 placeholder="Dropbox App Key (optional)"
@@ -613,7 +609,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Optional Refresh Token</span>
+              <span className="text-faint">Optional Refresh Token</span>
               <input
                 type="password"
                 className="input w-full"
@@ -628,7 +624,7 @@ export default function BackupPage() {
         {provider === 'gdrive' && (
           <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Google OAuth Access Token</span>
+              <span className="text-faint">Google OAuth Access Token</span>
               <input
                 type="password"
                 className="input w-full"
@@ -638,7 +634,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Drive space</span>
+              <span className="text-faint">Drive space</span>
               <select
                 className="input w-full"
                 value={cfg['space'] || 'appDataFolder'}
@@ -649,7 +645,7 @@ export default function BackupPage() {
               </select>
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Optional OAuth Client ID (for auto-refresh)</span>
+              <span className="text-faint">Optional OAuth Client ID (for auto-refresh)</span>
               <input
                 className="input w-full"
                 placeholder="...apps.googleusercontent.com"
@@ -658,7 +654,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Optional OAuth Refresh Token</span>
+              <span className="text-faint">Optional OAuth Refresh Token</span>
               <input
                 type="password"
                 className="input w-full"
@@ -673,7 +669,7 @@ export default function BackupPage() {
         {provider === 'webdav' && (
           <div className="grid gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border) sm:grid-cols-2">
             <label className="space-y-1 text-xs sm:col-span-2">
-              <span className="text-neutral-400">WebDAV target file URL</span>
+              <span className="text-faint">WebDAV target file URL</span>
               <input
                 className="input w-full"
                 placeholder="https://cloud.example.com/remote.php/dav/files/me/learning-hub-sync.json"
@@ -682,7 +678,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Username</span>
+              <span className="text-faint">Username</span>
               <input
                 className="input w-full"
                 placeholder="username"
@@ -691,7 +687,7 @@ export default function BackupPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">App password</span>
+              <span className="text-faint">App password</span>
               <input
                 type="password"
                 className="input w-full"
@@ -750,8 +746,8 @@ export default function BackupPage() {
           <div
             className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs ${
               syncFeedback.kind === 'ok'
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                : 'border-red-500/40 bg-red-500/10 text-red-300'
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text'
+                : 'border-rose-500/40 bg-rose-500/10 text-danger-text'
             }`}
           >
             {syncFeedback.kind === 'ok' ? (
@@ -763,8 +759,8 @@ export default function BackupPage() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-[11px] text-neutral-500">
-          <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+        <div className="flex items-center gap-2 text-[11px] text-tertiary">
+          <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-status-success-text" />
           <span>
             Sync tokens, passphrases, and AI API keys stay strictly on this device and are stripped
             from every backup & cloud snapshot. Append-only review logs union-merge without data
@@ -788,7 +784,7 @@ export default function BackupPage() {
           className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
             dragging
               ? 'border-indigo-500 bg-indigo-600/10'
-              : 'border-neutral-300 text-neutral-500 dark:border-(--hub-border)'
+              : 'border-neutral-300 text-tertiary dark:border-(--hub-border)'
           }`}
           onDragOver={(e) => {
             e.preventDefault()
@@ -813,7 +809,7 @@ export default function BackupPage() {
             </code>{' '}
             here
           </div>
-          <div className="text-xs text-neutral-500">
+          <div className="text-xs text-tertiary">
             Anki deck packages (≤50MB), Anki plain-text exports, deck JSON exports — a whole-DB
             backup .json lets you choose Smart Merge or Full Replace
           </div>
@@ -842,10 +838,10 @@ export default function BackupPage() {
                 key={i}
                 className={`rounded-lg border p-2 text-xs ${
                   line.kind === 'ok'
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text'
                     : line.kind === 'error'
-                      ? 'border-red-500/40 bg-red-500/10 text-red-300'
-                      : 'border-neutral-500/30 bg-neutral-500/5 text-neutral-400'
+                      ? 'border-rose-500/40 bg-rose-500/10 text-danger-text'
+                      : 'border-neutral-500/30 bg-neutral-500/5 text-faint'
                 }`}
               >
                 {line.text}
@@ -858,9 +854,9 @@ export default function BackupPage() {
       {/* per-deck export */}
       <div className="panel space-y-3">
         <div className="flex items-center gap-2">
-          <Download className="h-4 w-4 text-neutral-500" />
+          <Download className="h-4 w-4 text-tertiary" />
           <span className="text-sm font-medium">Export decks</span>
-          <span className="ml-auto text-xs text-neutral-500">
+          <span className="ml-auto text-xs text-tertiary">
             {decks.data?.decks.length ?? 0} decks
           </span>
         </div>
@@ -870,7 +866,7 @@ export default function BackupPage() {
               <span className="min-w-0 flex-1 truncate">
                 {d.emoji} {d.name}
               </span>
-              <span className="text-xs text-neutral-500">{d.total} cards</span>
+              <span className="text-xs text-tertiary">{d.total} cards</span>
               <button
                 className="btn-ghost"
                 onClick={() =>
@@ -890,7 +886,7 @@ export default function BackupPage() {
             </div>
           ))}
           {decks.data && decks.data.decks.length === 0 && (
-            <div className="py-6 text-center text-sm text-neutral-500">
+            <div className="py-6 text-center text-sm text-tertiary">
               no decks yet — import one above or create it on{' '}
               <Link href="/decks" className="underline">
                 Decks & Cards
@@ -903,10 +899,10 @@ export default function BackupPage() {
       {/* whole-db merge / restore */}
       <div className="panel space-y-3">
         <div className="flex items-center gap-2">
-          <DatabaseBackup className="h-4 w-4 text-neutral-500" />
+          <DatabaseBackup className="h-4 w-4 text-tertiary" />
           <span className="text-sm font-medium">Smart Merge or Restore whole-database backup</span>
         </div>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Pick any backup <code className="rounded px-1">.json</code> (plain or E2EE encrypted).
           <strong> Smart Merge</strong> unions your offline reviews, XP, notes, and decks without
           wiping local progress; <strong>Replace All</strong> performs a clean destructive restore.
@@ -930,7 +926,7 @@ export default function BackupPage() {
             }}
           />
         </div>
-        {restoreMutation.isPending && <div className="text-xs text-neutral-500">processing…</div>}
+        {restoreMutation.isPending && <div className="text-xs text-tertiary">processing…</div>}
       </div>
 
       {/* confirm dialog with Smart Merge (Recommended) + Replace All */}
@@ -950,10 +946,10 @@ export default function BackupPage() {
             </div>
 
             {pendingBackup.encrypted ? (
-              <div className="space-y-2 text-sm text-neutral-400">
+              <div className="space-y-2 text-sm text-faint">
                 <p>
                   <span className="font-medium text-neutral-200">{pendingBackup.name}</span> is
-                  protected with <span className="text-emerald-400">AES-256-GCM E2EE</span>.
+                  protected with <span className="text-status-success-text">AES-256-GCM E2EE</span>.
                 </p>
                 <input
                   type="password"
@@ -964,18 +960,18 @@ export default function BackupPage() {
                 />
               </div>
             ) : (
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-faint">
                 <span className="font-medium text-neutral-200">{pendingBackup.name}</span> contains{' '}
                 {pendingBackup.rows} rows across {pendingBackup.tables} tables. Choose how to apply
                 it:
               </p>
             )}
 
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs text-neutral-300">
+            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs text-secondary">
               <div className="font-semibold text-indigo-300">
                 Smart Merge (Recommended — Non-Destructive)
               </div>
-              <div className="mt-1 text-neutral-400">
+              <div className="mt-1 text-faint">
                 Unions append-only review logs & XP, replays FSRS-6 intervals on cards reviewed on
                 both devices, and remaps colliding offline IDs without deleting local work.
               </div>
@@ -986,7 +982,7 @@ export default function BackupPage() {
                 Cancel
               </button>
               <button
-                className="btn-ghost text-red-400 hover:text-red-300"
+                className="btn-ghost text-danger-text hover:text-danger-text"
                 disabled={restoreMutation.isPending}
                 onClick={() =>
                   pendingBackup &&

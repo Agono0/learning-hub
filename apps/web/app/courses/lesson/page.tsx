@@ -83,7 +83,7 @@ function WorkedExample({
       </ol>
       {!allShown ? (
         <div className="space-y-1">
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             Predict step {shown + 1} in your head first, then check.
           </p>
           <Button
@@ -130,8 +130,8 @@ function KeyTerms({ terms }: { terms: NonNullable<Content['keyTerms']> }) {
             <dd
               className={
                 open.has(i)
-                  ? 'mt-1 text-sm text-neutral-600 dark:text-neutral-300'
-                  : 'mt-1 text-xs text-neutral-400'
+                  ? 'mt-1 text-sm text-neutral-600 dark:text-secondary'
+                  : 'mt-1 text-xs text-faint'
               }
             >
               {open.has(i) ? t.definition : 'What does it mean?'}
@@ -181,7 +181,7 @@ function Lesson() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-neutral-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
   if (error || !data) return <Callout tone="danger">{error?.message ?? 'Lesson not found'}</Callout>
 
   const { lesson, course, module, exercises } = data
@@ -191,7 +191,7 @@ function Lesson() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <nav
-        className="flex flex-wrap items-center gap-1 text-sm text-neutral-500"
+        className="flex flex-wrap items-center gap-1 text-sm text-tertiary"
         aria-label="Breadcrumb"
       >
         <Link href={`/courses/course?id=${course.id}`} className="hover:underline">
@@ -243,10 +243,10 @@ function Lesson() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold text-indigo-300 flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-amber-400" />
+                <Sparkles className="h-4 w-4 text-status-warning-text" />
                 Priming Pretest (Pretesting Effect)
               </h2>
-              <p className="mt-0.5 text-xs text-neutral-400">
+              <p className="mt-0.5 text-xs text-faint">
                 Attempting to answer before study boosts retention (d &approx; 0.30; Richland &amp;
                 Kornell 2009) by opening curiosity gaps. Pretest guesses NEVER affect your Elo
                 rating or mastery scores!
@@ -256,7 +256,7 @@ function Lesson() {
               <button
                 type="button"
                 onClick={() => setPretestOpen(false)}
-                className="text-xs text-neutral-400 hover:text-neutral-200"
+                className="text-xs text-faint hover:text-neutral-200"
               >
                 Skip pretest &darr;
               </button>
@@ -312,7 +312,7 @@ function Lesson() {
         <section className="space-y-3" aria-label="Practice">
           <div className="flex items-baseline justify-between">
             <h2 className="text-lg font-semibold">Practice</h2>
-            <span className="text-xs text-neutral-500">
+            <span className="text-xs text-tertiary">
               {answered}/{exercises.length} answered · each one returns in your reviews
             </span>
           </div>
@@ -331,7 +331,7 @@ function Lesson() {
 
       {content.reflection && content.reflection.length > 0 && (
         <Panel title="Reflect">
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             Explaining in your own words is one of the strongest ways to understand
             (self-explanation).
           </p>
@@ -367,7 +367,7 @@ function Lesson() {
                 >
                   {r.title} <ExternalLink className="h-3 w-3" />
                 </a>
-                {r.kind && <span className="ml-1 text-xs text-neutral-500">({r.kind})</span>}
+                {r.kind && <span className="ml-1 text-xs text-tertiary">({r.kind})</span>}
               </li>
             ))}
           </ul>
@@ -377,7 +377,7 @@ function Lesson() {
       <Panel>
         {complete.isSuccess ? (
           <div className="flex items-center gap-2 text-sm">
-            <PartyPopper className="h-5 w-5 text-amber-500" />
+            <PartyPopper className="h-5 w-5 text-status-warning-text" />
             Lesson complete{complete.data.xpEarned ? ` · +${complete.data.xpEarned} XP` : ''}. Its
             exercises will come back in your reviews right before you’d forget them.
           </div>
@@ -415,7 +415,7 @@ function Lesson() {
 
 export default function LessonPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
       <Lesson />
     </Suspense>
   )

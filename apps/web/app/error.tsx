@@ -21,10 +21,10 @@ export default function ErrorPage({
 
   return (
     <div className="panel celebrate mx-auto max-w-md space-y-4 py-10 text-center">
-      <AlertTriangle className="mx-auto h-10 w-10 text-amber-400" />
+      <AlertTriangle className="mx-auto h-10 w-10 text-status-warning-text" />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-tertiary">
           An unexpected error interrupted this page. Your data is safe — try again.
         </p>
         {error.digest && <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>}

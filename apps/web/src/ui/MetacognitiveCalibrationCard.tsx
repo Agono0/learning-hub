@@ -160,25 +160,25 @@ export function MetacognitiveCalibrationCard({
       tone: 'success' as const,
       icon: Sparkles,
       title: 'Expert Calibration',
-      color: 'text-emerald-500',
+      color: 'text-status-success-text',
     },
     mild_overconfidence: {
       tone: 'warning' as const,
       icon: TrendingUp,
       title: 'Mild Overconfidence',
-      color: 'text-amber-500',
+      color: 'text-status-warning-text',
     },
     fluency_illusion: {
       tone: 'danger' as const,
       icon: ShieldAlert,
       title: 'Fluency Illusion (Dunning-Kruger)',
-      color: 'text-rose-500',
+      color: 'text-danger-text',
     },
     underconfident: {
       tone: 'cyan' as const,
       icon: TrendingDown,
       title: 'Underconfidence Bias',
-      color: 'text-cyan-500',
+      color: 'text-status-info-text',
     },
   }[report.status]
 
@@ -192,7 +192,7 @@ export function MetacognitiveCalibrationCard({
       {/* Studio Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
             <Compass className="h-5 w-5" />
           </div>
           <div>
@@ -204,7 +204,7 @@ export function MetacognitiveCalibrationCard({
                 {statusConfig.title}
               </Badge>
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-tertiary dark:text-faint">
               Koriat &amp; Bjork (2005) · {report.sampleSize} Judgments of Learning evaluated{' '}
               {deckName && `in ${deckName}`}
             </p>
@@ -215,7 +215,7 @@ export function MetacognitiveCalibrationCard({
           <button
             type="button"
             onClick={handleResetTrials}
-            className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition"
+            className="text-xs text-tertiary hover:text-neutral-700 dark:hover:text-secondary flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span>Reset Cohort</span>
@@ -227,38 +227,38 @@ export function MetacognitiveCalibrationCard({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Brier Score */}
         <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-700/50">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint flex items-center justify-between">
             <span>Brier Score</span>
-            <span className="text-[10px] text-neutral-400">0.0 = Perfect</span>
+            <span className="text-[10px] text-faint">0.0 = Perfect</span>
           </div>
           <div className="mt-1 text-2xl font-mono font-bold text-neutral-900 dark:text-neutral-100">
             {report.brierScore.toFixed(3)}
           </div>
-          <div className="mt-0.5 text-xs text-neutral-500">
+          <div className="mt-0.5 text-xs text-tertiary">
             {report.brierScore <= 0.15 ? 'Superior accuracy' : 'Calibration drift'}
           </div>
         </div>
 
         {/* Metacognitive Bias */}
         <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-700/50">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             Introspection Bias
           </div>
           <div
             className={cx(
               'mt-1 text-2xl font-mono font-bold',
               report.bias > 0.08
-                ? 'text-rose-500'
+                ? 'text-danger-text'
                 : report.bias < -0.08
-                  ? 'text-cyan-500'
-                  : 'text-emerald-500',
+                  ? 'text-status-info-text'
+                  : 'text-status-success-text',
             )}
           >
             {report.bias > 0
               ? `+${(report.bias * 100).toFixed(1)}%`
               : `${(report.bias * 100).toFixed(1)}%`}
           </div>
-          <div className="mt-0.5 text-xs text-neutral-500">
+          <div className="mt-0.5 text-xs text-tertiary">
             {report.bias > 0.08
               ? 'Overconfident'
               : report.bias < -0.08
@@ -269,24 +269,24 @@ export function MetacognitiveCalibrationCard({
 
         {/* Average Confidence */}
         <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-700/50">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             Mean JOL Estimate
           </div>
           <div className="mt-1 text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400">
             {Math.round(report.averageConfidence * 100)}%
           </div>
-          <div className="mt-0.5 text-xs text-neutral-500">Predicted retention</div>
+          <div className="mt-0.5 text-xs text-tertiary">Predicted retention</div>
         </div>
 
         {/* Actual Recall */}
         <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/70 dark:border-neutral-700/50">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             Empirical Recall
           </div>
-          <div className="mt-1 text-2xl font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <div className="mt-1 text-2xl font-mono font-bold text-status-success-text dark:text-status-success-text">
             {Math.round(report.accuracy * 100)}%
           </div>
-          <div className="mt-0.5 text-xs text-neutral-500">Actual score</div>
+          <div className="mt-0.5 text-xs text-tertiary">Actual score</div>
         </div>
       </div>
 
@@ -295,10 +295,10 @@ export function MetacognitiveCalibrationCard({
         {/* SVG Calibration Curve */}
         <div className="rounded-xl p-4 bg-neutral-50/70 dark:bg-neutral-800/30 border border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-secondary">
               Calibration Curve (Confidence vs. Recall)
             </h4>
-            <span className="text-[11px] text-neutral-400">Ideal = 45° Dashed Line</span>
+            <span className="text-[11px] text-faint">Ideal = 45° Dashed Line</span>
           </div>
 
           <div className="relative aspect-4/3 w-full">
@@ -381,7 +381,7 @@ export function MetacognitiveCalibrationCard({
               <text
                 x="110"
                 y="65"
-                className="text-[9px] fill-cyan-500/70 font-semibold"
+                className="text-[9px] fill-sky-500/70 font-semibold"
                 textAnchor="middle"
               >
                 Underconfident (Hidden Mastery)
@@ -415,7 +415,7 @@ export function MetacognitiveCalibrationCard({
                       y2={py}
                       stroke="currentColor"
                       strokeDasharray="2 2"
-                      className="text-neutral-300 dark:text-neutral-700"
+                      className="text-secondary dark:text-neutral-700"
                       strokeWidth="1"
                     />
                     {/* Circle */}
@@ -440,7 +440,7 @@ export function MetacognitiveCalibrationCard({
             </svg>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-neutral-500 mt-2 px-1">
+          <div className="flex items-center justify-between text-[11px] text-tertiary mt-2 px-1">
             <span>X: Predicted Confidence (JOL)</span>
             <span>Y: Actual Recall Accuracy</span>
           </div>
@@ -477,17 +477,15 @@ export function MetacognitiveCalibrationCard({
           {/* Mini Calibration Challenge */}
           <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700/70 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-faint flex items-center gap-1.5">
                 <Play className="h-3.5 w-3.5 text-indigo-500 fill-indigo-500" />
                 Live Calibration Check
               </span>
-              <span className="text-[11px] text-neutral-400 font-mono">
-                Card #{currentPromptIdx + 1}
-              </span>
+              <span className="text-[11px] text-faint font-mono">Card #{currentPromptIdx + 1}</span>
             </div>
 
             <div>
-              <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+              <div className="text-xs font-semibold text-tertiary dark:text-faint">
                 {activePrompt.concept}
               </div>
               <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 mt-0.5">
@@ -499,7 +497,7 @@ export function MetacognitiveCalibrationCard({
               <div className="space-y-3 pt-1">
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-neutral-600 dark:text-neutral-400">
+                    <span className="text-neutral-600 dark:text-faint">
                       Pre-Recall Confidence (JOL):
                     </span>
                     <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
@@ -515,7 +513,7 @@ export function MetacognitiveCalibrationCard({
                     onChange={(e) => setDrillConfidence(parseFloat(e.target.value))}
                     className="w-full accent-indigo-600 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-neutral-400 font-mono">
+                  <div className="flex justify-between text-[10px] text-faint font-mono">
                     <span>0% Guess</span>
                     <span>50% Probable</span>
                     <span>100% Certain</span>
@@ -534,18 +532,18 @@ export function MetacognitiveCalibrationCard({
                 </button>
               </div>
             ) : (
-              <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+              <div className="space-y-3 pt-1 animate-fade-in">
                 <div className="p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-xs font-medium text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700">
                   {activePrompt.answer}
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-neutral-500">How did you perform?</span>
+                  <span className="text-xs text-tertiary">How did you perform?</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => handleGradeDrill(0)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50 flex items-center gap-1 transition"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-danger-text border border-rose-200 dark:border-rose-900/50 flex items-center gap-1 transition"
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       <span>Missed (0)</span>
@@ -553,7 +551,7 @@ export function MetacognitiveCalibrationCard({
                     <button
                       type="button"
                       onClick={() => handleGradeDrill(1)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1 transition"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-status-success-text border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1 transition"
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
                       <span>Recalled (1)</span>

@@ -111,7 +111,7 @@ export function CardMinerSheet({
           </Button>
         </div>
         {mine.data && !mine.data.usedAI && (
-          <p className="text-xs text-amber-400">
+          <p className="text-xs text-status-warning-text">
             {mine.data.needsSetup
               ? 'No AI provider configured — showing heuristic deletions (longest meaningful word).'
               : 'Heuristic deletions (longest meaningful word per sentence).'}
@@ -123,7 +123,7 @@ export function CardMinerSheet({
             {drafts.map((d, i) => (
               <label
                 key={i}
-                className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+                className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
               >
                 <input
                   type="checkbox"

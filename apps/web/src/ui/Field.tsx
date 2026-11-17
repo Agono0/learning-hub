@@ -40,11 +40,11 @@ function Field({
       </label>
       {render({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
       {error ? (
-        <p id={`${id}-error`} className="text-xs text-rose-500">
+        <p id={`${id}-error`} className="text-xs text-danger-text">
           {error}
         </p>
       ) : hint ? (
-        <p id={`${id}-hint`} className="text-xs text-neutral-500">
+        <p id={`${id}-hint`} className="text-xs text-tertiary">
           {hint}
         </p>
       ) : null}

@@ -230,7 +230,7 @@ export function OnboardingWizard() {
           <button
             type="button"
             onClick={() => skipMutation.mutate()}
-            className="btn-ghost text-xs text-neutral-500"
+            className="btn-ghost text-xs text-tertiary"
           >
             Skip setup
           </button>
@@ -257,7 +257,7 @@ export function OnboardingWizard() {
       }
     >
       <div className="space-y-4">
-        <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+        <div className="flex items-center gap-1.5 text-xs text-tertiary">
           {[1, 2, 3].map((n) => (
             <span
               key={n}
@@ -271,7 +271,7 @@ export function OnboardingWizard() {
 
         {step === 1 && (
           <div className="space-y-4">
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            <p className="text-sm text-neutral-600 dark:text-secondary">
               Everything stays private on your device — spaced repetition (FSRS-6), courses, active
               reading, notes, and focus tools. Let&apos;s set your calm defaults in under a minute.
             </p>
@@ -299,7 +299,7 @@ export function OnboardingWizard() {
                       className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
+                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -329,11 +329,11 @@ export function OnboardingWizard() {
                       className={`rounded-xl border p-3 text-left transition-colors ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
+                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
                       }`}
                     >
                       <div className="text-sm font-semibold">{opt.label}</div>
-                      <div className="text-[11px] text-neutral-500">{opt.hint}</div>
+                      <div className="text-[11px] text-tertiary">{opt.hint}</div>
                     </button>
                   )
                 })}
@@ -344,7 +344,7 @@ export function OnboardingWizard() {
 
         {step === 2 && (
           <div className="space-y-3">
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            <p className="text-sm text-neutral-600 dark:text-secondary">
               Pick optional starter courses so you can try lessons, exercises, and FSRS flashcards
               right away (100% offline, removable anytime).
             </p>
@@ -359,7 +359,7 @@ export function OnboardingWizard() {
                     className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
                       checked
                         ? 'border-indigo-500 bg-indigo-600/10'
-                        : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
+                        : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
                     }`}
                   >
                     <span
@@ -374,9 +374,9 @@ export function OnboardingWizard() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-1">
                         <span className="text-sm font-medium">{course.title}</span>
-                        <span className="text-[11px] text-neutral-500">{course.lessons}</span>
+                        <span className="text-[11px] text-tertiary">{course.lessons}</span>
                       </div>
-                      <p className="mt-0.5 text-xs text-neutral-500">{course.tagline}</p>
+                      <p className="mt-0.5 text-xs text-tertiary">{course.tagline}</p>
                     </div>
                   </button>
                 )
@@ -398,7 +398,7 @@ export function OnboardingWizard() {
 
             {/* Bring-your-own content — works fully offline, no AI setup needed. */}
             <div className="rounded-xl border border-dashed border-neutral-300 p-3 dark:border-(--hub-border)">
-              <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+              <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-secondary">
                 <FileUp className="h-3.5 w-3.5 text-indigo-500" /> Already have content? Bring it
                 in.
               </div>
@@ -448,7 +448,7 @@ export function OnboardingWizard() {
 
         {step === 3 && (
           <div className="space-y-3">
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            <p className="text-sm text-neutral-600 dark:text-secondary">
               You&apos;re all set! Learning HUB never requires a subscription or server account:
             </p>
             <div className="space-y-2.5">
@@ -457,7 +457,7 @@ export function OnboardingWizard() {
                   <GraduationCap className="h-4 w-4 text-indigo-500" />
                   AI is optional (Manual Mode + Free Tiers built in)
                 </div>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-tertiary">
                   Use copy/paste prompts with any chat AI for free, or connect Google Gemini, Groq,
                   OpenRouter, or local Ollama in{' '}
                   <Link
@@ -475,7 +475,7 @@ export function OnboardingWizard() {
                   <Cloud className="h-4 w-4 text-indigo-500" />
                   Free E2EE Multi-Device Sync
                 </div>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-tertiary">
                   Sync non-destructively across Windows, Android, and Web via Dropbox, GitHub Gist,
                   Google Drive, or WebDAV in{' '}
                   <Link
@@ -497,7 +497,7 @@ export function OnboardingWizard() {
                   </kbd>{' '}
                   anytime
                 </div>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-tertiary">
                   Search instantly across all notes, cards, lessons, highlights, and pages.
                 </p>
               </div>
@@ -506,7 +506,7 @@ export function OnboardingWizard() {
                   <Sparkles className="h-4 w-4 text-indigo-500" />
                   Your first review is waiting
                 </div>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-tertiary">
                   Ten minutes of{' '}
                   <Link
                     href="/review"

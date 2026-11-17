@@ -267,7 +267,7 @@ export function SchemaDistillationStudio({
       {/* Top Header Controls: Schema Selector */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-faint">
             Schema Domain:
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -280,7 +280,7 @@ export function SchemaDistillationStudio({
                   className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                     isSelected
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      : 'bg-white/5 text-secondary hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {s.title} ({s.domain.replace('_', ' ')})
@@ -294,7 +294,7 @@ export function SchemaDistillationStudio({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAudioMuted(!audioMuted)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
             title={audioMuted ? 'Unmute Earcons' : 'Mute Earcons'}
             aria-label={audioMuted ? 'Unmute audio feedback' : 'Mute audio feedback'}
           >
@@ -302,7 +302,7 @@ export function SchemaDistillationStudio({
           </button>
           <button
             onClick={handleResetSchema}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all"
             title="Reset Schema to Default"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -329,7 +329,7 @@ export function SchemaDistillationStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'hierarchy_web'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -344,7 +344,7 @@ export function SchemaDistillationStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'proposition_builder'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <GitBranch className="h-4 w-4" />
@@ -364,13 +364,13 @@ export function SchemaDistillationStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'misconception_crucible'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
-          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <AlertTriangle className="h-4 w-4 text-status-warning-text" />
           <span>Misconception Crucible</span>
           {sessionState.metrics.detectedAnomalies.length > 0 && (
-            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-400 font-bold">
+            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-status-warning-text font-bold">
               {sessionState.metrics.detectedAnomalies.length}
             </span>
           )}
@@ -384,10 +384,10 @@ export function SchemaDistillationStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'fsrs_tree'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
-          <Sparkles className="h-4 w-4 text-emerald-400" />
+          <Sparkles className="h-4 w-4 text-status-success-text" />
           <span>FSRS Flashcard Tree</span>
         </button>
       </div>
@@ -434,19 +434,21 @@ export function SchemaDistillationStudio({
                         >
                           <div className="flex items-center justify-between mb-1.5">
                             <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                              {node.isAnchor && <Sparkles className="h-3 w-3 text-amber-400" />}
+                              {node.isAnchor && (
+                                <Sparkles className="h-3 w-3 text-status-warning-text" />
+                              )}
                               <span>{node.label}</span>
                             </h4>
-                            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-mono text-slate-400">
+                            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-mono text-faint">
                               {incidentLinks.length} props
                             </span>
                           </div>
 
-                          <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
+                          <p className="text-[11px] text-secondary line-clamp-2 leading-relaxed">
                             {node.definition}
                           </p>
 
-                          <div className="mt-3 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-slate-500">
+                          <div className="mt-3 flex items-center justify-between pt-2 border-t border-white/5 text-[10px] text-tertiary">
                             <span className="capitalize">
                               {node.subsumptionRole.replace('_', ' ')}
                             </span>
@@ -484,14 +486,14 @@ export function SchemaDistillationStudio({
                 {/* Exemplar instances */}
                 {activeConcept.examples.length > 0 && (
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-faint block mb-1">
                       Concrete Exemplars:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {activeConcept.examples.map((ex, exIdx) => (
                         <span
                           key={exIdx}
-                          className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300"
+                          className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-secondary"
                         >
                           {ex}
                         </span>
@@ -502,7 +504,7 @@ export function SchemaDistillationStudio({
 
                 {/* Incident Propositions */}
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-faint block mb-2">
                     Established Propositions:
                   </span>
                   <div className="flex flex-col gap-2">
@@ -522,7 +524,7 @@ export function SchemaDistillationStudio({
                             className="flex items-start justify-between gap-2 rounded-xl border border-white/5 bg-slate-950/70 p-2.5 text-xs"
                           >
                             <div className="flex flex-col gap-1">
-                              <span className="text-[10px] text-slate-400 font-mono">
+                              <span className="text-[10px] text-faint font-mono">
                                 {isOut ? '→ Outbound' : '← Inbound'} (
                                 {l.propositionType.replace('_', ' ')})
                               </span>
@@ -537,7 +539,7 @@ export function SchemaDistillationStudio({
 
                             <button
                               onClick={() => handleRemoveProposition(l.id)}
-                              className="rounded-lg p-1 text-slate-500 hover:bg-white/10 hover:text-rose-400 transition-all"
+                              className="rounded-lg p-1 text-tertiary hover:bg-white/10 hover:text-danger-text transition-all"
                               title="Delete Proposition"
                             >
                               <Trash2 className="h-3 w-3" />
@@ -562,7 +564,7 @@ export function SchemaDistillationStudio({
                 </button>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
+              <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-xs text-tertiary">
                 Select any concept node to inspect its subsumption links and scientific
                 propositions.
               </div>
@@ -578,7 +580,7 @@ export function SchemaDistillationStudio({
             <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">
               Novak (1984) Semantic Proposition Synthesizer
             </span>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-secondary leading-relaxed">
               Construct meaningful propositions connecting concepts via precise mechanistic linking
               verbs. Avoid vacuous words (<em>"is", "has", "related to"</em>) that fail to generate
               deep schema acquisition.
@@ -589,7 +591,7 @@ export function SchemaDistillationStudio({
             {/* Source and Target Concept Selectors */}
             <div className="flex flex-col gap-4">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                <label className="text-xs font-bold text-secondary block mb-1.5">
                   1. Source Concept (Subject):
                 </label>
                 <select
@@ -607,7 +609,7 @@ export function SchemaDistillationStudio({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                <label className="text-xs font-bold text-secondary block mb-1.5">
                   2. Target Concept (Object):
                 </label>
                 <select
@@ -627,7 +629,7 @@ export function SchemaDistillationStudio({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                <label className="text-xs font-bold text-secondary block mb-1.5">
                   3. Proposition Type:
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -646,7 +648,7 @@ export function SchemaDistillationStudio({
                       className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
                         builderType === t
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                          : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       {t.replace('_', ' ')}
@@ -659,7 +661,7 @@ export function SchemaDistillationStudio({
             {/* Linking Phrase & Semantic Rationale */}
             <div className="flex flex-col gap-4">
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                <label className="text-xs font-bold text-secondary block mb-1.5">
                   4. Mechanistic Linking Phrase:
                 </label>
                 <input
@@ -675,14 +677,14 @@ export function SchemaDistillationStudio({
                   <div
                     className={`mt-2 rounded-lg p-2.5 text-[11px] font-medium flex items-center gap-2 ${
                       livePrecision.isVacuous
-                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                        : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                        ? 'bg-amber-500/15 text-status-warning-text border border-amber-500/30'
+                        : 'bg-emerald-500/15 text-status-success-text border border-emerald-500/30'
                     }`}
                   >
                     {livePrecision.isVacuous ? (
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-status-warning-text" />
                     ) : (
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-status-success-text" />
                     )}
                     <span>{livePrecision.rationale}</span>
                   </div>
@@ -690,7 +692,7 @@ export function SchemaDistillationStudio({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                <label className="text-xs font-bold text-secondary block mb-1.5">
                   5. Scientific Rationale:
                 </label>
                 <textarea
@@ -707,14 +709,14 @@ export function SchemaDistillationStudio({
                 <div
                   className={`rounded-xl p-3 text-xs font-semibold flex items-center gap-2 ${
                     builderFeedback.isSuccess
-                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                      ? 'bg-emerald-500/15 text-status-success-text border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-danger-text border border-rose-500/30'
                   }`}
                 >
                   {builderFeedback.isSuccess ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-text" />
                   ) : (
-                    <XCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                    <XCircle className="h-4 w-4 shrink-0 text-danger-text" />
                   )}
                   <span>{builderFeedback.text}</span>
                 </div>
@@ -739,10 +741,10 @@ export function SchemaDistillationStudio({
       {activeTab === 'misconception_crucible' && (
         <div className="flex flex-col gap-5">
           <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 shadow-xl backdrop-blur-md">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-status-warning-text block mb-1">
               Misconception & Schema Anomaly Diagnostic Crucible
             </span>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-secondary leading-relaxed">
               Detects circular tautologies, inverted hierarchical subsumptions, isolated concept
               islands, and vacuous linkers. Repairing anomalies restores cognitive soundness and
               elevates the Meaningful Learning Index.
@@ -770,14 +772,16 @@ export function SchemaDistillationStudio({
                       <div className="flex items-center gap-2">
                         <AlertTriangle
                           className={`h-4 w-4 ${
-                            anomaly.severity === 'high' ? 'text-rose-400' : 'text-amber-400'
+                            anomaly.severity === 'high'
+                              ? 'text-danger-text'
+                              : 'text-status-warning-text'
                           }`}
                         />
                         <span className="text-xs font-bold text-white uppercase tracking-wider">
                           {anomaly.anomalyType.replace('_', ' ')}
                         </span>
                       </div>
-                      <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase font-bold text-slate-400">
+                      <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase font-bold text-faint">
                         Severity: {anomaly.severity}
                       </span>
                     </div>
@@ -816,9 +820,9 @@ export function SchemaDistillationStudio({
             </div>
           ) : (
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-8 text-center backdrop-blur-md">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-400 mb-2" />
+              <CheckCircle2 className="mx-auto h-12 w-12 text-status-success-text mb-2" />
               <h4 className="text-sm font-bold text-white">No Schema Anomalies Detected</h4>
-              <p className="text-xs text-slate-300 max-w-md mx-auto mt-1">
+              <p className="text-xs text-secondary max-w-md mx-auto mt-1">
                 Your concept map exhibits strict hierarchical consistency, zero circular
                 tautologies, and scientifically substantive propositions.
               </p>
@@ -832,10 +836,10 @@ export function SchemaDistillationStudio({
         <div className="flex flex-col gap-5">
           <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-xl backdrop-blur-md">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-status-success-text block mb-1">
                 FSRS v5 Relational Spaced Repetition Bridge
               </span>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-secondary">
                 Exports propositions into bidirectional conceptual flashcards and integrative
                 cross-link clozes for long-term retention.
               </p>
@@ -862,25 +866,25 @@ export function SchemaDistillationStudio({
                     <span className="text-[10px] font-mono uppercase text-indigo-400 font-bold">
                       {card.metadata.sourceConcept} → {card.metadata.targetConcept}
                     </span>
-                    <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 font-mono">
+                    <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-secondary font-mono">
                       Diff: {card.suggestedDifficulty}/10 • Stab: {card.suggestedStability}d
                     </span>
                   </div>
 
                   <div className="rounded-xl border border-white/5 bg-slate-950/80 p-3 text-xs text-slate-300">
                     <strong>Prompt:</strong>
-                    <p className="mt-1 text-[11px] text-slate-400 line-clamp-3">{card.front}</p>
+                    <p className="mt-1 text-[11px] text-faint line-clamp-3">{card.front}</p>
                   </div>
 
                   <div className="rounded-xl border border-white/5 bg-slate-950/80 p-3 text-xs text-slate-300">
                     <strong>Propositional Link:</strong>
-                    <p className="mt-1 text-[11px] text-emerald-300 font-semibold line-clamp-3">
+                    <p className="mt-1 text-[11px] text-status-success-text font-semibold line-clamp-3">
                       {card.back}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/5 text-[10px] text-slate-500">
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/5 text-[10px] text-tertiary">
                   <div className="flex gap-1.5">
                     {card.tags.map((t, tIdx) => (
                       <span key={tIdx}>#{t}</span>

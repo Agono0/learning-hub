@@ -91,9 +91,7 @@ export default function OnlinePage() {
                   ? 'Offline Mode'
                   : 'Magic Link'}
             </Badge>
-            <span className="text-xs text-neutral-500 font-mono">
-              {identity?.alias ?? 'Learner'}
-            </span>
+            <span className="text-xs text-tertiary font-mono">{identity?.alias ?? 'Learner'}</span>
           </div>
         }
       />
@@ -231,7 +229,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
             <h3 className="font-bold flex items-center gap-2">
               <Plus className="h-4 w-4" /> Create Study Room
             </h3>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Host a synchronized pomodoro room with real-time participant presence and focused room
               chat.
             </p>
@@ -273,7 +271,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
             <h3 className="font-bold flex items-center gap-2">
               <Key className="h-4 w-4" /> Join Existing Room
             </h3>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Enter a 6-character room code from your study buddy or group.
             </p>
             <div className="space-y-3">
@@ -307,7 +305,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                     {activeRoom.isBreak ? 'BREAK TIME' : 'FOCUS SPRINT'}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-neutral-400 mt-1">
+                <div className="flex items-center gap-2 text-xs text-faint mt-1">
                   <span>Room Code:</span>
                   <button
                     onClick={handleCopyCode}
@@ -315,7 +313,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                   >
                     {activeRoom.code}
                     {copied ? (
-                      <Check className="h-3 w-3 text-emerald-400" />
+                      <Check className="h-3 w-3 text-status-success-text" />
                     ) : (
                       <Copy className="h-3 w-3" />
                     )}
@@ -346,7 +344,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                   >
                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
                     <span className="font-medium">{p.alias}</span>
-                    <span className="text-neutral-500">({p.cardsReviewed} cards)</span>
+                    <span className="text-tertiary">({p.cardsReviewed} cards)</span>
                   </div>
                 ))}
               </div>
@@ -361,14 +359,14 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
 
             <div className="h-48 overflow-y-auto space-y-2 rounded-lg bg-neutral-100 p-3 text-xs dark:bg-(--hub-sunken)">
               {chatMessages.length === 0 ? (
-                <div className="text-neutral-500 text-center py-12">
+                <div className="text-tertiary text-center py-12">
                   No messages yet. Say hello or share what you are studying!
                 </div>
               ) : (
                 chatMessages.map((msg) => (
                   <div key={msg.id} className="flex flex-col">
-                    <div className="flex items-center gap-1 text-[10px] text-neutral-500">
-                      <span className="font-semibold text-neutral-300">{msg.senderAlias}</span>
+                    <div className="flex items-center gap-1 text-[10px] text-tertiary">
+                      <span className="font-semibold text-secondary">{msg.senderAlias}</span>
                       <span>·</span>
                       <span>{new Date(msg.sentAt).toLocaleTimeString()}</span>
                     </div>
@@ -530,7 +528,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
             <h3 className="font-bold flex items-center gap-2">
               <Swords className="h-4 w-4" /> Cooperative Party Boss Raids
             </h3>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Form a party of learners to take down massive world bosses. Every card reviewed by
               party members deals combined damage to the boss!
             </p>
@@ -548,9 +546,9 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
                 >
                   <div className="text-3xl mb-2">{boss.avatar}</div>
                   <div className="font-bold">{boss.name}</div>
-                  <div className="text-xs text-neutral-500">{boss.title}</div>
-                  <div className="mt-3 text-xs text-neutral-400">
-                    Party HP Pool: <strong className="text-red-400">{boss.maxHp * 3}</strong>
+                  <div className="text-xs text-tertiary">{boss.title}</div>
+                  <div className="mt-3 text-xs text-faint">
+                    Party HP Pool: <strong className="text-danger-text">{boss.maxHp * 3}</strong>
                   </div>
                 </div>
               ))}
@@ -574,7 +572,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
                 <Swords className="h-5 w-5 text-indigo-400" />
                 Party Raid: {activeRaid.bossName}
               </h2>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 Multiplayer encounter: coordinate review sprints with party members.
                 {raidLive ? ' · LIVE (real worker)' : ' · OFFLINE SIMULATION'}
               </p>
@@ -605,8 +603,8 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
 
           {/* Health Bars */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-              <div className="flex justify-between text-xs font-medium text-red-400">
+            <div className="space-y-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
+              <div className="flex justify-between text-xs font-medium text-danger-text">
                 <span className="flex items-center gap-1">
                   <Swords className="h-3.5 w-3.5" /> Colossus Boss HP
                 </span>
@@ -616,12 +614,12 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
               </div>
               <ProgressBar
                 value={activeRaid.bossHp / (activeRaid.bossMaxHp || 1)}
-                className="[&>div]:bg-red-500"
+                className="[&>div]:bg-rose-500"
               />
             </div>
 
             <div className="space-y-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-              <div className="flex justify-between text-xs font-medium text-emerald-400">
+              <div className="flex justify-between text-xs font-medium text-status-success-text">
                 <span className="flex items-center gap-1">
                   <Heart className="h-3.5 w-3.5" /> Party Shared Health
                 </span>
@@ -646,7 +644,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
                   className="rounded-lg bg-neutral-100 p-2.5 dark:bg-(--hub-panel) text-xs flex justify-between items-center"
                 >
                   <span className="font-medium">{m.alias}</span>
-                  <span className="text-amber-400 font-mono">+{m.damageDealt} dmg</span>
+                  <span className="text-status-warning-text font-mono">+{m.damageDealt} dmg</span>
                 </div>
               ))}
             </div>
@@ -655,7 +653,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
           {/* Combat Log */}
           <div className="space-y-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
             <div className="label">Raid Combat Log</div>
-            <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-neutral-400">
+            <div className="max-h-36 overflow-y-auto space-y-1 text-xs text-faint">
               {activeRaid.combatLog.map((log, i) => (
                 <div key={i} className="rounded bg-neutral-100 p-1.5 dark:bg-(--hub-sunken)">
                   {log}
@@ -708,7 +706,7 @@ function CommunityLibrarySection() {
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h3 className="font-bold">Community Library</h3>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Discover, download, and share community-curated decks and LHCF courses with 1-click
               import.
             </p>
@@ -745,17 +743,17 @@ function CommunityLibrarySection() {
                 <Badge tone={item.type === 'deck' ? 'accent' : 'success'}>
                   {item.type === 'deck' ? 'Deck' : 'Course'}
                 </Badge>
-                <span className="text-xs text-neutral-500">By {item.author}</span>
+                <span className="text-xs text-tertiary">By {item.author}</span>
               </div>
               <h4 className="mt-2 text-base font-bold">{item.title}</h4>
-              <p className="mt-1 text-xs text-neutral-400 line-clamp-2">
+              <p className="mt-1 text-xs text-faint line-clamp-2">
                 {item.description || 'No description provided.'}
               </p>
               <div className="mt-3 flex flex-wrap gap-1">
                 {item.tags.map((t) => (
                   <span
                     key={t}
-                    className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 dark:bg-(--hub-panel)"
+                    className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-tertiary dark:bg-(--hub-panel)"
                   >
                     #{t}
                   </span>
@@ -764,7 +762,7 @@ function CommunityLibrarySection() {
             </div>
 
             <div className="flex items-center justify-between border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
-              <span className="flex items-center gap-1 text-xs text-neutral-500">
+              <span className="flex items-center gap-1 text-xs text-tertiary">
                 <Download className="h-3.5 w-3.5" /> {item.downloads} downloads
               </span>
               <Button
@@ -774,7 +772,7 @@ function CommunityLibrarySection() {
               >
                 {importedId === item.id ? (
                   <>
-                    <Check className="h-4 w-4 text-emerald-400" /> Imported!
+                    <Check className="h-4 w-4 text-status-success-text" /> Imported!
                   </>
                 ) : (
                   <>
@@ -840,7 +838,7 @@ function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }
         <h3 className="font-bold flex items-center gap-2">
           <UserCheck className="h-4 w-4" /> Accountability Buddy Nudges
         </h3>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Support your study partners with friendly streak reminders or room study invites.
         </p>
 
@@ -887,7 +885,7 @@ function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }
         </h4>
 
         {messages.length === 0 ? (
-          <div className="text-sm text-neutral-500 py-8 text-center">
+          <div className="text-sm text-tertiary py-8 text-center">
             No nudges or invitations received yet.
           </div>
         ) : (
@@ -900,11 +898,11 @@ function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }
                       {msg.kind.toUpperCase()}
                     </Badge>
                     <span className="font-semibold">{msg.senderAlias}</span>
-                    <span className="text-neutral-500">
+                    <span className="text-tertiary">
                       {new Date(msg.receivedAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="mt-1 text-neutral-300">{msg.content}</p>
+                  <p className="mt-1 text-secondary">{msg.content}</p>
                 </div>
 
                 {!msg.read && (
@@ -1011,7 +1009,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">Study Clans & Guild Houses</h2>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-faint">
               Form or join a study clan. Pool recall XP to level up your clan and unlock
               collaborative study perks.
             </p>
@@ -1023,7 +1021,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
 
         {showCreate && (
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
               Found a Study Clan
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -1077,17 +1075,17 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
                         [{g.tag}]
                       </span>
                     </div>
-                    <div className="text-[11px] text-neutral-400">Level {g.level} Clan</div>
+                    <div className="text-[11px] text-faint">Level {g.level} Clan</div>
                   </div>
                 </div>
                 <Badge tone="accent">+{g.level * 2}% XP</Badge>
               </div>
 
               {g.description && (
-                <p className="mt-2 text-xs text-neutral-400 line-clamp-2">{g.description}</p>
+                <p className="mt-2 text-xs text-faint line-clamp-2">{g.description}</p>
               )}
 
-              <div className="mt-3 flex items-center justify-between text-[11px] text-neutral-500">
+              <div className="mt-3 flex items-center justify-between text-[11px] text-tertiary">
                 <span>{g.totalXp.toLocaleString()} Total XP</span>
                 <span className="text-indigo-400">View Roster →</span>
               </div>
@@ -1107,7 +1105,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
                   <span>{guildDetailQuery.data.guild.name}</span>
                   <Badge tone="accent">[{guildDetailQuery.data.guild.tag}]</Badge>
                 </div>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-faint">
                   Level {guildDetailQuery.data.guild.level} Clan ·{' '}
                   {guildDetailQuery.data.guild.totalXp} Cumulative Study XP
                 </p>
@@ -1120,7 +1118,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
                 onClick={() => contributeMutation.mutate(selectedGuildId)}
                 disabled={contributeMutation.isPending}
               >
-                <Zap className="h-3.5 w-3.5 text-amber-400" /> Contribute 100 XP
+                <Zap className="h-3.5 w-3.5 text-status-warning-text" /> Contribute 100 XP
               </Button>
               <Button
                 onClick={() => joinMutation.mutate(selectedGuildId)}
@@ -1133,7 +1131,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
 
           {/* Members Table */}
           <div className="pt-2 space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-faint">
               Clan Roster ({guildDetailQuery.data.members?.length ?? 0} Scholars)
             </h4>
             <div className="grid gap-2 sm:grid-cols-2">

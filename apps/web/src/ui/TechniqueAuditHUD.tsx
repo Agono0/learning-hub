@@ -11,22 +11,22 @@ export interface TechniqueAuditHUDProps {
 }
 
 const VERDICT_TONE: Record<string, string> = {
-  no_data: 'text-slate-400 border-slate-500/30 bg-slate-500/10',
-  massed: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
-  blocked: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
-  fluency_trap: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
-  mostly_blocked: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
-  mixed: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
-  daily_grind: 'text-sky-300 border-sky-500/40 bg-sky-500/10',
-  spaced: 'text-sky-300 border-sky-500/40 bg-sky-500/10',
-  interleaved: 'text-sky-300 border-sky-500/40 bg-sky-500/10',
-  moderate: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
-  elevated: 'text-amber-300 border-amber-500/40 bg-amber-500/10',
-  difficulty_healthy: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
-  well_spaced: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
-  well_interleaved: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
-  low: 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10',
-  high: 'text-rose-300 border-rose-500/40 bg-rose-500/10',
+  no_data: 'text-faint border-slate-500/30 bg-slate-500/10',
+  massed: 'text-danger-text border-rose-500/40 bg-rose-500/10',
+  blocked: 'text-danger-text border-rose-500/40 bg-rose-500/10',
+  fluency_trap: 'text-danger-text border-rose-500/40 bg-rose-500/10',
+  mostly_blocked: 'text-status-warning-text border-amber-500/40 bg-amber-500/10',
+  mixed: 'text-status-warning-text border-amber-500/40 bg-amber-500/10',
+  daily_grind: 'text-status-info-text border-sky-500/40 bg-sky-500/10',
+  spaced: 'text-status-info-text border-sky-500/40 bg-sky-500/10',
+  interleaved: 'text-status-info-text border-sky-500/40 bg-sky-500/10',
+  moderate: 'text-status-warning-text border-amber-500/40 bg-amber-500/10',
+  elevated: 'text-status-warning-text border-amber-500/40 bg-amber-500/10',
+  difficulty_healthy: 'text-status-success-text border-emerald-500/40 bg-emerald-500/10',
+  well_spaced: 'text-status-success-text border-emerald-500/40 bg-emerald-500/10',
+  well_interleaved: 'text-status-success-text border-emerald-500/40 bg-emerald-500/10',
+  low: 'text-status-success-text border-emerald-500/40 bg-emerald-500/10',
+  high: 'text-danger-text border-rose-500/40 bg-rose-500/10',
 }
 
 function tone(level: string): string {
@@ -48,12 +48,12 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
 
   const indexTone =
     compositeIndex >= 70
-      ? 'text-emerald-300'
+      ? 'text-status-success-text'
       : compositeIndex >= 50
-        ? 'text-sky-300'
+        ? 'text-status-info-text'
         : compositeIndex >= 30
-          ? 'text-amber-300'
-          : 'text-rose-300'
+          ? 'text-status-warning-text'
+          : 'text-danger-text'
 
   const dividendPct = Math.round(mix.difficultyDividend)
 
@@ -71,11 +71,11 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
       {/* Top banner */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-950/50 px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/20 text-emerald-400">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/20 text-status-success-text">
             <Gauge className="h-4 w-4" />
           </span>
           <div>
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-faint">
               Dunlosky et al. (2013) Technique Audit
             </span>
             <span className="text-xs font-bold text-white">
@@ -85,11 +85,11 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
         </div>
         <div className="flex items-center gap-3">
           {mix.status === 'fluency_trap' ? (
-            <span className="inline-flex animate-pulse items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-[11px] font-extrabold text-rose-300">
+            <span className="inline-flex animate-pulse items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-[11px] font-extrabold text-danger-text">
               <AlertTriangle className="h-3.5 w-3.5" /> Fluency trap
             </span>
           ) : mix.status === 'difficulty_healthy' ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-status-success-text">
               <CheckCircle2 className="h-3.5 w-3.5" /> Difficulty-healthy
             </span>
           ) : null}
@@ -97,7 +97,7 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
             <span className={cx('font-mono text-lg font-black', indexTone)}>
               {Math.round(compositeIndex)}
             </span>
-            <span className="text-[10px] font-mono text-slate-400">/100</span>
+            <span className="text-[10px] font-mono text-faint">/100</span>
           </div>
         </div>
       </div>
@@ -105,17 +105,17 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
       {/* Telemetry grid */}
       <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5 bg-slate-900/50 text-center text-xs sm:grid-cols-4">
         <div className="p-3">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-slate-400">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-faint">
             Difficulty Dividend
           </span>
           <span
             className={cx(
               'font-mono text-base font-black',
               dividendPct >= 70
-                ? 'text-emerald-300'
+                ? 'text-status-success-text'
                 : dividendPct >= 45
-                  ? 'text-sky-300'
-                  : 'text-amber-300',
+                  ? 'text-status-info-text'
+                  : 'text-status-warning-text',
             )}
           >
             {mix.totalMinutes > 0 ? dividendPct : '—'}
@@ -140,23 +140,23 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
               }}
             />
           </div>
-          <span className="mt-0.5 block text-[10px] text-slate-500">
+          <span className="mt-0.5 block text-[10px] text-tertiary">
             green = high-utility minutes
           </span>
         </div>
 
         <div className="p-3">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-slate-400">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-faint">
             Fluency-Illusion Risk
           </span>
           <span
             className={cx(
               'font-mono text-base font-black',
               risk.risk >= 0.65
-                ? 'text-rose-300'
+                ? 'text-danger-text'
                 : risk.risk >= 0.45
-                  ? 'text-amber-300'
-                  : 'text-emerald-300',
+                  ? 'text-status-warning-text'
+                  : 'text-status-success-text',
             )}
           >
             {Math.round(risk.risk * 100)}%
@@ -172,7 +172,7 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
         </div>
 
         <div className="p-3">
-          <span className="mb-0.5 flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-slate-400">
+          <span className="mb-0.5 flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-faint">
             <TrendingUp className="h-3 w-3" /> Spacing
           </span>
           <span
@@ -183,13 +183,13 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
           >
             {badge(spacing.verdict)}
           </span>
-          <span className="mt-1 block text-[10px] text-slate-500">
+          <span className="mt-1 block text-[10px] text-tertiary">
             {spacing.totalMinutes} min · {Math.round(spacing.activeDayRatio * 100)}% days active
           </span>
         </div>
 
         <div className="p-3">
-          <span className="mb-0.5 flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-slate-400">
+          <span className="mb-0.5 flex items-center justify-center gap-1 text-[10px] font-semibold uppercase text-faint">
             <Shuffle className="h-3 w-3" /> Interleaving
           </span>
           <span
@@ -200,7 +200,7 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
           >
             {badge(interleaving.verdict)}
           </span>
-          <span className="mt-1 block text-[10px] text-slate-500">
+          <span className="mt-1 block text-[10px] text-tertiary">
             {Math.round(interleaving.switchRate * 100)}% deck switches
           </span>
         </div>
@@ -208,14 +208,14 @@ export function TechniqueAuditHUD({ report, className }: TechniqueAuditHUDProps)
 
       {/* Substitution footer */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/70 px-5 py-2.5 text-xs">
-        <div className="flex items-center gap-2 text-slate-300">
-          <Layers className="h-3.5 w-3.5 text-emerald-400" />
+        <div className="flex items-center gap-2 text-secondary">
+          <Layers className="h-3.5 w-3.5 text-status-success-text" />
           <span>
             Next: <strong className="text-white">{nextBestAction}</strong>
           </span>
         </div>
         {report.substitutions.length > 0 && (
-          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-status-success-text">
             +{report.substitutions.reduce((a, s) => a + s.dividendDelta, 0).toFixed(0)} dividend
             points available
           </span>

@@ -96,19 +96,17 @@ export function DualCodingHUD({
 
   return (
     <div
-      className={`rounded-xl border border-border/80 bg-card/70 p-4 shadow-sm backdrop-blur-md ${className}`}
+      className={`rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white/70 dark:bg-(--hub-panel)/70 p-4 shadow-sm backdrop-blur-md ${className}`}
     >
       {/* Top Header & Status */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/10 text-ac-text">
             <Layers className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">
-              Dual-Coding &amp; Mayer CTML HUD
-            </h3>
-            <p className="text-xs text-muted-foreground">
+            <h3 className="text-sm font-semibold text-strong">Dual-Coding &amp; Mayer CTML HUD</h3>
+            <p className="text-xs text-tertiary">
               Paivio (1971) Additive Dual-Channel Model • Mayer (2014) Multimedia Learning
             </p>
           </div>
@@ -117,7 +115,7 @@ export function DualCodingHUD({
         <div className="flex items-center gap-2">
           <Badge tone={statusMeta.tone}>{statusMeta.label}</Badge>
           {status === 'optimally_dual_coded' && (
-            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-500 animate-pulse">
+            <span className="flex items-center gap-1 text-xs font-semibold text-status-success-text animate-pulse">
               <Sparkles className="h-3.5 w-3.5" /> 2x Dual Retrieval Paths
             </span>
           )}
@@ -127,12 +125,12 @@ export function DualCodingHUD({
       {/* Main Grid: Dual Channels & Mayer Compliance */}
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* Left Column: Paivio Dual-Channel Architecture (6 cols) */}
-        <div className="lg:col-span-6 flex flex-col justify-between rounded-lg border border-border/50 bg-muted/20 p-3.5 space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+        <div className="lg:col-span-6 flex flex-col justify-between rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-3.5 space-y-3">
+          <div className="flex items-center justify-between text-xs font-semibold text-strong">
             <span className="flex items-center gap-1.5">
-              <Brain className="h-4 w-4 text-primary" /> Paivio Dual-Channel Subsystems
+              <Brain className="h-4 w-4 text-ac-text" /> Paivio Dual-Channel Subsystems
             </span>
-            <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+            <span className="font-mono text-status-success-text dark:text-status-success-text font-bold">
               {dualCodingRetentionMultiplier}x Retention Boost
             </span>
           </div>
@@ -143,17 +141,17 @@ export function DualCodingHUD({
             <div
               className={`rounded-lg border p-2.5 transition-all ${
                 activeLogogenId
-                  ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
-                  : 'border-border/60 bg-card'
+                  ? 'border-(--ac-strong) bg-indigo-600/10 ring-1 ring-(--ac-strong)/40'
+                  : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel)'
               }`}
             >
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span className="flex items-center gap-1 font-medium text-foreground">
-                  <Type className="h-3.5 w-3.5 text-primary" /> Verbal (Logogens)
+              <div className="flex items-center justify-between text-xs text-tertiary mb-1">
+                <span className="flex items-center gap-1 font-medium text-strong">
+                  <Type className="h-3.5 w-3.5 text-ac-text" /> Verbal (Logogens)
                 </span>
                 <span className="font-mono font-semibold">{logogenCount}</span>
               </div>
-              <div className="text-[10px] text-muted-foreground leading-tight">
+              <div className="text-[10px] text-tertiary leading-tight">
                 Sequential propositions &amp; mathematical lemmas.
               </div>
             </div>
@@ -163,16 +161,16 @@ export function DualCodingHUD({
               className={`rounded-lg border p-2.5 transition-all ${
                 activeImagenId
                   ? 'border-sky-500 bg-sky-500/10 ring-1 ring-sky-500/40'
-                  : 'border-border/60 bg-card'
+                  : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel)'
               }`}
             >
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span className="flex items-center gap-1 font-medium text-foreground">
-                  <Eye className="h-3.5 w-3.5 text-sky-500" /> Visual (Imagens)
+              <div className="flex items-center justify-between text-xs text-tertiary mb-1">
+                <span className="flex items-center gap-1 font-medium text-strong">
+                  <Eye className="h-3.5 w-3.5 text-status-info-text" /> Visual (Imagens)
                 </span>
                 <span className="font-mono font-semibold">{imagenCount}</span>
               </div>
-              <div className="text-[10px] text-muted-foreground leading-tight">
+              <div className="text-[10px] text-tertiary leading-tight">
                 Synchronous spatial topology &amp; state diagrams.
               </div>
             </div>
@@ -181,9 +179,9 @@ export function DualCodingHUD({
           {/* Balance & Referential Density Progress */}
           <div className="space-y-2 pt-1">
             <div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+              <div className="flex items-center justify-between text-[11px] text-tertiary mb-1">
                 <span>Dual-Channel Balance Ratio:</span>
-                <span className="font-mono font-semibold text-foreground">
+                <span className="font-mono font-semibold text-strong">
                   {Math.round(dualCodingBalanceRatio * 100)}%
                 </span>
               </div>
@@ -191,11 +189,12 @@ export function DualCodingHUD({
             </div>
 
             <div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+              <div className="flex items-center justify-between text-[11px] text-tertiary mb-1">
                 <span className="flex items-center gap-1">
-                  <LinkIcon className="h-3 w-3 text-emerald-500" /> Referential Link Density:
+                  <LinkIcon className="h-3 w-3 text-status-success-text" /> Referential Link
+                  Density:
                 </span>
-                <span className="font-mono font-semibold text-foreground">
+                <span className="font-mono font-semibold text-strong">
                   {referentialLinkCount} links ({Math.round(referentialDensity * 100)}%)
                 </span>
               </div>
@@ -203,29 +202,25 @@ export function DualCodingHUD({
             </div>
           </div>
 
-          <p className="text-[11px] text-muted-foreground leading-tight">
-            {statusMeta.description}
-          </p>
+          <p className="text-[11px] text-tertiary leading-tight">{statusMeta.description}</p>
         </div>
 
         {/* Right Column: Mayer CTML Compliance Audit (6 cols) */}
-        <div className="lg:col-span-6 flex flex-col justify-between rounded-lg border border-border/50 bg-card p-3.5 space-y-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+        <div className="lg:col-span-6 flex flex-col justify-between rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white dark:bg-(--hub-panel) p-3.5 space-y-3">
+          <div className="flex items-center justify-between text-xs font-semibold text-strong">
             <span className="flex items-center gap-1.5">
-              <Zap className="h-4 w-4 text-amber-500" /> Mayer CTML Compliance Score
+              <Zap className="h-4 w-4 text-status-warning-text" /> Mayer CTML Compliance Score
             </span>
-            <span className="font-mono font-bold text-foreground">
-              {overallComplianceScore} / 100
-            </span>
+            <span className="font-mono font-bold text-strong">{overallComplianceScore} / 100</span>
           </div>
 
           {/* CTML Principles Breakdown Grid */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             {/* Spatial Contiguity */}
-            <div className="rounded-md border border-border/40 bg-muted/20 p-2">
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <div className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2">
+              <div className="flex items-center justify-between text-[11px] text-tertiary">
                 <span>Spatial Contiguity</span>
-                <span className="font-mono font-semibold text-foreground">
+                <span className="font-mono font-semibold text-strong">
                   {spatialContiguityScore}%
                 </span>
               </div>
@@ -235,12 +230,10 @@ export function DualCodingHUD({
             </div>
 
             {/* Coherence Purity */}
-            <div className="rounded-md border border-border/40 bg-muted/20 p-2">
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <div className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2">
+              <div className="flex items-center justify-between text-[11px] text-tertiary">
                 <span>Coherence Purity</span>
-                <span className="font-mono font-semibold text-foreground">
-                  {coherencePurityScore}%
-                </span>
+                <span className="font-mono font-semibold text-strong">{coherencePurityScore}%</span>
               </div>
               <div className="mt-1">
                 <ProgressBar value={coherencePurityScore / 100} />
@@ -248,10 +241,10 @@ export function DualCodingHUD({
             </div>
 
             {/* Signaling Salience */}
-            <div className="rounded-md border border-border/40 bg-muted/20 p-2">
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <div className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2">
+              <div className="flex items-center justify-between text-[11px] text-tertiary">
                 <span>Signaling Salience</span>
-                <span className="font-mono font-semibold text-foreground">
+                <span className="font-mono font-semibold text-strong">
                   {signalingSalienceScore}%
                 </span>
               </div>
@@ -261,10 +254,10 @@ export function DualCodingHUD({
             </div>
 
             {/* Segmenting Modularity */}
-            <div className="rounded-md border border-border/40 bg-muted/20 p-2">
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <div className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2">
+              <div className="flex items-center justify-between text-[11px] text-tertiary">
                 <span>Segmenting Steps</span>
-                <span className="font-mono font-semibold text-foreground">
+                <span className="font-mono font-semibold text-strong">
                   {segmentingModularityScore}%
                 </span>
               </div>
@@ -276,13 +269,13 @@ export function DualCodingHUD({
 
           {/* Identified Violations or Green Check */}
           {identifiedViolations.length > 0 ? (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-status-warning-text flex items-start gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-status-warning-text mt-0.5" />
               <span className="line-clamp-2">{identifiedViolations[0]}</span>
             </div>
           ) : (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-[11px] text-emerald-700 dark:text-status-success-text flex items-center gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />
               <span>
                 Full compliance with Mayer multimedia learning invariants. Zero split-attention.
               </span>

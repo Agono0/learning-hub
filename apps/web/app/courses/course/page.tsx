@@ -59,22 +59,22 @@ function LessonRow({ lesson }: { lesson: Lesson }) {
     <li>
       <Link
         href={`/courses/lesson?id=${lesson.id}`}
-        className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-neutral-50 dark:hover:bg-[#18181c]"
+        className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-neutral-50 dark:hover:bg-(--hub-panel-2)"
       >
         <Icon
-          className={`h-5 w-5 shrink-0 ${lesson.status === 'completed' ? 'text-emerald-500' : lesson.status === 'in_progress' ? 'text-indigo-500' : 'text-neutral-400'}`}
+          className={`h-5 w-5 shrink-0 ${lesson.status === 'completed' ? 'text-status-success-text' : lesson.status === 'in_progress' ? 'text-indigo-500' : 'text-faint'}`}
           aria-hidden
         />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm">{lesson.title}</span>
-          <span className="block text-xs text-neutral-500">
+          <span className="block text-xs text-tertiary">
             {lesson.estMinutes ? `${lesson.estMinutes} min · ` : ''}
             {lesson.exercises} exercise{lesson.exercises === 1 ? '' : 's'}
             {lesson.locked && ' · recommended after earlier skills'}
           </span>
         </span>
         <span className="sr-only">{lesson.status.replace('_', ' ')}</span>
-        <ChevronRight className="h-4 w-4 text-neutral-400" aria-hidden />
+        <ChevronRight className="h-4 w-4 text-faint" aria-hidden />
       </Link>
     </li>
   )
@@ -114,7 +114,7 @@ function ImproveSheet({
       }
     >
       <div className="space-y-3">
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-tertiary">
           Say what to change — the AI gets the full course and keeps every id, so re-importing
           updates it in place and keeps your progress.
         </p>
@@ -185,7 +185,7 @@ function Course() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-neutral-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
   if (error || !data) return <Callout tone="danger">{error?.message ?? 'Course not found'}</Callout>
 
   const { course, modules, projects, exam, certificate } = data
@@ -193,7 +193,7 @@ function Course() {
 
   return (
     <div className="space-y-5">
-      <Link href="/courses" className="text-sm text-neutral-500 hover:underline">
+      <Link href="/courses" className="text-sm text-tertiary hover:underline">
         ← All courses
       </Link>
       <PageHeader
@@ -213,7 +213,7 @@ function Course() {
             <div className="text-sm">
               {course.progress.completed} of {course.progress.total} lessons
               {course.estHours ? (
-                <span className="text-neutral-500"> · ~{course.estHours} h total</span>
+                <span className="text-tertiary"> · ~{course.estHours} h total</span>
               ) : null}
             </div>
             <div className="flex flex-wrap gap-1">
@@ -255,7 +255,7 @@ function Course() {
               <ul className="space-y-1.5 text-sm">
                 {course.outcomes.map((o, i) => (
                   <li key={i} className="flex gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success-text" />
                     {o}
                   </li>
                 ))}
@@ -283,17 +283,17 @@ function Course() {
               key={m.id}
               title={
                 <span>
-                  <span className="text-neutral-500">Module {i + 1} · </span>
+                  <span className="text-tertiary">Module {i + 1} · </span>
                   {m.title}
                 </span>
               }
               actions={
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-tertiary">
                   {done}/{m.lessons.length}
                 </span>
               }
             >
-              {m.description && <p className="text-sm text-neutral-500">{m.description}</p>}
+              {m.description && <p className="text-sm text-tertiary">{m.description}</p>}
               <ProgressBar
                 value={m.lessons.length ? done / m.lessons.length : 0}
                 label={`${m.title} progress`}
@@ -323,9 +323,9 @@ function Course() {
                   >
                     <div className="flex items-center gap-2 text-sm font-medium">
                       {s.completedAt ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                       ) : (
-                        <span className="text-xs text-neutral-500">Stage {si + 1}</span>
+                        <span className="text-xs text-tertiary">Stage {si + 1}</span>
                       )}
                       {s.title}
                     </div>
@@ -370,7 +370,7 @@ function Course() {
               </span>
             }
           >
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-tertiary">
               {exam.questions} questions{exam.minutes ? ` · ~${exam.minutes} min` : ''} · pass with{' '}
               {Math.round(exam.passScore * 100)}%
             </p>
@@ -401,7 +401,7 @@ function Course() {
               Claim your certificate
             </Link>
           ) : (
-            <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-500">
+            <ul className="list-disc space-y-1 pl-5 text-sm text-tertiary">
               {certificate.missing.map((m, i) => (
                 <li key={i}>{m}</li>
               ))}
@@ -499,7 +499,7 @@ function GlossaryPanel({ courseId }: { courseId: number }) {
           <div key={`${e.term}-${e.lessonId}`} className="text-sm">
             <dt className="font-medium">
               {e.term}
-              <span className="ml-2 text-xs font-normal text-neutral-500">
+              <span className="ml-2 text-xs font-normal text-tertiary">
                 <Link href={`/courses/lesson?id=${e.lessonId}`} className="hover:underline">
                   {e.lessonTitle}
                 </Link>
@@ -513,7 +513,7 @@ function GlossaryPanel({ courseId }: { courseId: number }) {
                 )}
               </span>
             </dt>
-            <dd className="text-neutral-400">
+            <dd className="text-faint">
               <Markdown>{e.definition}</Markdown>
             </dd>
           </div>
@@ -525,7 +525,7 @@ function GlossaryPanel({ courseId }: { courseId: number }) {
 
 export default function CoursePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
       <Course />
     </Suspense>
   )
@@ -578,10 +578,10 @@ function CourseMindMap({ courseId }: { courseId: number }) {
         <MindMapGraph nodes={data!.nodes} edges={data!.edges} />
       )}
       {open && data && data.nodes.length === 0 && (
-        <p className="text-sm text-neutral-500">No lessons to map yet.</p>
+        <p className="text-sm text-tertiary">No lessons to map yet.</p>
       )}
       {!open && (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Modules → lessons → skills, with the prerequisite chain between skills.
         </p>
       )}

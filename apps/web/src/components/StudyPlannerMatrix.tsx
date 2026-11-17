@@ -113,7 +113,7 @@ export function StudyPlannerMatrix({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end justify-between">
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-faint mb-1">
                 Target Minutes / Week
               </label>
               <div className="flex items-center gap-1">
@@ -126,14 +126,14 @@ export function StudyPlannerMatrix({
                   onChange={(e) => onUpdateWeeklyMinutes(Number(e.target.value))}
                   className="w-32 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-sm font-mono text-neutral-900 dark:text-neutral-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/40"
                 />
-                <span className="text-xs text-neutral-500 font-mono">
+                <span className="text-xs text-tertiary font-mono">
                   (~{Math.round((weeklyMinutes / 60) * 10) / 10}h)
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1">
+              <label className="block text-xs font-semibold text-neutral-600 dark:text-faint mb-1">
                 Designated Rest Day
               </label>
               <select
@@ -174,7 +174,7 @@ export function StudyPlannerMatrix({
               <button
                 type="button"
                 onClick={onRemovePlan}
-                className="p-1.5 text-neutral-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                className="p-1.5 text-faint hover:text-rose-600 dark:hover:text-danger-text rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
                 title="Remove Plan"
               >
                 <Trash2 className="h-4 w-4" />
@@ -193,7 +193,7 @@ export function StudyPlannerMatrix({
                 <span>Weekly Schedule Matrix</span>
                 <Badge tone="accent">~{plan.weeks} Weeks to Full Mastery</Badge>
               </div>
-              <span className="text-xs text-neutral-500 font-normal">
+              <span className="text-xs text-tertiary font-normal">
                 Spaced and interleaved across active days
               </span>
             </div>
@@ -219,7 +219,7 @@ export function StudyPlannerMatrix({
                   <div>
                     <div className="flex items-center justify-between pb-1.5 border-b border-neutral-100 dark:border-neutral-800/80">
                       <span
-                        className={`text-xs font-bold ${isRest ? 'text-neutral-400' : 'text-neutral-900 dark:text-neutral-100'}`}
+                        className={`text-xs font-bold ${isRest ? 'text-faint' : 'text-neutral-900 dark:text-neutral-100'}`}
                       >
                         {dayName}
                       </span>
@@ -234,7 +234,7 @@ export function StudyPlannerMatrix({
 
                     <div className="mt-2.5 space-y-1.5">
                       {isRest ? (
-                        <div className="text-center py-6 text-[11px] text-neutral-400 italic">
+                        <div className="text-center py-6 text-[11px] text-faint italic">
                           Cognitive rest & synaptic consolidation
                         </div>
                       ) : blocks.length > 0 ? (
@@ -256,21 +256,19 @@ export function StudyPlannerMatrix({
                           </div>
                         ))
                       ) : (
-                        <div className="text-center py-6 text-[11px] text-neutral-400">
-                          Free Day
-                        </div>
+                        <div className="text-center py-6 text-[11px] text-faint">Free Day</div>
                       )}
                     </div>
                   </div>
 
                   {!isRest ? (
-                    <div className="pt-2 mt-2 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-500">
+                    <div className="pt-2 mt-2 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[10px] text-tertiary">
                       <span>Tune day:</span>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => adjustDayMinutes(dayIndex, -15)}
-                          className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                          className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-faint"
                           title="-15 mins"
                         >
                           <Minus className="h-3 w-3" />
@@ -278,7 +276,7 @@ export function StudyPlannerMatrix({
                         <button
                           type="button"
                           onClick={() => adjustDayMinutes(dayIndex, 15)}
-                          className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                          className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-faint"
                           title="+15 mins"
                         >
                           <Plus className="h-3 w-3" />
@@ -298,7 +296,7 @@ export function StudyPlannerMatrix({
         <Panel
           title={
             <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-rose-500" />
+              <Target className="h-4 w-4 text-danger-text" />
               <span>Exam Pressure & Countdown Radar</span>
               <Badge tone="danger">{exams.length} Upcoming</Badge>
             </div>
@@ -328,7 +326,7 @@ export function StudyPlannerMatrix({
                         <GraduationCap className="h-4 w-4 text-indigo-500" />
                         {exam.title}
                       </h4>
-                      <p className="text-xs text-neutral-500 font-mono mt-0.5">
+                      <p className="text-xs text-tertiary font-mono mt-0.5">
                         Scheduled for: {exam.date}
                       </p>
                     </div>
@@ -344,9 +342,9 @@ export function StudyPlannerMatrix({
                     </Badge>
                   </div>
 
-                  <div className="space-y-1.5 text-xs text-neutral-600 dark:text-neutral-300 border-t border-neutral-100 dark:border-neutral-800/80 pt-2.5">
+                  <div className="space-y-1.5 text-xs text-neutral-600 dark:text-secondary border-t border-neutral-100 dark:border-neutral-800/80 pt-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-neutral-500">Optimal Review Spacing:</span>
+                      <span className="font-medium text-tertiary">Optimal Review Spacing:</span>
                       <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                         {optimalGap}
                       </span>
@@ -376,7 +374,7 @@ export function StudyPlannerMatrix({
         <Panel
           title={
             <div className="flex items-center gap-2">
-              <CalendarCheck className="h-4 w-4 text-emerald-500" />
+              <CalendarCheck className="h-4 w-4 text-status-success-text" />
               <span>Enrolled Course Workloads</span>
               <Badge tone="neutral">{courses.length} Active</Badge>
             </div>
@@ -391,7 +389,7 @@ export function StudyPlannerMatrix({
                 <div className="font-bold text-neutral-900 dark:text-neutral-100 truncate">
                   {c.title}
                 </div>
-                <div className="flex items-center justify-between text-neutral-500 font-mono text-[11px]">
+                <div className="flex items-center justify-between text-tertiary font-mono text-[11px]">
                   <span>Workload: ~{c.estHours}h</span>
                   <span>{Math.round(c.progressFraction * 100)}% done</span>
                 </div>

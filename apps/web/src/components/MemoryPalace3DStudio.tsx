@@ -608,12 +608,12 @@ export function MemoryPalace3DStudio({
       {/* Palace Studio Header */}
       <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-6 py-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-status-warning-text border border-amber-500/30">
             <Box className="h-4 w-4" />
           </div>
           <div>
             <h2 className="text-sm font-bold text-white tracking-tight">{palaceTitle}</h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-faint">
               3D Spatial Memory Palace & WebXR Immersive Loci Walkthrough (Simonides 477 BC)
             </p>
           </div>
@@ -654,7 +654,7 @@ export function MemoryPalace3DStudio({
               'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all shadow-sm',
               isTourActive
                 ? 'border-indigo-500/40 bg-indigo-600/30 text-indigo-200'
-                : 'border-white/10 bg-white/5 text-slate-300 hover:text-white',
+                : 'border-white/10 bg-white/5 text-secondary hover:text-white',
             )}
           >
             {isTourActive ? (
@@ -676,11 +676,11 @@ export function MemoryPalace3DStudio({
               'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all shadow-sm',
               isReviewActive
                 ? 'border-emerald-500/40 bg-emerald-600/30 text-emerald-200'
-                : 'border-white/10 bg-white/5 text-slate-400 hover:text-white',
+                : 'border-white/10 bg-white/5 text-faint hover:text-white',
             )}
             title="Toggle Active Review Mode"
           >
-            <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+            <Sparkles className="h-3.5 w-3.5 text-status-success-text" />
             <span>{isReviewActive ? 'Review Active' : 'Explore Mode'}</span>
           </button>
 
@@ -692,7 +692,7 @@ export function MemoryPalace3DStudio({
                 onSaveScene(archetype, loci, palaceId)
                 hapticLight()
               }}
-              className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-all shadow-sm"
+              className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-status-warning-text hover:bg-amber-500/20 transition-all shadow-sm"
               title="Save Palace Scene"
             >
               <Save className="h-3.5 w-3.5" />
@@ -704,7 +704,7 @@ export function MemoryPalace3DStudio({
           <button
             type="button"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
             title="Toggle Spatial Audio"
           >
             {soundEnabled ? (
@@ -723,7 +723,7 @@ export function MemoryPalace3DStudio({
               setIsTourActive(false)
               setTourProgress(0)
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
             title="Reset Position"
           >
             <RotateCcw className="h-4 w-4" />
@@ -733,7 +733,7 @@ export function MemoryPalace3DStudio({
           <button
             type="button"
             onClick={() => setIsFullscreen((prev) => !prev)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
@@ -772,9 +772,9 @@ export function MemoryPalace3DStudio({
         {/* Guided Tour Progress Indicator */}
         {isTourActive && (
           <div className="absolute top-4 left-4 z-20 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-900/80 px-3 py-1.5 backdrop-blur-md text-xs text-slate-300">
-            <Compass className="h-3.5 w-3.5 text-sky-400 animate-spin" />
+            <Compass className="h-3.5 w-3.5 text-status-info-text animate-spin" />
             <span>Tour Progress: {Math.round(tourProgress * 100)}%</span>
-            <span className="text-slate-500">|</span>
+            <span className="text-tertiary">|</span>
             <button
               type="button"
               onClick={() => setTourSpeed((s) => (s === 0.001 ? 0.002 : 0.001))}
@@ -790,7 +790,7 @@ export function MemoryPalace3DStudio({
           <button
             type="button"
             onClick={() => handleWalkButton('forward')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
             title="Walk Forward (W)"
           >
             <ArrowUp className="h-4 w-4" />
@@ -799,7 +799,7 @@ export function MemoryPalace3DStudio({
             <button
               type="button"
               onClick={() => handleWalkButton('left')}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
               title="Strafe Left (A)"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -807,7 +807,7 @@ export function MemoryPalace3DStudio({
             <button
               type="button"
               onClick={() => handleWalkButton('backward')}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
               title="Walk Backward (S)"
             >
               <ArrowDown className="h-4 w-4" />
@@ -815,7 +815,7 @@ export function MemoryPalace3DStudio({
             <button
               type="button"
               onClick={() => handleWalkButton('right')}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
               title="Strafe Right (D)"
             >
               <ArrowRight className="h-4 w-4" />
@@ -828,14 +828,14 @@ export function MemoryPalace3DStudio({
       <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-slate-950/80 px-6 py-3 text-xs text-slate-400">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
             <span>
               Method of Loci Multiplier:{' '}
               <strong>{mnemonicStats.spatialRetentionMultiplier}x</strong>
             </span>
           </span>
           <span className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5 text-emerald-400" />
+            <Zap className="h-3.5 w-3.5 text-status-success-text" />
             <span>
               Lapse Reduction: <strong>-{mnemonicStats.estimatedLapseReductionPct}%</strong>
             </span>
@@ -843,7 +843,7 @@ export function MemoryPalace3DStudio({
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-slate-300 font-semibold">
+          <span className="text-secondary font-semibold">
             Loci Progress: {sessionStats.reviewed} / {sessionStats.total}
           </span>
           <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-800">

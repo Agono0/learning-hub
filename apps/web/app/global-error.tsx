@@ -20,10 +20,10 @@ export default function GlobalError({
       <body className="bg-neutral-50 text-neutral-900 antialiased dark:bg-(--hub-bg) dark:text-neutral-100">
         <div className="flex min-h-screen items-center justify-center p-6">
           <div className="panel celebrate max-w-md space-y-4 py-10 text-center">
-            <AlertTriangle className="mx-auto h-10 w-10 text-amber-400" />
+            <AlertTriangle className="mx-auto h-10 w-10 text-status-warning-text" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
-              <p className="mt-1 text-sm text-neutral-500">The app hit an unexpected error.</p>
+              <p className="mt-1 text-sm text-tertiary">The app hit an unexpected error.</p>
               {error.digest && (
                 <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>
               )}

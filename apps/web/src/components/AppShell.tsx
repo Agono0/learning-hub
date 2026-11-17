@@ -47,7 +47,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <div>
           <div className="text-sm font-bold leading-tight">Learning HUB</div>
-          <div className="text-[10px] text-neutral-500">research-backed learning</div>
+          <div className="text-[10px] text-tertiary">research-backed learning</div>
         </div>
       )}
     </div>
@@ -177,13 +177,13 @@ function Sidebar({ pathname }: { pathname: string | null }) {
           type="button"
           onClick={openCommandPalette}
           aria-label="Search or jump to page (Command K)"
-          className="flex w-full items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-500 transition-colors hover:border-neutral-300 hover:text-neutral-800 dark:border-(--hub-border) dark:bg-[#141418] dark:hover:border-neutral-700 dark:hover:text-neutral-200"
+          className="flex w-full items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-tertiary transition-colors hover:border-neutral-300 hover:text-neutral-800 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:hover:border-neutral-700 dark:hover:text-neutral-200"
         >
           <span className="flex items-center gap-1.5">
             <Search className="h-3.5 w-3.5" />
             Search…
           </span>
-          <kbd className="rounded bg-neutral-200/80 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-(--hub-border) dark:text-neutral-400">
+          <kbd className="rounded bg-neutral-200/80 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:bg-(--hub-border) dark:text-faint">
             ⌘K
           </kbd>
         </button>
@@ -199,12 +199,12 @@ function Sidebar({ pathname }: { pathname: string | null }) {
                 type="button"
                 onClick={() => toggleGroup(section.group)}
                 aria-expanded={!isGroupCollapsed}
-                className="flex w-full items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-[#18181d] dark:hover:text-neutral-300"
+                className="flex w-full items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-faint transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-(--hub-panel-2) dark:hover:text-secondary"
               >
                 <span>{section.group}</span>
                 <span className="flex items-center gap-1">
                   {isGroupCollapsed && (
-                    <span className="rounded-full bg-neutral-200/70 px-1.5 text-[9px] tabular-nums text-neutral-500 dark:bg-(--hub-border)">
+                    <span className="rounded-full bg-neutral-200/70 px-1.5 text-[9px] tabular-nums text-tertiary dark:bg-(--hub-border)">
                       {section.items.length}
                     </span>
                   )}
@@ -228,7 +228,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
                         className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
                           active
                             ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
-                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-[#1a1a1f]'
+                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
                         }`}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
@@ -249,7 +249,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
           onClick={sync.trigger}
           disabled={sync.isPending}
           title={sync.configured ? `Sync now (${sync.provider})` : 'Set up free Cloud Sync'}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-[#1a1a1f]"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)"
         >
           {sync.isPending ? (
             <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-500" />
@@ -273,7 +273,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors ${
             isActive(pathname, '/settings')
               ? 'bg-indigo-600/15 text-indigo-600 dark:text-indigo-300'
-              : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'
+              : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'
           }`}
         >
           <Settings className="h-4 w-4" />
@@ -295,7 +295,7 @@ function Rail({ pathname }: { pathname: string | null }) {
           onClick={openCommandPalette}
           title="Search (⌘K)"
           aria-label="Search"
-          className="grid h-10 w-10 place-items-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+          className="grid h-10 w-10 place-items-center rounded-xl text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
         >
           <Search className="h-5 w-5" />
         </button>
@@ -305,7 +305,7 @@ function Rail({ pathname }: { pathname: string | null }) {
           disabled={sync.isPending}
           title={sync.configured ? `Sync (${sync.provider})` : 'Cloud Sync'}
           aria-label="Cloud sync"
-          className="relative grid h-10 w-10 place-items-center rounded-xl text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+          className="relative grid h-10 w-10 place-items-center rounded-xl text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
         >
           {sync.isPending ? (
             <RefreshCw className="h-5 w-5 animate-spin text-indigo-500" />
@@ -337,7 +337,7 @@ function Rail({ pathname }: { pathname: string | null }) {
                   className={`grid h-11 w-11 place-items-center rounded-xl transition-colors ${
                     active
                       ? 'bg-indigo-600/15 text-indigo-600 dark:text-indigo-300'
-                      : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'
+                      : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -385,7 +385,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-neutral-500"
+            className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-tertiary"
           >
             <X className="h-5 w-5" />
           </button>
@@ -397,7 +397,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
               onClose()
               openCommandPalette()
             }}
-            className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-500 dark:border-(--hub-border) dark:bg-(--hub-panel-2)"
+            className="flex min-h-11 w-full items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm text-tertiary dark:border-(--hub-border) dark:bg-(--hub-panel-2)"
           >
             <Search className="h-4 w-4" />
             Search notes, cards, lessons…
@@ -406,7 +406,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
         <nav aria-label="All sections" className="space-y-5 px-4 pb-2">
           {NAV.map((section) => (
             <div key={section.group}>
-              <div className="pb-2 text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+              <div className="pb-2 text-[11px] font-semibold uppercase tracking-widest text-faint">
                 {section.group}
               </div>
               <div className="grid grid-cols-3 gap-2 min-[420px]:grid-cols-4">
@@ -422,7 +422,7 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
                       className={`flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-xs transition-colors ${
                         active
                           ? 'bg-indigo-600/15 font-medium text-indigo-600 dark:text-indigo-300'
-                          : 'bg-neutral-100 text-neutral-700 active:bg-neutral-200 dark:bg-(--hub-panel-2) dark:text-neutral-300 dark:active:bg-[#232329]'
+                          : 'bg-neutral-100 text-neutral-700 active:bg-neutral-200 dark:bg-(--hub-panel-2) dark:text-secondary dark:active:bg-(--hub-border)'
                       }`}
                     >
                       <Icon className="h-5 w-5" />
@@ -458,7 +458,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
             type="button"
             onClick={openCommandPalette}
             aria-label="Search"
-            className="grid h-9 w-9 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+            className="grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
           >
             <Search className="h-4 w-4" />
           </button>
@@ -467,7 +467,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
             onClick={sync.trigger}
             disabled={sync.isPending}
             aria-label="Cloud sync"
-            className="relative grid h-9 w-9 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+            className="relative grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
           >
             {sync.isPending ? (
               <RefreshCw className="h-4 w-4 animate-spin text-indigo-500" />
@@ -495,7 +495,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
               href={item.href}
               aria-current={active ? 'page' : undefined}
               className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors ${
-                active ? 'font-medium text-indigo-600 dark:text-indigo-300' : 'text-neutral-500'
+                active ? 'font-medium text-indigo-600 dark:text-indigo-300' : 'text-tertiary'
               }`}
             >
               <Icon className="h-5 w-5" />
@@ -509,7 +509,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors ${
-            !onPrimary ? 'font-medium text-indigo-600 dark:text-indigo-300' : 'text-neutral-500'
+            !onPrimary ? 'font-medium text-indigo-600 dark:text-indigo-300' : 'text-tertiary'
           }`}
         >
           <Menu className="h-5 w-5" />

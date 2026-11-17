@@ -93,7 +93,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
           60-second review
         </h3>
         {done > 0 && (
-          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+          <span className="text-xs font-bold text-status-success-text dark:text-status-success-text">
             {done} graded
           </span>
         )}
@@ -102,9 +102,9 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
       {q.isLoading ? (
         <div className="h-20 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       ) : q.isError ? (
-        <p className="text-xs text-rose-600 dark:text-rose-400">Could not load due cards.</p>
+        <p className="text-xs text-rose-600 dark:text-danger-text">Could not load due cards.</p>
       ) : cards.length === 0 ? (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="text-xs text-tertiary dark:text-faint">
           Nothing due — the queue is clear. Check back after your next session.
         </p>
       ) : (
@@ -113,14 +113,14 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
             {frontOf(card)}
           </p>
           {revealed ? (
-            <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-neutral-600 dark:text-neutral-300">
+            <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-neutral-600 dark:text-secondary">
               Grade honestly — this feeds the same FSRS pipeline as a full session.
             </p>
           ) : (
             <button
               type="button"
               onClick={() => setRevealed(true)}
-              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:border-indigo-400 dark:border-(--hub-border) dark:text-neutral-300"
+              className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:border-indigo-400 dark:border-(--hub-border) dark:text-secondary"
             >
               <Timer className="h-3.5 w-3.5" /> Try recall, then reveal
             </button>
@@ -143,7 +143,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
               </button>
             </div>
           )}
-          <p className="text-[11px] text-neutral-400">
+          <p className="text-[11px] text-faint">
             card {(idx % cards.length) + 1} of {cards.length} · grades run the standard review
             pipeline
           </p>

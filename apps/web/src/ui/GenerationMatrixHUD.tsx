@@ -76,7 +76,7 @@ export function GenerationMatrixHUD({
               Generation Effect Matrix: {ladder.concept}
             </h3>
           </div>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="text-xs text-tertiary dark:text-faint">
             Slamecka & Graf (1978) Active Semantic Generation Ladder
           </p>
         </div>
@@ -156,7 +156,7 @@ export function GenerationMatrixHUD({
 
       {/* Challenge Box */}
       <div className="mt-5 rounded-xl border border-neutral-200/80 bg-neutral-50/70 p-4 dark:border-(--hub-border) dark:bg-(--hub-panel-2)/60">
-        <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+        <div className="text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
           Generation Challenge
         </div>
         <p className="mt-1 text-sm font-medium text-neutral-800 dark:text-neutral-200">
@@ -173,13 +173,13 @@ export function GenerationMatrixHUD({
         {/* Tier 2: Interactive Scrambled Token Chips */}
         {ladder.scrambledTokens && ladder.scrambledTokens.length > 0 && (
           <div className="mt-3 space-y-2">
-            <div className="flex items-center justify-between text-xs text-neutral-500">
+            <div className="flex items-center justify-between text-xs text-tertiary">
               <span>Click tokens in correct sequence:</span>
               {selectedTokens.length > 0 && (
                 <button
                   type="button"
                   onClick={handleResetTokens}
-                  className="flex items-center gap-1 text-neutral-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  className="flex items-center gap-1 text-tertiary hover:text-indigo-600 dark:hover:text-indigo-400"
                 >
                   <RotateCcw className="h-3 w-3" />
                   <span>Reset</span>
@@ -201,7 +201,7 @@ export function GenerationMatrixHUD({
                     className={cx(
                       'rounded-lg border px-2.5 py-1 text-xs font-medium transition-all',
                       isExhausted
-                        ? 'border-neutral-200 bg-neutral-100 text-neutral-400 opacity-40 dark:border-neutral-800 dark:bg-neutral-900'
+                        ? 'border-neutral-200 bg-neutral-100 text-faint opacity-40 dark:border-neutral-800 dark:bg-neutral-900'
                         : 'border-indigo-300 bg-white text-indigo-700 shadow-2xs hover:border-indigo-500 hover:bg-indigo-50 dark:border-indigo-800 dark:bg-(--hub-panel) dark:text-indigo-300 dark:hover:bg-indigo-950/40',
                     )}
                   >

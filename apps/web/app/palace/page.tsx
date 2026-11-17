@@ -150,7 +150,7 @@ export default function MemoryPalacePage() {
         actions={
           <Link
             href="/palace-3d"
-            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-all shadow-sm"
+            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-status-warning-text hover:bg-amber-500/20 transition-all shadow-sm"
           >
             <Box className="h-3.5 w-3.5" />
             <span>3D Palace Studio</span>
@@ -180,17 +180,17 @@ export default function MemoryPalacePage() {
             {(list.data?.palaces ?? []).map((p) => (
               <div
                 key={p.palace.id}
-                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm ${activeId === p.palace.id ? 'bg-indigo-600/10 text-indigo-300' : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'}`}
+                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm ${activeId === p.palace.id ? 'bg-indigo-600/10 text-indigo-300' : 'text-neutral-600 hover:bg-neutral-100 dark:text-secondary dark:hover:bg-(--hub-panel-2)'}`}
               >
                 <button
                   className="min-w-0 flex-1 truncate text-left"
                   onClick={() => setActiveId(p.palace.id)}
                 >
                   {p.palace.name}
-                  <span className="ml-2 text-xs text-neutral-500">{p.items.length} loci</span>
+                  <span className="ml-2 text-xs text-tertiary">{p.items.length} loci</span>
                 </button>
                 <button
-                  className="opacity-0 hover:text-red-400 group-hover:opacity-100"
+                  className="opacity-0 hover:text-danger-text group-hover:opacity-100"
                   onClick={() => deletePalace.mutate(p.palace.id)}
                   title="delete"
                 >
@@ -199,7 +199,7 @@ export default function MemoryPalacePage() {
               </div>
             ))}
             {list.data && list.data.palaces.length === 0 && (
-              <div className="py-4 text-center text-xs text-neutral-500">
+              <div className="py-4 text-center text-xs text-tertiary">
                 no palaces yet — method of loci beats re-reading
               </div>
             )}
@@ -209,7 +209,7 @@ export default function MemoryPalacePage() {
         {/* builder */}
         <div className="panel space-y-4">
           {!active ? (
-            <div className="py-10 text-center text-sm text-neutral-500">
+            <div className="py-10 text-center text-sm text-tertiary">
               Pick or create a palace to edit its loci.
             </div>
           ) : (
@@ -230,9 +230,7 @@ export default function MemoryPalacePage() {
                 >
                   <Play className="h-4 w-4" /> Walk through
                 </button>
-                <span className="ml-auto text-xs text-neutral-500">
-                  loci are walked in list order
-                </span>
+                <span className="ml-auto text-xs text-tertiary">loci are walked in list order</span>
               </div>
 
               <div className="space-y-2">
@@ -276,7 +274,7 @@ export default function MemoryPalacePage() {
                         ))}
                       </select>
                       <button
-                        className="btn-ghost ml-auto px-2 hover:text-red-400"
+                        className="btn-ghost ml-auto px-2 hover:text-danger-text"
                         onClick={() => setItems(items.filter((_, j) => j !== i))}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -295,7 +293,7 @@ export default function MemoryPalacePage() {
                       }
                     />
                     {item.cardId && (
-                      <div className="mt-1 text-xs text-neutral-500">
+                      <div className="mt-1 text-xs text-tertiary">
                         attached: {cardLabel(item.cardId)}
                       </div>
                     )}
@@ -370,18 +368,18 @@ function WalkThrough({
       <button className="btn-ghost absolute right-4 top-4" onClick={onClose}>
         <X className="h-4 w-4" /> exit (esc)
       </button>
-      <div className="text-xs uppercase tracking-widest text-neutral-500">
+      <div className="text-xs uppercase tracking-widest text-tertiary">
         locus {pos + 1} / {items.length}
       </div>
       <div className="celebrate mt-2 text-3xl font-bold">{item.name}</div>
       {item.vividImage && (
-        <div className="mt-3 max-w-xl text-sm text-amber-300/80">{item.vividImage}</div>
+        <div className="mt-3 max-w-xl text-sm text-status-warning-text/80">{item.vividImage}</div>
       )}
       {item.card && (
         <div className="panel mt-6 min-h-[120px] w-full max-w-xl space-y-3">
           <div className="text-lg">{cardFront(item.card.content)}</div>
           {revealed ? (
-            <div className="text-lg font-medium text-emerald-400">
+            <div className="text-lg font-medium text-status-success-text">
               {cardBack(item.card.content)}
             </div>
           ) : (

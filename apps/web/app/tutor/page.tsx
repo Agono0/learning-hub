@@ -335,11 +335,11 @@ export default function TutorPage() {
       {manual ? (
         <>
           <div className="panel space-y-3">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
               <Lightbulb className="h-3.5 w-3.5" />{' '}
               {manualData?.manual?.title ?? 'Self-explain mode'} — the ladder, asked to yourself
             </div>
-            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-neutral-300">
+            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-secondary">
               {(manualData?.manual?.steps ?? ['Loading self-questioning prompts…']).map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
@@ -350,7 +350,7 @@ export default function TutorPage() {
               value={scratchpad}
               onChange={(e) => setScratchpad(e.target.value)}
             />
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Anything you wrote for step 10 (LOG) is a flashcard candidate — add it from the Decks
               page. Reveal from notes only after step 9.
             </p>
@@ -365,7 +365,7 @@ export default function TutorPage() {
         <div className="panel flex h-[55vh] flex-col">
           <div ref={streamBoxRef} className="flex-1 space-y-3 overflow-y-auto pr-1">
             {messages.length === 0 && (
-              <div className="grid h-full place-items-center text-center text-sm text-neutral-500">
+              <div className="grid h-full place-items-center text-center text-sm text-tertiary">
                 <div>
                   <Settings2 className="mx-auto mb-2 h-6 w-6 opacity-40" />
                   Ask about anything you're learning. Answer first — the tutor will coach, not
@@ -387,7 +387,7 @@ export default function TutorPage() {
             ))}
           </div>
           {error && (
-            <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+            <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
               {error}
             </div>
           )}
@@ -418,7 +418,7 @@ export default function TutorPage() {
         // guided steps render beneath it (rule 9, F-09).
         <div className="panel space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
               <Sparkles className="h-3.5 w-3.5" /> Session summary &amp; gap cards
             </div>
             <button
@@ -434,14 +434,12 @@ export default function TutorPage() {
 
           {summary && (
             <div className="space-y-3 text-sm">
-              <p className="text-neutral-600 dark:text-neutral-300">{summary.summary}</p>
+              <p className="text-neutral-600 dark:text-secondary">{summary.summary}</p>
               {summary.usedAI === false && summaryManualData?.manual && (
                 <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
                   <div className="label mb-1">Do it by hand — {summaryManualData.manual.title}</div>
-                  <p className="mb-2 text-xs text-neutral-500">
-                    {summaryManualData.manual.summary}
-                  </p>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs text-neutral-500">
+                  <p className="mb-2 text-xs text-tertiary">{summaryManualData.manual.summary}</p>
+                  <ol className="list-decimal space-y-1 pl-5 text-xs text-tertiary">
                     {summaryManualData.manual.steps.map((s, i) => (
                       <li key={i}>{s}</li>
                     ))}
@@ -461,7 +459,7 @@ export default function TutorPage() {
               {summary.understood.length > 0 && (
                 <div>
                   <div className="label mb-1">Understood</div>
-                  <ul className="list-disc space-y-0.5 pl-5 text-xs text-neutral-500">
+                  <ul className="list-disc space-y-0.5 pl-5 text-xs text-tertiary">
                     {summary.understood.map((g, i) => (
                       <li key={i}>{g}</li>
                     ))}
@@ -478,7 +476,7 @@ export default function TutorPage() {
                         className="rounded-lg border border-neutral-200 p-2 text-xs dark:border-(--hub-border)"
                       >
                         <span className="block font-medium">{c.front}</span>
-                        <span className="text-neutral-500">{c.back}</span>
+                        <span className="text-tertiary">{c.back}</span>
                       </div>
                     ))}
                   </div>
@@ -505,7 +503,7 @@ export default function TutorPage() {
                       <Save className="h-3.5 w-3.5" /> Save {summary.cards.length} cards
                     </button>
                     {!summary.usedAI && (
-                      <span className="text-[11px] text-neutral-400">
+                      <span className="text-[11px] text-faint">
                         (no provider — add one in Settings for AI gap detection)
                       </span>
                     )}
@@ -521,12 +519,12 @@ export default function TutorPage() {
         <div className="panel">
           <button
             type="button"
-            className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500"
+            className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary"
             onClick={() => setSessionsOpen((v) => !v)}
           >
             <History className="h-3.5 w-3.5" /> Past sessions
             {sessionId != null && (
-              <span className="ml-1 normal-case text-neutral-400">(session #{sessionId})</span>
+              <span className="ml-1 normal-case text-faint">(session #{sessionId})</span>
             )}
             <span className="ml-auto">{sessionsOpen ? '−' : '+'}</span>
           </button>
@@ -542,14 +540,14 @@ export default function TutorPage() {
                     <span className="min-w-0 flex-1 truncate">
                       {s2.title || `Session ${s2.id}`}
                     </span>
-                    <span className="ml-2 shrink-0 text-[10px] text-neutral-400">
+                    <span className="ml-2 shrink-0 text-[10px] text-faint">
                       {new Date(s2.createdAt).toLocaleDateString()}
                     </span>
                   </button>
                 </li>
               ))}
               {(sessionsData?.sessions ?? []).length === 0 && (
-                <li className="px-2 py-1 text-xs text-neutral-400">No past sessions yet.</li>
+                <li className="px-2 py-1 text-xs text-faint">No past sessions yet.</li>
               )}
             </ul>
           )}
@@ -558,10 +556,10 @@ export default function TutorPage() {
 
       {!manual && (
         <div className="panel">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
             <Lightbulb className="h-3.5 w-3.5" /> Hint ladder — one rung at a time
             {!canReveal && (
-              <span className="ml-auto normal-case text-neutral-400">
+              <span className="ml-auto normal-case text-faint">
                 (make an attempt to unlock reveal)
               </span>
             )}

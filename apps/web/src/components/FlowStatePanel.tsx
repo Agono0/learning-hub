@@ -23,10 +23,10 @@ export interface FlowStatePanelProps {
 }
 
 const ZONE_TONE: Record<string, string> = {
-  flow: 'text-emerald-600 dark:text-emerald-400',
-  boredom: 'text-sky-600 dark:text-sky-400',
-  anxiety: 'text-rose-600 dark:text-rose-400',
-  fatigue: 'text-amber-600 dark:text-amber-400',
+  flow: 'text-status-success-text dark:text-status-success-text',
+  boredom: 'text-status-info-text dark:text-status-info-text',
+  anxiety: 'text-rose-600 dark:text-danger-text',
+  fatigue: 'text-status-warning-text dark:text-status-warning-text',
 }
 
 /**
@@ -85,7 +85,7 @@ export function FlowStatePanel({
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs">
-        <label className="text-neutral-500 dark:text-neutral-400">
+        <label className="text-tertiary dark:text-faint">
           Focus minutes this block
           <input
             type="range"
@@ -97,11 +97,11 @@ export function FlowStatePanel({
             className="mt-1 w-full accent-indigo-500"
             aria-label="Focus minutes"
           />
-          <span className="font-mono text-[11px] text-neutral-600 dark:text-neutral-300">
+          <span className="font-mono text-[11px] text-neutral-600 dark:text-secondary">
             {minutes} min
           </span>
         </label>
-        <label className="text-neutral-500 dark:text-neutral-400">
+        <label className="text-tertiary dark:text-faint">
           Last stretch accuracy
           <input
             type="range"
@@ -113,7 +113,7 @@ export function FlowStatePanel({
             className="mt-1 w-full accent-emerald-500"
             aria-label="Accuracy percent"
           />
-          <span className="font-mono text-[11px] text-neutral-600 dark:text-neutral-300">
+          <span className="font-mono text-[11px] text-neutral-600 dark:text-secondary">
             {lastAccuracy}%
           </span>
         </label>
@@ -123,28 +123,28 @@ export function FlowStatePanel({
         <div className="h-16 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       ) : flow ? (
         <>
-          <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-300">
+          <p className="text-xs leading-relaxed text-neutral-600 dark:text-secondary">
             {flow.recommendation}
           </p>
-          <p className="flex items-center gap-1.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+          <p className="flex items-center gap-1.5 text-[11px] text-tertiary dark:text-faint">
             <Activity className="h-3.5 w-3.5" />
             Ultradian phase:{' '}
             <strong className="capitalize">{flow.ultradianPhase.replace(/_/g, ' ')}</strong> ·{' '}
             {flow.remainingFocusMinutes} min left in block
           </p>
           <div className="flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5 text-amber-500" />
+            <Zap className="h-3.5 w-3.5 text-status-warning-text" />
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
               <div
                 className="h-full bg-amber-400 transition-all"
                 style={{ width: `${Math.round(flow.flowScore)}%` }}
               />
             </div>
-            <span className="font-mono text-[11px] text-neutral-500">
+            <span className="font-mono text-[11px] text-tertiary">
               {Math.round(flow.flowScore)}
             </span>
           </div>
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+          <p className="text-[11px] text-tertiary dark:text-faint">
             Suggested:{' '}
             <strong className="capitalize">{flow.suggestedAction.replace(/_/g, ' ')}</strong>{' '}
             (challenge–skill ratio {flow.challengeSkillRatio.toFixed(2)})
@@ -156,7 +156,7 @@ export function FlowStatePanel({
                 type="button"
                 onClick={() => gradeMutation.mutate({ strain })}
                 aria-pressed={false}
-                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:border-indigo-400 dark:border-(--hub-border) dark:text-neutral-300"
+                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 transition-colors hover:border-indigo-400 dark:border-(--hub-border) dark:text-secondary"
               >
                 <Battery className="h-3.5 w-3.5" />
                 Grade strain {strain}/5
@@ -165,7 +165,7 @@ export function FlowStatePanel({
           </div>
         </>
       ) : current.isError ? (
-        <p className="text-xs text-rose-600 dark:text-rose-400">
+        <p className="text-xs text-rose-600 dark:text-danger-text">
           Flow assessment failed to load — check the connection and retry.
         </p>
       ) : null}

@@ -53,19 +53,19 @@ export function InterleavingHUD({
 
   return (
     <div
-      className={`rounded-xl border border-border/80 bg-card/70 p-4 shadow-sm backdrop-blur-md ${className}`}
+      className={`rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white/70 dark:bg-(--hub-panel)/70 p-4 shadow-sm backdrop-blur-md ${className}`}
     >
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/10 text-ac-text">
             <Shuffle className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="text-sm font-semibold text-strong">
               Interleaving &amp; Discrimination HUD
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-tertiary">
               Rohrer &amp; Taylor (2007) • Kornell &amp; Bjork (2008) • Gick &amp; Holyoak (1983)
             </p>
           </div>
@@ -120,7 +120,7 @@ export function InterleavingHUD({
       {/* Kornell-Bjork illusion callout */}
       {telemetry.totalAttempts > 0 && practiceAccuracy < 0.8 && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-200">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-warning-text" />
           <span>
             Practice feels hard at {Math.round(practiceAccuracy * 100)}% — that is the point.
             Shuffled practice <strong>doubles</strong> delayed test scores despite harder sessions
@@ -132,11 +132,11 @@ export function InterleavingHUD({
       {/* Confusion matrix */}
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-tertiary">
             Category Confusion Matrix
           </h4>
           {telemetry.totalAttempts === 0 && (
-            <span className="text-xs text-muted-foreground">awaiting attempts…</span>
+            <span className="text-xs text-tertiary">awaiting attempts…</span>
           )}
         </div>
         {telemetry.totalAttempts > 0 ? (
@@ -144,14 +144,11 @@ export function InterleavingHUD({
             <table className="min-w-full border-separate border-spacing-0.5 text-center text-xs">
               <thead>
                 <tr>
-                  <th className="px-1.5 py-1 text-left text-[10px] font-medium text-muted-foreground">
+                  <th className="px-1.5 py-1 text-left text-[10px] font-medium text-tertiary">
                     true ↓ / chose →
                   </th>
                   {categories.map((c) => (
-                    <th
-                      key={c.id}
-                      className="px-1.5 py-1 text-[10px] font-medium text-muted-foreground"
-                    >
+                    <th key={c.id} className="px-1.5 py-1 text-[10px] font-medium text-tertiary">
                       {labelFor(c.id)}
                     </th>
                   ))}
@@ -164,7 +161,7 @@ export function InterleavingHUD({
                   )
                   return (
                     <tr key={rowCat.id}>
-                      <th className="px-1.5 py-1 text-left text-[10px] font-medium text-muted-foreground">
+                      <th className="px-1.5 py-1 text-left text-[10px] font-medium text-tertiary">
                         {labelFor(rowCat.id)}
                       </th>
                       {categories.map((colCat) => {
@@ -181,7 +178,7 @@ export function InterleavingHUD({
                           <td
                             key={colCat.id}
                             className={`min-w-9 rounded px-1.5 py-1 tabular-nums ${
-                              count > 0 ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                              count > 0 ? 'font-semibold text-strong' : 'text-tertiary'
                             }`}
                             style={count > 0 ? { backgroundColor: bg } : undefined}
                             title={`${rowCat.label} answered as ${colCat.label}: ${count}`}
@@ -190,7 +187,7 @@ export function InterleavingHUD({
                           </td>
                         )
                       })}
-                      <td className="px-1.5 pl-2 text-[10px] text-muted-foreground tabular-nums">
+                      <td className="px-1.5 pl-2 text-[10px] text-tertiary tabular-nums">
                         {rowTotal ? `${Math.round(rowTotal.recall * 100)}%` : '—'}
                       </td>
                     </tr>
@@ -200,7 +197,7 @@ export function InterleavingHUD({
             </table>
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-neutral-200/60 dark:border-(--hub-border)/60 p-4 text-center text-xs text-tertiary">
             Answer discrimination drills to populate the confusion matrix.
           </div>
         )}
@@ -208,51 +205,51 @@ export function InterleavingHUD({
 
       {/* Top confusion + top contrast pair */}
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-          <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/40 dark:bg-(--hub-panel)/40 p-3">
+          <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-strong">
+            <AlertTriangle className="h-3.5 w-3.5 text-danger-text" />
             Top Confusions
           </h4>
           {telemetry.topConfusions.length > 0 ? (
-            <ul className="space-y-1 text-xs text-muted-foreground">
+            <ul className="space-y-1 text-xs text-tertiary">
               {telemetry.topConfusions.slice(0, 3).map((c) => (
                 <li
                   key={`${c.trueCategoryId}-${c.chosenCategoryId}`}
                   className="flex items-center gap-1.5"
                 >
-                  <CheckCircle2 className="h-3 w-3 shrink-0 text-red-400/70" />
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-danger-text/70" />
                   <span>
                     {labelFor(c.trueCategoryId)} → {labelFor(c.chosenCategoryId)}{' '}
-                    <span className="font-semibold text-foreground">×{c.count}</span>
+                    <span className="font-semibold text-strong">×{c.count}</span>
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-muted-foreground">No confusions recorded yet.</p>
+            <p className="text-xs text-tertiary">No confusions recorded yet.</p>
           )}
         </div>
-        <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-          <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Shuffle className="h-3.5 w-3.5 text-primary" />
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/40 dark:bg-(--hub-panel)/40 p-3">
+          <h4 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-strong">
+            <Shuffle className="h-3.5 w-3.5 text-ac-text" />
             Sharpest Contrast Pair
           </h4>
           {topContrast ? (
-            <div className="space-y-1 text-xs text-muted-foreground">
+            <div className="space-y-1 text-xs text-tertiary">
               <p>
                 {labelFor(topContrast.categoryA)} vs {labelFor(topContrast.categoryB)}
               </p>
               <p className="text-[10px]">
                 surface distance {topContrast.surfaceDistance.toFixed(2)} · structural distance{' '}
                 {topContrast.structuralDistance.toFixed(2)} · utility{' '}
-                <span className="font-semibold text-foreground">
+                <span className="font-semibold text-strong">
                   {topContrast.contrastUtility.toFixed(2)}
                 </span>
               </p>
               <ProgressBar value={topContrast.contrastUtility} label="Contrast utility" />
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No contrast data.</p>
+            <p className="text-xs text-tertiary">No contrast data.</p>
           )}
         </div>
       </div>
@@ -274,14 +271,14 @@ function HudStat({
   hint?: string
 }) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 p-2.5">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        <span className="text-primary/80">{icon}</span>
+    <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/40 dark:bg-(--hub-panel)/40 p-2.5">
+      <div className="flex items-center gap-1.5 text-tertiary">
+        <span className="text-ac-text/80">{icon}</span>
         <span className="text-[10px] font-medium uppercase tracking-wide">{label}</span>
       </div>
-      <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-lg font-bold tabular-nums text-strong">{value}</p>
       <ProgressBar value={Math.max(0, Math.min(1, bar))} label={label} />
-      {hint && <p className="mt-1 text-[10px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1 text-[10px] text-tertiary">{hint}</p>}
     </div>
   )
 }

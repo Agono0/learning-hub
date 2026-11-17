@@ -127,7 +127,7 @@ export function MetacognitiveJournalStudio({
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeTab === 'gibbs'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <RefreshCw className="h-4 w-4" />
@@ -140,7 +140,7 @@ export function MetacognitiveJournalStudio({
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeTab === 'friction_audit'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Zap className="h-4 w-4" />
@@ -153,7 +153,7 @@ export function MetacognitiveJournalStudio({
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeTab === 'calibration'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Gauge className="h-4 w-4" />
@@ -165,27 +165,23 @@ export function MetacognitiveJournalStudio({
       {weeklyStats && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <span className="text-[10px] uppercase font-semibold text-neutral-400">
-              Reviews Done
-            </span>
+            <span className="text-[10px] uppercase font-semibold text-faint">Reviews Done</span>
             <div className="text-xl font-bold text-white mt-0.5">{weeklyStats.totalReviews}</div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <span className="text-[10px] uppercase font-semibold text-neutral-400">Deep Focus</span>
+            <span className="text-[10px] uppercase font-semibold text-faint">Deep Focus</span>
             <div className="text-xl font-bold text-white mt-0.5">
               {weeklyStats.totalFocusMinutes}m
             </div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <span className="text-[10px] uppercase font-semibold text-neutral-400">
-              Habit Streaks
-            </span>
+            <span className="text-[10px] uppercase font-semibold text-faint">Habit Streaks</span>
             <div className="text-xl font-bold text-white mt-0.5">
               {weeklyStats.habitsDone} check-ins
             </div>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <span className="text-[10px] uppercase font-semibold text-neutral-400">Avg Mood</span>
+            <span className="text-[10px] uppercase font-semibold text-faint">Avg Mood</span>
             <div className="text-xl font-bold text-white mt-0.5">
               {weeklyStats.moodAvg ? `${weeklyStats.moodAvg}/5` : '—'}
             </div>
@@ -204,13 +200,13 @@ export function MetacognitiveJournalStudio({
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-faint">
               Transform passive experience into active insight across 6 guided stages.
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   1. Description: What happened?
                 </label>
                 <textarea
@@ -222,7 +218,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   2. Feelings: Thoughts & emotions?
                 </label>
                 <textarea
@@ -234,7 +230,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   3. Evaluation: Good vs Bad?
                 </label>
                 <textarea
@@ -246,7 +242,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   4. Analysis: Sense-making & causes?
                 </label>
                 <textarea
@@ -258,7 +254,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   5. Conclusion: What else could you do?
                 </label>
                 <textarea
@@ -270,7 +266,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   6. Action Plan: Next time commitment?
                 </label>
                 <textarea
@@ -289,20 +285,20 @@ export function MetacognitiveJournalStudio({
         <Panel
           title={
             <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-400" />
+              <Zap className="h-4 w-4 text-status-warning-text" />
               <span>Cognitive Friction Audit & Habit Loop Dismantling</span>
             </div>
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-faint">
               Pinpoint the exact moment cognitive friction or distraction occurred and establish a
               micro-intervention.
             </p>
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   Friction Trigger Point
                 </label>
                 <input
@@ -316,7 +312,7 @@ export function MetacognitiveJournalStudio({
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-neutral-300">
+                  <label className="text-xs font-semibold text-secondary">
                     Cognitive Bottleneck
                   </label>
                   <input
@@ -331,7 +327,7 @@ export function MetacognitiveJournalStudio({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-neutral-300">
+                  <label className="text-xs font-semibold text-secondary">
                     Emotional Arousal State
                   </label>
                   <input
@@ -345,7 +341,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   Micro-Intervention (2-Minute Rule)
                 </label>
                 <input
@@ -358,7 +354,7 @@ export function MetacognitiveJournalStudio({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-300">
+                <label className="text-xs font-semibold text-secondary">
                   Accountability Anchor
                 </label>
                 <input
@@ -380,13 +376,13 @@ export function MetacognitiveJournalStudio({
         <Panel
           title={
             <div className="flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-emerald-400" />
+              <Gauge className="h-4 w-4 text-status-success-text" />
               <span>Judgment of Learning (JOL) Calibration Radar</span>
             </div>
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-faint">
               Calibrate your subjective confidence against objective performance (Dunlosky &
               Metcalfe 2009).
             </p>
@@ -394,7 +390,7 @@ export function MetacognitiveJournalStudio({
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="p-4 rounded-xl border border-white/10 bg-white/5 space-y-3">
                 <div className="flex justify-between items-center">
-                  <label htmlFor={predScoreId} className="text-xs font-semibold text-neutral-300">
+                  <label htmlFor={predScoreId} className="text-xs font-semibold text-secondary">
                     Predicted Score / Subjective Confidence
                   </label>
                   <span className="text-sm font-bold font-mono text-indigo-400">
@@ -414,10 +410,10 @@ export function MetacognitiveJournalStudio({
 
               <div className="p-4 rounded-xl border border-white/10 bg-white/5 space-y-3">
                 <div className="flex justify-between items-center">
-                  <label htmlFor={actScoreId} className="text-xs font-semibold text-neutral-300">
+                  <label htmlFor={actScoreId} className="text-xs font-semibold text-secondary">
                     Actual Objective Score
                   </label>
-                  <span className="text-sm font-bold font-mono text-emerald-400">
+                  <span className="text-sm font-bold font-mono text-status-success-text">
                     {actualScore}%
                   </span>
                 </div>
@@ -481,20 +477,20 @@ export function MetacognitiveJournalStudio({
       <Panel
         title={
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-purple-400" />
+            <Sparkles className="h-4 w-4 text-indigo-400" />
             <span>Convert Reflection to Spaced Action Flashcard</span>
           </div>
         }
       >
         <div className="space-y-3">
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-faint">
             Immortalize your metacognitive breakthrough by turning it into an active recall card in
             your deck.
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-300">
+              <label className="text-xs font-semibold text-secondary">
                 Identified Cognitive Trap
               </label>
               <input
@@ -507,9 +503,7 @@ export function MetacognitiveJournalStudio({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-300">
-                Committed Action Rule
-              </label>
+              <label className="text-xs font-semibold text-secondary">Committed Action Rule</label>
               <input
                 type="text"
                 className="input w-full text-xs"
@@ -522,7 +516,7 @@ export function MetacognitiveJournalStudio({
 
           <div className="flex items-center justify-between pt-1">
             {cardCreatedMsg ? (
-              <span className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
+              <span className="text-xs text-status-success-text flex items-center gap-1 font-semibold">
                 <CheckCircle2 className="h-3.5 w-3.5" /> {cardCreatedMsg}
               </span>
             ) : (
@@ -545,7 +539,7 @@ export function MetacognitiveJournalStudio({
       <div className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5">
         <div>
           {saveSuccess && (
-            <span className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
+            <span className="text-xs text-status-success-text flex items-center gap-1 font-semibold">
               <CheckCircle2 className="h-3.5 w-3.5" /> {saveSuccess}
             </span>
           )}

@@ -15,22 +15,22 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-4 py-10 text-center dark:border-(--hub-border)">
-      {icon && <div className="text-neutral-400">{icon}</div>}
+      {icon && <div className="text-faint">{icon}</div>}
       <div className="font-medium">{title}</div>
-      {children && <div className="max-w-sm text-sm text-neutral-500">{children}</div>}
+      {children && <div className="max-w-sm text-sm text-tertiary">{children}</div>}
       {action && <div className="pt-2">{action}</div>}
     </div>
   )
 }
 
 const BADGE_TONE = {
-  neutral: 'bg-neutral-100 text-neutral-700 dark:bg-(--hub-panel-2) dark:text-neutral-300',
+  neutral: 'bg-neutral-100 text-neutral-700 dark:bg-(--hub-panel-2) dark:text-secondary',
   accent: 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300',
-  success: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-300',
-  warning: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  danger: 'bg-rose-600/15 text-rose-700 dark:text-rose-300',
-  violet: 'bg-purple-600/15 text-purple-700 dark:text-purple-300',
-  cyan: 'bg-cyan-600/15 text-cyan-700 dark:text-cyan-300',
+  success: 'bg-emerald-600/15 text-emerald-700 dark:text-status-success-text',
+  warning: 'bg-amber-500/15 text-amber-700 dark:text-status-warning-text',
+  danger: 'bg-rose-600/15 text-rose-700 dark:text-danger-text',
+  violet: 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300',
+  cyan: 'bg-sky-600/15 text-sky-700 dark:text-status-info-text',
 } as const
 
 const BADGE_DOT = {
@@ -39,8 +39,8 @@ const BADGE_DOT = {
   success: 'bg-emerald-500',
   warning: 'bg-amber-500',
   danger: 'bg-rose-500',
-  violet: 'bg-purple-500',
-  cyan: 'bg-cyan-500',
+  violet: 'bg-indigo-500',
+  cyan: 'bg-sky-500',
 } as const
 
 /** Small status pill with optional dot indicator and pulse animation. */
@@ -92,12 +92,12 @@ export function Stat({
 }) {
   return (
     <div className="panel space-y-1">
-      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+      <div className="flex items-center gap-1.5 text-xs text-tertiary">
         {icon}
         {label}
       </div>
       <div className="text-2xl font-bold tabular-nums">{value}</div>
-      {hint && <div className="text-xs text-neutral-500">{hint}</div>}
+      {hint && <div className="text-xs text-tertiary">{hint}</div>}
     </div>
   )
 }
@@ -128,7 +128,10 @@ export function Skeleton({ className }: { className?: string }) {
   return (
     <div
       aria-hidden
-      className={cx('animate-pulse rounded-xl bg-neutral-200/80 dark:bg-[#1b1b20]', className)}
+      className={cx(
+        'animate-pulse rounded-xl bg-neutral-200/80 dark:bg-(--hub-panel-2)',
+        className,
+      )}
     />
   )
 }

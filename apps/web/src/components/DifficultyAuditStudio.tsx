@@ -64,9 +64,9 @@ export interface DifficultyAuditStudioProps {
 }
 
 const UTILITY_BADGE: Record<TechniqueUtility, string> = {
-  high: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+  high: 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text',
   moderate: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300',
-  low: 'border-rose-500/40 bg-rose-500/10 text-rose-300',
+  low: 'border-rose-500/40 bg-rose-500/10 text-danger-text',
 }
 
 const PROMPT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -170,7 +170,7 @@ export function DifficultyAuditStudio({
                 t.disabled && 'cursor-not-allowed opacity-40',
                 activeTab === t.id
                   ? 'bg-indigo-500/25 text-indigo-200'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
+                  : 'text-faint hover:bg-slate-800 hover:text-slate-200',
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -185,7 +185,7 @@ export function DifficultyAuditStudio({
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h3 className="text-sm font-bold text-white">How did you actually study this week?</h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+            <p className="mt-1 text-xs leading-relaxed text-faint">
               Log honest minutes per technique. Rereading and highlighting are invisible to the
               app's telemetry — only you can see them, which is exactly why the evidence table
               judges them so harshly.
@@ -199,7 +199,7 @@ export function DifficultyAuditStudio({
                     key={p.techniqueId}
                     className="flex items-start gap-2.5 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
                   >
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-faint" />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-semibold text-slate-200">{p.question}</span>
@@ -212,7 +212,7 @@ export function DifficultyAuditStudio({
                           {profile.utility}
                         </span>
                       </span>
-                      <span className="mt-0.5 block text-[10px] leading-snug text-slate-500">
+                      <span className="mt-0.5 block text-[10px] leading-snug text-tertiary">
                         {p.helper}
                       </span>
                       <span className="mt-2 flex items-center gap-2">
@@ -229,7 +229,7 @@ export function DifficultyAuditStudio({
                           aria-label={`Minutes of ${p.question}`}
                           className="w-20 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs font-mono text-white"
                         />
-                        <span className="text-[10px] text-slate-500">min / week</span>
+                        <span className="text-[10px] text-tertiary">min / week</span>
                       </span>
                     </span>
                   </label>
@@ -237,7 +237,7 @@ export function DifficultyAuditStudio({
               })}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-faint">
                 Logged <strong className="font-mono text-white">{totalLogged}</strong> min this
                 window
               </span>
@@ -256,7 +256,7 @@ export function DifficultyAuditStudio({
                 {submitting ? 'Auditing…' : 'Run the audit'}
               </button>
             </div>
-            {submitError && <p className="mt-2 text-xs text-rose-400">{submitError}</p>}
+            {submitError && <p className="mt-2 text-xs text-danger-text">{submitError}</p>}
           </div>
         </div>
       )}
@@ -266,7 +266,7 @@ export function DifficultyAuditStudio({
         <div className="space-y-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h3 className="text-sm font-bold text-white">Your technique mix</h3>
-            <p className="mt-1 text-xs text-slate-400">{report.mix.guidance}</p>
+            <p className="mt-1 text-xs text-faint">{report.mix.guidance}</p>
             <ul className="mt-3 space-y-2">
               {report.mix.shares.map((s) => (
                 <li key={s.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
@@ -302,7 +302,7 @@ export function DifficultyAuditStudio({
                 </li>
               ))}
             </ul>
-            <p className="mt-3 rounded-lg border border-white/10 bg-white/5 p-2.5 text-[11px] leading-relaxed text-slate-300">
+            <p className="mt-3 rounded-lg border border-white/10 bg-white/5 p-2.5 text-[11px] leading-relaxed text-secondary">
               <strong className="text-white">
                 Difficulty Dividend {report.mix.difficultyDividend}:
               </strong>{' '}
@@ -313,7 +313,7 @@ export function DifficultyAuditStudio({
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h3 className="text-sm font-bold text-white">Fluency-illusion risk drivers</h3>
-            <ul className="mt-2 space-y-1.5 text-xs text-slate-300">
+            <ul className="mt-2 space-y-1.5 text-xs text-secondary">
               {report.risk.drivers.map((d, i) => (
                 <li key={i} className="flex items-start gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
@@ -321,7 +321,7 @@ export function DifficultyAuditStudio({
                 </li>
               ))}
               {report.risk.drivers.length === 0 && (
-                <li className="text-slate-500">No risk drivers detected this window.</li>
+                <li className="text-tertiary">No risk drivers detected this window.</li>
               )}
             </ul>
           </div>
@@ -345,7 +345,7 @@ export function DifficultyAuditStudio({
                 {spacingVerdict.replace(/_/g, ' ')}
               </span>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">{spacingGuidance}</p>
+            <p className="mt-2 text-xs leading-relaxed text-faint">{spacingGuidance}</p>
             <div className="mt-3 flex items-end gap-1" aria-hidden>
               {measured.retrievalMinutesByDay.map((m, i) => (
                 <div key={i} className="flex-1">
@@ -355,13 +355,13 @@ export function DifficultyAuditStudio({
                       height: `${Math.max(3, Math.min(48, (m / Math.max(1, Math.max(...measured.retrievalMinutesByDay))) * 48))}px`,
                     }}
                   />
-                  <span className="mt-1 block text-center text-[9px] text-slate-500">
+                  <span className="mt-1 block text-center text-[9px] text-tertiary">
                     {['S', 'M', 'T', 'W', 'T', 'F', 'S'][i]}
                   </span>
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">
+            <p className="mt-2 text-[11px] text-tertiary">
               {measured.retrievalMinutes} retrieval minutes · {measured.sessionCount} day-deck
               sessions (from your review log)
             </p>
@@ -370,7 +370,7 @@ export function DifficultyAuditStudio({
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-                <Shuffle className="h-4 w-4 text-sky-400" /> Interleaving (measured)
+                <Shuffle className="h-4 w-4 text-status-info-text" /> Interleaving (measured)
               </h3>
               <span
                 className={cx(
@@ -381,8 +381,8 @@ export function DifficultyAuditStudio({
                 {interleavingVerdict.replace(/_/g, ' ')}
               </span>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">{interleavingGuidance}</p>
-            <p className="mt-2 text-[11px] text-slate-500">
+            <p className="mt-2 text-xs leading-relaxed text-faint">{interleavingGuidance}</p>
+            <p className="mt-2 text-[11px] text-tertiary">
               {measured.totalReviews} reviews across {measured.distinctDecks} decks
             </p>
           </div>
@@ -396,7 +396,7 @@ export function DifficultyAuditStudio({
             <h3 className="text-sm font-bold text-white">
               Substitution plan — same hours, higher utility
             </h3>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-faint">
               Swaps move up to 80% of each low-utility block into evidence-backed techniques;
               dividends are exact arithmetic on your logged mix, not vibes.
             </p>
@@ -411,15 +411,17 @@ export function DifficultyAuditStudio({
                   <span className={cx('rounded-full border px-2 py-0.5', UTILITY_BADGE.low)}>
                     {s.fromLabel}
                   </span>
-                  <ArrowRightLeft className="h-3.5 w-3.5 text-emerald-400" />
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-status-success-text" />
                   <span className={cx('rounded-full border px-2 py-0.5', UTILITY_BADGE.high)}>
                     {s.toLabel}
                   </span>
                 </span>
-                <span className="font-mono font-bold text-emerald-300">+{s.dividendDelta} pts</span>
+                <span className="font-mono font-bold text-status-success-text">
+                  +{s.dividendDelta} pts
+                </span>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-slate-300">{s.how}</p>
-              <p className="mt-1 text-[10px] text-slate-500">
+              <p className="mt-2 text-xs leading-relaxed text-secondary">{s.how}</p>
+              <p className="mt-1 text-[10px] text-tertiary">
                 {s.minutesToMove} min/week reallocated
               </p>
             </div>
@@ -433,16 +435,16 @@ export function DifficultyAuditStudio({
 /** Verdict pill tone shared by the scheduling cards. */
 function VERDICT_PILL(verdict: string): string {
   if (['well_spaced', 'well_interleaved', 'daily_grind'].includes(verdict)) {
-    return 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+    return 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text'
   }
   if (['spaced', 'interleaved'].includes(verdict)) {
-    return 'border-sky-500/40 bg-sky-500/10 text-sky-300'
+    return 'border-sky-500/40 bg-sky-500/10 text-status-info-text'
   }
   if (verdict === 'no_data') {
-    return 'border-slate-500/30 bg-slate-500/10 text-slate-400'
+    return 'border-slate-500/30 bg-slate-500/10 text-faint'
   }
   if (['mostly_blocked'].includes(verdict)) {
-    return 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+    return 'border-amber-500/40 bg-amber-500/10 text-status-warning-text'
   }
-  return 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+  return 'border-rose-500/40 bg-rose-500/10 text-danger-text'
 }

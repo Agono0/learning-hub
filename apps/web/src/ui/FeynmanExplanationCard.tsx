@@ -72,7 +72,7 @@ export function FeynmanExplanationCard({
               Feynman Teach-Back Analysis: {report.concept}
             </h3>
           </div>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="text-xs text-tertiary dark:text-faint">
             Flesch-Kincaid Readability & Rozenblit-Keil Explanatory Depth Breakdown
           </p>
         </div>
@@ -155,7 +155,7 @@ export function FeynmanExplanationCard({
       {/* Jargon Words Section */}
       {report.jargonTerms.length > 0 && (
         <div className="mt-4 rounded-xl border border-rose-200/50 bg-rose-50/40 p-3.5 dark:border-rose-900/30 dark:bg-rose-950/20">
-          <div className="flex items-center gap-2 text-xs font-semibold text-rose-800 dark:text-rose-300">
+          <div className="flex items-center gap-2 text-xs font-semibold text-rose-800 dark:text-danger-text">
             <AlertTriangle className="h-3.5 w-3.5" />
             <span>Domain Jargon Detected (A 12-year-old would hesitate):</span>
           </div>
@@ -175,7 +175,7 @@ export function FeynmanExplanationCard({
       {/* Socratic Probes Section */}
       {report.socraticProbes.length > 0 && (
         <div className="mt-4 space-y-2">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
             <span>Socratic Probes (Deepen Explanatory Grip)</span>
           </div>
@@ -190,9 +190,9 @@ export function FeynmanExplanationCard({
                   <p className="font-medium text-neutral-800 dark:text-neutral-200">
                     {probe.prompt}
                   </p>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-600 dark:text-neutral-500 dark:group-hover:text-indigo-400" />
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-faint transition-transform group-hover:translate-x-0.5 group-hover:text-indigo-600 dark:text-tertiary dark:group-hover:text-indigo-400" />
                 </div>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-neutral-400 dark:text-neutral-500">
+                <div className="mt-2 flex items-center justify-between text-[11px] text-faint dark:text-tertiary">
                   <span className="capitalize">{probe.type.replace('_', ' ')}</span>
                   <span className="font-medium text-indigo-600 opacity-0 group-hover:opacity-100 dark:text-indigo-400">
                     Click to probe
@@ -208,8 +208,8 @@ export function FeynmanExplanationCard({
       {report.suggestedGapCards.length > 0 && (
         <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3 dark:border-(--hub-border)">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
+              <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Suggested Active Recall Flashcards ({report.suggestedGapCards.length})</span>
             </div>
           </div>
@@ -221,7 +221,7 @@ export function FeynmanExplanationCard({
               >
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className="font-medium text-neutral-800 dark:text-neutral-200">{card.front}</p>
-                  <p className="truncate text-neutral-500 dark:text-neutral-400">{card.reason}</p>
+                  <p className="truncate text-tertiary dark:text-faint">{card.reason}</p>
                 </div>
                 <button
                   type="button"
@@ -233,7 +233,7 @@ export function FeynmanExplanationCard({
                 >
                   {savedCardIndex === i ? (
                     <>
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" />
                       <span>Added!</span>
                     </>
                   ) : (

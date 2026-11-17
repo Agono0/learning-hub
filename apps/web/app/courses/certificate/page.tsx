@@ -37,7 +37,7 @@ function Certificate() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-neutral-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
   if (error || !data) return <Callout tone="danger">{error?.message ?? 'Course not found'}</Callout>
 
   const issued = data.issued ?? claim.data?.issued ?? null
@@ -54,12 +54,15 @@ function Certificate() {
     <div className="mx-auto max-w-3xl space-y-4">
       <Link
         href={`/courses/course?id=${id}`}
-        className="text-sm text-neutral-500 hover:underline print:hidden"
+        className="text-sm text-tertiary hover:underline print:hidden"
       >
         ← Back to course
       </Link>
       <div className="print:hidden">
-        <PageHeader title="Certificate" icon={<Award className="h-6 w-6 text-amber-500" />} />
+        <PageHeader
+          title="Certificate"
+          icon={<Award className="h-6 w-6 text-status-warning-text" />}
+        />
       </div>
 
       {!issued && !data.eligible && (
@@ -94,7 +97,7 @@ function Certificate() {
             aria-label="Certificate of completion"
             className="relative overflow-hidden rounded-2xl border-4 border-double border-amber-500/60 bg-white px-6 py-10 text-center text-neutral-900 shadow-sm sm:px-12"
           >
-            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-600">
+            <div className="text-xs font-semibold uppercase tracking-[0.3em] text-status-warning-text">
               Certificate of completion
             </div>
             <div className="mt-6 text-4xl" aria-hidden>
@@ -111,7 +114,7 @@ function Certificate() {
                 : ''}
               {snap.projects?.length ? `, projects: ${snap.projects.join(', ')}` : ''}.
             </p>
-            <div className="mt-8 flex flex-wrap items-end justify-center gap-10 text-xs text-neutral-500">
+            <div className="mt-8 flex flex-wrap items-end justify-center gap-10 text-xs text-tertiary">
               <div>
                 <div className="font-medium text-neutral-800">
                   {new Date(issued.issuedAt).toLocaleDateString(undefined, {
@@ -127,7 +130,7 @@ function Certificate() {
                 <div>Certificate code</div>
               </div>
             </div>
-            <p className="mt-8 text-[10px] text-neutral-400">
+            <p className="mt-8 text-[10px] text-faint">
               A personal record of self-directed study, not an accredited qualification.
             </p>
           </section>
@@ -147,7 +150,7 @@ function Certificate() {
 
 export default function CertificatePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
       <Certificate />
     </Suspense>
   )
