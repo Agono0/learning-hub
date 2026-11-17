@@ -701,8 +701,8 @@ const builtinCommands: RegisteredCommand[] = [
   },
   {
     name: 'metacognition',
-    description: 'Koriat-Bjork calibration and Brier score evaluation',
-    usage: '[stats]',
+    description: 'Koriat-Bjork calibration, Brier score, and hypercorrection crucible',
+    usage: '[stats|hypercorrection]',
     run: (runArgs) => metacognitionCommand(runArgs),
   },
 ]

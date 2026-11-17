@@ -28,12 +28,16 @@ import {
   createGenerationLadder,
   evaluateGenerationTrial,
   evaluateFeynmanExplanation,
+  evaluateHypercorrection,
   evaluateMetacognitiveProfile,
   generationTierEnum,
   generationTrialInputSchema,
   feynmanEvaluationInputSchema,
   judgmentOfLearningSchema,
+  prioritizeRelearningQueue,
+  type CorrectionTrial,
   type JudgmentOfLearning,
+  type RelearnCandidate,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -356,6 +360,67 @@ async function postMetacognition(req: IncomingMessage, res: ServerResponse): Pro
   sendJson(res, 200, { ok: true, trialsCount: body.trials.length, report })
 }
 
+/** GET /cognitive/metacognition/hypercorrection — Butterfield-Metcalfe crucible from revlog. */
+async function getHypercorrection(
+  _req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+): Promise<void> {
+  const q = readQuery(url, metacognitionQuerySchema)
+  const rows = await db
+    .select({
+      cardId: revlog.cardId,
+      rating: revlog.rating,
+      confidence: revlog.confidence,
+      stability: cards.stability,
+      difficulty: cards.difficulty,
+    })
+    .from(revlog)
+    .innerJoin(cards, eq(revlog.cardId, cards.id))
+    .orderBy(desc(revlog.id))
+    .limit(q.limit ?? 200)
+
+  // Same reconstruction as the web handler / MCP tool: a miss arms its card,
+  // the card's next success counts as the correction (Butterfield & Metcalfe
+  // 2001: high-confidence errors hypercorrect on retest).
+  const chronological = [...rows].reverse()
+  const corrections: CorrectionTrial[] = []
+  const armed = new Map<number, 0 | 1>()
+  for (const r of chronological) {
+    const correct = r.rating >= 3
+    const pending = armed.get(r.cardId)
+    if (pending !== undefined && correct) {
+      corrections.push({
+        cardId: r.cardId,
+        initialConfidence: pending === 1 ? 0.9 : 0.35,
+        wasCorrected: true,
+      })
+      armed.delete(r.cardId)
+    }
+    if (!correct) armed.set(r.cardId, r.confidence)
+  }
+
+  const candidates: RelearnCandidate[] = [...armed.entries()].map(([cardId, confidence]) => {
+    const card = rows.find((r) => r.cardId === cardId)
+    return {
+      cardId,
+      errorConfidence: confidence === 1 ? 0.9 : 0.35,
+      stability: card && card.stability > 0 ? card.stability : 1,
+      difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
+      wasAlreadyCorrected: false,
+    }
+  })
+
+  const report = evaluateHypercorrection(corrections)
+  const queue = prioritizeRelearningQueue(candidates, corrections)
+  sendJson(res, 200, {
+    ok: true,
+    correctionsCount: corrections.length,
+    report,
+    queue: queue.slice(0, 12),
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -430,6 +495,12 @@ export const routes: Route[] = [
     path: '/cognitive/metacognition',
     summary: 'metacognitive calibration from provided trials',
     handler: postMetacognition,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/metacognition/hypercorrection',
+    summary: 'Butterfield-Metcalfe hypercorrection crucible + relearning queue (?limit=)',
+    handler: getHypercorrection,
   },
 ]
 

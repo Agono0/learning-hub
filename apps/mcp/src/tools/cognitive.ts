@@ -23,8 +23,11 @@ import {
   detectConfusionPairs,
   evaluateFeynmanExplanation,
   evaluateGenerationTrial,
+  evaluateHypercorrection,
   evaluateMetacognitiveProfile,
+  evaluateStudioReport,
   forecastWorkload,
+  prioritizeRelearningQueue,
   generationTierEnum,
   type JudgmentOfLearning,
   type WorkloadCardItem,
@@ -320,6 +323,79 @@ export const cognitiveTools: RegisteredTool[] = [
         ok: true,
         trialsCount: trials.length,
         report,
+      })
+    },
+  ),
+
+  tool(
+    'metacognition_hypercorrection',
+    'Butterfield & Metcalfe (2001) Hypercorrection Crucible + Nelson-Narens monitoring/control telemetry: reconstruct error-correction trials from revlog history (confident miss → later retest success), compute the hypercorrection index, Goodman-Kruskal monitoring γ, and the FSRS relearning-priority queue for uncorrected high-confidence misses.',
+    {
+      limit: z.number().int().min(5).max(500).default(200),
+    },
+    async ({ limit }) => {
+      const rows = await db
+        .select({
+          cardId: revlog.cardId,
+          rating: revlog.rating,
+          confidence: revlog.confidence,
+          stability: cards.stability,
+          difficulty: cards.difficulty,
+        })
+        .from(revlog)
+        .innerJoin(cards, eq(revlog.cardId, cards.id))
+        .orderBy(desc(revlog.id))
+        .limit(limit)
+
+      // Walk oldest→newest: each miss arms its card; the next success on that
+      // card counts as the correction (same reconstruction as the web API).
+      const chronological = [...rows].reverse()
+      const corrections: { cardId: number; initialConfidence: number; wasCorrected: boolean }[] = []
+      const armed = new Map<number, 0 | 1>()
+      for (const r of chronological) {
+        const correct = r.rating >= 3
+        const pending = armed.get(r.cardId)
+        if (pending !== undefined && correct) {
+          corrections.push({
+            cardId: r.cardId,
+            initialConfidence: pending === 1 ? 0.9 : 0.35,
+            wasCorrected: true,
+          })
+          armed.delete(r.cardId)
+        }
+        if (!correct) armed.set(r.cardId, r.confidence)
+      }
+
+      const candidates = [...armed.entries()].map(([cardId, confidence]) => {
+        const card = rows.find((r) => r.cardId === cardId)
+        return {
+          cardId,
+          errorConfidence: confidence === 1 ? 0.9 : 0.35,
+          stability: card && card.stability > 0 ? card.stability : 1,
+          difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
+          wasAlreadyCorrected: false,
+        }
+      })
+
+      const crucible = evaluateHypercorrection(corrections)
+      const queue = prioritizeRelearningQueue(candidates, corrections)
+      const studio = evaluateStudioReport({
+        jols: rows.map((r) => ({
+          cardId: r.cardId,
+          confidence: r.confidence === 1 ? 0.9 : 0.35,
+          outcome: r.rating >= 3 ? 1 : 0,
+        })),
+        corrections,
+        candidates,
+      })
+
+      return json({
+        ok: true,
+        correctionsCount: corrections.length,
+        crucible,
+        relearningQueue: queue.slice(0, 12),
+        selfKnowledgeIndex: studio.selfKnowledgeIndex,
+        nextBestAction: studio.nextBestAction,
       })
     },
   ),
