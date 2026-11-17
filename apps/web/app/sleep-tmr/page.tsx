@@ -18,6 +18,7 @@ import { earconPartials, nextTmrCueDelayMs, type TmrEarcon } from '@learning-hub
 import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { SleepConsolidationStudio } from '@/components/SleepConsolidationStudio'
+import { TonightConsolidationPanel } from '@/components/TonightConsolidationPanel'
 import {
   Button,
   Callout,
@@ -214,6 +215,8 @@ export default function SleepTmrPage() {
         subtitle="Soft audio cues paired with today's cards, replayed during sleep to support overnight consolidation."
         icon={<Moon className="h-5 w-5" />}
       />
+
+      <TonightConsolidationPanel className="mt-2" />
 
       <SleepConsolidationStudio
         cues={cues.map((c) => ({
