@@ -402,7 +402,11 @@ export function invarianceCommand(args: string[]): void {
   const contrastRaw = parseFlag(args, '--contrast')
   const spacingRaw = parseFlag(args, '--spacing')
 
-  const options: { mode: 'interleaved' | 'blocked'; contrastWeight?: number; spacingWeight?: number } = {
+  const options: {
+    mode: 'interleaved' | 'blocked'
+    contrastWeight?: number
+    spacingWeight?: number
+  } = {
     mode,
     ...(contrastRaw !== undefined ? { contrastWeight: Number(contrastRaw) } : {}),
     ...(spacingRaw !== undefined ? { spacingWeight: Number(spacingRaw) } : {}),

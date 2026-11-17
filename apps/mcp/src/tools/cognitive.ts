@@ -642,8 +642,6 @@ export const cognitiveTools: RegisteredTool[] = [
         contrastMatrix: computeCategoryContrastMatrix(categories, templates),
         deck: exportFSRSInterleavingDeck(templates, categories),
         telemetry,
-
-
       })
     },
   ),
