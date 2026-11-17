@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { SchemaDistillationStudio } from '@/components/SchemaDistillationStudio'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
@@ -168,7 +169,7 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
 export default function GraphPage() {
   const router = useRouter()
   const qc = useQueryClient()
-  const [viewMode, setViewMode] = useState<'web' | 'prereq'>('web')
+  const [viewMode, setViewMode] = useState<'web' | 'prereq' | 'schema_studio'>('web')
   // Hydration-safe canvas height: window only known after mount.
   const [graphHeight, setGraphHeight] = useState(500)
   useEffect(() => {
@@ -296,12 +297,24 @@ export default function GraphPage() {
               >
                 <GitFork className="h-3.5 w-3.5" /> Prerequisite DAG & Remedial
               </button>
+              <button
+                onClick={() => setViewMode('schema_studio')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
+                  viewMode === 'schema_studio'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Ausubel Schema Studio
+              </button>
             </div>
           </div>
         }
       />
 
-      {viewMode === 'web' ? (
+      {viewMode === 'schema_studio' ? (
+        <SchemaDistillationStudio />
+      ) : viewMode === 'web' ? (
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <div className="flex gap-2">

@@ -23,8 +23,9 @@
 | **T-P2-6**  | **P2**   | 3D Memory Palace XR  | **Completed** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12).                |
 | **T-P2-7**  | **P2**   | Socratic Dialectic   | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).         |
 | **T-P2-8**  | **P2**   | CAT & IRT Exam Sim   | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16). |
-| **T-P2-9**  | **P2**   | Worked-Example Fade  | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #17).           |
-| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Planned**   | Meaningful Learning & Knowledge Graph Distillation Studio: Ausubel subsumption, progressive differentiation, integrative reconciliation, and hierarchical schema trees.     |
+| **T-P2-9**  | **P2**   | Worked-Example Fade  | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).           |
+| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #19).                              |
+| **T-P2-11** | **P2**   | Metacognitive Calib  | **Planned**   | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.      |
 
 ---
 
@@ -224,7 +225,7 @@
   3. Implement `WorkedExampleStudio.tsx` with step-by-step interactive derivation, fill-in-the-blank cognitive scaffolds, erroneous example critique lab, and FSRS flashcard export bridge.
   4. Build `apps/web/app/scaffolding/page.tsx` and wire into `apps/web/src/components/nav.ts`.
 - **Files Affected:** `packages/core/src/scaffolding/*`, `apps/web/src/ui/FadedScaffoldingHUD.tsx`, `apps/web/src/components/WorkedExampleStudio.tsx`, `apps/web/app/scaffolding/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed (Ready for PR #17)**.
+- **Status:** **Completed & Merged in PR #18**.
 
 ---
 
@@ -233,8 +234,23 @@
 - **Problem:** Learners acquire isolated, fragmented knowledge islands without hierarchical schema integration, leading to rote memorization rather than deep conceptual assimilation.
 - **Root Cause:** Lack of an interactive concept mapping engine enforcing Ausubelian subsumption (derivative vs correlative), progressive differentiation, integrative reconciliation, and cross-link validation.
 - **Proposed Solution:**
-  1. Develop `packages/core/src/knowledge-graph/schema-distillation-engine.ts` with Ausubel-Novak propositional validity scoring, superordinate concept detection, progressive differentiation ladders, and misconception cycle identification.
+  1. Develop `packages/core/src/knowledge-graph/schema-distillation.ts` with Ausubel-Novak propositional validity scoring, superordinate concept detection, progressive differentiation ladders, and misconception cycle identification.
   2. Implement `ConceptSchemaHUD.tsx` displaying semantic density, propositional validity percentage, cross-link ratio, and hierarchical depth.
   3. Implement `SchemaDistillationStudio.tsx` with interactive concept node linking, proposition labeling, misconception resolution challenges, and hierarchical flashcard tree export.
-- **Files Affected:** `packages/core/src/knowledge-graph/*`, `apps/web/src/ui/ConceptSchemaHUD.tsx`, `apps/web/src/components/SchemaDistillationStudio.tsx`, `apps/web/app/graph/*`.
+  4. Integrate into `apps/web/app/graph/page.tsx` with seamless 3-way toggle between Force Web, Prerequisite DAG, and Ausubel Schema Studio.
+- **Files Affected:** `packages/core/src/knowledge-graph/*`, `apps/web/src/ui/ConceptSchemaHUD.tsx`, `apps/web/src/components/SchemaDistillationStudio.tsx`, `apps/web/app/graph/page.tsx`.
+- **Status:** **Completed (Ready for PR #19)**.
+
+---
+
+### T-P2-11: Dynamic Self-Regulated Metacognitive Calibration & Hypercorrection Studio (Butterfield & Metcalfe 2001; Nelson & Narens 1990)
+
+- **Problem:** Learners consistently fall victim to cognitive illusions of competence (Kruger-Dunning effect, fluency illusions), making poor study choices because they misjudge their own knowledge boundaries and fail to capitalize on high-confidence errors (the hypercorrection effect).
+- **Root Cause:** Absence of a structured metacognitive monitoring and control framework measuring Judgment of Learning (JOL) gamma correlations, Brier calibration scores, and hypercorrection correction feedback loops.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/metacognition/hypercorrection-engine.ts` with Nelson-Narens monitoring-versus-control telemetry, Goodman-Kruskal gamma correlation, Brier score decomposition (calibration vs resolution), and Butterfield & Metcalfe hypercorrection shock dynamics.
+  2. Implement `MetacognitiveCalibrationHUD.tsx` with real-time confidence-accuracy discrepancy curve, calibration index, and hypercorrection vulnerability status.
+  3. Implement `MetacognitionStudio.tsx` with dual-slider JOL confidence ratings, epistemic shock feedback triggers, high-confidence misconception repair crucible, and FSRS relearning prioritization.
+  4. Build `apps/web/app/metacognition/page.tsx` and register in navigation.
+- **Files Affected:** `packages/core/src/metacognition/*`, `apps/web/src/ui/MetacognitiveCalibrationHUD.tsx`, `apps/web/src/components/MetacognitionStudio.tsx`, `apps/web/app/metacognition/page.tsx`.
 - **Status:** **Planned (Next Cycle)**.

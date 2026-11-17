@@ -165,3 +165,4 @@ export function evaluateRemedialPause(
 
 export * from './spatial-constellation'
 export * from './traversal'
+export * from './schema-distillation'
