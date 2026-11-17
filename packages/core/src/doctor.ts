@@ -7,6 +7,8 @@
  */
 import { lintDeck, type LintCardInput, type LintResult } from './linter'
 import type { CardContent, CardFormat } from './types'
+import { createGenerationLadder, type GenerationLadder, type GenerationTier } from './generation'
+import { cardPreviewText } from './cards'
 
 /** A single mechanical or guided remediation action emitted by Deck Doctor. */
 export type DoctorAction =
@@ -45,12 +47,23 @@ export interface DoctorFinding {
   suggestion?: string
 }
 
+/** Generation ladder suggestion emitted by Deck Doctor for failing or passive cards. */
+export interface CardGenerationSuggestion {
+  cardId: number
+  concept: string
+  contextText: string
+  recommendedTier: GenerationTier
+  rationale: string
+  ladder: GenerationLadder
+}
+
 /** Comprehensive diagnosis result for an entire deck. */
 export interface DeckDiagnosis {
   deckId: number
   healthScore: number
   findings: DoctorFinding[]
   actions: DoctorAction[]
+  generationSuggestions?: CardGenerationSuggestion[]
   stats: {
     totalCards: number
     cleanCards: number
@@ -264,11 +277,21 @@ export function diagnoseDeck(input: {
     })
   }
 
+  // 5. Generate active generation ladder recommendations for leeches and high-lapse cards (>= 4)
+  const generationSuggestions: CardGenerationSuggestion[] = []
+  for (const card of cards) {
+    if ((card.lapses ?? 0) >= 4) {
+      const suggestion = suggestGenerationLadderForCard(card)
+      if (suggestion) generationSuggestions.push(suggestion)
+    }
+  }
+
   return {
     deckId: deck.id,
     healthScore,
     findings,
     actions,
+    generationSuggestions,
     stats: {
       totalCards: cards.length,
       cleanCards,
@@ -321,5 +344,63 @@ export function applyDoctorAction(
 
     case 'manual':
       return { op: 'noop' }
+  }
+}
+
+/**
+ * Bridges Deck Doctor with the Slamecka & Graf (1978) Generation Effect Engine.
+ *
+ * Inspects a card's formulation, lapses, and content structure.
+ * When a card is a leech, has high lapses (>= 4), or suffers from passive formulation,
+ * it derives an active 4-tier generation ladder challenge rather than merely suspending or deleting.
+ */
+export function suggestGenerationLadderForCard(
+  card: DoctorCardInput,
+  preferredTier?: GenerationTier,
+): CardGenerationSuggestion | null {
+  let concept = ''
+  let contextText = ''
+
+  if (card.type === 'basic' && card.content.basic) {
+    concept = card.content.basic.front.trim()
+    contextText = card.content.basic.back.trim() || concept
+  } else if (card.type === 'cloze' && card.content.cloze) {
+    const raw = card.content.cloze.text.trim()
+    const match = raw.match(/\{\{c\d+::(.*?)\}\}/)
+    concept = match ? match[1].trim() : (cardPreviewText(card.type, card.content) ?? 'Concept')
+    contextText = raw.replace(/\{\{c\d+::(.*?)\}\}/g, '$1')
+  } else {
+    concept = cardPreviewText(card.type, card.content) ?? `Card #${card.id}`
+    contextText = concept
+  }
+
+  if (!concept) return null
+
+  const lapses = card.lapses ?? 0
+  let tier: GenerationTier = preferredTier ?? 'stem_completion'
+  let rationale = 'Active generation strengthens memory traces via retrieval practice.'
+
+  if (!preferredTier) {
+    if (lapses >= LEECH_LAPSE_THRESHOLD) {
+      tier = 'analogy_synthesis'
+      rationale = `Severe leech (${lapses} lapses): Deep semantic re-encoding and analogy synthesis required to break interference.`
+    } else if (lapses >= 4) {
+      tier = 'semantic_anagram'
+      rationale = `Frequent lapses (${lapses} lapses): Desirable difficulty via token unscrambling forces active reconstruction.`
+    } else {
+      tier = 'stem_completion'
+      rationale = 'Standard active recall scaffold: stem completion generates memory cues.'
+    }
+  }
+
+  const ladder = createGenerationLadder(concept, contextText, tier)
+
+  return {
+    cardId: card.id,
+    concept,
+    contextText,
+    recommendedTier: tier,
+    rationale,
+    ladder,
   }
 }

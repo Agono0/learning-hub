@@ -13,13 +13,28 @@ import {
   db,
   decks,
   cards,
+  revlog,
   streaks,
   executeReview,
   executeBatchReview,
   resolveDbPath,
   type ReviewPayload,
 } from '@learning-hub/db'
-import { dayKey, forecastNext30Days, listPlugins, type Grade } from '@learning-hub/core'
+import {
+  dayKey,
+  forecastNext30Days,
+  listPlugins,
+  type Grade,
+  createGenerationLadder,
+  evaluateGenerationTrial,
+  evaluateFeynmanExplanation,
+  evaluateMetacognitiveProfile,
+  generationTierEnum,
+  generationTrialInputSchema,
+  feynmanEvaluationInputSchema,
+  judgmentOfLearningSchema,
+  type JudgmentOfLearning,
+} from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
 const DAY_MS = 86_400_000
@@ -48,6 +63,22 @@ const cardsQuerySchema = z.object({
   deckId: z.coerce.number().int().positive().optional(),
   due: z.coerce.number().int().optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
+})
+
+const generationChallengeSchema = z.object({
+  concept: z.string().min(1),
+  explanation: z.string().optional(),
+  text: z.string().optional(),
+  tier: generationTierEnum.default('stem_completion'),
+})
+
+const metacognitionBodySchema = z.object({
+  trials: z.array(judgmentOfLearningSchema).min(1),
+})
+
+const metacognitionQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  deckId: z.coerce.number().int().positive().optional(),
 })
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -259,6 +290,72 @@ async function plugins(_req: IncomingMessage, res: ServerResponse): Promise<void
   })
 }
 
+/** POST /cognitive/generation/challenge — creates a 4-tier generation challenge. */
+async function postGenerationChallenge(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, generationChallengeSchema)
+  const ladder = createGenerationLadder(
+    body.concept,
+    body.explanation ?? body.text ?? body.concept,
+    body.tier,
+  )
+  sendJson(res, 200, { ok: true, ladder })
+}
+
+/** POST /cognitive/generation/eval — evaluates a learner's generation trial. */
+async function postGenerationEval(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, generationTrialInputSchema)
+  const result = evaluateGenerationTrial(body)
+  sendJson(res, 200, { ok: true, result })
+}
+
+/** POST /cognitive/feynman-eval — evaluates an explanation for reading ease, jargon, and causal depth. */
+async function postFeynmanEval(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, feynmanEvaluationInputSchema)
+  const report = evaluateFeynmanExplanation(body)
+  sendJson(res, 200, { ok: true, report })
+}
+
+/** GET /cognitive/metacognition — evaluates metacognitive calibration from revlog history. */
+async function getMetacognition(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+): Promise<void> {
+  const q = readQuery(url, metacognitionQuerySchema)
+  const conditions = []
+  if (q.deckId) conditions.push(eq(cards.deckId, q.deckId))
+
+  const rows = await db
+    .select({
+      cardId: revlog.cardId,
+      rating: revlog.rating,
+      confidence: revlog.confidence,
+      timeMs: revlog.timeMs,
+    })
+    .from(revlog)
+    .innerJoin(cards, eq(revlog.cardId, cards.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(revlog.id))
+    .limit(q.limit ?? 100)
+
+  const trials: JudgmentOfLearning[] = rows.map((r) => ({
+    cardId: r.cardId,
+    confidence: r.confidence === 1 ? 0.9 : 0.35,
+    outcome: r.rating >= 3 ? 1 : 0,
+    latencyMs: r.timeMs ?? undefined,
+  }))
+
+  const report = evaluateMetacognitiveProfile(trials)
+  sendJson(res, 200, { ok: true, trialsCount: trials.length, report })
+}
+
+/** POST /cognitive/metacognition — evaluates metacognitive calibration from provided trial payload. */
+async function postMetacognition(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, metacognitionBodySchema)
+  const report = evaluateMetacognitiveProfile(body.trials)
+  sendJson(res, 200, { ok: true, trialsCount: body.trials.length, report })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -304,6 +401,36 @@ export const routes: Route[] = [
     handler: stats,
   },
   { method: 'GET', path: '/plugins', summary: 'loaded plugin names + versions', handler: plugins },
+  {
+    method: 'POST',
+    path: '/cognitive/generation/challenge',
+    summary: 'create generation ladder challenge',
+    handler: postGenerationChallenge,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/generation/eval',
+    summary: 'evaluate generation attempt',
+    handler: postGenerationEval,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/feynman-eval',
+    summary: 'evaluate feynman teach-back explanation',
+    handler: postFeynmanEval,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/metacognition',
+    summary: 'metacognitive calibration from revlog (?deckId=&limit=)',
+    handler: getMetacognition,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/metacognition',
+    summary: 'metacognitive calibration from provided trials',
+    handler: postMetacognition,
+  },
 ]
 
 /**

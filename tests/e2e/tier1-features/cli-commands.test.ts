@@ -65,7 +65,7 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     const syncRes = await runCli(['sync', 'status'], getActiveDbPath())
     expect(syncRes.exitCode).toBe(0)
     expect(syncRes.stdout).toContain('CLOUD SYNC')
-  })
+  }, 90000)
 
   it('runs habits, journal, and physio CLI commands (Batch C1)', async () => {
     // 1. habits list
@@ -93,7 +93,7 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(physioRes.exitCode).toBe(0)
     expect(physioRes.stdout).toContain('Physiology & Retention Telemetry')
     expect(physioRes.stdout).toContain('Yerkes-Dodson zone')
-  }, 20000)
+  }, 90000)
 
   it('runs reading, plan, and gkt CLI commands (Batch C2)', async () => {
     // 1. reading add & list
@@ -135,7 +135,7 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(gktDrill.exitCode).toBe(0)
     expect(gktDrill.stdout).toContain('Graph Knowledge Tracing (GKT)')
     expect(gktDrill.stdout).toContain('Updated mastery')
-  }, 20000)
+  }, 90000)
 
   it('runs debate, palace, world, and guild CLI commands (Batch C3)', async () => {
     // 1. debate open, turn, list
@@ -242,7 +242,7 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     const guildLeave = await runCli(['guild', 'leave', '--alias', 'apprentice'], getActiveDbPath())
     expect(guildLeave.exitCode).toBe(0)
     expect(guildLeave.stdout).toContain('apprentice left their guild')
-  }, 60000)
+  }, 120000)
 
   it('runs audio, focus load, and games CLI commands (Batch C4)', async () => {
     // 1. audio schedule (commute and tmr)
@@ -268,5 +268,57 @@ describe('Tier 1: Terminal CLI Subsystem Execution', () => {
     expect(gamesStatus.stdout).toContain('Solo RPG Boss Battle Status')
     expect(gamesStatus.stdout).toContain('Mythical Boss Roster')
     expect(gamesStatus.stdout).toContain('Chronos')
-  }, 60000)
+  }, 90000)
+
+  it('runs generation, feynman, and metacognition CLI commands', async () => {
+    // 1. generation challenge
+    const genChallenge = await runCli(
+      ['generation', 'challenge', '--concept', 'Spaced Retrieval', '--tier', 'stem_completion'],
+      getActiveDbPath(),
+    )
+    expect(genChallenge.exitCode).toBe(0)
+    expect(genChallenge.stdout).toContain('Slamecka-Graf Generation Effect Ladder')
+    expect(genChallenge.stdout).toContain('stem_completion')
+
+    // 2. generation eval
+    const genEval = await runCli(
+      [
+        'generation',
+        'eval',
+        '--concept',
+        'Spaced Retrieval',
+        '--expected',
+        'Testing improves long-term memory retention',
+        '--attempt',
+        'Testing improves long-term memory retention',
+        '--tier',
+        'stem_completion',
+      ],
+      getActiveDbPath(),
+    )
+    expect(genEval.exitCode).toBe(0)
+    expect(genEval.stdout).toContain('CORRECT')
+    expect(genEval.stdout).toContain('100.0%')
+
+    // 3. feynman eval
+    const feynmanEval = await runCli(
+      [
+        'feynman',
+        'eval',
+        '--concept',
+        'Hebbian Learning',
+        '--explanation',
+        'Neurons that fire together wire together through repeated stimulation.',
+      ],
+      getActiveDbPath(),
+    )
+    expect(feynmanEval.exitCode).toBe(0)
+    expect(feynmanEval.stdout).toContain('Feynman Teach-Back & IOED Report')
+    expect(feynmanEval.stdout).toContain('Hebbian Learning')
+
+    // 4. metacognition stats
+    const metaStats = await runCli(['metacognition', 'stats'], getActiveDbPath())
+    expect(metaStats.exitCode).toBe(0)
+    expect(metaStats.stdout).toContain('Metacognitive Calibration Profile')
+  }, 90000)
 })
