@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Activity, BedDouble, Coffee, Dumbbell, Gauge, Wind } from 'lucide-react'
+import { Activity, BedDouble, Coffee, Dumbbell, Gauge, Sun, Wind } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
 import { CardiacCoherenceHUD, PageHeader } from '@/ui'
 import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
+import { CircadianAlertnessStudio } from '@/components/CircadianAlertnessStudio'
 
 interface PhysioLog {
   id: number
@@ -44,7 +45,7 @@ const numOrEmpty = (v: string): number | null => (v.trim() === '' ? null : Numbe
 export default function PhysiologyPage() {
   const qc = useQueryClient()
   const router = useRouter()
-  const [activeView, setActiveView] = useState<'coherence' | 'log'>('coherence')
+  const [activeView, setActiveView] = useState<'circadian' | 'coherence' | 'log'>('circadian')
   const [form, setForm] = useState({
     sleepHours: '',
     sleepQuality: '',
@@ -95,6 +96,19 @@ export default function PhysiologyPage() {
       <div className="flex gap-2 border-b border-white/10 pb-3">
         <button
           type="button"
+          onClick={() => setActiveView('circadian')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            activeView === 'circadian'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Sun className="h-4 w-4" />
+          <span>Circadian & Cognitive Peaks</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveView('coherence')}
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeView === 'coherence'
@@ -120,7 +134,12 @@ export default function PhysiologyPage() {
         </button>
       </div>
 
-      {activeView === 'coherence' ? (
+      {activeView === 'circadian' ? (
+        <CircadianAlertnessStudio
+          initialBedtime={data.data?.bedtimeHour ?? 23}
+          onSyncWithPlanner={() => router.push('/planner')}
+        />
+      ) : activeView === 'coherence' ? (
         <div className="space-y-4">
           <CardiacCoherenceHUD onOpenStudio={() => {}} isBreathingActive={true} />
           <BreathingCoherenceStudio onNavigateToReview={() => router.push('/review')} />
