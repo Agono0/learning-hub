@@ -24,8 +24,8 @@
 | **T-P2-7**  | **P2**   | Socratic Dialectic   | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).         |
 | **T-P2-8**  | **P2**   | CAT & IRT Exam Sim   | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16). |
 | **T-P2-9**  | **P2**   | Worked-Example Fade  | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).           |
-| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #19).                               |
-| **T-P2-11** | **P2**   | Metacognitive Calib  | **Planned**   | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.        |
+| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #19).                              |
+| **T-P2-11** | **P2**   | Metacognitive Calib  | **Planned**   | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.      |
 
 ---
 
