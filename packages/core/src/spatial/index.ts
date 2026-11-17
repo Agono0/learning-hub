@@ -8,7 +8,8 @@
  */
 import { z } from 'zod'
 
-export type EnvironmentArchetype = 'roman_villa' | 'modern_gallery' | 'cyber_sanctum'
+export type EnvironmentArchetype =
+  'roman_villa' | 'modern_gallery' | 'cyber_sanctum' | 'renaissance_library' | 'zen_monastery'
 
 export const spatialVector3Schema = z.tuple([z.number(), z.number(), z.number()])
 export type SpatialVector3 = z.infer<typeof spatialVector3Schema>
@@ -30,7 +31,13 @@ export const palace3dSceneSchema = z.object({
   palaceId: z.number().int().positive(),
   title: z.string().min(1),
   environmentArchetype: z
-    .enum(['roman_villa', 'modern_gallery', 'cyber_sanctum'])
+    .enum([
+      'roman_villa',
+      'modern_gallery',
+      'cyber_sanctum',
+      'renaissance_library',
+      'zen_monastery',
+    ])
     .default('roman_villa'),
   cameraStartPos: z.object({
     x: z.number().default(0),
@@ -221,7 +228,67 @@ export function generateArchetypeLoci(
       }
       break
     }
+    case 'renaissance_library': {
+      // Tiered alcove reading carrels along perpendicular library wings
+      const count = cards.length
+      for (let i = 0; i < count; i++) {
+        const wing = i % 4 // 4 cardinal wings
+        const depth = Math.floor(i / 4) * 2.8 + 3.0
+        let x = 0
+        let z = 0
+        let yaw = 0
+        if (wing === 0) {
+          x = -depth
+          z = -2.5
+          yaw = Math.PI / 2
+        } else if (wing === 1) {
+          x = depth
+          z = -2.5
+          yaw = -Math.PI / 2
+        } else if (wing === 2) {
+          x = -2.5
+          z = depth
+          yaw = 0
+        } else {
+          x = 2.5
+          z = depth
+          yaw = Math.PI
+        }
+        loci.push({
+          id: `locus-library-${cards[i]!.id}`,
+          ...(cards[i]!.cardId !== undefined ? { cardId: cards[i]!.cardId } : {}),
+          title: cards[i]!.title,
+          position: [Math.round(x * 100) / 100, 1.2, Math.round(z * 100) / 100],
+          rotationY: yaw,
+          assetType: 'pedestal_plaque',
+          contentPreview: cards[i]!.title,
+        })
+      }
+      break
+    }
+    case 'zen_monastery': {
+      // Stepping stone perimeter path encircling a central contemplation garden
+      const count = cards.length
+      const r = 7.0
+      for (let i = 0; i < count; i++) {
+        const phi = (i / Math.max(1, count)) * 2 * Math.PI
+        const x = Math.round(Math.cos(phi) * r * 100) / 100
+        const z = Math.round(Math.sin(phi) * r * 100) / 100
+        loci.push({
+          id: `locus-zen-${cards[i]!.id}`,
+          ...(cards[i]!.cardId !== undefined ? { cardId: cards[i]!.cardId } : {}),
+          title: cards[i]!.title,
+          position: [x, 0.6, z],
+          rotationY: phi + Math.PI,
+          assetType: 'wall_canvas',
+          contentPreview: cards[i]!.title,
+        })
+      }
+      break
+    }
   }
 
   return loci
 }
+
+export * from './palace-engine'

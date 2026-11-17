@@ -29,6 +29,8 @@ import {
   ArrowUp,
   Box,
   Compass,
+  Layers,
+  Move3d,
   RotateCcw,
   RotateCw,
   Save,
@@ -36,6 +38,7 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { useReducedMotion } from '@/lib/useReducedMotion'
+import { MemoryPalace3DStudio } from '@/components/MemoryPalace3DStudio'
 import { Button, Callout, EmptyState, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
 
 interface PalaceListResponse {
@@ -59,6 +62,8 @@ const ARCHETYPES: Array<{ value: EnvironmentArchetype; label: string }> = [
   { value: 'roman_villa', label: 'Roman villa' },
   { value: 'modern_gallery', label: 'Modern gallery' },
   { value: 'cyber_sanctum', label: 'Cyber sanctum' },
+  { value: 'renaissance_library', label: 'Renaissance library' },
+  { value: 'zen_monastery', label: 'Zen monastery' },
 ]
 
 const STEP_M = 1
@@ -71,6 +76,8 @@ const COLORS: Record<
   roman_villa: { bg: 0x0f172a, floor: 0x1e293b, locus: 0x94a3b8, light: 0xf8fafc },
   modern_gallery: { bg: 0x18181b, floor: 0x27272a, locus: 0xa1a1aa, light: 0xf8fafc },
   cyber_sanctum: { bg: 0x050510, floor: 0x0a0a20, locus: 0x818cf8, light: 0x38bdf8 },
+  renaissance_library: { bg: 0x1c130c, floor: 0x2b1d12, locus: 0xd97706, light: 0xfef3c7 },
+  zen_monastery: { bg: 0x0f1410, floor: 0x1a241c, locus: 0x34d399, light: 0xecfdf5 },
 }
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong')
@@ -81,6 +88,7 @@ export default function Palace3dPage() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const meshesRef = useRef<THREE.Mesh[]>([])
   const [palaceId, setPalaceId] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
   const [archetypeOverride, setArchetypeOverride] = useState<EnvironmentArchetype | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [cameraPos, setCameraPos] = useState<SpatialVector3>([0, 1.6, 5])
@@ -290,12 +298,40 @@ export default function Palace3dPage() {
     'flex h-11 w-11 items-center justify-center rounded-lg bg-neutral-800 text-white hover:bg-neutral-700'
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
-      <PageHeader
-        title="3D Memory Palace"
-        subtitle="Walk the loci of your memory palaces in three dimensions. Each pedestal is one of your palace's places."
-        icon={<Box className="h-5 w-5" />}
-      />
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader
+          title="3D Memory Palace"
+          subtitle="Walk the loci of your memory palaces in three dimensions. Each pedestal is one of your palace's places."
+          icon={<Box className="h-5 w-5" />}
+        />
+        <div className="flex items-center gap-1 rounded-xl border border-neutral-800 bg-neutral-900/90 p-1 text-xs shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('studio')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+              viewMode === 'studio'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Move3d className="h-3.5 w-3.5" />
+            <span>Studio Workbench</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('classic')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+              viewMode === 'classic'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span>Classic Walker</span>
+          </button>
+        </div>
+      </div>
 
       {palaces.isLoading ? (
         <Skeleton className="h-96" />
@@ -305,6 +341,16 @@ export default function Palace3dPage() {
             Try again
           </Button>
         </Callout>
+      ) : viewMode === 'studio' ? (
+        <MemoryPalace3DStudio
+          palaceId={palaceId ?? 1}
+          palaceTitle={sceneQuery.data?.palaceName || 'Memory Palace'}
+          initialArchetype={archetype}
+          initialLoci={loci.length > 0 ? loci : undefined}
+          onSaveScene={() => {
+            saveLayout.mutate()
+          }}
+        />
       ) : (palaces.data?.palaces.length ?? 0) === 0 ? (
         <EmptyState
           icon={<Box className="h-6 w-6" />}
