@@ -37,6 +37,7 @@ import {
   Radar,
   Repeat2,
   Route,
+  Scale,
   Search as SearchIcon,
   Settings,
   Shuffle,
@@ -90,6 +91,7 @@ export const NAV: NavGroup[] = [
       { href: '/workload', label: 'Workload', icon: Gauge },
       { href: '/analogy', label: 'Analogical Transfer', icon: GitCompare },
       { href: '/flexibility', label: 'Cognitive Flexibility', icon: Compass },
+      { href: '/equilibrium', label: 'Reflective Equilibrium', icon: Scale },
     ],
   },
   {

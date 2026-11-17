@@ -8,31 +8,32 @@
 
 ## 1. Prioritization Matrix
 
-| ID          | Priority | Category               | Status        | Summary                                                                                                                                                                               |
-| ----------- | -------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T-P0-1**  | **P0**   | Correctness / Infra    | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                                              |
-| **T-P0-2**  | **P0**   | Database / Setup       | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                                         |
-| **T-P1-1**  | **P1**   | Feature Completeness   | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                                           |
-| **T-P1-2**  | **P1**   | Feature Completeness   | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.                                        |
-| **T-P1-3**  | **P1**   | API Completeness       | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                                             |
-| **T-P2-1**  | **P2**   | Cognitive Bridge       | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                                           |
-| **T-P2-2**  | **P2**   | Verification & Build   | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                                              |
-| **T-P2-3**  | **P2**   | Interactive Studios    | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                                                |
-| **T-P2-4**  | **P2**   | Coherence & Sleep      | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                                         |
-| **T-P2-5**  | **P2**   | Spatial Mindmap 3D     | **Completed** | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).                              |
-| **T-P2-6**  | **P2**   | 3D Memory Palace XR    | **Completed** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12).                          |
-| **T-P2-7**  | **P2**   | Socratic Dialectic     | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).                   |
-| **T-P2-8**  | **P2**   | CAT & IRT Exam Sim     | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16).           |
-| **T-P2-9**  | **P2**   | Worked-Example Fade    | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).                     |
-| **T-P2-10** | **P2**   | Ausubel-Novak Schema   | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #20).                                        |
-| **T-P2-11** | **P2**   | Metacognitive Calib    | **Completed** | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.                |
-| **T-P2-12** | **P2**   | Desirable Difficulty   | **Completed** | Desirable Difficulties & Multi-Ladder Generation Studio: Bjork spacing/interleaving/generation ladders, testing effect retrieval practice, and Leitner-FSRS synthesis (PR #25).       |
-| **T-P2-13** | **P2**   | Dual-Coding Schema     | **Completed** | Dual-Coding & Visuospatial Schematization Studio: Paivio dual-channel processing, Mayer 12 CTML compliance audit, and interactive SVG canvas workbench (PR #27).                      |
-| **T-P2-14** | **P2**   | Self-Explanation       | **Completed** | Generative Self-Explanation & Schema Inversion Studio: Chi 1989 justification depth scoring, Aleven rule-naming, and Renkl boundary failure inversions (PR #30).                      |
-| **T-P2-15** | **P2**   | Interleaved Invariance | **Completed** | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination (PR #31). |
-| **T-P2-16** | **P2**   | Analogical Transfer    | **Completed** | Analogical Transfer & Schema Induction Studio: Gick-Holyoak convergence schema, Gentner structure-mapping engine, and cross-domain isomorphic problem transfer (PR #35).              |
-| **T-P2-17** | **P2**   | Cognitive Flexibility  | **Completed** | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization.     |
-| **T-P2-18** | **P2**   | Epistemic Calibration  | **Planned**   | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models.    |
+| ID          | Priority | Category               | Status        | Summary                                                                                                                                                                                    |
+| ----------- | -------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **T-P0-1**  | **P0**   | Correctness / Infra    | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                                                   |
+| **T-P0-2**  | **P0**   | Database / Setup       | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                                              |
+| **T-P1-1**  | **P1**   | Feature Completeness   | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                                                |
+| **T-P1-2**  | **P1**   | Feature Completeness   | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.                                             |
+| **T-P1-3**  | **P1**   | API Completeness       | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                                                  |
+| **T-P2-1**  | **P2**   | Cognitive Bridge       | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                                                |
+| **T-P2-2**  | **P2**   | Verification & Build   | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                                                   |
+| **T-P2-3**  | **P2**   | Interactive Studios    | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                                                     |
+| **T-P2-4**  | **P2**   | Coherence & Sleep      | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                                              |
+| **T-P2-5**  | **P2**   | Spatial Mindmap 3D     | **Completed** | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).                                   |
+| **T-P2-6**  | **P2**   | 3D Memory Palace XR    | **Completed** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12).                               |
+| **T-P2-7**  | **P2**   | Socratic Dialectic     | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).                        |
+| **T-P2-8**  | **P2**   | CAT & IRT Exam Sim     | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16).                |
+| **T-P2-9**  | **P2**   | Worked-Example Fade    | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).                          |
+| **T-P2-10** | **P2**   | Ausubel-Novak Schema   | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #20).                                             |
+| **T-P2-11** | **P2**   | Metacognitive Calib    | **Completed** | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.                     |
+| **T-P2-12** | **P2**   | Desirable Difficulty   | **Completed** | Desirable Difficulties & Multi-Ladder Generation Studio: Bjork spacing/interleaving/generation ladders, testing effect retrieval practice, and Leitner-FSRS synthesis (PR #25).            |
+| **T-P2-13** | **P2**   | Dual-Coding Schema     | **Completed** | Dual-Coding & Visuospatial Schematization Studio: Paivio dual-channel processing, Mayer 12 CTML compliance audit, and interactive SVG canvas workbench (PR #27).                           |
+| **T-P2-14** | **P2**   | Self-Explanation       | **Completed** | Generative Self-Explanation & Schema Inversion Studio: Chi 1989 justification depth scoring, Aleven rule-naming, and Renkl boundary failure inversions (PR #30).                           |
+| **T-P2-15** | **P2**   | Interleaved Invariance | **Completed** | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination (PR #31).      |
+| **T-P2-16** | **P2**   | Analogical Transfer    | **Completed** | Analogical Transfer & Schema Induction Studio: Gick-Holyoak convergence schema, Gentner structure-mapping engine, and cross-domain isomorphic problem transfer (PR #35).                   |
+| **T-P2-17** | **P2**   | Cognitive Flexibility  | **Completed** | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization (PR #37). |
+| **T-P2-18** | **P2**   | Epistemic Calibration  | **Completed** | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models.         |
+| **T-P2-19** | **P2**   | Element Interactivity  | **Planned**   | Cognitive Load & Element Interactivity Studio: Sweller intrinsic/extraneous/germane load isolation, isolated-elements pre-training, and transitive dependency chunking.                    |
 
 ---
 
@@ -342,7 +343,7 @@
   3. Implement `CognitiveFlexibilityStudio.tsx` with multi-perspective case explorer, cognitive hat crucible, reductive bias challenge, and FSRS flexible transfer deck exporter.
   4. Build `apps/web/app/flexibility/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/flexibility/*`, `apps/web/src/ui/CognitiveFlexibilityHUD.tsx`, `apps/web/src/components/CognitiveFlexibilityStudio.tsx`, `apps/web/app/flexibility/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed (Ready for PR #36)**.
+- **Status:** **Completed (Merged in PR #37)**.
 
 ---
 
@@ -356,4 +357,18 @@
   3. Implement `ReflectiveEquilibriumStudio.tsx` with principle-judgment reconciler, confidence calibration probability slider, and FSRS epistemic card exporter.
   4. Build `apps/web/app/equilibrium/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/equilibrium/*`, `apps/web/src/ui/ReflectiveEquilibriumHUD.tsx`, `apps/web/src/components/ReflectiveEquilibriumStudio.tsx`, `apps/web/app/equilibrium/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Ready for PR #38)**.
+
+---
+
+### T-P2-19: Cognitive Load & Element Interactivity Studio (Sweller 1988, 2011; Pollock 2002)
+
+- **Problem:** Learners face working memory overload when encountering materials with high element interactivity (many conceptual elements that must be processed concurrently), causing cognitive thrashing and zero schema acquisition.
+- **Root Cause:** Absence of explicit cognitive load isolation engines that decompose complex tasks into low element-interactivity isolated prerequisites before transitioning to integrated synthesis.
+- **Proposed Solution:**
+  1. Build `packages/core/src/interactivity/element-interactivity-engine.ts` modeling Sweller's Cognitive Load Theory (CLT), isolating intrinsic vs extraneous vs germane load, calculating element interactivity graphs, and structuring Pollock isolated-elements progressive transitions.
+  2. Implement `ElementInteractivityHUD.tsx` tracking Working Memory Load Index (WMLI), intrinsic cognitive density, and schema chunking coefficient.
+  3. Implement `ElementInteractivityStudio.tsx` with dependency element decomposer, isolated-elements pre-training stage, and progressive interactivity synthesizer.
+  4. Build `apps/web/app/interactivity/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/interactivity/*`, `apps/web/src/ui/ElementInteractivityHUD.tsx`, `apps/web/src/components/ElementInteractivityStudio.tsx`, `apps/web/app/interactivity/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.
