@@ -261,6 +261,83 @@ export function generateCodeClozeCards(filename: string, code: string): Ingested
   return cards
 }
 
+// ─── Markdown Notes & Definitions ──────────────────────────────────────────
+
+/**
+ * Extracts flashcards from markdown notes, reading highlights, and study summaries.
+ * Parses:
+ * 1. Anki-style cloze deletions: sentences containing `{{c1::...}}`.
+ * 2. Explicit Q&A pairs: `Q: ...` followed by `A: ...`.
+ * 3. Definition bullets: `- **Term**: definition` or `Term :: definition`.
+ */
+export function extractMarkdownNotesAndClozes(rawMarkdown: string): IngestedCardOutput[] {
+  const cards: IngestedCardOutput[] = []
+  const lines = rawMarkdown.split(/\r?\n/)
+
+  // 1. Cloze deletions on individual lines
+  for (const line of lines) {
+    const trimmed = line.trim().replace(/^[-*•]\s+/, '')
+    if (/\{\{c\d+::.*?\}\}/.test(trimmed)) {
+      const parsed = parseCloze(trimmed)
+      if (parsed.answers.length > 0) {
+        cards.push({
+          front: trimmed,
+          back: parsed.answers.join(', '),
+          format: 'cloze',
+        })
+      }
+    }
+  }
+
+  // 2. Q&A pairs
+  for (let i = 0; i < lines.length - 1; i++) {
+    const qLine = lines[i]!.trim()
+    const aLine = lines[i + 1]!.trim()
+
+    const qMatch = qLine.match(/^(?:Q\s*:|\*\*Q\s*:\*\*|\*\*Question\s*:\*\*)\s*(.+)$/i)
+    const aMatch = aLine.match(/^(?:A\s*:|\*\*A\s*:\*\*|\*\*Answer\s*:\*\*)\s*(.+)$/i)
+
+    if (qMatch && aMatch) {
+      cards.push({
+        front: qMatch[1]!.trim(),
+        back: aMatch[1]!.trim(),
+        format: 'basic',
+      })
+      i++ // Skip answer line
+      continue
+    }
+  }
+
+  // 3. Bold definition terms: `- **Term**: Definition` or `Term :: Definition`
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const defColonMatch = trimmed.match(/^[-*•]?\s*\*\*([^*]+)\*\*\s*[:–—]\s*(.{8,})$/)
+    if (defColonMatch) {
+      const term = defColonMatch[1]!.trim()
+      const def = defColonMatch[2]!.trim()
+      cards.push({
+        front: `Define or explain the core concept:\n\n**${term}**`,
+        back: def,
+        format: 'basic',
+      })
+      continue
+    }
+
+    const doubleColonMatch = trimmed.match(/^([^:\n]{2,60})\s*::\s*(.{8,})$/)
+    if (doubleColonMatch) {
+      const term = doubleColonMatch[1]!.trim().replace(/^[-*•]\s+/, '')
+      const def = doubleColonMatch[2]!.trim()
+      cards.push({
+        front: `Define or explain:\n\n**${term}**`,
+        back: def,
+        format: 'basic',
+      })
+    }
+  }
+
+  return cards
+}
+
 // ─── Saving ─────────────────────────────────────────────────────────────────
 
 /**
