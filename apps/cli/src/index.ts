@@ -19,7 +19,12 @@ import { curriculumCommand } from './commands/curriculum'
 import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
 import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
 import { debateCommand, guildCommand, palaceCommand, worldCommand } from './commands/community'
-import { audioCommand, focusLoadCmd, gamesCommand } from './commands/telemetry-audio'
+import {
+  audioCommand,
+  focusLoadCmd,
+  gamesCommand,
+  tmrPlanCommand,
+} from './commands/telemetry-audio'
 import { feynmanCommand, generationCommand, metacognitionCommand } from './commands/cognitive'
 import {
   db,
@@ -678,8 +683,12 @@ const builtinCommands: RegisteredCommand[] = [
   {
     name: 'audio',
     description: 'speakable commute review and sleep TMR earcons',
-    usage: '[schedule]',
-    run: (runArgs) => audioCommand(runArgs),
+    usage: '[schedule|tmr-plan]',
+    run: (runArgs) => {
+      const sub = runArgs[0]
+      if (sub === 'tmr-plan') return tmrPlanCommand(runArgs.slice(1))
+      return audioCommand(runArgs)
+    },
   },
   {
     name: 'games',

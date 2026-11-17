@@ -1,8 +1,10 @@
 /**
  * Audio schedule, Cognitive Load telemetry, and Solo RPG Games CLI commands.
  */
-import { BOSS_ROSTER } from '@learning-hub/core'
+import { BOSS_ROSTER, buildTonightPlan, sleepProfileSchema } from '@learning-hub/core'
 import {
+  cards,
+  db,
   getActiveBossBattle,
   getDueCardsForAudio,
   getRecentCognitiveTelemetry,
@@ -10,6 +12,8 @@ import {
   mintTmrCuesForRecentReviews,
   syncBossBattleProgress,
 } from '@learning-hub/db'
+import { asc, eq } from 'drizzle-orm'
+import { fragilityScore, toConsolidationCandidates } from '@learning-hub/core/tmr'
 
 function parseFlag(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag)
@@ -17,6 +21,77 @@ function parseFlag(args: string[], flag: string): string | undefined {
     return args[idx + 1]
   }
   return undefined
+}
+
+/**
+ * `audio tmr-plan` — builds tonight's TMR consolidation plan from REAL FSRS
+ * card state (same selection algorithm as the web handler): ranks review-state
+ * cards by fragility, fits the sleep-architecture hypnogram, and prints the
+ * schedule with per-card predicted boosts.
+ */
+export function tmrPlanCommand(args: string[]): void {
+  const profile = sleepProfileSchema.parse({
+    bedtime: parseFlag(args, '--bedtime') ?? '23:00',
+    wakeTime: parseFlag(args, '--wake') ?? '07:00',
+    chronotype: Number(parseFlag(args, '--chronotype') ?? '0'),
+    sleepDebtHours: Number(parseFlag(args, '--debt') ?? '0'),
+    maxAcousticDba: Number(parseFlag(args, '--dba') ?? '35'),
+  })
+
+  const rows = db
+    .select({
+      id: cards.id,
+      stability: cards.stability,
+      difficulty: cards.difficulty,
+      due: cards.due,
+      state: cards.state,
+      suspended: cards.suspended,
+    })
+    .from(cards)
+    .where(eq(cards.suspended, false))
+    .orderBy(asc(cards.stability))
+    .limit(300)
+    .all()
+
+  const candidates = toConsolidationCandidates(
+    rows
+      .filter((r) => !r.suspended && r.state >= 2 && r.stability > 0)
+      .map((r) => ({ id: r.id, stability: r.stability, difficulty: r.difficulty, due: r.due })),
+  )
+    .sort((a, b) => fragilityScore(b) - fragilityScore(a))
+    .slice(Number(parseFlag(args, '--limit') ?? '12'))
+
+  const plan = buildTonightPlan(profile, candidates)
+
+  const { hypnogram } = plan
+  console.log(
+    `\n🌙 Tonight's TMR plan — ${profile.bedtime} → ${profile.wakeTime} (${hypnogram.cycleCount} cycles, SWS ${Math.round(hypnogram.swsShare * 100)}%)`,
+  )
+  if (plan.safety.withinArousalCeiling) {
+    console.log(
+      `   Acoustics: ${plan.safety.maxAcousticDba} dBA (under the 42 dBA arousal ceiling)`,
+    )
+  } else {
+    console.log(`   ⚠ ${plan.safety.note}`)
+  }
+  if (plan.cues.length === 0) {
+    console.log('   No cues: no review-state cards found (review cards to mint candidates).')
+    return
+  }
+  console.log(`   ${plan.cues.length} cues · mean predicted boost ≈ ${plan.meanPredictedBoostPct}%`)
+  for (const cue of plan.cues.slice(0, 15)) {
+    const hh = String(Math.floor(cue.offsetMinutes / 60)).padStart(2, '0')
+    const mm = String(Math.round(cue.offsetMinutes % 60)).padStart(2, '0')
+    console.log(
+      `   ${hh}:${mm}  card #${cue.cardId}  cycle ${cue.cycleIndex}  Δ${cue.blockDeltaWeight}  ${cue.baseFrequency} Hz  +${cue.predictedBoostPct}% (${cue.stabilizationTier})`,
+    )
+  }
+  if (plan.unscheduledCardIds.length > 0) {
+    console.log(
+      `   ${plan.unscheduledCardIds.length} cards did not fit the slow-wave windows (honest capacity limit).`,
+    )
+  }
+  console.log('   Advisory: TMR is an evidence-inspired bonus, not a substitute for review.')
 }
 
 export function audioCommand(args: string[]): void {

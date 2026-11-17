@@ -571,7 +571,7 @@ Replaying acoustic cues (earcons) during non-REM slow-wave sleep reactivates neu
 
 - **Evidence:** Meta-analysis by Hu et al. (2020, _Psychol. Bull._) establishes an overall effect size of Hedges' $g \approx 0.29$ for cue-specific memory consolidation.
 - **Honest Evidence Boundary:** Consumer devices without EEG polysomnography (PSG) cannot detect real-time NREM sleep stages. Learning HUB pairs unique synthesized earcons during wake review and triggers low-volume cues on a post-sleep onset timer (30–90 min post-sleep), providing accessible acoustic priming while noting clinical PSG limitations.
-- **In Learning HUB:** `packages/core/src/circadian.ts`, `apps/web/src/server/handlers/audio/tmr/cues/route.ts`, table `tmr_cues`.
+- **In Learning HUB:** `packages/core/src/circadian.ts`, `apps/web/src/server/handlers/audio/tmr/cues/route.ts`, table `tmr_cues`. The sleep-architecture planner (`packages/core/src/tmr/sleep-architecture.ts`) models tonight's hypnogram (Process-S debt rebound, chronotype redistribution, Carskadon-Dement SWS decay), extracts delta-weighted SWS blocks, and schedules FSRS-fragile cards into them via `/api/cognitive/tmr` (web), `/cognitive/tmr/plan` (headless server), the `sleep_consolidation_plan` MCP tool, and `audio tmr-plan` (CLI); rendered on `/sleep-tmr` in `TonightConsolidationPanel.tsx`.
 - **Status:** ✅
 
 ### Pretesting Effect — Richland, Kornell, & Kao (2009); Little & Bjork (2016)

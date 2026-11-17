@@ -4,7 +4,7 @@
  * 2. workload_balance: Forecast, fuzz-smoothed review scheduling, and backlog recovery.
  * 3. exposure_ledger: Krashen i+1 natural lexical exposure tracking and spaced SRS promotion.
  */
-import { and, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   cards,
@@ -22,13 +22,17 @@ import {
   decomposeLeechCard,
   detectConfusionPairs,
   evaluateFeynmanExplanation,
+  buildTonightPlan,
   evaluateGenerationTrial,
   evaluateHypercorrection,
   evaluateMetacognitiveCalibrationProfile,
   evaluateMetacognitiveProfile,
   toTrialMetacognitiveRecords,
   forecastWorkload,
+  fragilityScore,
   prioritizeRelearningQueue,
+  sleepProfileSchema,
+  toConsolidationCandidates,
   generationTierEnum,
   type JudgmentOfLearning,
   type WorkloadCardItem,
@@ -400,6 +404,70 @@ export const cognitiveTools: RegisteredTool[] = [
         goodmanKruskalGamma: profile.goodmanKruskalGamma,
         calibrationIndex: profile.metacognitiveCalibrationIndex,
         recommendations: profile.recommendations,
+      })
+    },
+  ),
+
+  tool(
+    'sleep_consolidation_plan',
+    "Rasch & Born (2007) / Ngo et al. (2013) Sleep TMR planner over REAL FSRS state: fits a cycle-accurate hypnogram for tonight's sleep window (Process-S sleep-debt rebound, chronotype redistribution), extracts delta-weighted slow-wave blocks, and schedules the learner's most fragile cards into them with per-card consolidation audits and an acoustic-safety audit.",
+    {
+      bedtime: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .default('23:00'),
+      wakeTime: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .default('07:00'),
+      chronotype: z.number().min(-1).max(1).default(0),
+      sleepDebtHours: z.number().min(0).max(12).default(0),
+      maxAcousticDba: z.number().min(25).max(42).default(35),
+      limit: z.number().int().min(1).max(30).default(12),
+    },
+    async ({ bedtime, wakeTime, chronotype, sleepDebtHours, maxAcousticDba, limit }) => {
+      const profile = sleepProfileSchema.parse({
+        bedtime,
+        wakeTime,
+        chronotype,
+        sleepDebtHours,
+        maxAcousticDba,
+      })
+
+      const rows = await db
+        .select({
+          id: cards.id,
+          stability: cards.stability,
+          difficulty: cards.difficulty,
+          due: cards.due,
+          state: cards.state,
+          suspended: cards.suspended,
+        })
+        .from(cards)
+        .where(eq(cards.suspended, false))
+        .orderBy(asc(cards.stability))
+        .limit(300)
+
+      const candidates = toConsolidationCandidates(
+        rows
+          .filter((r) => !r.suspended && r.state >= 2 && r.stability > 0)
+          .map((r) => ({ id: r.id, stability: r.stability, difficulty: r.difficulty, due: r.due })),
+      )
+        .sort((a, b) => fragilityScore(b) - fragilityScore(a))
+        .slice(limit)
+
+      const plan = buildTonightPlan(profile, candidates)
+      return json({
+        ok: true,
+        candidatesSelected: candidates.length,
+        cueCount: plan.cues.length,
+        meanPredictedBoostPct: plan.meanPredictedBoostPct,
+        cycleCount: plan.hypnogram.cycleCount,
+        swsShare: plan.hypnogram.swsShare,
+        safety: plan.safety,
+        advisory: plan.advisory,
+        cues: plan.cues,
+        unscheduledCardIds: plan.unscheduledCardIds,
       })
     },
   ),
