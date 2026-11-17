@@ -24,6 +24,7 @@ export { ConceptInspectorHUD, type ConceptInspectorProps } from './ConceptInspec
 export { SpatialLocusHUD, type SpatialLocusHUDProps } from './SpatialLocusHUD'
 export { ToulminArgumentHUD, type ToulminArgumentHUDProps } from './ToulminArgumentHUD'
 export { AdaptiveExamHUD, type AdaptiveExamHUDProps } from './AdaptiveExamHUD'
+export { FadedScaffoldingHUD, type FadedScaffoldingHUDProps } from './FadedScaffoldingHUD'
 export { CardiacCoherenceHUD, type CardiacCoherenceHUDProps } from './CardiacCoherenceHUD'
 export { SleepConsolidationHUD, type SleepConsolidationHUDProps } from './SleepConsolidationHUD'
 export { FeynmanExplanationCard, type FeynmanExplanationCardProps } from './FeynmanExplanationCard'

@@ -90,6 +90,7 @@ export const NAV: NavGroup[] = [
       { href: '/palace-3d', label: '3D Palace', icon: Box },
       { href: '/constellation', label: 'Constellation', icon: Sparkles },
       { href: '/debate', label: 'Debate Arena', icon: Swords },
+      { href: '/scaffolding', label: 'Faded Scaffolding', icon: Layers },
       { href: '/ingest', label: 'Universal Ingest', icon: Import },
       { href: '/games', label: 'Games', icon: Brain },
       { href: '/online', label: 'Online Hub', icon: Globe },
