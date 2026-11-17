@@ -50,6 +50,13 @@ import {
   selectPretestCandidates,
   type JudgmentOfLearning,
   type RelearnCandidate,
+  CALIBRATED_INVARIANCE_CATEGORIES,
+  CALIBRATED_INVARIANCE_PROBLEMS,
+  computeCategoryContrastMatrix,
+  computeDiscriminationTelemetry,
+  computeSequenceMetrics,
+  exportFSRSInterleavingDeck,
+  generateContrastSchedule,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -86,6 +93,19 @@ const generationChallengeSchema = z.object({
   explanation: z.string().optional(),
   text: z.string().optional(),
   tier: generationTierEnum.default('stem_completion'),
+})
+
+/** JSON-encoded attempt array (?attempts=[...]) for confusion-matrix scoring. */
+const invarianceAttemptSchema = z.object({
+  problemId: z.string().min(1),
+  trueCategoryId: z.string().min(1),
+  chosenCategoryId: z.string().min(1),
+  reactionMs: z.coerce.number().int().nonnegative().optional(),
+})
+
+const invarianceQuerySchema = z.object({
+  mode: z.enum(['interleaved', 'blocked']).default('interleaved'),
+  attemptsJson: z.string().max(100_000).optional(),
 })
 
 const metacognitionBodySchema = z.object({
@@ -290,6 +310,71 @@ async function stats(_req: IncomingMessage, res: ServerResponse): Promise<void> 
       avgTimeMs: todayStats?.avg_time_ms ?? null,
     },
     forecast,
+  })
+}
+
+/** Parses ?attemptsJson into validated attempts; malformed input scores as no telemetry. */
+function parseInvarianceAttempts(
+  raw: string | undefined,
+): ReturnType<typeof computeDiscriminationTelemetry> | null {
+  if (!raw) return null
+  try {
+    const parsed = invarianceAttemptSchema.array().max(1000).parse(JSON.parse(raw))
+    return computeDiscriminationTelemetry(
+      parsed,
+      CALIBRATED_INVARIANCE_CATEGORIES,
+      CALIBRATED_INVARIANCE_PROBLEMS,
+    )
+  } catch {
+    return null
+  }
+}
+
+/** GET /cognitive/structural-invariance — interleaved practice plan over the calibrated curriculum. */
+async function getStructuralInvariance(
+  req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+): Promise<void> {
+  const q = readQuery(url, invarianceQuerySchema)
+  const { schedule, metrics } = generateContrastSchedule(
+    CALIBRATED_INVARIANCE_PROBLEMS,
+    CALIBRATED_INVARIANCE_CATEGORIES,
+    { mode: q.mode },
+  )
+  sendJson(res, 200, {
+    ok: true,
+    mode: q.mode,
+    schedule: schedule.map((p) => ({
+      id: p.id,
+      categoryId: p.categoryId,
+      title: p.title,
+      prompt: p.prompt,
+    })),
+    metrics,
+    contrastMatrix: computeCategoryContrastMatrix(
+      CALIBRATED_INVARIANCE_CATEGORIES,
+      CALIBRATED_INVARIANCE_PROBLEMS,
+    ),
+    deck: exportFSRSInterleavingDeck(
+      CALIBRATED_INVARIANCE_PROBLEMS,
+      CALIBRATED_INVARIANCE_CATEGORIES,
+    ),
+    interleavedMetrics: computeSequenceMetrics(
+      generateContrastSchedule(CALIBRATED_INVARIANCE_PROBLEMS, CALIBRATED_INVARIANCE_CATEGORIES, {
+        mode: 'interleaved',
+      }).schedule,
+      CALIBRATED_INVARIANCE_CATEGORIES,
+      CALIBRATED_INVARIANCE_PROBLEMS,
+    ),
+    blockedMetrics: computeSequenceMetrics(
+      generateContrastSchedule(CALIBRATED_INVARIANCE_PROBLEMS, CALIBRATED_INVARIANCE_CATEGORIES, {
+        mode: 'blocked',
+      }).schedule,
+      CALIBRATED_INVARIANCE_CATEGORIES,
+      CALIBRATED_INVARIANCE_PROBLEMS,
+    ),
+    telemetry: parseInvarianceAttempts(q.attemptsJson),
   })
 }
 
@@ -657,6 +742,12 @@ export const routes: Route[] = [
     handler: stats,
   },
   { method: 'GET', path: '/plugins', summary: 'loaded plugin names + versions', handler: plugins },
+  {
+    method: 'GET',
+    path: '/cognitive/structural-invariance',
+    summary: 'interleaved structural invariance plan (?mode=interleaved|blocked)',
+    handler: getStructuralInvariance,
+  },
   {
     method: 'POST',
     path: '/cognitive/generation/challenge',

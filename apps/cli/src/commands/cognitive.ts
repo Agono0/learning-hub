@@ -3,10 +3,17 @@
  * 1. generation: Slamecka & Graf (1978) Generation Effect ladder & evaluation.
  * 2. feynman: Rozenblit & Keil (2002) IOED & Feynman teach-back diagnostic.
  * 3. metacognition: Koriat & Bjork (2005) Calibration & Glenn Brier score.
+ * 4. invariance: Rohrer & Taylor (2007) interleaved structural invariance planning.
  */
 import {
   auditDesirableDifficulty,
   buildPretestQuestion,
+  CALIBRATED_INVARIANCE_CATEGORIES,
+  CALIBRATED_INVARIANCE_PROBLEMS,
+  computeCategoryContrastMatrix,
+  computeSequenceMetrics,
+  exportFSRSInterleavingDeck,
+  generateContrastSchedule,
   createGenerationLadder,
   evaluateFeynmanExplanation,
   pretestRelatedness,
@@ -382,4 +389,90 @@ export async function pretestCommand(args: string[]): Promise<void> {
   console.log(
     '\nProtocol: guess → feedback → study NOW → retest to criterion (Rawson & Dunlosky 2011).',
   )
+}
+
+/**
+ * `invariance` — prints an interleaved structural invariance practice plan from the
+ * calibrated counter-balanced curriculum: shuffled (or blocked comparator) schedule,
+ * sequence metrics, pairwise contrast matrix, and the FSRS identify-the-invariant deck.
+ */
+export function invarianceCommand(args: string[]): void {
+  const modeRaw = parseFlag(args, '--mode') || 'interleaved'
+  const mode = modeRaw === 'blocked' ? 'blocked' : 'interleaved'
+  const contrastRaw = parseFlag(args, '--contrast')
+  const spacingRaw = parseFlag(args, '--spacing')
+
+  const options: {
+    mode: 'interleaved' | 'blocked'
+    contrastWeight?: number
+    spacingWeight?: number
+  } = {
+    mode,
+    ...(contrastRaw !== undefined ? { contrastWeight: Number(contrastRaw) } : {}),
+    ...(spacingRaw !== undefined ? { spacingWeight: Number(spacingRaw) } : {}),
+  }
+
+  const { schedule, metrics } = generateContrastSchedule(
+    CALIBRATED_INVARIANCE_PROBLEMS,
+    CALIBRATED_INVARIANCE_CATEGORIES,
+    options,
+  )
+
+  console.log(`\n🔀 Structural Invariance Practice Plan (${mode})`)
+  console.log('Rohrer & Taylor (2007): shuffled practice roughly doubles delayed test scores')
+  console.log('over blocked drills by forcing category discrimination on every item.\n')
+
+  schedule.forEach((p, i) => {
+    const cat = CALIBRATED_INVARIANCE_CATEGORIES.find((c) => c.id === p.categoryId)
+    console.log(`${String(i + 1).padStart(2, '0')}. [${cat?.label ?? p.categoryId}] ${p.title}`)
+    console.log(`    ${p.prompt}`)
+  })
+
+  console.log('\nSequence metrics:')
+  console.log(`  Category entropy:     ${metrics.categoryEntropy.toFixed(3)}`)
+  console.log(`  Blocking factor:      ${metrics.blockingFactor.toFixed(3)} (0 = fully shuffled)`)
+  console.log(`  Category transitions: ${metrics.transitionCount}`)
+  console.log(`  Mean adjacent contrast: ${metrics.meanAdjacentContrast.toFixed(3)}`)
+  console.log(`  Mean category lag:    ${metrics.meanCategoryLag.toFixed(2)}`)
+
+  const interleaved = computeSequenceMetrics(
+    generateContrastSchedule(CALIBRATED_INVARIANCE_PROBLEMS, CALIBRATED_INVARIANCE_CATEGORIES, {
+      mode: 'interleaved',
+    }).schedule,
+    CALIBRATED_INVARIANCE_CATEGORIES,
+    CALIBRATED_INVARIANCE_PROBLEMS,
+  )
+  const blocked = computeSequenceMetrics(
+    generateContrastSchedule(CALIBRATED_INVARIANCE_PROBLEMS, CALIBRATED_INVARIANCE_CATEGORIES, {
+      mode: 'blocked',
+    }).schedule,
+    CALIBRATED_INVARIANCE_CATEGORIES,
+    CALIBRATED_INVARIANCE_PROBLEMS,
+  )
+  console.log('\nComparator (Kornell & Bjork 2008 — hard-feeling practice is what transfers):')
+  console.log(
+    `  shuffled contrast exposure: ${(interleaved.meanAdjacentContrast * interleaved.transitionCount).toFixed(2)}`,
+  )
+  console.log(
+    `  blocked contrast exposure:  ${(blocked.meanAdjacentContrast * blocked.transitionCount).toFixed(2)}`,
+  )
+
+  const matrix = computeCategoryContrastMatrix(
+    CALIBRATED_INVARIANCE_CATEGORIES,
+    CALIBRATED_INVARIANCE_PROBLEMS,
+  )
+  console.log('\nCategory contrast matrix (surface distance | structural distance | utility):')
+  for (const cell of matrix) {
+    const a = CALIBRATED_INVARIANCE_CATEGORIES.find((c) => c.id === cell.categoryA)?.label
+    const b = CALIBRATED_INVARIANCE_CATEGORIES.find((c) => c.id === cell.categoryB)?.label
+    console.log(
+      `  ${a} vs ${b}: ${cell.surfaceDistance.toFixed(2)} | ${cell.structuralDistance.toFixed(2)} | ${cell.contrastUtility.toFixed(2)}`,
+    )
+  }
+
+  const deck = exportFSRSInterleavingDeck(
+    CALIBRATED_INVARIANCE_PROBLEMS,
+    CALIBRATED_INVARIANCE_CATEGORIES,
+  )
+  console.log(`\nFSRS deck: ${deck.length} identify-the-invariant cards available.`)
 }

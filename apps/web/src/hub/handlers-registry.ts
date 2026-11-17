@@ -149,6 +149,7 @@ import * as audioTmrCues from '../server/handlers/audio/tmr/cues/route'
 import * as cognitiveDualCoding from '../server/handlers/cognitive/dual-coding/route'
 import * as cognitiveFlowState from '../server/handlers/cognitive/flow-state/route'
 import * as cognitiveInterleaving from '../server/handlers/cognitive/interleaving/route'
+import * as cognitiveStructuralInvariance from '../server/handlers/cognitive/structural-invariance/route'
 import * as cognitiveMetacognition from '../server/handlers/cognitive/metacognition/route'
 import * as cognitiveTmr from '../server/handlers/cognitive/tmr/route'
 import * as cognitiveFeynmanEval from '../server/handlers/cognitive/feynman-eval/route'
@@ -335,6 +336,7 @@ add('audio/tmr/cues', audioTmrCues)
 add('cognitive/dual-coding', cognitiveDualCoding)
 add('cognitive/flow-state', cognitiveFlowState)
 add('cognitive/interleaving', cognitiveInterleaving)
+add('cognitive/structural-invariance', cognitiveStructuralInvariance)
 add('cognitive/metacognition', cognitiveMetacognition)
 add('cognitive/hypercorrection', cognitiveHypercorrection)
 add('cognitive/tmr', cognitiveTmr)

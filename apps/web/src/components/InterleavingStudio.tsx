@@ -12,7 +12,7 @@
  * - FSRS interleaving deck exporter (identify-the-invariant cards)
  */
 
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CALIBRATED_INVARIANCE_CATEGORIES,
   CALIBRATED_INVARIANCE_PROBLEMS,
@@ -25,6 +25,7 @@ import {
   StructuralInvarianceSession,
 } from '@learning-hub/core/interleaving/structural-invariance-engine'
 import { Badge, Button, InterleavingHUD, Markdown, Panel, ProgressBar } from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight, hapticMedium } from '../platform/haptics'
 import {
@@ -35,6 +36,7 @@ import {
   Grid3X3,
   Lightbulb,
   RotateCcw,
+  Save,
   Shuffle,
   XCircle,
   Zap,
@@ -43,6 +45,10 @@ import {
 export interface InterleavingStudioProps {
   initialCategories?: ProblemCategory[]
   onExportCards?: (cards: FSRSInterleavingCard[]) => void
+  /** Target deck for the save-to-deck action (falls back to the first deck). */
+  deckId?: number
+  /** Called after the identify-the-invariant deck is persisted via the bulk card path. */
+  onCardsSaved?: (count: number) => void
 }
 
 type StudioTab = 'drill' | 'contrast' | 'deck'
@@ -81,6 +87,8 @@ interface AnswerFeedback {
 export function InterleavingStudio({
   initialCategories = CALIBRATED_INVARIANCE_CATEGORIES,
   onExportCards,
+  deckId,
+  onCardsSaved,
 }: InterleavingStudioProps) {
   const [session, setSession] = useState(
     () => new StructuralInvarianceSession(initialCategories, CALIBRATED_INVARIANCE_PROBLEMS),
@@ -90,6 +98,32 @@ export function InterleavingStudio({
   const [feedback, setFeedback] = useState<AnswerFeedback | null>(null)
   const [copyStatus, setCopyStatus] = useState<string | null>(null)
   const questionStartRef = useRef<number>(Date.now())
+
+  // Deck list for persisting the FSRS deck through the canonical bulk card path.
+  const [decks, setDecks] = useState<Array<{ id: number; name: string }>>([])
+  const [selectedDeckId, setSelectedDeckId] = useState<number | ''>('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [savedCardIds, setSavedCardIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    let cancelled = false
+    void apiGet<{ decks: Array<{ id: number; name: string }> }>('/api/decks')
+      .then((data) => {
+        if (!cancelled) setDecks(data.decks ?? [])
+      })
+      .catch(() => {
+        // offline fallback: copy-to-clipboard export still works
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const effectiveDeckId = useMemo(() => {
+    if (selectedDeckId !== '') return selectedDeckId
+    if (deckId !== undefined) return deckId
+    return decks[0]?.id ?? 1
+  }, [selectedDeckId, deckId, decks])
 
   const state = session.getState()
   const currentProblem = session.getCurrentProblem()
@@ -171,6 +205,32 @@ export function InterleavingStudio({
     hapticLight()
     onExportCards?.(deckCards)
     void handleCopyDeck()
+  }
+
+  /** Persists the identify-the-invariant deck through `PUT /api/cards?bulk=1`. */
+  const handleSaveDeck = async () => {
+    const pending = deckCards.filter((c) => !savedCardIds.has(c.id))
+    if (pending.length === 0 || isSaving) return
+    setIsSaving(true)
+    hapticLight()
+
+    try {
+      await apiSend('/api/cards?bulk=1', 'PUT', {
+        deckId: effectiveDeckId,
+        items: pending.map((card) => ({
+          type: 'basic',
+          content: { basic: { front: card.front, back: card.back } },
+          tags: card.tags,
+        })),
+      })
+      setSavedCardIds((prev) => new Set([...prev, ...pending.map((c) => c.id)]))
+      hapticMedium()
+      onCardsSaved?.(pending.length)
+    } catch {
+      // offline fallback: the copy-to-clipboard export remains available
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const answeredProblem = feedback ? templates.find((t) => t.id === feedback.problemId) : undefined
@@ -496,6 +556,29 @@ export function InterleavingStudio({
               </div>
               <div className="flex items-center gap-2">
                 {copyStatus && <span className="text-xs text-muted-foreground">{copyStatus}</span>}
+                {decks.length > 0 && (
+                  <select
+                    value={effectiveDeckId}
+                    onChange={(e) => setSelectedDeckId(Number(e.target.value))}
+                    aria-label="Target deck for saved cards"
+                    className="rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs font-medium text-foreground"
+                  >
+                    {decks.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <Button
+                  icon={<Save className="h-4 w-4" />}
+                  onClick={() => void handleSaveDeck()}
+                  loading={isSaving}
+                >
+                  {savedCardIds.size >= deckCards.length
+                    ? 'Saved ✓'
+                    : `Save ${deckCards.length - savedCardIds.size} to deck`}
+                </Button>
                 <Button
                   icon={<Copy className="h-4 w-4" />}
                   variant="ghost"
@@ -503,7 +586,11 @@ export function InterleavingStudio({
                 >
                   Copy deck
                 </Button>
-                <Button icon={<Download className="h-4 w-4" />} onClick={handleExport}>
+                <Button
+                  icon={<Download className="h-4 w-4" />}
+                  variant="ghost"
+                  onClick={handleExport}
+                >
                   Export to FSRS
                 </Button>
               </div>

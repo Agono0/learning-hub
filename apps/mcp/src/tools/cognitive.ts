@@ -42,6 +42,13 @@ import {
   pretestRelatedness,
   type JudgmentOfLearning,
   type WorkloadCardItem,
+  CALIBRATED_INVARIANCE_CATEGORIES,
+  CALIBRATED_INVARIANCE_PROBLEMS,
+  computeCategoryContrastMatrix,
+  computeDiscriminationTelemetry,
+  computeSequenceMetrics,
+  exportFSRSInterleavingDeck,
+  generateContrastSchedule,
 } from '@learning-hub/core'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 
@@ -570,6 +577,71 @@ export const cognitiveTools: RegisteredTool[] = [
         ok: true,
         candidates: questions,
         protocol: 'pretest → feedback → study → retest (Kornell et al. 2009; Little & Bjork 2016)',
+      })
+    },
+  ),
+
+  tool(
+    'structural_invariance_plan',
+    'Rohrer & Taylor (2007) Interleaved Problem Solving & Structural Invariance engine: generate a shuffled mixed-category practice plan over the calibrated counter-balanced curriculum (3 surface story families x 4 deep invariants), with the blocked comparator metrics, pairwise category contrast matrix (Carvalho & Goldstone 2014), and an FSRS identify-the-invariant deck. Pass recorded attempts to score a confusion matrix and surface-bias telemetry.',
+    {
+      mode: z.enum(['interleaved', 'blocked']).default('interleaved'),
+      contrastWeight: z.number().min(0).max(1).optional(),
+      spacingWeight: z.number().min(0).max(1).optional(),
+      attempts: z
+        .array(
+          z.object({
+            problemId: z.string(),
+            trueCategoryId: z.string(),
+            chosenCategoryId: z.string(),
+            reactionMs: z.number().optional(),
+          }),
+        )
+        .max(1000)
+        .optional(),
+    },
+    async ({ mode, contrastWeight, spacingWeight, attempts }) => {
+      const options = {
+        mode,
+        ...(contrastWeight !== undefined ? { contrastWeight } : {}),
+        ...(spacingWeight !== undefined ? { spacingWeight } : {}),
+      }
+      const { schedule, metrics } = generateContrastSchedule(
+        CALIBRATED_INVARIANCE_PROBLEMS,
+        CALIBRATED_INVARIANCE_CATEGORIES,
+        options,
+      )
+      const categories = CALIBRATED_INVARIANCE_CATEGORIES
+      const templates = CALIBRATED_INVARIANCE_PROBLEMS
+
+      const telemetry =
+        attempts && attempts.length > 0
+          ? computeDiscriminationTelemetry(attempts, categories, templates)
+          : null
+
+      return json({
+        ok: true,
+        mode,
+        schedule: schedule.map((p) => ({
+          id: p.id,
+          categoryId: p.categoryId,
+          title: p.title,
+          prompt: p.prompt,
+        })),
+        metrics,
+        interleavedMetrics: computeSequenceMetrics(
+          generateContrastSchedule(templates, categories, { mode: 'interleaved' }).schedule,
+          categories,
+          templates,
+        ),
+        blockedMetrics: computeSequenceMetrics(
+          generateContrastSchedule(templates, categories, { mode: 'blocked' }).schedule,
+          categories,
+          templates,
+        ),
+        contrastMatrix: computeCategoryContrastMatrix(categories, templates),
+        deck: exportFSRSInterleavingDeck(templates, categories),
+        telemetry,
       })
     },
   ),
