@@ -221,3 +221,5 @@ export function computeInterleavingSchedule(
     discriminationPrompts: prompts,
   }
 }
+
+export * from './structural-invariance-engine'

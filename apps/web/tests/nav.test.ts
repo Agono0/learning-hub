@@ -32,6 +32,7 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/generation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-coding')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/self-explanation')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/interleaving')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/palace-3d')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/constellation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/debate')).toBe(true)
