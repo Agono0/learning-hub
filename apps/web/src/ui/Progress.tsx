@@ -1,3 +1,4 @@
+import React from 'react'
 import { cx } from './cx'
 
 const clamp = (v: number) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0))

@@ -24,8 +24,9 @@
 | **T-P2-7**  | **P2**   | Socratic Dialectic   | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).         |
 | **T-P2-8**  | **P2**   | CAT & IRT Exam Sim   | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16). |
 | **T-P2-9**  | **P2**   | Worked-Example Fade  | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).           |
-| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #19).                              |
-| **T-P2-11** | **P2**   | Metacognitive Calib  | **Planned**   | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.      |
+| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #20).                              |
+| **T-P2-11** | **P2**   | Metacognitive Calib  | **Completed** | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.      |
+| **T-P2-12** | **P2**   | Desirable Difficulty | **Planned**   | Desirable Difficulties & Multi-Ladder Generation Studio: Bjork spacing/interleaving/generation ladders, testing effect retrieval practice, and Leitner-FSRS synthesis.      |
 
 ---
 
@@ -239,7 +240,7 @@
   3. Implement `SchemaDistillationStudio.tsx` with interactive concept node linking, proposition labeling, misconception resolution challenges, and hierarchical flashcard tree export.
   4. Integrate into `apps/web/app/graph/page.tsx` with seamless 3-way toggle between Force Web, Prerequisite DAG, and Ausubel Schema Studio.
 - **Files Affected:** `packages/core/src/knowledge-graph/*`, `apps/web/src/ui/ConceptSchemaHUD.tsx`, `apps/web/src/components/SchemaDistillationStudio.tsx`, `apps/web/app/graph/page.tsx`.
-- **Status:** **Completed (Ready for PR #19)**.
+- **Status:** **Completed & Merged in PR #20**.
 
 ---
 
@@ -252,5 +253,19 @@
   2. Implement `MetacognitiveCalibrationHUD.tsx` with real-time confidence-accuracy discrepancy curve, calibration index, and hypercorrection vulnerability status.
   3. Implement `MetacognitionStudio.tsx` with dual-slider JOL confidence ratings, epistemic shock feedback triggers, high-confidence misconception repair crucible, and FSRS relearning prioritization.
   4. Build `apps/web/app/metacognition/page.tsx` and register in navigation.
-- **Files Affected:** `packages/core/src/metacognition/*`, `apps/web/src/ui/MetacognitiveCalibrationHUD.tsx`, `apps/web/src/components/MetacognitionStudio.tsx`, `apps/web/app/metacognition/page.tsx`.
+- **Files Affected:** `packages/core/src/metacognition/*`, `apps/web/src/ui/MetacognitiveCalibrationHUD.tsx`, `apps/web/src/components/MetacognitionStudio.tsx`, `apps/web/app/metacognition/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Ready for PR #21)**.
+
+---
+
+### T-P2-12: Desirable Difficulties & Multi-Ladder Retrieval Generation Studio (Bjork & Bjork 2011; Slamecka & Graf 1978; Karpicke & Roediger 2008)
+
+- **Problem:** Learners lean heavily on passive rereading and superficial highlighting, which create perceptual fluency but fragile retention, rather than applying desirable difficulties (testing effect, generation effect, varying environmental conditions).
+- **Root Cause:** Lack of a unified dynamic ladder converting standard passive knowledge into escalating generative production challenges (stem-completion, anagram-scramble, reverse-query, semantic-analogy) with cognitive effort scoring.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/retrieval/desirable-difficulty-engine.ts` with Bjork & Bjork (2011) Storage Strength vs Retrieval Strength dynamics, Slamecka-Graf 4-rung generative difficulty ladder, and testing effect multiplier.
+  2. Implement `DesirableDifficultyHUD.tsx` with storage-versus-retrieval matrix and cognitive effort telemetry.
+  3. Implement `DesirableDifficultyStudio.tsx` with progressive generative ladders, interactive prompt transformation, and Leitner-FSRS scheduling.
+  4. Build `apps/web/app/generation/page.tsx` and register in navigation.
+- **Files Affected:** `packages/core/src/retrieval/*`, `apps/web/src/ui/DesirableDifficultyHUD.tsx`, `apps/web/src/components/DesirableDifficultyStudio.tsx`, `apps/web/app/generation/page.tsx`.
 - **Status:** **Planned (Next Cycle)**.

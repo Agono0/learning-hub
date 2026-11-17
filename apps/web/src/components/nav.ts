@@ -76,6 +76,7 @@ export const NAV: NavGroup[] = [
       { href: '/feynman', label: 'Feynman', icon: NotebookPen },
       { href: '/audio-commute', label: 'Commute Audio', icon: Headphones },
       { href: '/sleep-tmr', label: 'Sleep TMR', icon: Moon },
+      { href: '/metacognition', label: 'Metacognition', icon: Brain },
     ],
   },
   {

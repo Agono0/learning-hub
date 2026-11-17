@@ -26,6 +26,10 @@ export { ToulminArgumentHUD, type ToulminArgumentHUDProps } from './ToulminArgum
 export { AdaptiveExamHUD, type AdaptiveExamHUDProps } from './AdaptiveExamHUD'
 export { FadedScaffoldingHUD, type FadedScaffoldingHUDProps } from './FadedScaffoldingHUD'
 export { ConceptSchemaHUD, type ConceptSchemaHUDProps } from './ConceptSchemaHUD'
+export {
+  MetacognitiveCalibrationHUD,
+  type MetacognitiveCalibrationHUDProps,
+} from './MetacognitiveCalibrationHUD'
 export { CardiacCoherenceHUD, type CardiacCoherenceHUDProps } from './CardiacCoherenceHUD'
 export { SleepConsolidationHUD, type SleepConsolidationHUDProps } from './SleepConsolidationHUD'
 export { FeynmanExplanationCard, type FeynmanExplanationCardProps } from './FeynmanExplanationCard'
