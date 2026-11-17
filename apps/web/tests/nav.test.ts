@@ -22,10 +22,12 @@ describe('navigation model & theme helpers', () => {
       expect(item.icon).toBeDefined() // lucide forwardRef components are objects
       expect(item.label.length).toBeGreaterThan(0)
     }
-    expect(hrefs.length).toBeGreaterThanOrEqual(43)
+    expect(hrefs.length).toBeGreaterThanOrEqual(44)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/workload')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/generation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-coding')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/search')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/workload')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/audio-commute')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/sleep-tmr')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/metacognition')).toBe(true)

@@ -10,9 +10,11 @@
  * drags ai.ts/better-sqlite3 into the client bundle).
  */
 import { useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FilePlus2,
+  Gauge,
   Layers,
   Pencil,
   Plus,
@@ -282,6 +284,13 @@ export default function DecksPage() {
             >
               <Shuffle className="h-4 w-4 text-emerald-400" /> Interleave
             </button>
+            <Link
+              href="/workload"
+              className="btn-ghost flex items-center gap-1.5"
+              title="Open Workload Balancer & 90-Day Forecaster"
+            >
+              <Gauge className="h-4 w-4 text-sky-400" /> Workload
+            </Link>
           </div>
         }
       />

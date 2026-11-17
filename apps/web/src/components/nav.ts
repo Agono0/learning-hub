@@ -16,6 +16,7 @@ import {
   Gauge,
   FileCheck,
   Flame,
+  Gauge,
   Globe,
   GraduationCap,
   Headphones,
@@ -85,6 +86,7 @@ export const NAV: NavGroup[] = [
       { href: '/dual-coding', label: 'Dual Coding', icon: Eye },
       { href: '/self-explanation', label: 'Self-Explanation', icon: BookOpen },
       { href: '/interleaving', label: 'Interleaving', icon: Shuffle },
+      { href: '/workload', label: 'Workload', icon: Gauge },
     ],
   },
   {
