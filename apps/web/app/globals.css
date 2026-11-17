@@ -45,17 +45,46 @@
   --color-slate-900: var(--n-900);
   --color-slate-950: var(--n-950);
 
-  /* Accent (was indigo): semantic roles, not raw steps. */
+  /* Accent (was indigo): semantic roles, not raw steps. 300/400 are TEXT
+     steps in this app, so they resolve to the mode-aware accent-text token —
+     `text-indigo-300/400` then passes AA in light mode too (docs/ui-design-signature.md §3.1). */
   --color-indigo-100: var(--ac-soft);
   --color-indigo-200: var(--ac-soft);
-  --color-indigo-300: var(--ac-soft);
-  --color-indigo-400: var(--ac-soft);
+  --color-indigo-300: var(--ac-text);
+  --color-indigo-400: var(--ac-text);
   --color-indigo-500: var(--ac-mid);
   --color-indigo-600: var(--ac-strong);
   --color-indigo-700: var(--ac-strong);
   --color-indigo-800: var(--ac-deep);
   --color-indigo-900: var(--ac-deep);
   --color-indigo-950: var(--ac-deep);
+
+  /* Mode-scoped semantic text tokens (values on :root / .dark below). */
+  --color-text-strong: var(--text-strong);
+  --color-text-body: var(--text-body);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-faint: var(--text-faint);
+  --color-ac-text: var(--ac-text);
+
+  /* Danger = rose, one hue (docs/ui-design-signature.md §3.2). */
+  --color-danger-strong: var(--danger-strong);
+  --color-danger-text: var(--danger-text);
+  --color-danger-soft: var(--danger-soft);
+  --color-rose-600: var(--danger-strong);
+
+  /* Status text, one hue per meaning, mode-aware. */
+  --color-status-success-text: var(--status-success-text);
+  --color-status-warning-text: var(--status-warning-text);
+  --color-status-info-text: var(--status-info-text);
+
+  /* Motion tokens (values on :root below). Use the arbitrary-var syntax —
+     `duration-(--duration-base)` / `ease-(--ease-enter)` — or the named
+     `duration-fast|base|slow` utilities; easings go through
+     `ease-(--ease-enter)` etc. */
+  --transition-duration-fast: var(--duration-fast);
+  --transition-duration-base: var(--duration-base);
+  --transition-duration-slow: var(--duration-slow);
 }
 
 /* Default palette: Calm — sage-tinted warm gray. */
@@ -144,7 +173,9 @@
   --hub-border-strong: #3c3c5c;
 }
 
-/* Perceived-lightness ramp derived from the palette tint (one source of truth). */
+/* Perceived-lightness ramp derived from the palette tint (one source of truth).
+   The ramp is mode-independent and stays for SURFACES; muted TEXT is
+   mode-scoped — see --text-* below and docs/ui-design-signature.md §3.1. */
 :root {
   --n-50: color-mix(in oklab, var(--tint) 5%, white);
   --n-100: color-mix(in oklab, var(--tint) 9%, white);
@@ -157,6 +188,54 @@
   --n-800: color-mix(in oklab, var(--tint) 40%, black 38%);
   --n-900: color-mix(in oklab, var(--tint) 30%, black 52%);
   --n-950: color-mix(in oklab, var(--tint) 18%, black 72%);
+
+  /* Semantic text ramp — LIGHT values (on --n-50 / white panels). The
+     tertiary/faint steps mix extra black into the ramp steps so every palette
+     (incl. the light sunset/blossom tints) clears WCAG AA 4.5:1; locked by
+     apps/web/tests/token-contrast.test.ts. */
+  --text-strong: var(--n-900);
+  --text-body: var(--n-800);
+  --text-secondary: color-mix(in oklab, var(--n-700) 88%, black 12%);
+  --text-tertiary: color-mix(in oklab, var(--n-600) 80%, black 20%);
+  --text-faint: color-mix(in oklab, var(--n-600) 74%, black 26%);
+
+  /* Accent/status text — LIGHT steps (600/700-level so they pass on white).
+     --ac-text mixes a little black into the palette accent so every palette
+     clears 4.5:1 on the tinted --n-50 page background. */
+  --ac-text: color-mix(in oklab, var(--ac-strong) 88%, black 12%);
+  --status-success-text: #047857; /* emerald-700 */
+  --status-warning-text: #92400e; /* amber-800 */
+  --status-info-text: #0369a1; /* sky-700 */
+
+  /* Danger = rose, one hue for both modes. Fills use rose-600 (white on it
+     passes AA); text uses rose-700 in light so it clears 4.5:1 on the tinted
+     page background (rose-600 only manages 4.17:1 there). */
+  --danger-strong: #e11d48; /* rose-600 */
+  --danger-text: #be123c; /* rose-700 */
+  --danger-soft: color-mix(in oklab, #e11d48 15%, transparent);
+
+  /* Motion tokens — one language for every transition/animation. */
+  --duration-fast: 150ms; /* press feedback, hovers, small state swaps */
+  --duration-base: 240ms; /* sheets, dialogs, reveals, progress fills */
+  --duration-slow: 400ms; /* large surfaces & world entrances only (micro ceiling 300ms) */
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1); /* ease-out-quart — entrances, standard */
+  --ease-move: cubic-bezier(0.25, 1, 0.5, 1); /* slides, drawers */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS-like sheet feel */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* ease-in — motivated exits only */
+}
+
+/* Semantic text tokens — DARK values (on the --hub-* surfaces). */
+.dark {
+  --text-strong: var(--n-100);
+  --text-body: var(--n-200);
+  --text-secondary: var(--n-300);
+  --text-tertiary: var(--n-400);
+  --text-faint: var(--n-500);
+  --ac-text: var(--ac-soft);
+  --status-success-text: #34d399; /* emerald-400 */
+  --status-warning-text: #fbbf24; /* amber-400 */
+  --status-info-text: #38bdf8; /* sky-400 */
+  --danger-text: #fb7185; /* rose-400 */
 }
 
 html,
@@ -189,7 +268,14 @@ body {
 
 .btn-ghost {
   @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
-    text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-[#1e1e23] disabled:opacity-50;
+    text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-(--hub-panel-2) disabled:opacity-50;
+}
+
+/* DESIGN.md §6 "secondary": subdued fill + hairline, for the 2nd..nth action. */
+.btn-secondary {
+  @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
+    border border-neutral-200 bg-neutral-100 text-neutral-800 hover:bg-neutral-200
+    dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-200 dark:hover:bg-(--hub-border);
 }
 
 .input {
@@ -198,7 +284,7 @@ body {
 }
 
 .label {
-  @apply text-xs font-medium uppercase tracking-wide text-neutral-500;
+  @apply text-xs font-medium uppercase tracking-wide text-tertiary;
 }
 
 /* celebration animation (tiny habits / streak milestones) */
@@ -241,7 +327,8 @@ body {
 /* Comfortable touch targets wherever the primary pointer is a finger. */
 @media (pointer: coarse) {
   .btn,
-  .btn-ghost {
+  .btn-ghost,
+  .btn-secondary {
     min-height: 44px;
     padding-inline: 0.875rem;
   }
@@ -280,7 +367,8 @@ body {
     row-gap: 0.75rem;
   }
   .btn,
-  .btn-ghost {
+  .btn-ghost,
+  .btn-secondary {
     white-space: nowrap;
   }
   .panel:has(> table),
@@ -318,10 +406,42 @@ body {
   }
 }
 .sheet-panel {
-  animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: sheet-up var(--duration-base) var(--ease-drawer) both;
 }
 .sheet-backdrop {
-  animation: fade-in 0.2s ease-out both;
+  animation: fade-in var(--duration-fast) ease-out both;
+}
+
+/* Real entrance utilities (the motion law's 150-240ms fade / 12px rise /
+   0.96-scale patterns — docs/ui-design-signature.md §5). */
+.animate-fade-in {
+  animation: fade-in var(--duration-base) var(--ease-enter) both;
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-in-up {
+  animation: fade-in-up var(--duration-base) var(--ease-enter) both;
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-scale-in {
+  animation: scale-in var(--duration-base) var(--ease-enter) both;
 }
 
 /* Calm by default: honor the OS reduced-motion setting everywhere. */
@@ -359,7 +479,7 @@ body {
   @apply text-indigo-600 underline underline-offset-2 dark:text-indigo-300;
 }
 .prose-hub blockquote {
-  @apply border-l-4 border-indigo-500/40 pl-3 text-neutral-600 dark:text-neutral-400;
+  @apply border-l-4 border-indigo-500/40 pl-3 text-tertiary;
 }
 .prose-hub code {
   @apply rounded bg-neutral-100 px-1 py-0.5 text-[13px] dark:bg-(--hub-panel-2);
@@ -386,7 +506,7 @@ body {
   @apply mr-2 rounded accent-indigo-600;
 }
 .prose-hub del {
-  @apply text-neutral-400 line-through;
+  @apply text-faint line-through;
 }
 .prose-hub hr {
   @apply border-neutral-200 dark:border-(--hub-border);
@@ -438,20 +558,13 @@ html.theme-e-ink .panel {
   background-color: #ffffff !important;
 }
 
-/* ── getdesign.md High-Aesthetic Elevation & Glassmorphism ────────────────── */
-.panel-glass {
-  @apply rounded-xl border border-neutral-200/70 bg-white/80 backdrop-blur-md transition-all
-    dark:border-(--hub-border)/80 dark:bg-(--hub-panel)/80;
-}
-
+/* ── Surface variants: exactly two (docs/ui-design-signature.md §3.3) ─────── */
+/* .panel is the default card; .panel-elevated is the raised/interactive tile.
+   (.panel-glass / .panel-interactive were retired — folded into this one.) */
 .panel-elevated {
-  @apply rounded-xl border border-neutral-200/80 bg-white shadow-sm transition-all
+  @apply rounded-xl border border-neutral-200/80 bg-white shadow-sm transition-colors
     hover:border-neutral-300 hover:shadow-md
-    dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong) dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)];
-}
-
-.panel-interactive {
-  @apply rounded-xl border border-neutral-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer dark:border-(--hub-border) dark:bg-(--hub-panel);
+    dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong);
 }
 
 /* Subtle glow pulse for active badges and indicators */
