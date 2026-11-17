@@ -11,12 +11,13 @@ import { normalizeThemePreference } from '../src/components/ThemeSync'
 describe('navigation model & theme helpers', () => {
   it('preserves all routes across the 4 canonical scaffolder groups', () => {
     expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
-    // 40: the canonical set plus /search (M18) + ultimate cognitive expansion routes + v2 features
-    expect(ALL_NAV_ITEMS).toHaveLength(40)
+    // 41: the canonical set plus /search (M18) + ultimate cognitive expansion routes + v2 features
+    expect(ALL_NAV_ITEMS).toHaveLength(41)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/search')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/audio-commute')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/sleep-tmr')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/metacognition')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/generation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/palace-3d')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/constellation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/debate')).toBe(true)

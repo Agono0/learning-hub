@@ -254,7 +254,7 @@
   3. Implement `MetacognitionStudio.tsx` with dual-slider JOL confidence ratings, epistemic shock feedback triggers, high-confidence misconception repair crucible, and FSRS relearning prioritization.
   4. Build `apps/web/app/metacognition/page.tsx` and register in navigation.
 - **Files Affected:** `packages/core/src/metacognition/*`, `apps/web/src/ui/MetacognitiveCalibrationHUD.tsx`, `apps/web/src/components/MetacognitionStudio.tsx`, `apps/web/app/metacognition/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed (Ready for PR #21)**.
+- **Status:** **Completed & Merged in PR #22**.
 
 ---
 
@@ -263,9 +263,23 @@
 - **Problem:** Learners lean heavily on passive rereading and superficial highlighting, which create perceptual fluency but fragile retention, rather than applying desirable difficulties (testing effect, generation effect, varying environmental conditions).
 - **Root Cause:** Lack of a unified dynamic ladder converting standard passive knowledge into escalating generative production challenges (stem-completion, anagram-scramble, reverse-query, semantic-analogy) with cognitive effort scoring.
 - **Proposed Solution:**
-  1. Develop `packages/core/src/retrieval/desirable-difficulty-engine.ts` with Bjork & Bjork (2011) Storage Strength vs Retrieval Strength dynamics, Slamecka-Graf 4-rung generative difficulty ladder, and testing effect multiplier.
-  2. Implement `DesirableDifficultyHUD.tsx` with storage-versus-retrieval matrix and cognitive effort telemetry.
-  3. Implement `DesirableDifficultyStudio.tsx` with progressive generative ladders, interactive prompt transformation, and Leitner-FSRS scheduling.
+  1. Develop `packages/core/src/generation/desirable-difficulty-engine.ts` with Bjork & Bjork (2011) Storage Strength vs Retrieval Strength dynamics, Slamecka-Graf 4-rung generative difficulty ladder, and testing effect multiplier.
+  2. Implement `DesirableDifficultyHUD.tsx` with storage-versus-retrieval 2D matrix, CEI effort telemetry, and tier progress bars.
+  3. Implement `DesirableDifficultyStudio.tsx` with 4 interactive workspaces: Generative Ladder, Bjork Phase-Space Analyzer, Roediger-Karpicke Testing Crucible, and FSRS Generative Deck Exporter.
   4. Build `apps/web/app/generation/page.tsx` and register in navigation.
-- **Files Affected:** `packages/core/src/retrieval/*`, `apps/web/src/ui/DesirableDifficultyHUD.tsx`, `apps/web/src/components/DesirableDifficultyStudio.tsx`, `apps/web/app/generation/page.tsx`.
+- **Files Affected:** `packages/core/src/generation/*`, `apps/web/src/ui/DesirableDifficultyHUD.tsx`, `apps/web/src/components/DesirableDifficultyStudio.tsx`, `apps/web/app/generation/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Ready for PR #23)**.
+
+---
+
+### T-P2-13: Dual-Coding & Visuospatial Generative Schematization Studio (Paivio 1971; Mayer 2001, 2014)
+
+- **Problem:** Learners struggle with abstract conceptual systems when relying solely on verbal or textual representations, suffering split-attention and cognitive overload without complementary non-verbal imagery.
+- **Root Cause:** Absence of Paivio (1971) Dual-Coding Theory and Mayer (2014) Cognitive Theory of Multimedia Learning visual schema generation tools that couple verbal propositions with diagrammatic visual organizers.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/multimodal/dual-coding-engine.ts` supporting Paivio's dual-channel processing (imagens vs logogens), referential connections, Mayer's 12 multimedia principles (coherence, signaling, redundancy, spatial contiguity), and multimodal redundancy penalty scoring.
+  2. Implement `DualCodingHUD.tsx` tracking logogen/imagen balance, referential connectivity index, and Mayer multimedia compliance score.
+  3. Implement `DualCodingStudio.tsx` with interactive diagrammatic schematizer, concept-to-icon mapping, spatial contiguity organizer, and dual-coded flashcard export.
+  4. Build `apps/web/app/dual-coding/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/multimodal/*`, `apps/web/src/ui/DualCodingHUD.tsx`, `apps/web/src/components/DualCodingStudio.tsx`, `apps/web/app/dual-coding/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.
