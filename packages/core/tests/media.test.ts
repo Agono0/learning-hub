@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import * as aiSettings from '../src/ai/settings'
 import {
   podcastScript,
   podcastScriptSchema,
@@ -90,10 +91,9 @@ describe('Media Artifacts Generation', () => {
 
   describe('podcastScript execution with AI client', () => {
     it('returns error when AI client is unconfigured', async () => {
-      // Mock an unconfigured state where getActiveAIClientFromDb would return null
-      const fakeUnconfiguredAI: AIClient | undefined = undefined
-      // When explicitly passing undefined and DB has no AI, podcastScript returns ok: false
-      const res = await podcastScript('Some lesson summary', fakeUnconfiguredAI)
+      vi.spyOn(aiSettings, 'getActiveAIClientFromDb').mockResolvedValue(null)
+      const res = await podcastScript('Some lesson summary')
+      expect(res.ok).toBe(false)
       if (!res.ok) {
         expect(res.error).toContain('Configure AI in Settings')
       }
@@ -126,6 +126,15 @@ describe('Media Artifacts Generation', () => {
   })
 
   describe('studyGuide execution with AI client', () => {
+    it('returns error when AI client is unconfigured', async () => {
+      vi.spyOn(aiSettings, 'getActiveAIClientFromDb').mockResolvedValue(null)
+      const res = await studyGuide('Extracted paper content')
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.error).toContain('Configure AI in Settings')
+      }
+    })
+
     it('generates study guide via injected AI client', async () => {
       const fakeGuide: StudyGuide = {
         title: 'AI Generated Guide',
