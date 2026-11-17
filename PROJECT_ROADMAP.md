@@ -8,25 +8,28 @@
 
 ## 1. Prioritization Matrix
 
-| ID          | Priority | Category             | Status        | Summary                                                                                                                                                                     |
-| ----------- | -------- | -------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T-P0-1**  | **P0**   | Correctness / Infra  | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                                    |
-| **T-P0-2**  | **P0**   | Database / Setup     | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                               |
-| **T-P1-1**  | **P1**   | Feature Completeness | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                                 |
-| **T-P1-2**  | **P1**   | Feature Completeness | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.                              |
-| **T-P1-3**  | **P1**   | API Completeness     | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                                   |
-| **T-P2-1**  | **P2**   | Cognitive Bridge     | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                                 |
-| **T-P2-2**  | **P2**   | Verification & Build | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                                    |
-| **T-P2-3**  | **P2**   | Interactive Studios  | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                                      |
-| **T-P2-4**  | **P2**   | Coherence & Sleep    | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                               |
-| **T-P2-5**  | **P2**   | Spatial Mindmap 3D   | **Completed** | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).                    |
-| **T-P2-6**  | **P2**   | 3D Memory Palace XR  | **Completed** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12).                |
-| **T-P2-7**  | **P2**   | Socratic Dialectic   | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).         |
-| **T-P2-8**  | **P2**   | CAT & IRT Exam Sim   | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16). |
-| **T-P2-9**  | **P2**   | Worked-Example Fade  | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).           |
-| **T-P2-10** | **P2**   | Ausubel-Novak Schema | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #20).                              |
-| **T-P2-11** | **P2**   | Metacognitive Calib  | **Completed** | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.      |
-| **T-P2-12** | **P2**   | Desirable Difficulty | **Planned**   | Desirable Difficulties & Multi-Ladder Generation Studio: Bjork spacing/interleaving/generation ladders, testing effect retrieval practice, and Leitner-FSRS synthesis.      |
+| ID          | Priority | Category               | Status        | Summary                                                                                                                                                                         |
+| ----------- | -------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T-P0-1**  | **P0**   | Correctness / Infra    | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                                        |
+| **T-P0-2**  | **P0**   | Database / Setup       | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                                   |
+| **T-P1-1**  | **P1**   | Feature Completeness   | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                                     |
+| **T-P1-2**  | **P1**   | Feature Completeness   | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.                                  |
+| **T-P1-3**  | **P1**   | API Completeness       | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                                       |
+| **T-P2-1**  | **P2**   | Cognitive Bridge       | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                                     |
+| **T-P2-2**  | **P2**   | Verification & Build   | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                                        |
+| **T-P2-3**  | **P2**   | Interactive Studios    | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                                          |
+| **T-P2-4**  | **P2**   | Coherence & Sleep      | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                                   |
+| **T-P2-5**  | **P2**   | Spatial Mindmap 3D     | **Completed** | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).                        |
+| **T-P2-6**  | **P2**   | 3D Memory Palace XR    | **Completed** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12).                    |
+| **T-P2-7**  | **P2**   | Socratic Dialectic     | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14).             |
+| **T-P2-8**  | **P2**   | CAT & IRT Exam Sim     | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning (PR #16).     |
+| **T-P2-9**  | **P2**   | Worked-Example Fade    | **Completed** | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson 4-stage continuum, Chi self-explanation, Große erroneous crucible, and FSRS bridge (PR #18).               |
+| **T-P2-10** | **P2**   | Ausubel-Novak Schema   | **Completed** | Meaningful Learning & Propositional Knowledge Graph Distillation Studio: Ausubelian subsumption, Novak concept maps, and FSRS bridge (PR #20).                                  |
+| **T-P2-11** | **P2**   | Metacognitive Calib    | **Completed** | Dynamic Metacognitive Calibration & Hypercorrection Studio: Nelson-Narens monitoring vs control, Butterfield hypercorrection crucible, and confidence-accuracy curves.          |
+| **T-P2-12** | **P2**   | Desirable Difficulty   | **Completed** | Desirable Difficulties & Multi-Ladder Generation Studio: Bjork spacing/interleaving/generation ladders, testing effect retrieval practice, and Leitner-FSRS synthesis (PR #25). |
+| **T-P2-13** | **P2**   | Dual-Coding Schema     | **Completed** | Dual-Coding & Visuospatial Schematization Studio: Paivio dual-channel processing, Mayer 12 CTML compliance audit, and interactive SVG canvas workbench (PR #27).                |
+| **T-P2-14** | **P2**   | Self-Explanation       | **Completed** | Generative Self-Explanation & Schema Inversion Studio: Chi 1989 justification depth scoring, Aleven rule-naming, and Renkl boundary failure inversions (PR #28).                |
+| **T-P2-15** | **P2**   | Interleaved Invariance | **Planned**   | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination.    |
 
 ---
 
@@ -282,7 +285,7 @@
   3. Implement `DualCodingStudio.tsx` with interactive diagrammatic schematizer, concept-to-icon mapping, spatial contiguity organizer, and dual-coded flashcard export.
   4. Build `apps/web/app/dual-coding/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/multimodal/*`, `apps/web/src/ui/DualCodingHUD.tsx`, `apps/web/src/components/DualCodingStudio.tsx`, `apps/web/app/dual-coding/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed (Ready for PR #26)**.
+- **Status:** **Completed & Merged in PR #27**.
 
 ---
 
@@ -291,9 +294,23 @@
 - **Problem:** When reviewing worked solutions or technical proofs, learners passively skim through steps without generating mechanistic justifications, creating the illusion of understanding without mental schema construction.
 - **Root Cause:** Lack of an interactive self-explanation prompting engine requiring learners to state the underlying domain principle behind each derivation step and invert steps to detect hidden constraints.
 - **Proposed Solution:**
-  1. Develop `packages/core/src/pedagogy/self-explanation-engine.ts` tracking Chi (1989) justification types (principle-based, goal-operator, coherence-building), Aleven-Koedinger rule-naming accuracy, and step inversion challenges.
+  1. Develop `packages/core/src/explanation/self-explanation-engine.ts` tracking Chi (1989) justification types (principle-based, goal-operator, coherence-building), Aleven-Koedinger rule-naming accuracy, and step inversion challenges.
   2. Implement `SelfExplanationHUD.tsx` with real-time justification depth index, principle alignment score, and cognitive engagement telemetry.
   3. Implement `SelfExplanationStudio.tsx` with step-by-step derivation reasoning, rule-selection challenges, edge-case inversion tests, and FSRS justification card exports.
   4. Build `apps/web/app/self-explanation/page.tsx` and wire into navigation.
-- **Files Affected:** `packages/core/src/pedagogy/*`, `apps/web/src/ui/SelfExplanationHUD.tsx`, `apps/web/src/components/SelfExplanationStudio.tsx`, `apps/web/app/self-explanation/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Files Affected:** `packages/core/src/explanation/*`, `apps/web/src/ui/SelfExplanationHUD.tsx`, `apps/web/src/components/SelfExplanationStudio.tsx`, `apps/web/app/self-explanation/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Ready for PR #28)**.
+
+---
+
+### T-P2-15: Interleaved Problem Solving & Structural Invariance Studio (Rohrer & Taylor 2007; Kornell & Bjork 2008)
+
+- **Problem:** Learners practicing within blocked blocks of identical problem types develop superficial recognition of solution templates rather than learning how to inductively discern deep problem structures from surface features.
+- **Root Cause:** Absence of systematic interleaved practice generators that contrast superficially similar but structurally distinct problems with dynamic cognitive contrast scoring.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/interleaving/structural-invariance-engine.ts` modeling Rohrer-Taylor interleaving benefits, inductive categorization, category contrast matrix, and surface vs deep structural feature vector distance.
+  2. Implement `InterleavingHUD.tsx` with category confusion matrix, discrimination accuracy telemetry, and interleaving ratio analyzer.
+  3. Implement `InterleavingStudio.tsx` with mixed-category problem sequences, deep structural invariant matching, contrastive discrimination crucible, and FSRS interleaving deck exporter.
+  4. Build `apps/web/app/interleaving/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/interleaving/*`, `apps/web/src/ui/InterleavingHUD.tsx`, `apps/web/src/components/InterleavingStudio.tsx`, `apps/web/app/interleaving/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.
