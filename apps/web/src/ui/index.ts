@@ -44,6 +44,10 @@ export {
   CognitiveFlexibilityHUD,
   type CognitiveFlexibilityHUDProps,
 } from './CognitiveFlexibilityHUD'
+export {
+  ReflectiveEquilibriumHUD,
+  type ReflectiveEquilibriumHUDProps,
+} from './ReflectiveEquilibriumHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
