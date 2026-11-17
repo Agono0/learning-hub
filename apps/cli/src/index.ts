@@ -30,8 +30,8 @@ import {
   feynmanCommand,
   generationCommand,
   metacognitionCommand,
-  pretestCommand,
-} from './commands/cognitive'import {
+} from './commands/cognitive'
+import {
   db,
   awardXp,
   cards,

@@ -472,6 +472,11 @@ export const cognitiveTools: RegisteredTool[] = [
         advisory: plan.advisory,
         cues: plan.cues,
         unscheduledCardIds: plan.unscheduledCardIds,
+      })
+    },
+  ),
+
+  tool(
     'difficulty_audit',
     "Dunlosky et al. (2013) Desirable-Difficulty Audit: score the learner's technique mix against the monograph utility table (practice testing/spacing high; rereading/highlighting low), quantify fluency-illusion risk, audit measured spacing + deck interleaving from revlog, and emit an exact-arithmetic substitution plan.",
     {
