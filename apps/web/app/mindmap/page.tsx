@@ -8,9 +8,10 @@
  */
 import { useEffect, useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Network, Plus, Sparkles, FileText, Trash2, Save } from 'lucide-react'
+import { Network, Plus, Sparkles, FileText, Trash2, Save, Move3d, Layers } from 'lucide-react'
 import { parseMarkdownOutline, type MindmapData, type MindmapNode } from '@learning-hub/core/visual'
 import { apiGet, apiSend } from '@/lib/transport'
+import { InteractiveMindmapStudio } from '@/components/InteractiveMindmapStudio'
 import { PageHeader, Panel, Button } from '@/ui'
 
 interface MindmapRow {
@@ -48,6 +49,7 @@ export default function MindmapPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [title, setTitle] = useState('New Mind Map')
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN)
+  const [studioMode, setStudioMode] = useState<'studio' | 'classic'>('studio')
   const [viewMode, setViewMode] = useState<'visual' | 'outline'>('visual')
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedDeckId, setSelectedDeckId] = useState<number | null>(null)
@@ -193,210 +195,319 @@ export default function MindmapPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Mind Maps"
-        subtitle="Visualize concept structures, explore knowledge hierarchies, and generate flashcards directly into your review queue."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={handleNew}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              New Map
-            </Button>
-            <Button
-              variant="primary"
-              disabled={saveMutation.isPending}
-              onClick={() => saveMutation.mutate()}
-            >
-              <Save className="mr-1.5 h-4 w-4" />
-              {saveMutation.isPending ? 'Saving…' : 'Save'}
-            </Button>
-            {selectedId && (
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader
+          title="Mind Maps"
+          subtitle="Visualize concept structures, explore knowledge hierarchies, and generate flashcards directly into your review queue."
+          actions={
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleNew}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                New Map
+              </Button>
               <Button
                 variant="primary"
-                onClick={() => {
-                  setExportResult(null)
-                  setIsExportModalOpen(true)
-                }}
+                disabled={saveMutation.isPending}
+                onClick={() => saveMutation.mutate()}
               >
-                <Sparkles className="mr-1.5 h-4 w-4 text-amber-300" />
-                Generate Cards
+                <Save className="mr-1.5 h-4 w-4" />
+                {saveMutation.isPending ? 'Saving…' : 'Save'}
               </Button>
-            )}
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
-        {/* Saved Mindmaps Sidebar */}
-        <Panel className="lg:col-span-1 p-3 space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 px-2 py-1">
-            Saved Maps ({mindmapsData?.mindmaps?.length ?? 0})
-          </div>
-
-          <div className="space-y-1">
-            {mindmapsData?.mindmaps?.map((m) => {
-              const isSelected = m.id === selectedId
-              return (
-                <div
-                  key={m.id}
-                  onClick={() => handleSelectMindmap(m)}
-                  className={`group flex items-center justify-between rounded-lg px-3 py-2 text-xs cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-indigo-600/20 text-indigo-300 font-medium border border-indigo-500/30'
-                      : 'text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-200'
-                  }`}
+              {selectedId && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setExportResult(null)
+                    setIsExportModalOpen(true)
+                  }}
                 >
-                  <span className="truncate flex-1">{m.title}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      deleteMutation.mutate(m.id)
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400"
-                    title="Delete map"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )
-            })}
-
-            {(!mindmapsData?.mindmaps || mindmapsData.mindmaps.length === 0) && (
-              <p className="px-2 py-4 text-xs text-neutral-500">No saved mind maps yet.</p>
-            )}
-          </div>
-        </Panel>
-
-        {/* Editor Main Canvas */}
-        <div className="lg:col-span-3 space-y-4">
-          <Panel className="p-4 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Mind map title…"
-                className="input text-base font-semibold max-w-sm"
-              />
-
-              <div className="flex items-center gap-1 rounded-lg bg-neutral-800/60 p-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('visual')}
-                  className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
-                    viewMode === 'visual'
-                      ? 'bg-indigo-600 text-white font-medium'
-                      : 'text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  <Network className="h-3.5 w-3.5" />
-                  Visual Graph
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('outline')}
-                  className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
-                    viewMode === 'outline'
-                      ? 'bg-indigo-600 text-white font-medium'
-                      : 'text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  Outline Markdown
-                </button>
-              </div>
+                  <Sparkles className="mr-1.5 h-4 w-4 text-amber-300" />
+                  Generate Cards
+                </Button>
+              )}
             </div>
+          }
+        />
+      </div>
 
-            {viewMode === 'outline' ? (
-              <div className="space-y-2">
-                <p className="text-xs text-neutral-500">
-                  Write or paste your concepts in Markdown nested lists. Indent subtopics with 2
-                  spaces.
-                </p>
-                <textarea
-                  className="input min-h-[460px] font-mono text-xs leading-relaxed"
-                  value={markdown}
-                  onChange={(e) => setMarkdown(e.target.value)}
-                />
-              </div>
-            ) : (
-              <div className="relative h-[540px] w-full overflow-hidden rounded-xl border border-neutral-800 bg-[#0e0e11]">
-                <svg className="h-full w-full" viewBox="0 0 1000 800">
-                  {/* Connecting Bezier Edges */}
-                  {mindmap.edges?.map((edge) => {
-                    const fromNode = mindmap.nodes.find((n) => n.id === edge.from)
-                    const toNode = mindmap.nodes.find((n) => n.id === edge.to)
-                    if (!fromNode || !toNode) return null
-
-                    const d = `M ${fromNode.x} ${fromNode.y} Q ${(fromNode.x + toNode.x) / 2} ${
-                      fromNode.y
-                    } ${toNode.x} ${toNode.y}`
-
-                    return (
-                      <path
-                        key={edge.id}
-                        d={d}
-                        fill="none"
-                        stroke="#374151"
-                        strokeWidth="2"
-                        strokeDasharray="none"
-                        className="transition-all hover:stroke-indigo-400"
-                      />
-                    )
-                  })}
-
-                  {/* Nodes */}
-                  {mindmap.nodes.map((node) => {
-                    const isRoot = node.id === 'root'
-                    const isSelected = selectedNodeId === node.id
-
-                    return (
-                      <g
-                        key={node.id}
-                        transform={`translate(${node.x}, ${node.y})`}
-                        onClick={() => setSelectedNodeId(node.id)}
-                        className="cursor-pointer transition-transform hover:scale-105"
-                      >
-                        <circle
-                          r={isRoot ? 32 : 18}
-                          fill={node.color || (isRoot ? '#6366f1' : '#3b82f6')}
-                          stroke={isSelected ? '#ffffff' : '#1e1e24'}
-                          strokeWidth={isSelected ? 3 : 2}
-                          className="shadow-lg filter drop-shadow"
-                        />
-                        <text
-                          textAnchor="middle"
-                          dy={isRoot ? 4 : 3}
-                          fontSize={isRoot ? '12' : '10'}
-                          fontWeight="bold"
-                          fill="#ffffff"
-                          className="pointer-events-none select-none"
-                        >
-                          {isRoot ? 'ROOT' : '•'}
-                        </text>
-                        <text
-                          textAnchor="middle"
-                          dy={isRoot ? 48 : 30}
-                          fontSize="11"
-                          fill="#d1d5db"
-                          className="pointer-events-none select-none font-medium"
-                        >
-                          {node.text.length > 28 ? `${node.text.slice(0, 26)}…` : node.text}
-                        </text>
-                      </g>
-                    )
-                  })}
-                </svg>
-
-                <div className="absolute bottom-3 right-3 rounded bg-neutral-900/90 px-2.5 py-1 text-[11px] text-neutral-400 border border-neutral-800">
-                  {mindmap.nodes.length} nodes · Radial layout
-                </div>
-              </div>
-            )}
-          </Panel>
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-1 rounded-xl border border-neutral-800 bg-neutral-900/90 p-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setStudioMode('studio')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+              studioMode === 'studio'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Move3d className="h-3.5 w-3.5" />
+            <span>Interactive Studio</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStudioMode('classic')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+              studioMode === 'classic'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span>Classic Editor</span>
+          </button>
         </div>
       </div>
+
+      {studioMode === 'studio' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-2.5">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                Selected Map:
+              </span>
+              <select
+                value={selectedId ?? ''}
+                onChange={(e) => {
+                  const id = Number(e.target.value)
+                  const map = mindmapsData?.mindmaps?.find((m) => m.id === id)
+                  if (map) handleSelectMindmap(map)
+                  else handleNew()
+                }}
+                className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs text-neutral-200"
+              >
+                <option value="">(New Draft Map)</option>
+                {mindmapsData?.mindmaps?.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleNew}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                New
+              </Button>
+              {selectedId && (
+                <Button
+                  variant="ghost"
+                  onClick={() => deleteMutation.mutate(selectedId)}
+                  className="text-rose-400 hover:text-rose-300"
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <InteractiveMindmapStudio
+            key={`${selectedId ?? 'new'}-${title}`}
+            initialTitle={title}
+            initialMarkdown={markdown}
+            onSaveMindmap={({ title: newTitle, markdown: newMd, nodes }) => {
+              setTitle(newTitle)
+              setMarkdown(newMd)
+              const payload = {
+                title: newTitle.trim() || 'Untitled Mind Map',
+                nodesJson: JSON.stringify(nodes),
+                edgesJson: JSON.stringify([]),
+              }
+              if (selectedId) {
+                void apiSend(`/api/mindmaps/${selectedId}`, 'PUT', payload).then(() => {
+                  void qc.invalidateQueries({ queryKey: ['mindmaps'] })
+                })
+              } else {
+                void apiSend<{ ok: boolean; mindmap: MindmapRow }>(
+                  '/api/mindmaps',
+                  'POST',
+                  payload,
+                ).then((res) => {
+                  void qc.invalidateQueries({ queryKey: ['mindmaps'] })
+                  if (res?.mindmap?.id) setSelectedId(res.mindmap.id)
+                })
+              }
+            }}
+            onExportCards={(_cards) => {
+              setExportResult(null)
+              setIsExportModalOpen(true)
+            }}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          {/* Saved Mindmaps Sidebar */}
+          <Panel className="lg:col-span-1 p-3 space-y-2">
+            <div className="text-xs font-semibold uppercase tracking-wider text-neutral-400 px-2 py-1">
+              Saved Maps ({mindmapsData?.mindmaps?.length ?? 0})
+            </div>
+
+            <div className="space-y-1">
+              {mindmapsData?.mindmaps?.map((m) => {
+                const isSelected = m.id === selectedId
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => handleSelectMindmap(m)}
+                    className={`group flex items-center justify-between rounded-lg px-3 py-2 text-xs cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-indigo-600/20 text-indigo-300 font-medium border border-indigo-500/30'
+                        : 'text-neutral-400 hover:bg-neutral-800/60 hover:text-neutral-200'
+                    }`}
+                  >
+                    <span className="truncate flex-1">{m.title}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteMutation.mutate(m.id)
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-rose-400"
+                      title="Delete map"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+
+              {(!mindmapsData?.mindmaps || mindmapsData.mindmaps.length === 0) && (
+                <p className="px-2 py-4 text-xs text-neutral-500">No saved mind maps yet.</p>
+              )}
+            </div>
+          </Panel>
+
+          {/* Editor Main Canvas */}
+          <div className="lg:col-span-3 space-y-4">
+            <Panel className="p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Mind map title…"
+                  className="input text-base font-semibold max-w-sm"
+                />
+
+                <div className="flex items-center gap-1 rounded-lg bg-neutral-800/60 p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('visual')}
+                    className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
+                      viewMode === 'visual'
+                        ? 'bg-indigo-600 text-white font-medium'
+                        : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <Network className="h-3.5 w-3.5" />
+                    Visual Graph
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('outline')}
+                    className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
+                      viewMode === 'outline'
+                        ? 'bg-indigo-600 text-white font-medium'
+                        : 'text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Outline Markdown
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === 'outline' ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-neutral-500">
+                    Write or paste your concepts in Markdown nested lists. Indent subtopics with 2
+                    spaces.
+                  </p>
+                  <textarea
+                    className="input min-h-[460px] font-mono text-xs leading-relaxed"
+                    value={markdown}
+                    onChange={(e) => setMarkdown(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <div className="relative h-[540px] w-full overflow-hidden rounded-xl border border-neutral-800 bg-[#0e0e11]">
+                  <svg className="h-full w-full" viewBox="0 0 1000 800">
+                    {/* Connecting Bezier Edges */}
+                    {mindmap.edges?.map((edge) => {
+                      const fromNode = mindmap.nodes.find((n) => n.id === edge.from)
+                      const toNode = mindmap.nodes.find((n) => n.id === edge.to)
+                      if (!fromNode || !toNode) return null
+
+                      const d = `M ${fromNode.x} ${fromNode.y} Q ${(fromNode.x + toNode.x) / 2} ${
+                        fromNode.y
+                      } ${toNode.x} ${toNode.y}`
+
+                      return (
+                        <path
+                          key={edge.id}
+                          d={d}
+                          fill="none"
+                          stroke="#374151"
+                          strokeWidth="2"
+                          strokeDasharray="none"
+                          className="transition-all hover:stroke-indigo-400"
+                        />
+                      )
+                    })}
+
+                    {/* Nodes */}
+                    {mindmap.nodes.map((node) => {
+                      const isRoot = node.id === 'root'
+                      const isSelected = selectedNodeId === node.id
+
+                      return (
+                        <g
+                          key={node.id}
+                          transform={`translate(${node.x}, ${node.y})`}
+                          onClick={() => setSelectedNodeId(node.id)}
+                          className="cursor-pointer transition-transform hover:scale-105"
+                        >
+                          <circle
+                            r={isRoot ? 32 : 18}
+                            fill={node.color || (isRoot ? '#6366f1' : '#3b82f6')}
+                            stroke={isSelected ? '#ffffff' : '#1e1e24'}
+                            strokeWidth={isSelected ? 3 : 2}
+                            className="shadow-lg filter drop-shadow"
+                          />
+                          <text
+                            textAnchor="middle"
+                            dy={isRoot ? 4 : 3}
+                            fontSize={isRoot ? '12' : '10'}
+                            fontWeight="bold"
+                            fill="#ffffff"
+                            className="pointer-events-none select-none"
+                          >
+                            {isRoot ? 'ROOT' : '•'}
+                          </text>
+                          <text
+                            textAnchor="middle"
+                            dy={isRoot ? 48 : 30}
+                            fontSize="11"
+                            fill="#d1d5db"
+                            className="pointer-events-none select-none font-medium"
+                          >
+                            {node.text.length > 28 ? `${node.text.slice(0, 26)}…` : node.text}
+                          </text>
+                        </g>
+                      )
+                    })}
+                  </svg>
+
+                  <div className="absolute bottom-3 right-3 rounded bg-neutral-900/90 px-2.5 py-1 text-[11px] text-neutral-400 border border-neutral-800">
+                    {mindmap.nodes.length} nodes · Radial layout
+                  </div>
+                </div>
+              )}
+            </Panel>
+          </div>
+        </div>
+      )}
 
       {/* Export to Deck Modal */}
       {isExportModalOpen && (
