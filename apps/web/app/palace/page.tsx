@@ -8,8 +8,9 @@
  * CLIENT component — core imports via SUBPATHS only (never the barrel).
  */
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, EyeOff, Map, MapPin, Play, Plus, Save, Trash2, X } from 'lucide-react'
+import { Box, Eye, EyeOff, Map, MapPin, Play, Plus, Save, Trash2, X } from 'lucide-react'
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { palaceWalkOrder } from '@learning-hub/core/memory'
 import { apiGet, apiSend } from '@/lib/transport'
@@ -143,7 +144,19 @@ export default function MemoryPalacePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader icon={<Map className="h-5 w-5" />} title="Memory Palace" />
+      <PageHeader
+        icon={<Map className="h-5 w-5" />}
+        title="Memory Palace"
+        actions={
+          <Link
+            href="/palace-3d"
+            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-all shadow-sm"
+          >
+            <Box className="h-3.5 w-3.5" />
+            <span>3D Palace Studio</span>
+          </Link>
+        }
+      />
 
       <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         {/* palace list */}

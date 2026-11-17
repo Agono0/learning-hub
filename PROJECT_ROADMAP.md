@@ -8,18 +8,19 @@
 
 ## 1. Prioritization Matrix
 
-| ID         | Priority | Category             | Status        | Summary                                                                                                                                         |
-| ---------- | -------- | -------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                        |
-| **T-P0-2** | **P0**   | Database / Setup     | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                   |
-| **T-P1-1** | **P1**   | Feature Completeness | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                     |
-| **T-P1-2** | **P1**   | Feature Completeness | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.  |
-| **T-P1-3** | **P1**   | API Completeness     | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                       |
-| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                     |
-| **T-P2-2** | **P2**   | Verification & Build | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                        |
-| **T-P2-3** | **P2**   | Interactive Studios  | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).          |
-| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).   |
-| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Queued**    | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis. |
+| ID         | Priority | Category             | Status          | Summary                                                                                                                                                  |
+| ---------- | -------- | -------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed**   | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                 |
+| **T-P0-2** | **P0**   | Database / Setup     | **Completed**   | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                            |
+| **T-P1-1** | **P1**   | Feature Completeness | **Completed**   | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                              |
+| **T-P1-2** | **P1**   | Feature Completeness | **Completed**   | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.           |
+| **T-P1-3** | **P1**   | API Completeness     | **Completed**   | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                |
+| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed**   | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                              |
+| **T-P2-2** | **P2**   | Verification & Build | **Completed**   | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                 |
+| **T-P2-3** | **P2**   | Interactive Studios  | **Completed**   | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                   |
+| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed**   | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).            |
+| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Completed**   | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11). |
+| **T-P2-6** | **P2**   | 3D Memory Palace XR  | **In Progress** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio.      |
 
 ---
 
