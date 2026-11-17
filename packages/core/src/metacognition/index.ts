@@ -135,3 +135,6 @@ export function evaluateMetacognitiveProfile(items: JudgmentOfLearning[]): Metac
     averageConfidence: Number(averageConfidence.toFixed(3)),
   }
 }
+
+export const calculateMetacognitiveBias = calculateConfidenceBias
+export const calculateMetacognitiveReport = evaluateMetacognitiveProfile

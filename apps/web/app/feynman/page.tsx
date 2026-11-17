@@ -18,6 +18,7 @@ import type { FeynmanDiagnosticReport } from '@learning-hub/core'
 import { TransportPanel, useAiStatus, type ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
 import { FeynmanExplanationCard, PageHeader } from '@/ui'
+import { FeynmanSocraticStudio } from '@/components/FeynmanSocraticStudio'
 
 interface Msg {
   /** stable client-side identity — the message list grows during a session */
@@ -48,6 +49,7 @@ export default function FeynmanPage() {
   const { data: studentManual } = useManualMode('feynman-student', manual)
   const { data: graderManual } = useManualMode('feynman-grader', manual)
 
+  const [viewMode, setViewMode] = useState<'studio' | 'dialogue'>('studio')
   const [concept, setConcept] = useState('')
   const [explanation, setExplanation] = useState('')
   const [started, setStarted] = useState(false)
@@ -280,83 +282,119 @@ export default function FeynmanPage() {
 
   if (!started) {
     return (
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="mx-auto max-w-4xl space-y-5">
         <PageHeader
           title="Feynman Teach-back"
           subtitle={
-            manual
-              ? 'Manual mode: no AI configured — explain to a real person (or a rubber duck), then grade yourself with the rubric below.'
-              : 'Explain a concept as if to a 12-year-old. A confused student will ask follow-ups, then you get graded on coverage, misconceptions, and gaps — and gap-cards are born automatically.'
+            viewMode === 'studio'
+              ? 'Self-explanation & Socratic reflection: simplify concepts for children or novices, detect jargon, and bridge gaps.'
+              : manual
+                ? 'Manual mode: no AI configured — explain to a real person (or a rubber duck), then grade yourself with the rubric below.'
+                : 'Explain a concept as if to a 12-year-old. A confused student will ask follow-ups, then you get graded on coverage, misconceptions, and gaps.'
+          }
+          actions={
+            <div className="flex rounded-lg bg-neutral-200/70 p-1 dark:bg-neutral-800">
+              <button
+                type="button"
+                onClick={() => setViewMode('studio')}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                  viewMode === 'studio'
+                    ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
+                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                }`}
+              >
+                Socratic Studio
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('dialogue')}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                  viewMode === 'dialogue'
+                    ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
+                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                }`}
+              >
+                AI Dialogue
+              </button>
+            </div>
           }
         />
-        <div className="panel space-y-3">
-          <div>
-            <label className="label mb-1 block">Concept you're teaching</label>
-            <input
-              className="input"
-              value={concept}
-              onChange={(e) => setConcept(e.target.value)}
-              placeholder="e.g. Bayesian updating"
-            />
-          </div>
-          <div>
-            <label className="label mb-1 block">
-              Your explanation (start here — the student will interrupt)
-            </label>
-            <textarea
-              className="input min-h-40"
-              value={explanation}
-              onChange={(e) => setExplanation(e.target.value)}
-              placeholder="Explain it plainly. Jargon will be questioned…"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="label mb-1 block">
-              Pre-Explanation Confidence (Rozenblit & Keil Calibration)
-            </label>
-            <div className="grid grid-cols-5 gap-1.5 text-xs">
-              {[
-                { val: 1, label: '1 - Clueless' },
-                { val: 2, label: '2 - Novice' },
-                { val: 3, label: '3 - Familiar' },
-                { val: 4, label: '4 - Confident' },
-                { val: 5, label: '5 - Expert' },
-              ].map(({ val, label }) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => setInitialConfidence(val)}
-                  className={`rounded-lg border px-2 py-1.5 text-center transition-colors ${
-                    initialConfidence === val
-                      ? 'border-indigo-500 bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
-                      : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-400'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+
+        {viewMode === 'studio' ? (
+          <FeynmanSocraticStudio
+            initialConcept={concept || undefined}
+            initialExplanation={explanation || undefined}
+          />
+        ) : (
+          <div className="panel space-y-3">
+            <div>
+              <label className="label mb-1 block">Concept you're teaching</label>
+              <input
+                className="input"
+                value={concept}
+                onChange={(e) => setConcept(e.target.value)}
+                placeholder="e.g. Bayesian updating"
+              />
+            </div>
+            <div>
+              <label className="label mb-1 block">
+                Your explanation (start here — the student will interrupt)
+              </label>
+              <textarea
+                className="input min-h-40"
+                value={explanation}
+                onChange={(e) => setExplanation(e.target.value)}
+                placeholder="Explain it plainly. Jargon will be questioned…"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="label mb-1 block">
+                Pre-Explanation Confidence (Rozenblit & Keil Calibration)
+              </label>
+              <div className="grid grid-cols-5 gap-1.5 text-xs">
+                {[
+                  { val: 1, label: '1 - Clueless' },
+                  { val: 2, label: '2 - Novice' },
+                  { val: 3, label: '3 - Familiar' },
+                  { val: 4, label: '4 - Confident' },
+                  { val: 5, label: '5 - Expert' },
+                ].map(({ val, label }) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setInitialConfidence(val)}
+                    className={`rounded-lg border px-2 py-1.5 text-center transition-colors ${
+                      initialConfidence === val
+                        ? 'border-indigo-500 bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
+                        : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-400'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="btn"
+                onClick={start}
+                disabled={!concept.trim() || !explanation.trim()}
+              >
+                <GraduationCap className="h-4 w-4" /> Start teaching
+              </button>
+              <button
+                type="button"
+                className="btn-ghost text-xs"
+                onClick={() => void runEvaluation(concept, explanation, initialConfidence)}
+                disabled={!concept.trim() || !explanation.trim()}
+              >
+                <Sparkles className="h-3.5 w-3.5" /> Analyze Readability & Jargon
+              </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              className="btn"
-              onClick={start}
-              disabled={!concept.trim() || !explanation.trim()}
-            >
-              <GraduationCap className="h-4 w-4" /> Start teaching
-            </button>
-            <button
-              type="button"
-              className="btn-ghost text-xs"
-              onClick={() => void runEvaluation(concept, explanation, initialConfidence)}
-              disabled={!concept.trim() || !explanation.trim()}
-            >
-              <Sparkles className="h-3.5 w-3.5" /> Analyze Readability & Jargon
-            </button>
-          </div>
-        </div>
+        )}
 
-        {feynmanReport && (
+        {viewMode !== 'studio' && feynmanReport && (
           <FeynmanExplanationCard report={feynmanReport} onSaveGapCard={handleSaveCard} />
         )}
       </div>

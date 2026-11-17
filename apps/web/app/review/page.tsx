@@ -61,7 +61,14 @@ import {
 } from '@learning-hub/core/practice'
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
-import { InkPad, PageHeader, CognitiveLoadMeter, MetacognitionRadar } from '@/ui'
+import {
+  InkPad,
+  PageHeader,
+  CognitiveLoadMeter,
+  MetacognitionRadar,
+  MetacognitiveCalibrationCard,
+} from '@/ui'
+import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
 import { WorkloadBalancerModal } from '@/components/WorkloadBalancerModal'
 import {
   acquireWakeLock,
@@ -267,6 +274,12 @@ function ReviewPageInner() {
   // the "Correct these first" restudy list shows once, before the queue
   const [correctionsSeen, setCorrectionsSeen] = useState(false)
   const [showWorkloadModal, setShowWorkloadModal] = useState(false)
+  const [generationModalOpen, setGenerationModalOpen] = useState(false)
+  const [generationTargetCard, setGenerationTargetCard] = useState<{
+    concept: string
+    explanation: string
+    cardId: number
+  } | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const resetRecallTimer = useCallback(() => {
@@ -1093,6 +1106,12 @@ function ReviewPageInner() {
             sampleSize={stats.total}
           />
         )}
+        {stats.total > 0 && (
+          <MetacognitiveCalibrationCard
+            deckName={deckId ? decksData?.decks?.find((d) => d.id === deckId)?.name : undefined}
+            className="mt-4"
+          />
+        )}
         <WorkloadBalancerModal
           isOpen={showWorkloadModal}
           onClose={() => setShowWorkloadModal(false)}
@@ -1337,6 +1356,28 @@ function ReviewPageInner() {
                   <X className="inline h-3 w-3" /> unsure
                 </button>
               </div>
+              {revealed && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prompt = getCardVoicePrompt(current)
+                    const canon =
+                      typeof current.content.basic?.back === 'string'
+                        ? current.content.basic.back
+                        : prompt
+                    setGenerationTargetCard({
+                      concept: prompt,
+                      explanation: canon,
+                      cardId: current.id,
+                    })
+                    setGenerationModalOpen(true)
+                  }}
+                  className="btn-ghost flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
+                  title="Practice 4-tier active generation ladder (Slamecka & Graf 1978)"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Generation Practice
+                </button>
+              )}
             </div>
           </>
         )}
@@ -1376,6 +1417,17 @@ function ReviewPageInner() {
           End session <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {generationModalOpen && generationTargetCard && (
+        <GenerationPracticeModal
+          isOpen={generationModalOpen}
+          onClose={() => setGenerationModalOpen(false)}
+          initialConcept={generationTargetCard.concept}
+          initialExplanation={generationTargetCard.explanation}
+          cardId={generationTargetCard.cardId}
+          deckId={current?.deckId ?? deckId ?? undefined}
+        />
+      )}
     </div>
   )
 }

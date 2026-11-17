@@ -16,6 +16,10 @@ export { StatCard, type StatCardProps } from './StatCard'
 export { LeitnerProgression, type LeitnerBoxData, type LeitnerProgressionProps } from './LeitnerBox'
 export { CognitiveLoadMeter, type CognitiveLoadMeterProps } from './CognitiveLoadMeter'
 export { MetacognitionRadar, type MetacognitionRadarProps } from './MetacognitionRadar'
+export {
+  MetacognitiveCalibrationCard,
+  type MetacognitiveCalibrationCardProps,
+} from './MetacognitiveCalibrationCard'
 export { SleepConsolidationHUD, type SleepConsolidationHUDProps } from './SleepConsolidationHUD'
 export { FeynmanExplanationCard, type FeynmanExplanationCardProps } from './FeynmanExplanationCard'
 export { GenerationMatrixHUD, type GenerationMatrixHUDProps } from './GenerationMatrixHUD'
