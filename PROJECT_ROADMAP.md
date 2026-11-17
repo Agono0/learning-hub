@@ -8,20 +8,22 @@
 
 ## 1. Prioritization Matrix
 
-| ID         | Priority | Category             | Status          | Summary                                                                                                                                                      |
-| ---------- | -------- | -------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed**   | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                     |
-| **T-P0-2** | **P0**   | Database / Setup     | **Completed**   | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                |
-| **T-P1-1** | **P1**   | Feature Completeness | **Completed**   | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                  |
-| **T-P1-2** | **P1**   | Feature Completeness | **Completed**   | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.               |
-| **T-P1-3** | **P1**   | API Completeness     | **Completed**   | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                    |
-| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed**   | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                  |
-| **T-P2-2** | **P2**   | Verification & Build | **Completed**   | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                     |
-| **T-P2-3** | **P2**   | Interactive Studios  | **Completed**   | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                       |
-| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed**   | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                |
-| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Completed**   | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).     |
-| **T-P2-6** | **P2**   | 3D Memory Palace XR  | **Completed**   | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12). |
-| **T-P2-7** | **P2**   | Socratic Dialectic   | **In Progress** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis.   |
+| ID         | Priority | Category             | Status        | Summary                                                                                                                                                             |
+| ---------- | -------- | -------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                            |
+| **T-P0-2** | **P0**   | Database / Setup     | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                       |
+| **T-P1-1** | **P1**   | Feature Completeness | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                         |
+| **T-P1-2** | **P1**   | Feature Completeness | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.                      |
+| **T-P1-3** | **P1**   | API Completeness     | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                           |
+| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                         |
+| **T-P2-2** | **P2**   | Verification & Build | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                            |
+| **T-P2-3** | **P2**   | Interactive Studios  | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                              |
+| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                       |
+| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Completed** | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).            |
+| **T-P2-6** | **P2**   | 3D Memory Palace XR  | **Completed** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12).        |
+| **T-P2-7** | **P2**   | Socratic Dialectic   | **Completed** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis (PR #14). |
+| **T-P2-8** | **P2**   | CAT & IRT Exam Sim   | **Completed** | Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio: Bayesian EAP, SPRT stopping, MFI selection, and Successive Relearning.  |
+| **T-P2-9** | **P2**   | Worked-Example Fade  | **Planned**   | Cognitive Load Theory & Worked-Example Fading Studio: Renkl-Atkinson backward-faded scaffolding, self-explanation prompts, and expertise-reversal adaptation.       |
 
 ---
 
@@ -193,4 +195,31 @@
   2. Implement `ToulminArgumentHUD.tsx` displaying real-time epistemic rigor percentage gauge, grounding ratio, and structural vulnerabilities.
   3. Implement `SocraticDialecticStudio.tsx` with multi-agent debate transcript, fallacy spotter radar, interactive Toulmin graph editor, Lakatos Socratic lab, Protégé peer simulator, and FSRS flashcard export bridge.
 - **Files Affected:** `packages/core/src/dialectic/*`, `apps/web/src/ui/ToulminArgumentHUD.tsx`, `apps/web/src/components/SocraticDialecticStudio.tsx`, `apps/web/app/debate/*`.
-- **Status:** **In Progress**.
+- **Status:** **Completed & Merged in PR #14**.
+
+---
+
+### T-P2-8: Computerized Adaptive Testing (CAT) & Item Response Theory (IRT 3PL) Exam Simulator Studio (PR #15)
+
+- **Problem:** Conventional fixed-length mock exams inflict high test fatigue and provide coarse measurement precision, testing low-ability learners with demoralizingly hard questions and high-ability learners with uninformative trivial questions without estimating true latent ability ($\theta$) or identifying cognitive blindspots.
+- **Root Cause:** Absence of a psychometric Item Response Theory (IRT) engine and adaptive question selection algorithm.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/practice/cat-engine.ts` with 3-Parameter Logistic (3PL) Item Characteristic Curves, Fisher Information calculation, Bayesian Expected A Posteriori (EAP) ability estimation with Gauss-Hermite quadrature, Maximum Fisher Information (MFI) item selection, Wald's Sequential Probability Ratio Test (SPRT 1945) mastery classification, and Dunlosky & Rawson (2011) Successive Relearning Remediation buffer.
+  2. Implement `AdaptiveExamHUD.tsx` with live $\theta$ latent ability gauge, SEM confidence convergence bar, SPRT mastery status indicator, and pacing timer.
+  3. Implement `AdaptiveExamStudio.tsx` with distractor elimination strike-through, flag navigation, diagnostic autopsy report across Bloom taxonomy levels, and in-studio successive relearning criterion flashcard drill.
+  4. Integrate into `apps/web/app/exam-sim/page.tsx` with toggle between adaptive studio and classic mock runner.
+- **Files Affected:** `packages/core/src/practice/cat-engine.ts`, `packages/core/src/practice/index.ts`, `apps/web/src/ui/AdaptiveExamHUD.tsx`, `apps/web/src/components/AdaptiveExamStudio.tsx`, `apps/web/app/exam-sim/page.tsx`.
+- **Status:** **Completed (Ready for PR #15)**.
+
+---
+
+### T-P2-9: Cognitive Load Theory & Worked-Example Fading Studio (Renkl & Atkinson 2003)
+
+- **Problem:** Novice learners face severe cognitive overload when thrust directly into unguided problem solving (Sweller 1988), while advanced learners suffer the expertise reversal effect when forced to re-read verbose explanations.
+- **Root Cause:** Lack of an adaptive scaffolding continuum that transitions learners systematically from fully worked examples through backward/forward faded completion problems to independent generation.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/scaffolding/worked-example-engine.ts` with Renkl-Atkinson 4-stage fading models (Full Solution -> Backward Faded -> Forward Faded -> Independent Problem), Chi et al. (1989) self-explanation prompt generators, sub-goal chunking verification, and Sweller cognitive load telemetry.
+  2. Implement `FadedScaffoldingHUD.tsx` with cognitive load gauge (intrinsic vs extraneous vs germane), fading stage progression indicator, and self-explanation prompt evaluator.
+  3. Implement `WorkedExampleStudio.tsx` with step-by-step interactive derivation, fill-in-the-blank cognitive scaffolds, erroneous example critique lab (Große & Renkl 2007), and FSRS flashcard export bridge.
+- **Files Affected:** `packages/core/src/scaffolding/*`, `apps/web/src/ui/FadedScaffoldingHUD.tsx`, `apps/web/src/components/WorkedExampleStudio.tsx`, `apps/web/app/curriculum/*` or `apps/web/app/feynman/*`.
+- **Status:** **Planned (Next Cycle)**.

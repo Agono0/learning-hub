@@ -11,11 +11,13 @@ import {
   Mic,
   PlusCircle,
   RefreshCw,
+  Sparkles,
   Timer,
   XCircle,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { hapticHeavy, hapticLight } from '@/platform/haptics'
+import { AdaptiveExamStudio } from '@/components/AdaptiveExamStudio'
 import { Button, Callout, PageHeader, Panel, Skeleton, useToast } from '@/ui'
 
 interface ExamQuestion {
@@ -55,6 +57,7 @@ interface ExamGradedResult {
 
 export default function ExamSimulatorPage() {
   const { toast } = useToast()
+  const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
 
   // Setup state
   const [selectedDeckId, setSelectedDeckId] = useState<string>('all')
@@ -238,77 +241,111 @@ export default function ExamSimulatorPage() {
     const availableDecks = initialData?.availableDecks ?? []
 
     return (
-      <div className="container max-w-2xl space-y-6 py-6">
+      <div className="container max-w-4xl space-y-6 py-6">
         <PageHeader
-          title="Timed Mock Exam Simulator"
-          subtitle="Simulate real test pressure with delayed-feedback blind grading and automated remediation."
+          title="Adaptive Exam Simulator (CAT 3PL)"
+          subtitle="Simulate real test pressure with Item Response Theory adaptive routing and successive relearning remediation."
+          actions={
+            <Button
+              variant="ghost"
+              onClick={() => setViewMode((m) => (m === 'studio' ? 'classic' : 'studio'))}
+            >
+              <Sparkles className="h-4 w-4 mr-1 text-indigo-400" />
+              {viewMode === 'studio' ? 'Classic Timed Setup' : 'Adaptive CAT Studio'}
+            </Button>
+          }
         />
 
-        <Callout tone="accent" title="Delayed Feedback Testing Effect (Butler & Roediger 2008)">
-          Instant feedback during an exam short-circuits critical calibration. This simulator grades
-          your entire test only AFTER submission, mirroring real examination conditions for maximum
-          retention.
-        </Callout>
+        {viewMode === 'studio' ? (
+          <AdaptiveExamStudio
+            onExportRemedialCards={(cards) => {
+              void apiSend<{ ok: boolean; createdCount: number }>(
+                '/api/curriculum/exam/simulator',
+                'POST',
+                {
+                  action: 'create_cards_from_misses',
+                  misses: cards,
+                },
+              ).then((res) => {
+                if (res?.createdCount) {
+                  toast({
+                    title: 'Remedial Cards Enqueued',
+                    description: `Added ${res.createdCount} successive relearning cards to your spaced repetition deck.`,
+                    tone: 'success',
+                  })
+                }
+              })
+            }}
+          />
+        ) : (
+          <>
+            <Callout tone="accent" title="Delayed Feedback Testing Effect (Butler & Roediger 2008)">
+              Instant feedback during an exam short-circuits critical calibration. This simulator
+              grades your entire test only AFTER submission, mirroring real examination conditions
+              for maximum retention.
+            </Callout>
 
-        <Panel className="p-6 space-y-5">
-          <div>
-            <label className="label mb-1.5 block">Select Subject / Deck</label>
-            <select
-              value={selectedDeckId}
-              onChange={(e) => setSelectedDeckId(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
-            >
-              <option value="all">All Available Decks</option>
-              {availableDecks.map((d) => (
-                <option key={d.id} value={String(d.id)}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            <Panel className="p-6 space-y-5">
+              <div>
+                <label className="label mb-1.5 block">Select Subject / Deck</label>
+                <select
+                  value={selectedDeckId}
+                  onChange={(e) => setSelectedDeckId(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                >
+                  <option value="all">All Available Decks</option>
+                  {availableDecks.map((d) => (
+                    <option key={d.id} value={String(d.id)}>
+                      {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label mb-1.5 block">Question Count</label>
-              <select
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
-              >
-                <option value={5}>5 Questions (Quick Check)</option>
-                <option value={10}>10 Questions (Standard)</option>
-                <option value={20}>20 Questions (In-depth)</option>
-                <option value={30}>30 Questions (Full Paper)</option>
-              </select>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label mb-1.5 block">Question Count</label>
+                  <select
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(Number(e.target.value))}
+                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                  >
+                    <option value={5}>5 Questions (Quick Check)</option>
+                    <option value={10}>10 Questions (Standard)</option>
+                    <option value={20}>20 Questions (In-depth)</option>
+                    <option value={30}>30 Questions (Full Paper)</option>
+                  </select>
+                </div>
 
-            <div>
-              <label className="label mb-1.5 block">Time Limit</label>
-              <select
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
-              >
-                <option value={5}>5 Minutes</option>
-                <option value={10}>10 Minutes</option>
-                <option value={15}>15 Minutes</option>
-                <option value={30}>30 Minutes</option>
-                <option value={45}>45 Minutes</option>
-              </select>
-            </div>
-          </div>
+                <div>
+                  <label className="label mb-1.5 block">Time Limit</label>
+                  <select
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                  >
+                    <option value={5}>5 Minutes</option>
+                    <option value={10}>10 Minutes</option>
+                    <option value={15}>15 Minutes</option>
+                    <option value={30}>30 Minutes</option>
+                    <option value={45}>45 Minutes</option>
+                  </select>
+                </div>
+              </div>
 
-          <div className="pt-2">
-            <Button
-              className="w-full"
-              onClick={() => startExamMutation.mutate()}
-              disabled={startExamMutation.isPending}
-            >
-              <Timer className="h-4 w-4 mr-2" />
-              Begin Timed Exam
-            </Button>
-          </div>
-        </Panel>
+              <div className="pt-2">
+                <Button
+                  className="w-full"
+                  onClick={() => startExamMutation.mutate()}
+                  disabled={startExamMutation.isPending}
+                >
+                  <Timer className="h-4 w-4 mr-2" />
+                  Begin Timed Exam
+                </Button>
+              </div>
+            </Panel>
+          </>
+        )}
       </div>
     )
   }
