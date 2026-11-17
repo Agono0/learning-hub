@@ -20,6 +20,7 @@ import { habitsCommand, journalCommand, physioCommand } from './commands/lifesty
 import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
 import { debateCommand, guildCommand, palaceCommand, worldCommand } from './commands/community'
 import { audioCommand, focusLoadCmd, gamesCommand } from './commands/telemetry-audio'
+import { feynmanCommand, generationCommand, metacognitionCommand } from './commands/cognitive'
 import {
   db,
   awardXp,
@@ -685,6 +686,24 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'solo RPG boss battles and mythical boss roster',
     usage: '[status]',
     run: (runArgs) => gamesCommand(runArgs),
+  },
+  {
+    name: 'generation',
+    description: 'Slamecka-Graf generation effect challenges and evaluation',
+    usage: '[challenge|eval]',
+    run: (runArgs) => generationCommand(runArgs),
+  },
+  {
+    name: 'feynman',
+    description: 'Feynman teach-back and IOED diagnostic evaluation',
+    usage: '[eval]',
+    run: (runArgs) => feynmanCommand(runArgs),
+  },
+  {
+    name: 'metacognition',
+    description: 'Koriat-Bjork calibration and Brier score evaluation',
+    usage: '[stats]',
+    run: (runArgs) => metacognitionCommand(runArgs),
   },
 ]
 

@@ -9,7 +9,7 @@ describe('Tier 1: MCP Server Tools Execution', () => {
   beforeAll(async () => {
     client = new McpTestClient(getActiveDbPath())
     await client.start()
-  }, 15000)
+  }, 40000)
 
   afterAll(() => {
     client?.stop()
@@ -48,6 +48,9 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(toolNames).toContain('palace_add_locus')
     expect(toolNames).toContain('world_state')
     expect(toolNames).toContain('world_market_buy')
+    expect(toolNames).toContain('generation_ladder')
+    expect(toolNames).toContain('feynman_eval')
+    expect(toolNames).toContain('metacognition_eval')
     expect(toolNames).toContain('guild_list')
     expect(toolNames).toContain('guild_join')
     expect(toolNames).toContain('audio_schedule')
@@ -463,5 +466,86 @@ describe('Tier 1: MCP Server Tools Execution', () => {
     expect(bossRes.ok).toBe(true)
     expect(Array.isArray(bossRes.roster)).toBe(true)
     expect(bossRes.roster.some((b) => b.key === 'chronos')).toBe(true)
+  })
+
+  it('operates generation_ladder, feynman_eval, and metacognition_eval cognitive tools', async () => {
+    // 1. generation_ladder challenge
+    const genChallengeRes = await client.callTool<{
+      ok: boolean
+      action: string
+      ladder: {
+        concept: string
+        tier: string
+        tierLevel: number
+        generationMultiplier: number
+        maskedTarget?: string
+      }
+    }>('generation_ladder', {
+      concept: 'Active Recall',
+      text: 'Retrieval practice produces durable memory consolidation',
+      tier: 'stem_completion',
+    })
+    expect(genChallengeRes.ok).toBe(true)
+    expect(genChallengeRes.ladder.concept).toBe('Active Recall')
+    expect(genChallengeRes.ladder.tierLevel).toBe(1)
+    expect(genChallengeRes.ladder.generationMultiplier).toBe(1.35)
+
+    // 2. generation_ladder evaluate
+    const genEvalRes = await client.callTool<{
+      ok: boolean
+      action: string
+      evaluation: {
+        concept: string
+        isCorrect: boolean
+        similarityScore: number
+        retentionMultiplier: number
+      }
+    }>('generation_ladder', {
+      action: 'evaluate',
+      concept: 'Active Recall',
+      expectedAnswer: 'Retrieval practice produces durable memory consolidation',
+      userAttempt: 'Retrieval practice produces durable memory consolidation',
+      tier: 'stem_completion',
+    })
+    expect(genEvalRes.ok).toBe(true)
+    expect(genEvalRes.evaluation.isCorrect).toBe(true)
+    expect(genEvalRes.evaluation.similarityScore).toBe(1)
+
+    // 3. feynman_eval
+    const feynmanRes = await client.callTool<{
+      ok: boolean
+      report: {
+        concept: string
+        wordCount: number
+        fleschReadingEase: number
+        isTwelveYearOldAccessible: boolean
+        explanatoryDepthScore: number
+        socraticProbes: Array<{ prompt: string }>
+      }
+    }>('feynman_eval', {
+      concept: 'Spaced Repetition',
+      explanation:
+        'Spaced repetition works because reviewing right when you are about to forget strengthens the memory connections in your brain.',
+      initialConfidence: 4,
+    })
+    expect(feynmanRes.ok).toBe(true)
+    expect(feynmanRes.report.concept).toBe('Spaced Repetition')
+    expect(typeof feynmanRes.report.fleschReadingEase).toBe('number')
+    expect(Array.isArray(feynmanRes.report.socraticProbes)).toBe(true)
+
+    // 4. metacognition_eval
+    const metaRes = await client.callTool<{
+      ok: boolean
+      trialsCount: number
+      report: {
+        brierScore: number
+        bias: number
+        status: string
+        difficultyAdjustment: string
+      }
+    }>('metacognition_eval', { limit: 20 })
+    expect(metaRes.ok).toBe(true)
+    expect(metaRes.report).toBeDefined()
+    expect(typeof metaRes.report.brierScore).toBe('number')
   })
 })

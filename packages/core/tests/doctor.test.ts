@@ -3,6 +3,7 @@ import {
   applyDoctorAction,
   calculateHealthScore,
   diagnoseDeck,
+  suggestGenerationLadderForCard,
   type DoctorCardInput,
   type DoctorDeckInput,
 } from '../src/doctor'
@@ -269,5 +270,107 @@ describe('Deck Doctor domain logic (F-12)', () => {
       expect(clozeOp.patch.type).toBe('cloze')
       expect(clozeOp.patch.content?.cloze?.answers).toEqual(['Glutamate'])
     }
+  })
+
+  it('suggestGenerationLadderForCard bridges passive cards to 4-tier generation effect scaffolds', () => {
+    // 1. Moderate lapse card -> semantic_anagram
+    const lapseCard: DoctorCardInput = {
+      id: 201,
+      deckId: 1,
+      type: 'basic',
+      content: {
+        basic: {
+          front: 'What is neuroplasticity?',
+          back: 'The ability of neural networks in the brain to change through growth and reorganization',
+        },
+      },
+      lapses: 5,
+    }
+
+    const suggestion1 = suggestGenerationLadderForCard(lapseCard)
+    expect(suggestion1).toBeDefined()
+    expect(suggestion1?.cardId).toBe(201)
+    expect(suggestion1?.recommendedTier).toBe('semantic_anagram')
+    expect(suggestion1?.ladder.tier).toBe('semantic_anagram')
+    expect(suggestion1?.ladder.challengeText).toBeDefined()
+
+    // 2. Leech card (lapses >= 8) -> analogy_synthesis
+    const leechCard: DoctorCardInput = {
+      ...lapseCard,
+      id: 202,
+      lapses: 9,
+    }
+
+    const suggestion2 = suggestGenerationLadderForCard(leechCard)
+    expect(suggestion2).toBeDefined()
+    expect(suggestion2?.recommendedTier).toBe('analogy_synthesis')
+    expect(suggestion2?.ladder.tier).toBe('analogy_synthesis')
+
+    // 3. Cloze card -> extracts cloze answers as concept
+    const clozeCard: DoctorCardInput = {
+      id: 203,
+      deckId: 1,
+      type: 'cloze',
+      content: {
+        cloze: {
+          text: 'The {{c1::hippocampus}} is crucial for memory consolidation.',
+          answers: ['hippocampus'],
+          mode: 'basic',
+        },
+      },
+      lapses: 2,
+    }
+
+    const suggestion3 = suggestGenerationLadderForCard(clozeCard)
+    expect(suggestion3).toBeDefined()
+    expect(suggestion3?.concept).toBe('hippocampus')
+    expect(suggestion3?.recommendedTier).toBe('stem_completion')
+
+    // 4. Explicit preferred tier override
+    const suggestion4 = suggestGenerationLadderForCard(clozeCard, 'reverse_query')
+    expect(suggestion4?.recommendedTier).toBe('reverse_query')
+    expect(suggestion4?.ladder.tier).toBe('reverse_query')
+  })
+
+  it('diagnoseDeck includes generationSuggestions for cards with lapses >= 4', () => {
+    const cardsWithLapses: DoctorCardInput[] = [
+      ...healthyCards,
+      {
+        id: 301,
+        deckId: 1,
+        type: 'basic',
+        content: {
+          basic: {
+            front: 'What does GABA stand for?',
+            back: 'Gamma-aminobutyric acid',
+          },
+        },
+        lapses: 4,
+      },
+      {
+        id: 302,
+        deckId: 1,
+        type: 'basic',
+        content: {
+          basic: {
+            front: 'What is long-term potentiation?',
+            back: 'Persistent strengthening of synapses based on recent patterns of activity',
+          },
+        },
+        lapses: 8,
+      },
+    ]
+
+    const diagnosis = diagnoseDeck({
+      deck: cleanDeck,
+      cards: cardsWithLapses,
+    })
+
+    expect(diagnosis.generationSuggestions).toBeDefined()
+    expect(diagnosis.generationSuggestions?.length).toBe(2)
+    const card301 = diagnosis.generationSuggestions?.find((s) => s.cardId === 301)
+    const card302 = diagnosis.generationSuggestions?.find((s) => s.cardId === 302)
+    expect(card301?.recommendedTier).toBe('semantic_anagram')
+    expect(card302?.recommendedTier).toBe('analogy_synthesis')
   })
 })

@@ -18,9 +18,15 @@ import {
   balanceWorkload,
   cardPreviewText,
   catchUpBacklog,
+  createGenerationLadder,
   decomposeLeechCard,
   detectConfusionPairs,
+  evaluateFeynmanExplanation,
+  evaluateGenerationTrial,
+  evaluateMetacognitiveProfile,
   forecastWorkload,
+  generationTierEnum,
+  type JudgmentOfLearning,
   type WorkloadCardItem,
 } from '@learning-hub/core'
 import { json, tool, type RegisteredTool } from '../tool-kit'
@@ -206,6 +212,114 @@ export const cognitiveTools: RegisteredTool[] = [
         trackedCount: summaries.length,
         readyForSrsCount: readyForPromotion.length,
         words: summaries,
+      })
+    },
+  ),
+
+  tool(
+    'generation_ladder',
+    'Slamecka & Graf (1978) Generation Effect Engine: create a 4-tier generation challenge (stem completion, semantic anagram, reverse query, analogy synthesis) or evaluate a learner generation attempt.',
+    {
+      action: z.enum(['challenge', 'evaluate']).default('challenge'),
+      concept: z.string().min(1),
+      text: z.string().optional(),
+      tier: generationTierEnum.optional(),
+      expectedAnswer: z.string().optional(),
+      userAttempt: z.string().optional(),
+      latencyMs: z.number().min(0).default(3000),
+    },
+    async ({ action, concept, text, tier, expectedAnswer, userAttempt, latencyMs }) => {
+      if (action === 'challenge') {
+        const ladder = createGenerationLadder(concept, text ?? concept, tier ?? 'stem_completion')
+        return json({
+          ok: true,
+          action: 'challenge',
+          ladder,
+        })
+      }
+
+      if (action === 'evaluate') {
+        if (!expectedAnswer || !userAttempt) {
+          return json({
+            ok: false,
+            error: 'expectedAnswer and userAttempt are required for evaluate',
+          })
+        }
+        const evalResult = evaluateGenerationTrial({
+          concept,
+          tier: tier ?? 'stem_completion',
+          expectedAnswer,
+          userAttempt,
+          latencyMs,
+        })
+        return json({
+          ok: true,
+          action: 'evaluate',
+          evaluation: evalResult,
+        })
+      }
+
+      return json({ ok: false, error: 'unsupported action' })
+    },
+  ),
+
+  tool(
+    'feynman_eval',
+    'Rozenblit-Keil (2002) Illusion of Explanatory Depth (IOED) & Feynman Teach-Back Engine: evaluate an explanation for reading ease, jargon density, causal mechanisms, and generate Socratic reflection probes.',
+    {
+      concept: z.string().min(1),
+      explanation: z.string().min(1),
+      initialConfidence: z.number().min(1).max(5).default(4),
+    },
+    async ({ concept, explanation, initialConfidence }) => {
+      const report = evaluateFeynmanExplanation({
+        concept,
+        explanation,
+        initialConfidence,
+      })
+      return json({
+        ok: true,
+        report,
+      })
+    },
+  ),
+
+  tool(
+    'metacognition_eval',
+    'Koriat-Bjork (2005) Calibration & Glenn Brier (1950) Diagnostic Engine: evaluate subjective confidence versus empirical recall accuracy to detect fluency illusions and prescribe desirable difficulties.',
+    {
+      limit: z.number().int().min(5).max(500).default(100),
+      deckId: z.number().int().positive().optional(),
+    },
+    async ({ limit, deckId }) => {
+      const conditions = []
+      if (deckId) conditions.push(eq(cards.deckId, deckId))
+
+      const rows = await db
+        .select({
+          cardId: revlog.cardId,
+          rating: revlog.rating,
+          confidence: revlog.confidence,
+          timeMs: revlog.timeMs,
+        })
+        .from(revlog)
+        .innerJoin(cards, eq(revlog.cardId, cards.id))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(revlog.id))
+        .limit(limit)
+
+      const trials: JudgmentOfLearning[] = rows.map((r) => ({
+        cardId: r.cardId,
+        confidence: r.confidence === 1 ? 0.9 : 0.35,
+        outcome: r.rating >= 3 ? 1 : 0,
+        latencyMs: r.timeMs,
+      }))
+
+      const report = evaluateMetacognitiveProfile(trials)
+      return json({
+        ok: true,
+        trialsCount: trials.length,
+        report,
       })
     },
   ),
