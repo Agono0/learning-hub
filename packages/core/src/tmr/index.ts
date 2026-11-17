@@ -12,6 +12,7 @@ import { z } from 'zod'
  */
 
 export * from './neuro-acoustic'
+export * from './sleep-architecture'
 
 export const tmrCandidateCardSchema = z.object({
   cardId: z.number().int().positive(),
