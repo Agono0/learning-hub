@@ -13,7 +13,6 @@ import {
   DatabaseBackup,
   Dumbbell,
   Eye,
-  Gauge,
   FileCheck,
   Flame,
   Gauge,
