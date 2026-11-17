@@ -209,3 +209,5 @@ export function validateJournalEntry(entry: JournalEntryInput): JournalValidatio
     errors.push('Write something — a small win, a gratitude, or a worry dump.')
   return { ok: errors.length === 0, errors }
 }
+
+export * from './journal/metacognition'

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, PenLine, Sparkles } from 'lucide-react'
+import { Bot, Calendar, PenLine, Sparkles } from 'lucide-react'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { MetacognitiveJournalStudio } from '@/components/MetacognitiveJournalStudio'
 
 interface JournalEntry {
   id: number
@@ -57,6 +58,7 @@ export default function JournalPage() {
   const [worryDump, setWorryDump] = useState('')
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [aiResult, setAiResult] = useState<{ ok: boolean; text: string } | null>(null)
+  const [viewMode, setViewMode] = useState<'metacognitive' | 'daily' | 'weekly'>('metacognitive')
 
   const entryQ = useQuery({
     queryKey: ['journal', 'range', weekStart, today],
@@ -139,124 +141,202 @@ export default function JournalPage() {
         subtitle="Small wins compound. Mood is data, not judgment."
       />
 
-      {/* today's entry */}
-      <div className="panel space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="label">{today}</p>
-          {savedMsg && <span className="celebrate text-xs text-emerald-400">{savedMsg}</span>}
-        </div>
+      {/* View Mode Switcher */}
+      <div className="flex gap-2 border-b border-white/10 pb-3">
+        <button
+          type="button"
+          onClick={() => setViewMode('metacognitive')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            viewMode === 'metacognitive'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Metacognitive Studio</span>
+        </button>
 
-        <div className="flex items-center gap-2">
-          {MOODS.map((emoji, i) => (
-            <button
-              key={emoji}
-              className={`h-11 w-11 rounded-full text-xl transition-colors ${
-                shownMood === i + 1
-                  ? 'bg-indigo-600/30 ring-2 ring-indigo-400'
-                  : 'hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'
-              }`}
-              onClick={() => setMood(i + 1)}
-              aria-label={`mood ${i + 1}`}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setViewMode('daily')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            viewMode === 'daily'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <PenLine className="h-4 w-4" />
+          <span>Daily Entry</span>
+        </button>
 
-        <textarea
-          className="input min-h-20"
-          placeholder="Small wins — even tiny ones, especially tiny ones"
-          value={smallWins}
-          onChange={(e) => setSmallWins(e.target.value)}
+        <button
+          type="button"
+          onClick={() => setViewMode('weekly')}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+            viewMode === 'weekly'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Calendar className="h-4 w-4" />
+          <span>Weekly Retrospective</span>
+        </button>
+      </div>
+
+      {viewMode === 'metacognitive' ? (
+        <MetacognitiveJournalStudio
+          weeklyStats={{
+            totalReviews: weekly.data?.totals.reviews ?? 0,
+            totalFocusMinutes: weekly.data?.totals.focusMinutes ?? 0,
+            habitsDone: weekly.data?.totals.habitsDone ?? 0,
+            moodAvg: weekly.data?.moodAvg ?? null,
+          }}
+          onSaveToJournal={async (text) => {
+            const updated = smallWins ? `${smallWins}\n\n${text}` : text
+            setSmallWins(updated)
+            await apiSend('/api/journal', 'POST', {
+              date: today,
+              mood,
+              smallWins: updated,
+              gratitude,
+              worryDump,
+              tzOffset: tz,
+            })
+            void qc.invalidateQueries({ queryKey: ['journal'] })
+          }}
+          onCreateActionCard={async (card) => {
+            const decksRes = await apiGet<{ decks: Array<{ id: number }> }>('/api/decks')
+            const targetDeckId = decksRes.decks[0]?.id ?? 1
+            await apiSend('/api/cards', 'POST', {
+              deckId: targetDeckId,
+              type: 'basic',
+              content: { front: card.front, back: card.back },
+              tags: ['metacognition'],
+            })
+          }}
         />
-        <textarea
-          className="input min-h-16"
-          placeholder="Gratitude — one specific thing"
-          value={gratitude}
-          onChange={(e) => setGratitude(e.target.value)}
-        />
-        <textarea
-          className="input min-h-16"
-          placeholder="Worry dump — exam expressive writing empties working memory"
-          value={worryDump}
-          onChange={(e) => setWorryDump(e.target.value)}
-        />
-
-        <div className="flex items-center justify-between">
-          <button
-            className="btn-ghost text-xs"
-            onClick={() => aiCoach.mutate()}
-            disabled={aiCoach.isPending}
-          >
-            <Bot className="h-4 w-4" />{' '}
-            {manual ? 'Weekly reflection (offline)' : 'AI coach reflection'}
-          </button>
-          <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>
-            Save entry
-          </button>
-        </div>
-
-        {aiResult && (
-          <div
-            className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-amber-300'}`}
-          >
-            <Sparkles className="mr-2 inline h-4 w-4" />
-            {aiResult.text}
+      ) : viewMode === 'daily' ? (
+        /* today's entry */
+        <div className="panel space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="label">{today}</p>
+            {savedMsg && <span className="celebrate text-xs text-emerald-400">{savedMsg}</span>}
           </div>
-        )}
-      </div>
 
-      {/* week calendar */}
-      <div className="panel space-y-2">
-        <p className="label">This week</p>
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {weekly.data?.days.map((d) => (
-            <div
-              key={d.date}
-              className={`rounded-lg p-2 ${d.date === today ? 'bg-indigo-600/15' : ''}`}
-            >
-              <p className="text-[10px] text-neutral-500">{d.date.slice(8)}</p>
-              <p className="text-lg">
-                {d.mood != null ? MOODS[Math.min(4, Math.max(0, d.mood - 1))] : '·'}
-              </p>
-              <p className="text-[10px] text-neutral-500">{d.reviews} rev</p>
-            </div>
-          ))}
-        </div>
-      </div>
+          <div className="flex items-center gap-2">
+            {MOODS.map((emoji, i) => (
+              <button
+                key={emoji}
+                className={`h-11 w-11 rounded-full text-xl transition-colors ${
+                  shownMood === i + 1
+                    ? 'bg-indigo-600/30 ring-2 ring-indigo-400'
+                    : 'hover:bg-neutral-100 dark:hover:bg-[#1e1e23]'
+                }`}
+                onClick={() => setMood(i + 1)}
+                aria-label={`mood ${i + 1}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
 
-      {/* weekly review (auto-summary from real data) */}
-      <div className="panel space-y-3">
-        <p className="label">Weekly review — computed, not remembered</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {[
-            { k: 'reviews', v: weekly.data?.totals.reviews ?? 0 },
-            { k: 'XP', v: weekly.data?.totals.xp ?? 0 },
-            { k: 'focus min', v: weekly.data?.totals.focusMinutes ?? 0 },
-            { k: 'habits', v: weekly.data?.totals.habitsDone ?? 0 },
-            { k: 'mood avg', v: weekly.data?.moodAvg ?? '—' },
-          ].map((s) => (
+          <textarea
+            className="input min-h-20"
+            placeholder="Small wins — even tiny ones, especially tiny ones"
+            value={smallWins}
+            onChange={(e) => setSmallWins(e.target.value)}
+          />
+          <textarea
+            className="input min-h-16"
+            placeholder="Gratitude — one specific thing"
+            value={gratitude}
+            onChange={(e) => setGratitude(e.target.value)}
+          />
+          <textarea
+            className="input min-h-16"
+            placeholder="Worry dump — exam expressive writing empties working memory"
+            value={worryDump}
+            onChange={(e) => setWorryDump(e.target.value)}
+          />
+
+          <div className="flex items-center justify-between">
+            <button
+              className="btn-ghost text-xs"
+              onClick={() => aiCoach.mutate()}
+              disabled={aiCoach.isPending}
+            >
+              <Bot className="h-4 w-4" />{' '}
+              {manual ? 'Weekly reflection (offline)' : 'AI coach reflection'}
+            </button>
+            <button className="btn" onClick={() => save.mutate()} disabled={save.isPending}>
+              Save entry
+            </button>
+          </div>
+
+          {aiResult && (
             <div
-              key={s.k}
-              className="rounded-lg border border-neutral-200 p-2 text-center dark:border-(--hub-border)"
+              className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-amber-300'}`}
             >
-              <p className="text-xl font-bold tabular-nums">{s.v}</p>
-              <p className="text-[10px] uppercase tracking-wide text-neutral-500">{s.k}</p>
+              <Sparkles className="mr-2 inline h-4 w-4" />
+              {aiResult.text}
             </div>
-          ))}
+          )}
         </div>
-        <ul className="space-y-1.5">
-          {/* static server-derived prompt list for the week — never mutated, index keys are safe */}
-          {weekly.data?.prompts.map((p, i) => (
-            <li
-              key={i}
-              className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300"
-            >
-              {p}
-            </li>
-          ))}
-        </ul>
-      </div>
+      ) : (
+        <>
+          {/* week calendar */}
+          <div className="panel space-y-2">
+            <p className="label">This week</p>
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {weekly.data?.days.map((d) => (
+                <div
+                  key={d.date}
+                  className={`rounded-lg p-2 ${d.date === today ? 'bg-indigo-600/15' : ''}`}
+                >
+                  <p className="text-[10px] text-neutral-500">{d.date.slice(8)}</p>
+                  <p className="text-lg">
+                    {d.mood != null ? MOODS[Math.min(4, Math.max(0, d.mood - 1))] : '·'}
+                  </p>
+                  <p className="text-[10px] text-neutral-500">{d.reviews} rev</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* weekly review (auto-summary from real data) */}
+          <div className="panel space-y-3">
+            <p className="label">Weekly review — computed, not remembered</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {[
+                { k: 'reviews', v: weekly.data?.totals.reviews ?? 0 },
+                { k: 'XP', v: weekly.data?.totals.xp ?? 0 },
+                { k: 'focus min', v: weekly.data?.totals.focusMinutes ?? 0 },
+                { k: 'habits', v: weekly.data?.totals.habitsDone ?? 0 },
+                { k: 'mood avg', v: weekly.data?.moodAvg ?? '—' },
+              ].map((s) => (
+                <div
+                  key={s.k}
+                  className="rounded-lg border border-neutral-200 p-2 text-center dark:border-(--hub-border)"
+                >
+                  <p className="text-xl font-bold tabular-nums">{s.v}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-neutral-500">{s.k}</p>
+                </div>
+              ))}
+            </div>
+            <ul className="space-y-1.5">
+              {/* static server-derived prompt list for the week — never mutated, index keys are safe */}
+              {weekly.data?.prompts.map((p, i) => (
+                <li
+                  key={i}
+                  className="rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600 dark:bg-(--hub-sunken) dark:text-neutral-300"
+                >
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
     </div>
   )
 }
