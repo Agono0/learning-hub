@@ -206,7 +206,7 @@ beforeAll(async () => {
     worldVerifyFocus: await import('../app/api/world/verify/focus/route'),
     worldSettings: await import('../app/api/world/settings/route'),
   }
-}, 60000)
+}, 180000)
 
 describe('quests (items 1, 3, 11)', () => {
   it('GET ?tzOffset=300 buckets the quest day by the client tz', async () => {

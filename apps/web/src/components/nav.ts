@@ -81,6 +81,7 @@ export const NAV: NavGroup[] = [
       { href: '/metacognition', label: 'Metacognition', icon: Brain },
       { href: '/generation', label: 'Generation', icon: Zap },
       { href: '/dual-coding', label: 'Dual Coding', icon: Eye },
+      { href: '/self-explanation', label: 'Self-Explanation', icon: BookOpen },
     ],
   },
   {
