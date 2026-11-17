@@ -38,6 +38,7 @@ export { DesirableDifficultyHUD, type DesirableDifficultyHUDProps } from './Desi
 export { DualCodingHUD, type DualCodingHUDProps } from './DualCodingHUD'
 export { SelfExplanationHUD, type SelfExplanationHUDProps } from './SelfExplanationHUD'
 export { InterleavingHUD, type InterleavingHUDProps } from './InterleavingHUD'
+export { TechniqueAuditHUD, type TechniqueAuditHUDProps } from './TechniqueAuditHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
