@@ -32,7 +32,7 @@
 | **T-P2-15** | **P2**   | Interleaved Invariance | **Completed** | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination (PR #31). |
 | **T-P2-16** | **P2**   | Analogical Transfer    | **Completed** | Analogical Transfer & Schema Induction Studio: Gick-Holyoak convergence schema, Gentner structure-mapping engine, and cross-domain isomorphic problem transfer (PR #35).              |
 | **T-P2-17** | **P2**   | Cognitive Flexibility  | **Completed** | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization.     |
-| **T-P2-18** | **P2**   | Epistemic Calibration  | **Planned**   | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models.      |
+| **T-P2-18** | **P2**   | Epistemic Calibration  | **Planned**   | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models.    |
 
 ---
 
