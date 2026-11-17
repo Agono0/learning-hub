@@ -128,6 +128,29 @@ describe('Headless REST Server Cognitive Routes', () => {
     expect(data.report.brierScore).toBeGreaterThanOrEqual(0)
   })
 
+  it("GET /cognitive/tmr/plan builds tonight's TMR plan from FSRS state", async () => {
+    const res = await fetch(
+      `${baseUrl}/cognitive/tmr/plan?bedtime=23:00&wakeTime=07:00&sleepDebtHours=2&limit=8`,
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(typeof data.candidatesSelected).toBe('number')
+    expect(data.hypnogram.cycleCount).toBeGreaterThanOrEqual(1)
+    expect(data.hypnogram.totalOpportunityMinutes).toBe(480)
+    expect(Array.isArray(data.swsBlocks)).toBe(true)
+    expect(Array.isArray(data.cues)).toBe(true)
+    for (const cue of data.cues) {
+      expect(typeof cue.cardId).toBe('number')
+      expect(cue.offsetMinutes).toBeGreaterThanOrEqual(0)
+      expect(cue.blockDeltaWeight).toBeGreaterThan(0)
+      expect(cue.predictedBoostPct).toBeGreaterThanOrEqual(0)
+      expect(['optimal', 'moderate', 'marginal']).toContain(cue.stabilizationTier)
+    }
+    expect(data.safety.withinArousalCeiling).toBe(true)
+    expect(typeof data.advisory).toBe('string')
+  })
+
   it('GET /cognitive/metacognition/hypercorrection returns the crucible report + queue', async () => {
     const res = await fetch(`${baseUrl}/cognitive/metacognition/hypercorrection?limit=200`)
     expect(res.status).toBe(200)

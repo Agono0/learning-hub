@@ -234,38 +234,121 @@ describe('/api/cognitive/hypercorrection', () => {
 })
 
 describe('/api/cognitive/tmr', () => {
-  it('GET returns sample nightly sleep consolidation plan', async () => {
+  it('GET returns an honest empty plan before any cards exist', async () => {
     const res = await H.tmrGet(new Request('http://localhost/api/cognitive/tmr'))
     expect(res.status).toBe(200)
-
     const data = await res.json()
     expect(data.ok).toBe(true)
+    expect(data.sampleSize).toBe(0)
+    expect(data.plan.cues).toEqual([])
+    expect(data.plan.forecastedRetentionGain).toBe(0)
+    // The hypnogram still exists (it models the window, not the data).
     expect(data.plan.swsWindows.length).toBeGreaterThanOrEqual(1)
-    expect(data.plan.forecastedRetentionGain).toBeGreaterThan(0)
     expect(data.plan.targetAcousticDba).toBe(35)
   })
 
-  it('POST generates personalized slow-wave sleep schedule prioritizing vulnerable cards', async () => {
+  it('GET derives vulnerable candidates and tonight plan from real FSRS state', async () => {
+    // Seed review-state cards with distinct stability: card 301 is the most
+    // fragile (lowest stability, near-term due); 303 is consolidated.
+    for (const [id, stability, difficulty] of [
+      [301, 0.8, 8],
+      [302, 3, 5],
+      [303, 25, 3],
+    ] as const) {
+      db.insert(cards)
+        .values({
+          id,
+          deckId: 1,
+          type: 'basic',
+          content: { basic: { front: `TMR ${id}`, back: `Back ${id}` } },
+          tags: [],
+          state: 2,
+          due: new Date(Date.now() + 86400000).toISOString(),
+          stability,
+          difficulty,
+        })
+        .onConflictDoNothing()
+        .run()
+    }
+
+    const res = await H.tmrGet(new Request('http://localhost/api/cognitive/tmr'))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+
+    expect(data.sampleSize).toBe(3)
+    const ids = data.candidates.map((c: { cardId: number }) => c.cardId)
+    // Most fragile first in the candidate ranking.
+    expect(ids[0]).toBe(301)
+    expect(data.candidates[0].fragility).toBeGreaterThan(data.candidates[2].fragility)
+
+    // Tonight plan schedules the fragile cards into SWS blocks.
+    expect(data.plan.cues.length).toBeGreaterThan(0)
+    expect(data.plan.forecastedRetentionGain).toBeGreaterThan(0)
+    expect(data.plan.forecastedRetentionGain).toBeLessThanOrEqual(0.28)
+    expect(data.tonight.hypnogram.totalOpportunityMinutes).toBe(480)
+    for (const cue of data.plan.cues) {
+      const block = data.tonight.swsBlocks.find(
+        (b: { cycleIndex: number }) => b.cycleIndex === cue.cycleIndex,
+      )
+      expect(block).toBeDefined()
+    }
+  })
+
+  it('POST builds a personalized plan from an explicit sleep profile', async () => {
+    const res = await H.tmrPost(
+      new Request('http://localhost/api/cognitive/tmr', {
+        ...post({
+          bedtime: '23:30',
+          wakeTime: '06:30',
+          chronotype: -0.5,
+          sleepDebtHours: 3,
+          maxAcousticDba: 32,
+          cards: [
+            { cardId: 401, stability: 0.5, difficulty: 8 },
+            { cardId: 402, stability: 5, difficulty: 4 },
+          ],
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(data.candidateCount).toBe(2)
+    // Explicit cards derive tonal signatures when none are supplied.
+    const cue401 = data.plan.cues.find((c: { cardId: number }) => c.cardId === 401)
+    expect(cue401).toBeDefined()
+    expect(cue401.baseFrequency).toBeGreaterThan(100)
+    // Sleep debt shows up in the model's assumptions.
+    expect(data.plan.assumptions.join(' ')).toContain('3h debt')
+  })
+
+  it('POST still supports the legacy duration-only plan shape', async () => {
     const res = await H.tmrPost(
       new Request('http://localhost/api/cognitive/tmr', {
         ...post({
           cards: [
-            {
-              cardId: 201,
-              stability: 0.5,
-              difficulty: 0.8,
-              baseFrequency: 300,
-              harmonicType: 'major_triad',
-            },
-            {
-              cardId: 202,
-              stability: 5.0,
-              difficulty: 0.2,
-              baseFrequency: 600,
-              harmonicType: 'octave_bloom',
-            },
+            { cardId: 501, stability: 0.5, difficulty: 8 },
+            { cardId: 502, stability: 5, difficulty: 4 },
           ],
-          sleepDurationHours: 8,
+        }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(data.plan.cues.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('POST prioritizes the most vulnerable explicit card in the deepest SWS block', async () => {
+    const res = await H.tmrPost(
+      new Request('http://localhost/api/cognitive/tmr', {
+        ...post({
+          bedtime: '23:00',
+          wakeTime: '07:00',
+          cards: [
+            { cardId: 201, stability: 0.5, difficulty: 8 },
+            { cardId: 202, stability: 5.0, difficulty: 2 },
+          ],
         }),
       }),
     )
@@ -273,9 +356,12 @@ describe('/api/cognitive/tmr', () => {
 
     const data = await res.json()
     expect(data.ok).toBe(true)
-    expect(data.plan.cues.length).toBe(2)
-    // Lowest stability scheduled first
+    // Pass 1 schedules one cue per card, most fragile first.
     expect(data.plan.cues[0].cardId).toBe(201)
-    expect(data.plan.swsWindows.length).toBe(2)
+    expect(data.plan.cues[0].blockDeltaWeight).toBe(
+      Math.max(...data.plan.swsBlocks.map((b: { deltaWeight: number }) => b.deltaWeight)),
+    )
+    // The consolidated card still gets its fair-share cue.
+    expect(data.plan.cues.some((c: { cardId: number }) => c.cardId === 202)).toBe(true)
   })
 })

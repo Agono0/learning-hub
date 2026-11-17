@@ -33,8 +33,12 @@ import {
   generationTierEnum,
   generationTrialInputSchema,
   feynmanEvaluationInputSchema,
+  buildTonightPlan,
   judgmentOfLearningSchema,
   prioritizeRelearningQueue,
+  sleepProfileSchema,
+  toConsolidationCandidates,
+  fragilityScore,
   type CorrectionTrial,
   type JudgmentOfLearning,
   type RelearnCandidate,
@@ -360,6 +364,76 @@ async function postMetacognition(req: IncomingMessage, res: ServerResponse): Pro
   sendJson(res, 200, { ok: true, trialsCount: body.trials.length, report })
 }
 
+/** GET /cognitive/tmr/plan — tonight's TMR consolidation plan over real FSRS state. */
+async function getTmrPlan(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const q = readQuery(
+    url,
+    z.object({
+      bedtime: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .optional(),
+      wakeTime: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .optional(),
+      chronotype: z.coerce.number().min(-1).max(1).optional(),
+      sleepDebtHours: z.coerce.number().min(0).max(12).optional(),
+      maxAcousticDba: z.coerce.number().min(25).max(42).optional(),
+      limit: z.coerce.number().int().min(1).max(30).optional(),
+    }),
+  )
+
+  const profile = sleepProfileSchema.parse({
+    bedtime: q.bedtime ?? '23:00',
+    wakeTime: q.wakeTime ?? '07:00',
+    chronotype: q.chronotype ?? 0,
+    sleepDebtHours: q.sleepDebtHours ?? 0,
+    maxAcousticDba: q.maxAcousticDba ?? 35,
+  })
+
+  const rows = await db
+    .select({
+      id: cards.id,
+      stability: cards.stability,
+      difficulty: cards.difficulty,
+      due: cards.due,
+      state: cards.state,
+      suspended: cards.suspended,
+    })
+    .from(cards)
+    .where(eq(cards.suspended, false))
+    .orderBy(asc(cards.stability))
+    .limit(300)
+
+  const candidates = toConsolidationCandidates(
+    rows
+      .filter((r) => !r.suspended && r.state >= 2 && r.stability > 0)
+      .map((r) => ({ id: r.id, stability: r.stability, difficulty: r.difficulty, due: r.due })),
+  )
+    .sort((a, b) => fragilityScore(b) - fragilityScore(a))
+    .slice(q.limit ?? 12)
+
+  const plan = buildTonightPlan(profile, candidates)
+  sendJson(res, 200, {
+    ok: true,
+    candidatesSelected: candidates.length,
+    cueCount: plan.cues.length,
+    meanPredictedBoostPct: plan.meanPredictedBoostPct,
+    hypnogram: {
+      cycleCount: plan.hypnogram.cycleCount,
+      swsShare: plan.hypnogram.swsShare,
+      remShare: plan.hypnogram.remShare,
+      totalOpportunityMinutes: plan.hypnogram.totalOpportunityMinutes,
+    },
+    swsBlocks: plan.swsBlocks,
+    cues: plan.cues,
+    unscheduledCardIds: plan.unscheduledCardIds,
+    safety: plan.safety,
+    advisory: plan.advisory,
+  })
+}
+
 /** GET /cognitive/metacognition/hypercorrection — Butterfield-Metcalfe crucible from revlog. */
 async function getHypercorrection(
   _req: IncomingMessage,
@@ -501,6 +575,13 @@ export const routes: Route[] = [
     path: '/cognitive/metacognition/hypercorrection',
     summary: 'Butterfield-Metcalfe hypercorrection crucible + relearning queue (?limit=)',
     handler: getHypercorrection,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/tmr/plan',
+    summary:
+      "tonight's TMR consolidation plan from FSRS state (?bedtime=&wakeTime=&chronotype=&sleepDebtHours=&limit=)",
+    handler: getTmrPlan,
   },
 ]
 
