@@ -8,19 +8,20 @@
 
 ## 1. Prioritization Matrix
 
-| ID         | Priority | Category             | Status          | Summary                                                                                                                                                  |
-| ---------- | -------- | -------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed**   | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                 |
-| **T-P0-2** | **P0**   | Database / Setup     | **Completed**   | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                            |
-| **T-P1-1** | **P1**   | Feature Completeness | **Completed**   | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                              |
-| **T-P1-2** | **P1**   | Feature Completeness | **Completed**   | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.           |
-| **T-P1-3** | **P1**   | API Completeness     | **Completed**   | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                |
-| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed**   | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                              |
-| **T-P2-2** | **P2**   | Verification & Build | **Completed**   | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                 |
-| **T-P2-3** | **P2**   | Interactive Studios  | **Completed**   | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                   |
-| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed**   | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).            |
-| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Completed**   | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11). |
-| **T-P2-6** | **P2**   | 3D Memory Palace XR  | **In Progress** | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio.      |
+| ID         | Priority | Category             | Status          | Summary                                                                                                                                                      |
+| ---------- | -------- | -------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed**   | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                                     |
+| **T-P0-2** | **P0**   | Database / Setup     | **Completed**   | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                                |
+| **T-P1-1** | **P1**   | Feature Completeness | **Completed**   | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                                  |
+| **T-P1-2** | **P1**   | Feature Completeness | **Completed**   | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.               |
+| **T-P1-3** | **P1**   | API Completeness     | **Completed**   | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                                    |
+| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed**   | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                                  |
+| **T-P2-2** | **P2**   | Verification & Build | **Completed**   | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                                     |
+| **T-P2-3** | **P2**   | Interactive Studios  | **Completed**   | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).                       |
+| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed**   | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).                |
+| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Completed**   | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis (PR #11).     |
+| **T-P2-6** | **P2**   | 3D Memory Palace XR  | **Completed**   | 3D Spatial Memory Palace Walkthrough & WebXR Immersive Loci Review: multi-room procedural architecture, interactive loci review, and spatial audio (PR #12). |
+| **T-P2-7** | **P2**   | Socratic Dialectic   | **In Progress** | Socratic Dialectic Arena & Toulmin Argumentation Workbench: 12-fallacy cognitive taxonomy, Lakatos proof heuristic lifecycle, and Bloom Level 6 synthesis.   |
 
 ---
 
@@ -167,3 +168,29 @@
   5. Implement `AudioCommuteStudio.tsx` with Web Speech API voice commands ("flip", "again", "hard", "good", "easy", "skip") and speech synthesis.
 - **Files Affected:** `packages/core/src/coherence/*`, `packages/core/src/tmr/neuro-acoustic.ts`, `apps/web/src/components/*`, `apps/web/src/ui/CardiacCoherenceHUD.tsx`, `apps/web/app/*`.
 - **Status:** **Completed & Verified (PR #10)**.
+
+---
+
+### T-P2-6: 3D Spatial Memory Palace Walkthrough & WebXR Loci Review (PR #12)
+
+- **Problem:** Classical Method of Loci (Simonides 477 BC) is one of the most powerful mnemonic architectures known to cognitive science (retention multipliers up to 1.45x, Dresler et al. 2017), but learners lacked an immersive 3D spatial walkthrough to visually and kinesthetically explore rooms and attach loci to flashcards.
+- **Root Cause:** Absence of high-performance 3D scene engine, continuous collision detection, and spatial audio panning.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/spatial/palace-engine.ts` with 5 architectural archetypes (Roman Villa, Modern Gallery, Cyber Sanctum, Renaissance Library, Kyoto Zen Monastery), continuous collision detection with wall sliding, Catmull-Rom spline guided tours, and cognitive interference evaluation.
+  2. Implement `SpatialLocusHUD.tsx` with stereo audio panning, distance telemetry, card prompt/answer reveal, and FSRS recall scoring.
+  3. Implement `MemoryPalace3DStudio.tsx` with Three.js 60 FPS viewport, archetype switcher, on-screen walking pad, and guided walkthrough tours.
+- **Files Affected:** `packages/core/src/spatial/*`, `apps/web/src/components/MemoryPalace3DStudio.tsx`, `apps/web/src/ui/SpatialLocusHUD.tsx`, `apps/web/app/palace-3d/*`.
+- **Status:** **Completed & Merged in PR #12**.
+
+---
+
+### T-P2-7: Socratic Dialectic Arena & Toulmin Argumentation Workbench (PR #13)
+
+- **Problem:** Students evaluating complex claims (Bloom Level 6) often succumb to binary thinking, ungrounded warrants, and common informal fallacies, lacking structured dialectical frameworks to dissect arguments and resolve counterexamples.
+- **Root Cause:** Dialectic debate lacked an interactive Toulmin argument model (1958) and Lakatosian heuristic discovery crucible (1976).
+- **Proposed Solution:**
+  1. Develop `packages/core/src/dialectic/toulmin-engine.ts` with 12-fallacy cognitive taxonomy, Toulmin argument graph evaluator, automated fallacy detector, and Lakatos heuristic move evaluator (monster-barring, exception-incorporation, lemma-incorporation).
+  2. Implement `ToulminArgumentHUD.tsx` displaying real-time epistemic rigor percentage gauge, grounding ratio, and structural vulnerabilities.
+  3. Implement `SocraticDialecticStudio.tsx` with multi-agent debate transcript, fallacy spotter radar, interactive Toulmin graph editor, Lakatos Socratic lab, Protégé peer simulator, and FSRS flashcard export bridge.
+- **Files Affected:** `packages/core/src/dialectic/*`, `apps/web/src/ui/ToulminArgumentHUD.tsx`, `apps/web/src/components/SocraticDialecticStudio.tsx`, `apps/web/app/debate/*`.
+- **Status:** **In Progress**.
