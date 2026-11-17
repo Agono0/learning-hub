@@ -6,8 +6,10 @@
  */
 import {
   auditDesirableDifficulty,
+  buildPretestQuestion,
   createGenerationLadder,
   evaluateFeynmanExplanation,
+  pretestRelatedness,
   evaluateGenerationTrial,
   evaluateHypercorrection,
   evaluateMetacognitiveProfile,
@@ -19,7 +21,7 @@ import {
   type RelearnCandidate,
 } from '@learning-hub/core'
 import { cards, db, deriveMeasuredBehavior, revlog } from '@learning-hub/db'
-import { desc, eq } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 
 function parseFlag(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag)
@@ -312,4 +314,72 @@ export async function difficultyCommand(args: string[]): Promise<void> {
     }
   }
   for (const d of report.risk.drivers) console.log(`  • ${d}`)
+}
+
+/**
+ * `pretest questions` — builds pretest questions for the youngest, hardest
+ * cards from REAL content and prints the guess-before-study protocol.
+ */
+export async function pretestCommand(args: string[]): Promise<void> {
+  const sub = args[0] || 'questions'
+  if (sub !== 'questions') {
+    console.error(`Unknown subcommand: ${sub}. Usage: learning-hub pretest questions [--limit 8]`)
+    return
+  }
+  const limit = Number(parseFlag(args, '--limit') || '8')
+  const rows = await db
+    .select({
+      id: cards.id,
+      content: cards.content,
+      stability: cards.stability,
+      difficulty: cards.difficulty,
+    })
+    .from(cards)
+    .where(eq(cards.suspended, false))
+    .orderBy(asc(cards.stability))
+    .limit(120)
+
+  const frontBack = (content: unknown): { front: string; back: string } | null => {
+    if (!content || typeof content !== 'object') return null
+    const c = content as Record<string, unknown>
+    if (c.basic && typeof c.basic === 'object') {
+      const b = c.basic as Record<string, unknown>
+      if (typeof b.front === 'string' && typeof b.back === 'string')
+        return { front: b.front, back: b.back }
+    }
+    if (typeof c.front === 'string' && typeof c.back === 'string')
+      return { front: c.front, back: c.back }
+    return null
+  }
+
+  const usable = rows
+    .filter((r) => r.stability < 3 && frontBack(r.content) !== null)
+    .map((r) => ({ cardId: r.id, stability: r.stability, difficulty: r.difficulty, row: r }))
+    .sort(
+      (a, b) =>
+        (1 - b.stability / 3) * 0.6 +
+        ((b.difficulty - 1) / 9) * 0.4 -
+        ((1 - a.stability / 3) * 0.6 + ((a.difficulty - 1) / 9) * 0.4),
+    )
+    .slice(0, limit)
+
+  if (usable.length === 0) {
+    console.log('No young cards (stability < 3d) available for pretesting.')
+    return
+  }
+
+  console.log(`
+🎲 Pretest questions — guess BEFORE studying (Kornell, Hays & Bjork 2009):`)
+  for (const c of usable) {
+    const fb = frontBack(c.row.content)!
+    const built = buildPretestQuestion(fb.front, fb.back)
+    const relatedness = pretestRelatedness(built.question, fb.back)
+    console.log(`
+  card #${c.cardId} [${built.kind}] relatedness ${relatedness}${relatedness >= 0.5 ? ' ✓ solid' : ' ⚠ arbitrary'}`)
+    console.log(`  Q: ${built.question}`)
+    console.log(`  A: ${fb.back}`)
+  }
+  console.log(
+    '\nProtocol: guess → feedback → study NOW → retest to criterion (Rawson & Dunlosky 2011).',
+  )
 }

@@ -20,6 +20,7 @@ import {
   auditInterleaving,
   auditSpacing,
   balanceWorkload,
+  buildPretestQuestion,
   cardPreviewText,
   catchUpBacklog,
   createGenerationLadder,
@@ -38,6 +39,7 @@ import {
   sleepProfileSchema,
   toConsolidationCandidates,
   generationTierEnum,
+  pretestRelatedness,
   type JudgmentOfLearning,
   type WorkloadCardItem,
 } from '@learning-hub/core'
@@ -357,10 +359,12 @@ export const cognitiveTools: RegisteredTool[] = [
         .orderBy(desc(revlog.id))
         .limit(limit)
 
-      // Walk oldest→newest: each miss arms its card; the next success on that
-      // card counts as the correction (same reconstruction as the web API).
       const chronological = [...rows].reverse()
-      const corrections: { cardId: number; initialConfidence: number; wasCorrected: boolean }[] = []
+      const corrections: {
+        cardId: number
+        initialConfidence: number
+        wasCorrected: boolean
+      }[] = []
       const armed = new Map<number, 0 | 1>()
       for (const r of chronological) {
         const correct = r.rating >= 3
@@ -411,7 +415,6 @@ export const cognitiveTools: RegisteredTool[] = [
       })
     },
   ),
-
   tool(
     'sleep_consolidation_plan',
     "Rasch & Born (2007) / Ngo et al. (2013) Sleep TMR planner over REAL FSRS state: fits a cycle-accurate hypnogram for tonight's sleep window (Process-S sleep-debt rebound, chronotype redistribution), extracts delta-weighted slow-wave blocks, and schedules the learner's most fragile cards into them with per-card consolidation audits and an acoustic-safety audit.",
@@ -475,7 +478,6 @@ export const cognitiveTools: RegisteredTool[] = [
       })
     },
   ),
-
   tool(
     'difficulty_audit',
     "Dunlosky et al. (2013) Desirable-Difficulty Audit: score the learner's technique mix against the monograph utility table (practice testing/spacing high; rereading/highlighting low), quantify fluency-illusion risk, audit measured spacing + deck interleaving from revlog, and emit an exact-arithmetic substitution plan.",
@@ -499,6 +501,75 @@ export const cognitiveTools: RegisteredTool[] = [
         spacingVerdict: spacing.verdict,
         interleavingVerdict: interleaving.verdict,
         report,
+      })
+    },
+  ),
+
+  tool(
+    'pretesting_protocol',
+    'Kornell, Hays & Bjork (2009) Pretesting-Effect protocol over REAL card content: builds deterministic pretest questions for the youngest, hardest cards, gates them with the Little & Bjork (2016) solid-pretest relatedness check, and evaluates guess→feedback→study→retest attempts for protocol compliance, hypercorrection targets and the successive-relearning queue.',
+    {
+      limit: z.number().int().min(1).max(20).default(8),
+    },
+    async ({ limit }) => {
+      const rows = await db
+        .select({
+          id: cards.id,
+          content: cards.content,
+          stability: cards.stability,
+          difficulty: cards.difficulty,
+        })
+        .from(cards)
+        .where(eq(cards.suspended, false))
+        .orderBy(asc(cards.stability))
+        .limit(120)
+
+      const frontBack = (content: unknown): { front: string; back: string } | null => {
+        if (!content || typeof content !== 'object') return null
+        const c = content as Record<string, unknown>
+        if (c.basic && typeof c.basic === 'object') {
+          const b = c.basic as Record<string, unknown>
+          if (typeof b.front === 'string' && typeof b.back === 'string')
+            return { front: b.front, back: b.back }
+        }
+        if (typeof c.front === 'string' && typeof c.back === 'string')
+          return { front: c.front, back: c.back }
+        return null
+      }
+
+      const usable = rows
+        .filter((r) => r.stability < 3 && frontBack(r.content) !== null)
+        .map((r) => ({ cardId: r.id, stability: r.stability, difficulty: r.difficulty }))
+        .sort((a, b) =>
+          (1 - a.stability / 3) * 0.6 + ((a.difficulty - 1) / 9) * 0.4 >
+          (1 - b.stability / 3) * 0.6 + ((b.difficulty - 1) / 9) * 0.4
+            ? -1
+            : 1,
+        )
+        .slice(0, limit)
+
+      const questions = usable.flatMap((c) => {
+        const row = rows.find((r) => r.id === c.cardId)
+        const fb = row ? frontBack(row.content) : null
+        if (!fb) return []
+        const built = buildPretestQuestion(fb.front, fb.back)
+        const relatedness = pretestRelatedness(built.question, fb.back)
+        return [
+          {
+            cardId: c.cardId,
+            question: built.question,
+            kind: built.kind,
+            relatedness,
+            solidPretest: relatedness >= 0.5,
+            target: fb.back,
+          },
+        ]
+      })
+
+      return json({
+        ok: true,
+        candidates: questions,
+        protocol: 'pretest → feedback → study → retest (Kornell et al. 2009; Little & Bjork 2016)',
       })
     },
   ),

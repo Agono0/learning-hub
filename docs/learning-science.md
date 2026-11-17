@@ -602,7 +602,7 @@ Attempting to answer questions _prior_ to studying material produces retrieval-p
 
 - **Evidence:** Failing a pretest generates semantic curiosity and highlights conceptual gaps, priming the brain's attention during subsequent study.
 - **Integrity Rule (AGENTS.md Rule 7):** Pretests must never penalize the learner's Elo rating or Bayesian Knowledge Tracing (BKT) mastery probabilities.
-- **In Learning HUB:** `isPretest: true` parameter in `/api/curriculum/practice` and lesson player priming component (`apps/web/app/courses/lesson/page.tsx`).
+- **In Learning HUB:** `isPretest: true` parameter in `/api/curriculum/practice` and lesson player priming component (`apps/web/app/courses/lesson/page.tsx`). The dedicated protocol engine (`packages/core/src/pretesting`) builds deterministic pretest questions for young, fragile cards, gates them with the Little & Bjork solid-pretest relatedness check, enforces feedback-after-error (Butler & Roediger 2008) and prompt-study compliance, tracks successive-relearning criteria (Rawson & Dunlosky 2011), and surfaces confident wrong guesses as hypercorrection targets; `/api/cognitive/pretesting` (web), the `pretesting_protocol` MCP tool, `learning-hub pretest questions` CLI command, and `GET /cognitive/pretesting` (headless server); rendered on `/pretest` via `PretestingLab.tsx`.
 - **Status:** ✅
 
 ### Incidental Vocabulary Acquisition & Krashen $i+1$ — Krashen (1985); Nation (2001); Webb (2007)

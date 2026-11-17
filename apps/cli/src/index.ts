@@ -30,6 +30,7 @@ import {
   feynmanCommand,
   generationCommand,
   metacognitionCommand,
+  pretestCommand,
 } from './commands/cognitive'
 import {
   db,
@@ -724,6 +725,12 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Dunlosky (2013) desirable-difficulty audit of your technique mix',
     usage: 'audit [--testing 90 --reread 120 …]',
     run: (runArgs) => difficultyCommand(runArgs),
+  },
+  {
+    name: 'pretest',
+    description: 'Pretesting-effect questions for young, fragile cards',
+    usage: 'questions [--limit 8]',
+    run: (runArgs) => pretestCommand(runArgs),
   },
 ]
 
