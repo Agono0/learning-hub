@@ -29,7 +29,7 @@
 | **T-P2-12** | **P2**   | Desirable Difficulty   | **Completed** | Desirable Difficulties & Multi-Ladder Generation Studio: Bjork spacing/interleaving/generation ladders, testing effect retrieval practice, and Leitner-FSRS synthesis (PR #25). |
 | **T-P2-13** | **P2**   | Dual-Coding Schema     | **Completed** | Dual-Coding & Visuospatial Schematization Studio: Paivio dual-channel processing, Mayer 12 CTML compliance audit, and interactive SVG canvas workbench (PR #27).                |
 | **T-P2-14** | **P2**   | Self-Explanation       | **Completed** | Generative Self-Explanation & Schema Inversion Studio: Chi 1989 justification depth scoring, Aleven rule-naming, and Renkl boundary failure inversions (PR #28).                |
-| **T-P2-15** | **P2**   | Interleaved Invariance | **Planned**   | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination.    |
+| **T-P2-15** | **P2**   | Interleaved Invariance | **Completed** | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination.    |
 
 ---
 
@@ -301,8 +301,6 @@
 - **Files Affected:** `packages/core/src/explanation/*`, `apps/web/src/ui/SelfExplanationHUD.tsx`, `apps/web/src/components/SelfExplanationStudio.tsx`, `apps/web/app/self-explanation/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Completed (Ready for PR #28)**.
 
----
-
 ### T-P2-15: Interleaved Problem Solving & Structural Invariance Studio (Rohrer & Taylor 2007; Kornell & Bjork 2008)
 
 - **Problem:** Learners practicing within blocked blocks of identical problem types develop superficial recognition of solution templates rather than learning how to inductively discern deep problem structures from surface features.
@@ -313,4 +311,4 @@
   3. Implement `InterleavingStudio.tsx` with mixed-category problem sequences, deep structural invariant matching, contrastive discrimination crucible, and FSRS interleaving deck exporter.
   4. Build `apps/web/app/interleaving/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/interleaving/*`, `apps/web/src/ui/InterleavingHUD.tsx`, `apps/web/src/components/InterleavingStudio.tsx`, `apps/web/app/interleaving/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Planned (Next Cycle)**.
+- **Status:** **Completed**.
