@@ -104,7 +104,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 | 11   | Untrusted content never raw HTML    | `<Markdown>` sanitizer from `@/ui` (ReactMarkdown with no dangerous HTML)                                      |
 | 12   | Never commit secrets                | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                            |
 | 13   | Don't weaken tests to pass          | CI pull request review & conventional commits                                                                  |
-| 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`) before push                                          |
+| 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`) before push                                                          |
 | 15   | CI completion before merge          | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                 |
 | 16   | Continuous pipelined productivity   | Overlap active development cycles while remote CI verifies previous PR batches                                 |
 | 17   | No local builds â€” ever              | Pre-push gate = typecheck + lint + tests only; builds run in CI (GitHub Actions)                               |
