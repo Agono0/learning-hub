@@ -364,14 +364,19 @@ async function postMetacognition(req: IncomingMessage, res: ServerResponse): Pro
   sendJson(res, 200, { ok: true, trialsCount: body.trials.length, report })
 }
 
-
 /** GET /cognitive/tmr/plan — tonight's TMR consolidation plan over real FSRS state. */
 async function getTmrPlan(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   const q = readQuery(
     url,
     z.object({
-      bedtime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
-      wakeTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+      bedtime: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .optional(),
+      wakeTime: z
+        .string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .optional(),
       chronotype: z.coerce.number().min(-1).max(1).optional(),
       sleepDebtHours: z.coerce.number().min(0).max(12).optional(),
       maxAcousticDba: z.coerce.number().min(25).max(42).optional(),
@@ -574,7 +579,8 @@ export const routes: Route[] = [
   {
     method: 'GET',
     path: '/cognitive/tmr/plan',
-    summary: "tonight's TMR consolidation plan from FSRS state (?bedtime=&wakeTime=&chronotype=&sleepDebtHours=&limit=)",
+    summary:
+      "tonight's TMR consolidation plan from FSRS state (?bedtime=&wakeTime=&chronotype=&sleepDebtHours=&limit=)",
     handler: getTmrPlan,
   },
 ]
