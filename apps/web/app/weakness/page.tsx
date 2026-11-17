@@ -25,6 +25,8 @@ import {
   useToast,
 } from '@/ui'
 import Link from 'next/link'
+import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
+import { DualCodingCanvasStudio } from '@/components/DualCodingCanvasStudio'
 
 interface WeaknessV2Data {
   ok: boolean
@@ -40,6 +42,16 @@ export default function WeaknessRadarPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'pairs' | 'forecast' | 'leeches'>('pairs')
   const [appliedCards, setAppliedCards] = useState<Set<number>>(new Set())
+  const [generationTarget, setGenerationTarget] = useState<{
+    concept: string
+    explanation: string
+    cardId?: number
+  } | null>(null)
+  const [dualCodingTarget, setDualCodingTarget] = useState<{
+    concept: string
+    explanation: string
+    cardId?: number
+  } | null>(null)
 
   const { data, isLoading, isError, refetch } = useQuery<WeaknessV2Data>({
     queryKey: ['curriculum', 'skills', 'weakness-v2'],
@@ -327,24 +339,56 @@ export default function WeaknessRadarPage() {
                           Leech Card #{leech.cardId} · {leech.lapses} Lapses
                         </span>
                       </div>
-                      {isDone ? (
-                        <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Decomposed
-                        </span>
-                      ) : (
-                        <Button
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
                           onClick={() =>
-                            applyDecompMutation.mutate({
+                            setGenerationTarget({
+                              concept: leech.originalFront,
+                              explanation: leech.originalBack,
                               cardId: leech.cardId,
-                              candidates: leech.candidates,
                             })
                           }
-                          disabled={applyDecompMutation.isPending}
+                          className="px-2 py-1 text-xs rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition"
+                          title="Generate 4-tier ladder"
                         >
-                          <GitFork className="h-3.5 w-3.5 mr-1" />
-                          Apply Split ({leech.candidates.length} Cards)
-                        </Button>
-                      )}
+                          <Sparkles className="h-3 w-3 inline mr-1" />
+                          Ladder
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDualCodingTarget({
+                              concept: leech.originalFront,
+                              explanation: leech.originalBack,
+                              cardId: leech.cardId,
+                            })
+                          }
+                          className="px-2 py-1 text-xs rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition"
+                          title="Create visual anchor sketch"
+                        >
+                          <Layers className="h-3 w-3 inline mr-1" />
+                          Dual-Code
+                        </button>
+                        {isDone ? (
+                          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Decomposed
+                          </span>
+                        ) : (
+                          <Button
+                            onClick={() =>
+                              applyDecompMutation.mutate({
+                                cardId: leech.cardId,
+                                candidates: leech.candidates,
+                              })
+                            }
+                            disabled={applyDecompMutation.isPending}
+                          >
+                            <GitFork className="h-3.5 w-3.5 mr-1" />
+                            Apply Split ({leech.candidates.length} Cards)
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900/50">
@@ -385,6 +429,30 @@ export default function WeaknessRadarPage() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {generationTarget && (
+        <GenerationPracticeModal
+          isOpen={true}
+          onClose={() => setGenerationTarget(null)}
+          initialConcept={generationTarget.concept}
+          initialExplanation={generationTarget.explanation}
+          cardId={generationTarget.cardId}
+        />
+      )}
+
+      {dualCodingTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DualCodingCanvasStudio
+              isOpen={true}
+              onClose={() => setDualCodingTarget(null)}
+              initialConcept={dualCodingTarget.concept}
+              initialVerbalText={dualCodingTarget.explanation}
+              cardId={dualCodingTarget.cardId}
+            />
+          </div>
         </div>
       )}
     </div>

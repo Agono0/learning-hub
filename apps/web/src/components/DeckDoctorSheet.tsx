@@ -18,6 +18,7 @@ import {
 import type { DeckDiagnosis, DoctorAction } from '@learning-hub/core/doctor'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Sheet } from '@/ui'
+import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
 
 export interface DeckDoctorSheetProps {
   deckId: number | null
@@ -37,6 +38,11 @@ export function DeckDoctorSheet({
   const qc = useQueryClient()
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [lastSummary, setLastSummary] = useState<string | null>(null)
+  const [activeGenerationCard, setActiveGenerationCard] = useState<{
+    concept: string
+    explanation: string
+    cardId: number
+  } | null>(null)
 
   const diagnosisQuery = useQuery({
     queryKey: ['deck-doctor', deckId],
@@ -302,6 +308,21 @@ export function DeckDoctorSheet({
                         </div>
                         <div className="mt-0.5">{suggestion.ladder.challengeText}</div>
                       </div>
+                      <div className="mt-2.5 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveGenerationCard({
+                              concept: suggestion.concept,
+                              explanation: suggestion.ladder.expectedAnswer,
+                              cardId: suggestion.cardId,
+                            })
+                          }
+                          className="px-2.5 py-1 text-xs font-semibold rounded bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1 transition shadow-2xs"
+                        >
+                          <Zap className="h-3 w-3" /> Practice Generation Ladder
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -352,6 +373,17 @@ export function DeckDoctorSheet({
           </>
         ) : null}
       </div>
+
+      {activeGenerationCard && (
+        <GenerationPracticeModal
+          isOpen={true}
+          onClose={() => setActiveGenerationCard(null)}
+          initialConcept={activeGenerationCard.concept}
+          initialExplanation={activeGenerationCard.explanation}
+          cardId={activeGenerationCard.cardId}
+          deckId={deckId ?? undefined}
+        />
+      )}
     </Sheet>
   )
 }

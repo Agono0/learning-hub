@@ -16,6 +16,7 @@ import {
   Layers,
   Pencil,
   Plus,
+  Shuffle,
   Sparkles,
   Stethoscope,
   Trash2,
@@ -28,6 +29,7 @@ import type { LintResult } from '@learning-hub/core/linter'
 import { parseCloze, validateCardContent } from '@learning-hub/core/cards'
 import { leitnerBox, leitnerHistogram } from '@learning-hub/core/fsrs'
 import { DeckDoctorSheet } from '@/components/DeckDoctorSheet'
+import { InterleavingSchedulerModal } from '@/components/InterleavingSchedulerModal'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import { PageHeader, LeitnerProgression, type LeitnerBoxData } from '@/ui'
@@ -109,6 +111,7 @@ export default function DecksPage() {
   const [bulkOpen, setBulkOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [doctorDeckId, setDoctorDeckId] = useState<number | null>(null)
+  const [interleaveOpen, setInterleaveOpen] = useState(false)
   const [shareNote, setShareNote] = useState<string | null>(null)
 
   // Share this deck as an lh-share/v1 string (F-08②): the import side lives
@@ -271,6 +274,13 @@ export default function DecksPage() {
               title="Run Deck Doctor health inspection and one-click fixes"
             >
               <Stethoscope className="h-4 w-4 text-indigo-400" /> Doctor
+            </button>
+            <button
+              className="btn-ghost flex items-center gap-1.5"
+              onClick={() => setInterleaveOpen(true)}
+              title="Interleave multiple decks with Rohrer-Taylor category scheduling"
+            >
+              <Shuffle className="h-4 w-4 text-emerald-400" /> Interleave
             </button>
           </div>
         }
@@ -527,6 +537,10 @@ export default function DecksPage() {
         open={doctorDeckId !== null}
         onClose={() => setDoctorDeckId(null)}
         onApplied={invalidate}
+      />
+      <InterleavingSchedulerModal
+        isOpen={interleaveOpen}
+        onClose={() => setInterleaveOpen(false)}
       />
     </div>
   )
