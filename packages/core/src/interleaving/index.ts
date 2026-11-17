@@ -221,3 +221,9 @@ export function computeInterleavingSchedule(
     discriminationPrompts: prompts,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Structural Invariance & Category Discrimination Engine (Rohrer 2007)
+// ---------------------------------------------------------------------------
+
+export * from './structural-invariance-engine'
