@@ -17,6 +17,7 @@ import { Moon, ShieldCheck, Sparkles, Volume2 } from 'lucide-react'
 import { earconPartials, nextTmrCueDelayMs, type TmrEarcon } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
+import { SleepConsolidationStudio } from '@/components/SleepConsolidationStudio'
 import {
   Button,
   Callout,
@@ -212,6 +213,23 @@ export default function SleepTmrPage() {
         title="Sleep Replay (TMR)"
         subtitle="Soft audio cues paired with today's cards, replayed during sleep to support overnight consolidation."
         icon={<Moon className="h-5 w-5" />}
+      />
+
+      <SleepConsolidationStudio
+        cues={cues.map((c) => ({
+          cardId: c.cardId,
+          frontText: `Card #${c.cardId}`,
+          earcon: c.earconSignature,
+          difficulty: 0.5,
+          replaysToday: c.timesCuedSleep,
+        }))}
+        sleepHours={8}
+        onRecordSleepPlayback={(ids) => {
+          void apiSend('/api/audio/tmr/cues', 'POST', {
+            action: 'record_sleep_playback',
+            playedCardIds: ids,
+          }).catch(() => undefined)
+        }}
       />
 
       <SleepConsolidationHUD

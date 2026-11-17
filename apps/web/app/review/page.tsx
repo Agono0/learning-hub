@@ -69,6 +69,8 @@ import {
   MetacognitiveCalibrationCard,
 } from '@/ui'
 import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
+import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
+import { Wind } from 'lucide-react'
 import { WorkloadBalancerModal } from '@/components/WorkloadBalancerModal'
 import {
   acquireWakeLock,
@@ -275,6 +277,7 @@ function ReviewPageInner() {
   const [correctionsSeen, setCorrectionsSeen] = useState(false)
   const [showWorkloadModal, setShowWorkloadModal] = useState(false)
   const [generationModalOpen, setGenerationModalOpen] = useState(false)
+  const [coherenceModalOpen, setCoherenceModalOpen] = useState(false)
   const [generationTargetCard, setGenerationTargetCard] = useState<{
     concept: string
     explanation: string
@@ -1408,6 +1411,15 @@ function ReviewPageInner() {
           </span>
         )}
         <button
+          type="button"
+          onClick={() => setCoherenceModalOpen(true)}
+          className="btn-ghost flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300"
+          title="0.1 Hz Baroreflex Resonance Breathing Priming"
+        >
+          <Wind className="h-3.5 w-3.5" />
+          <span>Coherence Priming</span>
+        </button>
+        <button
           className="btn-ghost ml-auto"
           onClick={() => {
             setStarted(false)
@@ -1427,6 +1439,26 @@ function ReviewPageInner() {
           cardId={generationTargetCard.cardId}
           deckId={current?.deckId ?? deckId ?? undefined}
         />
+      )}
+
+      {coherenceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-2xl">
+            <BreathingCoherenceStudio
+              onCompleteSession={() => {}}
+              onNavigateToReview={() => setCoherenceModalOpen(false)}
+            />
+            <div className="mt-3 text-center">
+              <button
+                type="button"
+                onClick={() => setCoherenceModalOpen(false)}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                Close and return to review
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
