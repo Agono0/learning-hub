@@ -30,8 +30,9 @@
 | **T-P2-13** | **P2**   | Dual-Coding Schema     | **Completed** | Dual-Coding & Visuospatial Schematization Studio: Paivio dual-channel processing, Mayer 12 CTML compliance audit, and interactive SVG canvas workbench (PR #27).                      |
 | **T-P2-14** | **P2**   | Self-Explanation       | **Completed** | Generative Self-Explanation & Schema Inversion Studio: Chi 1989 justification depth scoring, Aleven rule-naming, and Renkl boundary failure inversions (PR #30).                      |
 | **T-P2-15** | **P2**   | Interleaved Invariance | **Completed** | Interleaved Problem Solving & Structural Invariance Studio: Rohrer-Taylor category contrast, Kornell-Bjork inductive transfer, and surface vs deep structure discrimination (PR #31). |
-| **T-P2-16** | **P2**   | Analogical Transfer    | **Completed** | Analogical Transfer & Schema Induction Studio: Gick-Holyoak convergence schema, Gentner structure-mapping engine, and cross-domain isomorphic problem transfer (PR #34).              |
-| **T-P2-17** | **P2**   | Cognitive Flexibility  | **Planned**   | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization.     |
+| **T-P2-16** | **P2**   | Analogical Transfer    | **Completed** | Analogical Transfer & Schema Induction Studio: Gick-Holyoak convergence schema, Gentner structure-mapping engine, and cross-domain isomorphic problem transfer (PR #35).              |
+| **T-P2-17** | **P2**   | Cognitive Flexibility  | **Completed** | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization.     |
+| **T-P2-18** | **P2**   | Epistemic Calibration  | **Planned**   | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models.    |
 
 ---
 
@@ -341,4 +342,18 @@
   3. Implement `CognitiveFlexibilityStudio.tsx` with multi-perspective case explorer, cognitive hat crucible, reductive bias challenge, and FSRS flexible transfer deck exporter.
   4. Build `apps/web/app/flexibility/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/flexibility/*`, `apps/web/src/ui/CognitiveFlexibilityHUD.tsx`, `apps/web/src/components/CognitiveFlexibilityStudio.tsx`, `apps/web/app/flexibility/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Ready for PR #36)**.
+
+---
+
+### T-P2-18: Reflective Equilibrium & Epistemic Calibration Studio (Rawls 1971; Goodman 1955; Tetlock 2005)
+
+- **Problem:** Learners formulate beliefs, heuristics, and domain models without testing for systemic internal coherence or calibrating confidence against objective accuracy, leading to chronic overconfidence and fragmented knowledge.
+- **Root Cause:** Absence of interactive Wide Reflective Equilibrium engines that pit general principles against considered judgments and background theories, combined with Brier-score epistemic probability calibration.
+- **Proposed Solution:**
+  1. Build `packages/core/src/equilibrium/reflective-equilibrium-engine.ts` with Goodman-Rawls dynamic coherence graph adjustments, triad conflict resolution, and Tetlock Brier score epistemic calibration.
+  2. Implement `ReflectiveEquilibriumHUD.tsx` tracking coherence entropy, Brier calibration index, and belief shift volatility.
+  3. Implement `ReflectiveEquilibriumStudio.tsx` with principle-judgment reconciler, confidence calibration probability slider, and FSRS epistemic card exporter.
+  4. Build `apps/web/app/equilibrium/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/equilibrium/*`, `apps/web/src/ui/ReflectiveEquilibriumHUD.tsx`, `apps/web/src/components/ReflectiveEquilibriumStudio.tsx`, `apps/web/app/equilibrium/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.

@@ -22,7 +22,7 @@ describe('navigation model & theme helpers', () => {
       expect(item.icon).toBeDefined() // lucide forwardRef components are objects
       expect(item.label.length).toBeGreaterThan(0)
     }
-    expect(hrefs.length).toBeGreaterThanOrEqual(46)
+    expect(hrefs.length).toBeGreaterThanOrEqual(47)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/workload')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/generation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-coding')).toBe(true)
@@ -34,6 +34,7 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/interleaving')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/pretest')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/analogy')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/flexibility')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })
