@@ -16,6 +16,7 @@ import {
   FileCheck,
   Flame,
   Gauge,
+  GitCompare,
   Globe,
   GraduationCap,
   Headphones,
@@ -87,6 +88,7 @@ export const NAV: NavGroup[] = [
       { href: '/self-explanation', label: 'Self-Explanation', icon: BookOpen },
       { href: '/interleaving', label: 'Interleaving', icon: Shuffle },
       { href: '/workload', label: 'Workload', icon: Gauge },
+      { href: '/analogy', label: 'Analogical Transfer', icon: GitCompare },
     ],
   },
   {
