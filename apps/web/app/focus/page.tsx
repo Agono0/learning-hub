@@ -33,6 +33,7 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
 import { PageHeader, useToast } from '@/ui'
 import { SoundscapeBar } from '@/components/SoundscapeBar'
+import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
@@ -615,6 +616,7 @@ export default function FocusPage() {
           </div>
         }
       />
+      <FlowStatePanel className="mt-4" />
 
       {xpToast && (
         <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm text-indigo-300">

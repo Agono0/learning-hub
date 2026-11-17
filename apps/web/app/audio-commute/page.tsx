@@ -17,6 +17,7 @@ import { getBinauralFrequencies, type BinauralMode } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
 import { AudioCommuteStudio } from '@/components/AudioCommuteStudio'
 import { Button, Callout, EmptyState, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
+import { AudioDigestCard } from '@/components/AudioDigestCard'
 
 interface AudioCue {
   cardId: number
@@ -329,6 +330,8 @@ export default function AudioCommutePage() {
           <span>Classic Audio & Beats</span>
         </button>
       </div>
+
+      <AudioDigestCard />
 
       {viewMode === 'studio' ? (
         <AudioCommuteStudio

@@ -13,6 +13,7 @@ import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshS
 import { apiGet } from '@/lib/transport'
 import { PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
+import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 const ORDER_KEY_HINT = 'Order is saved on this device. Reset restores the default layout.'
@@ -94,6 +95,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
+      <QuickReviewWidget />
       {d.freshStart && (
         <div className="panel border-indigo-400/40 bg-indigo-600/10">
           <div className="flex items-center gap-2 text-sm font-medium text-indigo-300">

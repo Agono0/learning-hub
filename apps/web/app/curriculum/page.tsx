@@ -13,6 +13,7 @@ import { CalendarClock, GraduationCap, Lock, Sparkles, Timer, Unlock, Wand2 } fr
 import { BLOOM_VERBS, CRAM_WARNING, EXPRESSIVE_WRITING_PROMPT } from '@learning-hub/core/curriculum'
 import type { MockExam } from '@learning-hub/core/curriculum'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
+import { RemedialPanel } from '@/components/RemedialPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader, useToast } from '@/ui'
 
@@ -337,6 +338,10 @@ export default function CurriculumPage() {
             <Wand2 className="h-4 w-4" /> Generate course
           </button>
         }
+      />
+
+      <RemedialPanel
+        concepts={(skillData?.skills ?? []).map((sk) => ({ id: sk.id, title: sk.name }))}
       />
 
       {genOpen && (
