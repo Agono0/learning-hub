@@ -351,3 +351,7 @@ export function respondAsProtege(
   }
   return { reply, coverage: Math.round(ratio * 100) / 100, missingConcepts: missing, understood }
 }
+
+// ─── Re-export Toulmin Argumentation & Lakatos Socratic Engine ──────────────
+
+export * from './toulmin-engine'

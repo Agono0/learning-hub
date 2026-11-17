@@ -14,8 +14,9 @@
  */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, CheckCircle2, Gavel, Scale, User, XCircle } from 'lucide-react'
+import { Award, CheckCircle2, Gavel, Scale, Sparkles, User, XCircle } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { SocraticDialecticStudio } from '@/components/SocraticDialecticStudio'
 import {
   Button,
   Callout,
@@ -97,6 +98,7 @@ const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something w
 
 export default function DebateArenaPage() {
   const queryClient = useQueryClient()
+  const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
   const [tab, setTab] = useState<'arena' | 'protege'>('arena')
   const [debateId, setDebateId] = useState<number | null>(null)
   const [caseSlug, setCaseSlug] = useState('')
@@ -210,14 +212,33 @@ export default function DebateArenaPage() {
   )
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
       <PageHeader
         title="Debate Arena & Protégé"
-        subtitle="Judge two opposing arguments, expose their fallacies, rule on the case, then teach the idea to a peer."
+        subtitle="Judge opposing arguments, expose fallacies, build Toulmin argument graphs, and test theorems with Lakatos Socratic methods."
         icon={<Gavel className="h-5 w-5" />}
+        actions={
+          <Button
+            variant="ghost"
+            onClick={() => setViewMode((m) => (m === 'studio' ? 'classic' : 'studio'))}
+          >
+            <Sparkles className="h-4 w-4 mr-1 text-indigo-400" />
+            {viewMode === 'studio' ? 'Classic Courtroom' : 'Socratic Studio'}
+          </Button>
+        }
       />
 
-      {list.isLoading ? (
+      {viewMode === 'studio' ? (
+        <SocraticDialecticStudio
+          initialCaseSlug={caseSlug || 'ai-alignment-orthogonality'}
+          onSaveVerdict={(_slug, verdictText) => {
+            setVerdict(verdictText)
+            if (debateId) {
+              submitVerdict.mutate()
+            }
+          }}
+        />
+      ) : list.isLoading ? (
         <Skeleton className="h-64" />
       ) : list.isError ? (
         <Callout tone="danger" title="Could not load the arena">
