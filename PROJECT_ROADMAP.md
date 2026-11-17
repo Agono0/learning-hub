@@ -268,7 +268,7 @@
   3. Implement `DesirableDifficultyStudio.tsx` with 4 interactive workspaces: Generative Ladder, Bjork Phase-Space Analyzer, Roediger-Karpicke Testing Crucible, and FSRS Generative Deck Exporter.
   4. Build `apps/web/app/generation/page.tsx` and register in navigation.
 - **Files Affected:** `packages/core/src/generation/*`, `apps/web/src/ui/DesirableDifficultyHUD.tsx`, `apps/web/src/components/DesirableDifficultyStudio.tsx`, `apps/web/app/generation/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed (Ready for PR #23)**.
+- **Status:** **Completed & Merged in PR #25**.
 
 ---
 
@@ -282,4 +282,18 @@
   3. Implement `DualCodingStudio.tsx` with interactive diagrammatic schematizer, concept-to-icon mapping, spatial contiguity organizer, and dual-coded flashcard export.
   4. Build `apps/web/app/dual-coding/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/multimodal/*`, `apps/web/src/ui/DualCodingHUD.tsx`, `apps/web/src/components/DualCodingStudio.tsx`, `apps/web/app/dual-coding/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Ready for PR #26)**.
+
+---
+
+### T-P2-14: Self-Explanation & Schema Inversion Studio (Chi et al. 1989; Renkl 2002; Aleven & Koedinger 2002)
+
+- **Problem:** When reviewing worked solutions or technical proofs, learners passively skim through steps without generating mechanistic justifications, creating the illusion of understanding without mental schema construction.
+- **Root Cause:** Lack of an interactive self-explanation prompting engine requiring learners to state the underlying domain principle behind each derivation step and invert steps to detect hidden constraints.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/pedagogy/self-explanation-engine.ts` tracking Chi (1989) justification types (principle-based, goal-operator, coherence-building), Aleven-Koedinger rule-naming accuracy, and step inversion challenges.
+  2. Implement `SelfExplanationHUD.tsx` with real-time justification depth index, principle alignment score, and cognitive engagement telemetry.
+  3. Implement `SelfExplanationStudio.tsx` with step-by-step derivation reasoning, rule-selection challenges, edge-case inversion tests, and FSRS justification card exports.
+  4. Build `apps/web/app/self-explanation/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/pedagogy/*`, `apps/web/src/ui/SelfExplanationHUD.tsx`, `apps/web/src/components/SelfExplanationStudio.tsx`, `apps/web/app/self-explanation/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.

@@ -12,6 +12,7 @@ import {
   Compass,
   DatabaseBackup,
   Dumbbell,
+  Eye,
   FileCheck,
   Flame,
   Globe,
@@ -79,6 +80,7 @@ export const NAV: NavGroup[] = [
       { href: '/sleep-tmr', label: 'Sleep TMR', icon: Moon },
       { href: '/metacognition', label: 'Metacognition', icon: Brain },
       { href: '/generation', label: 'Generation', icon: Zap },
+      { href: '/dual-coding', label: 'Dual Coding', icon: Eye },
     ],
   },
   {
