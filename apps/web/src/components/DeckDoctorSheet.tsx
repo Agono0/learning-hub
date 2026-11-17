@@ -6,7 +6,15 @@
  */
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, RefreshCw, Stethoscope, Trash2, Zap } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  Sparkles,
+  Stethoscope,
+  Trash2,
+  Zap,
+} from 'lucide-react'
 import type { DeckDiagnosis, DoctorAction } from '@learning-hub/core/doctor'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Sheet } from '@/ui'
@@ -264,7 +272,43 @@ export function DeckDoctorSheet({
               </div>
             )}
 
-            {/* Section 2: Cognitive Formulation Guidelines */}
+            {/* Section 2: Active Generation Remediations */}
+            {diagnosis.generationSuggestions && diagnosis.generationSuggestions.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 font-semibold text-neutral-200">
+                    <Sparkles className="h-4 w-4 text-purple-400" />
+                    Active Generation Challenges ({diagnosis.generationSuggestions.length})
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {diagnosis.generationSuggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.cardId}
+                      className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3 text-xs dark:border-purple-500/30 dark:bg-purple-950/20"
+                    >
+                      <div className="flex items-center justify-between font-medium">
+                        <span className="text-purple-300">
+                          Card #{suggestion.cardId}: {suggestion.concept}
+                        </span>
+                        <span className="rounded bg-purple-500/20 px-2 py-0.5 font-mono text-[10px] uppercase text-purple-300">
+                          {suggestion.recommendedTier.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-neutral-400">{suggestion.rationale}</p>
+                      <div className="mt-2 rounded bg-neutral-900/50 p-2 font-mono text-[11px] text-neutral-300">
+                        <div className="text-[10px] uppercase tracking-wider text-neutral-500">
+                          Active Reconstruction Cue:
+                        </div>
+                        <div className="mt-0.5">{suggestion.ladder.challengeText}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section 3: Cognitive Formulation Guidelines */}
             {manualActions.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-semibold text-neutral-200">
@@ -294,15 +338,17 @@ export function DeckDoctorSheet({
               </div>
             )}
 
-            {diagnosis.actions.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-6 text-center text-neutral-400">
-                <CheckCircle2 className="mb-2 h-8 w-8 text-emerald-400" />
-                <div className="font-semibold text-neutral-200">Deck in pristine health!</div>
-                <div className="text-xs text-neutral-500">
-                  No interference risks, leeches, or formulation violations found.
+            {diagnosis.actions.length === 0 &&
+              (!diagnosis.generationSuggestions ||
+                diagnosis.generationSuggestions.length === 0) && (
+                <div className="flex flex-col items-center justify-center py-6 text-center text-neutral-400">
+                  <CheckCircle2 className="mb-2 h-8 w-8 text-emerald-400" />
+                  <div className="font-semibold text-neutral-200">Deck in pristine health!</div>
+                  <div className="text-xs text-neutral-500">
+                    No interference risks, leeches, or formulation violations found.
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </>
         ) : null}
       </div>

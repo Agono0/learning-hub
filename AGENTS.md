@@ -74,6 +74,9 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 11. **Untrusted content never renders as HTML.** Use `<Markdown>` from `@/ui` (no raw HTML).
 12. **Never commit secrets or build output** â€” keystores, `.env`, `target/`, `.next*/` (see `.gitignore`).
 13. **Don't weaken tests to make them pass.** Fix the code, or explain in the PR why the test was wrong.
+14. **Autonomous push & zero breakage.** Always push changes autonomously without waiting for routine confirmation. Strictly verify that code does not break (`npm run check` and `npm run build`) before pushing.
+15. **CI completion before merge.** Before merging any pull request, wait for all GitHub Actions CI checks to finish and verify that they succeed. Never merge while CI is running, failing, or cancelled.
+16. **Continuous pipelined productivity.** While CI runs, do not wait idly. Immediately advance to the next priority task, feature, or verification on the project in parallel.
 
 ### Rule enforcement table
 
@@ -92,6 +95,9 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 | 11   | Untrusted content never raw HTML    | `<Markdown>` sanitizer from `@/ui` (ReactMarkdown with no dangerous HTML)                                      |
 | 12   | Never commit secrets                | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                            |
 | 13   | Don't weaken tests to pass          | CI pull request review & conventional commits                                                                  |
+| 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`, `npm run build`) before push                                         |
+| 15   | CI completion before merge          | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                 |
+| 16   | Continuous pipelined productivity   | Overlap active development cycles while remote CI verifies previous PR batches                                 |
 
 ## 4. Workflow
 
@@ -106,6 +112,9 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 6. **Commit atomically** with Conventional Commits (commitlint-enforced):
    `feat(core/curriculum): add LHCF slug validation` â€” one logical change per commit.
 7. **Pre-merge checklist:** `.github/pull_request_template.md`.
+8. **Autonomous push & verification:** Verify locally (`npm run check`, `npm run build`), then push branch directly and open PR autonomously.
+9. **Wait for CI green gate:** Verify remote GitHub Actions CI completion (`gh pr checks`) before merging. Never merge while CI is running or failing.
+10. **Pipelined productivity:** While remote CI executes on a pending PR, immediately begin the next task or feature in parallel.
 
 ## 5. Recipes
 

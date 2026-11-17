@@ -59,20 +59,22 @@ flowchart TD
 ## 2. Package & Module Map
 
 ### 2.1 `packages/core` (Pure Domain Logic)
+
 Zero I/O, zero Node.js dependencies, zero `ai` SDK imports. Completely isomorphic and runs in any JavaScript runtime.
 
-| Domain | Files / Directories | Responsibilities |
-|---|---|---|
-| **FSRS Scheduling** | `fsrs.ts`, `fsrs-optimizer.ts` | `ts-fsrs` 6.0 scheduler, 21-parameter MAP weight optimizer, review reschedule math. |
-| **Cognitive Science** | `generation/`, `metacognition/`, `feynman/`, `tmr/`, `interleaving/`, `dualcoding/`, `cognitive-load/`, `gkt/` | Slamecka-Graf generation effect, Koriat-Bjork calibration & Brier scores, Feynman teach-back & Rozenblit-Keil IOED evaluation, Rasch-Born sleep TMR cue scheduling, Leitner interleaving, cognitive load telemetry. |
-| **Mastery & Rating** | `bkt.ts`, `elo.ts`, `weakness.ts` | Bayesian Knowledge Tracing ($P(L_0), P(T), P(S), P(G)$), Puzzle & Review Elo ladders, remedial targeting. |
-| **Cards & Linter** | `cards.ts`, `linter.ts`, `doctor.ts` | 8 card types (basic, cloze, stepwise MCQ, type-in, image occlusion, proof-step, grammar, sentence mining), 20-rules linter, Deck Doctor automated remediations. |
-| **Human Systems** | `xp.ts`, `streaks.ts`, `motivation.ts`, `habits.ts`, `focus.ts`, `focus-lock/`, `journal.ts` | Gamification milestones, streak freezes & weekend amulets, WOOP goal formulation, habit stacking, friction gate countdowns (10s reflection), dopamine menus. |
-| **Curriculum** | `curriculum/`, `curriculum.ts`, `practice/` | LHCF (Learning HUB Curriculum Format) Track-Course-Unit-Lesson hierarchy, Bloom taxonomy verbs, prerequisite DAG validation, 12 interactive exercise engines. |
-| **Event Bus & Plugins** | `events.ts`, `plugin.ts`, `plugin-loader.ts` | Synchronous, isolated in-process event bus emitting durable facts (`HubEventMap`). Dynamic plugin lifecycle management. |
-| **Ingest & Media** | `ingest.ts`, `reading.ts`, `anki.ts`, `anki-export.ts`, `media.ts`, `ics.ts` | SQ3R triaging, EPUB/HTML/Markdown parsing, Anki `.apkg` and TSV bidirectional import/export, ICS calendar generation. |
+| Domain                  | Files / Directories                                                                                            | Responsibilities                                                                                                                                                                                                    |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **FSRS Scheduling**     | `fsrs.ts`, `fsrs-optimizer.ts`                                                                                 | `ts-fsrs` 6.0 scheduler, 21-parameter MAP weight optimizer, review reschedule math.                                                                                                                                 |
+| **Cognitive Science**   | `generation/`, `metacognition/`, `feynman/`, `tmr/`, `interleaving/`, `dualcoding/`, `cognitive-load/`, `gkt/` | Slamecka-Graf generation effect, Koriat-Bjork calibration & Brier scores, Feynman teach-back & Rozenblit-Keil IOED evaluation, Rasch-Born sleep TMR cue scheduling, Leitner interleaving, cognitive load telemetry. |
+| **Mastery & Rating**    | `bkt.ts`, `elo.ts`, `weakness.ts`                                                                              | Bayesian Knowledge Tracing ($P(L_0), P(T), P(S), P(G)$), Puzzle & Review Elo ladders, remedial targeting.                                                                                                           |
+| **Cards & Linter**      | `cards.ts`, `linter.ts`, `doctor.ts`                                                                           | 8 card types (basic, cloze, stepwise MCQ, type-in, image occlusion, proof-step, grammar, sentence mining), 20-rules linter, Deck Doctor automated remediations.                                                     |
+| **Human Systems**       | `xp.ts`, `streaks.ts`, `motivation.ts`, `habits.ts`, `focus.ts`, `focus-lock/`, `journal.ts`                   | Gamification milestones, streak freezes & weekend amulets, WOOP goal formulation, habit stacking, friction gate countdowns (10s reflection), dopamine menus.                                                        |
+| **Curriculum**          | `curriculum/`, `curriculum.ts`, `practice/`                                                                    | LHCF (Learning HUB Curriculum Format) Track-Course-Unit-Lesson hierarchy, Bloom taxonomy verbs, prerequisite DAG validation, 12 interactive exercise engines.                                                       |
+| **Event Bus & Plugins** | `events.ts`, `plugin.ts`, `plugin-loader.ts`                                                                   | Synchronous, isolated in-process event bus emitting durable facts (`HubEventMap`). Dynamic plugin lifecycle management.                                                                                             |
+| **Ingest & Media**      | `ingest.ts`, `reading.ts`, `anki.ts`, `anki-export.ts`, `media.ts`, `ics.ts`                                   | SQ3R triaging, EPUB/HTML/Markdown parsing, Anki `.apkg` and TSV bidirectional import/export, ICS calendar generation.                                                                                               |
 
 ### 2.2 `packages/db` (Persistence & Repositories)
+
 The sole writer of SQLite database state. Encapsulates transaction lifecycles and append-only constraints.
 
 - **Schema:** `packages/db/src/schema.ts` defining 92 relational tables with typed JSON attributes.
@@ -81,7 +83,9 @@ The sole writer of SQLite database state. Encapsulates transaction lifecycles an
 - **The Canonical Review Service:** `packages/db/src/review-service.ts` owning `executeReview` and `executeBatchReview`.
 
 ### 2.3 `packages/ai-adapters` (Isolated AI SDK Port)
+
 The only package in the entire repository permitted to import `@ai-sdk/*` or third-party AI drivers.
+
 - Providers supported: Anthropic (`claude-sonnet-4-5`), OpenAI (`gpt-4o-mini`), Google Gemini (`gemini-2.5-flash`), OpenAI-Compatible (DeepSeek, GLM), Ollama (local LLM), and Custom HTTP Endpoints.
 - Enforces prompt transport envelopes and verification against Zod schemas.
 
@@ -116,8 +120,9 @@ sequenceDiagram
 ```
 
 ### Architectural Guarantees
+
 1. **Atomicity:** All mutations succeed or roll back together. A grade cannot create XP without logging a `revlog` entry.
-2. **Isolation:** Events (`review.completed`, `streak.updated`) are dispatched *after* the transaction has safely committed. Listeners can never roll back or corrupt committed state.
+2. **Isolation:** Events (`review.completed`, `streak.updated`) are dispatched _after_ the transaction has safely committed. Listeners can never roll back or corrupt committed state.
 3. **Immutability:** Review logs and XP logs are INSERT-only. Historical data cannot be modified or purged by review workflows.
 
 ---
