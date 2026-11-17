@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { DualCodingAnalyzer } from '@/components/DualCodingAnalyzer'
 
 interface CanvasItem {
   id: string
@@ -226,6 +227,7 @@ export default function CanvasPage() {
           </div>
         }
       />
+      <DualCodingAnalyzer className="mt-4" />
 
       {!activeId ? (
         <div className="panel text-sm text-neutral-500">Create or pick a canvas.</div>

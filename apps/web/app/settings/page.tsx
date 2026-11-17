@@ -34,6 +34,7 @@ import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { DetoxWizard } from '@/components/DetoxWizard'
 
 const PROVIDERS: {
   key: AIProvider
@@ -478,6 +479,8 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      <DetoxWizard />
 
       <SemanticIndexPanel />
 

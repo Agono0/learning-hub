@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarPlus } from 'lucide-react'
+import { CalendarPlus, CalendarCheck, Copy, Check } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
 import {
@@ -84,6 +84,8 @@ export default function PlannerPage() {
         subtitle="Course workload + exam pressure radar → an optimal weekly spaced plan you can keep"
       />
 
+      <CalendarSubscriptionCard />
+
       {engagement.data?.engagement && engagement.data.engagement.sent > 0 && (
         <p className="text-xs text-neutral-500">
           Reminder engagement (7 days): {engagement.data.engagement.clicked} of{' '}
@@ -110,6 +112,71 @@ export default function PlannerPage() {
         onRemovePlan={() => removeMutation.mutate()}
         isRebuilding={buildMutation.isPending}
       />
+    </div>
+  )
+}
+
+/**
+ * "Add to calendar" card for the live `/api/calendar.ics` feed. The handler
+ * was fully built (exams + weekly plan blocks + review forecast) but had no
+ * UI entry point anywhere — this panel is that entry point. `webcal://` is
+ * the scheme calendar apps register for; the https fallback covers browsers.
+ */
+function CalendarSubscriptionCard() {
+  const [copied, setCopied] = useState(false)
+  const [origin, setOrigin] = useState('')
+
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
+
+  const feedUrl = origin ? `${origin}/api/calendar.ics` : '/api/calendar.ics'
+  const webcalUrl = feedUrl.replace(/^https?:/, 'webcal:')
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(feedUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      /* clipboard unavailable (e.g. insecure context) — the anchor still works */
+    }
+  }
+
+  return (
+    <div className="panel flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400">
+          <CalendarCheck className="h-5 w-5" />
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            Add to calendar
+          </h3>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Live feed: exam dates, this week&apos;s plan blocks, and the 7-day review forecast —
+            updates automatically in your calendar app.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <a
+          href={webcalUrl}
+          className="btn min-h-[44px]"
+          aria-label="Subscribe to the study calendar feed"
+        >
+          Subscribe
+        </a>
+        <button
+          type="button"
+          onClick={() => void copy()}
+          className="btn min-h-[44px]"
+          aria-label="Copy the calendar feed URL"
+        >
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          {copied ? 'Copied' : 'Copy URL'}
+        </button>
+      </div>
     </div>
   )
 }

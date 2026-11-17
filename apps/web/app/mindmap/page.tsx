@@ -85,7 +85,16 @@ export default function MindmapPage() {
       const first = mindmapsData.mindmaps[0]!
       setSelectedId(first.id)
       setTitle(first.title)
-      const nodes = JSON.parse(first.nodesJson) as MindmapNode[]
+      // Guarded parse — same contract as handleSelectMindmap below: a corrupt
+      // row (e.g. from a hand-edited backup) opens empty instead of crashing
+      // the page on load.
+      let nodes: MindmapNode[] = []
+      try {
+        const parsed: unknown = JSON.parse(first.nodesJson)
+        if (Array.isArray(parsed)) nodes = parsed as MindmapNode[]
+      } catch {
+        /* corrupt map: open it empty rather than crash the page */
+      }
       // Reconstruct simple markdown from nodes
       if (nodes.length > 0) {
         let md = `# ${first.title}\n`
