@@ -8,15 +8,18 @@
 
 ## 1. Prioritization Matrix
 
-| ID         | Priority | Category             | Status        | Summary                                                                                                                                        |
-| ---------- | -------- | -------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                       |
-| **T-P0-2** | **P0**   | Database / Setup     | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                  |
-| **T-P1-1** | **P1**   | Feature Completeness | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                    |
-| **T-P1-2** | **P1**   | Feature Completeness | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`. |
-| **T-P1-3** | **P1**   | API Completeness     | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                      |
-| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                    |
-| **T-P2-2** | **P2**   | Verification & Build | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                       |
+| ID         | Priority | Category             | Status        | Summary                                                                                                                                         |
+| ---------- | -------- | -------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T-P0-1** | **P0**   | Correctness / Infra  | **Completed** | Resolve Vitest test & hook timeout limits across workspace configs (`apps/web`, `core`, `db`, `worker`).                                        |
+| **T-P0-2** | **P0**   | Database / Setup     | **Completed** | Initialize SQLite database schema and seed data (`db:push`, `db:seed`) on working repository.                                                   |
+| **T-P1-1** | **P1**   | Feature Completeness | **Completed** | Implement MCP tools for recent cognitive engines (`generation_ladder`, `feynman_eval`, `metacognition_eval`) in `apps/mcp`.                     |
+| **T-P1-2** | **P1**   | Feature Completeness | **Completed** | Implement CLI commands for cognitive engines (`generation challenge`, `generation eval`, `feynman eval`, `metacognition stats`) in `apps/cli`.  |
+| **T-P1-3** | **P1**   | API Completeness     | **Completed** | Wire cognitive generation and Feynman evaluation endpoints into the headless REST server (`apps/server`).                                       |
+| **T-P2-1** | **P2**   | Cognitive Bridge     | **Completed** | Bridge Deck Doctor linter with Generation Effect ladder to convert passive/flagged cards into active generation challenges.                     |
+| **T-P2-2** | **P2**   | Verification & Build | **Completed** | Full system typecheck, linting, unit test pass across all workspaces, and production build verification.                                        |
+| **T-P2-3** | **P2**   | Interactive Studios  | **Completed** | Cognitive Interactive Studios: Dual-Coding Canvas Studio, Socratic Feynman, Interleaving Scheduler, Generation Practice Modal (PR #9).          |
+| **T-P2-4** | **P2**   | Coherence & Sleep    | **Completed** | Neurovisceral Cardiac Resonance Breathing Studio, Neuro-Acoustic Sleep TMR Consolidation Lab, Hands-Free Audio Commute Voice Player (PR #10).   |
+| **T-P2-5** | **P2**   | Spatial Mindmap 3D   | **Queued**    | Concept Constellation & Interactive Spatial Mindmap 3D Workbench: dynamic force-directed physics, cluster nodes, and Leitner-Feynman synthesis. |
 
 ---
 
@@ -134,3 +137,32 @@
 - **Files Affected:** Monorepo-wide.
 - **Dependencies:** T-P0-1 through T-P2-1.
 - **Acceptance Criteria:** Zero type errors, zero lint errors, 100% passing test suites, successful production build.
+
+---
+
+### T-P2-3: Cognitive Interactive Studios (PR #9)
+
+- **Problem:** Cognitive theories (dual-coding, interleaving, active generation, teach-back) lacked deep, calm, interactive full-screen studios for students to engage with concepts visually and dialectically.
+- **Root Cause:** Missing studio-grade front-end interactive workbenches.
+- **Proposed Solution:**
+  1. Implement DualCodingCanvasStudio with dual visual-verbal encoding modes, stroke smooth paths, SVG exports.
+  2. Implement FeynmanSocraticStudio with real-time rubric rubrics and dialectic Socratic challenges.
+  3. Implement InterleavingSchedulerModal with cognitive fatigue dampening and cross-discipline card interleaving.
+  4. Implement GenerationPracticeModal with 5-tier scaffolded completion.
+- **Files Affected:** `apps/web/src/components/*`, `apps/web/app/*`, `packages/core/*`.
+- **Status:** **Completed & Merged in PR #9**.
+
+---
+
+### T-P2-4: Neurovisceral Cardiac Resonance, Sleep TMR & Audio Commute Studios (PR #10)
+
+- **Problem:** Learners studying complex material suffer from sympathetic cognitive hyperarousal, nighttime memory fading, and inability to safely practice retrieval during daily commutes.
+- **Root Cause:** Absence of real-time biofeedback cardiac coherence pacers, automated acoustic TMR replay schedules, and hands-free voice-operated review players.
+- **Proposed Solution:**
+  1. Develop `packages/core/src/coherence/` with full McCraty neurovisceral integration algorithms (RMSSD, SDNN, pNN50, spectral Coherence Ratio) and 4 resonance protocols.
+  2. Implement `BreathingCoherenceStudio.tsx` and `CardiacCoherenceHUD.tsx` with circular SVG gauge, singing bowl transitions, and manual pulse-tap sensor.
+  3. Develop `packages/core/src/tmr/neuro-acoustic.ts` with Voss-McCartney 1/f pink noise filter coefficients, delta oscillation gain, and sub-arousal whisper volume ceiling (< 42 dBA).
+  4. Implement `SleepConsolidationStudio.tsx` with pure OLED night mode, red-shift melatonin protection, continuous pink noise + delta oscillation, and hypnogram timeline.
+  5. Implement `AudioCommuteStudio.tsx` with Web Speech API voice commands ("flip", "again", "hard", "good", "easy", "skip") and speech synthesis.
+- **Files Affected:** `packages/core/src/coherence/*`, `packages/core/src/tmr/neuro-acoustic.ts`, `apps/web/src/components/*`, `apps/web/src/ui/CardiacCoherenceHUD.tsx`, `apps/web/app/*`.
+- **Status:** **Completed & Verified (PR #10)**.

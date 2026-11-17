@@ -20,6 +20,7 @@ export {
   MetacognitiveCalibrationCard,
   type MetacognitiveCalibrationCardProps,
 } from './MetacognitiveCalibrationCard'
+export { CardiacCoherenceHUD, type CardiacCoherenceHUDProps } from './CardiacCoherenceHUD'
 export { SleepConsolidationHUD, type SleepConsolidationHUDProps } from './SleepConsolidationHUD'
 export { FeynmanExplanationCard, type FeynmanExplanationCardProps } from './FeynmanExplanationCard'
 export { GenerationMatrixHUD, type GenerationMatrixHUDProps } from './GenerationMatrixHUD'
