@@ -96,7 +96,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 | 12   | Never commit secrets                | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                            |
 | 13   | Don't weaken tests to pass          | CI pull request review & conventional commits                                                                  |
 | 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`, `npm run build`) before push                                         |
-| 15   | CI completion before merge          | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                  |
+| 15   | CI completion before merge          | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                 |
 | 16   | Continuous pipelined productivity   | Overlap active development cycles while remote CI verifies previous PR batches                                 |
 
 ## 4. Workflow
