@@ -356,3 +356,5 @@ export function ingestedCardToCardItem(card: IngestedCardOutput): {
   }
   return { type: 'basic', content: { basic: { front: card.front, back: card.back } } }
 }
+
+export * from './dual-coding-engine'

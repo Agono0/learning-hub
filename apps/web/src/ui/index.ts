@@ -35,6 +35,7 @@ export { SleepConsolidationHUD, type SleepConsolidationHUDProps } from './SleepC
 export { FeynmanExplanationCard, type FeynmanExplanationCardProps } from './FeynmanExplanationCard'
 export { GenerationMatrixHUD, type GenerationMatrixHUDProps } from './GenerationMatrixHUD'
 export { DesirableDifficultyHUD, type DesirableDifficultyHUDProps } from './DesirableDifficultyHUD'
+export { DualCodingHUD, type DualCodingHUDProps } from './DualCodingHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
