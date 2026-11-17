@@ -29,6 +29,7 @@ import {
   difficultyCommand,
   feynmanCommand,
   generationCommand,
+  invarianceCommand,
   metacognitionCommand,
   pretestCommand,
 } from './commands/cognitive'
@@ -731,6 +732,12 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Pretesting-effect questions for young, fragile cards',
     usage: 'questions [--limit 8]',
     run: (runArgs) => pretestCommand(runArgs),
+  },
+  {
+    name: 'invariance',
+    description: 'Rohrer-Taylor interleaved structural invariance practice plan',
+    usage: '[--mode interleaved|blocked] [--contrast 0..1] [--spacing 0..1]',
+    run: (runArgs) => invarianceCommand(runArgs),
   },
 ]
 
