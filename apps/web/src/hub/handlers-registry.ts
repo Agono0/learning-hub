@@ -157,6 +157,7 @@ import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
 import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
 import * as cognitiveHypercorrection from '../server/handlers/cognitive/hypercorrection/route'
 import * as cognitiveDifficultyAudit from '../server/handlers/cognitive/difficulty-audit/route'
+import * as cognitivePretesting from '../server/handlers/cognitive/pretesting/route'
 import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
 import * as dialecticArena from '../server/handlers/dialectic/arena/route'
 import * as ingestMultimodal from '../server/handlers/ingest/multimodal/route'
@@ -342,6 +343,7 @@ add('cognitive/generation', cognitiveGeneration)
 add('cognitive/gkt', cognitiveGkt)
 add('cognitive/load', cognitiveLoad)
 add('cognitive/difficulty-audit', cognitiveDifficultyAudit)
+add('cognitive/pretesting', cognitivePretesting)
 add('spatial/palace-3d', spatialPalace3d)
 add('dialectic/arena', dialecticArena)
 add('ingest/multimodal', ingestMultimodal)

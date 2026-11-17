@@ -151,6 +151,20 @@ describe('Headless REST Server Cognitive Routes', () => {
     const top = data.report.substitutions[0]
     expect(top.toId).toBe('practice_testing')
     expect(typeof top.dividendDelta).toBe('number')
+  it('GET /cognitive/pretesting returns pretest questions for young cards', async () => {
+    const res = await fetch(`${baseUrl}/cognitive/pretesting`)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(Array.isArray(data.candidates)).toBe(true)
+    expect(data.protocol.citation).toContain('Kornell')
+    for (const q of data.candidates) {
+      expect(typeof q.question).toBe('string')
+      expect(q.question.length).toBeGreaterThan(10)
+      expect(q.relatedness).toBeGreaterThanOrEqual(0)
+      expect(q.relatedness).toBeLessThanOrEqual(1)
+      expect(typeof q.solidPretest).toBe('boolean')
+    }
   })
 
   it('GET /cognitive/metacognition evaluates calibration from revlog', async () => {

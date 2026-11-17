@@ -45,6 +45,10 @@ import {
   toConsolidationCandidates,
   fragilityScore,
   type CorrectionTrial,
+  buildPretestQuestion,
+  judgmentOfLearningSchema,
+  pretestRelatedness,
+  selectPretestCandidates,
   type JudgmentOfLearning,
   type RelearnCandidate,
 } from '@learning-hub/core'
@@ -406,6 +410,71 @@ async function postDifficultyAudit(req: IncomingMessage, res: ServerResponse): P
   sendJson(res, 200, { ok: true, report, measured })
 }
 
+/** GET /cognitive/pretesting — pretest questions for young, fragile cards. */
+async function getPretesting(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const rows = await db
+    .select({
+      id: cards.id,
+      content: cards.content,
+      stability: cards.stability,
+      difficulty: cards.difficulty,
+    })
+    .from(cards)
+    .where(eq(cards.suspended, false))
+    .orderBy(asc(cards.stability))
+    .limit(120)
+
+  const frontBack = (content: unknown): { front: string; back: string } | null => {
+    if (!content || typeof content !== 'object') return null
+    const c = content as Record<string, unknown>
+    if (c.basic && typeof c.basic === 'object') {
+      const b = c.basic as Record<string, unknown>
+      if (typeof b.front === 'string' && typeof b.back === 'string')
+        return { front: b.front, back: b.back }
+    }
+    if (typeof c.front === 'string' && typeof c.back === 'string')
+      return { front: c.front, back: c.back }
+    return null
+  }
+
+  const usable = rows
+    .filter((r) => r.stability < 3 && frontBack(r.content) !== null)
+    .map((r) => ({ cardId: r.id, stability: r.stability, difficulty: r.difficulty }))
+  const picked = selectPretestCandidates(usable, 10)
+
+  const candidates = picked.flatMap((c) => {
+    const row = rows.find((r) => r.id === c.cardId)
+    const fb = row ? frontBack(row.content) : null
+    if (!fb) return []
+    const built = buildPretestQuestion(fb.front, fb.back)
+    const relatedness = pretestRelatedness(built.question, fb.back)
+    return [
+      {
+        cardId: c.cardId,
+        front: fb.front,
+        target: fb.back,
+        kind: built.kind,
+        question: built.question,
+        relatedness,
+        solidPretest: relatedness >= 0.5,
+        stability: c.stability,
+        difficulty: c.difficulty,
+      },
+    ]
+  })
+
+  sendJson(res, 200, {
+    ok: true,
+    candidates,
+    sampleSize: candidates.length,
+    protocol: {
+      name: 'pretest → feedback → study → retest',
+      citation: 'Kornell, Hays & Bjork (2009); Little & Bjork (2016); Butler & Roediger (2008)',
+      note: 'A wrong guess followed by immediate study is the protocol working, not failing.',
+    },
+  })
+}
+
 /** POST /cognitive/metacognition — evaluates metacognitive calibration from provided trial payload. */
 async function postMetacognition(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJson(req, metacognitionBodySchema)
@@ -643,6 +712,9 @@ export const routes: Route[] = [
     path: '/cognitive/difficulty-audit',
     summary: 'full Dunlosky technique audit from self-reported minutes',
     handler: postDifficultyAudit,
+    path: '/cognitive/pretesting',
+    summary: 'pretest questions for young, fragile cards (Kornell et al. 2009)',
+    handler: getPretesting,
   },
 ]
 
