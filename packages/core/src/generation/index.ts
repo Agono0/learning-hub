@@ -268,3 +268,5 @@ export function evaluateGenerationTrial(input: GenerationTrialInput): Generation
     feedback,
   }
 }
+
+export * from './desirable-difficulty-engine'

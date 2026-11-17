@@ -39,6 +39,7 @@ import {
   Swords,
   Target,
   Timer,
+  Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -77,6 +78,7 @@ export const NAV: NavGroup[] = [
       { href: '/audio-commute', label: 'Commute Audio', icon: Headphones },
       { href: '/sleep-tmr', label: 'Sleep TMR', icon: Moon },
       { href: '/metacognition', label: 'Metacognition', icon: Brain },
+      { href: '/generation', label: 'Generation', icon: Zap },
     ],
   },
   {
