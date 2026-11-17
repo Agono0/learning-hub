@@ -91,8 +91,8 @@ describe('/api/cognitive/metacognition', () => {
     const data = await res.json()
     expect(data.ok).toBe(true)
     expect(data.sampleSize).toBe(0)
-    expect(data.monitoring.level).toBe('no_evidence')
-    expect(data.brier.calibrationIndex).toBe(1)
+    expect(data.profile.sampleSize).toBe(0)
+    expect(data.profile.goodmanKruskalGamma).toBe(0)
     expect(data.crucibleDrillIds).toEqual([])
   })
 
@@ -114,9 +114,6 @@ describe('/api/cognitive/metacognition', () => {
     expect(data.report.bias).toBeGreaterThan(0.25)
     expect(data.report.status).toBe('fluency_illusion')
     expect(data.report.difficultyAdjustment).toBe('escalate_to_free_production')
-    // Extended payload carries the monitoring gamma + self-knowledge index.
-    expect(data.gamma.gamma).toBeCloseTo(0, 3) // all same confidence → undefined γ
-    expect(data.selfKnowledgeIndex).toBeGreaterThan(0)
   })
 
   it('GET derives monitoring metrics and the crucible drill list from revlog', async () => {
@@ -142,18 +139,15 @@ describe('/api/cognitive/metacognition', () => {
 
     expect(data.sampleSize).toBe(8)
     expect(data.ok).toBe(true)
-    // 6 of 8 correct; forecasts: 7 confident (0.9) + 1 hesitant (0.35) → mean 0.83125.
-    expect(data.report.accuracy).toBeCloseTo(0.75, 2)
-    expect(data.report.averageConfidence).toBeCloseTo(0.83125, 2)
+    // 6 of 8 correct → the canonical profile reflects the real log.
+    expect(data.profile.overallAccuracy).toBeCloseTo(0.75, 2)
+    expect(data.profile.sampleSize).toBe(8)
     // Confident miss on card 42 lands in the crucible drill list…
     expect(data.crucibleDrillIds).toContain(42)
     // …and the uncertain miss on card 7 does NOT (that is the honest part).
     expect(data.crucibleDrillIds).not.toContain(7)
     const preview = data.cruciblePreviews.find((p: { id: number }) => p.id === 42)
     expect(preview).toBeDefined()
-    // Studio report is HUD-ready and reflects the same real trials.
-    expect(data.studio.monitoring.brier.n).toBe(8)
-    expect(data.studio.selfKnowledgeIndex).toBeGreaterThan(0)
   })
 })
 

@@ -2,52 +2,34 @@
  * /api/cognitive/metacognition — Koriat & Bjork metacognitive calibration &
  * fluency-illusion engine, fed by REAL review history.
  *
- * GET  → Derive JOL observations from `revlog` (the FSRS review log persists a
- *        per-review `confidence` — 0 uncertain / 1 confident — written by
- *        `executeReview`), evaluate monitoring γ, the Murphy Brier
- *        decomposition, and surface the crucible drill list (confident-wrong
- *        cards). No samples: an empty history returns an honest empty report.
- * POST → Evaluate explicitly supplied trials (used by the studio's manual
- *        mode, the headless server, and MCP parity).
+ * GET  → Derive canonical `TrialMetacognitiveRecord`s from `revlog` (the
+ *        per-review confidence persisted by executeReview maps confident →
+ *        0.9 / uncertain → 0.35, outcome from the grade), then evaluate with
+ *        the engine's gamma / Murphy-Brier profile and surface the crucible
+ *        drill list (confident-wrong cards). No samples: an empty history
+ *        returns an honest empty profile.
+ * POST → Evaluate explicitly supplied JOL trials (manual mode / parity).
  */
 import { z } from 'zod'
 import { desc, inArray, sql } from 'drizzle-orm'
 import {
-  decomposeBrierScore,
+  evaluateMetacognitiveCalibrationProfile,
   evaluateMetacognitiveProfile,
-  evaluateStudioReport,
-  goodmanKruskalGamma,
-  jolObservationSchema,
-  type JolObservation,
+  judgmentOfLearningSchema,
+  toTrialMetacognitiveRecords,
+  type RevlogTrialRow,
 } from '@learning-hub/core'
 import { db } from '@/lib/db'
 import { cards, revlog } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 const metacognitionInputSchema = z.object({
-  trials: z.array(jolObservationSchema),
+  trials: z.array(judgmentOfLearningSchema),
 })
 
-/** Mapping used across MCP/server parity: stored binary confidence → 0–1 forecast. */
-export function confidenceToForecast(confidence: 0 | 1): number {
-  return confidence === 1 ? 0.9 : 0.35
-}
-
-/** Build JOL observations from revlog rows (shared with parity consumers). */
-export function trialsFromRows(
-  rows: { cardId: number; rating: number; confidence: 0 | 1; timeMs?: number | null }[],
-): JolObservation[] {
-  return rows.map((r) => ({
-    cardId: r.cardId,
-    confidence: confidenceToForecast(r.confidence),
-    outcome: r.rating >= 3 ? 1 : 0,
-    latencyMs: r.timeMs ?? undefined,
-  }))
-}
-
-/** GET /api/cognitive/metacognition — real calibration report from revlog. */
+/** GET /api/cognitive/metacognition — real calibration profile from revlog. */
 export const GET = withRoute(async () => {
-  const rows = db
+  const rows: RevlogTrialRow[] = db
     .select({
       cardId: revlog.cardId,
       rating: revlog.rating,
@@ -60,11 +42,8 @@ export const GET = withRoute(async () => {
     .limit(1000)
     .all()
 
-  const trials = trialsFromRows(rows)
-  const report = evaluateMetacognitiveProfile(trials)
-  const gamma = goodmanKruskalGamma(trials)
-  const brier = decomposeBrierScore(trials)
-  const studio = evaluateStudioReport({ jols: trials })
+  const records = toTrialMetacognitiveRecords(rows)
+  const profile = evaluateMetacognitiveCalibrationProfile(records)
 
   // Crucible drill list: cards whose most recent miss was committed with high
   // confidence — the Butterfield-Metcalfe high-value retest targets.
@@ -90,28 +69,10 @@ export const GET = withRoute(async () => {
 
   return Response.json({
     ok: true,
-    report,
-    monitoring: {
-      gamma: gamma.gamma,
-      level: gamma.level,
-      interpretation: gamma.interpretation,
-      concordantPairs: gamma.concordantPairs,
-      discordantPairs: gamma.discordantPairs,
-      tiedPairs: gamma.tiedPairs,
-    },
-    brier: {
-      score: brier.brierScore,
-      reliability: brier.reliability,
-      resolution: brier.resolution,
-      uncertainty: brier.uncertainty,
-      calibrationIndex: brier.calibrationIndex,
-      bins: brier.bins,
-    },
-    /** Full integrated studio report over the same real trials (HUD-ready). */
-    studio,
+    profile,
     crucibleDrillIds: confidentMissIds,
     cruciblePreviews: previewRows,
-    sampleSize: trials.length,
+    sampleSize: records.length,
   })
 })
 
@@ -119,10 +80,5 @@ export const GET = withRoute(async () => {
 export const POST = withRoute(async (req: Request) => {
   const { trials } = await readJson(req, metacognitionInputSchema)
   const report = evaluateMetacognitiveProfile(trials)
-  const gamma = goodmanKruskalGamma(trials)
-  const studio = evaluateStudioReport({ jols: trials })
-  return Response.json({ ok: true, report, gamma, selfKnowledgeIndex: studio.selfKnowledgeIndex })
+  return Response.json({ ok: true, report })
 })
-
-/** Type re-export for parity consumers (server/CLI). */
-export type MetacognitionTrial = JolObservation

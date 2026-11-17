@@ -140,3 +140,4 @@ export const calculateMetacognitiveBias = calculateConfidenceBias
 export const calculateMetacognitiveReport = evaluateMetacognitiveProfile
 
 export * from './hypercorrection-engine'
+export * from './correction-crucible'

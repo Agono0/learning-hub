@@ -24,8 +24,9 @@ import {
   evaluateFeynmanExplanation,
   evaluateGenerationTrial,
   evaluateHypercorrection,
+  evaluateMetacognitiveCalibrationProfile,
   evaluateMetacognitiveProfile,
-  evaluateStudioReport,
+  toTrialMetacognitiveRecords,
   forecastWorkload,
   prioritizeRelearningQueue,
   generationTierEnum,
@@ -339,6 +340,7 @@ export const cognitiveTools: RegisteredTool[] = [
           cardId: revlog.cardId,
           rating: revlog.rating,
           confidence: revlog.confidence,
+          timeMs: revlog.timeMs,
           stability: cards.stability,
           difficulty: cards.difficulty,
         })
@@ -379,23 +381,25 @@ export const cognitiveTools: RegisteredTool[] = [
 
       const crucible = evaluateHypercorrection(corrections)
       const queue = prioritizeRelearningQueue(candidates, corrections)
-      const studio = evaluateStudioReport({
-        jols: rows.map((r) => ({
-          cardId: r.cardId,
-          confidence: r.confidence === 1 ? 0.9 : 0.35,
-          outcome: r.rating >= 3 ? 1 : 0,
-        })),
-        corrections,
-        candidates,
-      })
+      const profile = evaluateMetacognitiveCalibrationProfile(
+        toTrialMetacognitiveRecords(
+          rows.map((r) => ({
+            cardId: r.cardId,
+            rating: r.rating,
+            confidence: r.confidence,
+            timeMs: r.timeMs,
+          })),
+        ),
+      )
 
       return json({
         ok: true,
         correctionsCount: corrections.length,
         crucible,
         relearningQueue: queue.slice(0, 12),
-        selfKnowledgeIndex: studio.selfKnowledgeIndex,
-        nextBestAction: studio.nextBestAction,
+        goodmanKruskalGamma: profile.goodmanKruskalGamma,
+        calibrationIndex: profile.metacognitiveCalibrationIndex,
+        recommendations: profile.recommendations,
       })
     },
   ),
