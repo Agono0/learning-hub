@@ -19,16 +19,7 @@ import {
   Video,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import {
-  Badge,
-  Button,
-  Callout,
-  Panel,
-  SelectField,
-  Tabs,
-  TextArea,
-  TextField,
-} from '@/ui'
+import { Badge, Button, Callout, Panel, SelectField, Tabs, TextArea, TextField } from '@/ui'
 
 export type IngestMediaType = 'youtube' | 'pdf' | 'code' | 'notes'
 
@@ -55,18 +46,22 @@ export interface IngestResponse {
   items: Array<{ type: string; content: unknown }>
 }
 
-const KIND_MAP: Record<IngestMediaType, 'youtube_transcript' | 'academic_paper' | 'code_files' | 'markdown_notes'> = {
+const KIND_MAP: Record<
+  IngestMediaType,
+  'youtube_transcript' | 'academic_paper' | 'code_files' | 'markdown_notes'
+> = {
   youtube: 'youtube_transcript',
   pdf: 'academic_paper',
   code: 'code_files',
   notes: 'markdown_notes',
 }
 
-const SAMPLE_DATA: Record<IngestMediaType, { title: string; content: string; urlOrFile?: string }> = {
-  youtube: {
-    title: 'MIT 6.006 - Intro to Algorithms',
-    urlOrFile: 'https://youtube.com/watch?v=ZaK6c0u3dYI',
-    content: `00:00:30.000
+const SAMPLE_DATA: Record<IngestMediaType, { title: string; content: string; urlOrFile?: string }> =
+  {
+    youtube: {
+      title: 'MIT 6.006 - Intro to Algorithms',
+      urlOrFile: 'https://youtube.com/watch?v=ZaK6c0u3dYI',
+      content: `00:00:30.000
 In this lecture we formally define asymptotic notation and worst-case running time.
 
 00:01:45.000
@@ -74,21 +69,21 @@ Merge sort operates by divide and conquer, recursively splitting arrays in halve
 
 00:03:10.000
 The master theorem provides a cookbook solution for recurrences of the form T(n) = aT(n/b) + f(n).`,
-  },
-  pdf: {
-    title: 'Attention Is All You Need (Vaswani et al.)',
-    content: `In this work we propose the Transformer, a model architecture eschewing recurrence.
+    },
+    pdf: {
+      title: 'Attention Is All You Need (Vaswani et al.)',
+      content: `In this work we propose the Transformer, a model architecture eschewing recurrence.
 
 Definition 1.1: Scaled Dot-Product Attention is an attention mechanism computed by dividing dot products of queries and keys by the square root of their dimension.
 $$Attention(Q, K, V) = softmax(\\frac{QK^T}{\\sqrt{d_k}})V$$
 
 Theorem 2.1 (Multi-Head Projection): Multi-head attention allows the model to jointly attend to information from different representation subspaces.
 $$MultiHead(Q, K, V) = Concat(head_1, ..., head_h)W^O$$`,
-  },
-  code: {
-    title: 'FSRS-6 Algorithm Implementation',
-    urlOrFile: 'fsrs.ts',
-    content: `export interface FSRSCard {
+    },
+    code: {
+      title: 'FSRS-6 Algorithm Implementation',
+      urlOrFile: 'fsrs.ts',
+      content: `export interface FSRSCard {
   stability: number
   difficulty: number
   due: string
@@ -101,10 +96,10 @@ export function nextInterval(stability: number, desiredRetention: number): numbe
 export function retrievability(elapsedDays: number, stability: number): number {
   return Math.pow(1 + elapsedDays / (9 * stability), -1)
 }`,
-  },
-  notes: {
-    title: 'Cognitive Science & Memory Consolidation',
-    content: `# Memory Consolidation Highlights
+    },
+    notes: {
+      title: 'Cognitive Science & Memory Consolidation',
+      content: `# Memory Consolidation Highlights
 
 - **Long-term Potentiation**: A persistent strengthening of synapses based on recent patterns of activity.
 - The neurotransmitter {{c1::Glutamate}} binds to AMPA and NMDA receptors to trigger synaptic plasticity.
@@ -113,8 +108,8 @@ Q: What is the testing effect according to Roediger & Karpicke (2006)?
 A: Active retrieval practice produces stronger, longer-lasting memory traces than passive restudy.
 
 Desirable Difficulties :: Learning tasks that require effortful processing and enhance long-term retention.`,
-  },
-}
+    },
+  }
 
 export function UniversalIngestStudio() {
   const [media, setMedia] = useState<IngestMediaType>('youtube')
