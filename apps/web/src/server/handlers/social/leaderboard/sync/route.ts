@@ -1,5 +1,5 @@
 /**
- * POST /api/social/friends/sync — fetch every friend's shared stats gist and
+ * POST /api/social/leaderboard/sync — fetch every friend's shared stats gist and
  * refresh the local leaderboard rows. First callers of the previously-dead
  * `updateFriendSync`: friends are read-only public gists, no auth, no server.
  */

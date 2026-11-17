@@ -123,7 +123,7 @@ Engineering-judgment decisions (D3–D7) are revisitable: each names its rejecte
 - [Appendix F — environment variable audit](#appendix-f--environment-variable-audit)
 - [Appendix G — full schema inventory (92 tables)](#appendix-g--full-schema-inventory-92-tables-verified-by-grep-at-audit-time)
 - [Appendix H — migration registry (26)](#appendix-h--migration-registry-26-verified-against-migrationsindexts)
-- [Appendix I — handler inventory (143)](#appendix-i--handler-inventory-143-verified)
+- [Appendix I — handler inventory](#appendix-i--handler-inventory-143-verified)
 - [Appendix J — MCP tools, CLI commands, server routes](#appendix-j--mcp-tools-cli-commands-server-routes)
 - [Appendix K — test file inventory](#appendix-k--test-file-inventory-at-audit-time)
 - [Appendix L — doc-drift fixes, line-by-line](#appendix-l--doc-drift-fixes-line-by-line)
@@ -160,7 +160,7 @@ Learning HUB is, at the code level, in an unusually disciplined state:
 - **Zero `as any`, zero `@ts-ignore`, zero `eslint-disable` without a justified inline reason** (one: `packages/db/src/driver/sqlite-wasm.ts:495`, `no-this-alias` disabled with an explanatory comment mirroring better-sqlite3's transaction shape; and one intentional `@ts-expect-error` in a negative type test, `packages/db/tests/review-service.test.ts:471`).
 - **Zero skipped/focused tests** (`describe.skip`, `it.skip`, `it.only`, `test.todo` — none exist anywhere).
 - **Zero "not implemented" stubs**, zero `throw new Error('TODO')` patterns.
-- **143/143 API handler files are registered** in `apps/web/src/hub/handlers-registry.ts`, each has a 1:1 `app/api/**/route.ts` shim, and both directions are test-enforced (`apps/web/tests/hub-registry.test.ts`, `tests/route-safety.test.ts`).
+- **All API handler files are registered** (the count has grown past the 143 inventoried here — the registry test is the source of truth) in `apps/web/src/hub/handlers-registry.ts`, each has a 1:1 `app/api/**/route.ts` shim, and both directions are test-enforced (`apps/web/tests/hub-registry.test.ts`, `tests/route-safety.test.ts`).
 - **Migrations 001–026 are contiguous**, all registered in order in `packages/db/src/migrations/index.ts`, runner enforces strictly increasing ids (`packages/db/src/migrations/runner.ts:99`).
 - **Append-only rule (AGENTS.md rule 8) holds everywhere** — the undo path correctly uses `revlog_undos` tombstones instead of ever touching `revlog`.
 - **All 12 exercise types** have schema + `grade()` + renderer + tests (compile-time-complete via the `INPUTS` map in `apps/web/src/ui/exercises/inputs.tsx:727-740`).
@@ -224,7 +224,7 @@ All scans ran against tracked files only (`git grep`), so build output and `node
 **Scan 2 — feature-surface cross-check.**
 
 - Enumerated all 43 `app/**/page.tsx` files and extracted every transport call (`apiGet/apiSend/apiUpload/apiStream/apiDownload` from `@/lib/transport`) with its literal URL.
-- Enumerated all 143 `src/server/handlers/**/route.ts` files with exported HTTP methods.
+- Enumerated the `src/server/handlers/**/route.ts` files with exported HTTP methods (143 at audit time; the registry keeps growing — `hub-registry.test.ts` auto-discovers).
 - Read `apps/web/src/hub/handlers-registry.ts` in full (143 imports, 143 `add()` calls, dynamic-segment matcher) and every `app/api/**/route.ts` shim.
 - Read `apps/web/src/components/nav.ts` in full and cross-checked against pages.
 - Read `packages/core/src/ai/transport.ts` (`AI_FEATURES`) and `packages/core/src/ai/manual.ts` (`MANUAL_MODES`); grepped `requireAI(` across handlers and `TransportPanel`/`useManualMode` across UI.

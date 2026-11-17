@@ -238,6 +238,10 @@ function ReviewPageInner() {
   const [confidence, setConfidence] = useState<Confidence>(1)
   const [energy, setEnergy] = useState(initialEnergy)
   const [results, setResults] = useState<SessionResult[]>([])
+  /** Study Coins minted by /api/world/verify/review during this session. */
+  const [worldCoins, setWorldCoins] = useState(0)
+  /** Recall latency captured at grade time, read by the world-coin verifier. */
+  const gradeElapsedRef = useRef(0)
   const [undoStack, setUndoStack] = useState<
     {
       card: CardRow
@@ -396,12 +400,15 @@ function ReviewPageInner() {
   }, [resetRecallTimer])
 
   const gradeMutation = useMutation({
-    mutationFn: async (payload: { cardId: number; grade: Grade; confidence: Confidence }) =>
-      apiSend<ReviewResponse>('/api/review', 'POST', {
+    mutationFn: async (payload: { cardId: number; grade: Grade; confidence: Confidence }) => {
+      const elapsedMs = readRecallTimeMs()
+      gradeElapsedRef.current = elapsedMs
+      return apiSend<ReviewResponse>('/api/review', 'POST', {
         ...payload,
-        timeMs: readRecallTimeMs(),
+        timeMs: elapsedMs,
         tzOffset: new Date().getTimezoneOffset(),
-      }),
+      })
+    },
     onSuccess: (data, variables) => {
       if (!data.ok || !current) return
       // Haptic texture: a heavy beat for misses (attention), light for passes.
@@ -447,6 +454,20 @@ function ReviewPageInner() {
           confidence: variables.confidence,
         },
       ])
+      // World economy: verify the review server-side (anti-cheat) and mint
+      // Study Coins when it passes. Fire-and-forget — a failure must never
+      // block or slow the review loop; the world page surfaces the balance.
+      void apiSend<{ valid: boolean; coinsAwarded: number }>('/api/world/verify/review', 'POST', {
+        cardId: variables.cardId,
+        elapsedMs: gradeElapsedRef.current,
+        rating: variables.grade,
+      })
+        .then((res) => {
+          if (res?.valid && res.coinsAwarded > 0) {
+            setWorldCoins((c) => c + res.coinsAwarded)
+          }
+        })
+        .catch(() => undefined)
       if (data.hypercorrection?.isEligible && data.hypercorrection.prompt) {
         hapticHypercorrection()
         setHyperNotice({
@@ -1054,6 +1075,11 @@ function ReviewPageInner() {
                 {stats.correct} / {stats.total} recalled ({stats.accuracy}%)
               </div>
               <div className="text-sm text-neutral-500">+{stats.xp} XP earned</div>
+              {worldCoins > 0 && (
+                <div className="text-xs text-amber-400">
+                  +{worldCoins} Study Coins from verified reviews (anti-cheat checked)
+                </div>
+              )}
               {blindGraded.length > 0 && (
                 <div className="text-xs text-amber-400">
                   {blindGraded.length} graded blind — corrections surface at your next session.
