@@ -40,6 +40,10 @@ export { SelfExplanationHUD, type SelfExplanationHUDProps } from './SelfExplanat
 export { InterleavingHUD, type InterleavingHUDProps } from './InterleavingHUD'
 export { TechniqueAuditHUD, type TechniqueAuditHUDProps } from './TechniqueAuditHUD'
 export { AnalogicalTransferHUD, type AnalogicalTransferHUDProps } from './AnalogicalTransferHUD'
+export {
+  CognitiveFlexibilityHUD,
+  type CognitiveFlexibilityHUDProps,
+} from './CognitiveFlexibilityHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'

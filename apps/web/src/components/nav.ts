@@ -89,6 +89,7 @@ export const NAV: NavGroup[] = [
       { href: '/interleaving', label: 'Interleaving', icon: Shuffle },
       { href: '/workload', label: 'Workload', icon: Gauge },
       { href: '/analogy', label: 'Analogical Transfer', icon: GitCompare },
+      { href: '/flexibility', label: 'Cognitive Flexibility', icon: Compass },
     ],
   },
   {
