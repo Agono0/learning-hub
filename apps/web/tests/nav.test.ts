@@ -11,8 +11,20 @@ import { normalizeThemePreference } from '../src/components/ThemeSync'
 describe('navigation model & theme helpers', () => {
   it('preserves all routes across the 4 canonical scaffolder groups', () => {
     expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
-    // 43: the canonical set plus /search (M18) + ultimate cognitive expansion routes + v2 features
-    expect(ALL_NAV_ITEMS).toHaveLength(43)
+    // Self-consistency instead of a magic count: every new page PR has to
+    // remember to bump the old hardcoded number (it drifted twice), so assert
+    // the invariants that actually matter — uniqueness, icons, primary
+    // budget — and pin the historical routes below.
+    const hrefs = ALL_NAV_ITEMS.map((i) => i.href)
+    expect(new Set(hrefs).size).toBe(hrefs.length)
+    for (const item of ALL_NAV_ITEMS) {
+      expect(item.href.startsWith('/')).toBe(true)
+      expect(item.icon).toBeDefined() // lucide forwardRef components are objects
+      expect(item.label.length).toBeGreaterThan(0)
+    }
+    expect(hrefs.length).toBeGreaterThanOrEqual(43)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/generation')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-coding')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/search')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/audio-commute')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/sleep-tmr')).toBe(true)

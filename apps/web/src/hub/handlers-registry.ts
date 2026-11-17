@@ -155,6 +155,7 @@ import * as cognitiveFeynmanEval from '../server/handlers/cognitive/feynman-eval
 import * as cognitiveGeneration from '../server/handlers/cognitive/generation/route'
 import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
 import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
+import * as cognitiveHypercorrection from '../server/handlers/cognitive/hypercorrection/route'
 import * as spatialPalace3d from '../server/handlers/spatial/palace-3d/route'
 import * as dialecticArena from '../server/handlers/dialectic/arena/route'
 import * as ingestMultimodal from '../server/handlers/ingest/multimodal/route'
@@ -333,6 +334,7 @@ add('cognitive/dual-coding', cognitiveDualCoding)
 add('cognitive/flow-state', cognitiveFlowState)
 add('cognitive/interleaving', cognitiveInterleaving)
 add('cognitive/metacognition', cognitiveMetacognition)
+add('cognitive/hypercorrection', cognitiveHypercorrection)
 add('cognitive/tmr', cognitiveTmr)
 add('cognitive/feynman-eval', cognitiveFeynmanEval)
 add('cognitive/generation', cognitiveGeneration)

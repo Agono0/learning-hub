@@ -8,13 +8,17 @@ import {
   createGenerationLadder,
   evaluateFeynmanExplanation,
   evaluateGenerationTrial,
+  evaluateHypercorrection,
   evaluateMetacognitiveProfile,
   generationTierEnum,
+  prioritizeRelearningQueue,
+  type CorrectionTrial,
   type GenerationTier,
   type JudgmentOfLearning,
+  type RelearnCandidate,
 } from '@learning-hub/core'
-import { db, revlog } from '@learning-hub/db'
-import { desc } from 'drizzle-orm'
+import { cards, db, revlog } from '@learning-hub/db'
+import { desc, eq } from 'drizzle-orm'
 
 function parseFlag(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag)
@@ -176,5 +180,75 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
     return
   }
 
-  console.error(`Unknown subcommand: ${sub}. Usage: learning-hub metacognition [stats]`)
+  if (sub === 'hypercorrection') {
+    const limit = Number(parseFlag(args, '--limit') || '200')
+    const rows = await db
+      .select({
+        cardId: revlog.cardId,
+        rating: revlog.rating,
+        confidence: revlog.confidence,
+        stability: cards.stability,
+        difficulty: cards.difficulty,
+      })
+      .from(revlog)
+      .innerJoin(cards, eq(revlog.cardId, cards.id))
+      .orderBy(desc(revlog.id))
+      .limit(limit)
+
+    // Same reconstruction as the web API / MCP tool: a miss arms its card,
+    // the card's next success counts as the correction.
+    const chronological = [...rows].reverse()
+    const corrections: CorrectionTrial[] = []
+    const armed = new Map<number, 0 | 1>()
+    for (const r of chronological) {
+      const correct = r.rating >= 3
+      const pending = armed.get(r.cardId)
+      if (pending !== undefined && correct) {
+        corrections.push({
+          cardId: r.cardId,
+          initialConfidence: pending === 1 ? 0.9 : 0.35,
+          wasCorrected: true,
+        })
+        armed.delete(r.cardId)
+      }
+      if (!correct) armed.set(r.cardId, r.confidence)
+    }
+
+    const candidates: RelearnCandidate[] = [...armed.entries()].map(([cardId, confidence]) => {
+      const card = rows.find((r) => r.cardId === cardId)
+      return {
+        cardId,
+        errorConfidence: confidence === 1 ? 0.9 : 0.35,
+        stability: card && card.stability > 0 ? card.stability : 1,
+        difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
+        wasAlreadyCorrected: false,
+      }
+    })
+
+    const crucible = evaluateHypercorrection(corrections)
+    const queue = prioritizeRelearningQueue(candidates, corrections)
+
+    console.log(`\n🧪 Hypercorrection Crucible (${corrections.length} correction trials)`)
+    console.log(`Status:                ${crucible.status}`)
+    console.log(
+      `HC Index:              ${crucible.hypercorrectionIndex} (corrected rate of high-confidence errors − low-confidence errors)`,
+    )
+    console.log(`Overall Correction:    ${(crucible.overallCorrectionRate * 100).toFixed(1)}%`)
+    console.log(`Mean Epistemic Shock:  ${crucible.meanShockMagnitude}`)
+    console.log(`Vulnerable (conf ≥70% uncorrected): ${crucible.uncorrectedHighConfidenceErrors}`)
+    console.log(`Guidance:              ${crucible.guidance}`)
+    if (queue.length > 0) {
+      console.log('\nRelearning priority queue (Butterfield-Metcalfe weighted):')
+      for (const item of queue.slice(0, 10)) {
+        console.log(
+          `  #${item.cardId}  P${item.priority}  predicted fix ${Math.round(item.predictedCorrectionProbability * 100)}%  ${item.rationale}`,
+        )
+      }
+    }
+    return
+  }
+
+  console.error(
+    `Unknown subcommand: ${sub}. Usage: learning-hub metacognition [stats|hypercorrection]`,
+  )
 }

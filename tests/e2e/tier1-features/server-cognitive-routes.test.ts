@@ -127,4 +127,25 @@ describe('Headless REST Server Cognitive Routes', () => {
     expect(data.report).toBeDefined()
     expect(data.report.brierScore).toBeGreaterThanOrEqual(0)
   })
+
+  it('GET /cognitive/metacognition/hypercorrection returns the crucible report + queue', async () => {
+    const res = await fetch(`${baseUrl}/cognitive/metacognition/hypercorrection?limit=200`)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.ok).toBe(true)
+    expect(typeof data.correctionsCount).toBe('number')
+    expect(data.report).toBeDefined()
+    expect(typeof data.report.hypercorrectionIndex).toBe('number')
+    expect(typeof data.report.uncorrectedHighConfidenceErrors).toBe('number')
+    expect(Array.isArray(data.report.bands)).toBe(true)
+    expect(Array.isArray(data.queue)).toBe(true)
+    for (const item of data.queue) {
+      expect(typeof item.cardId).toBe('number')
+      expect(item.priority).toBeGreaterThanOrEqual(0)
+      expect(item.priority).toBeLessThanOrEqual(100)
+      expect(typeof item.rationale).toBe('string')
+      expect(item.predictedCorrectionProbability).toBeGreaterThanOrEqual(0)
+      expect(item.predictedCorrectionProbability).toBeLessThanOrEqual(1)
+    }
+  })
 })

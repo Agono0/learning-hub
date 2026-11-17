@@ -607,6 +607,40 @@ Measuring the exact alignment between predicted memory retention and empirical r
 - **In Learning HUB:** `computeBrierScore` and `computeCalibrationMetrics` in `packages/core/src/analytics.ts`, reliability diagram in `apps/web/app/analytics/page.tsx`.
 - **Status:** ✅
 
+### Nelson–Narens Monitoring vs Control & Goodman–Kruskal γ — Nelson & Narens (1990); Nelson (1984)
+
+Metamemory as a two-stream loop: **monitoring** (how accurately Judgments of
+Learning predict recall) and **control** (whether restudy effort follows item
+fragility rather than fluency).
+
+- **Evidence:** Nelson (1984) showed γ ((C−D)/(C+D) over concordant/discordant
+  JOL–recall pairs) is the field-standard monitoring measure for dichotomous
+  criteria; the control stream's failure mode — allocation tracking fluency
+  instead of need — is the "comfort rereading" trap (Bjork & Bjork 2011).
+- **In Learning HUB:** `goodmanKruskalGamma`, `evaluateControlSensitivity`, and
+  `evaluateStudioReport` in `packages/core/src/metacognition/hypercorrection-engine.ts`;
+  `/api/cognitive/metacognition` (real revlog-derived γ, `revlog.confidence` ×
+  grade); the `/metacognition` studio's dual-slider JOL drill and control panel.
+- **Status:** ✅
+
+### Hypercorrection Effect — Butterfield & Metcalfe (2001, 2006)
+
+Errors committed with high confidence are MORE likely to be corrected on
+retest than low-confidence errors — the "epistemic shock" of a confident miss
+produces disproportionate retention gains.
+
+- **Evidence:** Butterfield & Metcalfe (2001, Exp. 1): ~72% of high-confidence
+  errors corrected vs ~46% of low-confidence errors; confirmed across ages
+  (2006). High-confidence misses are therefore the highest-value relearning
+  targets in a spaced-repetition system.
+- **In Learning HUB:** `epistemicShockOf`, `evaluateHypercorrection`,
+  `predictedCorrectionProbability`, and `prioritizeRelearningQueue` in
+  `packages/core/src/metacognition/hypercorrection-engine.ts`;
+  `/api/cognitive/hypercorrection` (reconstructs miss→retest pairs from
+  revlog, queues uncorrected confident misses); the crucible tab in
+  `MetacognitionStudio.tsx`; confident-wrong drill list on `/metacognition`.
+- **Status:** ✅
+
 ### Procedural Focus Soundscape & Acoustic Masking
 
 Dynamic brown/pink noise generation combined with isochronic tempo pulses.

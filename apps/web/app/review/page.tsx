@@ -45,6 +45,7 @@ import {
 } from '@/platform/haptics'
 import {
   applyMistake,
+  evaluateMetacognitiveProfile,
   evaluateSpokenAnswer,
   initialEnergy,
   MAX_ENERGY,
@@ -142,6 +143,8 @@ interface SessionResult {
   grade: Grade
   intervalDays: number
   xp: number
+  /** Confidence the user attached at grading time (0 uncertain / 1 confident) */
+  confidence: Confidence
 }
 /** GET /api/review response — the queue plus, for a delayed-feedback deck, the restudy list. */
 interface SessionPayload {
@@ -441,6 +444,7 @@ function ReviewPageInner() {
           grade: variables.grade,
           intervalDays: data.intervalDays,
           xp: data.xp,
+          confidence: variables.confidence,
         },
       ])
       if (data.hypercorrection?.isEligible && data.hypercorrection.prompt) {
@@ -584,7 +588,15 @@ function ReviewPageInner() {
       )
       setResults((r) => [
         ...r,
-        { cardId: current.id, grade: result.grade, intervalDays, xp: review.xpEarned },
+        {
+          cardId: current.id,
+          grade: result.grade,
+          intervalDays,
+          xp: review.xpEarned,
+          // Exercise-graded cards have no separate confidence prompt; treat as
+          // uncertain so the calibration radar only counts honest JOL trials.
+          confidence: 0,
+        },
       ])
     }
     setExerciseResult(null)
@@ -761,6 +773,24 @@ function ReviewPageInner() {
       accuracy: total ? Math.round((correct / total) * 100) : 0,
       xp: results.reduce((a, r) => a + r.xp, 0),
     }
+  }, [results])
+
+  /**
+   * Real metacognitive calibration for THIS session, derived from the
+   * confidence rating the user attached to every graded review (revlog
+   * persists the same 0/1 signal). Fewer than 5 confidence-rated trials →
+   * the radar stays hidden: a Brier/gamma readout on tiny samples is
+   * noise dressed as insight.
+   */
+  const calibrationReport = useMemo(() => {
+    const trials = results.map((r) => ({
+      cardId: r.cardId,
+      // Same mapping the server/MCP parity uses for stored confidence.
+      confidence: r.confidence === 1 ? 0.9 : 0.35,
+      outcome: r.grade > 1 ? 1 : 0,
+    }))
+    if (trials.length < 5) return null
+    return evaluateMetacognitiveProfile(trials)
   }, [results])
 
   // ─── Setup screen ───
@@ -1086,27 +1116,14 @@ function ReviewPageInner() {
             }
           />
         )}
-        {stats.total > 0 && (
+        {calibrationReport && (
           <MetacognitionRadar
-            brierScore={Number(
-              Math.max(0.04, Math.min(0.45, (100 - stats.accuracy) / 180)).toFixed(2),
-            )}
-            bias={stats.accuracy < 60 ? 0.28 : stats.accuracy > 85 ? -0.05 : 0.09}
-            status={
-              stats.accuracy < 60
-                ? 'fluency_illusion'
-                : stats.accuracy > 80
-                  ? 'expertly_calibrated'
-                  : 'mild_overconfidence'
-            }
-            difficultyAdjustment={
-              stats.accuracy < 60
-                ? 'escalate_to_free_production'
-                : stats.accuracy > 80
-                  ? 'maintain_standard_spacing'
-                  : 'escalate_to_free_production'
-            }
-            sampleSize={stats.total}
+            brierScore={calibrationReport.brierScore}
+            bias={calibrationReport.bias}
+            status={calibrationReport.status}
+            difficultyAdjustment={calibrationReport.difficultyAdjustment}
+            guidance={calibrationReport.guidance}
+            sampleSize={calibrationReport.sampleSize}
           />
         )}
         {stats.total > 0 && (

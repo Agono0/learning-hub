@@ -95,8 +95,13 @@ describe('Cognitive Science Interactive Studios API Suite', () => {
       expect(res.status).toBe(200)
       const data = await res.json()
       expect(data.ok).toBe(true)
-      expect(data.report.brierScore).toBeDefined()
-      expect(data.report.status).toBeDefined()
+      // The GET now derives the profile from real revlog rows (empty log →
+      // honest zero profile) instead of hardcoded sample trials.
+      expect(data.profile.brierScore).toBeDefined()
+      expect(data.profile.status).toBeDefined()
+      // sampleSize reflects real revlog rows (0 on an empty runner DB) — the
+      // profile must be well-formed either way, never a hardcoded sample.
+      expect(data.sampleSize).toBeGreaterThanOrEqual(0)
     })
 
     it('processes batch judgments and computes updated Brier score', async () => {
