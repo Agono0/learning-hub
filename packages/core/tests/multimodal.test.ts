@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  extractMarkdownNotesAndClozes,
   extractPaperFormulasAndDefinitions,
   generateCodeClozeCards,
   generateVideoCards,
@@ -56,6 +57,45 @@ export function calculateVelocity(distance: number, time: number): number {
       expect(cards[0].format).toBe('cloze')
       expect(cards[0].front).toContain('{{c1::calculateVelocity}}')
       expect(cards[0].back).toBe('calculateVelocity')
+    })
+  })
+
+  describe('extractMarkdownNotesAndClozes', () => {
+    it('extracts clozes, Q&A pairs, and bold definitions from markdown', () => {
+      const notes = `
+# Synaptic Plasticity Notes
+
+- **Long-term Potentiation**: A persistent strengthening of synapses based on recent patterns of activity.
+- The neurotransmitter {{c1::Glutamate}} binds to AMPA and NMDA receptors.
+
+Q: What ion block is removed during strong NMDA depolarization?
+A: Magnesium ion (Mg2+) block.
+
+Heuristic :: A practical method or mental shortcut not guaranteed to be optimal.
+`
+      const cards = extractMarkdownNotesAndClozes(notes)
+      expect(cards.length).toBeGreaterThanOrEqual(4)
+
+      // Cloze
+      const cloze = cards.find((c) => c.format === 'cloze')
+      expect(cloze).toBeDefined()
+      expect(cloze?.front).toContain('{{c1::Glutamate}}')
+      expect(cloze?.back).toBe('Glutamate')
+
+      // Q&A
+      const qa = cards.find((c) => c.front.includes('What ion block is removed'))
+      expect(qa).toBeDefined()
+      expect(qa?.back).toContain('Magnesium ion')
+
+      // Bold definition
+      const ltp = cards.find((c) => c.front.includes('Long-term Potentiation'))
+      expect(ltp).toBeDefined()
+      expect(ltp?.back).toContain('persistent strengthening')
+
+      // Double colon definition
+      const heuristic = cards.find((c) => c.front.includes('Heuristic'))
+      expect(heuristic).toBeDefined()
+      expect(heuristic?.back).toContain('practical method')
     })
   })
 })

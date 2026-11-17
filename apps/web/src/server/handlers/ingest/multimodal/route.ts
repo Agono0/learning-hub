@@ -8,6 +8,7 @@
  */
 import { z } from 'zod'
 import {
+  extractMarkdownNotesAndClozes,
   extractPaperFormulasAndDefinitions,
   generateCodeClozeCards,
   generateVideoCards,
@@ -21,7 +22,7 @@ import { readJson, withRoute } from '@/lib/api'
 const MAX_CONTENT_CHARS = 500_000
 
 const multimodalIngestSchema = z.object({
-  kind: z.enum(['youtube_transcript', 'academic_paper', 'code_files']),
+  kind: z.enum(['youtube_transcript', 'academic_paper', 'code_files', 'markdown_notes']),
   rawContent: z.string().min(5).max(MAX_CONTENT_CHARS),
   title: z.string().trim().max(200).default('Ingested Source'),
   sourceUrl: z
@@ -52,6 +53,9 @@ export const POST = withRoute(async (req: Request) => {
       break
     case 'code_files':
       cards = generateCodeClozeCards(body.filename ?? 'code.ts', body.rawContent)
+      break
+    case 'markdown_notes':
+      cards = extractMarkdownNotesAndClozes(body.rawContent)
       break
   }
 
