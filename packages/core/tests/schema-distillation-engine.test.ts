@@ -185,7 +185,7 @@ describe('Meaningful Learning & Propositional Concept Schema Engine', () => {
       expect(state.schemaMap.nodes).toHaveLength(5)
       expect(state.schemaMap.links).toHaveLength(5)
       expect(state.metrics.isSchemaSound).toBe(true)
-      expect(state.metrics.crossLinkSynthesisDensity).toBeGreaterThanOrEqual(0.2)
+      expect(state.metrics.crossLinkSynthesisRatio).toBeGreaterThanOrEqual(0.2)
       expect(state.metrics.meaningfulLearningIndex).toBeGreaterThan(60)
 
       const cards = exportSchemaToFSRSCards(state.schemaMap)
