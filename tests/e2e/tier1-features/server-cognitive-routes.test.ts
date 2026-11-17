@@ -151,6 +151,8 @@ describe('Headless REST Server Cognitive Routes', () => {
     const top = data.report.substitutions[0]
     expect(top.toId).toBe('practice_testing')
     expect(typeof top.dividendDelta).toBe('number')
+  })
+
   it('GET /cognitive/pretesting returns pretest questions for young cards', async () => {
     const res = await fetch(`${baseUrl}/cognitive/pretesting`)
     expect(res.status).toBe(200)

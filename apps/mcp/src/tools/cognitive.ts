@@ -415,83 +415,6 @@ export const cognitiveTools: RegisteredTool[] = [
       })
     },
   ),
-
-  tool(
-    'pretesting_protocol',
-    'Kornell, Hays & Bjork (2009) Pretesting-Effect protocol over REAL card content: builds deterministic pretest questions for the youngest, hardest cards, gates them with the Little & Bjork (2016) solid-pretest relatedness check, and evaluates guess→feedback→study→retest attempts for protocol compliance, hypercorrection targets and the successive-relearning queue.',
-    {
-      limit: z.number().int().min(1).max(20).default(8),
-    },
-    async ({ limit }) => {
-      const rows = await db
-        .select({
-          cardId: revlog.cardId,
-          rating: revlog.rating,
-          confidence: revlog.confidence,
-          timeMs: revlog.timeMs,
-          stability: cards.stability,
-          difficulty: cards.difficulty,
-        })
-        .from(revlog)
-        .innerJoin(cards, eq(revlog.cardId, cards.id))
-        .orderBy(desc(revlog.id))
-        .limit(limit)
-
-      // Walk oldest→newest: each miss arms its card; the next success on that
-      // card counts as the correction (same reconstruction as the web API).
-      const chronological = [...rows].reverse()
-      const corrections: { cardId: number; initialConfidence: number; wasCorrected: boolean }[] = []
-      const armed = new Map<number, 0 | 1>()
-      for (const r of chronological) {
-        const correct = r.rating >= 3
-        const pending = armed.get(r.cardId)
-        if (pending !== undefined && correct) {
-          corrections.push({
-            cardId: r.cardId,
-            initialConfidence: pending === 1 ? 0.9 : 0.35,
-            wasCorrected: true,
-          })
-          armed.delete(r.cardId)
-        }
-        if (!correct) armed.set(r.cardId, r.confidence)
-      }
-
-      const candidates = [...armed.entries()].map(([cardId, confidence]) => {
-        const card = rows.find((r) => r.cardId === cardId)
-        return {
-          cardId,
-          errorConfidence: confidence === 1 ? 0.9 : 0.35,
-          stability: card && card.stability > 0 ? card.stability : 1,
-          difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
-          wasAlreadyCorrected: false,
-        }
-      })
-
-      const crucible = evaluateHypercorrection(corrections)
-      const queue = prioritizeRelearningQueue(candidates, corrections)
-      const profile = evaluateMetacognitiveCalibrationProfile(
-        toTrialMetacognitiveRecords(
-          rows.map((r) => ({
-            cardId: r.cardId,
-            rating: r.rating,
-            confidence: r.confidence,
-            timeMs: r.timeMs,
-          })),
-        ),
-      )
-
-      return json({
-        ok: true,
-        correctionsCount: corrections.length,
-        crucible,
-        relearningQueue: queue.slice(0, 12),
-        goodmanKruskalGamma: profile.goodmanKruskalGamma,
-        calibrationIndex: profile.metacognitiveCalibrationIndex,
-        recommendations: profile.recommendations,
-      })
-    },
-  ),
-
   tool(
     'sleep_consolidation_plan',
     "Rasch & Born (2007) / Ngo et al. (2013) Sleep TMR planner over REAL FSRS state: fits a cycle-accurate hypnogram for tonight's sleep window (Process-S sleep-debt rebound, chronotype redistribution), extracts delta-weighted slow-wave blocks, and schedules the learner's most fragile cards into them with per-card consolidation audits and an acoustic-safety audit.",
@@ -555,7 +478,6 @@ export const cognitiveTools: RegisteredTool[] = [
       })
     },
   ),
-
   tool(
     'difficulty_audit',
     "Dunlosky et al. (2013) Desirable-Difficulty Audit: score the learner's technique mix against the monograph utility table (practice testing/spacing high; rereading/highlighting low), quantify fluency-illusion risk, audit measured spacing + deck interleaving from revlog, and emit an exact-arithmetic substitution plan.",

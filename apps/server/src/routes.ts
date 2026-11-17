@@ -39,7 +39,6 @@ import {
   auditInterleaving,
   auditSpacing,
   SELF_REPORT_PROMPTS,
-  judgmentOfLearningSchema,
   prioritizeRelearningQueue,
   sleepProfileSchema,
   toConsolidationCandidates,
@@ -712,6 +711,9 @@ export const routes: Route[] = [
     path: '/cognitive/difficulty-audit',
     summary: 'full Dunlosky technique audit from self-reported minutes',
     handler: postDifficultyAudit,
+  },
+  {
+    method: 'GET',
     path: '/cognitive/pretesting',
     summary: 'pretest questions for young, fragile cards (Kornell et al. 2009)',
     handler: getPretesting,
