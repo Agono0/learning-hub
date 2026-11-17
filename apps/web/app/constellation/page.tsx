@@ -12,9 +12,11 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, Plus, Sparkles, X } from 'lucide-react'
+import { AlertTriangle, Check, Layers, Move3d, Plus, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { useReducedMotion } from '@/lib/useReducedMotion'
+import { ConstellationStudio } from '@/components/ConstellationStudio'
+import type { ConstellationEdge, ConstellationNode } from '@learning-hub/core/knowledge-graph'
 import {
   Button,
   Callout,
@@ -100,6 +102,7 @@ export default function ConstellationPage() {
   const [linkTo, setLinkTo] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [alert, setAlert] = useState<RootCauseAlert | null>(null)
+  const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
   selectedRef.current = selectedId
 
   const { data, isLoading, isError, refetch } = useQuery<GktResponse>({
@@ -111,6 +114,34 @@ export default function ConstellationPage() {
   const selected = nodes.find((n) => n.id === selectedId) ?? null
   const titleOf = (id: string) => nodes.find((n) => n.id === id)?.title ?? id
   const reducedMotion = useReducedMotion()
+
+  const studioNodes: ConstellationNode[] = useMemo(() => {
+    if (nodes.length === 0) return []
+    return nodes.map((n, idx) => ({
+      id: n.id,
+      title: n.title,
+      domain: 'Core Knowledge',
+      mastery: n.masteryProb,
+      retention: n.masteryProb > 0.8 ? 0.92 : n.masteryProb > 0.6 ? 0.72 : 0.45,
+      x: 350 + (idx % 3) * 140 + Math.sin(idx * 1.5) * 50,
+      y: 200 + Math.floor(idx / 3) * 120 + Math.cos(idx * 1.5) * 40,
+      z: idx % 2 === 0 ? 35 : -35,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      mass: 1.2,
+      radius: 12 + n.masteryProb * 6,
+    }))
+  }, [nodes])
+
+  const studioEdges: ConstellationEdge[] = useMemo(() => {
+    return edges.map((e) => ({
+      sourceId: e.prerequisiteId,
+      targetId: e.dependentId,
+      strength: e.weight ?? 0.85,
+      type: 'prerequisite',
+    }))
+  }, [edges])
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: QUERY_KEY })
   const errorText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong')
@@ -326,12 +357,41 @@ export default function ConstellationPage() {
   const dependents = selected ? edges.filter((e) => e.prerequisiteId === selected.id) : []
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
-      <PageHeader
-        title="Knowledge Constellation"
-        subtitle="Your concepts and their prerequisites. Record how you did on a concept and the graph tells you which foundation to shore up first."
-        icon={<Sparkles className="h-5 w-5" />}
-      />
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageHeader
+          title="Knowledge Constellation"
+          subtitle="Your concepts and their prerequisites. Record how you did on a concept and the graph tells you which foundation to shore up first."
+          icon={<Sparkles className="h-5 w-5" />}
+        />
+
+        <div className="flex items-center rounded-xl border border-white/10 bg-slate-900/60 p-1 text-xs backdrop-blur-md self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode('studio')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+              viewMode === 'studio'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Move3d className="h-3.5 w-3.5" />
+            <span>Studio Workbench</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('classic')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+              viewMode === 'classic'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span>Classic Canvas</span>
+          </button>
+        </div>
+      </div>
 
       {isLoading ? (
         <Skeleton className="h-96" />
@@ -341,6 +401,15 @@ export default function ConstellationPage() {
             Try again
           </Button>
         </Callout>
+      ) : viewMode === 'studio' ? (
+        <ConstellationStudio
+          initialNodes={studioNodes.length > 0 ? studioNodes : undefined}
+          initialEdges={studioEdges.length > 0 ? studioEdges : undefined}
+          onStartPractice={(cid) => {
+            setSelectedId(cid)
+            setViewMode('classic')
+          }}
+        />
       ) : nodes.length === 0 ? (
         <EmptyState icon={<Sparkles className="h-6 w-6" />} title="No concepts yet">
           Add your first concept below, then link the ideas it depends on.

@@ -12,6 +12,7 @@ import { z } from 'zod'
 export const conceptNodeSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
+  domain: z.string().optional(),
   mastery: z.number().min(0).max(1).default(0),
   lapses: z.number().int().nonnegative().default(0),
 })
@@ -161,3 +162,6 @@ export function evaluateRemedialPause(
     conceptId: targetConceptId,
   }
 }
+
+export * from './spatial-constellation'
+export * from './traversal'

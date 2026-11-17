@@ -259,6 +259,21 @@ export default function GraphPage() {
         subtitle="Notes, skills, and adaptive prerequisite DAGs as one navigable web."
         actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => router.push('/constellation')}
+              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20 transition-all"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+              <span>3D Constellation</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/mindmap')}
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800/80 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white transition-all"
+            >
+              <span>Mind Map Studio</span>
+            </button>
             {/* View Switcher */}
             <div className="flex rounded-lg border border-neutral-700 bg-neutral-900/60 p-1 text-xs font-medium">
               <button
