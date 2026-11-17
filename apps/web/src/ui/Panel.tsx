@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import React, { type HTMLAttributes, type ReactNode } from 'react'
 import { cx } from './cx'
 
 export interface PanelProps extends Omit<HTMLAttributes<HTMLElement>, 'title'> {

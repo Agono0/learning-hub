@@ -138,3 +138,5 @@ export function evaluateMetacognitiveProfile(items: JudgmentOfLearning[]): Metac
 
 export const calculateMetacognitiveBias = calculateConfidenceBias
 export const calculateMetacognitiveReport = evaluateMetacognitiveProfile
+
+export * from './hypercorrection-engine'

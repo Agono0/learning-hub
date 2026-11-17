@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import React, { type ReactNode } from 'react'
 import { cx } from './cx'
 
 /** A friendly "nothing here yet" block that always offers a next step. */
