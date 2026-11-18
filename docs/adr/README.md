@@ -9,6 +9,7 @@ it protects.
 | [0001](0001-one-codebase-hub-worker.md)         | One codebase for web + native: runtime-neutral handlers, in-webview hub worker | Accepted |
 | [0002](0002-versioned-idempotent-migrations.md) | Versioned, idempotent schema migrations for two drivers                        | Accepted |
 | [0003](0003-curriculum-format-lhcf.md)          | A portable curriculum format (LHCF) any AI can produce                         | Accepted |
+| [0004](0004-shared-cognitive-trial-repos.md)    | One derivation path for cross-host trial pipelines (shared repos, undo parity) | Accepted |
 
 ## Writing a new ADR
 

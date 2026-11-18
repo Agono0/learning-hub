@@ -13,10 +13,10 @@ Learning HUB follows a strict **Hexagonal / Ports-and-Adapters** architectural p
 ```mermaid
 flowchart TD
     subgraph Delivery ["Delivery Surfaces (Thin Adapters)"]
-        WEB["Next.js 16 Web UI<br/>(React 19, Tailwind 4, Zustand)"]
+        WEB["Next.js 16 Web UI<br/>(React 19, Tailwind 4, TanStack Query)"]
         NATIVE["Tauri 2 Shell<br/>(Windows & Android OPFS)"]
-        MCP["MCP Stdio Server<br/>(51+ Tools for AI Agents)"]
-        CLI["Terminal CLI<br/>(25+ Command Modules)"]
+        MCP["MCP Stdio Server<br/>(93 Built-in Tools for AI Agents)"]
+        CLI["Terminal CLI<br/>(47 Built-in Commands)"]
         SERVER["Headless REST Server<br/>(Zero-dep node:http)"]
         EXT["Browser Extension<br/>(Friction gate & Web Ingest)"]
         CF["Cloudflare Worker<br/>(Realtime Boss Raids)"]

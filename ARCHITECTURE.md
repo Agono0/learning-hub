@@ -34,12 +34,12 @@ learning-HUB/
 │   └── ai-adapters/    # The ONLY package that imports ai / @ai-sdk/*
 │                       # anthropic · openai · google · openai-compatible · ollama · custom-endpoint
 ├── apps/
-│   ├── web/            # Next.js 16 App Router (React 19, Tailwind 4, TanStack Query, zustand)
+│   ├── web/            # Next.js 16 App Router (React 19, Tailwind 4, TanStack Query)
 │   │   ├── app/api/**/route.ts  # REST route handlers (zod boundary, withRoute)
 │   │   └── src/components/      # client islands, command palette, transport panel…
 │   ├── server/         # Headless REST server — Node 22+ native node:http, no framework
-│   ├── mcp/            # MCP stdio server: 51 built-in tools + plugin contributions + 3 resources (@modelcontextprotocol/sdk)
-│   ├── cli/            # terminal adapter: 25 CLI commands
+│   ├── mcp/            # MCP stdio server: 93 built-in tools + plugin contributions + 3 resources (@modelcontextprotocol/sdk)
+│   ├── cli/            # terminal adapter: 47 built-in CLI commands
 │   ├── worker/         # Cloudflare worker: rooms, boss raids, library share (deploy: npm run worker:deploy)
 │   └── extension/      # Browser extension: quick-add cards, save-to-read, friction capture (M21)
 ├── plugins/            # loaded by EVERY host at boot (example-echo is the reference)

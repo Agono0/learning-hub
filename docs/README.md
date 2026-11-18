@@ -28,6 +28,8 @@ drift test fails if they go stale.
 | ------------------------------------------ | -------------------------------------------------------------- |
 | [ENGINE-REFERENCE.md](ENGINE-REFERENCE.md) | API details: review pipeline, repos, event bus                 |
 | [TEST_INFRA.md](TEST_INFRA.md)             | The test pyramid: unit, dual-driver DB, opaque-box E2E tiers   |
+| [contracts.md](contracts.md)               | The stable interface contracts (deps, repos, handlers, transport, AI, plugins) |
+| [tech-debt.md](tech-debt.md)               | The Architect's prioritized, evidence-backed debt register     |
 | [adr/](adr/README.md)                      | Architecture decision records (one codebase, migrations, LHCF) |
 
 ## Plans
