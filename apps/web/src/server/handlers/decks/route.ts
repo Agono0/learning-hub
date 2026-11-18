@@ -1,9 +1,9 @@
 /**
  * /api/decks — list decks (with card + due counts) and create decks.
  */
-import { asc, eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { db, cards, decks } from '@learning-hub/db'
+import { db, decks, getDeckSummaries } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 const createDeckSchema = z.object({
@@ -13,33 +13,9 @@ const createDeckSchema = z.object({
 })
 
 export async function GET() {
-  const rows = await db
-    .select({
-      id: decks.id,
-      name: decks.name,
-      description: decks.description,
-      emoji: decks.emoji,
-      desiredRetention: decks.desiredRetention,
-      delayedFeedback: decks.delayedFeedback,
-      fsrsWeights: decks.fsrsWeights,
-      createdAt: decks.createdAt,
-      total: sql<number>`count(${cards.id})`,
-      due: sql<number>`sum(CASE WHEN ${cards.due} <= ${new Date().toISOString()} AND ${cards.suspended} = 0 THEN 1 ELSE 0 END)`,
-      newCards: sql<number>`sum(CASE WHEN ${cards.state} = 0 THEN 1 ELSE 0 END)`,
-    })
-    .from(decks)
-    .leftJoin(cards, eq(cards.deckId, decks.id))
-    .groupBy(decks.id)
-    .orderBy(asc(decks.name))
-  return Response.json({
-    decks: rows.map((r) => ({
-      ...r,
-      hasCustomWeights: Array.isArray(r.fsrsWeights) && r.fsrsWeights.length === 21,
-      total: Number(r.total ?? 0),
-      due: Number(r.due ?? 0),
-      newCards: Number(r.newCards ?? 0),
-    })),
-  })
+  // Shared stats repo — the headless server serves the same rows from the
+  // same query (repos/stats); the aggregate SQL exists exactly once.
+  return Response.json({ decks: getDeckSummaries() })
 }
 
 export const POST = withRoute(async (req: Request) => {

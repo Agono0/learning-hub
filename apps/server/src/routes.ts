@@ -6,25 +6,29 @@
  * listing queries mirror the web app's route queries against the same shared
  * drizzle client. All bodies and query strings are zod-validated.
  */
-import { and, asc, desc, eq, lte, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, lte, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   db,
-  decks,
   cards,
   deriveMeasuredBehavior,
-  streaks,
   executeReview,
   executeBatchReview,
+  getDeckSummaries,
+  getDueCardCount,
+  getDueForecast,
+  getNewCardCount,
   getRevlogTrialRows,
+  getStreakRow,
+  getTodayReviewTallies,
+  getTrueRetention,
   reconstructCorrectionTrials,
   resolveDbPath,
   type ReviewPayload,
 } from '@learning-hub/db'
 import {
   dayKey,
-  forecastNext30Days,
   listPlugins,
   type Grade,
   createGenerationLadder,
@@ -599,29 +603,9 @@ async function health(_req: IncomingMessage, res: ServerResponse): Promise<void>
 
 /** GET /decks — decks with card/due/new counts (same query as the web app). */
 async function listDecks(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const rows = await db
-    .select({
-      id: decks.id,
-      name: decks.name,
-      description: decks.description,
-      emoji: decks.emoji,
-      createdAt: decks.createdAt,
-      total: sql<number>`count(${cards.id})`,
-      due: sql<number>`sum(CASE WHEN ${cards.due} <= ${new Date().toISOString()} AND ${cards.suspended} = 0 THEN 1 ELSE 0 END)`,
-      newCards: sql<number>`sum(CASE WHEN ${cards.state} = 0 THEN 1 ELSE 0 END)`,
-    })
-    .from(decks)
-    .leftJoin(cards, eq(cards.deckId, decks.id))
-    .groupBy(decks.id)
-    .orderBy(asc(decks.name))
-  sendJson(res, 200, {
-    decks: rows.map((r) => ({
-      ...r,
-      total: Number(r.total ?? 0),
-      due: Number(r.due ?? 0),
-      newCards: Number(r.newCards ?? 0),
-    })),
-  })
+  // Shared stats repo — the web handler projects the same rows plus
+  // hasCustomWeights; the aggregate query exists once (repos/stats).
+  sendJson(res, 200, { decks: getDeckSummaries() })
 }
 
 /** GET /cards?deckId=&due=1&limit= — browse cards; due=1 keeps only unsuspended cards due now. */
@@ -694,41 +678,19 @@ async function postReviewBatch(req: IncomingMessage, res: ServerResponse): Promi
 
 /** GET /today — due/new counts, today's review tallies and the streak row. */
 async function today(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const now = new Date()
-  const nowIso = now.toISOString()
-  const todayKey = dayKey(now)
-
-  const [dueRow] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(cards)
-    .where(and(lte(cards.due, nowIso), eq(cards.suspended, false)))
-  const [newRow] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(cards)
-    .where(and(eq(cards.state, 0), eq(cards.suspended, false)))
-  const [todayStats] = await db.all<{
-    reviews: number
-    correct: number
-    avg_time_ms: number | null
-  }>(sql`
-    SELECT count(*) AS reviews,
-           sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) AS correct,
-           round(avg(time_ms)) AS avg_time_ms
-    FROM revlog
-    WHERE substr(reviewed_at, 1, 10) = ${todayKey}
-      AND NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
-  `)
-  const [streakRow] = await db.select().from(streaks).limit(1)
+  // Shared stats repo — one definition for web, MCP and CLI (repos/stats).
+  const tallies = getTodayReviewTallies()
+  const streakRow = getStreakRow()
 
   sendJson(res, 200, {
     ok: true,
-    day: todayKey,
-    due: Number(dueRow?.count ?? 0),
-    newCards: Number(newRow?.count ?? 0),
+    day: tallies.day,
+    due: getDueCardCount(),
+    newCards: getNewCardCount(),
     reviews: {
-      count: Number(todayStats?.reviews ?? 0),
-      correct: Number(todayStats?.correct ?? 0),
-      avgTimeMs: todayStats?.avg_time_ms ?? null,
+      count: tallies.reviews,
+      correct: tallies.correct,
+      avgTimeMs: tallies.avgTimeMs,
     },
     streak: streakRow
       ? {
@@ -743,40 +705,12 @@ async function today(_req: IncomingMessage, res: ServerResponse): Promise<void> 
 
 /** GET /stats — true retention (v_true_retention), today's tallies, 30-day due forecast. */
 async function stats(_req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const todayKey = new Date().toISOString().slice(0, 10)
-  const retention = await db.all<{ total: number; retained: number; retention_pct: number }>(
-    sql`SELECT total, retained, retention_pct FROM v_true_retention`,
-  )
-  const [todayStats] = await db.all<{
-    reviews: number
-    correct: number
-    avg_time_ms: number | null
-  }>(sql`
-    SELECT count(*) AS reviews,
-           sum(CASE WHEN rating > 1 THEN 1 ELSE 0 END) AS correct,
-           round(avg(time_ms)) AS avg_time_ms
-    FROM revlog
-    WHERE substr(reviewed_at, 1, 10) = ${todayKey}
-      AND NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
-  `)
-  const dueRows = await db
-    .select({ due: cards.due, suspended: cards.suspended })
-    .from(cards)
-    .limit(5000)
-  const forecast = forecastNext30Days(
-    dueRows.filter((r) => !r.suspended).map((r) => ({ due: r.due })),
-  )
-
+  // Shared stats repo — identical aggregation to the web /api/review/stats handler.
   sendJson(res, 200, {
     ok: true,
-    trueRetention: retention[0] ?? { total: 0, retained: 0, retention_pct: null },
-    today: {
-      day: todayKey,
-      reviews: Number(todayStats?.reviews ?? 0),
-      correct: Number(todayStats?.correct ?? 0),
-      avgTimeMs: todayStats?.avg_time_ms ?? null,
-    },
-    forecast,
+    trueRetention: getTrueRetention(),
+    today: getTodayReviewTallies(),
+    forecast: getDueForecast(),
   })
 }
 

@@ -5,6 +5,7 @@
  */
 export * from './curriculum'
 export * from './cognitive-trials'
+export * from './stats'
 export * from './delayed-feedback'
 export * from './focus-lock'
 export * from './fsrs'
