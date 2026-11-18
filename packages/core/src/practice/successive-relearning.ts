@@ -9,11 +9,7 @@
  * untouched (every recall still goes through the one grading path).
  */
 
-/** Default criterion: one verification recall after a mistake. */
-export const DEFAULT_SR_CRITERION = 1
-
-/** Max sane criterion (the studies use 3–4; more is drudgery). */
-export const MAX_SR_CRITERION = 4
+export * from '../successive-relearning/successive-relearning-engine'
 
 /** Per-card within-session state for the criterion. */
 export interface SuccessiveState {
@@ -43,6 +39,6 @@ export function recordSrResult(s: SuccessiveState, correct: boolean): Successive
  * criterion — it must be re-queued. A card never failed this session is the
  * scheduler's business (FSRS), not the criterion's.
  */
-export function needsAnotherRecall(s: SuccessiveState, criterion = DEFAULT_SR_CRITERION): boolean {
+export function needsAnotherRecall(s: SuccessiveState, criterion = 1): boolean {
   return s.mistakes > 0 && s.streakSinceMistake < criterion
 }

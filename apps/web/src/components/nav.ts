@@ -37,6 +37,7 @@ import {
   FlaskConical,
   Quote,
   Radar,
+  Repeat,
   Repeat2,
   Route,
   Scale,
@@ -97,6 +98,7 @@ export const NAV: NavGroup[] = [
       { href: '/interactivity', label: 'Element Interactivity', icon: Cpu },
       { href: '/deliberate', label: 'Deliberate Practice', icon: Target },
       { href: '/skills', label: 'Agent Skills', icon: Bot },
+      { href: '/successive-relearning', label: 'Successive Relearning', icon: Repeat },
     ],
   },
   {
