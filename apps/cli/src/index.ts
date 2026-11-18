@@ -37,6 +37,14 @@ import {
   pretestCommand,
 } from './commands/cognitive'
 import {
+  causalCommand,
+  epistemicCommand,
+  relearningCommand,
+  skillsCommand,
+  srlCommand,
+  thresholdCommand,
+} from './commands/advanced-learning'
+import {
   db,
   awardXp,
   cards,
@@ -71,7 +79,13 @@ import {
   type Grade,
 } from '@learning-hub/core'
 
-const [, , cmd, ...args] = process.argv
+const rawArgs = process.argv.slice(2)
+const scriptArgs =
+  rawArgs[0] &&
+  (rawArgs[0].endsWith('.ts') || rawArgs[0].endsWith('.js') || rawArgs[0].includes('index.'))
+    ? rawArgs.slice(1)
+    : rawArgs
+const [cmd, ...args] = scriptArgs
 
 // ─── Card rendering ─────────────────────────────────────────────────────────
 
@@ -759,6 +773,42 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Sweller element-interactivity analysis + Paas efficiency',
     usage: 'analyze [--suite <key>] [--extraneous 1] [--effort 5 --performance 70]',
     run: (runArgs) => interactivityCommand(runArgs),
+  },
+  {
+    name: 'skills',
+    description: 'Matt Pocock agent skills catalog, execution, and AGENTS.md rule audit',
+    usage: 'catalog | audit | run',
+    run: (runArgs) => skillsCommand(runArgs),
+  },
+  {
+    name: 'relearning',
+    description: 'Rawson & Dunlosky successive relearning & Ebbinghaus savings diagnostic',
+    usage: 'calc [--initial 600 --relearn 210 --days 7]',
+    run: (runArgs) => relearningCommand(runArgs),
+  },
+  {
+    name: 'srl',
+    description: 'Zimmerman 3-phase cyclical self-regulated learning (SRL) matrix',
+    usage: 'eval [--forethought 8 --performance 7 --reflection 9]',
+    run: (runArgs) => srlCommand(runArgs),
+  },
+  {
+    name: 'epistemic',
+    description: 'Shaffer epistemic network analysis (ENA) & quantitative ethnography',
+    usage: 'analyze [--window 4 --mastery 0.75]',
+    run: (runArgs) => epistemicCommand(runArgs),
+  },
+  {
+    name: 'causal',
+    description: 'Judea Pearl structural causal models & counterfactual simulation',
+    usage: 'counterfactual [--study 16 --target ExamScore]',
+    run: (runArgs) => causalCommand(runArgs),
+  },
+  {
+    name: 'threshold',
+    description: 'Meyer & Land threshold concepts & liminal space navigation',
+    usage: 'eval [--concept tc_pointers_memory]',
+    run: (runArgs) => thresholdCommand(runArgs),
   },
 ]
 
