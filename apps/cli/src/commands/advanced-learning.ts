@@ -35,6 +35,11 @@ import {
   getZpdScenarioById,
   getGraduatedPromptAtTier,
   generateFSRSZpdDeck,
+  getCanonicalPFScenarios,
+  getPFScenarioById,
+  calculatePFMetrics,
+  evaluateStudentRepresentation,
+  generatePFFSRSCards,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -411,4 +416,134 @@ export function zpdCommand(args: string[]): void {
   console.log(`Frustration Horizon:   ~${metrics.frustrationHorizon}%`)
   console.log('─'.repeat(65))
   console.log(`Diagnostic Summary:    ${metrics.typologyDescription}`)
+}
+
+// ── 8. Productive Failure & Canonical Consolidation Command ──────────────────
+
+export function pfCommand(args: string[]): void {
+  const sub = args[0] || 'metrics'
+  const scenarioId = parseFlag(args, '--scenario') || 'pf-variance-dispersion'
+
+  if (sub === 'scenarios' || sub === 'list') {
+    const scenarios = getCanonicalPFScenarios()
+    console.log('\n🧠 Productive Failure Canonical Scenarios (Kapur & Sinha)')
+    console.log('═'.repeat(65))
+    scenarios.forEach((s) => {
+      console.log(`• [${s.id}] ${s.title}`)
+      console.log(`  Domain:  ${s.domain}`)
+      console.log(`  Focus:   ${s.subtitle}`)
+      console.log(`  Target:  ${s.targetConcept}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  const scenario = getPFScenarioById(scenarioId) ?? getCanonicalPFScenarios()[0]
+
+  if (sub === 'eval') {
+    const title = parseFlag(args, '--title') || 'Intuitive Heuristic Model'
+    const mechanism = parseFlag(args, '--mechanism') || 'Linear spread calculation'
+    const evalResult = evaluateStudentRepresentation(scenario.id, {
+      title,
+      description: 'Model authored via CLI',
+      mechanism,
+      structuralFeatures: ['outlier sensitivity', 'deviation from center'],
+    })
+
+    console.log('\n🔬 Student-Generated Representation (SGR) Evaluation')
+    console.log('═'.repeat(65))
+    console.log(`Scenario:          ${scenario.title}`)
+    console.log(`Model Title:       ${evalResult.title}`)
+    console.log(`Mechanism:         ${evalResult.mechanism}`)
+    console.log(`Plausibility:      ${evalResult.intuitivePlausibilityScore}%`)
+    console.log(`Formal Validity:   ${evalResult.formalValidityScore}%`)
+    console.log(`Features Matched:  ${evalResult.structuralFeaturesIdentified.join(', ')}`)
+    return
+  }
+
+  if (sub === 'deck') {
+    const _pfi = parseInt(parseFlag(args, '--pfi') || '85', 10)
+    const cig = parseInt(parseFlag(args, '--cig') || '80', 10)
+
+    const dummyMetrics = calculatePFMetrics({
+      representations: scenario.exemplarStudentRepresentations,
+      impasse: {
+        impasseEncountered: true,
+        failureModeIdentified: 'Boundary limit',
+        boundaryConditionsTested: ['Outliers'],
+        knowledgeGapArticulated: 'Need invariant model',
+        affectiveImpasseRating: 4,
+        impasseDepthScore: 80,
+      },
+      consolidationRatings: {
+        featureAlignment: cig,
+        parameterMapping: cig,
+        invariantGrasp: cig,
+      },
+      transferResults: scenario.transferProbes.map((p) => ({
+        probeId: p.probeId,
+        isCorrect: true,
+        confidence: 4,
+      })),
+    })
+
+    const deck = generatePFFSRSCards(scenario, dummyMetrics)
+
+    console.log('\n📦 Calibrated FSRS-6 Productive Failure Deck')
+    console.log(`Scenario:          ${scenario.title}`)
+    console.log(`Cards Generated:   ${deck.length}`)
+    console.log(`Initial Stability: ${deck[0]?.initialStabilityDays} days (S0)`)
+    console.log(`Initial Diff:      ${deck[0]?.initialDifficulty} / 10 (D0)`)
+    console.log('═'.repeat(65))
+    deck.forEach((c, idx) => {
+      console.log(`[Card ${idx + 1}] (${c.conceptualDepth})`)
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: metrics evaluation
+  const repCount = parseInt(parseFlag(args, '--reps') || '3', 10)
+  const affective = parseInt(parseFlag(args, '--affective') || '4', 10)
+  const cigScore = parseInt(parseFlag(args, '--cig') || '85', 10)
+
+  const metrics = calculatePFMetrics({
+    representations: scenario.exemplarStudentRepresentations.slice(0, repCount),
+    impasse: {
+      impasseEncountered: true,
+      failureModeIdentified: 'Boundary distortion breakdown',
+      boundaryConditionsTested: ['Outliers', 'Zeros'],
+      knowledgeGapArticulated: 'Need canonical invariant parameterization',
+      affectiveImpasseRating: affective,
+      impasseDepthScore: 75,
+    },
+    consolidationRatings: {
+      featureAlignment: cigScore,
+      parameterMapping: cigScore,
+      invariantGrasp: cigScore,
+    },
+    transferResults: scenario.transferProbes.map((p) => ({
+      probeId: p.probeId,
+      isCorrect: true,
+      confidence: 4,
+    })),
+  })
+
+  console.log('\n🧠 Productive Failure Cognitive Diagnostics (Manu Kapur 2008, 2016)')
+  console.log('═'.repeat(65))
+  console.log(`Scenario:              ${scenario.title} [${scenario.domain}]`)
+  console.log(`Productive Failure:    ${metrics.productiveFailureIndex}% (PFI overall score)`)
+  console.log(
+    `Generation Diversity:  ${(metrics.generationDiversityIndex * 100).toFixed(0)}% (GDI breadth)`,
+  )
+  console.log(`Impasse Sensitivity:   ${metrics.impasseSensitivityScore}% (ISS depth)`)
+  console.log(`Consolidation Gain:    ${metrics.consolidationIntegrationGain}% (CIG assembly)`)
+  console.log(`Adaptive Transfer:     ${metrics.adaptiveTransferScore}% (ATS deep invariance)`)
+  console.log(`Failure/Mastery Ratio: Φ = ${metrics.failureToMasteryRatio.toFixed(2)}x`)
+  console.log(`Mastery Band:          ${metrics.masteryBand.toUpperCase()}`)
+  console.log('─'.repeat(65))
+  console.log(`Diagnostic Feedback:   ${metrics.qualitativeFeedback}`)
+  console.log(`Recommendation:        ${metrics.recommendedIntervention}`)
 }

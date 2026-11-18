@@ -173,6 +173,7 @@ import * as epistemic from '../server/handlers/epistemic/route'
 import * as causal from '../server/handlers/causal/route'
 import * as threshold from '../server/handlers/threshold/route'
 import * as zpd from '../server/handlers/zpd/route'
+import * as productiveFailure from '../server/handlers/productive-failure/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -366,6 +367,7 @@ add('epistemic', epistemic)
 add('causal', causal)
 add('threshold', threshold)
 add('zpd', zpd)
+add('productive-failure', productiveFailure)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

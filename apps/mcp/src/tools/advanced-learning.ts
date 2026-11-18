@@ -40,6 +40,11 @@ import {
   getZpdScenarioById,
   getGraduatedPromptAtTier,
   generateFSRSZpdDeck,
+  getCanonicalPFScenarios,
+  getPFScenarioById,
+  calculatePFMetrics,
+  evaluateStudentRepresentation,
+  generatePFFSRSCards,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -507,6 +512,178 @@ export const advancedLearningTools: RegisteredTool[] = [
           typology: metrics.typology,
         },
         cards: deck,
+      })
+    },
+  ),
+
+  // ── 8. Productive Failure & Canonical Consolidation (Manu Kapur & Tanmay Sinha) ──
+  tool(
+    'pf_list_scenarios',
+    'Lists all canonical Productive Failure scenarios across statistics, distributed systems, thermodynamics, storage architecture, and epidemiology.',
+    {},
+    async () => {
+      const scenarios = getCanonicalPFScenarios()
+      return json({
+        count: scenarios.length,
+        scenarios: scenarios.map((s) => ({
+          id: s.id,
+          domain: s.domain,
+          title: s.title,
+          subtitle: s.subtitle,
+          targetConcept: s.targetConcept,
+          priorKnowledgeContext: s.priorKnowledgeContext,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'pf_evaluate_representation',
+    'Evaluates an intuitive student-generated representation (SGR) against canonical structural invariants.',
+    {
+      scenarioId: z
+        .string()
+        .default('pf-variance-dispersion')
+        .describe('Productive failure scenario identifier.'),
+      title: z.string().describe('Title of the intuitive solution model.'),
+      description: z.string().default('').describe('Conceptual explanation.'),
+      mechanism: z.string().default('').describe('Formal mathematical or algorithmic mechanism.'),
+      structuralFeatures: z
+        .array(z.string())
+        .default([])
+        .describe('Key structural features claimed by the model.'),
+    },
+    async ({ scenarioId, title, description, mechanism, structuralFeatures }) => {
+      const evaluated = evaluateStudentRepresentation(scenarioId, {
+        title,
+        description,
+        mechanism,
+        structuralFeatures,
+      })
+      return json({
+        scenarioId,
+        representation: evaluated,
+      })
+    },
+  ),
+
+  tool(
+    'pf_calculate_metrics',
+    'Computes Productive Failure Index (PFI), Generation Diversity (GDI), Impasse Sensitivity (ISS), Consolidation Gain (CIG), Adaptive Transfer (ATS), and failure-to-mastery ratio.',
+    {
+      scenarioId: z
+        .string()
+        .default('pf-variance-dispersion')
+        .describe('Productive failure scenario identifier.'),
+      representationCount: z.number().int().min(1).max(10).default(3),
+      impasseEncountered: z.boolean().default(true),
+      affectiveImpasseRating: z.number().min(1).max(5).default(4),
+      impasseDepthScore: z.number().min(0).max(100).default(75),
+      featureAlignment: z.number().min(0).max(100).default(85),
+      parameterMapping: z.number().min(0).max(100).default(80),
+      invariantGrasp: z.number().min(0).max(100).default(80),
+      transferSuccessCount: z.number().int().min(0).max(3).default(3),
+    },
+    async ({
+      scenarioId,
+      representationCount,
+      impasseEncountered,
+      affectiveImpasseRating,
+      impasseDepthScore,
+      featureAlignment,
+      parameterMapping,
+      invariantGrasp,
+      transferSuccessCount,
+    }) => {
+      const scenario = getPFScenarioById(scenarioId) ?? getCanonicalPFScenarios()[0]
+      const repCount = representationCount ?? 3
+      const representations = scenario.exemplarStudentRepresentations.slice(0, repCount)
+      const impasse = {
+        impasseEncountered: impasseEncountered ?? true,
+        failureModeIdentified: 'Boundary distortion breakdown',
+        boundaryConditionsTested: ['Outliers', 'Zeros'],
+        knowledgeGapArticulated: 'Need canonical invariant parameterization',
+        affectiveImpasseRating: affectiveImpasseRating ?? 4,
+        impasseDepthScore: impasseDepthScore ?? 75,
+      }
+      const consolidationRatings = {
+        featureAlignment: featureAlignment ?? 85,
+        parameterMapping: parameterMapping ?? 80,
+        invariantGrasp: invariantGrasp ?? 80,
+      }
+      const successCount = transferSuccessCount ?? 3
+      const transferResults = scenario.transferProbes.map((probe, idx) => ({
+        probeId: probe.probeId,
+        isCorrect: idx < successCount,
+        confidence: 4,
+      }))
+
+      const metrics = calculatePFMetrics({
+        representations,
+        impasse,
+        consolidationRatings,
+        transferResults,
+      })
+
+      return json({
+        scenarioTitle: scenario.title,
+        productiveFailureIndex: metrics.productiveFailureIndex,
+        generationDiversityIndex: metrics.generationDiversityIndex,
+        impasseSensitivityScore: metrics.impasseSensitivityScore,
+        consolidationIntegrationGain: metrics.consolidationIntegrationGain,
+        adaptiveTransferScore: metrics.adaptiveTransferScore,
+        failureToMasteryRatio: metrics.failureToMasteryRatio,
+        masteryBand: metrics.masteryBand,
+        qualitativeFeedback: metrics.qualitativeFeedback,
+        recommendedIntervention: metrics.recommendedIntervention,
+      })
+    },
+  ),
+
+  tool(
+    'pf_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition flashcards from a Productive Failure session with stability (S0) and difficulty (D0) scaled to PFI.',
+    {
+      scenarioId: z
+        .string()
+        .default('pf-variance-dispersion')
+        .describe('Productive failure scenario identifier.'),
+      pfiScore: z.number().min(0).max(100).default(85),
+      cigScore: z.number().min(0).max(100).default(80),
+    },
+    async ({ scenarioId, pfiScore: _pfiScore, cigScore }) => {
+      const scenario = getPFScenarioById(scenarioId) ?? getCanonicalPFScenarios()[0]
+      const cig = cigScore ?? 80
+      const metrics = calculatePFMetrics({
+        representations: scenario.exemplarStudentRepresentations,
+        impasse: {
+          impasseEncountered: true,
+          failureModeIdentified: 'Boundary limit',
+          boundaryConditionsTested: ['Outliers'],
+          knowledgeGapArticulated: 'Need invariant model',
+          affectiveImpasseRating: 4,
+          impasseDepthScore: 80,
+        },
+        consolidationRatings: {
+          featureAlignment: cig,
+          parameterMapping: cig,
+          invariantGrasp: cig,
+        },
+        transferResults: scenario.transferProbes.map((p) => ({
+          probeId: p.probeId,
+          isCorrect: true,
+          confidence: 4,
+        })),
+      })
+      const cards = generatePFFSRSCards(scenario, metrics)
+
+      return json({
+        scenarioTitle: scenario.title,
+        cardsCount: cards.length,
+        initialStabilityDays: cards[0]?.initialStabilityDays,
+        initialDifficulty: cards[0]?.initialDifficulty,
+        masteryBand: metrics.masteryBand,
+        cards,
       })
     },
   ),
