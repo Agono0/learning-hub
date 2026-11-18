@@ -49,6 +49,11 @@ import {
   computeSequenceMetrics,
   exportFSRSInterleavingDeck,
   generateContrastSchedule,
+  CALIBRATED_ANALOGICAL_SUITES,
+  CALIBRATED_FLEXIBILITY_SUITES,
+  evaluateStructureMappingAttempt,
+  evaluateCognitiveFlexibility,
+  exportFlexibilityToFSRSCards,
 } from '@learning-hub/core'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 
@@ -643,6 +648,122 @@ export const cognitiveTools: RegisteredTool[] = [
         deck: exportFSRSInterleavingDeck(templates, categories),
         telemetry,
       })
+    },
+  ),
+
+  tool(
+    'analogical_transfer',
+    "Gick & Holyoak (1980/1983) Analogical Transfer + Gentner (1983) Structure-Mapping engine over the calibrated multidisciplinary suites: evaluate a learner's base-analog selection, entity alignments, predicate-preservation mappings, and articulated convergence schema — scoring systematicity, surface-feature disparity, schema-induction maturity, and spontaneous-transfer probability.",
+    {
+      suiteKey: z
+        .enum([
+          'convergence_radiation_oncology',
+          'hydraulic_electrical_conduction',
+          'planetary_bohr_quantum_orbit',
+        ])
+        .optional()
+        .describe('Omit to list the calibrated suites with their target problems'),
+      attempt: z
+        .object({
+          suiteId: z.string(),
+          selectedBaseAnalogId: z.string(),
+          entityMappings: z.array(
+            z.object({ baseEntityId: z.string(), targetEntityId: z.string() }),
+          ),
+          predicateMappings: z.array(
+            z.object({ basePredicateId: z.string(), targetPredicateId: z.string() }),
+          ),
+          articulatedConvergenceSchema: z.string(),
+          decoyRejectionRationale: z.string().optional(),
+          confidenceScore: z.number().min(1).max(5),
+          timeSpentMs: z.number().nonnegative(),
+        })
+        .optional()
+        .describe('Omit to list suites; provide to evaluate one structure-mapping attempt'),
+    },
+    async ({ suiteKey, attempt }) => {
+      if (!attempt) {
+        const keys = suiteKey ? [suiteKey] : Object.keys(CALIBRATED_ANALOGICAL_SUITES)
+        return json({
+          ok: true,
+          suites: keys.map((k) => {
+            const suite = CALIBRATED_ANALOGICAL_SUITES[k]
+            if (!suite) return { suiteId: k, error: 'unknown suite' }
+            return {
+              suiteId: suite.suiteId,
+              title: suite.title,
+              targetProblem: suite.targetProblem.scenarioTitle,
+              baseAnalogs: suite.baseAnalogs.map((b) => ({ id: b.id, title: b.scenarioTitle })),
+            }
+          }),
+        })
+      }
+      const suite = CALIBRATED_ANALOGICAL_SUITES[attempt.suiteId]
+      if (!suite) {
+        return json({ ok: false, error: `Unknown suite "${attempt.suiteId}"` })
+      }
+      const telemetry = evaluateStructureMappingAttempt(suite, attempt)
+      return json({ ok: true, telemetry })
+    },
+  ),
+
+  tool(
+    'cognitive_flexibility',
+    "Spiro et al. (1988) Cognitive Flexibility Theory + De Bono (1985) Six Thinking Hats criss-crossing engine over the calibrated ill-structured suites: evaluate a learner's hat dispersion (PDI entropy), criss-cross density, reductive-bias mastery, and lens diversity into the composite flexibility score — with rigidity warnings and an FSRS multi-perspective card export.",
+    {
+      suiteKey: z
+        .enum(['distributed_chaos_cascade', 'epidemiological_antimicrobial'])
+        .optional()
+        .describe('Omit to list the calibrated suites'),
+      attempts: z
+        .array(
+          z.object({
+            caseId: z.string(),
+            selectedHat: z.enum([
+              'white_hat',
+              'red_hat',
+              'black_hat',
+              'yellow_hat',
+              'green_hat',
+              'blue_hat',
+            ]),
+            activeLens: z.enum([
+              'mechanistic_technical',
+              'socio_economic',
+              'ecological_systemic',
+              'teleological_ethical',
+            ]),
+            studentObservations: z.string(),
+            identifiedThematicNodeIds: z.array(z.string()),
+            diagnosedReductiveTrapIds: z.array(z.string()),
+          }),
+        )
+        .max(100)
+        .optional()
+        .describe('Criss-cross step attempts to evaluate'),
+      exportCards: z.boolean().default(false),
+    },
+    async ({ suiteKey, attempts, exportCards }) => {
+      if (!suiteKey || !attempts) {
+        return json({
+          ok: true,
+          suites: Object.entries(CALIBRATED_FLEXIBILITY_SUITES).map(([key, suite]) => ({
+            suiteId: key,
+            name: suite.name,
+            domainFamily: suite.domainFamily,
+            caseTitle: suite.primaryCase.title,
+            thematicNodes: suite.primaryCase.thematicNodes.length,
+            reductiveTraps: suite.primaryCase.reductiveTraps.length,
+          })),
+        })
+      }
+      const suite = CALIBRATED_FLEXIBILITY_SUITES[suiteKey]
+      if (!suite) {
+        return json({ ok: false, error: `Unknown suite "${suiteKey}"` })
+      }
+      const evaluation = evaluateCognitiveFlexibility(suite, attempts)
+      const cards = exportCards ? exportFlexibilityToFSRSCards(suite, evaluation) : undefined
+      return json({ ok: true, evaluation, cards })
     },
   ),
 ]

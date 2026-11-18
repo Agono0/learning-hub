@@ -26,8 +26,10 @@ import {
   tmrPlanCommand,
 } from './commands/telemetry-audio'
 import {
+  analogyCommand,
   difficultyCommand,
   feynmanCommand,
+  flexibilityCommand,
   generationCommand,
   invarianceCommand,
   metacognitionCommand,
@@ -738,6 +740,18 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Rohrer-Taylor interleaved structural invariance practice plan',
     usage: '[--mode interleaved|blocked] [--contrast 0..1] [--spacing 0..1]',
     run: (runArgs) => invarianceCommand(runArgs),
+  },
+  {
+    name: 'analogy',
+    description: 'Gick & Holyoak analogical-transfer suite (structure mapping)',
+    usage: 'plan [--suite <key>]',
+    run: (runArgs) => analogyCommand(runArgs),
+  },
+  {
+    name: 'flexibility',
+    description: 'Spiro criss-crossing schedule for ill-structured cases',
+    usage: 'plan [--suite <key>]',
+    run: (runArgs) => flexibilityCommand(runArgs),
   },
 ]
 
