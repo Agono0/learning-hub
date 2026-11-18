@@ -93,15 +93,14 @@ export function PermissionNudge() {
           </Button>
         )}
         <IconButton
-          type="button"
           label={`Stop suggesting ${def.title}`}
           onClick={() => {
             decide(askId, 'never')
             setDismissedThisSession(true)
           }}
-          variant="ghost"
-          icon={<X className="h-4 w-4" />}
-        />
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </IconButton>
       </div>
     </div>
   )

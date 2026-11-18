@@ -1,6 +1,6 @@
 'use client'
 
-import React, { type ButtonHTMLAttributes, type ReactNode } from 'react'
+import React, { type ButtonHTMLAttributes } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cx } from './cx'
 

@@ -236,23 +236,21 @@ function Reorder({
             {items[itemIndex]}
           </span>
           <IconButton
-            type="button"
             label="Move up"
+            size="sm"
             disabled={disabled || pos === 0}
             onClick={() => onMove(pos, pos - 1)}
-            variant="ghost"
-            size="sm"
-            icon={<ArrowUp className="h-4 w-4" />}
-          />
+          >
+            <ArrowUp className="h-4 w-4" />
+          </IconButton>
           <IconButton
-            type="button"
             label="Move down"
+            size="sm"
             disabled={disabled || pos === order.length - 1}
             onClick={() => onMove(pos, pos + 1)}
-            variant="ghost"
-            size="sm"
-            icon={<ArrowDown className="h-4 w-4" />}
-          />
+          >
+            <ArrowDown className="h-4 w-4" />
+          </IconButton>
         </li>
       ))}
     </ol>
