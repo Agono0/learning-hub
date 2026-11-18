@@ -18,11 +18,12 @@
  */
 
 import { useMemo, useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CANONICAL_CATEGORIZATION_SETS,
   evaluateCategorizationSession,
   generateCategorizationDeck,
+  planCategorizationStudy,
   planDiscriminatingBlock,
   type CategorizationDeck,
   type CategorizationEvaluation,
@@ -30,14 +31,18 @@ import {
   type Category,
   type CategorySet,
   type DiscriminatingTrialPlan,
+  type StudyPlan,
 } from '@learning-hub/core'
+import type { StoredPrototypeExemplarSession } from '@learning-hub/db'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, Callout, Panel, Skeleton, Tabs } from '@/ui'
+import { Badge, Button, Callout, EmptyState, Panel, Skeleton, Tabs } from '@/ui'
 import { PrototypeExemplarHud } from '../ui/PrototypeExemplarHud'
 import {
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  CalendarDays,
+  History as HistoryIcon,
   Layers,
   Scale,
   Shapes,
@@ -64,10 +69,27 @@ interface EvaluateResponse {
 interface PlanResponse {
   ok: boolean
   plan: DiscriminatingTrialPlan
+  schedule: StudyPlan | null
 }
 interface DeckResponse {
   ok: boolean
   deck: CategorizationDeck
+}
+interface ListSessionsResponse {
+  ok: boolean
+  sessions: StoredPrototypeExemplarSession[]
+  total: number
+}
+interface SaveSessionResponse {
+  ok: boolean
+  session: StoredPrototypeExemplarSession
+}
+
+const MATURITY_BAND_LABELS: Record<string, string> = {
+  featural_guesser: 'Featural guesser',
+  typicality_sensate: 'Typicality sensate',
+  boundary_tracer: 'Boundary tracer',
+  dual_model_theorist: 'Dual-model theorist',
 }
 
 export function PrototypeExemplarStudio() {
@@ -96,6 +118,7 @@ export function PrototypeExemplarStudio() {
   const [evaluation, setEvaluation] = useState<CategorizationEvaluation | null>(null)
   const [trialPlan, setTrialPlan] = useState<DiscriminatingTrialPlan | null>(null)
   const [deck, setDeck] = useState<CategorizationDeck | null>(null)
+  const [schedule, setSchedule] = useState<StudyPlan | null>(null)
 
   const activeSet: CategorySet = useMemo(
     () => sets.find((s) => s.id === selectedSetId) ?? sets[0]!,
@@ -113,6 +136,7 @@ export function PrototypeExemplarStudio() {
     setEvaluation(null)
     setTrialPlan(null)
     setDeck(null)
+    setSchedule(null)
   }
 
   const buildSubmission = (): CategorizationSubmissionInput => ({
@@ -138,6 +162,9 @@ export function PrototypeExemplarStudio() {
     onSuccess: (result) => {
       setEvaluation(result)
       setActivePhase('insight')
+      // Persist the completed session (fire-and-forget; the History panel
+      // surfaces whether the ledger accepted it).
+      saveMutation.mutate(buildSubmission())
     },
   })
 
@@ -177,6 +204,70 @@ export function PrototypeExemplarStudio() {
       return generateCategorizationDeck(activeSet, currentEvaluation)
     },
     onSuccess: (result) => setDeck(result),
+  })
+
+  // Persistence: a completed evaluation is appended to the append-only ledger
+  // (server-side re-evaluation — stored metrics are always the engine's own).
+  const queryClient = useQueryClient()
+  const saveMutation = useMutation({
+    mutationFn: async (submission: CategorizationSubmissionInput) => {
+      const res = await apiSend<SaveSessionResponse>('/api/prototype-exemplar', 'POST', {
+        action: 'saveSession',
+        submission,
+      })
+      return res.session
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['prototype-exemplar', 'history'] })
+    },
+  })
+
+  // Multi-day study schedule: the handler sequences expanding refresh blocks
+  // (Landauer & Bjork 1978) around the daily frontier block (Kang 2016) from
+  // the recorded session history; the pure planner is the local fallback.
+  const scheduleMutation = useMutation({
+    mutationFn: async (): Promise<StudyPlan> => {
+      type PlannerSession = {
+        setId: string
+        completedAt: string
+        accuracy: number
+        transferAccuracy: number
+        tsc: number
+        cri: number
+        maturityBand: CategorizationEvaluation['maturityBand']
+      }
+      let history: PlannerSession[] = []
+      try {
+        const res = await apiSend<ListSessionsResponse>('/api/prototype-exemplar', 'POST', {
+          action: 'listSessions',
+          limit: 50,
+        })
+        history = (res.sessions ?? []).map((s) => ({
+          setId: s.setId,
+          completedAt: s.createdAt,
+          accuracy: s.metrics.overallAccuracy,
+          transferAccuracy: s.metrics.transferAccuracy,
+          tsc: s.metrics.tsc,
+          cri: s.metrics.cri,
+          maturityBand: s.metrics.maturityBand,
+        }))
+        const planned = await apiSend<PlanResponse>('/api/prototype-exemplar', 'POST', {
+          action: 'plan',
+          setId: activeSet.id,
+          maxTrials: 6,
+          sessions: history,
+          scheduleOptions: { horizonDays: 7 },
+        })
+        if (planned?.schedule) return planned.schedule
+      } catch {
+        // fall through to local planning
+      }
+      return planCategorizationStudy(history, {
+        now: new Date().toISOString(),
+        horizonDays: 7,
+      })
+    },
+    onSuccess: (result) => setSchedule(result),
   })
 
   const setRating = (stimulusId: string, rating: number) => {
@@ -520,6 +611,77 @@ export function PrototypeExemplarStudio() {
           </Panel>
 
           <Panel
+            title="Study Schedule (next 7 days)"
+            actions={
+              <Button
+                variant="secondary"
+                onClick={() => scheduleMutation.mutate()}
+                disabled={scheduleMutation.isPending}
+              >
+                <CalendarDays className="mr-1 h-3.5 w-3.5" aria-hidden />
+                {scheduleMutation.isPending ? 'Planning…' : 'Plan Schedule'}
+              </Button>
+            }
+            className="space-y-3"
+          >
+            <p className="text-xs leading-relaxed text-secondary">
+              Expanding retrieval practice on mastered categories (Landauer &amp; Bjork 1978)
+              interleaved with the daily frontier block (Kang 2016). Refresh is retrieval, not
+              re-reading — rest days are part of the design.
+            </p>
+            {scheduleMutation.isPending && <Skeleton className="h-10 w-full" />}
+            {scheduleMutation.isError && (
+              <Callout tone="danger">
+                Schedule planning failed — try again, or keep practicing the frontier block above.
+              </Callout>
+            )}
+            {schedule && (
+              <div className="space-y-2">
+                {schedule.days.map((day) => (
+                  <div
+                    key={day.day}
+                    className="rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-semibold text-strong">
+                        {day.dayIndex === 0 ? 'Today' : `Day +${day.dayIndex}`} · {day.day}
+                      </span>
+                      <Badge tone={day.blocks.length === 0 ? 'neutral' : 'accent'}>
+                        {day.blocks.length === 0 ? 'rest day' : `${day.blocks.length} blocks`}
+                      </Badge>
+                    </div>
+                    {day.blocks.length === 0 ? (
+                      <p className="mt-1 text-[11px] text-tertiary">
+                        Spacing needs gaps — do not backfill this day (Landauer &amp; Bjork 1978).
+                      </p>
+                    ) : (
+                      <ul className="mt-1 space-y-1">
+                        {day.blocks.map((block, blockIdx) => (
+                          <li
+                            key={`${block.kind}-${block.setId}-${blockIdx}`}
+                            className="flex flex-wrap items-center gap-1.5 text-secondary"
+                          >
+                            <Badge tone={block.kind === 'frontier' ? 'accent' : 'cyan'}>
+                              {block.kind === 'frontier' ? 'frontier' : `refresh #${block.retrievalOrdinal}`}
+                            </Badge>
+                            <span className="min-w-0 flex-1 truncate">{block.setTitle}</span>
+                            <span className="text-tertiary">{block.trials.length} trials</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+                {schedule.notes.map((note) => (
+                  <p key={note} className="text-[11px] text-tertiary">
+                    {note}
+                  </p>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel
             title="FSRS Review Deck"
             actions={
               <Button
@@ -581,6 +743,9 @@ export function PrototypeExemplarStudio() {
         </div>
       )}
 
+      {/* History — completed sessions, append-only (a session is an event, not a resume-able draft) */}
+      <PrototypeExemplarHistory saveState={saveMutation.status} />
+
       {/* Research footer — one quiet line, not a citation wall */}
       <p className="flex items-center gap-1.5 pb-2 text-[11px] text-tertiary">
         <Shapes className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -589,6 +754,106 @@ export function PrototypeExemplarStudio() {
         1988).
       </p>
     </div>
+  )
+}
+
+/** One save state chip for the History header (honest: saved / not saved). */
+function SaveStateBadge({ state }: { state: 'idle' | 'pending' | 'success' | 'error' }) {
+  if (state === 'pending') return <Badge tone="warning">saving…</Badge>
+  if (state === 'success') return <Badge tone="success" dot>saved</Badge>
+  if (state === 'error') return <Badge tone="danger">not saved</Badge>
+  return null
+}
+
+/**
+ * History section — the append-only session ledger as the learner sees it.
+ * Each row is a COMPLETED session (per-session metrics: CRI, accuracy, maturity
+ * band); there is no resume: "start new" (the header's Evaluate button) is the
+ * only primary action, so the record stays an honest log of what happened.
+ */
+function PrototypeExemplarHistory({ saveState }: { saveState: 'idle' | 'pending' | 'success' | 'error' }) {
+  const historyQuery = useQuery({
+    queryKey: ['prototype-exemplar', 'history'],
+    queryFn: async (): Promise<ListSessionsResponse> => {
+      const res = await apiSend<ListSessionsResponse>('/api/prototype-exemplar', 'POST', {
+        action: 'listSessions',
+        limit: 10,
+      })
+      return { ok: true, sessions: res.sessions ?? [], total: res.total ?? 0 }
+    },
+    staleTime: 15_000,
+  })
+  const sessions = historyQuery.data?.sessions ?? []
+  const total = historyQuery.data?.total ?? 0
+
+  return (
+    <Panel
+      title="History"
+      actions={
+        <span className="flex items-center gap-2">
+          <SaveStateBadge state={saveState} />
+          <Badge tone="neutral">{total} sessions</Badge>
+        </span>
+      }
+      className="space-y-3"
+    >
+      {historyQuery.isPending && (
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      )}
+      {historyQuery.isError && (
+        <Callout tone="danger">
+          Could not load your session history — check the connection and try reopening the studio.
+        </Callout>
+      )}
+      {!historyQuery.isPending && !historyQuery.isError && sessions.length === 0 && (
+        <EmptyState
+          icon={<HistoryIcon className="h-5 w-5" aria-hidden />}
+          title="No sessions recorded yet"
+        >
+          Complete an evaluation above — each finished session is saved here with its metrics. A
+          session is a completed event: start new rather than resuming.
+        </EmptyState>
+      )}
+      {sessions.length > 0 && (
+        <ul className="space-y-2">
+          {sessions.map((session) => (
+            <li
+              key={session.id}
+              className="rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <span className="font-semibold text-strong">
+                  {CANONICAL_CATEGORIZATION_SETS.find((s) => s.id === session.setId)?.title ??
+                    session.setId}
+                </span>
+                <span className="text-tertiary">
+                  {new Date(session.createdAt).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <Badge tone="accent">CRI {session.metrics.cri}</Badge>
+                <Badge tone={session.accuracy >= 80 ? 'success' : 'warning'}>
+                  {session.accuracy}% accuracy
+                </Badge>
+                <Badge tone="cyan">TSC {session.metrics.tsc}</Badge>
+                <Badge tone="neutral">
+                  {MATURITY_BAND_LABELS[session.metrics.maturityBand] ?? session.metrics.maturityBand}
+                </Badge>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   )
 }
 
