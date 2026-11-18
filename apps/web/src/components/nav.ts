@@ -123,6 +123,7 @@ export const NAV: NavGroup[] = [
       { href: '/peer-instruction', label: 'Peer Instruction', icon: Users },
       { href: '/inquiry', label: 'Scientific Inquiry', icon: FlaskConical },
       { href: '/reciprocal-teaching', label: 'Reciprocal Teaching', icon: MessageSquare },
+      { href: '/argumentation', label: 'Argumentation', icon: Scale },
     ],
   },
   {

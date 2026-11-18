@@ -48,6 +48,7 @@ import {
   piCommand,
   inquiryCommand,
   reciprocalTeachingCommand,
+  cerCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -847,6 +848,13 @@ const builtinCommands: RegisteredCommand[] = [
       'Palincsar & Brown reciprocal teaching, Chi ICAP framework & King guided questioning studio',
     usage: '[eval|passages|peer|deck] [--passage passage-endosymbiosis --role questioner]',
     run: (runArgs) => reciprocalTeachingCommand(runArgs),
+  },
+  {
+    name: 'cer',
+    description:
+      'McNeill & Krajcik CER, Toulmin TAP & Osborne epistemic scientific argumentation studio',
+    usage: '[debates|counter|eval|deck] [--debate <id>]',
+    run: (runArgs) => cerCommand(runArgs),
   },
 ]
 

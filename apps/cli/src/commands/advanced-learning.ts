@@ -53,6 +53,11 @@ import {
   evaluateReciprocalSession,
   generatePeerDialogicTurn,
   generateReciprocalFSRSDeck,
+  CANONICAL_SCIENTIFIC_DEBATES,
+  evaluateCERArgument,
+  generateAdversarialCounterArgument,
+  generateCERFSRSDeck,
+  type CERArgumentSubmission,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -935,4 +940,103 @@ export async function reciprocalTeachingCommand(args: string[]): Promise<void> {
   )
   console.log('─'.repeat(65))
   console.log(`Feedback: ${evalResult.feedback.join(' ')}`)
+}
+
+// ── 12. Claim-Evidence-Reasoning (CER) & Epistemic Argumentation Command ──────
+export async function cerCommand(args: string[]): Promise<void> {
+  const debates = CANONICAL_SCIENTIFIC_DEBATES
+  const sub = args[0]
+
+  if (sub === 'debates' || sub === 'list') {
+    console.log('\n⚖️ Canonical Scientific Debates (McNeill & Krajcik 2012, Kuhn 1991)')
+    console.log('═'.repeat(65))
+    debates.forEach((d) => {
+      console.log(`• [${d.id}] ${d.title}`)
+      console.log(`  Domain: ${d.domain} | Difficulty: ${d.difficulty}`)
+      console.log(`  Question: "${d.focalQuestion}"`)
+      console.log(
+        `  Claims: ${d.competingClaims.length} | Evidence Items: ${d.evidencePool.length} | Principles: ${d.scientificPrinciples.length}`,
+      )
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  const debateId = parseFlag(args, '--debate') || 'debate-amoc-tipping'
+  const debate = debates.find((d) => d.id === debateId) ?? debates[0]!
+
+  if (sub === 'counter') {
+    const claimId = parseFlag(args, '--claim') || debate.competingClaims[0]!.id
+    const counter = generateAdversarialCounterArgument(debate, claimId)
+    console.log('\n⚔️ Socratic Counter-Argument Crucible (TAP Level 4/5)')
+    console.log('═'.repeat(65))
+    console.log(`Debate:       ${debate.title}`)
+    console.log(`Opponent:     ${counter.counterTheorist}`)
+    console.log(`Counter-Claim: "${counter.counterClaim}"`)
+    console.log(`Basis:        ${counter.counterEvidence}`)
+    console.log('─'.repeat(65))
+    console.log(`Challenge Prompt:\n"${counter.rebuttalChallenge}"`)
+    return
+  }
+
+  if (sub === 'deck') {
+    const submission: CERArgumentSubmission = {
+      debateId: debate.id,
+      selectedClaimId: debate.competingClaims[0]!.id,
+      claimStatement: debate.competingClaims[0]!.claim,
+      selectedEvidenceIds: [debate.evidencePool[0]!.id],
+      userEvidenceSynthesis: 'Primary observational evidence.',
+      selectedPrincipleIds: [debate.scientificPrinciples[0]!.id],
+      userReasoningStatement: 'Salt-advection density feedback slows down AMOC.',
+    }
+    const evaluation = evaluateCERArgument(debate, submission)
+    const deck = generateCERFSRSDeck(debate, submission, evaluation)
+
+    console.log('\n📦 Calibrated FSRS-6 Epistemic Argumentation Deck')
+    console.log(`Debate:            ${deck.debateTitle}`)
+    console.log(`Epistemic Rigor:   ${deck.ersBaseline}/100 ERS`)
+    console.log(`Cards Generated:   ${deck.cards.length}`)
+    console.log('═'.repeat(65))
+    deck.cards.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Type: ${c.cardType.toUpperCase()} (S: ${c.fsrsParameters.stability}d, D: ${c.fsrsParameters.difficulty})`,
+      )
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval
+  const robustSubmission: CERArgumentSubmission = {
+    debateId: debate.id,
+    selectedClaimId: 'claim-amoc-tipping-near',
+    claimStatement:
+      'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+    selectedEvidenceIds: ['ev-amoc-sst-autocorr', 'ev-amoc-paleo-glacier', 'ev-amoc-cmip6-bias'],
+    userEvidenceSynthesis:
+      'Subpolar SST fingerprints exhibit critical slowing down with increased variance, mirrored by Heinrich Stadial 1 paleorecords where freshwater pulses suppressed overturning by >70%. CMIP6 stability is an artifact of deep salinity restoring.',
+    selectedPrincipleIds: ['princ-salt-advection', 'princ-critical-slowing'],
+    userReasoningStatement:
+      'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, which reduces northward transport of saline waters, creating runaway positive feedback. Furthermore, bifurcation theory demonstrates that increased autocorrelation causally indicates loss of dynamical resilience.',
+    targetedCounterArgumentId: 'counter-amoc-rapid',
+    userRebuttalStatement:
+      'Opponents cite the 2004–2022 RAPID-MOCHA mooring array as evidence of stability; however, this rebuttal is flawed because 18 years of instrumental data is statistically insufficient to disentangle multi-decadal Atlantic Multidecadal Variability from long-term centennial deceleration.',
+  }
+
+  const evalResult = evaluateCERArgument(debate, robustSubmission)
+
+  console.log('\n⚖️ Claim-Evidence-Reasoning Telemetry (McNeill & Krajcik 2012, Osborne 2004)')
+  console.log('═'.repeat(65))
+  console.log(`Debate:              ${debate.title}`)
+  console.log(`Epistemic Rigor:     ${evalResult.ers}/100 ERS`)
+  console.log(`Toulmin Level:       Level ${evalResult.tapLevel} / 5 TAP`)
+  console.log(`Mastery Band:        ${evalResult.masteryBand.toUpperCase()}`)
+  console.log(`CER Completeness:    ${evalResult.ccs}/100 CCS`)
+  console.log(`Evidence Quality:    ${evalResult.eqi}/100 EQI (Reliability & Triangulation)`)
+  console.log(`Reasoning Depth:     ${evalResult.rdi}/100 RDI (Causal Warrants)`)
+  console.log('─'.repeat(65))
+  console.log(`Strengths:   ${evalResult.epistemicStrengths.join('; ')}`)
+  console.log(`Feedback:    ${evalResult.feedback.join(' ')}`)
 }

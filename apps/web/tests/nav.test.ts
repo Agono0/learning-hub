@@ -55,6 +55,7 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/peer-instruction')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/inquiry')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/reciprocal-teaching')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/argumentation')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })

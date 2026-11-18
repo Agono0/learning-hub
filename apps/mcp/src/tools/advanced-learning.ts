@@ -60,6 +60,11 @@ import {
   generatePeerDialogicTurn,
   generateReciprocalFSRSDeck,
   type DialogueTurn,
+  CANONICAL_SCIENTIFIC_DEBATES,
+  evaluateCERArgument,
+  generateAdversarialCounterArgument,
+  generateCERFSRSDeck,
+  type CERArgumentSubmission,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1146,6 +1151,154 @@ export const advancedLearningTools: RegisteredTool[] = [
       return json({
         passageTitle: passage.title,
         rdmsBaseline: deck.rdmsBaseline,
+        cardsCount: deck.cards.length,
+        cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 12. Claim-Evidence-Reasoning (CER) & Epistemic Argumentation (McNeill & Krajcik, Osborne) ──
+  tool(
+    'cer_list_debates',
+    'Lists all canonical multidisciplinary scientific debate cases across climatology, quantum foundations, epigenetics, neuropharmacology, and cognitive linguistics.',
+    {},
+    async () => {
+      const debates = CANONICAL_SCIENTIFIC_DEBATES
+      return json({
+        count: debates.length,
+        debates: debates.map((d) => ({
+          id: d.id,
+          title: d.title,
+          domain: d.domain,
+          difficulty: d.difficulty,
+          focalQuestion: d.focalQuestion,
+          claimsCount: d.competingClaims.length,
+          evidenceCount: d.evidencePool.length,
+          principlesCount: d.scientificPrinciples.length,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'cer_counter_argue',
+    'Generates an authentic adversarial counter-argument and challenge prompt for a given claim in a scientific debate.',
+    {
+      debateId: z.string().default('debate-amoc-tipping'),
+      selectedClaimId: z.string().default('claim-amoc-tipping-near'),
+    },
+    async ({ debateId, selectedClaimId }) => {
+      const debate =
+        CANONICAL_SCIENTIFIC_DEBATES.find((d) => d.id === debateId) ??
+        CANONICAL_SCIENTIFIC_DEBATES[0]!
+      const counter = generateAdversarialCounterArgument(debate, selectedClaimId)
+      return json({
+        debateTitle: debate.title,
+        counterTheorist: counter.counterTheorist,
+        counterClaim: counter.counterClaim,
+        counterEvidence: counter.counterEvidence,
+        rebuttalChallenge: counter.rebuttalChallenge,
+      })
+    },
+  ),
+
+  tool(
+    'cer_evaluate_argument',
+    'Evaluates an argument submission against the McNeill-Krajcik CER framework and Erduran-Osborne TAP 5-level hierarchy, calculating CCS, EQI, RDI, TAP, and ERS.',
+    {
+      debateId: z.string().default('debate-amoc-tipping'),
+      selectedClaimId: z.string().default('claim-amoc-tipping-near'),
+      claimStatement: z
+        .string()
+        .default(
+          'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+        ),
+      selectedEvidenceIds: z
+        .array(z.string())
+        .default(['ev-amoc-sst-autocorr', 'ev-amoc-paleo-glacier']),
+      userEvidenceSynthesis: z
+        .string()
+        .default(
+          'Subpolar SST fingerprints exhibit critical slowing down with increased variance and Heinrich Stadial 1 paleorecords show massive freshwater shutdown.',
+        ),
+      selectedPrincipleIds: z
+        .array(z.string())
+        .default(['princ-salt-advection', 'princ-critical-slowing']),
+      userReasoningStatement: z
+        .string()
+        .default(
+          'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, creating runaway positive feedback.',
+        ),
+      userRebuttalStatement: z
+        .string()
+        .default(
+          'Opponents cite RAPID-MOCHA mooring data; however, 18 years of instrumental data is statistically insufficient to distinguish multi-decadal variability from centennial collapse.',
+        ),
+    },
+    async ({
+      debateId,
+      selectedClaimId,
+      claimStatement,
+      selectedEvidenceIds,
+      userEvidenceSynthesis,
+      selectedPrincipleIds,
+      userReasoningStatement,
+      userRebuttalStatement,
+    }) => {
+      const debate =
+        CANONICAL_SCIENTIFIC_DEBATES.find((d) => d.id === debateId) ??
+        CANONICAL_SCIENTIFIC_DEBATES[0]!
+      const submission: CERArgumentSubmission = {
+        debateId: debate.id,
+        selectedClaimId,
+        claimStatement,
+        selectedEvidenceIds,
+        userEvidenceSynthesis,
+        selectedPrincipleIds,
+        userReasoningStatement,
+        userRebuttalStatement,
+      }
+      const evaluation = evaluateCERArgument(debate, submission)
+      return json({
+        debateTitle: debate.title,
+        ers: evaluation.ers,
+        ccs: evaluation.ccs,
+        eqi: evaluation.eqi,
+        rdi: evaluation.rdi,
+        tapLevel: evaluation.tapLevel,
+        masteryBand: evaluation.masteryBand,
+        feedback: evaluation.feedback,
+        epistemicStrengths: evaluation.epistemicStrengths,
+        vulnerabilities: evaluation.vulnerabilities,
+      })
+    },
+  ),
+
+  tool(
+    'cer_generate_deck',
+    'Synthesizes calibrated FSRS-6 spaced repetition cards from a scientific debate with parameters scaled by Epistemic Rigor Score.',
+    {
+      debateId: z.string().default('debate-amoc-tipping'),
+      claimStatement: z.string().default('The AMOC has crossed early-warning tipping thresholds.'),
+    },
+    async ({ debateId, claimStatement }) => {
+      const debate =
+        CANONICAL_SCIENTIFIC_DEBATES.find((d) => d.id === debateId) ??
+        CANONICAL_SCIENTIFIC_DEBATES[0]!
+      const submission: CERArgumentSubmission = {
+        debateId: debate.id,
+        selectedClaimId: debate.competingClaims[0]!.id,
+        claimStatement,
+        selectedEvidenceIds: [debate.evidencePool[0]!.id],
+        userEvidenceSynthesis: 'Observational fingerprint data.',
+        selectedPrincipleIds: [debate.scientificPrinciples[0]!.id],
+        userReasoningStatement: 'Salt advection positive feedback.',
+      }
+      const evaluation = evaluateCERArgument(debate, submission)
+      const deck = generateCERFSRSDeck(debate, submission, evaluation)
+      return json({
+        debateTitle: debate.title,
+        ersBaseline: deck.ersBaseline,
         cardsCount: deck.cards.length,
         cards: deck.cards,
       })
