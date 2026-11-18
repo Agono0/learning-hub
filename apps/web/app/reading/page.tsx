@@ -31,7 +31,7 @@ import { tokenizeText } from '@learning-hub/core/exposure'
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
-import { Badge, Markdown, PageHeader, Sheet, Tabs } from '@/ui'
+import { Badge, Button, Markdown, PageHeader, Sheet, Slider, Tabs } from '@/ui'
 
 interface Source {
   id: number
@@ -532,15 +532,15 @@ export default function ReadingPage() {
         title="Reading Studio"
         subtitle="PDF, EPUB, Web Articles, YouTube transcripts & Markdown — incremental reading or guided SQ3R."
         actions={
-          <button
-            className="btn"
+          <Button
+            variant="primary"
             onClick={() => {
               setFeedback(null)
               setIngestOpen(true)
             }}
           >
             <Plus className="h-4 w-4" /> Add source
-          </button>
+          </Button>
         }
       />
 
@@ -642,8 +642,9 @@ export default function ReadingPage() {
                 />
                 <div className="flex items-center gap-2">
                   <Badge>{source.kind}</Badge>
-                  <button
-                    className="btn-ghost text-xs text-danger-text"
+                  <Button
+                    variant="ghost"
+                    className="text-xs text-danger-text"
                     title="Delete source"
                     onClick={async () => {
                       await apiSend(`/api/reading/${source.id}`, 'DELETE')
@@ -652,7 +653,7 @@ export default function ReadingPage() {
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -660,17 +661,15 @@ export default function ReadingPage() {
                 <div className="panel">
                   <h2 className="font-semibold">{source.title}</h2>
                   <div className="mt-2 flex items-center gap-3">
-                    <input
-                      type="range"
+                    <Slider
+                      className="flex-1"
+                      label="Reading position"
                       min={0}
                       max={100}
                       value={Math.round(source.position)}
-                      onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
-                      className="flex-1 accent-indigo-500"
+                      onChange={(position) => patchSource.mutate({ position })}
+                      format={(v) => `${v}%`}
                     />
-                    <span className="w-12 text-right text-xs text-tertiary">
-                      {Math.round(source.position)}%
-                    </span>
                   </div>
                   {exposureQuery.data?.coverageAnalysis && (
                     <div className="mt-2.5 flex items-center gap-2 text-xs">
@@ -725,24 +724,26 @@ export default function ReadingPage() {
                     <Markdown>{fragment.text}</Markdown>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
-                    <button
-                      className="btn"
+                    <Button
+                      variant="primary"
                       onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
                     >
                       {fragment.done ? 'Finish source' : 'Next fragment →'}
-                    </button>
-                    <button
-                      className="btn-ghost text-xs"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-xs"
                       onClick={() => extractHighlights.mutate(source.id)}
                       disabled={extractHighlights.isPending}
                     >
                       <Highlighter className="h-3.5 w-3.5" /> Extract highlight
                       {selected ? ' (from selection)' : 's (auto)'}
-                    </button>
+                    </Button>
                     {(['define', 'simplify', 'flashcard'] as const).map((mode) => (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={mode}
-                        className="btn-ghost text-xs"
+                        className="text-xs"
                         onClick={() =>
                           manual
                             ? setGhostResult(manualGhostHint(mode, selected))
@@ -756,7 +757,7 @@ export default function ReadingPage() {
                       >
                         <Sparkles className="h-3.5 w-3.5" />{' '}
                         {mode === 'flashcard' ? 'Make flashcard' : mode}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   {ghostResult && (
@@ -818,8 +819,9 @@ export default function ReadingPage() {
                             className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-(--hub-border)"
                           >
                             <span className="font-medium text-neutral-200">{h}</span>
-                            <button
-                              className="btn-ghost px-2 py-1 text-[11px]"
+                            <Button
+                              variant="ghost"
+                              className="px-2 py-1 text-[11px]"
                               onClick={() =>
                                 addGuidingQuestion(
                                   `How or why does "${h}" work, and what is its key takeaway?`,
@@ -827,20 +829,20 @@ export default function ReadingPage() {
                               }
                             >
                               + Question
-                            </button>
+                            </Button>
                           </div>
                         ))}
                       </div>
                       <div className="flex justify-end">
-                        <button
-                          className="btn"
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             markStepDone('survey')
                             setSq3rStep('question')
                           }}
                         >
                           Survey done → Formulate Questions
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -859,9 +861,9 @@ export default function ReadingPage() {
                           onChange={(e) => setNewQuestion(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addGuidingQuestion(newQuestion)}
                         />
-                        <button className="btn" onClick={() => addGuidingQuestion(newQuestion)}>
+                        <Button variant="primary" onClick={() => addGuidingQuestion(newQuestion)}>
                           Add
-                        </button>
+                        </Button>
                       </div>
                       <div className="space-y-2">
                         {questions.map((q) => (
@@ -890,15 +892,15 @@ export default function ReadingPage() {
                         )}
                       </div>
                       <div className="flex justify-end">
-                        <button
-                          className="btn"
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             markStepDone('question')
                             setSq3rStep('read')
                           }}
                         >
                           Start Active Reading →
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -906,17 +908,15 @@ export default function ReadingPage() {
                   {sq3rStep === 'read' && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <input
-                          type="range"
+                        <Slider
+                          className="flex-1"
+                          label="Reading position"
                           min={0}
                           max={100}
                           value={Math.round(source.position)}
-                          onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
-                          className="flex-1 accent-indigo-500"
+                          onChange={(position) => patchSource.mutate({ position })}
+                          format={(v) => `${v}%`}
                         />
-                        <span className="w-12 text-right text-xs text-tertiary">
-                          {Math.round(source.position)}%
-                        </span>
                       </div>
                       <div className="max-h-[42vh] overflow-y-auto rounded-xl border border-neutral-200 p-3 text-sm leading-relaxed dark:border-(--hub-border)">
                         <Markdown>{fragment.text}</Markdown>
@@ -944,14 +944,14 @@ export default function ReadingPage() {
                         </div>
                       )}
                       <div className="flex flex-wrap justify-between gap-2">
-                        <button
-                          className="btn-ghost"
+                        <Button
+                          variant="ghost"
                           onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
                         >
                           {fragment.done ? 'At end of source' : 'Next fragment →'}
-                        </button>
-                        <button
-                          className="btn"
+                        </Button>
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             setPeekDuringRecite(false)
                             markStepDone('read')
@@ -959,7 +959,7 @@ export default function ReadingPage() {
                           }}
                         >
                           Hide text & Recite from memory →
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -971,8 +971,9 @@ export default function ReadingPage() {
                           <strong>Closed-book Recitation:</strong> Without looking at the text,
                           write everything you remember from this section.
                         </p>
-                        <button
-                          className="btn-ghost text-xs"
+                        <Button
+                          variant="ghost"
+                          className="text-xs"
                           onClick={() => setPeekDuringRecite((p) => !p)}
                         >
                           {peekDuringRecite ? (
@@ -984,7 +985,7 @@ export default function ReadingPage() {
                               <Eye className="h-3.5 w-3.5" /> Peek text to check gaps
                             </>
                           )}
-                        </button>
+                        </Button>
                       </div>
                       {peekDuringRecite && (
                         <div className="max-h-48 overflow-y-auto rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
@@ -1000,15 +1001,15 @@ export default function ReadingPage() {
                         onBlur={() => saveSq3r.mutate({ reciteNotes })}
                       />
                       <div className="flex justify-end">
-                        <button
-                          className="btn"
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             markStepDone('recite')
                             setSq3rStep('review')
                           }}
                         >
                           Proceed to Review & Flashcard Minting →
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1048,15 +1049,17 @@ export default function ReadingPage() {
                       </div>
                       <div className="flex flex-wrap justify-between gap-2">
                         {reciteNotes.trim() && (
-                          <button
-                            className="btn-ghost text-xs"
+                          <Button
+                            variant="ghost"
+                            className="text-xs"
                             onClick={() => setMineText(reciteNotes)}
                           >
                             Mine cards from Recite summary
-                          </button>
+                          </Button>
                         )}
-                        <button
-                          className="btn ml-auto"
+                        <Button
+                          variant="primary"
+                          className="ml-auto"
                           disabled={
                             convertSq3rCards.isPending ||
                             questions.filter((q) => !q.cardId && q.answer.trim()).length === 0
@@ -1070,7 +1073,7 @@ export default function ReadingPage() {
                           {convertSq3rCards.isPending
                             ? 'Creating cards…'
                             : 'Convert Q&As to FSRS Flashcards'}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1167,8 +1170,8 @@ export default function ReadingPage() {
                                 Already a card
                               </span>
                             ) : (
-                              <button
-                                type="button"
+                              <Button
+                                variant="ghost"
                                 disabled={promoteWord.isPending}
                                 onClick={() =>
                                   promoteWord.mutate({
@@ -1176,11 +1179,11 @@ export default function ReadingPage() {
                                     snippet: `Encountered ${word.encounterCount} times across reading.`,
                                   })
                                 }
-                                className="btn-ghost text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
+                                className="text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
                               >
                                 <Plus className="h-3.5 w-3.5 text-indigo-400" />
                                 Turn into Card
-                              </button>
+                              </Button>
                             )}
                           </div>
                         ))}
@@ -1200,27 +1203,33 @@ export default function ReadingPage() {
                     >
                       <p className="text-secondary">{h.text}</p>
                       <div className="mt-2 flex gap-2">
-                        <button
-                          className="btn text-xs"
+                        <Button
+                          variant="primary"
+                          className="text-xs"
                           onClick={() => {
                             if (h.id > 0) triage.mutate({ id: h.id, action: 'keep' })
                             setTriageQueue((q) => q.filter((x) => x.id !== h.id))
                           }}
                         >
                           Keep
-                        </button>
-                        <button className="btn-ghost text-xs" onClick={() => setMineText(h.text)}>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="text-xs"
+                          onClick={() => setMineText(h.text)}
+                        >
                           → cards
-                        </button>
-                        <button
-                          className="btn-ghost text-xs text-danger-text"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="text-xs text-danger-text"
                           onClick={() => {
                             if (h.id > 0) triage.mutate({ id: h.id, action: 'discard' })
                             setTriageQueue((q) => q.filter((x) => x.id !== h.id))
                           }}
                         >
                           Discard
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1235,12 +1244,13 @@ export default function ReadingPage() {
                       className={`h-2 w-2 rounded-full ${h.triaged === 1 ? 'bg-emerald-500' : h.triaged === 2 ? 'bg-rose-500' : 'bg-neutral-400'}`}
                     />
                     <span className="flex-1 truncate text-secondary">{h.text}</span>
-                    <button
-                      className="btn-ghost px-2 py-1 text-xs"
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1 text-xs"
                       onClick={() => setMineText(h.text)}
                     >
                       → cards
-                    </button>
+                    </Button>
                     <span className="text-[10px] text-tertiary">
                       strength {Math.round(h.strength * 100)}
                     </span>
@@ -1268,11 +1278,11 @@ export default function ReadingPage() {
         footer={
           ingestTab !== 'file' ? (
             <>
-              <button className="btn-ghost" onClick={() => setIngestOpen(false)}>
+              <Button variant="ghost" onClick={() => setIngestOpen(false)}>
                 Cancel
-              </button>
-              <button
-                className="btn"
+              </Button>
+              <Button
+                variant="primary"
                 disabled={
                   ingestRemoteOrMarkdown.isPending ||
                   (ingestTab === 'markdown' ? !markdownInput.trim() : !urlInput.trim())
@@ -1280,7 +1290,7 @@ export default function ReadingPage() {
                 onClick={() => ingestRemoteOrMarkdown.mutate()}
               >
                 {ingestRemoteOrMarkdown.isPending ? 'Importing…' : 'Import source'}
-              </button>
+              </Button>
             </>
           ) : undefined
         }
@@ -1350,13 +1360,13 @@ export default function ReadingPage() {
                   e.target.value = ''
                 }}
               />
-              <button
-                className="btn"
+              <Button
+                variant="primary"
                 disabled={uploadFile.isPending}
                 onClick={() => fileRef.current?.click()}
               >
                 {uploadFile.isPending ? 'Extracting…' : 'Select file'}
-              </button>
+              </Button>
             </div>
           )}
 
