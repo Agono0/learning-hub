@@ -900,7 +900,6 @@ export default function SettingsPage() {
         )}
       </section>
 
-
       {/* ── Device Permissions (summary → Permission Center) ── */}
       <section className="panel space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -910,7 +909,8 @@ export default function SettingsPage() {
               Device Permissions
             </div>
             <p className="mt-0.5 text-xs text-tertiary">
-              What this device allows Learning HUB to do — live status, one calm place to grant or review.
+              What this device allows Learning HUB to do — live status, one calm place to grant or
+              review.
             </p>
           </div>
           <Link
