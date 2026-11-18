@@ -2,15 +2,17 @@
 
 /**
  * Notification bell (M4): renders the needs-attention list from the dashboard
- * payload. In the Tauri shell it can also fire ONE native reminder per day
- * ("N cards due") — strictly opt-in, permission asked on toggle, state kept in
- * localStorage. The plugin import is DYNAMIC: browser bundles never load it.
+ * payload. It can also fire ONE local reminder per day ("N cards due") —
+ * strictly opt-in, permission asked on toggle via the shared platform
+ * adapter (`@/platform/permissions`), state kept in localStorage. The plugin
+ * import stays DYNAMIC: browser bundles never load it.
  */
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Bell, BellOff } from 'lucide-react'
-import { apiGet, isTauri } from '@/lib/transport'
+import { apiGet } from '@/lib/transport'
+import { deliverLocalNotification, requestPermission } from '@/platform/permissions'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 const REMINDERS_KEY = 'lh-reminders-enabled'
@@ -19,23 +21,6 @@ const TONE_STYLE: Record<string, string> = {
   info: 'text-secondary',
   warning: 'text-status-warning-text',
   danger: 'text-danger-text',
-}
-
-/** Send a native notification when running inside Tauri; no-op elsewhere. */
-async function sendNative(title: string, body: string): Promise<boolean> {
-  if (!isTauri) return false
-  try {
-    const plugin = await import('@tauri-apps/plugin-notification')
-    let granted = await plugin.isPermissionGranted()
-    if (!granted) granted = (await plugin.requestPermission()) === 'granted'
-    if (granted) {
-      plugin.sendNotification({ title, body })
-      return true
-    }
-  } catch {
-    // plugin missing (e.g. web build served in the shell) — stay silent
-  }
-  return false
 }
 
 export function NotificationBell() {
@@ -55,19 +40,24 @@ export function NotificationBell() {
     setReminders(localStorage.getItem(REMINDERS_KEY) === '1')
   }, [])
 
-  // one native reminder per day, only when enabled and in Tauri
+  // One local reminder per day, only when enabled AND the OS permission is
+  // granted (checked at fire time, so a revoked permission can't spam).
   useEffect(() => {
-    if (!reminders || !data || !isTauri) return
+    if (!reminders || !data) return
     const today = new Date().toISOString().slice(0, 10)
     if (localStorage.getItem(LAST_FIRE_KEY) === today) return
     const due = data.dueCount
     const exam = data.notifications.find((n) => n.id.startsWith('exam:'))
     if (due === 0 && !exam) return
-    localStorage.setItem(LAST_FIRE_KEY, today)
-    void sendNative(
-      'Learning HUB',
-      exam ? `${exam.title} — ${exam.detail}` : `${due} card${due === 1 ? '' : 's'} due for review`,
-    )
+    // Mark the day as fired ONLY after a successful delivery — a revoked
+    // permission must not silently consume the daily reminder.
+    void (async () => {
+      const ok = await deliverLocalNotification(
+        'Learning HUB',
+        exam ? `${exam.title} — ${exam.detail}` : `${due} card${due === 1 ? '' : 's'} due for review`,
+      )
+      if (ok) localStorage.setItem(LAST_FIRE_KEY, today)
+    })()
   }, [reminders, data])
 
   // close on outside click
@@ -81,20 +71,22 @@ export function NotificationBell() {
   }, [open])
 
   const toggleReminders = async () => {
-    if (!reminders) {
-      const granted = await sendNative('Learning HUB', 'Reminders are on — see you at review time.')
-      if (!granted && !isTauri) {
-        // browsers without the plugin: keep the in-app list only
-        localStorage.setItem(REMINDERS_KEY, '1')
-        setReminders(true)
-        return
-      }
-      localStorage.setItem(REMINDERS_KEY, granted ? '1' : '0')
-      setReminders(granted)
-    } else {
+    if (reminders) {
       localStorage.setItem(REMINDERS_KEY, '0')
       setReminders(false)
+      return
     }
+    // Opt-in asks via the shared adapter (Tauri plugin or Web Notifications).
+    const granted = (await requestPermission('notifications')) === 'granted'
+    if (!granted && typeof window !== 'undefined' && !('Notification' in window)) {
+      // No notification API at all: keep the in-app list only.
+      localStorage.setItem(REMINDERS_KEY, '1')
+      setReminders(true)
+      return
+    }
+    localStorage.setItem(REMINDERS_KEY, granted ? '1' : '0')
+    setReminders(granted)
+    if (granted) void deliverLocalNotification('Learning HUB', 'Reminders are on — see you at review time.')
   }
 
   return (

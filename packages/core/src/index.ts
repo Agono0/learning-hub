@@ -121,4 +121,9 @@ export * from './argumentation'
 export * from './anchored'
 export * from './contrasting'
 export * from './collaborative'
+<<<<<<< HEAD
 export * from './system-dynamics'
+=======
+export * from './permissions'
+>>>>>>> d3c9292 (feat(permissions): unified permission center with honest status, calm onboarding & platform adapter)
+export * from './permissions'

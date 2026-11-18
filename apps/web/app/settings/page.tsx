@@ -8,6 +8,7 @@ import {
   Command,
   Globe,
   Layout,
+  LockKeyhole,
   Monitor,
   Moon,
   RefreshCw,
@@ -30,11 +31,28 @@ import {
   type ThemePreference,
 } from '@/components/ThemeSync'
 import { deliverNotification } from '@/platform/reminders'
+import { usePermissionSnapshot } from '@/lib/use-permissions'
+import { PermissionGate } from '@/ui'
+import { permissionSummaryLine } from '@learning-hub/core/permissions'
+import Link from 'next/link'
 import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
 import { DetoxWizard } from '@/components/DetoxWizard'
+
+/** One-line live summary of device permission status (linked center holds the detail). */
+function PermissionSummaryLine() {
+  const snapshot = usePermissionSnapshot()
+  if (snapshot.isError || !snapshot.data) {
+    return (
+      <p className="text-xs text-tertiary">
+        Permission status unavailable on this device — open the Permission Center for details.
+      </p>
+    )
+  }
+  return <p className="text-sm text-body">{permissionSummaryLine(snapshot.data)}</p>
+}
 
 const PROVIDERS: {
   key: AIProvider
@@ -765,6 +783,7 @@ export default function SettingsPage() {
               quiet hours, daily cap, and anti-nag spacing.
             </p>
           </div>
+          <PermissionGate permission="notifications" reason="delivery of every reminder below" />
           <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
             <input
               type="checkbox"
@@ -879,6 +898,29 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+      </section>
+
+
+      {/* ── Device Permissions (summary → Permission Center) ── */}
+      <section className="panel space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="label flex items-center gap-2">
+              <LockKeyhole className="h-4 w-4 text-indigo-400" />
+              Device Permissions
+            </div>
+            <p className="mt-0.5 text-xs text-tertiary">
+              What this device allows Learning HUB to do — live status, one calm place to grant or review.
+            </p>
+          </div>
+          <Link
+            href="/permissions"
+            className="btn-secondary inline-flex min-h-[44px] items-center px-3 text-sm"
+          >
+            Open Permission Center
+          </Link>
+        </div>
+        <PermissionSummaryLine />
       </section>
 
       {/* ── Online Identity & Privacy ── */}
