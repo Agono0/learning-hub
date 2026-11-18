@@ -46,6 +46,7 @@ import {
   ShieldCheck,
   Shuffle,
   Sparkles,
+  Split,
   Swords,
   Target,
   Timer,
@@ -103,6 +104,7 @@ export const NAV: NavGroup[] = [
       { href: '/apprenticeship', label: 'Cognitive Apprenticeship', icon: GraduationCap },
       { href: '/curiosity', label: 'Epistemic Curiosity', icon: Sparkles },
       { href: '/srl', label: 'Self-Regulated Learning', icon: ShieldCheck },
+      { href: '/dual-process', label: 'Dual-Process Diagnostic', icon: Split },
     ],
   },
   {

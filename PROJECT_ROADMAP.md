@@ -429,7 +429,7 @@
   3. Implement `SelfRegulatedLearningStudio.tsx` with tripartite phase wizard (Forethought goal planner, Performance volition monitor, Self-Reflection attribution crucible) and FSRS-6 regulatory calibration flashcards.
   4. Build `apps/web/app/srl/page.tsx` and register route in navigation.
 - **Files Affected:** `packages/core/src/srl/*`, `apps/web/src/ui/SelfRegulatedLearningHUD.tsx`, `apps/web/src/components/SelfRegulatedLearningStudio.tsx`, `apps/web/app/srl/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed**.
+- **Status:** **Completed (Merged in PR #49)**.
 
 ---
 
@@ -443,4 +443,18 @@
   3. Implement `DualProcessStudio.tsx` with high-stakes diagnostic decision matrices, cognitive forcing checkpoints, bias vulnerability audits, and FSRS-6 debiasing heuristic flashcards.
   4. Build `apps/web/app/dual-process/page.tsx` and register route in navigation.
 - **Files Affected:** `packages/core/src/dualprocess/*`, `apps/web/src/ui/DualProcessHUD.tsx`, `apps/web/src/components/DualProcessStudio.tsx`, `apps/web/app/dual-process/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-25: Multi-Representational Fluency & Representational Competence Studio (Ainsworth 1999, 2006; Lesh 1987; Goldstone 2005)
+
+- **Problem:** Learners become locked into a single modality (e.g. only symbolic equations or only natural language text), failing to develop representational flexibility across symbolic, graphical, concrete, and procedural models.
+- **Root Cause:** Absence of multi-representational translation systems grounded in Shaaron Ainsworth's DeFT (Design, Functions, Tasks) framework that measure inter-representational cognitive friction, cross-modal mapping latency, and representational redundancy.
+- **Proposed Solution:**
+  1. Build `packages/core/src/representation/representational-fluency-engine.ts` modeling Lesh translation models (symbolic, visual, verbal, contextual), Ainsworth DeFT functions (complementary, constraining, constructing), and cross-representation mapping fluency matrices.
+  2. Implement `RepresentationalFluencyHUD.tsx` tracking translation latency, cross-modal coherence index, and representational flexibility grade.
+  3. Implement `RepresentationalFluencyStudio.tsx` with dynamic representation quad-views (algebraic equations, geometric vector charts, intuitive physical analogies, code simulations) and inter-modal translation crucibles.
+  4. Build `apps/web/app/representations/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/representation/*`, `apps/web/src/ui/RepresentationalFluencyHUD.tsx`, `apps/web/src/components/RepresentationalFluencyStudio.tsx`, `apps/web/app/representations/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.
