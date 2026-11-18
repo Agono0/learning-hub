@@ -12,10 +12,11 @@ import {
   weaknessRadar,
   type MasteryInput,
 } from '@learning-hub/core'
+import { withRoute } from '@/lib/api'
 
 const WEEK_MS = 7 * 86_400_000
 
-export async function GET() {
+export const GET = withRoute(async () => {
   const { cards, mastery, revlog, skills, skillEdges } = await import('@learning-hub/db')
   const skillRows = await db.select().from(skills)
   const edgeRows = await db.select().from(skillEdges)
@@ -84,4 +85,4 @@ export async function GET() {
   const recommendations = recommendNextSkills(skillRows, edgeRows, masteryInputs)
 
   return Response.json({ skills: out, edges: edgeRows, radar, recommendations })
-}
+})

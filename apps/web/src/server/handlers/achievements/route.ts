@@ -1,8 +1,9 @@
 import { eventBus } from '@learning-hub/core'
 import { evaluateAndUnlockAchievements } from '@learning-hub/db'
+import { withRoute } from '@/lib/api'
 
 /** GET /api/achievements — catalog with live unlock check from real aggregates. */
-export async function GET() {
+export const GET = withRoute(async () => {
   const { catalog, stats, newlyUnlocked } = evaluateAndUnlockAchievements()
 
   for (const key of newlyUnlocked) {
@@ -11,4 +12,4 @@ export async function GET() {
   }
 
   return Response.json({ catalog, stats, newlyUnlocked })
-}
+})

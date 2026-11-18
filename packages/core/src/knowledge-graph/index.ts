@@ -7,23 +7,9 @@
  * - Remedial learning pause logic: detects when failures in a root prerequisite
  *   must temporarily pause dependent units until prerequisite stability improves.
  */
-import { z } from 'zod'
+import type { ConceptNode, PrerequisiteEdge } from './types'
 
-export const conceptNodeSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1),
-  domain: z.string().optional(),
-  mastery: z.number().min(0).max(1).default(0),
-  lapses: z.number().int().nonnegative().default(0),
-})
-export type ConceptNode = z.infer<typeof conceptNodeSchema>
-
-export const prerequisiteEdgeSchema = z.object({
-  from: z.string().min(1), // prerequisite concept
-  to: z.string().min(1), // dependent concept
-  strength: z.number().min(0).max(1).default(1.0),
-})
-export type PrerequisiteEdge = z.infer<typeof prerequisiteEdgeSchema>
+export * from './types'
 
 export interface RemedialCheckResult {
   blocked: boolean

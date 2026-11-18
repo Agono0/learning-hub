@@ -21,6 +21,7 @@ import {
   skills,
   units,
 } from '@learning-hub/db'
+import { withRoute } from '@/lib/api'
 
 type GraphNodeKind = 'course' | 'unit' | 'lesson' | 'skill' | 'note' | 'idea' | 'card'
 
@@ -34,13 +35,13 @@ interface GraphNode {
   completed?: boolean
 }
 
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const courseId = Number(new URL(req.url).searchParams.get('courseId'))
   if (Number.isInteger(courseId) && courseId > 0) {
     return courseMindMap(courseId)
   }
   return knowledgeGraph()
-}
+})
 
 /** Course mind map: units → lessons → skills with prereq edges. */
 async function courseMindMap(courseId: number) {

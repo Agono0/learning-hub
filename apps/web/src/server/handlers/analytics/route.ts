@@ -14,10 +14,10 @@ import {
   timeOfDayPerformance,
   type DailyReviewsRow,
 } from '@learning-hub/core'
-import { tzOffsetFromQuery } from '@/lib/api'
+import { tzOffsetFromQuery, withRoute } from '@/lib/api'
 
 /** GET /api/analytics?tzOffset=N — every chart dataset in one call, computed from real rows. */
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const tz = tzOffsetFromQuery(req)
   const today = dayKey(new Date(), tz)
   const weekAgo = dayKey(new Date(Date.now() - 7 * 86_400_000), tz)
@@ -158,7 +158,7 @@ export async function GET(req: Request) {
     trueRetention: { retentionPct, totalReviews: retentionRows[0]?.total ?? 0 },
     week: { start: weekAgo, reviews: weeklyReviews, focusMinutes: weeklyFocusMinutes },
   })
-}
+})
 
 /** Short front-text preview of a card for the trainer panel. */
 function cardFrontPreview(type: string, content: unknown): string | null {

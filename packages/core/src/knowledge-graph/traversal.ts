@@ -10,7 +10,7 @@
  *    for Socratic dialogue and creative transfer practice.
  */
 
-import type { ConceptNode, PrerequisiteEdge } from './index'
+import type { ConceptNode, PrerequisiteEdge } from './types'
 
 export type ReviewModality =
   | 'feynman_teachback'
