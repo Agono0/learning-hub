@@ -70,6 +70,10 @@ export {
   type SelfRegulatedLearningHUDProps,
 } from './SelfRegulatedLearningHUD'
 export { DualProcessHUD, type DualProcessHUDProps } from './DualProcessHUD'
+export {
+  RepresentationalFluencyHUD,
+  type RepresentationalFluencyHUDProps,
+} from './RepresentationalFluencyHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
