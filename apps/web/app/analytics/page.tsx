@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Route, Target } from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
-import { PageHeader } from '@/ui'
+import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 
 /** Response of GET /api/review/stats (append-only revlog aggregates). */
 interface ReviewStatsResponse {
@@ -122,6 +122,45 @@ export default function AnalyticsPage() {
       apiGet<AnalyticsResponse>(`/api/analytics?tzOffset=${new Date().getTimezoneOffset()}`),
   })
   const d = q.data
+
+  if (q.isError) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          icon={<Route className="h-6 w-6 text-indigo-400" />}
+          title="Analytics"
+          subtitle="Everything computed from your real revlog, focus and physio data."
+        />
+        <Callout tone="danger" title="Couldn't load analytics">
+          <div className="mt-1 flex items-center gap-3">
+            <span>{(q.error as Error).message}</span>
+            <Button variant="secondary" onClick={() => void q.refetch()}>
+              Try again
+            </Button>
+          </div>
+        </Callout>
+      </div>
+    )
+  }
+
+  if (!d) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading analytics">
+        <PageHeader
+          icon={<Route className="h-6 w-6 text-indigo-400" />}
+          title="Analytics"
+          subtitle="Everything computed from your real revlog, focus and physio data."
+        />
+        <Skeleton className="h-20 w-full" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Skeleton className="h-44" />
+          <Skeleton className="h-44" />
+        </div>
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    )
+  }
 
   const forecastMax = Math.max(1, ...(d?.forecast ?? []).map((f) => f.count))
   const heatMax = Math.max(1, ...(d?.heatmap ?? []).map((h) => h.count))

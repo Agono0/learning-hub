@@ -12,7 +12,7 @@ import { Network, Plus, Sparkles, FileText, Trash2, Save, Move3d, Layers } from 
 import { parseMarkdownOutline, type MindmapData, type MindmapNode } from '@learning-hub/core/visual'
 import { apiGet, apiSend } from '@/lib/transport'
 import { InteractiveMindmapStudio } from '@/components/InteractiveMindmapStudio'
-import { PageHeader, Panel, Button } from '@/ui'
+import { Button, Callout, PageHeader, Panel, Skeleton } from '@/ui'
 
 interface MindmapRow {
   id: number
@@ -57,10 +57,11 @@ export default function MindmapPage() {
   const [exportResult, setExportResult] = useState<string | null>(null)
 
   // Fetch mindmaps
-  const { data: mindmapsData } = useQuery<{ ok: boolean; mindmaps: MindmapRow[] }>({
+  const mindmaps = useQuery<{ ok: boolean; mindmaps: MindmapRow[] }>({
     queryKey: ['mindmaps'],
     queryFn: () => apiGet('/api/mindmaps'),
   })
+  const mindmapsData = mindmaps.data
 
   // Fetch decks for export target
   const { data: decksData } = useQuery<{ decks: DeckRow[] }>({
@@ -200,6 +201,25 @@ export default function MindmapPage() {
     setSelectedId(null)
     setTitle('New Concept Map')
     setMarkdown(DEFAULT_MARKDOWN)
+  }
+
+  if (mindmaps.isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Mind Maps"
+          subtitle="Visualize concept structures, explore knowledge hierarchies, and generate flashcards directly into your review queue."
+        />
+        <Callout tone="danger" title="Couldn't load mind maps">
+          <div className="mt-1 flex items-center gap-3">
+            <span>{(mindmaps.error as Error).message}</span>
+            <Button variant="secondary" onClick={() => void mindmaps.refetch()}>
+              Try again
+            </Button>
+          </div>
+        </Callout>
+      </div>
+    )
   }
 
   return (
@@ -353,6 +373,10 @@ export default function MindmapPage() {
             </div>
 
             <div className="space-y-1">
+              {mindmaps.isPending &&
+                Array.from({ length: 3 }, (_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" aria-hidden />
+                ))}
               {mindmapsData?.mindmaps?.map((m) => {
                 const isSelected = m.id === selectedId
                 return (

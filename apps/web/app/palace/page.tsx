@@ -14,7 +14,7 @@ import { Box, Eye, EyeOff, Map, MapPin, Play, Plus, Save, Trash2, X } from 'luci
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { palaceWalkOrder } from '@learning-hub/core/memory'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 
 interface PalaceRow {
   id: number
@@ -142,6 +142,25 @@ export default function MemoryPalacePage() {
 
   const active = list.data?.palaces.find((p) => p.palace.id === activeId)
 
+  if (list.isError) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title="Memory palace"
+          subtitle="Attach cards to vivid places, then walk them."
+        />
+        <Callout tone="danger" title="Couldn't load palaces">
+          <div className="mt-1 flex items-center gap-3">
+            <span>{(list.error as Error).message}</span>
+            <Button variant="secondary" onClick={() => void list.refetch()}>
+              Try again
+            </Button>
+          </div>
+        </Callout>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -177,6 +196,10 @@ export default function MemoryPalacePage() {
             </button>
           </div>
           <div className="panel space-y-1">
+            {list.isPending &&
+              Array.from({ length: 3 }, (_, i) => (
+                <Skeleton key={i} className="h-9 w-full" aria-hidden />
+              ))}
             {(list.data?.palaces ?? []).map((p) => (
               <div
                 key={p.palace.id}

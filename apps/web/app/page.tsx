@@ -11,7 +11,7 @@ import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide
 import { levelFromXp } from '@learning-hub/core/xp'
 import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
-import { PageHeader, Skeleton } from '@/ui'
+import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
@@ -19,7 +19,11 @@ import type { DashboardData } from '@/server/handlers/dashboard/route'
 const ORDER_KEY_HINT = 'Order is saved on this device. Reset restores the default layout.'
 
 export default function DashboardPage() {
-  const { data: d } = useQuery<DashboardData>({
+  const {
+    data: d,
+    isError,
+    refetch,
+  } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
   })
@@ -33,6 +37,19 @@ export default function DashboardPage() {
     const copy = [...order]
     ;[copy[idx], copy[next]] = [copy[next]!, copy[idx]!]
     setOrder(copy)
+  }
+
+  if (isError) {
+    return (
+      <Callout tone="danger" title="Couldn't load today's dashboard">
+        <div className="mt-1 flex items-center gap-3">
+          <span>The request failed. Check your connection and retry.</span>
+          <Button variant="secondary" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      </Callout>
+    )
   }
 
   if (!d) {
