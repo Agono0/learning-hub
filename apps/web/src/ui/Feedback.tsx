@@ -78,30 +78,6 @@ export function Badge({
   )
 }
 
-/** A labelled number tile (dashboards, course overview). */
-export function Stat({
-  label,
-  value,
-  hint,
-  icon,
-}: {
-  label: ReactNode
-  value: ReactNode
-  hint?: ReactNode
-  icon?: ReactNode
-}) {
-  return (
-    <div className="panel space-y-1">
-      <div className="flex items-center gap-1.5 text-xs text-tertiary">
-        {icon}
-        {label}
-      </div>
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
-      {hint && <div className="text-xs text-tertiary">{hint}</div>}
-    </div>
-  )
-}
-
 /** Inline alert for errors / warnings / confirmations. */
 export function Callout({
   tone = 'neutral',

@@ -26,7 +26,7 @@ import {
   PageHeader,
   Panel,
   SelectField,
-  Stat,
+  StatCard,
   Tabs,
   TextArea,
   TextField,
@@ -319,20 +319,22 @@ function ImportPanel({ step }: { step?: number }) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat label="Lessons" value={checked.preview.stats.lessons} />
-            <Stat
+            <StatCard label="Lessons" value={checked.preview.stats.lessons} variant="standard" />
+            <StatCard
               label="Exercises"
               value={checked.preview.stats.exercises}
               hint={`${Object.keys(checked.preview.stats.exerciseTypes).length} types`}
+              variant="standard"
             />
-            <Stat label="Projects" value={checked.preview.stats.projects} />
-            <Stat
+            <StatCard label="Projects" value={checked.preview.stats.projects} variant="standard" />
+            <StatCard
               label="Est. time"
               value={
                 checked.preview.stats.estMinutes
                   ? `${Math.round(checked.preview.stats.estMinutes / 60)} h`
                   : '—'
               }
+              variant="standard"
             />
           </div>
           <details className="text-sm">

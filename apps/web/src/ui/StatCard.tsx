@@ -73,23 +73,16 @@ export function StatCard({
     ? Math.min(100, Math.max(0, Math.round((progress.value / (progress.max ?? 1)) * 100)))
     : null
 
+  // A clickable tile is a real <button> (not a div with role="button") so it
+  // gets keyboard activation, focus and screen-reader semantics for free.
+  const Tag = (isInteractive ? 'button' : 'div') as 'button' | 'div'
+
   return (
-    <div
-      role={isInteractive ? 'button' : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        isInteractive
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onClick?.()
-              }
-            }
-          : undefined
-      }
+    <Tag
+      {...(isInteractive ? { type: 'button' as const, onClick } : {})}
       className={cx(
         VARIANT_STYLES[variant],
+        'block w-full text-left',
         isInteractive && 'cursor-pointer hover:-translate-y-0.5 transition-transform duration-200',
         className,
       )}
@@ -153,6 +146,6 @@ export function StatCard({
       )}
 
       {hint && <div className="mt-1 text-xs text-tertiary dark:text-faint">{hint}</div>}
-    </div>
+    </Tag>
   )
 }
