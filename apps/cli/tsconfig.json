@@ -1,4 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@learning-hub/core": ["../../packages/core/src/index.ts"],
+      "@learning-hub/core/*": ["../../packages/core/src/*"],
+      "@learning-hub/db": ["../../packages/db/src/index.ts"],
+      "@learning-hub/db/*": ["../../packages/db/src/*"]
+    }
+  },
   "include": ["src/**/*.ts"]
 }

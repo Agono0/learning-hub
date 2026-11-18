@@ -43,6 +43,7 @@
 | **T-P2-26** | **P2**   | Epistemic Network        | **Completed** | Epistemic Network Analysis & Knowledge Building Studio: Shaffer ENA moving window network, 2D centroid projection, and Scardamalia Rise Above (PR #52).                                     |
 | **T-P2-27** | **P2**   | Conceptual Change        | **Completed** | Conceptual Change & Ontological Category Shift Studio: Chi 6 process attributes, Vosniadou synthetic model risk, and Posner accommodation engine (PR #55).                                  |
 | **T-P2-28** | **P2**   | Spatial Cognition        | **Completed** | Spatial Cognition & Mental Rotation Model-Checking Studio: Shepard-Metzler linear RT disparity model, Hegarty kinematic gear simulation, and STEM spatial lab.                              |
+| **T-P2-29** | **P2**   | Dynamic Assessment & ZPD | **Completed** | Dynamic Assessment & Zone of Proximal Development Studio: Vygotsky ADL/PDL, Feuerstein LPAD/CMI, Campione-Brown 5-tier graduated prompting, Budoff LPS, and multi-host parity.              |
 
 ---
 
@@ -506,4 +507,20 @@
   3. Implement `SpatialCognitionStudio.tsx` with 4 interactive tabs (Shepard-Metzler Crucible with SVG polycubes and disparity controls, Hegarty Kinematics Simulator, STEM Spatial Lab, and FSRS Spatial Flashcards).
   4. Build `apps/web/app/spatial/page.tsx` and register route `/spatial` in global navigation (`nav.ts`).
 - **Files Affected:** `packages/core/src/spatial/spatial-rotation-engine.ts`, `packages/core/src/spatial/index.ts`, `packages/core/tests/spatial-rotation-engine.test.ts`, `apps/web/src/ui/SpatialCognitionHUD.tsx`, `apps/web/src/ui/index.ts`, `apps/web/src/components/SpatialCognitionStudio.tsx`, `apps/web/app/spatial/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/tests/nav.test.ts`, `apps/web/tests/spatial-cognition-integration.test.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-29: Dynamic Assessment & Zone of Proximal Development Studio (Vygotsky 1978; Feuerstein 1979, 1980; Campione & Brown 1987; Sternberg 2002; Budoff 1987)
+
+- **Problem:** Static testing paradigms measure only crystallized, retrospective achievement (what the learner can solve unaided today), failing to capture latent learning capacity, structural modifiability, responsiveness to graduated scaffolding, or transfer distance, which results in inaccurate pacing and premature frustration.
+- **Root Cause:** Absence of dynamic test-mediate-retest (sandwich/cake) diagnostic engines that quantify Vygotskian Zone of Proximal Development ($ZPD = PDL - ADL$), Budoff's Learning Potential Score ($LPS$), Feuerstein's Structural Cognitive Modifiability Index ($CMI$), and Campione-Brown 5-tier graduated prompt hierarchies.
+- **Proposed Solution:**
+  1. Build `packages/core/src/dynamic-assessment/zpd-engine.ts` with Zod validation, quantitative metrics ($ADL$, $PDL$, $ZPD$, $LPS$, $CMI$, $PE$, $TAS$), scaffolding decay rate ($\lambda$), 5 canonical multidisciplinary scenarios (Algorithms DP, Enzyme Kinetics, Orbital Mechanics, Strict Scrutiny, General Equilibrium), 5-tier graduated prompts, near/medium/far transfer probes, and calibrated FSRS-6 card decks.
+  2. Implement `DynamicAssessmentHUD.tsx` with UI Signature design compliance (zero ghost classes, mode-aware tokens) tracking ADL, PDL, ZPD Bandwidth, LPS, CMI, and prompt autonomy.
+  3. Implement `DynamicAssessmentStudio.tsx` with 4 interactive tabs (Test-Train-Retest Workbench, ZPD Radar & Modifiability Visualizer, Transfer Distance Crucible, FSRS-6 Mediated Deck).
+  4. Build page `apps/web/app/zpd/page.tsx` and register route `/zpd` in `nav.ts`.
+  5. Implement runtime-neutral API handler `apps/web/src/server/handlers/zpd/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
+  6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
+- **Files Affected:** `packages/core/src/dynamic-assessment/*`, `apps/web/src/ui/DynamicAssessmentHUD.tsx`, `apps/web/src/components/DynamicAssessmentStudio.tsx`, `apps/web/app/zpd/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/zpd/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/zpd-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed**.

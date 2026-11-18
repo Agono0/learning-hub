@@ -30,6 +30,11 @@ import {
   evaluateLiminalTrajectory,
   bridgeThresholdToCurriculum,
   computeThresholdSignificanceIndex,
+  calculateZpdMetrics,
+  listZpdScenarios,
+  getZpdScenarioById,
+  getGraduatedPromptAtTier,
+  generateFSRSZpdDeck,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -317,4 +322,93 @@ export function thresholdCommand(args: string[]): void {
   console.log(`Unlocked Downstream:   ${concept.unlockedDownstreamConcepts.join(', ')}`)
   console.log('─'.repeat(65))
   console.log(`Pedagogical Remedy:    ${diagnostic.prescribedRemediation}`)
+}
+
+// ── 7. Dynamic Assessment & Zone of Proximal Development Command ─────────────
+
+export function zpdCommand(args: string[]): void {
+  const sub = args[0] || 'eval'
+  const scenarioId = parseFlag(args, '--scenario') || 'algo_dynamic_programming'
+
+  if (sub === 'scenarios' || sub === 'list') {
+    const scenarios = listZpdScenarios()
+    console.log('\n🎯 Dynamic Assessment Canonical Scenarios (Vygotsky & Feuerstein)')
+    console.log('═'.repeat(65))
+    scenarios.forEach((s) => {
+      console.log(`• [${s.id}] ${s.title}`)
+      console.log(`  Domain: ${s.domain}`)
+      console.log(`  Core:   ${s.theoreticalCore}`)
+    })
+    return
+  }
+
+  if (sub === 'prompt') {
+    const tier = Number(parseFlag(args, '--tier') || '1')
+    const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
+    const prompt = getGraduatedPromptAtTier(scenario.mediatedProblem, tier)
+    console.log(`\n💡 Graduated Prompt (Tier ${tier}/5) — ${scenario.title}`)
+    console.log('═'.repeat(65))
+    if (!prompt) {
+      console.log('Prompt not found for tier', tier)
+      return
+    }
+    console.log(`Title:               ${prompt.title}`)
+    console.log(`Prompt:              ${prompt.promptText}`)
+    console.log(`Mediator Rationale:  ${prompt.mediatorRationale}`)
+    console.log(`Structural Principle:${prompt.structuralPrinciple}`)
+    console.log(`Cognitive Load:      ${prompt.cognitiveLoadImpact}/10`)
+    return
+  }
+
+  if (sub === 'deck') {
+    const pre = Number(parseFlag(args, '--pre') || '30')
+    const post = Number(parseFlag(args, '--post') || '85')
+    const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
+    const metrics = calculateZpdMetrics(pre, post, 2, [80, 75, 70])
+    const deck = generateFSRSZpdDeck(scenario, metrics)
+    console.log(`\n🗂️ FSRS-6 Calibrated Flashcard Deck — ${scenario.title}`)
+    console.log('═'.repeat(65))
+    console.log(`Generated Cards:     ${deck.length}`)
+    console.log(`Typology:            ${metrics.typology}`)
+    console.log(`Budoff LPS:          ${(metrics.learningPotentialScore * 100).toFixed(0)}%`)
+    console.log(`Feuerstein CMI:      ${(metrics.cognitiveModifiabilityIndex * 100).toFixed(0)}%`)
+    console.log('─'.repeat(65))
+    deck.slice(0, 3).forEach((card, idx) => {
+      console.log(`Card ${idx + 1}: ${card.front} (S0: ${card.recommendedStabilityDays}d)`)
+    })
+    return
+  }
+
+  // Default: eval
+  const pre = Number(parseFlag(args, '--pre') || '25')
+  const post = Number(parseFlag(args, '--post') || '80')
+  const hints = Number(parseFlag(args, '--hints') || '2')
+  const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
+  const metrics = calculateZpdMetrics(pre, post, hints, [85, 75, 70])
+
+  console.log('\n🎯 Dynamic Assessment & Zone of Proximal Development Diagnostic')
+  console.log(
+    'Citation: Vygotsky (1978); Feuerstein (1979); Budoff (1987); Campione & Brown (1987)',
+  )
+  console.log('═'.repeat(65))
+  console.log(`Scenario:              ${scenario.title} [${scenario.domain}]`)
+  console.log(`Actual Level (ADL):    ${metrics.actualDevelopmentalLevel}% (Independent baseline)`)
+  console.log(`Potential Level (PDL): ${metrics.potentialDevelopmentalLevel}% (Assisted ceiling)`)
+  console.log(`Active ZPD Bandwidth:  +${metrics.zpdBandwidth}% (Optimal developmental zone)`)
+  console.log(
+    `Learning Potential:    ${(metrics.learningPotentialScore * 100).toFixed(0)}% (Budoff gain ratio)`,
+  )
+  console.log(
+    `Cognitive Modifiability: ${(metrics.cognitiveModifiabilityIndex * 100).toFixed(0)}% (Feuerstein CMI)`,
+  )
+  console.log(
+    `Prompt Autonomy:       ${(metrics.promptEfficiencyScore * 100).toFixed(0)}% (${metrics.promptsConsumedCount}/5 hints)`,
+  )
+  console.log(
+    `Transfer Autonomy:     ${(metrics.transferAutonomyScore * 100).toFixed(0)}% (Near/Med/Far)`,
+  )
+  console.log(`Learner Typology:      ${metrics.typology.toUpperCase()}`)
+  console.log(`Frustration Horizon:   ~${metrics.frustrationHorizon}%`)
+  console.log('─'.repeat(65))
+  console.log(`Diagnostic Summary:    ${metrics.typologyDescription}`)
 }

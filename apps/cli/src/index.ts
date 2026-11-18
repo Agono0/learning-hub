@@ -43,6 +43,7 @@ import {
   skillsCommand,
   srlCommand,
   thresholdCommand,
+  zpdCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -809,6 +810,13 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Meyer & Land threshold concepts & liminal space navigation',
     usage: 'eval [--concept tc_pointers_memory]',
     run: (runArgs) => thresholdCommand(runArgs),
+  },
+  {
+    name: 'zpd',
+    description:
+      'Vygotsky & Feuerstein dynamic assessment & zone of proximal development diagnostic',
+    usage: '[eval|scenarios|prompt|deck] [--scenario algo_dynamic_programming --pre 30 --post 80]',
+    run: (runArgs) => zpdCommand(runArgs),
   },
 ]
 
