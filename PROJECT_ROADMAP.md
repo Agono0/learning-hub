@@ -34,8 +34,14 @@
 | **T-P2-17** | **P2**   | Cognitive Flexibility  | **Completed** | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization (PR #37).  |
 | **T-P2-18** | **P2**   | Epistemic Calibration  | **Completed** | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models (PR #38). |
 | **T-P2-19** | **P2**   | Element Interactivity  | **Completed** | Cognitive Load & Element Interactivity Studio: Sweller intrinsic/extraneous/germane load isolation, Pollock isolated-elements scaffold, and Paas efficiency diagnostic (PR #40).            |
-| **T-P2-20** | **P2**   | Deliberate Practice    | **Completed** | Deliberate Practice & Progressive Error Recovery Studio: Ericsson informative feedback loop, VanLehn impasse resolution, and Keith-Frese error management training.                         |
-| **T-P2-21** | **P2**   | Expert Modeling        | **Planned**   | Cognitive Apprenticeship & Expert Modeling Studio: Collins-Brown-Newman 6 methods (modeling, coaching, scaffolding, articulation, reflection, exploration) and situated heuristics.         |
+| **T-P2-20** | **P2**   | Deliberate Practice    | **Completed** | Deliberate Practice & Progressive Error Recovery Studio: Ericsson informative feedback loop, VanLehn impasse resolution, and Keith-Frese error management training (PR #42).       |
+| **T-P2-21** | **P2**   | Cognitive Apprenticeship| **Completed** | Cognitive Apprenticeship & Expert Modeling Studio: Collins-Brown-Newman 6 methods, expert thinking heuristics, and FSRS cognitive modeling bridge (PR #45). |
+| **T-P2-22** | **P2**   | Epistemic Curiosity    | **Completed** | Information-Gap & Epistemic Curiosity Studio: Loewenstein information gap, Berlyne collative variables, and Kang curiosity neuro-cognitive priming (PR #47). |
+| **T-P2-23** | **P2**   | Self-Regulated Learning| **Completed** | Self-Regulated Learning & Metacognitive Matrix Studio: Zimmerman 3-phase cyclical model, Pintrich volitional monitoring, and Winne-Hadwin COPES schema (PR #49). |
+| **T-P2-24** | **P2**   | Dual-Process Diagnostic| **Completed** | Dual-Process Diagnostic & Cognitive Forcing Studio: Kahneman System 1/2 dynamics, Croskerry cognitive forcing functions, and Stanovich mind architecture (PR #50). |
+| **T-P2-25** | **P2**   | Multi-Representational | **Completed** | Multi-Representational Fluency & Translation Studio: Ainsworth DeFT framework, Lesh 5-mode translation model, and Goldstone concreteness fading (PR #51). |
+| **T-P2-26** | **P2**   | Epistemic Network      | **Completed** | Epistemic Network Analysis & Knowledge Building Studio: Shaffer ENA moving window network, 2D centroid projection, and Scardamalia Rise Above (PR #52). |
+| **T-P2-27** | **P2**   | Conceptual Change      | **Completed** | Conceptual Change & Ontological Category Shift Studio: Chi 6 process attributes, Vosniadou synthetic model risk, and Posner accommodation engine. |
 
 ---
 
@@ -466,9 +472,23 @@
 - **Problem:** Learners process concepts as isolated factual nodes rather than interconnected epistemic networks, failing to perceive how cognitive connections, causal evidence, and discursive elements dynamically interact during inquiry.
 - **Root Cause:** Absence of Epistemic Network Analysis (ENA) models that quantify the relative frequency and co-occurrence of cognitive elements in high-dimensional discourse space and project dynamic learning trajectories.
 - **Proposed Solution:**
-  1. Build `packages/core/src/ena/epistemic-network-engine.ts` modeling David Williamson Shaffer's Epistemic Network Analysis (adjacency matrices, cumulative moving window co-occurrence, dimensional reduction via SVD rotation, and network density metrics) combined with Scardamalia & Bereiter's 12 Knowledge Building principles.
+  1. Build `packages/core/src/epistemic/ena-engine.ts` modeling David Williamson Shaffer's Epistemic Network Analysis (adjacency matrices, cumulative moving window co-occurrence, dimensional reduction via SVD rotation, and network density metrics) combined with Scardamalia & Bereiter's 12 Knowledge Building principles.
   2. Implement `EpistemicNetworkHUD.tsx` tracking network density, epistemic centroid coordinates, and cognitive connection velocity.
   3. Implement `EpistemicNetworkStudio.tsx` with interactive dynamic graph projection, moving-window discourse analyzer, and FSRS-6 epistemic connection flashcards.
-  4. Build `apps/web/app/ena/page.tsx` and wire into navigation.
-- **Files Affected:** `packages/core/src/ena/*`, `apps/web/src/ui/EpistemicNetworkHUD.tsx`, `apps/web/src/components/EpistemicNetworkStudio.tsx`, `apps/web/app/ena/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Planned (Next Cycle)**.
+  4. Build `apps/web/app/epistemic/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/epistemic/*`, `apps/web/src/ui/EpistemicNetworkHUD.tsx`, `apps/web/src/components/EpistemicNetworkStudio.tsx`, `apps/web/app/epistemic/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Merged in PR #52)**.
+
+---
+
+### T-P2-27: Conceptual Change & Ontological Category Shift Studio (Chi 1992, 2008, 2013; Vosniadou 1994, 2002; diSessa 1988)
+
+- **Problem:** Learners misattribute emergent processes (natural selection, diffusion, electric current, heat conduction, market price equilibrium) to naive matter or direct-agent categories, constructing flawed synthetic compromise models (Vosniadou) and relying on unexamined phenomenological primitives (diSessa p-prims) rather than executing a true ontological category shift.
+- **Root Cause:** Traditional learning systems treat misconceptions as simple factual omissions, failing to diagnose underlying ontological misassignments or cultivate Posner's 4 prerequisite accommodation conditions (Dissatisfaction, Intelligibility, Plausibility, Fruitfulness).
+- **Proposed Solution:**
+  1. Build `packages/core/src/conceptual-change/ontological-shift-engine.ts` modeling Chi's 6 process attribute dimensions (agency, intentionality, control, temporality, hierarchy, causation), diSessa p-prims catalog, Vosniadou synthetic model risk calculation, Posner accommodation index, and readiness grading.
+  2. Implement `OntologicalShiftHUD.tsx` tracking shift readiness, Posner accommodation index, discrepancy gap, synthetic compromise risk, and dominant p-prim heuristics.
+  3. Implement `OntologicalShiftStudio.tsx` with attribute diagnostic crucible, ontological tree category re-mapping, Posner refutation anomaly inspector, decentralized emergence micro-simulation, and FSRS-6 contrast flashcards.
+  4. Build `apps/web/app/conceptual-change/page.tsx` and wire into global navigation.
+- **Files Affected:** `packages/core/src/conceptual-change/*`, `apps/web/src/ui/OntologicalShiftHUD.tsx`, `apps/web/src/components/OntologicalShiftStudio.tsx`, `apps/web/app/conceptual-change/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.

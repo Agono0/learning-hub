@@ -19,6 +19,7 @@ import {
   FileCheck,
   Flame,
   Gauge,
+  GitBranch,
   GitCompare,
   GitFork,
   GitGraph,
@@ -113,6 +114,7 @@ export const NAV: NavGroup[] = [
       { href: '/epistemic', label: 'Epistemic Network', icon: GitGraph },
       { href: '/causal', label: 'Causal & Counterfactual', icon: GitFork },
       { href: '/threshold', label: 'Threshold Concepts', icon: KeyRound },
+      { href: '/conceptual-change', label: 'Conceptual Change', icon: GitBranch },
     ],
   },
   {
