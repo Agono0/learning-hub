@@ -85,6 +85,8 @@ import {
   generateSystemDynamicsFSRSDeck,
   runEulerSimulation,
   type LearnerModelHypothesis,
+  CALIBRATED_COGNITIVE_LOAD_SCENARIOS,
+  evaluateComprehensiveCognitiveLoad,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1526,4 +1528,85 @@ export function systemDynamicsCommand(args: string[]): void {
   console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
   console.log(`Feedback:     ${evalResult.systemicFeedback.join(' ') || 'None'}`)
   console.log(`Leverage:     ${evalResult.leveragePointAnalysis}`)
+}
+
+// ── 17. Cognitive Load Theory & Flow State Balancer Command ──────────────────
+
+export function cognitiveLoadCommand(args: string[]): void {
+  const scenarioId = parseFlag(args, '--scenario') || 'distributed_paxos_consensus'
+  const action = args[0] || 'eval'
+
+  if (action === 'benchmarks' || action === 'list') {
+    console.log('\n🧠 Cognitive Load Theory (CLT) Calibrated Benchmarks')
+    console.log('Citation: Sweller (1988, 2011); Paas & Van Merriënboer (1993); Pollock (2002)')
+    console.log('═'.repeat(65))
+    for (const s of Object.values(CALIBRATED_COGNITIVE_LOAD_SCENARIOS)) {
+      console.log(`• [${s.id}] ${s.title}`)
+      console.log(`  Domain: ${s.domain} | Interactivity: ${s.elementInteractivityScore}/10`)
+      console.log(`  Complexity: ${s.intrinsicComplexityDescription}`)
+      console.log('─'.repeat(65))
+    }
+    return
+  }
+
+  const scenario =
+    CALIBRATED_COGNITIVE_LOAD_SCENARIOS[scenarioId] ??
+    CALIBRATED_COGNITIVE_LOAD_SCENARIOS['distributed_paxos_consensus']!
+
+  const latency = Number(parseFlag(args, '--latency') || '3500')
+  const backspaces = Number(parseFlag(args, '--backspaces') || '0')
+  const errors = Number(parseFlag(args, '--errors') || '0')
+  const effort = Number(parseFlag(args, '--effort') || '4')
+  const mastery = Number(parseFlag(args, '--mastery') || '0.8')
+  const difficulty = Number(parseFlag(args, '--difficulty') || '0.8')
+
+  const evaluation = evaluateComprehensiveCognitiveLoad({
+    responseLatencyMs: latency,
+    baselineLatencyMs: 4000,
+    backspaceCount: backspaces,
+    recentErrorsInLast5Cards: errors,
+    subjectiveMentalEffortRating: effort,
+    learnerDomainMastery: mastery,
+    targetTaskDifficulty: difficulty,
+    taskElementCount: scenario.elementInteractivityScore,
+  })
+
+  console.log('\n⚡ Cognitive Load Index (CLI) & Flow State Diagnostics')
+  console.log(
+    'Citation: Sweller (1988); Paas (1993); Csikszentmihalyi (1990); Yerkes-Dodson (1908)',
+  )
+  console.log('═'.repeat(65))
+  console.log(`Scenario:              ${scenario.title}`)
+  console.log(`Cognitive Load Index:  ${evaluation.cli.toFixed(2)} / 1.00`)
+  console.log(
+    `Flow Channel Zone:     ${evaluation.flowEvaluation.flowZone.toUpperCase()} (Coherence: ${Math.round(evaluation.flowEvaluation.flowChannelCoherence * 100)}%)`,
+  )
+  console.log(
+    `Challenge / Skill:     ${evaluation.flowEvaluation.challengeToSkillRatio.toFixed(2)} ratio`,
+  )
+  console.log(
+    `Paas 2D Efficiency:    ${evaluation.paasEfficiency.cognitiveEfficiencyIndex >= 0 ? '+' : ''}${evaluation.paasEfficiency.cognitiveEfficiencyIndex.toFixed(2)} E-score [${evaluation.paasEfficiency.quadrant.toUpperCase()}]`,
+  )
+  console.log(
+    `Working Memory Load:   ${evaluation.tripartiteLoad.totalLoadChunks.toFixed(1)} / ${evaluation.tripartiteLoad.capacityLimit.toFixed(1)} Cowan chunks (${evaluation.tripartiteLoad.isOverloaded ? 'OVERLOAD' : 'OK'})`,
+  )
+  console.log(
+    `  - Intrinsic Load:    ${evaluation.tripartiteLoad.intrinsicChunks.toFixed(1)} chunks`,
+  )
+  console.log(
+    `  - Extraneous Load:   ${evaluation.tripartiteLoad.extraneousChunks.toFixed(1)} chunks`,
+  )
+  console.log(`  - Germane Effort:    ${evaluation.tripartiteLoad.germaneChunks.toFixed(1)} chunks`)
+  console.log(
+    `Yerkes-Dodson Arousal: ${evaluation.flowEvaluation.yerkesDodsonArousalPct}% (Target: ${evaluation.flowEvaluation.optimalArousalTargetPct}%)`,
+  )
+  console.log(`Micro-Intervention:    ${evaluation.recommendedIntervention.toUpperCase()}`)
+  console.log(
+    `Pollock Scaffolding:   Phase ${evaluation.recommendedScaffoldStage.phaseIndex} (${evaluation.recommendedScaffoldStage.phase})`,
+  )
+  console.log(
+    `FSRS Stability Mult:   ${evaluation.fsrsModulation.stabilityMultiplier.toFixed(2)}x (Interval: ${evaluation.fsrsModulation.recommendedIntervalFactor.toFixed(2)}x)`,
+  )
+  console.log('─'.repeat(65))
+  console.log(`Guidance:              ${evaluation.flowEvaluation.guidance}`)
 }

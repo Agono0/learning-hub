@@ -36,6 +36,7 @@ import {
   contrastingCommand,
   collaborativeCommand,
   systemDynamicsCommand,
+  cognitiveLoadCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -850,6 +851,51 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.scenarioId).toBe('diabetes-beta-cell-homeostasis')
       expect(data.cardsCount).toBe(4)
     })
+
+    it('cognitive_load_benchmarks lists CLT scenarios and capacity limits via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cognitive_load_benchmarks')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        capacityLimit: number
+        scenarios: Array<{ id: string; domain: string; elementInteractivityScore: number }>
+      }
+      expect(data.capacityLimit).toBe(4.0)
+      expect(data.scenarios.length).toBeGreaterThanOrEqual(3)
+      expect(data.scenarios.some((s) => s.id === 'distributed_paxos_consensus')).toBe(true)
+    })
+
+    it('cognitive_load_evaluate synthesizes telemetry into tripartite chunks & FSRS modulation via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cognitive_load_evaluate')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        scenarioId: 'distributed_paxos_consensus',
+        responseLatencyMs: 3400,
+        baselineLatencyMs: 4000,
+        keystrokeTimestamps: [0, 150, 300, 450],
+        backspaceCount: 0,
+        recentErrorsInLast5Cards: 0,
+        subjectiveMentalEffortRating: 4,
+        taskElementCount: 4,
+        learnerDomainMastery: 0.8,
+        targetTaskDifficulty: 0.8,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        cli: number
+        tripartiteLoad: { totalLoadChunks: number; capacityLimit: number; isOverloaded: boolean }
+        paasEfficiency: { cognitiveEfficiencyIndex: number; quadrant: string }
+        flowEvaluation: { flowZone: string; isWithinFlowCorridor: boolean }
+        fsrsModulation: { stabilityMultiplier: number }
+      }
+      expect(data.cli).toBeLessThan(0.35)
+      expect(data.tripartiteLoad.isOverloaded).toBe(false)
+      expect(data.paasEfficiency.quadrant).toBe('high_efficiency')
+      expect(data.flowEvaluation.flowZone).toBe('flow')
+      expect(data.flowEvaluation.isWithinFlowCorridor).toBe(true)
+      expect(data.fsrsModulation.stabilityMultiplier).toBe(1.25)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -1090,6 +1136,24 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('cognitiveLoadCommand executes benchmarks and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        cognitiveLoadCommand(['benchmarks'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cognitiveLoadCommand([
+          'eval',
+          '--scenario',
+          'distributed_paxos_consensus',
+          '--latency',
+          '3500',
+        ])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -1143,6 +1207,8 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/system-dynamics/simulate')
       expect(registeredPaths).toContain('POST /cognitive/system-dynamics/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/system-dynamics/deck')
+      expect(registeredPaths).toContain('GET /cognitive/load/benchmarks')
+      expect(registeredPaths).toContain('POST /cognitive/load/evaluate')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1788,6 +1854,30 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.data.ok).toBe(true)
       expect(result.data.cardsCount).toBe(4)
       expect(result.data.cards.length).toBe(4)
+    })
+
+    it('GET /cognitive/load/benchmarks returns CLT scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/load/benchmarks')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.capacityLimit).toBe(4.0)
+      expect(result.data.scenarios.length).toBeGreaterThanOrEqual(3)
+    })
+
+    it('POST /cognitive/load/evaluate computes cognitive load via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/load/evaluate', {
+        scenarioId: 'distributed_paxos_consensus',
+        responseLatencyMs: 3400,
+        baselineLatencyMs: 4000,
+        backspaceCount: 0,
+        recentErrorsInLast5Cards: 0,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.cli).toBeLessThan(0.35)
+      expect(result.data.evaluation.flowEvaluation.flowZone).toBe('flow')
     })
   })
 })

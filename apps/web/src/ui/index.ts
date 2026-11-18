@@ -92,7 +92,7 @@ export {
   type CollaborativeScriptsHUDProps,
 } from './CollaborativeScriptsHUD'
 export { SystemDynamicsHUD, type SystemDynamicsHUDProps } from './SystemDynamicsHUD'
-
+export { CognitiveLoadFlowHUD, type CognitiveLoadFlowHUDProps } from './CognitiveLoadFlowHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'

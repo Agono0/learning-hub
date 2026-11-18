@@ -84,6 +84,8 @@ import {
   generateSystemDynamicsFSRSDeck,
   runEulerSimulation,
   type LearnerModelHypothesis,
+  CALIBRATED_COGNITIVE_LOAD_SCENARIOS,
+  evaluateComprehensiveCognitiveLoad,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1851,6 +1853,148 @@ export const advancedLearningTools: RegisteredTool[] = [
         sdi: deck.sdi,
         cardsCount: deck.cards.length,
         cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 17. Cognitive Load Theory & Flow State Balancer (Sweller, Paas & Csikszentmihalyi) ──
+  tool(
+    'cognitive_load_benchmarks',
+    'Lists calibrated Cognitive Load Theory (CLT) benchmark scenarios across Distributed Systems, Compilers, and Database SQL.',
+    {},
+    async () => {
+      return json({
+        capacityLimit: 4.0,
+        scenarios: Object.values(CALIBRATED_COGNITIVE_LOAD_SCENARIOS).map((s) => ({
+          id: s.id,
+          title: s.title,
+          domain: s.domain,
+          elementInteractivityScore: s.elementInteractivityScore,
+          intrinsicComplexityDescription: s.intrinsicComplexityDescription,
+          defaultScaffoldStagesCount: s.defaultScaffoldStages.length,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'cognitive_load_evaluate',
+    'Evaluates real-time retrieval telemetry (latency, keystroke jitter, backspaces, error bursts) into Sweller tripartite chunks, Paas 2D efficiency, Csikszentmihalyi flow corridor, Pollock scaffolding, and dynamic FSRS stability modulations.',
+    {
+      scenarioId: z
+        .string()
+        .default('distributed_paxos_consensus')
+        .describe('Benchmark scenario identifier.'),
+      responseLatencyMs: z
+        .number()
+        .min(0)
+        .default(3500)
+        .describe('Response retrieval latency in milliseconds.'),
+      baselineLatencyMs: z
+        .number()
+        .positive()
+        .optional()
+        .describe('Historical baseline latency in ms.'),
+      keystrokeTimestamps: z
+        .array(z.number())
+        .optional()
+        .describe('Millisecond timestamps of sequential keypresses.'),
+      backspaceCount: z
+        .number()
+        .int()
+        .min(0)
+        .default(0)
+        .describe('Number of backspace / delete edits made during retrieval.'),
+      recentErrorsInLast5Cards: z
+        .number()
+        .int()
+        .min(0)
+        .max(5)
+        .default(0)
+        .describe('Number of incorrect answers in the last 5 cards.'),
+      subjectiveMentalEffortRating: z
+        .number()
+        .min(1)
+        .max(9)
+        .optional()
+        .describe('Paas subjective mental effort rating (1-9).'),
+      taskElementCount: z
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .optional()
+        .describe('Number of simultaneously interacting conceptual elements.'),
+      learnerDomainMastery: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .describe('Estimated prior domain mastery (0.0 to 1.0).'),
+      targetTaskDifficulty: z
+        .number()
+        .min(0)
+        .max(1)
+        .optional()
+        .describe('Difficulty of the target task (0.0 to 1.0).'),
+    },
+    async ({
+      scenarioId,
+      responseLatencyMs,
+      baselineLatencyMs,
+      keystrokeTimestamps,
+      backspaceCount,
+      recentErrorsInLast5Cards,
+      subjectiveMentalEffortRating,
+      taskElementCount,
+      learnerDomainMastery,
+      targetTaskDifficulty,
+    }) => {
+      const scenario =
+        CALIBRATED_COGNITIVE_LOAD_SCENARIOS[scenarioId] ??
+        CALIBRATED_COGNITIVE_LOAD_SCENARIOS['distributed_paxos_consensus']!
+
+      const evaluation = evaluateComprehensiveCognitiveLoad({
+        responseLatencyMs,
+        baselineLatencyMs,
+        keystrokeTimestamps,
+        backspaceCount,
+        recentErrorsInLast5Cards,
+        subjectiveMentalEffortRating,
+        taskElementCount: taskElementCount ?? scenario.elementInteractivityScore,
+        learnerDomainMastery: learnerDomainMastery ?? 0.7,
+        targetTaskDifficulty: targetTaskDifficulty ?? 0.75,
+      })
+
+      return json({
+        scenarioTitle: scenario.title,
+        cli: evaluation.cli,
+        tripartiteLoad: {
+          intrinsicChunks: evaluation.tripartiteLoad.intrinsicChunks,
+          extraneousChunks: evaluation.tripartiteLoad.extraneousChunks,
+          germaneChunks: evaluation.tripartiteLoad.germaneChunks,
+          totalLoadChunks: evaluation.tripartiteLoad.totalLoadChunks,
+          capacityLimit: evaluation.tripartiteLoad.capacityLimit,
+          isOverloaded: evaluation.tripartiteLoad.isOverloaded,
+          freeWorkingMemoryHeadroom: evaluation.tripartiteLoad.freeWorkingMemoryHeadroom,
+        },
+        paasEfficiency: {
+          cognitiveEfficiencyIndex: evaluation.paasEfficiency.cognitiveEfficiencyIndex,
+          quadrant: evaluation.paasEfficiency.quadrant,
+          interpretation: evaluation.paasEfficiency.interpretation,
+        },
+        flowEvaluation: {
+          challengeToSkillRatio: evaluation.flowEvaluation.challengeToSkillRatio,
+          flowZone: evaluation.flowEvaluation.flowZone,
+          flowChannelCoherence: evaluation.flowEvaluation.flowChannelCoherence,
+          yerkesDodsonArousalPct: evaluation.flowEvaluation.yerkesDodsonArousalPct,
+          isWithinFlowCorridor: evaluation.flowEvaluation.isWithinFlowCorridor,
+          guidance: evaluation.flowEvaluation.guidance,
+        },
+        recommendedIntervention: evaluation.recommendedIntervention,
+        recommendedScaffoldStage: evaluation.recommendedScaffoldStage,
+        fsrsModulation: evaluation.fsrsModulation,
+        narrativeDiagnostics: evaluation.narrativeDiagnostics,
       })
     },
   ),

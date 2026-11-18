@@ -54,6 +54,7 @@ import {
   Settings,
   ShieldCheck,
   Shuffle,
+  Sliders,
   Sparkles,
   Split,
   Swords,
@@ -131,6 +132,7 @@ export const NAV: NavGroup[] = [
       { href: '/contrasting', label: 'Contrasting Cases', icon: GitFork },
       { href: '/collaborative', label: 'Collaborative Scripts', icon: GitMerge },
       { href: '/system-dynamics', label: 'System Dynamics', icon: Activity },
+      { href: '/cognitive-load', label: 'Cognitive Load', icon: Sliders },
     ],
   },
   {

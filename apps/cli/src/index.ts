@@ -53,6 +53,7 @@ import {
   contrastingCommand,
   collaborativeCommand,
   systemDynamicsCommand,
+  cognitiveLoadCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -887,6 +888,14 @@ const builtinCommands: RegisteredCommand[] = [
       'Forrester (1968), Sterman (2000) & Meadows (2008) System Dynamics & Feedback Studio',
     usage: '[scenarios|simulate|eval|deck] [--id <id>] [--steps <n>]',
     run: (runArgs) => systemDynamicsCommand(runArgs),
+  },
+  {
+    name: 'cognitive-load',
+    description:
+      'Sweller Tripartite Cognitive Load, Paas 2D efficiency & Csikszentmihalyi flow diagnostics',
+    usage:
+      '[eval|benchmarks] [--scenario distributed_paxos_consensus --latency 3500 --backspaces 0]',
+    run: (runArgs) => cognitiveLoadCommand(runArgs),
   },
 ]
 

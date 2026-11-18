@@ -135,6 +135,8 @@ import {
   generateSystemDynamicsFSRSDeck,
   runEulerSimulation,
   type LearnerModelHypothesis,
+  CALIBRATED_COGNITIVE_LOAD_SCENARIOS,
+  evaluateComprehensiveCognitiveLoad,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -533,6 +535,19 @@ const systemDynamicsEvaluateBodySchema = z.object({
 const systemDynamicsDeckBodySchema = z.object({
   scenarioId: z.string().default('climate-permafrost-methane'),
   sdiBaseline: z.number().min(0).max(100).default(85),
+})
+
+const cognitiveLoadEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('distributed_paxos_consensus'),
+  responseLatencyMs: z.number().min(0).default(3500),
+  baselineLatencyMs: z.number().positive().optional(),
+  keystrokeTimestamps: z.array(z.number()).optional(),
+  backspaceCount: z.number().int().min(0).default(0),
+  recentErrorsInLast5Cards: z.number().int().min(0).max(5).default(0),
+  subjectiveMentalEffortRating: z.number().min(1).max(9).optional(),
+  taskElementCount: z.number().int().min(1).max(20).optional(),
+  learnerDomainMastery: z.number().min(0).max(1).optional(),
+  targetTaskDifficulty: z.number().min(0).max(1).optional(),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2364,6 +2379,50 @@ async function postSystemDynamicsDeck(req: IncomingMessage, res: ServerResponse)
   })
 }
 
+/** GET /cognitive/load/benchmarks — list CLT benchmark scenarios and capacity limits */
+async function getCognitiveLoadBenchmarks(
+  _req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  sendJson(res, 200, {
+    ok: true,
+    capacityLimit: 4.0,
+    scenarios: Object.values(CALIBRATED_COGNITIVE_LOAD_SCENARIOS).map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      elementInteractivityScore: s.elementInteractivityScore,
+      intrinsicComplexityDescription: s.intrinsicComplexityDescription,
+      scaffoldStagesCount: s.defaultScaffoldStages.length,
+    })),
+  })
+}
+
+/** POST /cognitive/load/evaluate — evaluate telemetry into tripartite load, Paas efficiency, and flow */
+async function postCognitiveLoadEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cognitiveLoadEvaluateBodySchema)
+  const scenario =
+    CALIBRATED_COGNITIVE_LOAD_SCENARIOS[body.scenarioId] ??
+    CALIBRATED_COGNITIVE_LOAD_SCENARIOS['distributed_paxos_consensus']!
+
+  const evaluation = evaluateComprehensiveCognitiveLoad({
+    responseLatencyMs: body.responseLatencyMs,
+    baselineLatencyMs: body.baselineLatencyMs,
+    keystrokeTimestamps: body.keystrokeTimestamps,
+    backspaceCount: body.backspaceCount,
+    recentErrorsInLast5Cards: body.recentErrorsInLast5Cards,
+    subjectiveMentalEffortRating: body.subjectiveMentalEffortRating,
+    taskElementCount: body.taskElementCount ?? scenario.elementInteractivityScore,
+    learnerDomainMastery: body.learnerDomainMastery ?? 0.7,
+    targetTaskDifficulty: body.targetTaskDifficulty ?? 0.75,
+  })
+
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    evaluation,
+  })
+}
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2779,6 +2838,18 @@ export const routes: Route[] = [
     path: '/cognitive/system-dynamics/deck',
     summary: 'generate calibrated FSRS-6 review deck for system dynamics',
     handler: postSystemDynamicsDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/load/benchmarks',
+    summary: 'list CLT calibrated scenarios and Cowan capacity limits',
+    handler: getCognitiveLoadBenchmarks,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/load/evaluate',
+    summary: 'evaluate real-time cognitive load, Paas efficiency, and Csikszentmihalyi flow',
+    handler: postCognitiveLoadEvaluate,
   },
 ]
 
