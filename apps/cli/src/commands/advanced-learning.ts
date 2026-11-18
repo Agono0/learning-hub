@@ -40,6 +40,10 @@ import {
   calculatePFMetrics,
   evaluateStudentRepresentation,
   generatePFFSRSCards,
+  getCanonicalConcepTestSuites,
+  getConcepTestSuiteById,
+  calculatePIMetrics,
+  generatePIFSRSCards,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -546,4 +550,104 @@ export function pfCommand(args: string[]): void {
   console.log('─'.repeat(65))
   console.log(`Diagnostic Feedback:   ${metrics.qualitativeFeedback}`)
   console.log(`Recommendation:        ${metrics.recommendedIntervention}`)
+}
+
+// ── 9. Peer Instruction & Interactive ConcepTests Command ────────────────────
+
+export function piCommand(args: string[]): void {
+  const sub = args[0] || 'eval'
+  const suiteId = parseFlag(args, '--suite') || 'ct-thermal-expansion-plate'
+
+  if (sub === 'suites' || sub === 'list') {
+    const suites = getCanonicalConcepTestSuites()
+    console.log('\n👥 Peer Instruction Canonical ConcepTests (Eric Mazur)')
+    console.log('═'.repeat(65))
+    suites.forEach((s) => {
+      console.log(`• [${s.id}] ${s.title}`)
+      console.log(`  Domain:    ${s.domain}`)
+      console.log(`  Premise:   ${s.subtitle}`)
+      console.log(`  Invariant: ${s.canonicalInvariant}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  const suite = getConcepTestSuiteById(suiteId) ?? getCanonicalConcepTestSuites()[0]
+
+  if (sub === 'dialogue') {
+    console.log('\n💬 Simulated Peer Deliberation Dialogue (Smith et al. 2009)')
+    console.log('═'.repeat(65))
+    console.log(`Suite: ${suite.title}`)
+    console.log(`Q1:    ${suite.q1Prompt}\n`)
+    suite.simulatedPeers.forEach((peer) => {
+      console.log(`[${peer.peerName}]`)
+      console.log(`Advocating:   Option ${peer.initialChoiceOptionId}`)
+      console.log(`Argument:     "${peer.qualitativeArgument}"`)
+      console.log(`Mental Model: ${peer.heuristicMentalModel}`)
+      console.log(`Counter-Arg:  ${peer.counterArgumentTrigger}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  if (sub === 'deck') {
+    const hakeGain = parseFloat(parseFlag(args, '--gain') || '0.75')
+    const dummyMetrics = calculatePIMetrics({
+      suite,
+      q1InitialOptionId: suite.q1Options[0].id,
+      q1InitialConfidence: 3,
+      q1RevoteOptionId: suite.q1Options.find((o) => o.isCorrect)!.id,
+      q1RevoteConfidence: 5,
+      q2TransferOptionId: suite.q2Options.find((o) => o.isCorrect)!.id,
+      peerDiscussionOccurred: true,
+      simulatedClassroomAccuracyVote1: 35,
+      simulatedClassroomAccuracyVote2: Math.round(35 + hakeGain * 65),
+    })
+    const deck = generatePIFSRSCards(suite, dummyMetrics)
+
+    console.log('\n📦 Calibrated FSRS-6 ConcepTest Flashcards')
+    console.log(`Suite:             ${suite.title}`)
+    console.log(`Cards Generated:   ${deck.length}`)
+    console.log(`Initial Stability: ${deck[0]?.initialStabilityDays} days (S0)`)
+    console.log(`Initial Diff:      ${deck[0]?.initialDifficulty} / 10 (D0)`)
+    console.log('═'.repeat(65))
+    deck.forEach((c, idx) => {
+      console.log(`[Card ${idx + 1}] (${c.cardDepth})`)
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval / trajectory
+  const vote1 = parseInt(parseFlag(args, '--pre') || '38', 10)
+  const vote2 = parseInt(parseFlag(args, '--post') || '82', 10)
+  const q1Correct = suite.q1Options.find((o) => o.isCorrect)!.id
+  const q2Correct = suite.q2Options.find((o) => o.isCorrect)!.id
+
+  const metrics = calculatePIMetrics({
+    suite,
+    q1InitialOptionId: suite.q1Options[0].id,
+    q1InitialConfidence: 3,
+    q1RevoteOptionId: q1Correct,
+    q1RevoteConfidence: 5,
+    q2TransferOptionId: q2Correct,
+    peerDiscussionOccurred: true,
+    simulatedClassroomAccuracyVote1: vote1,
+    simulatedClassroomAccuracyVote2: vote2,
+  })
+
+  console.log('\n👥 Peer Instruction & ConcepTest Diagnostic (Eric Mazur 1997)')
+  console.log('═'.repeat(65))
+  console.log(`ConcepTest:        ${suite.title} [${suite.domain}]`)
+  console.log(`Hake Gain ⟨g⟩:     ${metrics.hakeNormalizedGain.toFixed(2)} (${metrics.engagementBand})`)
+  console.log(`Vote Polarization: ${(metrics.mazurPolarizationIndex * 100).toFixed(0)}% (PI entropy)`)
+  console.log(`Discussion Ratio:  ${(metrics.peerDiscussionConvergence * 100).toFixed(0)}% (DCR consensus)`)
+  console.log(`Smith Q2 Transfer: ${metrics.isomorphicTransferScore}% (Isomorphic precision)`)
+  console.log(`Mazur Window:      ${metrics.mazurWindowRecommendedAction.toUpperCase()}`)
+  console.log(`Learning Verif:    ${metrics.smithLearningVerification ? 'VERIFIED (Science 2009)' : 'PENDING'}`)
+  console.log('─'.repeat(65))
+  console.log(`Summary:           ${metrics.qualitativeSummary}`)
+  console.log(`Pedagogical Advice: ${metrics.pedagogicalAdvice}`)
 }

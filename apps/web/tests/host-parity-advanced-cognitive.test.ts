@@ -28,6 +28,7 @@ import {
   thresholdCommand,
   zpdCommand,
   pfCommand,
+  piCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -308,6 +309,42 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.productiveFailureIndex).toBeGreaterThanOrEqual(80)
       expect(data.masteryBand).toBe('Master Adaptive Transferer')
     })
+
+    it('pi_list_conceptests lists canonical ConcepTest suites', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'pi_list_conceptests')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        suites: Array<{ id: string; domain: string; title: string }>
+      }
+      expect(data.count).toBeGreaterThanOrEqual(5)
+      expect(data.suites.some((s) => s.id === 'ct-thermal-expansion-plate')).toBe(true)
+    })
+
+    it('pi_evaluate_trajectory computes Hake gain, Mazur PI, and Smith transfer', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'pi_evaluate_trajectory')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        suiteId: 'ct-thermal-expansion-plate',
+        q1InitialConfidence: 3,
+        q1RevoteConfidence: 5,
+        peerDiscussionOccurred: true,
+        vote1AccuracyPct: 38,
+        vote2AccuracyPct: 82,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        hakeNormalizedGain: number
+        mazurPolarizationIndex: number
+        peerDiscussionConvergence: number
+        smithLearningVerification: boolean
+        engagementBand: string
+      }
+      expect(data.hakeNormalizedGain).toBeGreaterThan(0.5)
+      expect(data.smithLearningVerification).toBe(true)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -422,6 +459,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('piCommand executes suites, dialogue, eval, and deck subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        piCommand(['suites'])
+        expect(consoleSpy).toHaveBeenCalled()
+        piCommand(['dialogue', '--suite', 'ct-thermal-expansion-plate'])
+        expect(consoleSpy).toHaveBeenCalled()
+        piCommand(['eval', '--suite', 'ct-thermal-expansion-plate', '--v1', '35', '--v2', '85'])
+        expect(consoleSpy).toHaveBeenCalled()
+        piCommand(['deck', '--suite', 'ct-thermal-expansion-plate', '--gain', '0.75'])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -444,6 +497,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/pf/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/pf/metrics')
       expect(registeredPaths).toContain('POST /cognitive/pf/deck')
+      expect(registeredPaths).toContain('GET /cognitive/pi/conceptests')
+      expect(registeredPaths).toContain('POST /cognitive/pi/dialogue')
+      expect(registeredPaths).toContain('POST /cognitive/pi/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/pi/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -616,6 +673,42 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.data.ok).toBe(true)
       expect(result.data.metrics.productiveFailureIndex).toBeGreaterThanOrEqual(80)
       expect(result.data.metrics.masteryBand).toBe('Master Adaptive Transferer')
+    })
+
+    it('GET /cognitive/pi/conceptests returns canonical ConcepTest suites via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/pi/conceptests')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.suites.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('POST /cognitive/pi/evaluate computes Hake gain and Mazur PI via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/pi/evaluate', {
+        suiteId: 'ct-thermal-expansion-plate',
+        q1InitialConfidence: 3,
+        q1RevoteConfidence: 5,
+        peerDiscussionOccurred: true,
+        vote1AccuracyPct: 38,
+        vote2AccuracyPct: 82,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.metrics.hakeNormalizedGain).toBeGreaterThan(0.5)
+      expect(result.data.metrics.smithLearningVerification).toBe(true)
+    })
+
+    it('POST /cognitive/pi/deck generates calibrated FSRS-6 review cards via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/pi/deck', {
+        suiteId: 'ct-thermal-expansion-plate',
+        hakeGain: 0.75,
+        isomorphicCorrect: true,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBeGreaterThanOrEqual(3)
     })
   })
 })
