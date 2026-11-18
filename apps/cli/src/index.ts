@@ -12,7 +12,6 @@
  * `cliCommands` entry contributed by plugins loaded from `plugins/` — so
  * `learning-hub <plugin-command>` works without touching this file.
  */
-import { and, eq, gte, lte, sql } from 'drizzle-orm'
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout, exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
@@ -56,12 +55,17 @@ import {
   modelInquiryCommand,
 } from './commands/advanced-learning'
 import {
-  awardXp,
-  cards,
+  abandonFocusSession,
+  applyWorkloadShifts,
+  createIdea,
+  createPomodoroSession,
+  dailyReviewsSeries,
   db,
+  dueQueue,
   executeCloudSync,
   executeReview,
-  focusSessions,
+  finishFocusSession,
+  getDailyQuest,
   getDueCardCount,
   getFsrsStatus,
   getRandomQuote,
@@ -71,12 +75,11 @@ import {
   getTrueRetention,
   getWordExposureSummaries,
   getXpTotals,
-  ideas,
   installStarterPack,
   optimizeAndPersistFsrs,
-  quests,
   searchAll,
-  withTransaction,
+  sumFocusMinutes,
+  workloadCards,
 } from '@learning-hub/db'
 import { balanceWorkload, catchUpBacklog, forecastWorkload } from '@learning-hub/core/workload'
 import {
@@ -86,7 +89,6 @@ import {
   levelFromXp,
   levelProgress,
   loadPlugins,
-  XP_REWARDS,
   type CardContent,
   type CliCommandContribution,
   type Grade,
@@ -166,27 +168,21 @@ async function capture(text: string) {
     console.error('Usage: learning-hub capture "idea text"')
     exit(1)
   }
-  const [idea] = await db
-    .insert(ideas)
-    .values({ title: text.trim().slice(0, 120), content: text })
-    .returning()
-  console.log(`💡 Captured idea #${idea!.id} → inbox (stage: seed)\n   ${idea!.title}`)
+  // Shared ideas repo (repos/ideas) — the canonical inbox capture path.
+  const idea = createIdea({ title: text.trim().slice(0, 120), content: text })
+  console.log(`💡 Captured idea #${idea.id} → inbox (stage: seed)\n   ${idea.title}`)
 }
 
 async function today() {
   const now = new Date()
   const dueCount = getDueCardCount({ now })
-  const quest = await db
-    .select()
-    .from(quests)
-    .where(eq(quests.date, dayKey(now)))
-    .limit(1)
+  const quest = getDailyQuest(dayKey(now))
   const quote = getRandomQuote()
   const streakRow = getStreakRow({ now })
   const lines = [
     `Due cards:   ${dueCount}`,
     `Streak:      ${streakRow?.current ?? 0} days (best ${streakRow?.best ?? 0})`,
-    `Quest:       ${quest[0] ? (quest[0].completed ? 'complete ✓' : 'in progress') : 'not generated yet'}`,
+    `Quest:       ${quest ? (quest.completed ? 'complete ✓' : 'in progress') : 'not generated yet'}`,
   ]
   if (quote) lines.push(`Quote:       "${quote.text}" — ${quote.author}`)
   console.log(panel(`TODAY · ${dayKey(now)}`, lines))
@@ -200,13 +196,10 @@ async function stats() {
   const dueCount = getDueCardCount({ now })
   const streakRow = getStreakRow({ now })
   const { total: xpTotal, today: xpToday } = getXpTotals({ now })
-  const week = await db.all<{ day: string; reviews: number }>(
-    sql`SELECT day, reviews FROM v_daily_reviews ORDER BY day DESC LIMIT 7`,
-  )
-  const focusWeek = await db
-    .select({ minutes: sql<number>`coalesce(sum(actual_minutes),0)` })
-    .from(focusSessions)
-    .where(gte(focusSessions.startedAt, new Date(now.getTime() - 7 * 86_400_000).toISOString()))
+  // v_daily_reviews already excludes undone reviews; ascending (oldest first).
+  const week = dailyReviewsSeries({ days: 7, now })
+  // Web weekly-report parity: completed sessions only (repos/focus-lock).
+  const focusMinutes = sumFocusMinutes({ days: 7, now })
 
   const level = levelFromXp(xpTotal)
   const lines = [
@@ -214,16 +207,13 @@ async function stats() {
     `Due now:        ${dueCount} cards`,
     `Streak:         ${streakRow?.current ?? 0} days (best ${streakRow?.best ?? 0}, ❄️ ${streakRow?.freezes ?? 2} freezes)`,
     `XP:             ${xpTotal} total · ${xpToday} today · level ${level} ${bar(levelProgress(xpTotal) * 100, 100)}`,
-    `Focus (7d):     ${Math.round(Number(focusWeek[0]?.minutes ?? 0))} minutes`,
+    `Focus (7d):     ${Math.round(focusMinutes)} minutes`,
     '',
     'Reviews last 7 days:',
-    ...week
-      .slice()
-      .reverse()
-      .map(
-        (d) =>
-          `  ${d.day}  ${bar(Number(d.reviews), Math.max(...week.map((w) => Number(w.reviews)), 1))} ${d.reviews}`,
-      ),
+    ...week.map(
+      (d) =>
+        `  ${d.day}  ${bar(d.reviews, Math.max(...week.map((w) => w.reviews), 1))} ${d.reviews}`,
+    ),
   ]
   console.log(panel('LEARNING STATS', lines))
 }
@@ -241,12 +231,11 @@ const GRADE_ALIASES: Record<string, Grade> = {
 
 async function review(limitArg?: string) {
   const limit = Math.max(1, Math.min(100, Number(limitArg ?? 20) || 20))
-  const dueCards = await db
-    .select()
-    .from(cards)
-    .where(and(lte(cards.due, new Date().toISOString()), eq(cards.suspended, false)))
-    .orderBy(cards.due)
-    .limit(limit)
+  // THE shared due queue (repos/fsrs.dueQueue) — same candidate fetch, ordering
+  // and undo-exclusion (NOT EXISTS revlog_undos) as the web review session
+  // builder. The previous inline copy had none of that, so erased reviews
+  // leaked back into the terminal queue's semantics.
+  const dueCards = dueQueue({ limit, now: new Date() })
   if (dueCards.length === 0) {
     console.log('Nothing due — check back later. 🌱 (or run `learning-hub stats`)')
     return
@@ -310,12 +299,11 @@ async function review(limitArg?: string) {
 
 async function focus(minutesArg?: string) {
   const planned = Math.max(1, Math.min(180, Number(minutesArg ?? 25) || 25))
-  const [session] = await db
-    .insert(focusSessions)
-    .values({ startedAt: new Date().toISOString(), plannedMinutes: planned, type: 'pomodoro' })
-    .returning()
+  // Shared session lifecycle (repos/focus-lock) — the web /api/focus routes
+  // and this command now start/end sessions identically.
+  const session = createPomodoroSession(planned)
   console.log(
-    `⏳ Focus session #${session!.id} started — ${planned} minutes. Ctrl+C to bail (it counts as a leak).`,
+    `⏳ Focus session #${session.id} started — ${planned} minutes. Ctrl+C to bail (it counts as a leak).`,
   )
   const startedAt = Date.now()
   const timer = setInterval(() => {
@@ -331,13 +319,9 @@ async function focus(minutesArg?: string) {
     clearTimeout(hardStop)
     stdin.setRawMode?.(false) // restore cooked terminal before exiting
     const actualMinutes = Math.round(((Date.now() - startedAt) / 60_000) * 10) / 10
-    await db
-      .update(focusSessions)
-      .set({ endedAt: new Date().toISOString(), actualMinutes, completed: true })
-      .where(eq(focusSessions.id, session!.id))
-    // Rule 7: XP via the canonical awardXp path (repos/xp.ts).
-    awardXp(db, { source: 'focus', meta: { sessionId: session!.id } })
-    console.log(`\n✅ Focus complete: ${actualMinutes} min. +${XP_REWARDS.focusSession} XP`)
+    // Completing pays canonical focus XP + streak activity in one transaction.
+    const { xpAwarded } = finishFocusSession(session.id, { actualMinutes })
+    console.log(`\n✅ Focus complete: ${actualMinutes} min. +${xpAwarded} XP`)
     exit(0)
   }
   const hardStop = setTimeout(finish, planned * 60_000 + 5_000)
@@ -349,10 +333,8 @@ async function focus(minutesArg?: string) {
       clearTimeout(hardStop)
       stdin.setRawMode?.(false) // restore cooked terminal before exiting
       const actualMinutes = Math.round(((Date.now() - startedAt) / 60_000) * 10) / 10
-      void db
-        .update(focusSessions)
-        .set({ endedAt: new Date().toISOString(), actualMinutes, completed: false, leaks: 1 })
-        .where(eq(focusSessions.id, session!.id))
+      void Promise.resolve()
+        .then(() => abandonFocusSession(session.id, { actualMinutes }))
         .then(() => {
           console.log(`\nSession ended early at ${actualMinutes} min (leak logged).`)
           exit(0)
@@ -479,27 +461,9 @@ async function syncCmd(runArgs: string[]) {
 
 async function workloadCmd(runArgs: string[]) {
   const sub = runArgs[0] || 'forecast'
-  const cardRows = db
-    .select({
-      id: cards.id,
-      due: cards.due,
-      stability: cards.stability,
-      scheduledDays: cards.scheduledDays,
-      state: cards.state,
-      lapses: cards.lapses,
-    })
-    .from(cards)
-    .where(eq(cards.suspended, false))
-    .all()
-
-  const cardItems = cardRows.map((r) => ({
-    id: r.id,
-    due: r.due,
-    stability: r.stability ?? 0,
-    intervalDays: r.scheduledDays ?? 0,
-    state: r.state ?? 0,
-    lapses: r.lapses ?? 0,
-  }))
+  // Shared workload projection + transactional due shifts (repos/workload) —
+  // previously duplicated verbatim here and in the MCP workload_balance tool.
+  const cardItems = workloadCards()
 
   const now = new Date()
 
@@ -519,13 +483,7 @@ async function workloadCmd(runArgs: string[]) {
 
   if (sub === 'balance') {
     const { shifts } = balanceWorkload(cardItems, { days: 14, easyDays: [0, 6], asOf: now })
-    if (shifts.length > 0) {
-      withTransaction((tx) => {
-        for (const s of shifts) {
-          tx.update(cards).set({ due: s.newDue }).where(eq(cards.id, s.cardId)).run()
-        }
-      })
-    }
+    applyWorkloadShifts(shifts)
     console.log(`✔ Smoothed ${shifts.length} review due dates without compromising retention.`)
     return
   }
@@ -533,13 +491,7 @@ async function workloadCmd(runArgs: string[]) {
   if (sub === 'catchup') {
     const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0)
     const shifts = catchUpBacklog(overdue, 30, now)
-    if (shifts.length > 0) {
-      withTransaction((tx) => {
-        for (const s of shifts) {
-          tx.update(cards).set({ due: s.newDue }).where(eq(cards.id, s.cardId)).run()
-        }
-      })
-    }
+    applyWorkloadShifts(shifts)
     console.log(
       `✔ Rescheduled ${shifts.length} overdue cards (lowest stability prioritized first).`,
     )

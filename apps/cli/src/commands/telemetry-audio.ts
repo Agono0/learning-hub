@@ -3,16 +3,14 @@
  */
 import { BOSS_ROSTER, buildTonightPlan, sleepProfileSchema } from '@learning-hub/core'
 import {
-  cards,
-  db,
   getActiveBossBattle,
   getDueCardsForAudio,
   getRecentCognitiveTelemetry,
   getTmrCuesForSleepReplay,
+  listCardsByStability,
   mintTmrCuesForRecentReviews,
   syncBossBattleProgress,
 } from '@learning-hub/db'
-import { asc, eq } from 'drizzle-orm'
 import { fragilityScore, toConsolidationCandidates } from '@learning-hub/core/tmr'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -38,20 +36,9 @@ export function tmrPlanCommand(args: string[]): void {
     maxAcousticDba: Number(parseFlag(args, '--dba') ?? '35'),
   })
 
-  const rows = db
-    .select({
-      id: cards.id,
-      stability: cards.stability,
-      difficulty: cards.difficulty,
-      due: cards.due,
-      state: cards.state,
-      suspended: cards.suspended,
-    })
-    .from(cards)
-    .where(eq(cards.suspended, false))
-    .orderBy(asc(cards.stability))
-    .limit(300)
-    .all()
+  // Shared repo projection — identical candidate fetch to the MCP
+  // `sleep_consolidation_plan` tool (repos/cards.listCardsByStability).
+  const rows = listCardsByStability({ limit: 300 })
 
   const candidates = toConsolidationCandidates(
     rows
