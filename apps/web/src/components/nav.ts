@@ -43,6 +43,7 @@ import {
   Scale,
   Search as SearchIcon,
   Settings,
+  ShieldCheck,
   Shuffle,
   Sparkles,
   Swords,
@@ -101,6 +102,7 @@ export const NAV: NavGroup[] = [
       { href: '/successive-relearning', label: 'Successive Relearning', icon: Repeat },
       { href: '/apprenticeship', label: 'Cognitive Apprenticeship', icon: GraduationCap },
       { href: '/curiosity', label: 'Epistemic Curiosity', icon: Sparkles },
+      { href: '/srl', label: 'Self-Regulated Learning', icon: ShieldCheck },
     ],
   },
   {

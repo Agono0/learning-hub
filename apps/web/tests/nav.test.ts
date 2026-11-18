@@ -42,6 +42,7 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/successive-relearning')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/apprenticeship')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/curiosity')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/srl')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })
