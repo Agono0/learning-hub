@@ -1,10 +1,17 @@
 # AGENTS.md — operating manual for Learning HUB
 
 **Read this before changing anything.** It is written for AI coding agents and
-applies equally to humans. It tells you what this project is, the rules that
-keep it from breaking, and the exact recipes for common changes. When this file
-and your instincts disagree, this file wins; when this file and the code
-disagree, the code wins — then fix this file in the same change.
+applies equally to humans.
+
+> **⚠️ OWNER RULE — NON-NEGOTIABLE FOR EVERY AGENT (see rules 14 & 17):**
+> locally you may ONLY run `npm run typecheck`, `npm run lint`, and
+> `npm run format:check`. NEVER run tests locally (`npm test`, `npm run check`,
+> `npm run test:e2e`) and NEVER build locally (`npm run build`, `app:build`,
+> `android:build`, `web:tauri`, `worker:deploy`). **All tests and all builds run
+> in CI/CD on GitHub only.** CI green is the only test gate. It tells you what this project is, the rules that
+> keep it from breaking, and the exact recipes for common changes. When this file
+> and your instincts disagree, this file wins; when this file and the code
+> disagree, the code wins — then fix this file in the same change.
 
 ---
 
@@ -74,41 +81,47 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 11. **Untrusted content never renders as HTML.** Use `<Markdown>` from `@/ui` (no raw HTML).
 12. **Never commit secrets or build output** — keystores, `.env`, `target/`, `.next*/` (see `.gitignore`).
 13. **Don't weaken tests to make them pass.** Fix the code, or explain in the PR why the test was wrong.
-14. **Autonomous push & zero breakage.** Always push changes autonomously without waiting for routine confirmation. Strictly verify that code does not break (`npm run check`) before pushing.
+14. **Autonomous push & zero breakage.** Always push changes autonomously without waiting for routine confirmation. Strictly verify before pushing with the LOCAL gate (rule 17): `npm run typecheck`, `npm run lint`, `npm run format:check`. Tests are NOT part of the local gate — they run in CI.
 15. **CI completion before merge.** Before merging any pull request, wait for all GitHub Actions CI checks to finish and verify that they succeed. Never merge while CI is running, failing, or cancelled.
 16. **Continuous pipelined productivity.** While CI runs, do not wait idly. Immediately advance to the next priority task, feature, or verification on the project in parallel.
-17. **No local builds — ever.** Local verification is type check + test check ONLY:
-    `npm run typecheck`, `npm run lint`, `npm test`. Never run `npm run build`
-    (or `web:tauri`, `app:build`, `android:build`, `worker:deploy`) on a local
-    machine — every build happens in CI. A green typecheck + test run is the
-    pre-push gate; a green CI build is the pre-merge gate.
+17. **No local builds, NO LOCAL TEST RUNS — ever (OWNER RULE, applies to every agent).**
+    Local verification is type check + lint + format check ONLY:
+    `npm run typecheck`, `npm run lint`, `npm run format:check`.
+    NEVER run locally: `npm test`, `npm run check` (it includes tests),
+    `npm run test:e2e`, `npm run build` (or `web:tauri`, `app:build`,
+    `android:build`, `worker:deploy`). ALL tests (unit, e2e) and ALL builds run
+    in CI/CD on GitHub — a green CI run is the only test and build gate. The
+    local pre-push gate is exactly: typecheck + lint + format:check green.
+    If a test suite is needed to reason about a change, read the test code;
+    do not execute it. Machines vary; CI is the arbiter.
 18. **Pull before push.** Other agents work on this repo concurrently. Before
-    every push: `git fetch` origin, rebase your branch onto `origin/main`,
-    resolve any conflicts locally, and re-run the verification gate
-    (`npm run check`) — then push. Never force-push shared branches.
+    every push: `git fetch` origin, rebase/merge your branch onto
+    `origin/main`, resolve any conflicts locally, and re-run the LOCAL
+    verification gate (rule 17: typecheck + lint + format:check) — then push.
+    Never force-push shared branches.
 
 ### Rule enforcement table
 
-| Rule | Statement                           | Enforcement mechanism                                                                                          |
-| ---- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 1    | No raw `fetch` in UI code           | ESLint `no-restricted-syntax` on `apps/web/{app,src/{components,ui,platform}}`                                 |
-| 2    | Handlers runtime-neutral            | ESLint `no-restricted-imports` (Node builtins banned in web handlers/hub/lib)                                  |
-| 3    | API routes registered in hub        | Test: `apps/web/tests/hub-registry.test.ts`                                                                    |
-| 4    | Schema changes = migration          | Idempotent migration runner (`packages/db/src/migrations/index.ts`) + DDL clone tests                          |
-| 5    | zod at every boundary               | Zod validation in `readJson`, `readQuery`, MCP argument schemas, CLI inputs                                    |
-| 6    | Multi-row writes transactional      | `withTransaction` sync wrapper + SQLite `BEGIN IMMEDIATE`                                                      |
-| 7    | One grading path                    | Structural guard (`packages/db/tests/rules-guard.test.ts`) + `review-service.ts` / `mastery-service.ts`        |
-| 8    | Append-only tables stay append-only | Structural guard (`packages/db/tests/rules-guard.test.ts` asserts no UPDATE/DELETE on revlog, xp_events, etc.) |
-| 9    | Every AI feature has manual mode    | Test: `apps/web/tests/manual-mode-surface.test.ts` & `apps/web/tests/search-nl-api.test.ts`                    |
-| 10   | Never change native origin          | Code review + OPFS storage scope invariant                                                                     |
-| 11   | Untrusted content never raw HTML    | `<Markdown>` sanitizer from `@/ui` (ReactMarkdown with no dangerous HTML)                                      |
-| 12   | Never commit secrets                | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                            |
-| 13   | Don't weaken tests to pass          | CI pull request review & conventional commits                                                                  |
-| 14   | Autonomous push & zero breakage     | Local verification gate (`npm run check`) before push                                                          |
-| 15   | CI completion before merge          | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                 |
-| 16   | Continuous pipelined productivity   | Overlap active development cycles while remote CI verifies previous PR batches                                 |
-| 17   | No local builds — ever              | Pre-push gate = typecheck + lint + tests only; builds run in CI (GitHub Actions)                               |
-| 18   | Pull before push                    | `git fetch` + rebase onto `origin/main` + re-verify before every push; no force-pushes                         |
+| Rule | Statement                                  | Enforcement mechanism                                                                                             |
+| ---- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 1    | No raw `fetch` in UI code                  | ESLint `no-restricted-syntax` on `apps/web/{app,src/{components,ui,platform}}`                                    |
+| 2    | Handlers runtime-neutral                   | ESLint `no-restricted-imports` (Node builtins banned in web handlers/hub/lib)                                     |
+| 3    | API routes registered in hub               | Test: `apps/web/tests/hub-registry.test.ts`                                                                       |
+| 4    | Schema changes = migration                 | Idempotent migration runner (`packages/db/src/migrations/index.ts`) + DDL clone tests                             |
+| 5    | zod at every boundary                      | Zod validation in `readJson`, `readQuery`, MCP argument schemas, CLI inputs                                       |
+| 6    | Multi-row writes transactional             | `withTransaction` sync wrapper + SQLite `BEGIN IMMEDIATE`                                                         |
+| 7    | One grading path                           | Structural guard (`packages/db/tests/rules-guard.test.ts`) + `review-service.ts` / `mastery-service.ts`           |
+| 8    | Append-only tables stay append-only        | Structural guard (`packages/db/tests/rules-guard.test.ts` asserts no UPDATE/DELETE on revlog, xp_events, etc.)    |
+| 9    | Every AI feature has manual mode           | Test: `apps/web/tests/manual-mode-surface.test.ts` & `apps/web/tests/search-nl-api.test.ts`                       |
+| 10   | Never change native origin                 | Code review + OPFS storage scope invariant                                                                        |
+| 11   | Untrusted content never raw HTML           | `<Markdown>` sanitizer from `@/ui` (ReactMarkdown with no dangerous HTML)                                         |
+| 12   | Never commit secrets                       | Pre-commit git hooks, `.gitignore`, secret-stripping in `backupAll`                                               |
+| 13   | Don't weaken tests to pass                 | CI pull request review & conventional commits                                                                     |
+| 14   | Autonomous push & zero breakage            | Local gate before push = `npm run typecheck` + `npm run lint` + `npm run format:check` (rule 17 — no local tests) |
+| 15   | CI completion before merge                 | Automated check via `gh pr checks` / `gh run watch` ensuring green status gate                                    |
+| 16   | Continuous pipelined productivity          | Overlap active development cycles while remote CI verifies previous PR batches                                    |
+| 17   | No local builds, no local test runs — ever | Pre-push gate = typecheck + lint + format:check ONLY; ALL tests + builds run in CI (GitHub Actions)               |
+| 18   | Pull before push                           | `git fetch` + rebase onto `origin/main` + re-verify before every push; no force-pushes                            |
 
 ## 4. Workflow
 
@@ -123,7 +136,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-android�
 6. **Commit atomically** with Conventional Commits (commitlint-enforced):
    `feat(core/curriculum): add LHCF slug validation` — one logical change per commit.
 7. **Pre-merge checklist:** `.github/pull_request_template.md`.
-8. **Autonomous push & verification:** Verify locally (`npm run check` — typecheck, lint, tests; **never build locally**, rule 17), then `git fetch` + rebase onto `origin/main` (rule 18), push branch and open PR autonomously.
+8. **Autonomous push & verification:** Verify locally (`npm run typecheck`, `npm run lint`, `npm run format:check` — **never build locally, never run tests locally**, rule 17), then `git fetch` + rebase/merge onto `origin/main` (rule 18), push branch and open PR autonomously. Tests verify on CI.
 9. **Wait for CI green gate:** Verify remote GitHub Actions CI completion (`gh pr checks`) before merging. Never merge while CI is running or failing.
 10. **Pipelined productivity:** While remote CI executes on a pending PR, immediately begin the next task or feature in parallel.
 
@@ -201,21 +214,22 @@ and `docs/curriculum/`. New exercise type = schema + `grade()` in
 
 ## 6. Commands
 
-| Purpose                     | Command                                                    |
-| --------------------------- | ---------------------------------------------------------- |
-| Install                     | `npm install`                                              |
-| Dev (web)                   | `npm run db:push && npm run db:seed && npm run dev`        |
-| Typecheck / lint            | `npm run typecheck` · `npm run lint`                       |
-| Unit tests (all workspaces) | `npm test`                                                 |
-| E2E                         | `npm run test:e2e`                                         |
-| Native web bundle           | `npm run web:tauri` (then `npm run preview:tauri` → :4173) |
-| Windows app                 | `npm run app:dev` / `npm run app:build`                    |
-| Android                     | `npm run android:dev` / `npm run android:build`            |
-| Scaffold a feature          | `npm run new:feature -- <name>`                            |
+| Purpose                     | Command                                                                                               |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Install                     | `npm install`                                                                                         |
+| Dev (web)                   | `npm run db:push && npm run db:seed && npm run dev`                                                   |
+| Typecheck / lint / format   | `npm run typecheck` · `npm run lint` · `npm run format:check` — THE local verification gate (rule 17) |
+| Unit tests (all workspaces) | `npm test` — **CI ONLY, never run locally** (rule 17)                                                 |
+| E2E                         | `npm run test:e2e` — **CI ONLY, never run locally** (rule 17)                                         |
+| Native web bundle           | `npm run web:tauri` (then `npm run preview:tauri` → :4173)                                            |
+| Windows app                 | `npm run app:dev` / `npm run app:build`                                                               |
+| Android                     | `npm run android:dev` / `npm run android:build`                                                       |
+| Scaffold a feature          | `npm run new:feature -- <name>`                                                                       |
 
-Before you say "done": typecheck, lint (0 errors), the tests for what you touched, and —
-for UI — check it at phone width. **No local builds** (rule 17): CI builds it. Report
-honestly what you did **not** verify.
+Before you say "done": typecheck, lint (0 errors), format:check — and for UI,
+re-read it against phone width. **No local builds and NO local test runs** (rule
+17): CI runs every test and every build — a green CI run is the only test gate.
+Report honestly what you did **not** verify.
 
 ## 7. Where to learn more
 
