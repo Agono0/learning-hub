@@ -478,9 +478,7 @@ export function DeliberatePracticeStudio() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        <span className="font-bold text-strong text-sm">
-                          {checkpoint.title}
-                        </span>
+                        <span className="font-bold text-strong text-sm">{checkpoint.title}</span>
                         <Badge tone="danger">{checkpoint.bugClass.replace('_', ' ')}</Badge>
                       </div>
                       <Badge tone={isRepaired ? 'success' : 'neutral'}>
@@ -490,9 +488,7 @@ export function DeliberatePracticeStudio() {
 
                     <div className="rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-3.5 space-y-2 border border-neutral-200 dark:border-(--hub-border)">
                       <span className="font-semibold text-strong block">Context Scenario:</span>
-                      <p className="text-secondary leading-relaxed">
-                        {checkpoint.contextScenario}
-                      </p>
+                      <p className="text-secondary leading-relaxed">{checkpoint.contextScenario}</p>
 
                       <span className="font-semibold text-rose-500 block pt-1">
                         Failure Trigger:
@@ -568,9 +564,7 @@ export function DeliberatePracticeStudio() {
       {activeTab === 'taxonomy' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Panel className="p-5 space-y-4">
-            <h3 className="text-base font-semibold text-strong">
-              Kurt VanLehn Error Bug Audit
-            </h3>
+            <h3 className="text-base font-semibold text-strong">Kurt VanLehn Error Bug Audit</h3>
             <p className="text-xs text-secondary">
               Total accumulated errors categorized into VanLehn’s 4 core failure modes.
             </p>
@@ -626,9 +620,7 @@ export function DeliberatePracticeStudio() {
 
             <div className="rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-4 space-y-3 text-xs border border-neutral-200 dark:border-(--hub-border)">
               <div className="space-y-1">
-                <span className="font-semibold text-strong block">
-                  1. Cognitive Decoupling:
-                </span>
+                <span className="font-semibold text-strong block">1. Cognitive Decoupling:</span>
                 <p className="text-secondary">
                   Separate your personal self-worth from tactical step errors. Errors in lock-free
                   concurrency or numerical computing are structural properties of complex systems,
