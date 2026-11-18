@@ -24,13 +24,14 @@ import {
   Pickaxe,
   Quote as QuoteIcon,
   Repeat2,
+  Shapes,
   Sparkles,
   Telescope,
   Timer,
   Zap,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, StatCard, useToast } from '@/ui'
+import { Badge, Callout, EmptyState, Skeleton, StatCard, useToast } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
@@ -433,6 +434,102 @@ function UntestedMaterialWidget(_props: WidgetProps) {
   )
 }
 
+/** One row of GET /api/prototype-exemplar — the extended GET carries history. */
+interface PrototypeExemplarGetResponse {
+  ok: boolean
+  lastSession: {
+    id: number
+    setId: string
+    createdAt: string
+    metrics: { cri: number; overallAccuracy: number; maturityBand: string }
+    accuracy: number
+  } | null
+  totalSessions: number
+}
+
+const CATEGORIZATION_BAND_LABELS: Record<string, string> = {
+  featural_guesser: 'Featural guesser',
+  typicality_sensate: 'Typicality sensate',
+  boundary_tracer: 'Boundary tracer',
+  dual_model_theorist: 'Dual-model theorist',
+}
+
+/**
+ * Categorization studio widget — the last completed categorization session
+ * (accuracy + maturity band) with a deep link into the studio. Honest on every
+ * state: skeleton while loading, Callout on failure, an EmptyState that says
+ * what a session IS when none exists yet. A session is a completed event, so
+ * the only action offered is "Continue training" (never "resume").
+ */
+function PrototypeExemplarWidget(_props: WidgetProps) {
+  const { data, isLoading, isError, error } = useQuery<PrototypeExemplarGetResponse>({
+    queryKey: ['prototype-exemplar', 'widget'],
+    queryFn: () => apiGet('/api/prototype-exemplar'),
+    staleTime: 60_000,
+  })
+  const last = data?.lastSession ?? null
+
+  return (
+    <section className="panel h-full">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
+          <Shapes className="h-3.5 w-3.5" /> Categorization
+        </div>
+        <Link href="/prototype-exemplar" className="text-[10px] text-indigo-400 hover:underline">
+          studio →
+        </Link>
+      </div>
+      {isLoading ? (
+        <div className="mt-3 space-y-2">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ) : isError ? (
+        <Callout tone="danger">
+          Couldn&apos;t load your categorization history —{' '}
+          {error instanceof Error ? error.message : 'try again'}
+        </Callout>
+      ) : last ? (
+        <>
+          <p className="mt-3 flex items-baseline gap-1.5">
+            <span className="text-3xl font-semibold tabular-nums">{last.accuracy}</span>
+            <span className="text-sm text-tertiary">% accuracy · last session</span>
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Badge tone="accent">CRI {last.metrics.cri}</Badge>
+            <Badge tone="neutral">
+              {CATEGORIZATION_BAND_LABELS[last.metrics.maturityBand] ?? last.metrics.maturityBand}
+            </Badge>
+            <span className="text-[10px] text-faint">
+              {new Date(last.createdAt).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+          </div>
+          <div className="mt-4">
+            <Link href="/prototype-exemplar" className="btn-ghost text-xs">
+              Continue training →
+            </Link>
+          </div>
+        </>
+      ) : (
+        <>
+          <EmptyState title="No categorization sessions yet">
+            Study exemplars, rate typicality and classify never-seen items — the engine fits both
+            formal models to your responses.
+          </EmptyState>
+          <div className="mt-4">
+            <Link href="/prototype-exemplar" className="btn-ghost text-xs">
+              Continue training →
+            </Link>
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
 /* ── registry ─────────────────────────────────────────────────────────────── */
 
 import { timerWidgetDef } from './TimerWidget'
@@ -450,6 +547,12 @@ export const BUILT_IN_WIDGETS: WidgetDef[] = [
     title: 'Read but never tested',
     span: 'half',
     component: UntestedMaterialWidget,
+  },
+  {
+    id: 'prototype-exemplar',
+    title: 'Categorization',
+    span: 'half',
+    component: PrototypeExemplarWidget,
   },
 ]
 

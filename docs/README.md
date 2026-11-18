@@ -5,11 +5,12 @@ Everything worth reading, in one place. Start with [`AGENTS.md`](../AGENTS.md)
 
 ## Product & research
 
-| Doc                                        | What it is                                                                                   |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| [learning-science.md](learning-science.md) | Every technique behind the app, 300 BC → today: origin, evidence, where it lives in the code |
-| [PLAN-RESEARCH.md](PLAN-RESEARCH.md)       | The research baseline (~120 studies) with primary sources                                    |
-| [CHANGELOG.md](../CHANGELOG.md)            | What shipped when                                                                            |
+| Doc                                            | What it is                                                                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| [learning-science.md](learning-science.md)     | Every technique behind the app, 300 BC → today: origin, evidence, where it lives in the code                        |
+| [prototype-exemplar.md](prototype-exemplar.md) | The categorization studio: Rosch/Nosofsky science, TSC/CTS/MCD/CRI metrics, study planner, persistence, host parity |
+| [PLAN-RESEARCH.md](PLAN-RESEARCH.md)           | The research baseline (~120 studies) with primary sources                                                           |
+| [CHANGELOG.md](../CHANGELOG.md)                | What shipped when                                                                                                   |
 
 ## Curriculum
 
