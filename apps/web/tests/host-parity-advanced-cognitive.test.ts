@@ -35,6 +35,7 @@ import {
   anchoredCommand,
   contrastingCommand,
   collaborativeCommand,
+  systemDynamicsCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -741,6 +742,114 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.cardsCount).toBe(4)
       expect(data.cards[0]!.fsrsParameters.stability).toBeGreaterThanOrEqual(7.0)
     })
+
+    it('system_dynamics_list_scenarios lists canonical scenarios via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'system_dynamics_list_scenarios')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        scenarios: Array<{ id: string; title: string; archetype: string }>
+      }
+      expect(data.count).toBe(5)
+      expect(data.scenarios[0]!.id).toBe('climate-permafrost-methane')
+    })
+
+    it('system_dynamics_simulate_trajectory executes Euler integration via MCP', async () => {
+      const tool = advancedLearningTools.find(
+        (t) => t.name === 'system_dynamics_simulate_trajectory',
+      )!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'climate-permafrost-methane',
+        stepsCount: 30,
+        dt: 1.0,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        stepsCount: number
+        hasOvershoot: boolean
+        summary: string
+      }
+      expect(data.stepsCount).toBe(30)
+      expect(data.summary).toBeDefined()
+    })
+
+    it('system_dynamics_evaluate_model calculates SFDR, FLIA, DAM, ARS, and SDI via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'system_dynamics_evaluate_model')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'climate-permafrost-methane',
+        classifiedVariables: [
+          { id: 'atmospheric_carbon', nature: 'stock' },
+          { id: 'ocean_carbon_sink', nature: 'stock' },
+          { id: 'permafrost_methane_stock', nature: 'stock' },
+          { id: 'global_temperature_anomaly', nature: 'stock' },
+          { id: 'fossil_emissions', nature: 'flow' },
+          { id: 'ocean_sink_absorption', nature: 'flow' },
+          { id: 'permafrost_thaw_release', nature: 'flow' },
+          { id: 'radiative_heat_accumulation', nature: 'flow' },
+        ],
+        identifiedLoops: [
+          {
+            id: 'R1_albedo_cryosphere',
+            polarity: 'reinforcing',
+            elementIds: ['global_temperature_anomaly', 'radiative_heat_accumulation'],
+            delayIdentified: true,
+          },
+          {
+            id: 'R2_permafrost_runaway',
+            polarity: 'reinforcing',
+            elementIds: [
+              'global_temperature_anomaly',
+              'permafrost_thaw_release',
+              'atmospheric_carbon',
+              'radiative_heat_accumulation',
+            ],
+            delayIdentified: true,
+          },
+          {
+            id: 'B1_ocean_buffering',
+            polarity: 'balancing',
+            elementIds: ['atmospheric_carbon', 'ocean_sink_absorption', 'ocean_carbon_sink'],
+            delayIdentified: true,
+          },
+        ],
+        identifiedArchetype: 'limits_to_growth',
+        proposedHighLeverageIntervention:
+          'Statutory carbon budget caps and methane flaring mandates (Meadows Rank 4 Rules of the System).',
+        predictedBehavior: 'overshoot_and_collapse',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        sdi: number
+        sfdr: number
+        flia: number
+        dam: number
+        ars: number
+        maturityTier: string
+      }
+      expect(data.sdi).toBeGreaterThanOrEqual(85)
+      expect(data.sfdr).toBe(100)
+      expect(data.flia).toBe(100)
+      expect(data.dam).toBe(100)
+      expect(data.maturityTier).toBe('leverage_strategist')
+    })
+
+    it('system_dynamics_generate_deck produces calibrated FSRS-6 deck via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'system_dynamics_generate_deck')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'diabetes-beta-cell-homeostasis',
+        sdiBaseline: 85,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        scenarioId: string
+        sdi: number
+        cardsCount: number
+        cards: Array<{ cardType: string }>
+      }
+      expect(data.scenarioId).toBe('diabetes-beta-cell-homeostasis')
+      expect(data.cardsCount).toBe(4)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -965,6 +1074,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('systemDynamicsCommand executes scenarios, simulate, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        systemDynamicsCommand(['scenarios'])
+        expect(consoleSpy).toHaveBeenCalled()
+        systemDynamicsCommand(['simulate', '--id', 'climate-permafrost-methane'])
+        expect(consoleSpy).toHaveBeenCalled()
+        systemDynamicsCommand(['deck', '--id', 'climate-permafrost-methane'])
+        expect(consoleSpy).toHaveBeenCalled()
+        systemDynamicsCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -1014,6 +1139,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/collaborative/partner')
       expect(registeredPaths).toContain('POST /cognitive/collaborative/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/collaborative/deck')
+      expect(registeredPaths).toContain('GET /cognitive/system-dynamics/scenarios')
+      expect(registeredPaths).toContain('POST /cognitive/system-dynamics/simulate')
+      expect(registeredPaths).toContain('POST /cognitive/system-dynamics/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/system-dynamics/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1576,6 +1705,89 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.data.ok).toBe(true)
       expect(result.data.cards.length).toBe(4)
       expect(result.data.cards[0].fsrsParameters).toBeDefined()
+    })
+
+    it('GET /cognitive/system-dynamics/scenarios returns canonical scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/system-dynamics/scenarios')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.scenarios.length).toBe(5)
+      expect(result.data.scenarios[0].id).toBe('climate-permafrost-methane')
+    })
+
+    it('POST /cognitive/system-dynamics/simulate runs Euler integration via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/system-dynamics/simulate', {
+        scenarioId: 'climate-permafrost-methane',
+        stepsCount: 30,
+        dt: 1.0,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.simulationRun.steps.length).toBe(30)
+    })
+
+    it('POST /cognitive/system-dynamics/evaluate evaluates model and computes telemetry via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/system-dynamics/evaluate', {
+        scenarioId: 'climate-permafrost-methane',
+        classifiedVariables: [
+          { id: 'atmospheric_carbon', nature: 'stock' },
+          { id: 'ocean_carbon_sink', nature: 'stock' },
+          { id: 'permafrost_methane_stock', nature: 'stock' },
+          { id: 'global_temperature_anomaly', nature: 'stock' },
+          { id: 'fossil_emissions', nature: 'flow' },
+          { id: 'ocean_sink_absorption', nature: 'flow' },
+          { id: 'permafrost_thaw_release', nature: 'flow' },
+          { id: 'radiative_heat_accumulation', nature: 'flow' },
+        ],
+        identifiedLoops: [
+          {
+            id: 'R1_albedo_cryosphere',
+            polarity: 'reinforcing',
+            elementIds: ['global_temperature_anomaly', 'radiative_heat_accumulation'],
+            delayIdentified: true,
+          },
+          {
+            id: 'R2_permafrost_runaway',
+            polarity: 'reinforcing',
+            elementIds: [
+              'global_temperature_anomaly',
+              'permafrost_thaw_release',
+              'atmospheric_carbon',
+              'radiative_heat_accumulation',
+            ],
+            delayIdentified: true,
+          },
+          {
+            id: 'B1_ocean_buffering',
+            polarity: 'balancing',
+            elementIds: ['atmospheric_carbon', 'ocean_sink_absorption', 'ocean_carbon_sink'],
+            delayIdentified: true,
+          },
+        ],
+        identifiedArchetype: 'limits_to_growth',
+        proposedHighLeverageIntervention:
+          'Enforce binding global carbon budget caps (Meadows Rank 4 Rules of the System).',
+        predictedBehavior: 'overshoot_and_collapse',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.sdi).toBeGreaterThanOrEqual(85)
+      expect(result.data.evaluation.maturityTier).toBe('leverage_strategist')
+    })
+
+    it('POST /cognitive/system-dynamics/deck generates calibrated FSRS-6 deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/system-dynamics/deck', {
+        scenarioId: 'climate-permafrost-methane',
+        sdiBaseline: 85,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cardsCount).toBe(4)
+      expect(result.data.cards.length).toBe(4)
     })
   })
 })

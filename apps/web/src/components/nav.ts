@@ -4,6 +4,7 @@
  * page shows up everywhere — Windows, Android, browser — by adding one entry.
  */
 import {
+  Activity,
   Anchor,
   BookOpen,
   Bot,
@@ -129,6 +130,7 @@ export const NAV: NavGroup[] = [
       { href: '/anchored', label: 'Anchored Instruction', icon: Anchor },
       { href: '/contrasting', label: 'Contrasting Cases', icon: GitFork },
       { href: '/collaborative', label: 'Collaborative Scripts', icon: GitMerge },
+      { href: '/system-dynamics', label: 'System Dynamics', icon: Activity },
     ],
   },
   {

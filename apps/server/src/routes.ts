@@ -130,6 +130,11 @@ import {
   generateCollaborativePeerTurn,
   generateCollaborativeFSRSDeck,
   type DiscourseSubmission,
+  CANONICAL_SYSTEM_DYNAMICS_SCENARIOS,
+  evaluateLearnerModel,
+  generateSystemDynamicsFSRSDeck,
+  runEulerSimulation,
+  type LearnerModelHypothesis,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -472,6 +477,62 @@ const collaborativeEvaluateBodySchema = z.object({
 const collaborativeDeckBodySchema = z.object({
   scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
   ceiBaseline: z.number().min(0).max(100).default(85),
+})
+
+const systemDynamicsSimulateBodySchema = z.object({
+  scenarioId: z.string().default('climate-permafrost-methane'),
+  stepsCount: z.number().int().min(5).max(300).default(50),
+  dt: z.number().min(0.01).max(10).default(1.0),
+  policyMultipliers: z.record(z.string(), z.number()).optional(),
+})
+
+const systemDynamicsEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('climate-permafrost-methane'),
+  classifiedVariables: z
+    .array(
+      z.object({
+        id: z.string(),
+        nature: z.enum(['stock', 'flow', 'auxiliary', 'parameter']),
+      }),
+    )
+    .default([]),
+  identifiedLoops: z
+    .array(
+      z.object({
+        id: z.string(),
+        polarity: z.enum(['reinforcing', 'balancing']),
+        elementIds: z.array(z.string()),
+        delayIdentified: z.boolean(),
+      }),
+    )
+    .default([]),
+  identifiedArchetype: z
+    .enum([
+      'limits_to_growth',
+      'shifting_the_burden',
+      'tragedy_of_the_commons',
+      'fixes_that_fail',
+      'eroding_goals',
+      'escalation',
+    ])
+    .default('limits_to_growth'),
+  proposedHighLeverageIntervention: z
+    .string()
+    .default('Rewire system rules and information channels.'),
+  predictedBehavior: z
+    .enum([
+      'exponential_growth',
+      's_shaped_growth',
+      'overshoot_and_collapse',
+      'damped_oscillation',
+      'asymptotic_stability',
+    ])
+    .default('overshoot_and_collapse'),
+})
+
+const systemDynamicsDeckBodySchema = z.object({
+  scenarioId: z.string().default('climate-permafrost-methane'),
+  sdiBaseline: z.number().min(0).max(100).default(85),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2214,6 +2275,95 @@ async function postCollaborativeDeck(req: IncomingMessage, res: ServerResponse):
   })
 }
 
+/** GET /cognitive/system-dynamics/scenarios — list canonical system dynamics scenarios */
+async function getSystemDynamicsScenarios(
+  _req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const scenarios = CANONICAL_SYSTEM_DYNAMICS_SCENARIOS
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: scenarios.map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      difficulty: s.difficulty,
+      stocksCount: s.stocks.length,
+      flowsCount: s.flows.length,
+      loopsCount: s.canonicalLoops.length,
+      archetype: s.canonicalArchetype,
+      leveragePointsCount: s.leveragePoints.length,
+    })),
+  })
+}
+
+/** POST /cognitive/system-dynamics/simulate — run deterministic Euler numerical integration */
+async function postSystemDynamicsSimulate(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const body = await readJson(req, systemDynamicsSimulateBodySchema)
+  const scenario =
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === body.scenarioId) ??
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+  const simulationRun = runEulerSimulation(scenario, body.stepsCount, body.dt, {
+    flowRateMultipliers: body.policyMultipliers,
+  })
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: scenario.id,
+    scenarioTitle: scenario.title,
+    simulationRun,
+  })
+}
+
+/** POST /cognitive/system-dynamics/evaluate — evaluate systems model (SFDR, FLIA, DAM, ARS, SDI) */
+async function postSystemDynamicsEvaluate(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const body = await readJson(req, systemDynamicsEvaluateBodySchema)
+  const scenario =
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === body.scenarioId) ??
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+  const evaluation = evaluateLearnerModel(scenario, body as LearnerModelHypothesis)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/system-dynamics/deck — generate calibrated FSRS-6 review deck */
+async function postSystemDynamicsDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, systemDynamicsDeckBodySchema)
+  const scenario =
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === body.scenarioId) ??
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+  const mockEvaluation = {
+    sfdr: body.sdiBaseline,
+    flia: body.sdiBaseline,
+    dam: body.sdiBaseline,
+    ars: body.sdiBaseline,
+    sdi: body.sdiBaseline,
+    maturityTier:
+      body.sdiBaseline >= 85 ? ('leverage_strategist' as const) : ('dynamic_simulator' as const),
+    strengths: ['Headless server synthesized baseline.'],
+    systemicFeedback: [],
+    archetypeDiscrepancies: [],
+    leveragePointAnalysis: 'Direct REST deck synthesis.',
+  }
+  const deck = generateSystemDynamicsFSRSDeck(scenario, mockEvaluation)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: scenario.id,
+    scenarioTitle: scenario.title,
+    sdiBaseline: deck.sdi,
+    cardsCount: deck.cards.length,
+    cards: deck.cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2604,6 +2754,31 @@ export const routes: Route[] = [
     path: '/cognitive/collaborative/deck',
     summary: 'generate calibrated FSRS-6 review deck for collaborative dialectics',
     handler: postCollaborativeDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/system-dynamics/scenarios',
+    summary:
+      'list canonical system dynamics scenarios (Forrester 1968, Sterman 2000, Meadows 2008)',
+    handler: getSystemDynamicsScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/system-dynamics/simulate',
+    summary: 'run deterministic Euler numerical integration for system dynamics',
+    handler: postSystemDynamicsSimulate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/system-dynamics/evaluate',
+    summary: 'evaluate systems thinking model (SFDR, FLIA, DAM, ARS, SDI)',
+    handler: postSystemDynamicsEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/system-dynamics/deck',
+    summary: 'generate calibrated FSRS-6 review deck for system dynamics',
+    handler: postSystemDynamicsDeck,
   },
 ]
 
