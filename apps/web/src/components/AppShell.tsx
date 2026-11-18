@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { DEFAULT_COLLAPSED_GROUPS, NAV, PRIMARY_NAV_ITEMS, isActive } from './nav'
 import { PermissionNudge } from './PermissionNudge'
+import { TimerChip } from './TimerChip'
 import { NotificationBell } from './NotificationBell'
 import { CommandPalette, openCommandPalette } from './CommandPalette'
 import { QuickHudModal } from './QuickHudModal'
@@ -170,7 +171,10 @@ function Sidebar({ pathname }: { pathname: string | null }) {
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 print:hidden flex-col border-r border-neutral-200 bg-white/80 backdrop-blur lg:flex dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <Brand />
-        <NotificationBell />
+        <span className="flex items-center gap-1">
+          <TimerChip />
+          <NotificationBell />
+        </span>
       </div>
 
       <div className="px-3 pb-2">
@@ -479,6 +483,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
               <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
             )}
           </button>
+          <TimerChip />
           <NotificationBell />
         </span>
       </header>

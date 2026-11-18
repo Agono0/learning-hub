@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ToastProvider } from '@/ui'
+import { GlobalTimerProvider } from '@/lib/use-global-timer'
 import { ThemeSync } from './ThemeSync'
 import { PwaRegister } from './PwaRegister'
 
@@ -18,7 +19,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={qc}>
       <ThemeSync />
       <PwaRegister />
-      <ToastProvider>{children}</ToastProvider>
+      <GlobalTimerProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </GlobalTimerProvider>
     </QueryClientProvider>
   )
 }
