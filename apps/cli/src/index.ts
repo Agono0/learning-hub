@@ -47,6 +47,7 @@ import {
   pfCommand,
   piCommand,
   inquiryCommand,
+  reciprocalTeachingCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -839,6 +840,13 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Klahr & Dunbar dual-space scientific discovery & VOTAT inquiry simulation studio',
     usage: '[eval|labs|trial|deck] [--lab lab-pendulum-period --vri 1.0 --sdi 85]',
     run: (runArgs) => inquiryCommand(runArgs),
+  },
+  {
+    name: 'rt',
+    description:
+      'Palincsar & Brown reciprocal teaching, Chi ICAP framework & King guided questioning studio',
+    usage: '[eval|passages|peer|deck] [--passage passage-endosymbiosis --role questioner]',
+    run: (runArgs) => reciprocalTeachingCommand(runArgs),
   },
 ]
 

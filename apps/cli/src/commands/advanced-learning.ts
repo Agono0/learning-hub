@@ -49,6 +49,10 @@ import {
   runInquiryTrial,
   calculateInquiryMetrics,
   generateInquiryFSRSCards,
+  CANONICAL_TEXT_PASSAGES,
+  evaluateReciprocalSession,
+  generatePeerDialogicTurn,
+  generateReciprocalFSRSDeck,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -795,4 +799,140 @@ export function inquiryCommand(args: string[]): void {
   console.log('─'.repeat(65))
   console.log(`Diagnostic:        ${metrics.qualitativeDiagnostic}`)
   console.log(`Instructional:     ${metrics.pedagogicalAdvice}`)
+}
+
+// ── 11. Reciprocal Teaching & Dialogic Questioning Command ───────────────────
+export async function reciprocalTeachingCommand(args: string[]): Promise<void> {
+  const passages = CANONICAL_TEXT_PASSAGES
+  const sub = args[0]
+
+  if (sub === 'passages' || sub === 'list') {
+    console.log('\n📚 Reciprocal Teaching Text Passages (Palincsar & Brown 1984)')
+    console.log('═'.repeat(65))
+    passages.forEach((p) => {
+      console.log(`• [${p.id}] ${p.title}`)
+      console.log(
+        `  Discipline: ${p.discipline} | Difficulty: ${p.difficulty} | Words: ${p.wordCount}`,
+      )
+      console.log(`  Core Thesis: ${p.coreThesis}`)
+      console.log(`  Stems: ${p.stems.length} | Misconceptions: ${p.commonMisconceptions.length}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  const passageId = parseFlag(args, '--passage') || 'passage-endosymbiosis'
+  const passage = passages.find((p) => p.id === passageId) ?? passages[0]!
+
+  if (sub === 'peer') {
+    const roleFlag = parseFlag(args, '--role') as
+      'questioner' | 'clarifier' | 'summarizer' | 'predictor' | undefined
+    const peer = generatePeerDialogicTurn(passage, [], roleFlag)
+    console.log('\n💬 Socratic Reciprocal Peer Turn (Palincsar Scaffolding)')
+    console.log('═'.repeat(65))
+    console.log(`Passage:     ${passage.title}`)
+    console.log(`Peer Role:   ${peer.role.toUpperCase()}`)
+    console.log(`ICAP Level:  ${peer.icapLevel.toUpperCase()}`)
+    console.log('─'.repeat(65))
+    console.log(`Peer Dialogue:\n"${peer.text}"`)
+    return
+  }
+
+  if (sub === 'deck') {
+    const sampleTurns = [
+      {
+        id: 'turn-sample',
+        speaker: 'user' as const,
+        role: 'clarifier' as const,
+        turnIndex: 0,
+        text: 'The inner mitochondrial membrane contains cardiolipin which proves bacterial origin because eukaryotes lack it.',
+        timestamp: Date.now(),
+        icapLevel: 'constructive' as const,
+        elaborationScore: 80,
+      },
+    ]
+    const evaluation = evaluateReciprocalSession(sampleTurns, passage)
+    const deck = generateReciprocalFSRSDeck(passage, sampleTurns, evaluation)
+
+    console.log('\n📦 Calibrated FSRS-6 Reciprocal Spaced Repetition Deck')
+    console.log(`Passage:           ${deck.passageTitle}`)
+    console.log(`Dialogue Maturity: ${deck.rdmsBaseline}/100 RDMS`)
+    console.log(`Cards Generated:   ${deck.cards.length}`)
+    console.log('═'.repeat(65))
+    deck.cards.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Role: ${c.role.toUpperCase()} (S: ${c.fsrsParameters.stability}d, D: ${c.fsrsParameters.difficulty})`,
+      )
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval
+  const sampleTurns = [
+    {
+      id: 't-1',
+      speaker: 'user' as const,
+      role: 'questioner' as const,
+      turnIndex: 0,
+      text: 'What specific structural evidence causally proves that the inner mitochondrial membrane is bacterial rather than eukaryotic in origin?',
+      timestamp: Date.now() - 30000,
+      icapLevel: 'constructive' as const,
+      elaborationScore: 75,
+    },
+    {
+      id: 't-2',
+      speaker: 'user' as const,
+      role: 'clarifier' as const,
+      turnIndex: 1,
+      text: 'Building on what you said, cardiolipin in the inner membrane refutes inward pinching because eukaryotic membranes lack cardiolipin.',
+      timestamp: Date.now() - 20000,
+      icapLevel: 'interactive' as const,
+      elaborationScore: 85,
+      resolvedMisconceptionId: 'misc-endo-1',
+    },
+    {
+      id: 't-3',
+      speaker: 'user' as const,
+      role: 'summarizer' as const,
+      turnIndex: 2,
+      text: 'To synthesize, symbiogenesis proves that macroevolutionary transitions occur through genomic fusion rather than isolated point mutations.',
+      timestamp: Date.now() - 10000,
+      icapLevel: 'constructive' as const,
+      elaborationScore: 70,
+    },
+    {
+      id: 't-4',
+      speaker: 'user' as const,
+      role: 'predictor' as const,
+      turnIndex: 3,
+      text: 'Consequently, exposing cells to chloramphenicol arrests mitochondrial translation because their 70S ribosomes share bacterial antibiotic sensitivity.',
+      timestamp: Date.now(),
+      icapLevel: 'interactive' as const,
+      elaborationScore: 90,
+    },
+  ]
+
+  const evalResult = evaluateReciprocalSession(sampleTurns, passage)
+
+  console.log('\n📊 Reciprocal Dialogue Cognitive Telemetry (Palincsar & Brown 1984, Chi 2014)')
+  console.log('═'.repeat(65))
+  console.log(`Passage:               ${passage.title}`)
+  console.log(`Dialogue Maturity:     ${evalResult.rdms}/100 RDMS`)
+  console.log(`Mastery Band:          ${evalResult.masteryBand.toUpperCase()}`)
+  console.log(`ICAP Composite (ICS):  ${evalResult.icap.ics}/100`)
+  console.log(
+    `ICAP Distribution:     Inter: ${(evalResult.icap.interactiveRatio * 100).toFixed(0)}% | Const: ${(evalResult.icap.constructiveRatio * 100).toFixed(0)}% | Act: ${(evalResult.icap.activeRatio * 100).toFixed(0)}%`,
+  )
+  console.log(`Strategy Balance:      ${evalResult.strategy.rsbs}/100 RSBS (Entropy)`)
+  console.log(
+    `Elaboration Depth:     EDI ${evalResult.elaboration.edi} (${evalResult.elaboration.causalConnectorsCount} causal connectors)`,
+  )
+  console.log(
+    `Metacognitive Repair:  ${(evalResult.repair.mrr * 100).toFixed(0)}% MRR (${evalResult.repair.successfulRepairs}/${evalResult.repair.attemptedRepairs})`,
+  )
+  console.log('─'.repeat(65))
+  console.log(`Feedback: ${evalResult.feedback.join(' ')}`)
 }

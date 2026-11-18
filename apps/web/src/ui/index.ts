@@ -83,6 +83,8 @@ export { DynamicAssessmentHUD, type DynamicAssessmentHUDProps } from './DynamicA
 export { ProductiveFailureHUD, type ProductiveFailureHUDProps } from './ProductiveFailureHUD'
 export { PeerInstructionHUD, type PeerInstructionHUDProps } from './PeerInstructionHUD'
 export { InquiryHUD, type InquiryHUDProps } from './InquiryHUD'
+export { ReciprocalTeachingHUD, type ReciprocalTeachingHUDProps } from './ReciprocalTeachingHUD'
+
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
