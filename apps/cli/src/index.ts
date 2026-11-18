@@ -55,6 +55,7 @@ import {
   systemDynamicsCommand,
   modelInquiryCommand,
 } from './commands/advanced-learning'
+import { prototypeExemplarCommand } from './commands/prototype-exemplar'
 import {
   awardXp,
   cards,
@@ -886,6 +887,14 @@ const builtinCommands: RegisteredCommand[] = [
       'Clement (2008), Nersessian (2002) & Johnson-Laird (1983) Model-Based Inquiry & Gedankenexperiment',
     usage: '[scenarios|perturb|simulate|eval|deck] [--id <id>] [--case <caseId>]',
     run: (runArgs) => modelInquiryCommand(runArgs),
+  },
+  {
+    name: 'prototype-exemplar',
+    description:
+      'Rosch (1975), Reed (1972), Nosofsky (1986) & Ashby-Gott (1988) Prototype/Exemplar Categorization Studio',
+    usage:
+      '[scenarios|evaluate|plan|deck] [--data <json>|--file <path>] [--set <id>] [--history <path> --days 10] [--json]',
+    run: (runArgs) => prototypeExemplarCommand(runArgs),
   },
 ]
 

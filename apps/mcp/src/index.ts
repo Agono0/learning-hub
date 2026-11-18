@@ -23,6 +23,7 @@ import { learningPathTools } from './tools/learning-path'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
+import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import {
   CardNotFoundError,
   cards,
@@ -543,6 +544,7 @@ async function main() {
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,
+    ...prototypeExemplarTools,
   ]) {
     server.registerTool(
       registered.name,

@@ -154,6 +154,16 @@ import {
   generateModelInquiryFsrsDeck,
   type InquirySessionInput,
   InquirySessionInputSchema,
+  CANONICAL_CATEGORIZATION_SETS,
+  categorizationSubmissionSchema,
+  evaluateCategorizationSession,
+  findCategorySet,
+  generateCategorizationDeck,
+  planCategorizationStudy,
+  planDiscriminatingBlock,
+  studyPlanOptionsSchema,
+  studyPlanSessionSchema,
+  type StudyPlan,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -558,6 +568,20 @@ const modelInquiryEvaluateBodySchema = InquirySessionInputSchema.extend({
 
 const modelInquiryDeckBodySchema = z.object({
   scenarioId: z.string().default('galileo_falling_bodies'),
+})
+
+// Payload shapes owned by core; the route only layers its schedule defaults.
+const prototypeExemplarPlanBodySchema = z.object({
+  setId: z.string().default('proto-bird-typicality'),
+  maxTrials: z.number().int().min(1).max(24).default(6),
+  sessions: studyPlanSessionSchema.array().max(500).default([]),
+  scheduleOptions: studyPlanOptionsSchema.omit({ now: true }).partial().default({}),
+  now: z.string().optional(),
+})
+
+const prototypeExemplarDeckBodySchema = z.object({
+  setId: z.string().default('proto-bird-typicality'),
+  criBaseline: z.number().min(0).max(100).default(50),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2388,6 +2412,68 @@ async function postModelInquiryDeck(req: IncomingMessage, res: ServerResponse): 
   })
 }
 
+// ── Prototype & Exemplar Categorization (Rosch 1975; Reed 1972; Nosofsky 1986;
+//    Ashby & Gott 1988; Landauer & Bjork 1978; Kang 2016) — same engine calls
+//    and response shapes as the web handler (host-parity contract) ──────────
+
+/** GET /cognitive/prototype-exemplar/scenarios — canonical category sets */
+function getPrototypeExemplarScenarios(_req: IncomingMessage, res: ServerResponse): void {
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: CANONICAL_CATEGORIZATION_SETS,
+  })
+}
+
+/** POST /cognitive/prototype-exemplar/evaluate — full session telemetry */
+async function postPrototypeExemplarEvaluate(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const submission = await readJson(req, categorizationSubmissionSchema)
+  const set = findCategorySet(submission.setId)
+  const evaluation = evaluateCategorizationSession(set, submission)
+  sendJson(res, 200, {
+    ok: true,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/prototype-exemplar/plan — discriminating trials + optional schedule */
+async function postPrototypeExemplarPlan(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, prototypeExemplarPlanBodySchema)
+  const set = findCategorySet(body.setId)
+  const plan = planDiscriminatingBlock(set, body.maxTrials)
+  let schedule: StudyPlan | null = null
+  if (body.sessions.length > 0) {
+    try {
+      schedule = planCategorizationStudy(body.sessions, {
+        ...body.scheduleOptions,
+        now: body.now ?? new Date().toISOString(),
+      })
+    } catch {
+      schedule = null // malformed history: the trial plan still returns
+    }
+  }
+  sendJson(res, 200, {
+    ok: true,
+    plan,
+    schedule,
+  })
+}
+
+/** POST /cognitive/prototype-exemplar/deck — FSRS cards scaled by the CRI */
+async function postPrototypeExemplarDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, prototypeExemplarDeckBodySchema)
+  const set = findCategorySet(body.setId)
+  const neutralEvaluation = evaluateCategorizationSession(set, { setId: set.id })
+  neutralEvaluation.cri = body.criBaseline
+  const deck = generateCategorizationDeck(set, neutralEvaluation)
+  sendJson(res, 200, {
+    ok: true,
+    deck,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2839,6 +2925,33 @@ export const routes: Route[] = [
     path: '/cognitive/model-inquiry/deck',
     summary: 'generate calibrated FSRS-6 review deck for model-based inquiry',
     handler: postModelInquiryDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/prototype-exemplar/scenarios',
+    summary:
+      'list canonical categorization category sets (Rosch 1975; Medin & Schaffer 1978; Nosofsky 1986; Ashby & Gott 1988)',
+    handler: getPrototypeExemplarScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/prototype-exemplar/evaluate',
+    summary:
+      'evaluate a categorization session (TSC, CTS, MCD, CRI, maturity band, model comparison)',
+    handler: postPrototypeExemplarEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/prototype-exemplar/plan',
+    summary:
+      'plan model-diagnostic trials + optional multi-day study schedule (expanding retrieval, interleaving)',
+    handler: postPrototypeExemplarPlan,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/prototype-exemplar/deck',
+    summary: 'generate calibrated FSRS-6 review deck for categorization',
+    handler: postPrototypeExemplarDeck,
   },
 ]
 
