@@ -443,7 +443,7 @@
   3. Implement `DualProcessStudio.tsx` with high-stakes diagnostic decision matrices, cognitive forcing checkpoints, bias vulnerability audits, and FSRS-6 debiasing heuristic flashcards.
   4. Build `apps/web/app/dual-process/page.tsx` and register route in navigation.
 - **Files Affected:** `packages/core/src/dualprocess/*`, `apps/web/src/ui/DualProcessHUD.tsx`, `apps/web/src/components/DualProcessStudio.tsx`, `apps/web/app/dual-process/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed**.
+- **Status:** **Completed (Merged in PR #50)**.
 
 ---
 
@@ -457,4 +457,18 @@
   3. Implement `RepresentationalFluencyStudio.tsx` with dynamic representation quad-views (algebraic equations, geometric vector charts, intuitive physical analogies, code simulations) and inter-modal translation crucibles.
   4. Build `apps/web/app/representations/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/representation/*`, `apps/web/src/ui/RepresentationalFluencyHUD.tsx`, `apps/web/src/components/RepresentationalFluencyStudio.tsx`, `apps/web/app/representations/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-26: Epistemic Network Analysis & Knowledge Building Studio (Shaffer 2017; Scardamalia & Bereiter 2006)
+
+- **Problem:** Learners process concepts as isolated factual nodes rather than interconnected epistemic networks, failing to perceive how cognitive connections, causal evidence, and discursive elements dynamically interact during inquiry.
+- **Root Cause:** Absence of Epistemic Network Analysis (ENA) models that quantify the relative frequency and co-occurrence of cognitive elements in high-dimensional discourse space and project dynamic learning trajectories.
+- **Proposed Solution:**
+  1. Build `packages/core/src/ena/epistemic-network-engine.ts` modeling David Williamson Shaffer's Epistemic Network Analysis (adjacency matrices, cumulative moving window co-occurrence, dimensional reduction via SVD rotation, and network density metrics) combined with Scardamalia & Bereiter's 12 Knowledge Building principles.
+  2. Implement `EpistemicNetworkHUD.tsx` tracking network density, epistemic centroid coordinates, and cognitive connection velocity.
+  3. Implement `EpistemicNetworkStudio.tsx` with interactive dynamic graph projection, moving-window discourse analyzer, and FSRS-6 epistemic connection flashcards.
+  4. Build `apps/web/app/ena/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/ena/*`, `apps/web/src/ui/EpistemicNetworkHUD.tsx`, `apps/web/src/components/EpistemicNetworkStudio.tsx`, `apps/web/app/ena/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.

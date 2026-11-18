@@ -7,6 +7,7 @@ import {
   BookOpen,
   Bot,
   Box,
+  Boxes,
   Brain,
   CalendarCheck,
   CalendarRange,
@@ -105,6 +106,7 @@ export const NAV: NavGroup[] = [
       { href: '/curiosity', label: 'Epistemic Curiosity', icon: Sparkles },
       { href: '/srl', label: 'Self-Regulated Learning', icon: ShieldCheck },
       { href: '/dual-process', label: 'Dual-Process Diagnostic', icon: Split },
+      { href: '/representations', label: 'Multi-Representational', icon: Boxes },
     ],
   },
   {
