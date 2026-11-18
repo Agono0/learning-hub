@@ -128,7 +128,12 @@ export function ReflectiveEquilibriumStudio({
         {
           propositionId: propId,
           propositionText: propId,
-          subjectiveConfidence: currentConfidenceInput,
+          // The engine reads subjectiveConfidence as credence that the
+          // proposition is TRUE (err = conf − outcome). The slider measures
+          // confidence in the answer the user PICKED, so a FALSE pick must
+          // invert it — otherwise every correct FALSE answer scores as
+          // maximum overconfidence (Brier err = conf²).
+          subjectiveConfidence: userAns ? currentConfidenceInput : 1 - currentConfidenceInput,
           actualOutcome,
           domainContext: suite.domain,
         },
@@ -545,7 +550,7 @@ export function ReflectiveEquilibriumStudio({
                     {recorded && (
                       <Badge
                         tone={
-                          recorded.subjectiveConfidence >= 0.5 && pred.actualOutcome
+                          recorded.subjectiveConfidence >= 0.5 === pred.actualOutcome
                             ? 'success'
                             : 'danger'
                         }

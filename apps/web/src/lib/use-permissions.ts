@@ -42,7 +42,7 @@ export function usePermissionSnapshot() {
     gcTime: Infinity,
   })
 
-  useEffect(() => onPermissionsMaybeChanged(() => void query.refetch()), [query])
+  useEffect(() => onPermissionsMaybeChanged(() => void query.refetch()), [query.refetch])
 
   return query
 }

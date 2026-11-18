@@ -930,6 +930,10 @@ export function runEulerSimulation(
   let previousStockVariance = 0
   let oscillationCount = 0
   let maxOvershootObserved = false
+  // Signed per-step change of the primary stock, used to detect direction
+  // reversals (true oscillation) rather than magnitude growth (which fires
+  // on any monotonic exponential run-away).
+  let previousDelta = 0
 
   for (let s = 0; s < stepsCount; s++) {
     const currentTime = s * dt
@@ -1066,8 +1070,16 @@ export function runEulerSimulation(
         maxOvershootObserved = true
       }
       const deltaVariance = Math.abs(currentVal - (currentStocks[primaryStockKey] ?? 0))
-      if (deltaVariance > previousStockVariance && s > 5) {
-        oscillationCount++
+      const signedDelta = currentVal - (currentStocks[primaryStockKey] ?? 0)
+      // True oscillation = the step DIRECTION reverses (with enough magnitude
+      // to be signal, not float noise). Counting magnitude growth instead
+      // would flag plain monotonic growth (the per-step |Δ| of an expanding
+      // system grows every step) as "oscillation".
+      if (s > 5 && deltaVariance > 1e-9) {
+        if (previousDelta !== 0 && Math.sign(signedDelta) !== Math.sign(previousDelta)) {
+          oscillationCount++
+        }
+        previousDelta = signedDelta
       }
       previousStockVariance = deltaVariance
     }
