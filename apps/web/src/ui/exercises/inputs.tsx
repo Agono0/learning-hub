@@ -21,6 +21,7 @@ import {
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiSend } from '@/lib/transport'
 import { Markdown } from '../Markdown'
+import { IconButton } from '../IconButton'
 import { cx } from '../cx'
 import { canRunLanguage, isSqlLanguage, runCodeTests, type CodeRunResult } from './code-runner'
 import { seedFrom, shuffledIndices } from './shuffle'
@@ -234,24 +235,24 @@ function Reorder({
           >
             {items[itemIndex]}
           </span>
-          <button
+          <IconButton
             type="button"
-            aria-label="Move up"
+            label="Move up"
             disabled={disabled || pos === 0}
             onClick={() => onMove(pos, pos - 1)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-(--hub-panel-2)"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </button>
-          <button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowUp className="h-4 w-4" />}
+          />
+          <IconButton
             type="button"
-            aria-label="Move down"
+            label="Move down"
             disabled={disabled || pos === order.length - 1}
             onClick={() => onMove(pos, pos + 1)}
-            className="grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 disabled:opacity-30 dark:hover:bg-(--hub-panel-2)"
-          >
-            <ArrowDown className="h-4 w-4" />
-          </button>
+            variant="ghost"
+            size="sm"
+            icon={<ArrowDown className="h-4 w-4" />}
+          />
         </li>
       ))}
     </ol>

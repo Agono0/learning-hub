@@ -19,7 +19,7 @@ import {
   shouldOfferPrompt,
   type PermissionId,
 } from '@learning-hub/core/permissions'
-import { Button } from '@/ui'
+import { Button, IconButton } from '@/ui'
 import {
   usePermissionPrefs,
   usePermissionSnapshot,
@@ -92,17 +92,16 @@ export function PermissionNudge() {
             Review
           </Button>
         )}
-        <button
+        <IconButton
           type="button"
+          label={`Stop suggesting ${def.title}`}
           onClick={() => {
             decide(askId, 'never')
             setDismissedThisSession(true)
           }}
-          aria-label={`Stop suggesting ${def.title}`}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-tertiary transition-colors hover:bg-neutral-100 hover:text-strong focus-visible:ring-2 focus-visible:ring-(--ac-strong) dark:hover:bg-(--hub-panel-2)"
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </button>
+          variant="ghost"
+          icon={<X className="h-4 w-4" />}
+        />
       </div>
     </div>
   )

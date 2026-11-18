@@ -1,6 +1,7 @@
 'use client'
 
-import React, { type ButtonHTMLAttributes } from 'react'
+import React, { type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { Loader2 } from 'lucide-react'
 import { cx } from './cx'
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,6 +13,8 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   variant?: 'ghost' | 'secondary'
   /** Visual size on fine pointers; every size grows to 44px on coarse ones. */
   size?: 'sm' | 'md'
+  /** Shows a spinner (replacing the glyph) and disables the button while an action runs. */
+  loading?: boolean
 }
 
 /**
@@ -23,9 +26,11 @@ export function IconButton({
   label,
   variant = 'ghost',
   size = 'md',
+  loading,
   className,
   type,
   children,
+  disabled,
   ...rest
 }: IconButtonProps) {
   return (
@@ -33,8 +38,10 @@ export function IconButton({
       type={type ?? 'button'}
       aria-label={label}
       title={label}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
       className={cx(
-        'inline-grid place-items-center rounded-lg transition-colors',
+        'inline-grid place-items-center rounded-lg transition-colors disabled:opacity-50',
         variant === 'ghost'
           ? 'text-tertiary hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200'
           : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:bg-(--hub-border)',
@@ -44,7 +51,7 @@ export function IconButton({
       )}
       {...rest}
     >
-      {children}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : children}
     </button>
   )
 }

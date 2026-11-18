@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { IconButton } from './IconButton'
 
 export interface SheetProps {
   open: boolean
@@ -80,13 +81,12 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       >
         <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3 dark:border-(--hub-border)">
           <h2 className="text-base font-semibold">{title}</h2>
-          <button
+          <IconButton
+            label="Close"
             onClick={onClose}
-            aria-label="Close"
-            className="grid h-10 w-10 place-items-center rounded-full text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
-          >
-            <X className="h-5 w-5" />
-          </button>
+            variant="ghost"
+            icon={<X className="h-5 w-5" />}
+          />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
         {footer && (
