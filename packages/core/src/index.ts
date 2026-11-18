@@ -9,6 +9,7 @@ export * from './streaks'
 
 // ── Learning core ──
 export * from './fsrs'
+export * from './fsrs-optimizer'
 export * from './cards'
 export * from './linter'
 export * from './doctor'

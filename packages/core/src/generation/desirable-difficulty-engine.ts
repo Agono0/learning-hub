@@ -21,7 +21,7 @@
  */
 
 import { z } from 'zod'
-import { computeSimilarity, GenerationTier } from './index'
+import { computeSimilarity, type GenerationTier } from './shared'
 
 // ---------------------------------------------------------------------------
 // 1. Types & Zod Schemas

@@ -14,7 +14,6 @@ import {
   decks,
   cards,
   deriveMeasuredBehavior,
-  revlog,
   streaks,
   executeReview,
   executeBatchReview,

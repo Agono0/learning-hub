@@ -12,6 +12,7 @@
  * `prompts.ts` is written around that rule (Socratic escalation ladder).
  */
 import type { ZodType } from 'zod'
+import type { AISettings } from '../types'
 
 /** A single chat turn for {@link AIClient.streamChat}. */
 export interface ChatMessage {
@@ -46,4 +47,4 @@ export interface AIClient {
 }
 
 /** Factory registered under a provider name via {@link import('./registry').registerAIProvider}. */
-export type AIClientFactory = (settings: import('../types').AISettings) => AIClient
+export type AIClientFactory = (settings: AISettings) => AIClient

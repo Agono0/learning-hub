@@ -357,4 +357,6 @@ export function formatRotation(type: string, stability: number): string {
 }
 
 export { Rating, State as FsrsState } from 'ts-fsrs'
-export * from './fsrs-optimizer'
+// Note: the FSRS-6 optimizer is NOT re-exported here — it imports back from
+// this module, so that re-export made the barrel load order cyclic. The
+// package barrel (src/index.ts) exports ./fsrs-optimizer directly.

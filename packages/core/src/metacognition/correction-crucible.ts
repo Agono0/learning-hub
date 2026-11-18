@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { TrialMetacognitiveRecord } from './hypercorrection-engine'
 
 /**
  * @file Correction Crucible — the revlog-facing complement to the epistemic
@@ -87,7 +88,7 @@ export interface RevlogTrialRow {
  */
 export function toTrialMetacognitiveRecords(
   rows: RevlogTrialRow[],
-): import('./hypercorrection-engine').TrialMetacognitiveRecord[] {
+): TrialMetacognitiveRecord[] {
   return rows.map((r) => {
     const confidence = confidenceToForecast(r.confidence)
     const isCorrect = r.rating >= 3
