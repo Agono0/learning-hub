@@ -4,6 +4,7 @@
  * as a second caller needs it.
  */
 export * from './curriculum'
+export * from './cognitive-trials'
 export * from './delayed-feedback'
 export * from './focus-lock'
 export * from './fsrs'

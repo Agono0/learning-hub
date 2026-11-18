@@ -18,6 +18,8 @@ import {
   streaks,
   executeReview,
   executeBatchReview,
+  getRevlogTrialRows,
+  reconstructCorrectionTrials,
   resolveDbPath,
   type ReviewPayload,
 } from '@learning-hub/db'
@@ -43,7 +45,7 @@ import {
   sleepProfileSchema,
   toConsolidationCandidates,
   fragilityScore,
-  type CorrectionTrial,
+  judgmentOfLearningFromRevlogRows,
   buildPretestQuestion,
   CALIBRATED_ANALOGICAL_SUITES,
   CALIBRATED_FLEXIBILITY_SUITES,
@@ -56,8 +58,6 @@ import {
   judgmentOfLearningSchema,
   pretestRelatedness,
   selectPretestCandidates,
-  type JudgmentOfLearning,
-  type RelearnCandidate,
   CALIBRATED_INVARIANCE_CATEGORIES,
   CALIBRATED_INVARIANCE_PROBLEMS,
   computeCategoryContrastMatrix,
@@ -891,28 +891,10 @@ async function getMetacognition(
   url: URL,
 ): Promise<void> {
   const q = readQuery(url, metacognitionQuerySchema)
-  const conditions = []
-  if (q.deckId) conditions.push(eq(cards.deckId, q.deckId))
-
-  const rows = await db
-    .select({
-      cardId: revlog.cardId,
-      rating: revlog.rating,
-      confidence: revlog.confidence,
-      timeMs: revlog.timeMs,
-    })
-    .from(revlog)
-    .innerJoin(cards, eq(revlog.cardId, cards.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(revlog.id))
-    .limit(q.limit ?? 100)
-
-  const trials: JudgmentOfLearning[] = rows.map((r) => ({
-    cardId: r.cardId,
-    confidence: r.confidence === 1 ? 0.9 : 0.35,
-    outcome: r.rating >= 3 ? 1 : 0,
-    latencyMs: r.timeMs ?? undefined,
-  }))
+  // Shared repo query (undone reviews excluded — parity with the web handler)
+  // + core's canonical row→JOL mapping (one definition for every host).
+  const rows = getRevlogTrialRows({ limit: q.limit ?? 100, deckId: q.deckId })
+  const trials = judgmentOfLearningFromRevlogRows(rows)
 
   const report = evaluateMetacognitiveProfile(trials)
   sendJson(res, 200, { ok: true, trialsCount: trials.length, report })
@@ -1256,49 +1238,12 @@ async function getHypercorrection(
   url: URL,
 ): Promise<void> {
   const q = readQuery(url, metacognitionQuerySchema)
-  const rows = await db
-    .select({
-      cardId: revlog.cardId,
-      rating: revlog.rating,
-      confidence: revlog.confidence,
-      stability: cards.stability,
-      difficulty: cards.difficulty,
-    })
-    .from(revlog)
-    .innerJoin(cards, eq(revlog.cardId, cards.id))
-    .orderBy(desc(revlog.id))
-    .limit(q.limit ?? 200)
-
-  // Same reconstruction as the web handler / MCP tool: a miss arms its card,
-  // the card's next success counts as the correction (Butterfield & Metcalfe
-  // 2001: high-confidence errors hypercorrect on retest).
-  const chronological = [...rows].reverse()
-  const corrections: CorrectionTrial[] = []
-  const armed = new Map<number, 0 | 1>()
-  for (const r of chronological) {
-    const correct = r.rating >= 3
-    const pending = armed.get(r.cardId)
-    if (pending !== undefined && correct) {
-      corrections.push({
-        cardId: r.cardId,
-        initialConfidence: pending === 1 ? 0.9 : 0.35,
-        wasCorrected: true,
-      })
-      armed.delete(r.cardId)
-    }
-    if (!correct) armed.set(r.cardId, r.confidence)
-  }
-
-  const candidates: RelearnCandidate[] = [...armed.entries()].map(([cardId, confidence]) => {
-    const card = rows.find((r) => r.cardId === cardId)
-    return {
-      cardId,
-      errorConfidence: confidence === 1 ? 0.9 : 0.35,
-      stability: card && card.stability > 0 ? card.stability : 1,
-      difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
-      wasAlreadyCorrected: false,
-    }
-  })
+  // Shared repo query + canonical core reconstruction (packages/db
+  // repos/cognitive-trials): undone reviews excluded, FSRS state joined —
+  // identical trials to the web handler and MCP tool for the same history.
+  const { corrections, candidates } = reconstructCorrectionTrials(
+    getRevlogTrialRows({ limit: q.limit ?? 200, deckId: q.deckId }),
+  )
 
   const report = evaluateHypercorrection(corrections)
   const queue = prioritizeRelearningQueue(candidates, corrections)
