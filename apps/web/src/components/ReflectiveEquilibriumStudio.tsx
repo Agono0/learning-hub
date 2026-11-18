@@ -156,7 +156,7 @@ export function ReflectiveEquilibriumStudio({
       <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-faint">
               Epistemic Domain Suite:
             </span>
             <Badge tone="cyan">{suite.domain}</Badge>
@@ -180,7 +180,7 @@ export function ReflectiveEquilibriumStudio({
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   isSelected
-                    ? 'border border-cyan-500/40 bg-cyan-500/20 text-cyan-300'
+                    ? 'border border-sky-500/40 bg-sky-500/20 text-status-info-text'
                     : 'border border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -208,8 +208,8 @@ export function ReflectiveEquilibriumStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'triad_reconciler'
-              ? 'border-cyan-400 text-cyan-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-sky-400 text-status-info-text'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Scale className="h-4 w-4" />
@@ -227,8 +227,8 @@ export function ReflectiveEquilibriumStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'coherence_graph'
-              ? 'border-violet-400 text-violet-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-indigo-400 text-indigo-300'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Network className="h-4 w-4" />
@@ -246,8 +246,8 @@ export function ReflectiveEquilibriumStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'brier_crucible'
-              ? 'border-amber-400 text-amber-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-amber-400 text-status-warning-text'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Target className="h-4 w-4" />
@@ -265,8 +265,8 @@ export function ReflectiveEquilibriumStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'fsrs_deck'
-              ? 'border-emerald-400 text-emerald-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-400 text-status-success-text'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Sparkles className="h-4 w-4" />
@@ -282,10 +282,10 @@ export function ReflectiveEquilibriumStudio({
         <div className="flex flex-col gap-6 animate-fade-in">
           <Panel className="border-slate-800 bg-slate-900/60 p-5">
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-faint">
                 Philosophical Context & Theoretical Foundation
               </span>
-              <p className="text-xs leading-relaxed text-slate-300">{suite.philosophicalContext}</p>
+              <p className="text-xs leading-relaxed text-secondary">{suite.philosophicalContext}</p>
             </div>
           </Panel>
 
@@ -313,45 +313,41 @@ export function ReflectiveEquilibriumStudio({
                   {/* 3 Poles Visual Representation */}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {/* Pole 1: Principle (P) */}
-                    <div className="flex flex-col gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-950/20 p-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                    <div className="flex flex-col gap-1.5 rounded-lg border border-sky-500/20 bg-sky-950/20 p-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-status-info-text uppercase tracking-wider">
                         <GitBranch className="h-3.5 w-3.5" />
                         <span>General Principle (P)</span>
                       </div>
                       <p className="text-xs text-slate-200 leading-relaxed font-medium">
                         &quot;{pNode?.statement}&quot;
                       </p>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-faint">
                         Citation: {pNode?.formalCitation || 'Domain Axiom'}
                       </span>
                     </div>
 
                     {/* Pole 2: Judgment (C) */}
                     <div className="flex flex-col gap-1.5 rounded-lg border border-amber-500/20 bg-amber-950/20 p-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-status-warning-text uppercase tracking-wider">
                         <Scale className="h-3.5 w-3.5" />
                         <span>Considered Judgment (C)</span>
                       </div>
                       <p className="text-xs text-slate-200 leading-relaxed font-medium">
                         &quot;{jNode?.statement}&quot;
                       </p>
-                      <span className="text-[10px] text-slate-400">
-                        Intuition: {jNode?.rationale}
-                      </span>
+                      <span className="text-[10px] text-faint">Intuition: {jNode?.rationale}</span>
                     </div>
 
                     {/* Pole 3: Background Theory (B) */}
-                    <div className="flex flex-col gap-1.5 rounded-lg border border-violet-500/20 bg-violet-950/20 p-3">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-violet-400 uppercase tracking-wider">
+                    <div className="flex flex-col gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-950/20 p-3">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-400 uppercase tracking-wider">
                         <Brain className="h-3.5 w-3.5" />
                         <span>Background Theory (B)</span>
                       </div>
                       <p className="text-xs text-slate-200 leading-relaxed font-medium">
                         &quot;{tNode?.statement}&quot;
                       </p>
-                      <span className="text-[10px] text-slate-400">
-                        Proof: {tNode?.formalCitation}
-                      </span>
+                      <span className="text-[10px] text-faint">Proof: {tNode?.formalCitation}</span>
                     </div>
                   </div>
 
@@ -362,7 +358,7 @@ export function ReflectiveEquilibriumStudio({
 
                   {/* Available Resolution Proposals */}
                   <div className="flex flex-col gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <span className="text-xs font-bold uppercase tracking-wider text-secondary">
                       Reconciliation Strategies (Select to harmonize network):
                     </span>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -387,22 +383,22 @@ export function ReflectiveEquilibriumStudio({
                                 >
                                   {res.strategy.replace('_', ' ').toUpperCase()}
                                 </Badge>
-                                <span className="text-[10px] font-mono text-emerald-400">
+                                <span className="text-[10px] font-mono text-status-success-text">
                                   +{res.resultingCoherenceGain}% Coherence
                                 </span>
                               </div>
                               <span className="text-xs font-bold text-slate-100">
                                 {res.proposalTitle}
                               </span>
-                              <p className="text-[11px] text-slate-300 leading-relaxed">
+                              <p className="text-[11px] text-secondary leading-relaxed">
                                 {res.consequenceAnalysis}
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                            <div className="flex items-center gap-1.5 text-[10px] text-faint">
                               <CheckCircle2
                                 className={`h-3.5 w-3.5 ${
-                                  isChosen ? 'text-emerald-400' : 'text-slate-600'
+                                  isChosen ? 'text-status-success-text' : 'text-slate-600'
                                 }`}
                               />
                               <span>{isChosen ? 'Active Strategy' : 'Select Strategy'}</span>
@@ -424,10 +420,10 @@ export function ReflectiveEquilibriumStudio({
         <div className="flex flex-col gap-6 animate-fade-in">
           <Panel className="border-slate-800 bg-slate-900/60 p-5">
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-faint">
                 Epistemic Coherence Graph ({activeTier.replace('_', ' ')})
               </span>
-              <p className="text-xs leading-relaxed text-slate-300">
+              <p className="text-xs leading-relaxed text-secondary">
                 Explore the belief network across Considered Judgments, General Principles, and
                 Background Theories. Inspect mutual support and qualification edges.
               </p>
@@ -447,7 +443,7 @@ export function ReflectiveEquilibriumStudio({
                   >
                     <div className="flex items-center justify-between">
                       <Badge tone="cyan">{node.tier.replace('_', ' ').toUpperCase()}</Badge>
-                      <span className="text-xs font-mono text-slate-400">
+                      <span className="text-xs font-mono text-faint">
                         Credence: {Math.round(node.initialConfidence * 100)}%
                       </span>
                     </div>
@@ -456,17 +452,17 @@ export function ReflectiveEquilibriumStudio({
                       &quot;{node.statement}&quot;
                     </h4>
 
-                    <p className="text-xs text-slate-300 leading-relaxed">{node.rationale}</p>
+                    <p className="text-xs text-secondary leading-relaxed">{node.rationale}</p>
 
                     {node.formalCitation && (
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-tertiary">
                         <strong>Source:</strong> {node.formalCitation}
                       </div>
                     )}
 
                     {incomingEdges.length > 0 && (
-                      <div className="flex flex-col gap-1 border-t border-slate-800 pt-2 text-[10px] text-slate-400">
-                        <span className="font-semibold text-slate-300">
+                      <div className="flex flex-col gap-1 border-t border-slate-800 pt-2 text-[10px] text-faint">
+                        <span className="font-semibold text-secondary">
                           Incoming Relational Edges:
                         </span>
                         {incomingEdges.map((e, idx) => (
@@ -501,20 +497,20 @@ export function ReflectiveEquilibriumStudio({
           <Panel className="border-slate-800 bg-slate-900/60 p-5">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint">
                   Tetlock Superforecasting Probability Crucible
                 </span>
                 <Badge tone="accent">
                   Brier Score: {evaluation.brierMetrics.brierScore.toFixed(3)}
                 </Badge>
               </div>
-              <p className="text-xs leading-relaxed text-slate-300">
+              <p className="text-xs leading-relaxed text-secondary">
                 To conquer the Overconfidence Bias, test your subjective certainty against objective
                 ground truth. Select your confidence probability slider (50% = pure guess, 100% =
                 absolute certainty) and test each technical proposition.
               </p>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-slate-300">
+                <span className="text-xs font-semibold text-secondary">
                   Subjective Confidence Level:
                 </span>
                 <input
@@ -524,9 +520,9 @@ export function ReflectiveEquilibriumStudio({
                   step="0.05"
                   value={currentConfidenceInput}
                   onChange={(e) => setCurrentConfidenceInput(parseFloat(e.target.value))}
-                  className="h-2 w-48 cursor-pointer rounded-lg bg-slate-800 accent-cyan-400"
+                  className="h-2 w-48 cursor-pointer rounded-lg bg-slate-800 accent-sky-400"
                 />
-                <span className="font-mono text-xs font-bold text-cyan-300">
+                <span className="font-mono text-xs font-bold text-status-info-text">
                   {Math.round(currentConfidenceInput * 100)}%
                 </span>
               </div>
@@ -543,7 +539,7 @@ export function ReflectiveEquilibriumStudio({
                   className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-5 shadow"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400 font-mono">
+                    <span className="text-xs text-faint font-mono">
                       Context: {pred.domainContext}
                     </span>
                     {recorded && (
@@ -597,7 +593,7 @@ export function ReflectiveEquilibriumStudio({
           <Panel className="border-slate-800 bg-slate-900/60 p-5">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint">
                   Wide Reflective Equilibrium FSRS Cards
                 </span>
                 <Badge tone="success">
@@ -607,7 +603,7 @@ export function ReflectiveEquilibriumStudio({
               <h3 className="text-base font-bold text-slate-100">
                 Epistemic Reconciliation Spaced Retrieval Deck
               </h3>
-              <p className="text-xs leading-relaxed text-slate-300">
+              <p className="text-xs leading-relaxed text-secondary">
                 These cards prompt you to identify the underlying theoretical theorem that resolves
                 clashes between abstract design principles and concrete scenario demands.
               </p>
@@ -636,7 +632,7 @@ export function ReflectiveEquilibriumStudio({
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <Badge tone="cyan">{card.domain}</Badge>
-                      <span className="text-[10px] font-mono text-emerald-400">
+                      <span className="text-[10px] font-mono text-status-success-text">
                         {card.fsrsStabilityMultiplier}x Stability
                       </span>
                     </div>
@@ -649,7 +645,9 @@ export function ReflectiveEquilibriumStudio({
                       <Markdown>{card.equilibriumResolution}</Markdown>
                     </div>
 
-                    <div className="text-[10px] text-amber-400/90">{card.calibrationTip}</div>
+                    <div className="text-[10px] text-status-warning-text/90">
+                      {card.calibrationTip}
+                    </div>
                   </div>
 
                   <div className="mt-4 flex items-center justify-end">

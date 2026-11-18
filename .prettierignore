@@ -16,3 +16,7 @@ math-333/
 package-lock.json
 *.tsbuildinfo
 next-env.d.ts
+
+# Vendored third-party skill library (upstream content, attributed in
+# docs/ui-design-signature.md §7) — never reformatted
+.claude/

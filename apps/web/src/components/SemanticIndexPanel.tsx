@@ -93,7 +93,7 @@ export function SemanticIndexPanel() {
           <div className="label flex items-center gap-1.5">
             <Boxes className="h-3.5 w-3.5" /> Semantic search index
           </div>
-          <p className="mt-0.5 text-xs text-neutral-500">
+          <p className="mt-0.5 text-xs text-tertiary">
             Runs an on-device MiniLM model (nothing leaves this machine) to power &ldquo;related
             content&rdquo; panels and semantic search across notes, cards, lessons, journal, reading
             and more.
@@ -119,7 +119,7 @@ export function SemanticIndexPanel() {
         </div>
       )}
 
-      {phase && <p className="text-xs text-neutral-500">{phase}</p>}
+      {phase && <p className="text-xs text-tertiary">{phase}</p>}
 
       {status && (
         <div className="flex flex-wrap gap-1.5">
@@ -130,17 +130,15 @@ export function SemanticIndexPanel() {
                 key={k.kind}
                 className={`rounded-full px-2 py-0.5 text-[11px] ${
                   k.indexed >= k.total
-                    ? 'bg-emerald-600/10 text-emerald-600 dark:text-emerald-300'
-                    : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-neutral-400'
+                    ? 'bg-emerald-600/10 text-status-success-text dark:text-status-success-text'
+                    : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-faint'
                 }`}
                 title={`${k.indexed}/${k.total} indexed`}
               >
                 {k.kind} {k.indexed}/{k.total}
               </span>
             ))}
-          {totalRows === 0 && (
-            <span className="text-xs text-neutral-400">Nothing to index yet.</span>
-          )}
+          {totalRows === 0 && <span className="text-xs text-faint">Nothing to index yet.</span>}
         </div>
       )}
     </section>

@@ -26,16 +26,16 @@ export default function InterleavingPage() {
         subtitle="Rohrer & Taylor's (2007) shuffled practice roughly doubles delayed test scores over blocked drills by forcing discrimination between look-alike problem categories. Identify the deep structural invariant — never the surface story."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              <Shuffle className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+              <Shuffle className="h-3.5 w-3.5 text-status-success-text" />
               <span>Rohrer (2007)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-violet-300">
-              <Target className="h-3.5 w-3.5 text-violet-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+              <Target className="h-3.5 w-3.5 text-indigo-400" />
               <span>Kornell-Bjork (2008)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-300">
-              <Grid3X3 className="h-3.5 w-3.5 text-sky-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
+              <Grid3X3 className="h-3.5 w-3.5 text-status-info-text" />
               <span>Contrast Matrix</span>
             </span>
           </div>
@@ -46,16 +46,16 @@ export default function InterleavingPage() {
       <InterleavingStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur-md">
+      <div className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md">
         <div className="mb-3 flex items-center gap-2.5">
-          <Shuffle className="h-5 w-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">
+          <Shuffle className="h-5 w-5 text-ac-text" />
+          <h3 className="text-sm font-bold text-strong">
             Learning Science Foundations: Why Shuffling Beats Blocking
           </h3>
         </div>
-        <div className="grid grid-cols-1 gap-4 text-xs leading-relaxed text-muted-foreground md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 text-xs leading-relaxed text-tertiary md:grid-cols-3">
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Interleaving &amp; Discrimination (Rohrer &amp; Taylor 2007)
             </span>
             <p>
@@ -66,7 +66,7 @@ export default function InterleavingPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Inductive Category Learning (Kornell &amp; Bjork 2008)
             </span>
             <p>
@@ -77,7 +77,7 @@ export default function InterleavingPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Surface vs Structural Features (Gick &amp; Holyoak 1983)
             </span>
             <p>

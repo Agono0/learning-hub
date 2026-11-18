@@ -32,13 +32,13 @@ export interface LeitnerProgressionProps {
 const TIER_ACCENTS: Record<number, { bg: string; text: string; ring: string; border: string }> = {
   1: {
     bg: 'bg-rose-500/10 dark:bg-rose-500/15',
-    text: 'text-rose-600 dark:text-rose-400',
+    text: 'text-rose-600 dark:text-danger-text',
     ring: 'focus-visible:ring-rose-500',
     border: 'border-rose-500/20 hover:border-rose-500/40',
   },
   2: {
     bg: 'bg-amber-500/10 dark:bg-amber-500/15',
-    text: 'text-amber-600 dark:text-amber-400',
+    text: 'text-status-warning-text dark:text-status-warning-text',
     ring: 'focus-visible:ring-amber-500',
     border: 'border-amber-500/20 hover:border-amber-500/40',
   },
@@ -49,14 +49,14 @@ const TIER_ACCENTS: Record<number, { bg: string; text: string; ring: string; bor
     border: 'border-indigo-500/20 hover:border-indigo-500/40',
   },
   4: {
-    bg: 'bg-cyan-500/10 dark:bg-cyan-500/15',
-    text: 'text-cyan-600 dark:text-cyan-400',
-    ring: 'focus-visible:ring-cyan-500',
-    border: 'border-cyan-500/20 hover:border-cyan-500/40',
+    bg: 'bg-sky-500/10 dark:bg-sky-500/15',
+    text: 'text-status-info-text dark:text-status-info-text',
+    ring: 'focus-visible:ring-sky-500',
+    border: 'border-sky-500/20 hover:border-sky-500/40',
   },
   5: {
     bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-    text: 'text-emerald-600 dark:text-emerald-400',
+    text: 'text-status-success-text dark:text-status-success-text',
     ring: 'focus-visible:ring-emerald-500',
     border: 'border-emerald-500/20 hover:border-emerald-500/40',
   },
@@ -94,7 +94,7 @@ export function LeitnerProgression({
                 </Badge>
               )}
             </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-tertiary dark:text-faint">
               {totalCards} total cards · {totalDue} due for review across 5 retention tiers
             </p>
           </div>
@@ -144,19 +144,17 @@ export function LeitnerProgression({
                   >
                     Box {box.level}
                   </span>
-                  <span className="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">
+                  <span className="text-[11px] font-mono text-faint dark:text-tertiary">
                     {box.interval}
                   </span>
                 </div>
 
                 <div className="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-baseline gap-1.5">
                   {box.count}
-                  <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">
-                    cards
-                  </span>
+                  <span className="text-xs font-normal text-tertiary dark:text-faint">cards</span>
                 </div>
 
-                <div className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mt-0.5 truncate">
+                <div className="text-xs font-medium text-neutral-600 dark:text-secondary mt-0.5 truncate">
                   {box.title}
                 </div>
               </div>
@@ -164,17 +162,17 @@ export function LeitnerProgression({
               {/* Footer details */}
               <div className="mt-3 pt-2.5 border-t border-neutral-200/40 dark:border-neutral-800/60 flex items-center justify-between text-[11px]">
                 {box.dueCount && box.dueCount > 0 ? (
-                  <span className="text-rose-500 dark:text-rose-400 font-medium">
+                  <span className="text-danger-text dark:text-danger-text font-medium">
                     {box.dueCount} due
                   </span>
                 ) : (
-                  <span className="text-neutral-400 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500" /> caught up
+                  <span className="text-faint flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-status-success-text" /> caught up
                   </span>
                 )}
 
                 {retentionPct != null && (
-                  <span className="text-neutral-400 dark:text-neutral-500 font-mono">
+                  <span className="text-faint dark:text-tertiary font-mono">
                     {retentionPct}% ret.
                   </span>
                 )}

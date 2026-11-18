@@ -189,7 +189,7 @@ export function FeynmanSocraticStudio({
       {/* Studio Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-status-warning-text dark:text-status-warning-text border border-amber-500/20">
             <GraduationCap className="h-5 w-5" />
           </div>
           <div>
@@ -204,7 +204,7 @@ export function FeynmanSocraticStudio({
                 {meetsAudience ? 'Audience Aligned' : 'Simplification Needed'}
               </Badge>
             </div>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-tertiary dark:text-faint">
               Rozenblit-Keil (2002) IOED Diagnostic · Flesch-Kincaid Readability Analysis
             </p>
           </div>
@@ -223,7 +223,7 @@ export function FeynmanSocraticStudio({
                 className={`px-2.5 py-1 text-xs font-medium rounded-lg transition ${
                   active
                     ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs font-semibold'
-                    : 'text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200'
+                    : 'text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200'
                 }`}
               >
                 {cfg.label}
@@ -238,7 +238,7 @@ export function FeynmanSocraticStudio({
         <div className="md:col-span-2 space-y-1.5">
           <label
             htmlFor="feynman-concept-input"
-            className="block text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400"
+            className="block text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint"
           >
             Target Concept to Explain
           </label>
@@ -254,10 +254,10 @@ export function FeynmanSocraticStudio({
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
               Pre-Study Confidence
             </span>
-            <span className="text-xs font-mono text-amber-500 font-bold">
+            <span className="text-xs font-mono text-status-warning-text font-bold">
               {initialConfidence}/5
             </span>
           </div>
@@ -267,14 +267,14 @@ export function FeynmanSocraticStudio({
                 key={star}
                 type="button"
                 onClick={() => setInitialConfidence(star)}
-                className="p-1 text-neutral-300 dark:text-neutral-600 hover:text-amber-400 transition"
+                className="p-1 text-secondary dark:text-neutral-600 hover:text-status-warning-text transition"
                 title={`${star} stars`}
               >
                 <Star
                   className={`h-5 w-5 ${
                     star <= initialConfidence
-                      ? 'fill-amber-400 text-amber-400'
-                      : 'text-neutral-300 dark:text-neutral-600'
+                      ? 'fill-amber-400 text-status-warning-text'
+                      : 'text-secondary dark:text-neutral-600'
                   }`}
                 />
               </button>
@@ -288,12 +288,12 @@ export function FeynmanSocraticStudio({
         <div className="flex items-center justify-between text-xs">
           <label
             htmlFor="feynman-explanation-input"
-            className="font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5"
+            className="font-semibold text-neutral-700 dark:text-secondary flex items-center gap-1.5"
           >
-            <BookOpen className="h-3.5 w-3.5 text-neutral-400" />
+            <BookOpen className="h-3.5 w-3.5 text-faint" />
             Your Teach-Back Explanation (Explain to a {audienceCfg.label}):
           </label>
-          <span className="text-neutral-400 text-[11px] font-mono">
+          <span className="text-faint text-[11px] font-mono">
             {report.wordCount} words · {report.sentenceCount} sentences
           </span>
         </div>
@@ -312,63 +312,63 @@ export function FeynmanSocraticStudio({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Readability Ease */}
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/80 dark:border-neutral-700/60">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             Reading Ease
           </div>
           <div className="mt-1 text-xl font-mono font-bold text-neutral-900 dark:text-neutral-100 flex items-baseline gap-1.5">
             <span>{report.fleschReadingEase}</span>
-            <span className="text-xs text-neutral-400 font-normal">/ 100</span>
+            <span className="text-xs text-faint font-normal">/ 100</span>
           </div>
-          <div className="text-[11px] text-neutral-500">
+          <div className="text-[11px] text-tertiary">
             Target: &gt;={audienceCfg.minEase} ({audienceCfg.label})
           </div>
         </div>
 
         {/* Grade Level */}
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/80 dark:border-neutral-700/60">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             Grade Level
           </div>
           <div
             className={cx(
               'mt-1 text-xl font-mono font-bold',
               report.fleschKincaidGradeLevel <= audienceCfg.maxGrade
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-amber-500',
+                ? 'text-status-success-text dark:text-status-success-text'
+                : 'text-status-warning-text',
             )}
           >
             Grade {report.fleschKincaidGradeLevel}
           </div>
-          <div className="text-[11px] text-neutral-500">Max: Grade {audienceCfg.maxGrade}</div>
+          <div className="text-[11px] text-tertiary">Max: Grade {audienceCfg.maxGrade}</div>
         </div>
 
         {/* Causal Markers */}
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/80 dark:border-neutral-700/60">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             Causal Mechanism
           </div>
           <div className="mt-1 text-xl font-mono font-bold text-indigo-600 dark:text-indigo-400">
             {report.causalMarkerCount} markers
           </div>
-          <div className="text-[11px] text-neutral-500">
+          <div className="text-[11px] text-tertiary">
             {report.causalDensity.toFixed(2)} per sentence
           </div>
         </div>
 
         {/* IOED Gap */}
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200/80 dark:border-neutral-700/60">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
             IOED Illusion Gap
           </div>
           <div
             className={cx(
               'mt-1 text-xl font-mono font-bold',
-              report.ioedGap > 30 ? 'text-rose-500' : 'text-emerald-500',
+              report.ioedGap > 30 ? 'text-danger-text' : 'text-status-success-text',
             )}
           >
             {report.ioedGap > 0 ? `-${report.ioedGap} pts` : 'Zero Gap'}
           </div>
-          <div className="text-[11px] text-neutral-500">
+          <div className="text-[11px] text-tertiary">
             {report.ioedGap > 30 ? 'Fluency illusion exposed' : 'Genuinely mastered'}
           </div>
         </div>
@@ -379,10 +379,10 @@ export function FeynmanSocraticStudio({
         <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-1.5">
           <div className="flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-200">
             <span className="flex items-center gap-1.5">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertCircle className="h-4 w-4 text-status-warning-text" />
               Detected Complex Vocabulary / Jargon ({report.jargonTerms.length} terms):
             </span>
-            <span className="text-[11px] font-mono text-amber-700 dark:text-amber-300">
+            <span className="text-[11px] font-mono text-amber-700 dark:text-status-warning-text">
               {report.jargonDensity}% density
             </span>
           </div>
@@ -390,13 +390,13 @@ export function FeynmanSocraticStudio({
             {report.jargonTerms.map((term) => (
               <span
                 key={term}
-                className="px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-white dark:bg-neutral-800 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shadow-2xs"
+                className="px-2 py-0.5 text-xs font-mono font-medium rounded-md bg-white dark:bg-neutral-800 text-amber-800 dark:text-status-warning-text border border-amber-300 dark:border-amber-800 shadow-2xs"
               >
                 {term}
               </span>
             ))}
           </div>
-          <p className="text-[11px] text-amber-700 dark:text-amber-300/80 pt-0.5">
+          <p className="text-[11px] text-amber-700 dark:text-status-warning-text/80 pt-0.5">
             Tip: Replace these polysyllabic words with tangible physical comparisons to pass the
             child test.
           </p>
@@ -406,11 +406,11 @@ export function FeynmanSocraticStudio({
       {/* Interactive Socratic Probes Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center gap-1.5">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-faint flex items-center gap-1.5">
             <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
             Socratic Follow-Up Inquiries ({report.socraticProbes.length})
           </h4>
-          <span className="text-[11px] text-neutral-400">
+          <span className="text-[11px] text-faint">
             Novice peer interrogations to expose hidden assumptions
           </span>
         </div>
@@ -455,11 +455,11 @@ export function FeynmanSocraticStudio({
         <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-700 dark:text-secondary flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
                 Automatic Gap-Cards ({report.suggestedGapCards.length})
               </h4>
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-tertiary">
                 Extracted from missing causal links and unexplained jargon
               </p>
             </div>
@@ -469,7 +469,7 @@ export function FeynmanSocraticStudio({
                 <select
                   value={selectedDeckId}
                   onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : '')}
-                  className="text-xs py-1 px-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300"
+                  className="text-xs py-1 px-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-secondary"
                 >
                   {decksData.decks.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -500,21 +500,17 @@ export function FeynmanSocraticStudio({
                   className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-700/60 flex flex-col justify-between gap-2.5"
                 >
                   <div className="space-y-1">
-                    <div className="text-[11px] font-semibold text-neutral-400 flex items-center justify-between">
+                    <div className="text-[11px] font-semibold text-faint flex items-center justify-between">
                       <span>Front (Cue)</span>
-                      <span className="text-[10px] text-amber-500 italic font-normal">
+                      <span className="text-[10px] text-status-warning-text italic font-normal">
                         {card.reason}
                       </span>
                     </div>
                     <div className="text-xs font-medium text-neutral-900 dark:text-neutral-100">
                       {card.front}
                     </div>
-                    <div className="text-[11px] font-semibold text-neutral-400 pt-1">
-                      Back (Canon)
-                    </div>
-                    <div className="text-xs text-neutral-700 dark:text-neutral-300">
-                      {card.back}
-                    </div>
+                    <div className="text-[11px] font-semibold text-faint pt-1">Back (Canon)</div>
+                    <div className="text-xs text-neutral-700 dark:text-secondary">{card.back}</div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-neutral-200/60 dark:border-neutral-700/40">
@@ -522,7 +518,7 @@ export function FeynmanSocraticStudio({
                       {card.tags.map((t) => (
                         <span
                           key={t}
-                          className="px-1.5 py-0.5 text-[10px] rounded bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-600 dark:text-neutral-400 font-mono"
+                          className="px-1.5 py-0.5 text-[10px] rounded bg-neutral-200/60 dark:bg-neutral-700/60 text-neutral-600 dark:text-faint font-mono"
                         >
                           #{t}
                         </span>
@@ -535,7 +531,7 @@ export function FeynmanSocraticStudio({
                       disabled={isSaved || isSaving}
                       className={`px-2.5 py-1 text-xs font-medium rounded-lg flex items-center gap-1 transition ${
                         isSaved
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-status-success-text dark:text-status-success-text border border-emerald-300 dark:border-emerald-800'
                           : 'bg-white dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-600 hover:border-amber-500'
                       }`}
                     >

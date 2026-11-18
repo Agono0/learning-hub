@@ -77,10 +77,10 @@ export function DeckDoctorSheet({
 
   const scoreTone =
     (diagnosis?.healthScore ?? 100) >= 90
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-status-success-text'
       : (diagnosis?.healthScore ?? 100) >= 70
-        ? 'border-amber-500/30 bg-amber-500/10 text-amber-400'
-        : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+        ? 'border-amber-500/30 bg-amber-500/10 text-status-warning-text'
+        : 'border-rose-500/30 bg-rose-500/10 text-danger-text'
 
   return (
     <Sheet
@@ -95,7 +95,7 @@ export function DeckDoctorSheet({
       footer={
         <div className="flex w-full items-center justify-between gap-2">
           <button
-            className="btn-ghost flex items-center gap-1.5 text-xs text-neutral-400"
+            className="btn-ghost flex items-center gap-1.5 text-xs text-faint"
             onClick={() => void diagnosisQuery.refetch()}
             disabled={diagnosisQuery.isFetching}
           >
@@ -112,12 +112,12 @@ export function DeckDoctorSheet({
     >
       <div className="space-y-4 text-sm">
         {diagnosisQuery.isLoading ? (
-          <div className="py-8 text-center text-neutral-500">
+          <div className="py-8 text-center text-tertiary">
             <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin" />
             Analyzing formulation hygiene & interference risks…
           </div>
         ) : diagnosisQuery.isError ? (
-          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-rose-400">
+          <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-danger-text">
             Failed to load deck health diagnosis.
           </div>
         ) : diagnosis ? (
@@ -147,22 +147,22 @@ export function DeckDoctorSheet({
               {/* Stats pills */}
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 {diagnosis.stats.leechCount > 0 && (
-                  <span className="rounded bg-rose-500/20 px-2 py-0.5 font-medium text-rose-300">
+                  <span className="rounded bg-rose-500/20 px-2 py-0.5 font-medium text-danger-text">
                     {diagnosis.stats.leechCount} leech(es)
                   </span>
                 )}
                 {diagnosis.stats.errorCount > 0 && (
-                  <span className="rounded bg-rose-500/20 px-2 py-0.5 font-medium text-rose-300">
+                  <span className="rounded bg-rose-500/20 px-2 py-0.5 font-medium text-danger-text">
                     {diagnosis.stats.errorCount} error(s)
                   </span>
                 )}
                 {diagnosis.stats.warnCount > 0 && (
-                  <span className="rounded bg-amber-500/20 px-2 py-0.5 font-medium text-amber-300">
+                  <span className="rounded bg-amber-500/20 px-2 py-0.5 font-medium text-status-warning-text">
                     {diagnosis.stats.warnCount} warning(s)
                   </span>
                 )}
                 {diagnosis.stats.infoCount > 0 && (
-                  <span className="rounded bg-neutral-500/20 px-2 py-0.5 text-neutral-300">
+                  <span className="rounded bg-neutral-500/20 px-2 py-0.5 text-secondary">
                     {diagnosis.stats.infoCount} tip(s)
                   </span>
                 )}
@@ -170,7 +170,7 @@ export function DeckDoctorSheet({
             </div>
 
             {lastSummary && (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-300">
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-status-success-text">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 <span>{lastSummary}</span>
               </div>
@@ -206,14 +206,14 @@ export function DeckDoctorSheet({
                       className="flex items-center justify-between gap-3 p-3 text-xs"
                     >
                       <div className="space-y-0.5">
-                        <div className="font-medium text-neutral-300">
+                        <div className="font-medium text-secondary">
                           {action.kind === 'suspend-card' && (
-                            <span className="text-amber-400">
+                            <span className="text-status-warning-text">
                               Suspend Leech (Card #{action.cardId})
                             </span>
                           )}
                           {action.kind === 'delete-card' && (
-                            <span className="text-rose-400">
+                            <span className="text-danger-text">
                               Delete Duplicate (Card #{action.cardId})
                             </span>
                           )}
@@ -223,10 +223,10 @@ export function DeckDoctorSheet({
                             </span>
                           )}
                           {action.kind === 'rename-deck' && (
-                            <span className="text-emerald-400">Rename Generic Deck</span>
+                            <span className="text-status-success-text">Rename Generic Deck</span>
                           )}
                         </div>
-                        <div className="text-neutral-500">
+                        <div className="text-tertiary">
                           {action.kind === 'suspend-card' &&
                             'Consecutive lapses defeat recall. Suspending halts forgetting cycles.'}
                           {action.kind === 'delete-card' && action.reason}
@@ -256,7 +256,7 @@ export function DeckDoctorSheet({
                             </div>
                           ) : (
                             <button
-                              className="btn-ghost flex items-center gap-1 text-rose-400 hover:text-rose-300"
+                              className="btn-ghost flex items-center gap-1 text-danger-text hover:text-danger-text"
                               onClick={() => setConfirmDeleteId(action.cardId)}
                             >
                               <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -283,7 +283,7 @@ export function DeckDoctorSheet({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="flex items-center gap-1.5 font-semibold text-neutral-200">
-                    <Sparkles className="h-4 w-4 text-purple-400" />
+                    <Sparkles className="h-4 w-4 text-indigo-400" />
                     Active Generation Challenges ({diagnosis.generationSuggestions.length})
                   </h3>
                 </div>
@@ -291,19 +291,19 @@ export function DeckDoctorSheet({
                   {diagnosis.generationSuggestions.map((suggestion) => (
                     <div
                       key={suggestion.cardId}
-                      className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3 text-xs dark:border-purple-500/30 dark:bg-purple-950/20"
+                      className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 text-xs dark:border-indigo-500/30 dark:bg-indigo-950/20"
                     >
                       <div className="flex items-center justify-between font-medium">
-                        <span className="text-purple-300">
+                        <span className="text-indigo-300">
                           Card #{suggestion.cardId}: {suggestion.concept}
                         </span>
-                        <span className="rounded bg-purple-500/20 px-2 py-0.5 font-mono text-[10px] uppercase text-purple-300">
+                        <span className="rounded bg-indigo-500/20 px-2 py-0.5 font-mono text-[10px] uppercase text-indigo-300">
                           {suggestion.recommendedTier.replace('_', ' ')}
                         </span>
                       </div>
-                      <p className="mt-1 text-neutral-400">{suggestion.rationale}</p>
+                      <p className="mt-1 text-faint">{suggestion.rationale}</p>
                       <div className="mt-2 rounded bg-neutral-900/50 p-2 font-mono text-[11px] text-neutral-300">
-                        <div className="text-[10px] uppercase tracking-wider text-neutral-500">
+                        <div className="text-[10px] uppercase tracking-wider text-tertiary">
                           Active Reconstruction Cue:
                         </div>
                         <div className="mt-0.5">{suggestion.ladder.challengeText}</div>
@@ -318,7 +318,7 @@ export function DeckDoctorSheet({
                               cardId: suggestion.cardId,
                             })
                           }
-                          className="px-2.5 py-1 text-xs font-semibold rounded bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-1 transition shadow-2xs"
+                          className="px-2.5 py-1 text-xs font-semibold rounded bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 transition shadow-2xs"
                         >
                           <Zap className="h-3 w-3" /> Practice Generation Ladder
                         </button>
@@ -341,15 +341,15 @@ export function DeckDoctorSheet({
                       key={manual.rule}
                       className="rounded-lg border border-neutral-200 p-3 text-xs dark:border-(--hub-border) dark:bg-neutral-900/30"
                     >
-                      <div className="flex items-center gap-1.5 font-medium text-amber-300">
+                      <div className="flex items-center gap-1.5 font-medium text-status-warning-text">
                         <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                         <span>{manual.rule}</span>
-                        <span className="text-neutral-500">
+                        <span className="text-tertiary">
                           ({manual.cardIds.length} card{manual.cardIds.length === 1 ? '' : 's'})
                         </span>
                       </div>
-                      <p className="mt-1 text-neutral-400">{manual.hint}</p>
-                      <div className="mt-2 text-[11px] text-neutral-500">
+                      <p className="mt-1 text-faint">{manual.hint}</p>
+                      <div className="mt-2 text-[11px] text-tertiary">
                         Affected cards: #{manual.cardIds.slice(0, 10).join(', #')}
                         {manual.cardIds.length > 10 && ` and ${manual.cardIds.length - 10} more`}
                       </div>
@@ -362,10 +362,10 @@ export function DeckDoctorSheet({
             {diagnosis.actions.length === 0 &&
               (!diagnosis.generationSuggestions ||
                 diagnosis.generationSuggestions.length === 0) && (
-                <div className="flex flex-col items-center justify-center py-6 text-center text-neutral-400">
-                  <CheckCircle2 className="mb-2 h-8 w-8 text-emerald-400" />
+                <div className="flex flex-col items-center justify-center py-6 text-center text-faint">
+                  <CheckCircle2 className="mb-2 h-8 w-8 text-status-success-text" />
                   <div className="font-semibold text-neutral-200">Deck in pristine health!</div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="text-xs text-tertiary">
                     No interference risks, leeches, or formulation violations found.
                   </div>
                 </div>

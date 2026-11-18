@@ -31,7 +31,7 @@ import { tokenizeText } from '@learning-hub/core/exposure'
 import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
-import { Badge, Markdown, PageHeader, Sheet, Tabs } from '@/ui'
+import { Badge, Button, Markdown, PageHeader, Sheet, Slider, Tabs } from '@/ui'
 
 interface Source {
   id: number
@@ -532,15 +532,15 @@ export default function ReadingPage() {
         title="Reading Studio"
         subtitle="PDF, EPUB, Web Articles, YouTube transcripts & Markdown — incremental reading or guided SQ3R."
         actions={
-          <button
-            className="btn"
+          <Button
+            variant="primary"
             onClick={() => {
               setFeedback(null)
               setIngestOpen(true)
             }}
           >
             <Plus className="h-4 w-4" /> Add source
-          </button>
+          </Button>
         }
       />
 
@@ -548,8 +548,8 @@ export default function ReadingPage() {
         <div
           className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
             feedback.kind === 'ok'
-              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-              : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text'
+              : 'border-rose-500/40 bg-rose-500/10 text-danger-text'
           }`}
         >
           <span>{feedback.text}</span>
@@ -575,13 +575,13 @@ export default function ReadingPage() {
               <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                 <div className="h-full bg-indigo-500" style={{ width: `${s.position}%` }} />
               </div>
-              <div className="mt-1 text-[10px] text-neutral-500">
+              <div className="mt-1 text-[10px] text-tertiary">
                 {s.kind} · {Math.round(s.position)}% · priority {s.priority}
               </div>
             </button>
           ))}
           {lib?.sources.length === 0 && (
-            <p className="px-1 text-sm text-neutral-500">
+            <p className="px-1 text-sm text-tertiary">
               Nothing queued yet — click “Add source” to import a PDF, EPUB, URL, YouTube video, or
               Markdown note.
             </p>
@@ -604,12 +604,12 @@ export default function ReadingPage() {
             </div>
             {(resurfaceData?.resurface ?? []).slice(0, 5).map((h) => (
               <div key={h.id} className="mb-2 border-l-2 border-indigo-500/50 pl-2 text-xs">
-                <div className="line-clamp-2 text-neutral-300">{h.text}</div>
-                <div className="mt-0.5 text-[10px] text-neutral-500">{h.sourceTitle}</div>
+                <div className="line-clamp-2 text-secondary">{h.text}</div>
+                <div className="mt-0.5 text-[10px] text-tertiary">{h.sourceTitle}</div>
               </div>
             ))}
             {(resurfaceData?.resurface ?? []).length === 0 && (
-              <p className="text-xs text-neutral-500">No highlights to resurface.</p>
+              <p className="text-xs text-tertiary">No highlights to resurface.</p>
             )}
           </div>
         </aside>
@@ -642,8 +642,9 @@ export default function ReadingPage() {
                 />
                 <div className="flex items-center gap-2">
                   <Badge>{source.kind}</Badge>
-                  <button
-                    className="btn-ghost text-xs text-red-400"
+                  <Button
+                    variant="ghost"
+                    className="text-xs text-danger-text"
                     title="Delete source"
                     onClick={async () => {
                       await apiSend(`/api/reading/${source.id}`, 'DELETE')
@@ -652,7 +653,7 @@ export default function ReadingPage() {
                     }}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -660,21 +661,19 @@ export default function ReadingPage() {
                 <div className="panel">
                   <h2 className="font-semibold">{source.title}</h2>
                   <div className="mt-2 flex items-center gap-3">
-                    <input
-                      type="range"
+                    <Slider
+                      className="flex-1"
+                      label="Reading position"
                       min={0}
                       max={100}
                       value={Math.round(source.position)}
-                      onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
-                      className="flex-1 accent-indigo-500"
+                      onChange={(position) => patchSource.mutate({ position })}
+                      format={(v) => `${v}%`}
                     />
-                    <span className="w-12 text-right text-xs text-neutral-500">
-                      {Math.round(source.position)}%
-                    </span>
                   </div>
                   {exposureQuery.data?.coverageAnalysis && (
                     <div className="mt-2.5 flex items-center gap-2 text-xs">
-                      <span className="text-neutral-400">Lexical Coverage:</span>
+                      <span className="text-faint">Lexical Coverage:</span>
                       <span
                         className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
                           exposureQuery.data.coverageAnalysis.zone === 'optimal'
@@ -710,7 +709,7 @@ export default function ReadingPage() {
                             title={`Definition: ${item.definition}`}
                           >
                             <span className="font-semibold text-neutral-200">{item.word}</span>
-                            <span className="max-w-[120px] truncate text-[10px] text-neutral-400">
+                            <span className="max-w-[120px] truncate text-[10px] text-faint">
                               — {item.definition}
                             </span>
                           </span>
@@ -725,24 +724,26 @@ export default function ReadingPage() {
                     <Markdown>{fragment.text}</Markdown>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
-                    <button
-                      className="btn"
+                    <Button
+                      variant="primary"
                       onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
                     >
                       {fragment.done ? 'Finish source' : 'Next fragment →'}
-                    </button>
-                    <button
-                      className="btn-ghost text-xs"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-xs"
                       onClick={() => extractHighlights.mutate(source.id)}
                       disabled={extractHighlights.isPending}
                     >
                       <Highlighter className="h-3.5 w-3.5" /> Extract highlight
                       {selected ? ' (from selection)' : 's (auto)'}
-                    </button>
+                    </Button>
                     {(['define', 'simplify', 'flashcard'] as const).map((mode) => (
-                      <button
+                      <Button
+                        variant="ghost"
                         key={mode}
-                        className="btn-ghost text-xs"
+                        className="text-xs"
                         onClick={() =>
                           manual
                             ? setGhostResult(manualGhostHint(mode, selected))
@@ -756,7 +757,7 @@ export default function ReadingPage() {
                       >
                         <Sparkles className="h-3.5 w-3.5" />{' '}
                         {mode === 'flashcard' ? 'Make flashcard' : mode}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   {ghostResult && (
@@ -771,7 +772,7 @@ export default function ReadingPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h2 className="font-semibold">{source.title}</h2>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-tertiary">
                         Robinson’s SQ3R method turns passive reading into retrieval-ready encoding.
                       </p>
                     </div>
@@ -797,7 +798,7 @@ export default function ReadingPage() {
                       label: (
                         <span className="inline-flex items-center gap-1">
                           {completedSteps.includes(k) && (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" />
                           )}
                           {lbl}
                         </span>
@@ -807,7 +808,7 @@ export default function ReadingPage() {
 
                   {sq3rStep === 'survey' && (
                     <div className="space-y-3">
-                      <p className="text-xs text-neutral-400">
+                      <p className="text-xs text-faint">
                         Scan the structural outline first so your brain builds hooks before diving
                         into prose. Click any heading to turn it into a guiding question.
                       </p>
@@ -818,8 +819,9 @@ export default function ReadingPage() {
                             className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-(--hub-border)"
                           >
                             <span className="font-medium text-neutral-200">{h}</span>
-                            <button
-                              className="btn-ghost px-2 py-1 text-[11px]"
+                            <Button
+                              variant="ghost"
+                              className="px-2 py-1 text-[11px]"
                               onClick={() =>
                                 addGuidingQuestion(
                                   `How or why does "${h}" work, and what is its key takeaway?`,
@@ -827,27 +829,27 @@ export default function ReadingPage() {
                               }
                             >
                               + Question
-                            </button>
+                            </Button>
                           </div>
                         ))}
                       </div>
                       <div className="flex justify-end">
-                        <button
-                          className="btn"
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             markStepDone('survey')
                             setSq3rStep('question')
                           }}
                         >
                           Survey done → Formulate Questions
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
 
                   {sq3rStep === 'question' && (
                     <div className="space-y-3">
-                      <p className="text-xs text-neutral-400">
+                      <p className="text-xs text-faint">
                         Write 2–5 explicit questions you intend to answer while reading. Searching
                         for answers turns passive eye movement into active foraging.
                       </p>
@@ -859,9 +861,9 @@ export default function ReadingPage() {
                           onChange={(e) => setNewQuestion(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addGuidingQuestion(newQuestion)}
                         />
-                        <button className="btn" onClick={() => addGuidingQuestion(newQuestion)}>
+                        <Button variant="primary" onClick={() => addGuidingQuestion(newQuestion)}>
                           Add
-                        </button>
+                        </Button>
                       </div>
                       <div className="space-y-2">
                         {questions.map((q) => (
@@ -871,7 +873,7 @@ export default function ReadingPage() {
                           >
                             <span className="text-neutral-200">{q.question}</span>
                             <button
-                              className="text-neutral-500 hover:text-rose-400"
+                              className="text-tertiary hover:text-danger-text"
                               onClick={() => {
                                 const next = questions.filter((x) => x.id !== q.id)
                                 setQuestions(next)
@@ -883,22 +885,22 @@ export default function ReadingPage() {
                           </div>
                         ))}
                         {questions.length === 0 && (
-                          <p className="text-xs text-neutral-500">
+                          <p className="text-xs text-tertiary">
                             No guiding questions yet — add one above or click “+ Question” on a
                             Survey heading.
                           </p>
                         )}
                       </div>
                       <div className="flex justify-end">
-                        <button
-                          className="btn"
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             markStepDone('question')
                             setSq3rStep('read')
                           }}
                         >
                           Start Active Reading →
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -906,24 +908,22 @@ export default function ReadingPage() {
                   {sq3rStep === 'read' && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <input
-                          type="range"
+                        <Slider
+                          className="flex-1"
+                          label="Reading position"
                           min={0}
                           max={100}
                           value={Math.round(source.position)}
-                          onChange={(e) => patchSource.mutate({ position: Number(e.target.value) })}
-                          className="flex-1 accent-indigo-500"
+                          onChange={(position) => patchSource.mutate({ position })}
+                          format={(v) => `${v}%`}
                         />
-                        <span className="w-12 text-right text-xs text-neutral-500">
-                          {Math.round(source.position)}%
-                        </span>
                       </div>
                       <div className="max-h-[42vh] overflow-y-auto rounded-xl border border-neutral-200 p-3 text-sm leading-relaxed dark:border-(--hub-border)">
                         <Markdown>{fragment.text}</Markdown>
                       </div>
                       {questions.length > 0 && (
                         <div className="space-y-2 rounded-xl bg-neutral-100 p-3 dark:bg-(--hub-panel)">
-                          <div className="text-xs font-semibold text-neutral-400">
+                          <div className="text-xs font-semibold text-faint">
                             Answer your guiding questions as you read:
                           </div>
                           {questions.map((q) => (
@@ -944,14 +944,14 @@ export default function ReadingPage() {
                         </div>
                       )}
                       <div className="flex flex-wrap justify-between gap-2">
-                        <button
-                          className="btn-ghost"
+                        <Button
+                          variant="ghost"
                           onClick={() => patchSource.mutate({ position: fragment.nextPosition })}
                         >
                           {fragment.done ? 'At end of source' : 'Next fragment →'}
-                        </button>
-                        <button
-                          className="btn"
+                        </Button>
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             setPeekDuringRecite(false)
                             markStepDone('read')
@@ -959,7 +959,7 @@ export default function ReadingPage() {
                           }}
                         >
                           Hide text & Recite from memory →
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -967,12 +967,13 @@ export default function ReadingPage() {
                   {sq3rStep === 'recite' && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs text-neutral-400">
+                        <p className="text-xs text-faint">
                           <strong>Closed-book Recitation:</strong> Without looking at the text,
                           write everything you remember from this section.
                         </p>
-                        <button
-                          className="btn-ghost text-xs"
+                        <Button
+                          variant="ghost"
+                          className="text-xs"
                           onClick={() => setPeekDuringRecite((p) => !p)}
                         >
                           {peekDuringRecite ? (
@@ -984,7 +985,7 @@ export default function ReadingPage() {
                               <Eye className="h-3.5 w-3.5" /> Peek text to check gaps
                             </>
                           )}
-                        </button>
+                        </Button>
                       </div>
                       {peekDuringRecite && (
                         <div className="max-h-48 overflow-y-auto rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
@@ -1000,22 +1001,22 @@ export default function ReadingPage() {
                         onBlur={() => saveSq3r.mutate({ reciteNotes })}
                       />
                       <div className="flex justify-end">
-                        <button
-                          className="btn"
+                        <Button
+                          variant="primary"
                           onClick={() => {
                             markStepDone('recite')
                             setSq3rStep('review')
                           }}
                         >
                           Proceed to Review & Flashcard Minting →
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
 
                   {sq3rStep === 'review' && (
                     <div className="space-y-3">
-                      <p className="text-xs text-neutral-400">
+                      <p className="text-xs text-faint">
                         Lock in long-term retention: convert your answered SQ3R questions directly
                         into FSRS-6 flashcards in one click.
                       </p>
@@ -1048,15 +1049,17 @@ export default function ReadingPage() {
                       </div>
                       <div className="flex flex-wrap justify-between gap-2">
                         {reciteNotes.trim() && (
-                          <button
-                            className="btn-ghost text-xs"
+                          <Button
+                            variant="ghost"
+                            className="text-xs"
                             onClick={() => setMineText(reciteNotes)}
                           >
                             Mine cards from Recite summary
-                          </button>
+                          </Button>
                         )}
-                        <button
-                          className="btn ml-auto"
+                        <Button
+                          variant="primary"
+                          className="ml-auto"
                           disabled={
                             convertSq3rCards.isPending ||
                             questions.filter((q) => !q.cardId && q.answer.trim()).length === 0
@@ -1070,7 +1073,7 @@ export default function ReadingPage() {
                           {convertSq3rCards.isPending
                             ? 'Creating cards…'
                             : 'Convert Q&As to FSRS Flashcards'}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1080,10 +1083,10 @@ export default function ReadingPage() {
                 <div className="panel space-y-4">
                   <div>
                     <h2 className="font-semibold text-neutral-100 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-amber-400" />
+                      <Sparkles className="h-4 w-4 text-status-warning-text" />
                       Ambient Vocabulary &amp; Incidental Exposure Ledger
                     </h2>
-                    <p className="mt-1 text-xs text-neutral-400">
+                    <p className="mt-1 text-xs text-faint">
                       Grounded in Krashen&apos;s comprehensible input (1985) and incidental
                       vocabulary research (Nation 2001, Webb 2007). Words encountered naturally
                       across 5+ spaced sessions over &ge;3 distinct days acquire deep conceptual
@@ -1115,7 +1118,7 @@ export default function ReadingPage() {
                           }`}
                         />
                       </div>
-                      <p className="text-[11px] text-neutral-400">
+                      <p className="text-[11px] text-faint">
                         {exposureQuery.data.coverageAnalysis.zone === 'optimal'
                           ? 'Optimal Krashen i+1 band (95–98% known): reading flows smoothly while unfamiliar words are inferred from context.'
                           : exposureQuery.data.coverageAnalysis.zone === 'frustration'
@@ -1126,15 +1129,15 @@ export default function ReadingPage() {
                   )}
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold text-neutral-300">
+                    <div className="flex items-center justify-between text-xs font-semibold text-secondary">
                       <span>Words You Keep Meeting ({exposureQuery.data?.words?.length ?? 0})</span>
-                      <span className="text-[11px] text-neutral-500">
+                      <span className="text-[11px] text-tertiary">
                         Threshold: &ge;5 encounters across &ge;3 days
                       </span>
                     </div>
 
                     {(exposureQuery.data?.words ?? []).length === 0 ? (
-                      <p className="py-6 text-center text-xs text-neutral-500">
+                      <p className="py-6 text-center text-xs text-tertiary">
                         No vocabulary encounters recorded yet. Start reading to build your ambient
                         exposure ledger!
                       </p>
@@ -1151,11 +1154,11 @@ export default function ReadingPage() {
                                   {word.normalized}
                                 </span>
                                 {word.eligibleForPromotion ? (
-                                  <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-medium">
+                                  <span className="rounded bg-amber-500/20 text-status-warning-text border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-medium">
                                     Ready for SRS ({word.encounterCount}x / {word.distinctDays}d)
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] text-neutral-500">
+                                  <span className="text-[10px] text-tertiary">
                                     {word.encounterCount} encounters &bull; {word.distinctDays} days
                                   </span>
                                 )}
@@ -1163,10 +1166,12 @@ export default function ReadingPage() {
                             </div>
 
                             {word.isAlreadyCard ? (
-                              <span className="text-[11px] text-emerald-400">Already a card</span>
+                              <span className="text-[11px] text-status-success-text">
+                                Already a card
+                              </span>
                             ) : (
-                              <button
-                                type="button"
+                              <Button
+                                variant="ghost"
                                 disabled={promoteWord.isPending}
                                 onClick={() =>
                                   promoteWord.mutate({
@@ -1174,11 +1179,11 @@ export default function ReadingPage() {
                                     snippet: `Encountered ${word.encounterCount} times across reading.`,
                                   })
                                 }
-                                className="btn-ghost text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
+                                className="text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
                               >
                                 <Plus className="h-3.5 w-3.5 text-indigo-400" />
                                 Turn into Card
-                              </button>
+                              </Button>
                             )}
                           </div>
                         ))}
@@ -1196,29 +1201,35 @@ export default function ReadingPage() {
                       key={h.id}
                       className="rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
                     >
-                      <p className="text-neutral-300">{h.text}</p>
+                      <p className="text-secondary">{h.text}</p>
                       <div className="mt-2 flex gap-2">
-                        <button
-                          className="btn text-xs"
+                        <Button
+                          variant="primary"
+                          className="text-xs"
                           onClick={() => {
                             if (h.id > 0) triage.mutate({ id: h.id, action: 'keep' })
                             setTriageQueue((q) => q.filter((x) => x.id !== h.id))
                           }}
                         >
                           Keep
-                        </button>
-                        <button className="btn-ghost text-xs" onClick={() => setMineText(h.text)}>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="text-xs"
+                          onClick={() => setMineText(h.text)}
+                        >
                           → cards
-                        </button>
-                        <button
-                          className="btn-ghost text-xs text-red-400"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="text-xs text-danger-text"
                           onClick={() => {
                             if (h.id > 0) triage.mutate({ id: h.id, action: 'discard' })
                             setTriageQueue((q) => q.filter((x) => x.id !== h.id))
                           }}
                         >
                           Discard
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -1230,27 +1241,28 @@ export default function ReadingPage() {
                 {(detail?.highlights ?? []).map((h) => (
                   <div key={h.id} className="mb-2 flex items-center gap-2 text-sm">
                     <span
-                      className={`h-2 w-2 rounded-full ${h.triaged === 1 ? 'bg-emerald-500' : h.triaged === 2 ? 'bg-red-500' : 'bg-neutral-400'}`}
+                      className={`h-2 w-2 rounded-full ${h.triaged === 1 ? 'bg-emerald-500' : h.triaged === 2 ? 'bg-rose-500' : 'bg-neutral-400'}`}
                     />
-                    <span className="flex-1 truncate text-neutral-300">{h.text}</span>
-                    <button
-                      className="btn-ghost px-2 py-1 text-xs"
+                    <span className="flex-1 truncate text-secondary">{h.text}</span>
+                    <Button
+                      variant="ghost"
+                      className="px-2 py-1 text-xs"
                       onClick={() => setMineText(h.text)}
                     >
                       → cards
-                    </button>
-                    <span className="text-[10px] text-neutral-500">
+                    </Button>
+                    <span className="text-[10px] text-tertiary">
                       strength {Math.round(h.strength * 100)}
                     </span>
                   </div>
                 ))}
                 {(detail?.highlights ?? []).length === 0 && (
-                  <p className="text-xs text-neutral-500">None yet.</p>
+                  <p className="text-xs text-tertiary">None yet.</p>
                 )}
               </div>
             </>
           ) : (
-            <div className="panel text-sm text-neutral-500">
+            <div className="panel text-sm text-tertiary">
               Pick a source on the left, or click <strong>Add source</strong> to import a PDF, EPUB,
               Web article, YouTube transcript, or Markdown note.
             </div>
@@ -1266,11 +1278,11 @@ export default function ReadingPage() {
         footer={
           ingestTab !== 'file' ? (
             <>
-              <button className="btn-ghost" onClick={() => setIngestOpen(false)}>
+              <Button variant="ghost" onClick={() => setIngestOpen(false)}>
                 Cancel
-              </button>
-              <button
-                className="btn"
+              </Button>
+              <Button
+                variant="primary"
                 disabled={
                   ingestRemoteOrMarkdown.isPending ||
                   (ingestTab === 'markdown' ? !markdownInput.trim() : !urlInput.trim())
@@ -1278,7 +1290,7 @@ export default function ReadingPage() {
                 onClick={() => ingestRemoteOrMarkdown.mutate()}
               >
                 {ingestRemoteOrMarkdown.isPending ? 'Importing…' : 'Import source'}
-              </button>
+              </Button>
             </>
           ) : undefined
         }
@@ -1306,7 +1318,7 @@ export default function ReadingPage() {
 
           <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Custom title (optional)</span>
+              <span className="text-faint">Custom title (optional)</span>
               <input
                 className="input w-full"
                 placeholder="Auto-detected when left blank"
@@ -1315,7 +1327,7 @@ export default function ReadingPage() {
               />
             </label>
             <label className="space-y-1 text-xs">
-              <span className="text-neutral-400">Priority (0–100)</span>
+              <span className="text-faint">Priority (0–100)</span>
               <input
                 type="number"
                 min={0}
@@ -1329,12 +1341,12 @@ export default function ReadingPage() {
 
           {ingestTab === 'file' && (
             <div className="rounded-xl border-2 border-dashed border-neutral-300 p-6 text-center space-y-2 dark:border-(--hub-border)">
-              <Upload className="mx-auto h-6 w-6 text-neutral-400" />
+              <Upload className="mx-auto h-6 w-6 text-faint" />
               <div className="text-sm font-medium">
                 Choose a <code>.pdf</code>, <code>.epub</code>, <code>.md</code>, or{' '}
                 <code>.txt</code> file
               </div>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 Extracted locally inside Learning HUB — works offline on desktop & mobile.
               </p>
               <input
@@ -1348,19 +1360,19 @@ export default function ReadingPage() {
                   e.target.value = ''
                 }}
               />
-              <button
-                className="btn"
+              <Button
+                variant="primary"
                 disabled={uploadFile.isPending}
                 onClick={() => fileRef.current?.click()}
               >
                 {uploadFile.isPending ? 'Extracting…' : 'Select file'}
-              </button>
+              </Button>
             </div>
           )}
 
           {ingestTab === 'url' && (
             <label className="block space-y-1 text-xs">
-              <span className="text-neutral-400">Article URL</span>
+              <span className="text-faint">Article URL</span>
               <input
                 type="url"
                 className="input w-full"
@@ -1368,7 +1380,7 @@ export default function ReadingPage() {
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
-              <span className="block text-[11px] text-neutral-500">
+              <span className="block text-[11px] text-tertiary">
                 Strips navigation, ads, and scripts into clean Markdown headings & paragraphs.
               </span>
             </label>
@@ -1376,14 +1388,14 @@ export default function ReadingPage() {
 
           {ingestTab === 'youtube' && (
             <label className="block space-y-1 text-xs">
-              <span className="text-neutral-400">YouTube video URL</span>
+              <span className="text-faint">YouTube video URL</span>
               <input
                 className="input w-full"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
-              <span className="block text-[11px] text-neutral-500">
+              <span className="block text-[11px] text-tertiary">
                 Imports caption tracks grouped into timestamped 1-minute sections ready for SQ3R.
               </span>
             </label>
@@ -1391,7 +1403,7 @@ export default function ReadingPage() {
 
           {ingestTab === 'markdown' && (
             <label className="block space-y-1 text-xs">
-              <span className="text-neutral-400">Markdown or plain text</span>
+              <span className="text-faint">Markdown or plain text</span>
               <textarea
                 rows={8}
                 className="input w-full font-mono text-xs"

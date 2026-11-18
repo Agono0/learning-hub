@@ -57,10 +57,8 @@ function CourseCard({ course }: { course: CatalogCourse }) {
       </span>
       <div className="min-w-0 flex-1">
         <div className="truncate font-medium">{course.title}</div>
-        {course.subtitle && (
-          <div className="truncate text-xs text-neutral-500">{course.subtitle}</div>
-        )}
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-neutral-500">
+        {course.subtitle && <div className="truncate text-xs text-tertiary">{course.subtitle}</div>}
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-tertiary">
           {course.level && <Badge>{course.level}</Badge>}
           <span>
             {course.progress.completed}/{course.progress.total} lessons
@@ -94,7 +92,7 @@ function ContinueCard({ course }: { course: CatalogCourse }) {
           </div>
           <div className="font-semibold">{course.title}</div>
           {course.nextLesson && (
-            <div className="truncate text-sm text-neutral-500">Next: {course.nextLesson.title}</div>
+            <div className="truncate text-sm text-tertiary">Next: {course.nextLesson.title}</div>
           )}
           <ProgressBar value={course.progress.fraction} label="Course progress" className="mt-2" />
         </div>
@@ -179,8 +177,8 @@ export default function CoursesPage() {
             </span>
             <div className="min-w-0 flex-1">
               <div className="font-medium">{sc.title}</div>
-              <div className="text-xs text-neutral-500">{sc.subtitle}</div>
-              <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-neutral-500">
+              <div className="text-xs text-tertiary">{sc.subtitle}</div>
+              <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-tertiary">
                 <Badge>{sc.track}</Badge>
                 <Badge>{sc.level}</Badge>
                 <span>
@@ -191,7 +189,7 @@ export default function CoursesPage() {
           </div>
           {sc.installed && sc.courseId ? (
             <Link href={`/courses/course?id=${sc.courseId}`} className="btn-ghost text-xs">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Open course
+              <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" /> Open course
             </Link>
           ) : (
             <button
@@ -217,11 +215,11 @@ export default function CoursesPage() {
       />
 
       {error && (
-        <p role="alert" className="text-sm text-rose-500">
+        <p role="alert" className="text-sm text-danger-text">
           Could not load courses: {error.message}
         </p>
       )}
-      {isLoading && <p className="text-sm text-neutral-500">Loading…</p>}
+      {isLoading && <p className="text-sm text-tertiary">Loading…</p>}
 
       {courses && courses.length === 0 && (
         <div className="space-y-4">
@@ -231,7 +229,7 @@ export default function CoursesPage() {
                 <h2 className="text-base font-semibold">
                   Start in 1 click — Built-in Starter Library
                 </h2>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-tertiary">
                   Offline, research-backed courses with interactive exercises, worked examples &
                   certificates — no AI key needed.
                 </p>
@@ -274,7 +272,7 @@ export default function CoursesPage() {
 
       {[...byTrack.entries()].map(([track, list]) => (
         <section key={track} className="space-y-2">
-          <h2 className="text-sm font-semibold text-neutral-500">{track}</h2>
+          <h2 className="text-sm font-semibold text-tertiary">{track}</h2>
           <div className="grid gap-2 md:grid-cols-2">
             {list.map((c) => (
               <CourseCard key={c.id} course={c} />
@@ -284,7 +282,7 @@ export default function CoursesPage() {
       ))}
 
       {courses && courses.length > 0 && (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Looking for the skill tree and exam countdown? They live in{' '}
           <Link href="/curriculum" className="underline underline-offset-2">
             Skills &amp; exams
@@ -313,7 +311,7 @@ export default function CoursesPage() {
         }
       >
         <div className="space-y-3">
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-faint">
             Every starter course includes theory, worked examples, scheduled FSRS practice cards, a
             project stage, and a final exam — plus curated learning-science quotes & Major/PAO
             mnemonic tables.

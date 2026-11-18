@@ -44,7 +44,7 @@ export function PushSettingsPanel() {
           <div className="label flex items-center gap-1.5">
             <Bell className="h-3.5 w-3.5" /> Push reminders
           </div>
-          <p className="mt-0.5 text-xs text-neutral-500">
+          <p className="mt-0.5 text-xs text-tertiary">
             {supported
               ? configured
                 ? 'Receive review reminders even when the app is closed.'
@@ -63,7 +63,9 @@ export function PushSettingsPanel() {
           </button>
         )}
       </div>
-      {enable.isError && <p className="text-xs text-rose-500">{(enable.error as Error).message}</p>}
+      {enable.isError && (
+        <p className="text-xs text-danger-text">{(enable.error as Error).message}</p>
+      )}
     </section>
   )
 }

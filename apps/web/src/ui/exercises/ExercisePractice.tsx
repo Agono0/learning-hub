@@ -99,7 +99,7 @@ export function ExercisePractice({
 
   return (
     <article className="panel space-y-4" aria-label={`Exercise ${index ?? ''}`}>
-      <header className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+      <header className="flex flex-wrap items-center gap-2 text-xs text-tertiary">
         <Badge tone="accent">{TYPE_LABEL[exercise.type]}</Badge>
         {isPretest && <Badge tone="neutral">Priming Pretest</Badge>}
         {index !== undefined && total !== undefined && (
@@ -126,7 +126,7 @@ export function ExercisePractice({
         ) : (
           <button
             type="button"
-            className="text-xs text-neutral-500 underline underline-offset-2"
+            className="text-xs text-tertiary underline underline-offset-2"
             onClick={() => setShowHint(true)}
           >
             Need a hint? (try first — it helps you remember)
@@ -147,7 +147,7 @@ export function ExercisePractice({
             aria-label="How sure are you?"
             className="flex items-center gap-1 text-xs"
           >
-            <span className="mr-1 text-neutral-500">How sure?</span>
+            <span className="mr-1 text-tertiary">How sure?</span>
             {([1, 0] as const).map((c) => (
               <button
                 key={c}
@@ -184,7 +184,7 @@ export function ExercisePractice({
             {result?.pending ? (
               <CircleDashed className="h-5 w-5" />
             ) : result?.correct ? (
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <CheckCircle2 className="h-5 w-5 text-status-success-text" />
             ) : (
               <XCircle className="h-5 w-5 text-rose-600" />
             )}
@@ -196,7 +196,7 @@ export function ExercisePractice({
                   ? `Partly right (${Math.round(result.score * 100)}%)`
                   : 'Not yet'}
             {response.review ? (
-              <span className="ml-auto text-xs font-normal text-neutral-500">
+              <span className="ml-auto text-xs font-normal text-tertiary">
                 Next review {dueLabel(response.review.due)}
               </span>
             ) : isPretest ? (
@@ -217,14 +217,14 @@ export function ExercisePractice({
             </Markdown>
           )}
           {!result?.pending && (
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Before moving on: why is this the answer? Say it in one sentence.
             </p>
           )}
         </div>
       )}
       {error && (
-        <p role="alert" className="text-sm text-rose-500">
+        <p role="alert" className="text-sm text-danger-text">
           {error}
         </p>
       )}

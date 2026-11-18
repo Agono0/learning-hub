@@ -29,7 +29,7 @@ export interface ItemPreviewModalProps {
 const RARITY_RING: Record<string, string> = {
   common: 'from-slate-400/30',
   rare: 'from-sky-400/40',
-  epic: 'from-purple-400/40',
+  epic: 'from-indigo-400/40',
   legendary: 'from-amber-400/40',
 }
 
@@ -119,7 +119,7 @@ export function ItemPreviewModal({
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-faint">
                   {item.category.replace('_', ' ')}
                 </span>
                 <Badge
@@ -135,12 +135,12 @@ export function ItemPreviewModal({
                 </Badge>
               </div>
               <h3 className="text-lg font-semibold text-slate-50">{item.name}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed mt-1">{item.description}</p>
+              <p className="text-sm text-faint leading-relaxed mt-1">{item.description}</p>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-            <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+            <div className="flex items-center gap-1.5 text-status-warning-text font-bold">
               <Coins className="w-4 h-4" />
               <span className="text-sm">
                 {item.priceCoins === 0 ? 'Free' : `${item.priceCoins} coins`}
@@ -167,7 +167,7 @@ export function ItemPreviewModal({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+          <div className="flex items-center gap-1.5 text-[11px] text-tertiary">
             <RotateCcw className="w-3 h-3" />
             The spin settles into a slow showroom turn after you let go.
           </div>

@@ -34,8 +34,8 @@ export default function ScaffoldingPage() {
               <Brain className="h-3.5 w-3.5 text-indigo-400" />
               <span>CLT Model (Sweller 2010)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              <Layers className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+              <Layers className="h-3.5 w-3.5 text-status-success-text" />
               <span>4-Stage Continuum</span>
             </span>
           </div>
@@ -53,7 +53,7 @@ export default function ScaffoldingPage() {
             Evidence-Based Learning Architecture
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300 leading-relaxed">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-secondary leading-relaxed">
           <div className="rounded-xl border border-white/5 bg-slate-950/60 p-4">
             <strong className="text-indigo-300 block mb-1">
               1. The Fading Effect (Renkl & Atkinson)

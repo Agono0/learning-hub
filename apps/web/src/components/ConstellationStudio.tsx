@@ -605,7 +605,7 @@ export function ConstellationStudio({
             <h2 className="text-sm font-bold text-white tracking-tight">
               Concept Constellation Workbench
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-faint">
               Interactive n-body knowledge graph with 3D celestial orbit & optimal path traversal
             </p>
           </div>
@@ -624,7 +624,7 @@ export function ConstellationStudio({
                 'flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium transition-all',
                 viewMode === '2d'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white',
+                  : 'text-faint hover:text-white',
               )}
             >
               <Eye className="h-3.5 w-3.5" />
@@ -640,7 +640,7 @@ export function ConstellationStudio({
                 'flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-medium transition-all',
                 viewMode === '3d'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white',
+                  : 'text-faint hover:text-white',
               )}
             >
               <Move3d className="h-3.5 w-3.5" />
@@ -655,8 +655,8 @@ export function ConstellationStudio({
             className={cx(
               'flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition-all',
               isPhysicsActive
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                : 'border-white/10 bg-white/5 text-slate-400',
+                ? 'border-emerald-500/30 bg-emerald-500/10 text-status-success-text'
+                : 'border-white/10 bg-white/5 text-faint',
             )}
           >
             <span
@@ -676,7 +676,7 @@ export function ConstellationStudio({
               'flex h-8 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition-all',
               showControls
                 ? 'border-indigo-500/40 bg-indigo-600/30 text-indigo-200'
-                : 'border-white/10 bg-white/5 text-slate-400 hover:text-white',
+                : 'border-white/10 bg-white/5 text-faint hover:text-white',
             )}
             title="Configure Physics Parameters"
           >
@@ -688,7 +688,7 @@ export function ConstellationStudio({
           <button
             type="button"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
             title="Toggle Celestial Soundscape"
           >
             {soundEnabled ? (
@@ -702,7 +702,7 @@ export function ConstellationStudio({
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
             title="Toggle Fullscreen"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -750,13 +750,13 @@ export function ConstellationStudio({
               <button
                 type="button"
                 onClick={() => setShowControls(false)}
-                className="text-slate-400 hover:text-white text-xs"
+                className="text-faint hover:text-white text-xs"
               >
                 ✕
               </button>
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-slate-400">
+              <div className="flex justify-between text-[11px] text-faint">
                 <span>Repulsion</span>
                 <span className="font-mono text-slate-200">{physicsConfig.repulsionConstant}</span>
               </div>
@@ -776,7 +776,7 @@ export function ConstellationStudio({
               />
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-slate-400">
+              <div className="flex justify-between text-[11px] text-faint">
                 <span>Spring Tension</span>
                 <span className="font-mono text-slate-200">
                   {physicsConfig.springStiffness.toFixed(3)}
@@ -798,7 +798,7 @@ export function ConstellationStudio({
               />
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-slate-400">
+              <div className="flex justify-between text-[11px] text-faint">
                 <span>Friction Damping</span>
                 <span className="font-mono text-slate-200">
                   {physicsConfig.dampingRatio.toFixed(2)}
@@ -827,18 +827,18 @@ export function ConstellationStudio({
           <div className="absolute bottom-4 left-4 right-4 z-30 rounded-2xl border border-white/10 bg-slate-900/90 p-4 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Compass className="h-4 w-4 text-sky-400" />
+                <Compass className="h-4 w-4 text-status-info-text" />
                 <h4 className="text-xs font-bold text-white tracking-tight">
                   Learning Route: {activeLearningPath.targetTitle}
                 </h4>
-                <span className="rounded-full bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[10px] font-semibold text-sky-400">
+                <span className="rounded-full bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[10px] font-semibold text-status-info-text">
                   {activeLearningPath.totalEstimatedMinutes} min total
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setActiveLearningPath(null)}
-                className="text-xs text-slate-400 hover:text-white"
+                className="text-xs text-faint hover:text-white"
               >
                 Clear Route
               </button>
@@ -855,7 +855,7 @@ export function ConstellationStudio({
                   </span>
                   <div>
                     <p className="font-semibold text-slate-200">{step.title}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-faint">
                       {step.recommendedModality.replace('_', ' ')} • {step.estimatedMinutes}m
                     </p>
                   </div>
@@ -882,15 +882,15 @@ export function ConstellationStudio({
 
         {crossSyntheses.length > 0 ? (
           <div className="flex items-center gap-1.5 text-indigo-300 font-medium">
-            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
             <span>
               Analogy Bridge: {crossSyntheses[0]?.conceptA.title} ↔{' '}
               {crossSyntheses[0]?.conceptB.title}
             </span>
           </div>
         ) : bottlenecks.length > 0 ? (
-          <div className="flex items-center gap-1.5 text-rose-300 font-medium">
-            <Zap className="h-3.5 w-3.5 text-rose-400" />
+          <div className="flex items-center gap-1.5 text-danger-text font-medium">
+            <Zap className="h-3.5 w-3.5 text-danger-text" />
             <span>
               Top Foundation Bottleneck: <strong>{bottlenecks[0]!.title}</strong>
             </span>

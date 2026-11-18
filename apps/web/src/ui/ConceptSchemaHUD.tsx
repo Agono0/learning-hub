@@ -66,7 +66,7 @@ export function ConceptSchemaHUD({
             <Network className="h-4 w-4" />
           </span>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
               Ausubel-Novak Propositional Schema
             </span>
             <span className="text-xs font-bold text-white">
@@ -78,14 +78,14 @@ export function ConceptSchemaHUD({
         {/* Cognitive Health & Active Concept Badge */}
         <div className="flex items-center gap-3">
           {highSeverityAnomalies > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-extrabold text-amber-300 animate-pulse">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/15 px-2.5 py-1 text-[11px] font-extrabold text-status-warning-text animate-pulse">
+              <AlertTriangle className="h-3.5 w-3.5 text-status-warning-text" />
               {highSeverityAnomalies} Misconception{' '}
               {highSeverityAnomalies === 1 ? 'Anomaly' : 'Anomalies'}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-status-success-text">
+              <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" />
               Scientifically Sound Schema
             </span>
           )}
@@ -103,7 +103,7 @@ export function ConceptSchemaHUD({
       <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5 sm:grid-cols-4 bg-slate-900/50 text-center text-xs">
         {/* Metric 1: Propositional Validity Score */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Propositional Validity (PVS)
           </span>
           <div className="flex items-center justify-center gap-1.5">
@@ -111,45 +111,43 @@ export function ConceptSchemaHUD({
               className={cx(
                 'font-mono text-base font-black',
                 propositionalValidityScore >= 0.8
-                  ? 'text-emerald-300'
+                  ? 'text-status-success-text'
                   : propositionalValidityScore >= 0.6
-                    ? 'text-amber-300'
-                    : 'text-rose-300',
+                    ? 'text-status-warning-text'
+                    : 'text-danger-text',
               )}
             >
               {Math.round(propositionalValidityScore * 100)}%
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">
-              ({totalPropositions} props)
-            </span>
+            <span className="text-[10px] text-faint font-mono">({totalPropositions} props)</span>
           </div>
-          <span className="text-[10px] text-slate-500">Novak (1984) Precision</span>
+          <span className="text-[10px] text-tertiary">Novak (1984) Precision</span>
         </div>
 
         {/* Metric 2: Cross-Link Synthesis Ratio */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Cross-Link Synthesis (CSD)
           </span>
           <div className="flex items-center justify-center gap-1.5">
-            <span className="font-mono text-base font-black text-sky-300">
+            <span className="font-mono text-base font-black text-status-info-text">
               {Math.round(crossLinkSynthesisRatio * 100)}%
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">lateral</span>
+            <span className="text-[10px] text-faint font-mono">lateral</span>
           </div>
-          <span className="text-[10px] text-slate-500">Creative Schema Leap</span>
+          <span className="text-[10px] text-tertiary">Creative Schema Leap</span>
         </div>
 
         {/* Metric 3: Meaningful Learning Index */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Meaningful Learning Index
           </span>
           <div className="flex items-center justify-center gap-1.5">
             <span className="font-mono text-base font-black text-indigo-300">
               {meaningfulLearningIndex}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">/ 100</span>
+            <span className="text-[10px] text-faint font-mono">/ 100</span>
           </div>
           <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
             <div
@@ -161,7 +159,7 @@ export function ConceptSchemaHUD({
 
         {/* Metric 4: Dominant Assimilation Mode */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Dominant Assimilation
           </span>
           <div className="flex items-center justify-center gap-1">
@@ -169,7 +167,7 @@ export function ConceptSchemaHUD({
               {formatRoleLabel(dominantAssimilationMode)}
             </span>
           </div>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-tertiary">
             Depth: {hierarchicalDepth} Levels • {totalNodes} Nodes
           </span>
         </div>
@@ -177,7 +175,7 @@ export function ConceptSchemaHUD({
 
       {/* Integrative Reconciliation Footer Banner */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2 bg-slate-950/70 text-xs">
-        <div className="flex items-center gap-2 text-slate-300">
+        <div className="flex items-center gap-2 text-secondary">
           <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
           <span>
             Ausubelian Assimilation:{' '}
@@ -189,8 +187,8 @@ export function ConceptSchemaHUD({
         </div>
 
         <div className="flex items-center gap-2">
-          <GitBranch className="h-3.5 w-3.5 text-slate-400" />
-          <span className="text-slate-400 font-mono text-[11px]">
+          <GitBranch className="h-3.5 w-3.5 text-faint" />
+          <span className="text-faint font-mono text-[11px]">
             {totalNodes} concepts • {totalPropositions} propositions
           </span>
         </div>

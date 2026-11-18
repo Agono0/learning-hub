@@ -73,8 +73,8 @@ export function DetoxWizard({ className }: DetoxWizardProps) {
           className={cx(
             'rounded-full border px-2.5 py-0.5 text-xs font-bold',
             q.data?.done
-              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              : 'border-neutral-300 text-neutral-500 dark:border-(--hub-border) dark:text-neutral-400',
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text dark:text-status-success-text'
+              : 'border-neutral-300 text-tertiary dark:border-(--hub-border) dark:text-faint',
           )}
         >
           {completed}/{steps.length || 10}
@@ -86,10 +86,12 @@ export function DetoxWizard({ className }: DetoxWizardProps) {
           {q.isLoading ? (
             <div className="h-24 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
           ) : q.isError ? (
-            <p className="text-xs text-rose-600 dark:text-rose-400">Could not load the wizard.</p>
+            <p className="text-xs text-rose-600 dark:text-danger-text">
+              Could not load the wizard.
+            </p>
           ) : (
             <>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="text-xs text-tertiary dark:text-faint">
                 One-time setup that makes every later focus session easier. Steps persist here — no
                 streaks, no shame if a step waits a day.
               </p>
@@ -111,22 +113,22 @@ export function DetoxWizard({ className }: DetoxWizardProps) {
                         aria-pressed={isDone}
                       >
                         {isDone ? (
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success-text" />
                         ) : (
-                          <Circle className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                          <Circle className="mt-0.5 h-4 w-4 shrink-0 text-faint" />
                         )}
                         <span className="min-w-0">
                           <span
                             className={cx(
                               'block text-xs font-semibold',
                               isDone
-                                ? 'text-neutral-400 line-through dark:text-neutral-500'
+                                ? 'text-faint line-through dark:text-tertiary'
                                 : 'text-neutral-800 dark:text-neutral-100',
                             )}
                           >
                             {i + 1}. {s.label}
                           </span>
-                          <span className="mt-0.5 block text-[11px] leading-snug text-neutral-500 dark:text-neutral-400">
+                          <span className="mt-0.5 block text-[11px] leading-snug text-tertiary dark:text-faint">
                             {s.detail}
                           </span>
                         </span>

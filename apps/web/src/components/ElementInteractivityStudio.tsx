@@ -255,26 +255,26 @@ export function ElementInteractivityStudio() {
     <div className="space-y-6">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-foreground px-4 py-2.5 text-xs text-background shadow-lg transition-all">
+        <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-neutral-900 px-4 py-2.5 text-xs text-neutral-50 shadow-lg dark:bg-neutral-100 dark:text-neutral-900">
           {toastMessage}
         </div>
       )}
 
       {/* Suite Selector & Quick Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-neutral-200/60 dark:border-(--hub-border)/60 pb-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <CpuIcon className="h-6 w-6 text-primary" />
+          <h2 className="text-xl font-bold tracking-tight text-strong flex items-center gap-2">
+            <CpuIcon className="h-6 w-6 text-ac-text" />
             Cognitive Load & Element Interactivity Studio
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-tertiary mt-0.5">
             John Sweller (1988, 2011) CLT • Pollock et al. (2002) Isolated-Elements Scaffolding •
             Paas (1992) Efficiency
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <label htmlFor="suite-select" className="text-xs font-medium text-muted-foreground">
+          <label htmlFor="suite-select" className="text-xs font-medium text-tertiary">
             Domain Suite:
           </label>
           <select
@@ -284,7 +284,7 @@ export function ElementInteractivityStudio() {
               setSelectedSuiteId(e.target.value)
               handleReset()
             }}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-3 py-1.5 text-xs font-medium text-strong shadow-sm focus:outline-none focus:ring-1 focus:ring-(--ac-strong)"
           >
             {Object.values(CALIBRATED_INTERACTIVITY_SUITES).map((s) => (
               <option key={s.id} value={s.id}>
@@ -310,14 +310,14 @@ export function ElementInteractivityStudio() {
       />
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-border/80 text-sm font-medium">
+      <div className="flex border-b border-neutral-200/80 dark:border-(--hub-border)/80 text-sm font-medium">
         <button
           type="button"
           onClick={() => setActiveTab('topology')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'topology'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-(--ac-strong) text-ac-text font-semibold'
+              : 'border-transparent text-tertiary hover:text-strong'
           }`}
         >
           <Network className="h-4 w-4" />
@@ -328,8 +328,8 @@ export function ElementInteractivityStudio() {
           onClick={() => setActiveTab('scaffold')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'scaffold'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-(--ac-strong) text-ac-text font-semibold'
+              : 'border-transparent text-tertiary hover:text-strong'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -340,8 +340,8 @@ export function ElementInteractivityStudio() {
           onClick={() => setActiveTab('efficiency')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'efficiency'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-(--ac-strong) text-ac-text font-semibold'
+              : 'border-transparent text-tertiary hover:text-strong'
           }`}
         >
           <Gauge className="h-4 w-4" />
@@ -352,8 +352,8 @@ export function ElementInteractivityStudio() {
           onClick={() => setActiveTab('deck')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'deck'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-(--ac-strong) text-ac-text font-semibold'
+              : 'border-transparent text-tertiary hover:text-strong'
           }`}
         >
           <Brain className="h-4 w-4" />
@@ -365,13 +365,13 @@ export function ElementInteractivityStudio() {
       {activeTab === 'topology' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left 2 Cols: Interactive Graph Canvas */}
-          <div className="lg:col-span-2 rounded-xl border border-border/80 bg-card p-5 space-y-4">
+          <div className="lg:col-span-2 rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 className="text-base font-semibold text-strong">
                   Topological Interactivity Graph
                 </h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-tertiary">
                   Elements coupled via causal, feedback, and constraint edges. Click any element or
                   edge to inspect.
                 </p>
@@ -380,7 +380,7 @@ export function ElementInteractivityStudio() {
             </div>
 
             {/* SVG Graph View */}
-            <div className="relative w-full h-80 rounded-lg bg-muted/20 border border-border/40 overflow-hidden flex items-center justify-center select-none">
+            <div className="relative w-full h-80 rounded-lg bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 border border-neutral-200/40 dark:border-(--hub-border)/40 overflow-hidden flex items-center justify-center select-none">
               <svg viewBox="0 0 350 320" className="w-full h-full">
                 <defs>
                   <marker
@@ -392,11 +392,7 @@ export function ElementInteractivityStudio() {
                     markerHeight="6"
                     orient="auto-start-reverse"
                   >
-                    <path
-                      d="M 0 0 L 10 5 L 0 10 z"
-                      fill="currentColor"
-                      className="text-muted-foreground/60"
-                    />
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" className="text-faint" />
                   </marker>
                 </defs>
 
@@ -425,7 +421,7 @@ export function ElementInteractivityStudio() {
                           edge.interactionType === 'feedback_loop' ? '4 3' : undefined
                         }
                         markerEnd="url(#arrow)"
-                        className="transition-all hover:stroke-primary"
+                        className="transition-all hover:stroke-(--ac-text)"
                       />
                     </g>
                   )
@@ -463,17 +459,17 @@ export function ElementInteractivityStudio() {
                         r="20"
                         className={`transition-all duration-200 stroke-2 ${
                           isSelected
-                            ? 'fill-cyan-500/20 stroke-cyan-500'
+                            ? 'fill-sky-500/20 stroke-sky-500'
                             : isIsoMastered
                               ? 'fill-emerald-500/20 stroke-emerald-500'
-                              : 'fill-card stroke-border hover:stroke-primary'
+                              : 'fill-white stroke-neutral-200 hover:stroke-(--ac-text) dark:fill-(--hub-panel) dark:stroke-(--hub-border) dark:hover:stroke-(--ac-text)'
                         }`}
                       />
                       <text
                         x={pos.cx}
                         y={pos.cy + 4}
                         textAnchor="middle"
-                        className="text-[9px] font-bold fill-foreground pointer-events-none"
+                        className="text-[9px] font-bold fill-strong pointer-events-none"
                       >
                         {idx + 1}
                       </text>
@@ -481,7 +477,7 @@ export function ElementInteractivityStudio() {
                         x={pos.cx}
                         y={pos.cy + 32}
                         textAnchor="middle"
-                        className="text-[8px] font-medium fill-muted-foreground pointer-events-none max-w-[80px]"
+                        className="text-[8px] font-medium fill-tertiary pointer-events-none max-w-[80px]"
                       >
                         {el.label.slice(0, 16)}…
                       </text>
@@ -492,9 +488,9 @@ export function ElementInteractivityStudio() {
             </div>
 
             {/* Perturbation Trigger Bar */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60">
-              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Zap className="h-3.5 w-3.5 text-amber-500" />
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-neutral-200/60 dark:border-(--hub-border)/60">
+              <span className="text-xs font-medium text-tertiary flex items-center gap-1">
+                <Zap className="h-3.5 w-3.5 text-status-warning-text" />
                 Inject System Perturbation:
               </span>
               {suite.cascadeScenarios.map((scen) => (
@@ -510,8 +506,8 @@ export function ElementInteractivityStudio() {
                   }}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                     activePerturbationId === scen.perturbationElementId
-                      ? 'bg-rose-500/20 text-rose-500 border border-rose-500/40'
-                      : 'bg-muted/60 text-muted-foreground hover:text-foreground'
+                      ? 'bg-rose-500/20 text-danger-text border border-rose-500/40'
+                      : 'bg-neutral-100/60 dark:bg-(--hub-panel-2)/60 text-tertiary hover:text-strong'
                   }`}
                 >
                   {scen.id.replace('scenario_', '').replace(/_/g, ' ')}
@@ -521,9 +517,9 @@ export function ElementInteractivityStudio() {
           </div>
 
           {/* Right Col: Element / Edge Inspector */}
-          <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4">
-            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <HelpCircle className="h-4 w-4 text-primary" />
+          <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-5 space-y-4">
+            <h3 className="text-base font-semibold text-strong flex items-center gap-2">
+              <HelpCircle className="h-4 w-4 text-ac-text" />
               Inspector & Cognitive Breakdown
             </h3>
 
@@ -534,21 +530,21 @@ export function ElementInteractivityStudio() {
                 return (
                   <div className="space-y-3 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground">{el.label}</span>
+                      <span className="font-semibold text-strong">{el.label}</span>
                       <Badge tone={isMastered ? 'success' : 'neutral'}>
                         {isMastered ? 'Mastered' : 'Unmastered'}
                       </Badge>
                     </div>
-                    <p className="text-muted-foreground">{el.description}</p>
-                    <div className="rounded-lg bg-muted/30 p-3 space-y-1">
-                      <span className="font-medium text-foreground block">
+                    <p className="text-tertiary">{el.description}</p>
+                    <div className="rounded-lg bg-neutral-100/30 dark:bg-(--hub-panel-2)/30 p-3 space-y-1">
+                      <span className="font-medium text-strong block">
                         Isolated Atomic Definition:
                       </span>
-                      <p className="text-muted-foreground">{el.isolatedDefinition}</p>
+                      <p className="text-tertiary">{el.isolatedDefinition}</p>
                     </div>
-                    <div className="flex items-center justify-between text-muted-foreground pt-1">
+                    <div className="flex items-center justify-between text-tertiary pt-1">
                       <span>Intrinsic Complexity:</span>
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-strong">
                         {el.intrinsicComplexity} / 5
                       </span>
                     </div>
@@ -564,7 +560,7 @@ export function ElementInteractivityStudio() {
                 return (
                   <div className="space-y-3 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-strong">
                         {edge.sourceElementId} → {edge.targetElementId}
                       </span>
                       <Badge tone={isMastered ? 'success' : 'neutral'}>
@@ -572,10 +568,10 @@ export function ElementInteractivityStudio() {
                       </Badge>
                     </div>
                     <Badge tone="cyan">{edge.interactionType.replace('_', ' ')}</Badge>
-                    <p className="text-muted-foreground">{edge.causalDescription}</p>
-                    <div className="flex items-center justify-between text-muted-foreground pt-1">
+                    <p className="text-tertiary">{edge.causalDescription}</p>
+                    <div className="flex items-center justify-between text-tertiary pt-1">
                       <span>Coupling Strength:</span>
-                      <span className="font-semibold text-foreground">
+                      <span className="font-semibold text-strong">
                         {edge.couplingStrength * 100}%
                       </span>
                     </div>
@@ -583,8 +579,8 @@ export function ElementInteractivityStudio() {
                 )
               })()
             ) : (
-              <div className="text-xs text-muted-foreground py-10 text-center space-y-2">
-                <Brain className="h-8 w-8 mx-auto text-muted-foreground/40" />
+              <div className="text-xs text-tertiary py-10 text-center space-y-2">
+                <Brain className="h-8 w-8 mx-auto text-faint" />
                 <p>
                   Select any node or interaction edge on the left to inspect its cognitive
                   complexity.
@@ -593,24 +589,26 @@ export function ElementInteractivityStudio() {
             )}
 
             {/* Cognitive Load Comparison */}
-            <div className="border-t border-border/60 pt-4 space-y-2 text-xs">
-              <span className="font-semibold text-foreground block">
+            <div className="border-t border-neutral-200/60 dark:border-(--hub-border)/60 pt-4 space-y-2 text-xs">
+              <span className="font-semibold text-strong block">
                 Novice vs Expert Chunked Load:
               </span>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
                 <div className="rounded-lg bg-rose-500/10 p-2.5 border border-rose-500/20">
-                  <span className="font-medium text-rose-500 block">Novice Schema</span>
-                  <span className="text-muted-foreground">
+                  <span className="font-medium text-danger-text block">Novice Schema</span>
+                  <span className="text-tertiary">
                     Load: {analysis.estimatedNoviceLoad.totalLoad} chunks
                   </span>
-                  <span className="block text-rose-500 font-semibold mt-1">Overload: YES</span>
+                  <span className="block text-danger-text font-semibold mt-1">Overload: YES</span>
                 </div>
                 <div className="rounded-lg bg-emerald-500/10 p-2.5 border border-emerald-500/20">
-                  <span className="font-medium text-emerald-500 block">Chunked Expert</span>
-                  <span className="text-muted-foreground">
+                  <span className="font-medium text-status-success-text block">Chunked Expert</span>
+                  <span className="text-tertiary">
                     Load: {analysis.estimatedExpertChunkedLoad.totalLoad} chunks
                   </span>
-                  <span className="block text-emerald-500 font-semibold mt-1">Overload: NO</span>
+                  <span className="block text-status-success-text font-semibold mt-1">
+                    Overload: NO
+                  </span>
                 </div>
               </div>
             </div>
@@ -624,10 +622,10 @@ export function ElementInteractivityStudio() {
           <Panel className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 className="text-base font-semibold text-strong">
                   Pollock et al. (2002) 3-Phase Isolated-Elements Scaffold
                 </h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-tertiary">
                   Novices bypass working memory limits by mastering individual elements first, then
                   binary couplings, and finally full systemic cascades.
                 </p>
@@ -638,7 +636,7 @@ export function ElementInteractivityStudio() {
             {/* Phase 1: Isolated Elements */}
             {currentPhase === 'isolated_elements' && (
               <div className="space-y-4">
-                <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 p-3 text-xs text-cyan-600 dark:text-cyan-400">
+                <div className="rounded-lg bg-sky-500/10 border border-sky-500/20 p-3 text-xs text-status-info-text dark:text-status-info-text">
                   <strong>Phase 1 Goal:</strong> Master each constituent concept in pure isolation.
                   Interaction edges are temporarily decoupled to keep intrinsic load below working
                   memory capacity.
@@ -653,10 +651,10 @@ export function ElementInteractivityStudio() {
                     return (
                       <div
                         key={el.id}
-                        className="rounded-lg border border-border/80 bg-card p-4 space-y-3 text-xs"
+                        className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-4 space-y-3 text-xs"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-foreground">{el.label}</span>
+                          <span className="font-semibold text-strong">{el.label}</span>
                           {isAnswered && (
                             <Badge tone={isCorrect ? 'success' : 'danger'}>
                               {isCorrect ? 'Mastered' : 'Needs Review'}
@@ -664,7 +662,7 @@ export function ElementInteractivityStudio() {
                           )}
                         </div>
 
-                        <p className="text-muted-foreground">{el.testPrompt}</p>
+                        <p className="text-tertiary">{el.testPrompt}</p>
 
                         <div className="space-y-1.5 pt-1">
                           {options.map((opt, oIdx) => (
@@ -676,8 +674,8 @@ export function ElementInteractivityStudio() {
                               }
                               className={`w-full text-left rounded-md px-3 py-2 text-xs transition-colors border ${
                                 isAnswered && opt === el.correctSolution
-                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-medium'
-                                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-status-success-text dark:text-status-success-text font-medium'
+                                  : 'bg-neutral-100/40 dark:bg-(--hub-panel-2)/40 border-neutral-200/60 dark:border-(--hub-border)/60 text-tertiary hover:text-strong bg-neutral-100/80 dark:bg-(--hub-panel-2)/80'
                               }`}
                             >
                               {opt}
@@ -694,7 +692,7 @@ export function ElementInteractivityStudio() {
             {/* Phase 2: Pairwise Coupling */}
             {currentPhase === 'pairwise_coupling' && (
               <div className="space-y-4">
-                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-600 dark:text-amber-400">
+                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-status-warning-text dark:text-status-warning-text">
                   <strong>Phase 2 Goal:</strong> Now that atomic definitions are solidified into
                   mental representations, learn binary interaction dynamics between linked elements.
                 </div>
@@ -709,10 +707,10 @@ export function ElementInteractivityStudio() {
                     return (
                       <div
                         key={key}
-                        className="rounded-lg border border-border/80 bg-card p-4 space-y-3 text-xs"
+                        className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-4 space-y-3 text-xs"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-foreground">
+                          <span className="font-semibold text-strong">
                             {edge.sourceElementId} ↔ {edge.targetElementId}
                           </span>
                           {isAnswered && (
@@ -722,7 +720,7 @@ export function ElementInteractivityStudio() {
                           )}
                         </div>
 
-                        <p className="text-muted-foreground">{edge.diagnosticQuestion}</p>
+                        <p className="text-tertiary">{edge.diagnosticQuestion}</p>
 
                         <div className="space-y-1.5 pt-1">
                           {options.map((opt, oIdx) => (
@@ -734,8 +732,8 @@ export function ElementInteractivityStudio() {
                               }
                               className={`w-full text-left rounded-md px-3 py-2 text-xs transition-colors border ${
                                 isAnswered && opt === edge.correctCouplingAnswer
-                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-medium'
-                                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-status-success-text dark:text-status-success-text font-medium'
+                                  : 'bg-neutral-100/40 dark:bg-(--hub-panel-2)/40 border-neutral-200/60 dark:border-(--hub-border)/60 text-tertiary hover:text-strong bg-neutral-100/80 dark:bg-(--hub-panel-2)/80'
                               }`}
                             >
                               {opt}
@@ -752,7 +750,7 @@ export function ElementInteractivityStudio() {
             {/* Phase 3: Systemic Synthesis */}
             {currentPhase === 'systemic_synthesis' && (
               <div className="space-y-4">
-                <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-emerald-600 dark:text-emerald-400">
+                <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 text-xs text-status-success-text dark:text-status-success-text">
                   <strong>Phase 3 Goal:</strong> Integrate all elements into a unified systemic
                   mental model. Predict cascading multi-step ripples caused by system perturbations.
                 </div>
@@ -765,10 +763,10 @@ export function ElementInteractivityStudio() {
                     return (
                       <div
                         key={scen.id}
-                        className="rounded-lg border border-border/80 bg-card p-5 space-y-4 text-xs"
+                        className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-5 space-y-4 text-xs"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold text-foreground text-sm">
+                          <span className="font-semibold text-strong text-sm">
                             Perturbation Challenge:{' '}
                             {scen.id.replace('scenario_', '').replace(/_/g, ' ')}
                           </span>
@@ -779,12 +777,12 @@ export function ElementInteractivityStudio() {
                           )}
                         </div>
 
-                        <div className="rounded-md bg-muted/40 p-3 space-y-1.5">
-                          <span className="font-medium text-foreground block">
+                        <div className="rounded-md bg-neutral-100/40 dark:bg-(--hub-panel-2)/40 p-3 space-y-1.5">
+                          <span className="font-medium text-strong block">
                             Perturbation Context:
                           </span>
-                          <p className="text-muted-foreground">{scen.perturbationDescription}</p>
-                          <span className="font-medium text-foreground block pt-1">
+                          <p className="text-tertiary">{scen.perturbationDescription}</p>
+                          <span className="font-medium text-strong block pt-1">
                             {scen.synthesisChallenge}
                           </span>
                         </div>
@@ -797,8 +795,8 @@ export function ElementInteractivityStudio() {
                               onClick={() => handleSystemicAnswer(scen.id, opt.isCorrect)}
                               className={`w-full text-left rounded-md px-3.5 py-2.5 text-xs transition-colors border ${
                                 isAnswered && opt.isCorrect
-                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-medium'
-                                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-status-success-text dark:text-status-success-text font-medium'
+                                  : 'bg-neutral-100/40 dark:bg-(--hub-panel-2)/40 border-neutral-200/60 dark:border-(--hub-border)/60 text-tertiary hover:text-strong bg-neutral-100/80 dark:bg-(--hub-panel-2)/80'
                               }`}
                             >
                               {opt.text}
@@ -820,10 +818,10 @@ export function ElementInteractivityStudio() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Panel className="p-5 space-y-5">
             <div>
-              <h3 className="text-base font-semibold text-foreground">
+              <h3 className="text-base font-semibold text-strong">
                 Instructional Efficiency Simulator
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-tertiary">
                 Adjust your subjective mental effort (Paas 9-point scale) and test performance to
                 calculate real-time efficiency.
               </p>
@@ -832,8 +830,8 @@ export function ElementInteractivityStudio() {
             {/* Mental Effort Slider */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between font-medium">
-                <span className="text-foreground">Subjective Mental Effort (R):</span>
-                <span className="text-primary font-bold">{mentalEffortScore} / 9</span>
+                <span className="text-strong">Subjective Mental Effort (R):</span>
+                <span className="text-ac-text font-bold">{mentalEffortScore} / 9</span>
               </div>
               <input
                 type="range"
@@ -844,7 +842,7 @@ export function ElementInteractivityStudio() {
                 onChange={(e) => setMentalEffortScore(Number(e.target.value))}
                 className="w-full accent-primary cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex justify-between text-[10px] text-tertiary">
                 <span>1: Minimal Effort</span>
                 <span>5: Moderate Effort</span>
                 <span>9: Extreme Overload</span>
@@ -854,8 +852,8 @@ export function ElementInteractivityStudio() {
             {/* Performance Slider */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between font-medium">
-                <span className="text-foreground">Objective Task Performance (P):</span>
-                <span className="text-emerald-500 font-bold">{performanceScore}%</span>
+                <span className="text-strong">Objective Task Performance (P):</span>
+                <span className="text-status-success-text font-bold">{performanceScore}%</span>
               </div>
               <input
                 type="range"
@@ -866,7 +864,7 @@ export function ElementInteractivityStudio() {
                 onChange={(e) => setPerformanceScore(Number(e.target.value))}
                 className="w-full accent-emerald-500 cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex justify-between text-[10px] text-tertiary">
                 <span>0%: Complete Failure</span>
                 <span>50%: Average</span>
                 <span>100%: Flawless Invariance</span>
@@ -874,19 +872,21 @@ export function ElementInteractivityStudio() {
             </div>
 
             {/* Calculated Values */}
-            <div className="rounded-lg bg-muted/40 p-4 space-y-2 text-xs border border-border/60">
+            <div className="rounded-lg bg-neutral-100/40 dark:bg-(--hub-panel-2)/40 p-4 space-y-2 text-xs border border-neutral-200/60 dark:border-(--hub-border)/60">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Z-Standardized Effort (Z_R):</span>
-                <span className="font-semibold text-foreground">{efficiency.zEffort}</span>
+                <span className="text-tertiary">Z-Standardized Effort (Z_R):</span>
+                <span className="font-semibold text-strong">{efficiency.zEffort}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Z-Standardized Performance (Z_P):</span>
-                <span className="font-semibold text-foreground">{efficiency.zPerformance}</span>
+                <span className="text-tertiary">Z-Standardized Performance (Z_P):</span>
+                <span className="font-semibold text-strong">{efficiency.zPerformance}</span>
               </div>
-              <div className="flex justify-between border-t border-border/60 pt-2 font-bold">
-                <span className="text-foreground">Instructional Efficiency (E):</span>
+              <div className="flex justify-between border-t border-neutral-200/60 dark:border-(--hub-border)/60 pt-2 font-bold">
+                <span className="text-strong">Instructional Efficiency (E):</span>
                 <span
-                  className={efficiency.efficiency >= 0.5 ? 'text-emerald-500' : 'text-rose-500'}
+                  className={
+                    efficiency.efficiency >= 0.5 ? 'text-status-success-text' : 'text-danger-text'
+                  }
                 >
                   {efficiency.efficiency > 0
                     ? `+${efficiency.efficiency.toFixed(2)}`
@@ -898,14 +898,14 @@ export function ElementInteractivityStudio() {
 
           {/* Diagnostic Guidance Panel */}
           <Panel className="p-5 space-y-4">
-            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
+            <h3 className="text-base font-semibold text-strong flex items-center gap-2">
+              <Activity className="h-4 w-4 text-ac-text" />
               Cognitive Science Diagnostic Feedback
             </h3>
 
-            <div className="rounded-lg bg-card border border-border/80 p-4 space-y-3 text-xs">
+            <div className="rounded-lg bg-white dark:bg-(--hub-panel) border border-neutral-200/80 dark:border-(--hub-border)/80 p-4 space-y-3 text-xs">
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">State:</span>
+                <span className="text-tertiary">State:</span>
                 <Badge
                   tone={
                     efficiency.classification === 'optimal_automation'
@@ -920,42 +920,42 @@ export function ElementInteractivityStudio() {
               </div>
 
               {efficiency.classification === 'optimal_automation' && (
-                <p className="text-muted-foreground">
+                <p className="text-tertiary">
                   <strong>High Performance with Low Mental Effort:</strong> Excellent schema
                   automation. Constituents have been chunked into long-term memory macro-structures,
                   freeing up working memory for creative transfer.
                 </p>
               )}
               {efficiency.classification === 'cognitive_overload' && (
-                <p className="text-rose-500">
+                <p className="text-danger-text">
                   <strong>High Mental Effort with Sub-Par Performance:</strong> Working memory
                   threshold exceeded. Drop back to <strong>Phase 1: Isolated Elements</strong>{' '}
                   immediately to avoid cognitive paralysis.
                 </p>
               )}
               {efficiency.classification === 'under_engaged' && (
-                <p className="text-amber-500">
+                <p className="text-status-warning-text">
                   <strong>Low Effort with Low Performance:</strong> Under-engagement detected.
                   Increase challenge desirability or active generation retrieval ladder.
                 </p>
               )}
               {efficiency.classification === 'effortful_mastery' && (
-                <p className="text-cyan-500">
+                <p className="text-status-info-text">
                   <strong>High Performance at High Effort:</strong> Systemic mastery achieved, but
                   schema consolidation is still in progress. Additional spaced retrieval will
                   automate the chunk.
                 </p>
               )}
               {efficiency.classification === 'efficient_learning' && (
-                <p className="text-muted-foreground">
+                <p className="text-tertiary">
                   <strong>Balanced Efficiency:</strong> Productive learning zone. Intrinsic load
                   matches current working memory headroom.
                 </p>
               )}
             </div>
 
-            <div className="border-t border-border/60 pt-3 text-xs text-muted-foreground space-y-1">
-              <span className="font-semibold text-foreground block">Formal Reference:</span>
+            <div className="border-t border-neutral-200/60 dark:border-(--hub-border)/60 pt-3 text-xs text-tertiary space-y-1">
+              <span className="font-semibold text-strong block">Formal Reference:</span>
               <p>
                 Paas, F. G. (1992). Training strategies for attaining transfer of problem-solving
                 skill in statistics: A cognitive-load approach.{' '}
@@ -971,10 +971,10 @@ export function ElementInteractivityStudio() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-foreground">
+              <h3 className="text-base font-semibold text-strong">
                 FSRS-6 Decomposed Stability Deck ({exportedCards.length} Cards)
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-tertiary">
                 Card stability S_0 is scaled by schema chunking efficiency (Pollock et al. 2002).
               </p>
             </div>
@@ -991,7 +991,7 @@ export function ElementInteractivityStudio() {
             {exportedCards.map((card) => (
               <div
                 key={card.id}
-                className="rounded-lg border border-border/80 bg-card p-4 space-y-3 text-xs flex flex-col justify-between"
+                className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-4 space-y-3 text-xs flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1006,16 +1006,16 @@ export function ElementInteractivityStudio() {
                     >
                       {card.cardType.replace('_', ' ')}
                     </Badge>
-                    <span className="font-bold text-foreground">
+                    <span className="font-bold text-strong">
                       S₀ ×{card.recommendedStabilityMultiplier.toFixed(2)}
                     </span>
                   </div>
 
-                  <p className="font-medium text-foreground whitespace-pre-line">{card.prompt}</p>
+                  <p className="font-medium text-strong whitespace-pre-line">{card.prompt}</p>
                 </div>
 
-                <div className="pt-2 border-t border-border/40 text-muted-foreground space-y-1">
-                  <span className="font-semibold text-foreground block">Solution:</span>
+                <div className="pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40 text-tertiary space-y-1">
+                  <span className="font-semibold text-strong block">Solution:</span>
                   <p className="whitespace-pre-line text-[11px]">{card.solution}</p>
                 </div>
               </div>

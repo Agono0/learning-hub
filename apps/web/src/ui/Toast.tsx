@@ -42,19 +42,23 @@ const TONE_STYLES: Record<ToastTone, string> = {
   neutral:
     'border-neutral-200 bg-white text-neutral-900 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:text-neutral-100',
   success:
-    'border-emerald-500/30 bg-white text-neutral-900 dark:border-emerald-500/30 dark:bg-[#141b17] dark:text-emerald-100',
+    'border-emerald-500/30 bg-white text-neutral-900 dark:border-emerald-500/30 dark:bg-(--hub-panel-2) dark:text-emerald-100',
   warning:
-    'border-amber-500/30 bg-white text-neutral-900 dark:border-amber-500/30 dark:bg-[#1c1812] dark:text-amber-100',
+    'border-amber-500/30 bg-white text-neutral-900 dark:border-amber-500/30 dark:bg-(--hub-panel-2) dark:text-amber-100',
   danger:
-    'border-rose-500/35 bg-white text-neutral-900 dark:border-rose-500/35 dark:bg-[#1d1316] dark:text-rose-100',
+    'border-rose-500/35 bg-white text-neutral-900 dark:border-rose-500/35 dark:bg-(--hub-panel-2) dark:text-rose-100',
 }
 
 function ToneIcon({ tone }: { tone: ToastTone }) {
-  if (tone === 'success') return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+  if (tone === 'success')
+    return <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-text" />
   if (tone === 'danger' || tone === 'warning')
     return (
       <AlertCircle
-        className={cx('h-4 w-4 shrink-0', tone === 'danger' ? 'text-rose-500' : 'text-amber-500')}
+        className={cx(
+          'h-4 w-4 shrink-0',
+          tone === 'danger' ? 'text-danger-text' : 'text-status-warning-text',
+        )}
       />
     )
   return <Info className="h-4 w-4 shrink-0 text-indigo-500" />
@@ -116,7 +120,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <div className="min-w-0 flex-1">
               <div className="font-medium leading-snug">{item.title}</div>
               {item.description && (
-                <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="mt-0.5 text-xs text-tertiary dark:text-faint">
                   {item.description}
                 </div>
               )}
@@ -125,7 +129,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => dismiss(item.id)}
               aria-label="Dismiss notification"
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-[#232329] dark:hover:text-neutral-200"
+              className="rounded-md p-1 text-faint hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200"
             >
               <X className="h-3.5 w-3.5" />
             </button>

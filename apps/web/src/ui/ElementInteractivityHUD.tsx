@@ -73,25 +73,25 @@ export function ElementInteractivityHUD({
   const markerY = mapCoordY(efficiency.zPerformance)
 
   return (
-    <div className="rounded-xl border border-border/80 bg-card p-5 shadow-sm space-y-5">
+    <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-5 shadow-sm space-y-5">
       {/* Top Header & Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/60 dark:border-(--hub-border)/60 pb-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+            <span className="text-xs font-semibold tracking-wider uppercase text-tertiary">
               Sweller Cognitive Load & Schema Chunking HUD
             </span>
             <Badge tone={tierInfo.tone}>{tierInfo.label}</Badge>
             {loadBreakdown.isOverloaded && <Badge tone="danger">Working Memory Overload</Badge>}
             {isFullyChunked && <Badge tone="success">Fully Chunked</Badge>}
           </div>
-          <h3 className="text-base font-medium text-foreground">
+          <h3 className="text-base font-medium text-strong">
             {PHASE_LABELS[currentPhase].step}: {PHASE_LABELS[currentPhase].title}
           </h3>
         </div>
 
         {/* Phase Navigation Tabs */}
-        <div className="flex items-center gap-1 rounded-lg bg-muted/60 p-1 text-xs">
+        <div className="flex items-center gap-1 rounded-lg bg-neutral-100/60 dark:bg-(--hub-panel-2)/60 p-1 text-xs">
           {(['isolated_elements', 'pairwise_coupling', 'systemic_synthesis'] as const).map(
             (phase) => (
               <button
@@ -100,8 +100,8 @@ export function ElementInteractivityHUD({
                 onClick={() => onPhaseSelect?.(phase)}
                 className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
                   currentPhase === phase
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'bg-white dark:bg-(--hub-panel) text-strong shadow-sm'
+                    : 'text-tertiary hover:text-strong'
                 }`}
               >
                 {PHASE_LABELS[phase].title}
@@ -114,21 +114,21 @@ export function ElementInteractivityHUD({
       {/* Grid: Cognitive Load Stacked Bar & Paas 2D Efficiency Coordinate */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Left: Sweller Cognitive Load Meter */}
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-3">
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-4 space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               Working Memory Allocation (Cowan Chunks)
             </span>
-            <span className="text-muted-foreground">
+            <span className="text-tertiary">
               Total: {loadBreakdown.totalLoad.toFixed(1)} /{' '}
               {loadBreakdown.workingMemoryLimit.toFixed(1)} chunks
             </span>
           </div>
 
           {/* Stacked bar */}
-          <div className="relative h-6 w-full overflow-hidden rounded-md bg-muted/80">
+          <div className="relative h-6 w-full overflow-hidden rounded-md bg-neutral-100/80 dark:bg-(--hub-panel-2)/80">
             <div
-              className="absolute left-0 top-0 h-full bg-cyan-600 dark:bg-cyan-500 transition-all duration-300"
+              className="absolute left-0 top-0 h-full bg-sky-600 dark:bg-sky-500 transition-all duration-300"
               style={{ width: `${intrinsicPct}%` }}
               title={`Intrinsic: ${loadBreakdown.intrinsicLoad}`}
             />
@@ -151,9 +151,9 @@ export function ElementInteractivityHUD({
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center justify-between text-[11px] text-muted-foreground pt-1">
+          <div className="flex flex-wrap items-center justify-between text-[11px] text-tertiary pt-1">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-cyan-600 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-sky-600 inline-block" />
               Intrinsic ({loadBreakdown.intrinsicLoad.toFixed(1)})
             </span>
             <span className="flex items-center gap-1.5">
@@ -164,23 +164,21 @@ export function ElementInteractivityHUD({
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
               Germane ({loadBreakdown.germaneLoad.toFixed(1)})
             </span>
-            <span className="flex items-center gap-1.5 text-rose-500 font-medium">
+            <span className="flex items-center gap-1.5 text-danger-text font-medium">
               <span className="h-2.5 w-1 bg-rose-500 inline-block" />
               Limit ({loadBreakdown.workingMemoryLimit})
             </span>
           </div>
 
           {/* Overall chunking progress */}
-          <div className="pt-2 border-t border-border/40 space-y-1">
-            <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40 space-y-1">
+            <div className="flex justify-between text-xs text-tertiary">
               <span>Schema Chunking Index</span>
-              <span className="font-medium text-foreground">
-                {Math.round(chunkingScore * 100)}%
-              </span>
+              <span className="font-medium text-strong">{Math.round(chunkingScore * 100)}%</span>
             </div>
-            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-neutral-100 dark:bg-(--hub-panel-2) rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary transition-all duration-300"
+                className="h-full bg-indigo-600 transition-all duration-300"
                 style={{ width: `${chunkingScore * 100}%` }}
               />
             </div>
@@ -188,9 +186,9 @@ export function ElementInteractivityHUD({
         </div>
 
         {/* Right: Paas (1992) Instructional Efficiency 2D Quadrant */}
-        <div className="rounded-lg border border-border/50 bg-muted/20 p-4 space-y-2">
+        <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-4 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-foreground">Paas Instructional Efficiency</span>
+            <span className="font-semibold text-strong">Paas Instructional Efficiency</span>
             <Badge
               tone={
                 efficiency.efficiency >= 0.5
@@ -211,7 +209,7 @@ export function ElementInteractivityHUD({
             <svg viewBox="0 0 200 200" className="w-48 h-48 select-none">
               {/* Quadrant backgrounds */}
               <rect x="100" y="10" width="90" height="90" className="fill-emerald-500/10" />
-              <rect x="10" y="10" width="90" height="90" className="fill-cyan-500/15" />
+              <rect x="10" y="10" width="90" height="90" className="fill-sky-500/15" />
               <rect x="100" y="100" width="90" height="90" className="fill-rose-500/15" />
               <rect x="10" y="100" width="90" height="90" className="fill-amber-500/10" />
 
@@ -246,15 +244,11 @@ export function ElementInteractivityHUD({
                 stroke="currentColor"
                 strokeWidth="1"
                 strokeDasharray="2 2"
-                className="text-muted-foreground/40"
+                className="text-faint"
               />
 
               {/* Quadrant labels */}
-              <text
-                x="15"
-                y="24"
-                className="text-[8px] fill-cyan-600 dark:fill-cyan-400 font-medium"
-              >
+              <text x="15" y="24" className="text-[8px] fill-sky-600 dark:fill-sky-400 font-medium">
                 Optimal (Low Effort, High P)
               </text>
               <text
@@ -280,16 +274,16 @@ export function ElementInteractivityHUD({
               </text>
 
               {/* Axis labels */}
-              <text x="195" y="103" textAnchor="end" className="text-[7px] fill-muted-foreground">
+              <text x="195" y="103" textAnchor="end" className="text-[7px] fill-tertiary">
                 Effort +
               </text>
-              <text x="5" y="103" textAnchor="start" className="text-[7px] fill-muted-foreground">
+              <text x="5" y="103" textAnchor="start" className="text-[7px] fill-tertiary">
                 Effort -
               </text>
-              <text x="103" y="18" textAnchor="start" className="text-[7px] fill-muted-foreground">
+              <text x="103" y="18" textAnchor="start" className="text-[7px] fill-tertiary">
                 Perf +
               </text>
-              <text x="103" y="195" textAnchor="start" className="text-[7px] fill-muted-foreground">
+              <text x="103" y="195" textAnchor="start" className="text-[7px] fill-tertiary">
                 Perf -
               </text>
 
@@ -298,16 +292,21 @@ export function ElementInteractivityHUD({
                 cx={markerX}
                 cy={markerY}
                 r="6"
-                className="fill-primary stroke-background"
+                className="fill-(--ac-text) stroke-white dark:stroke-(--hub-panel)"
                 strokeWidth="2"
               />
-              <circle cx={markerX} cy={markerY} r="10" className="fill-primary/20 animate-ping" />
+              <circle
+                cx={markerX}
+                cy={markerY}
+                r="10"
+                className="fill-(--ac-text)/20 animate-ping"
+              />
             </svg>
           </div>
 
-          <div className="text-[11px] text-center text-muted-foreground capitalize">
+          <div className="text-[11px] text-center text-tertiary capitalize">
             State:{' '}
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-strong">
               {efficiency.classification.replace('_', ' ')}
             </span>{' '}
             (Mental Effort: {efficiency.mentalEffortScore}/9, Performance:{' '}

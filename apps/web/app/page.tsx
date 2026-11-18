@@ -11,7 +11,7 @@ import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide
 import { levelFromXp } from '@learning-hub/core/xp'
 import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
-import { PageHeader, Skeleton } from '@/ui'
+import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
@@ -19,7 +19,11 @@ import type { DashboardData } from '@/server/handlers/dashboard/route'
 const ORDER_KEY_HINT = 'Order is saved on this device. Reset restores the default layout.'
 
 export default function DashboardPage() {
-  const { data: d } = useQuery<DashboardData>({
+  const {
+    data: d,
+    isError,
+    refetch,
+  } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
   })
@@ -33,6 +37,19 @@ export default function DashboardPage() {
     const copy = [...order]
     ;[copy[idx], copy[next]] = [copy[next]!, copy[idx]!]
     setOrder(copy)
+  }
+
+  if (isError) {
+    return (
+      <Callout tone="danger" title="Couldn't load today's dashboard">
+        <div className="mt-1 flex items-center gap-3">
+          <span>The request failed. Check your connection and retry.</span>
+          <Button variant="secondary" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      </Callout>
+    )
   }
 
   if (!d) {
@@ -113,8 +130,8 @@ export default function DashboardPage() {
 
       {nudge && (
         <div className="panel">
-          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
-            <Sprout className="h-4 w-4 shrink-0 text-emerald-500" />
+          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-secondary">
+            <Sprout className="h-4 w-4 shrink-0 text-status-success-text" />
             <span>Fresh start: {nudge.label}</span>
           </div>
         </div>
@@ -155,7 +172,7 @@ export default function DashboardPage() {
                     aria-label={`Move ${cell.title} earlier`}
                     disabled={rowIdx === 0 && cell.id === order[0]}
                     onClick={() => move(cell.id, -1)}
-                    className="rounded-md border border-neutral-200 bg-white p-1 text-neutral-400 shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
+                    className="rounded-md border border-neutral-200 bg-white p-1 text-faint shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
                   >
                     <ArrowUp className="h-3 w-3" />
                   </button>
@@ -164,7 +181,7 @@ export default function DashboardPage() {
                     aria-label={`Move ${cell.title} later`}
                     disabled={cell.id === order[order.length - 1]}
                     onClick={() => move(cell.id, 1)}
-                    className="rounded-md border border-neutral-200 bg-white p-1 text-neutral-400 shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
+                    className="rounded-md border border-neutral-200 bg-white p-1 text-faint shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
                   >
                     <ArrowDown className="h-3 w-3" />
                   </button>

@@ -85,9 +85,9 @@ const STAGE_LABELS: Record<HypnogramSegment['stage'], string> = {
 }
 
 const TIER_TONE: Record<'optimal' | 'moderate' | 'marginal', string> = {
-  optimal: 'text-emerald-600 dark:text-emerald-400',
+  optimal: 'text-status-success-text dark:text-status-success-text',
   moderate: 'text-indigo-600 dark:text-indigo-400',
-  marginal: 'text-neutral-500',
+  marginal: 'text-tertiary',
 }
 
 export interface TonightConsolidationPanelProps {
@@ -136,7 +136,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
       <div className="space-y-4">
         {/* ── Sleep profile inputs ── */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <label className="text-xs text-neutral-500 dark:text-neutral-400">
+          <label className="text-xs text-tertiary dark:text-faint">
             <span className="mb-1 flex items-center gap-1">
               <BedDouble className="h-3.5 w-3.5" /> Bedtime
             </span>
@@ -147,7 +147,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
               className="w-full rounded-lg border border-neutral-300 bg-transparent px-2 py-2 text-sm font-mono dark:border-(--hub-border)"
             />
           </label>
-          <label className="text-xs text-neutral-500 dark:text-neutral-400">
+          <label className="text-xs text-tertiary dark:text-faint">
             <span className="mb-1 flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" /> Wake
             </span>
@@ -158,7 +158,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
               className="w-full rounded-lg border border-neutral-300 bg-transparent px-2 py-2 text-sm font-mono dark:border-(--hub-border)"
             />
           </label>
-          <label className="text-xs text-neutral-500 dark:text-neutral-400">
+          <label className="text-xs text-tertiary dark:text-faint">
             <span className="mb-1">Chronotype (owl −1 … lark +1)</span>
             <input
               type="range"
@@ -170,9 +170,9 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
               className="mt-2 w-full accent-indigo-500"
               aria-label="Chronotype"
             />
-            <span className="font-mono text-[11px] text-neutral-500">{chronotype.toFixed(1)}</span>
+            <span className="font-mono text-[11px] text-tertiary">{chronotype.toFixed(1)}</span>
           </label>
-          <label className="text-xs text-neutral-500 dark:text-neutral-400">
+          <label className="text-xs text-tertiary dark:text-faint">
             <span className="mb-1">Sleep debt (hours, 0–12)</span>
             <input
               type="range"
@@ -184,9 +184,9 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
               className="mt-2 w-full accent-amber-500"
               aria-label="Sleep debt hours"
             />
-            <span className="font-mono text-[11px] text-neutral-500">{sleepDebtHours}h</span>
+            <span className="font-mono text-[11px] text-tertiary">{sleepDebtHours}h</span>
           </label>
-          <label className="col-span-2 text-xs text-neutral-500 dark:text-neutral-400 sm:col-span-4">
+          <label className="col-span-2 text-xs text-tertiary dark:text-faint sm:col-span-4">
             <span className="mb-1 flex items-center gap-1">
               <ShieldCheck className="h-3.5 w-3.5" /> Acoustic ceiling ({maxAcousticDba} dBA ·
               arousal limit 42)
@@ -223,7 +223,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
           <>
             {/* ── Hypnogram ── */}
             <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-tertiary dark:text-faint">
                 <span>
                   {plan.hypnogram.cycleCount} cycles ·{' '}
                   {Math.floor(plan.hypnogram.totalOpportunityMinutes / 60)}h{' '}
@@ -278,8 +278,8 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
                 </span>
               </Callout>
             ) : (
-              <p className="flex items-start gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-2.5 text-xs text-neutral-600 dark:text-neutral-300">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+              <p className="flex items-start gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-2.5 text-xs text-neutral-600 dark:text-secondary">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-status-success-text" />
                 {plan.safety.note}
               </p>
             )}
@@ -292,7 +292,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
               </EmptyState>
             ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="flex items-center justify-between text-xs text-tertiary dark:text-faint">
                   <span>
                     {plan.cues.length} cues · mean predicted boost ≈{' '}
                     <strong className="text-neutral-800 dark:text-neutral-100">
@@ -300,7 +300,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
                     </strong>
                   </span>
                   {plan.unscheduledCardIds.length > 0 && (
-                    <span className="text-amber-600 dark:text-amber-400">
+                    <span className="text-status-warning-text dark:text-status-warning-text">
                       {plan.unscheduledCardIds.length} cards didn't fit the slow-wave windows
                     </span>
                   )}
@@ -317,7 +317,7 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
                           {String(Math.round(cue.offsetMinutes % 60)).padStart(2, '0')} · card #
                           {cue.cardId}
                         </span>
-                        <span className="block text-neutral-500 dark:text-neutral-400">
+                        <span className="block text-tertiary dark:text-faint">
                           cycle {cue.cycleIndex} · Δ weight {cue.blockDeltaWeight} ·{' '}
                           {cue.baseFrequency} Hz {cue.harmonicType.replace('_', ' ')}
                         </span>
@@ -335,11 +335,11 @@ export function TonightConsolidationPanel({ className }: TonightConsolidationPan
 
             {/* ── Assumptions ── */}
             <details className="rounded-lg border border-neutral-200 p-3 text-xs dark:border-(--hub-border)">
-              <summary className="cursor-pointer font-semibold text-neutral-600 dark:text-neutral-300">
+              <summary className="cursor-pointer font-semibold text-neutral-600 dark:text-secondary">
                 <Info className="mr-1 inline h-3.5 w-3.5" /> Model assumptions (
                 {plan.assumptions.length})
               </summary>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-neutral-500 dark:text-neutral-400">
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-tertiary dark:text-faint">
                 {plan.assumptions.map((a, i) => (
                   <li key={i}>{a}</li>
                 ))}

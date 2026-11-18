@@ -30,8 +30,8 @@ const ZONE_CONFIG = {
   underload: {
     label: 'Low Challenge / Underload',
     badgeTone: 'cyan' as const,
-    barColor: 'bg-cyan-500',
-    dotColor: 'bg-cyan-500',
+    barColor: 'bg-sky-500',
+    dotColor: 'bg-sky-500',
     description: 'Material lacks sufficient friction; consider escalating drill difficulty.',
   },
   overload: {
@@ -64,7 +64,7 @@ export function CognitiveLoadMeter({
     <div className={cx(variant === 'glass' ? 'panel-glass' : 'panel', 'p-5 space-y-4', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500 dark:text-violet-400 border border-violet-500/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
             <Brain className="h-5 w-5" />
           </div>
           <div>
@@ -74,7 +74,7 @@ export function CognitiveLoadMeter({
                 {cfg.label}
               </Badge>
             </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-tertiary dark:text-faint">
               Sweller working memory capacity index
             </p>
           </div>
@@ -84,7 +84,7 @@ export function CognitiveLoadMeter({
           <div className="text-lg font-bold font-mono text-neutral-900 dark:text-neutral-100">
             {clampedTotal}%
           </div>
-          <div className="text-[11px] text-neutral-400">Total Bandwidth</div>
+          <div className="text-[11px] text-faint">Total Bandwidth</div>
         </div>
       </div>
 
@@ -109,7 +109,7 @@ export function CognitiveLoadMeter({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400 pt-0.5">
+        <div className="flex flex-wrap items-center justify-between text-[11px] text-tertiary dark:text-faint pt-0.5">
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             <span>Germane ({germaneLoad}%)</span>
@@ -127,8 +127,8 @@ export function CognitiveLoadMeter({
 
       {/* Advisory hint */}
       <div className="rounded-lg bg-neutral-500/5 border border-neutral-200/50 dark:border-neutral-800/60 p-3 text-xs flex items-start gap-2.5">
-        <Zap className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-        <div className="text-neutral-600 dark:text-neutral-300">
+        <Zap className="h-4 w-4 text-status-warning-text shrink-0 mt-0.5" />
+        <div className="text-neutral-600 dark:text-secondary">
           <span className="font-semibold text-neutral-900 dark:text-neutral-100">Advisory: </span>
           {recommendation || cfg.description}
         </div>

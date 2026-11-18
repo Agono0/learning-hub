@@ -188,7 +188,7 @@ export default function IdeasPage() {
         subtitle="Capture, combine, interrogate, and let stale ideas resurface themselves."
       />
 
-      {error && <div className="panel text-sm text-amber-500">{error}</div>}
+      {error && <div className="panel text-sm text-status-warning-text">{error}</div>}
 
       <div className="panel flex flex-wrap gap-2">
         <input
@@ -208,7 +208,7 @@ export default function IdeasPage() {
       </div>
 
       <div className="panel flex flex-wrap items-center gap-2">
-        <span className="text-sm text-neutral-500">{selected.length}/2 selected for evolution</span>
+        <span className="text-sm text-tertiary">{selected.length}/2 selected for evolution</span>
         <button
           className="btn"
           disabled={selected.length !== 2 || evolve.isPending}
@@ -255,7 +255,7 @@ export default function IdeasPage() {
                 >
                   <div className="text-sm font-medium">{idea.title}</div>
                   {idea.content && (
-                    <div className="mt-1 line-clamp-2 text-xs text-neutral-500">{idea.content}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-tertiary">{idea.content}</div>
                   )}
                   <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
                     <button className="btn-ghost text-[10px]" onClick={() => setCouncilIdea(idea)}>
@@ -292,9 +292,7 @@ export default function IdeasPage() {
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <RefreshCcw className="h-4 w-4" /> Incubator — most decayed
           </h2>
-          {incubator.length === 0 && (
-            <p className="text-sm text-neutral-500">Nothing stale. Good.</p>
-          )}
+          {incubator.length === 0 && <p className="text-sm text-tertiary">Nothing stale. Good.</p>}
           {incubator.map(({ idea, score }) => (
             <div key={idea.id} className="flex items-center gap-3 text-sm">
               <div className="h-1.5 w-24 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
@@ -400,7 +398,7 @@ export default function IdeasPage() {
                 ))}
               </ul>
               {brainwrite.dropped.length > 0 && (
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-tertiary">
                   {brainwrite.dropped.length} AI idea(s) dropped as near-duplicates of yours.
                 </p>
               )}
@@ -443,7 +441,7 @@ export default function IdeasPage() {
             )}
             {!council && manual && (
               <div className="space-y-2">
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-tertiary">
                   Manual mode: no AI configured. Copy each persona's envelope into any chatbot (or
                   answer on paper) and paste the reply — it lands in that persona's column. Each
                   persona is a separate prompt by design: independent voices beat one group chat.
@@ -493,7 +491,7 @@ export default function IdeasPage() {
                     <div className="mb-1 text-xs font-bold uppercase tracking-wide text-indigo-400">
                       {p.name}
                     </div>
-                    <div className="text-xs whitespace-pre-wrap text-neutral-300">{p.response}</div>
+                    <div className="text-xs whitespace-pre-wrap text-secondary">{p.response}</div>
                   </div>
                 ))}
               </div>
@@ -505,7 +503,7 @@ export default function IdeasPage() {
       {lensPrompt && (
         <div className="panel text-sm">
           <div className="label mb-1">SCAMPER prompt (copy into the Tutor chat)</div>
-          <p className="whitespace-pre-wrap text-neutral-300">{lensPrompt}</p>
+          <p className="whitespace-pre-wrap text-secondary">{lensPrompt}</p>
           <button
             className="btn-ghost mt-2 text-xs"
             onClick={() => {

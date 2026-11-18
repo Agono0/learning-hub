@@ -461,7 +461,7 @@ export default function CurriculumPage() {
               >
                 {buildManual.isPending ? 'Creating…' : 'Create course'}
               </button>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 Backward design, by hand: every lesson gets one measurable Bloom-verb objective —
                 the same rule the AI path is validated against. Retrieval cards can be added per
                 lesson afterwards from the Decks page.
@@ -510,7 +510,7 @@ export default function CurriculumPage() {
                   {generate.isPending ? 'Designing…' : 'Generate'}
                 </button>
               </div>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 Requires AI configured in Settings. Every lesson gets one measurable Bloom-verb
                 objective.
               </p>
@@ -530,7 +530,7 @@ export default function CurriculumPage() {
               {t.courses.map((c) => (
                 <button
                   key={c.id}
-                  className={`mt-1 block w-full rounded px-2 py-1 text-left text-xs ${courseId === c.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+                  className={`mt-1 block w-full rounded px-2 py-1 text-left text-xs ${courseId === c.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'text-faint hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
                   onClick={() => setCourseId(c.id)}
                 >
                   {c.title}
@@ -539,7 +539,7 @@ export default function CurriculumPage() {
             </div>
           ))}
           {(tree?.tracks ?? []).length === 0 && (
-            <p className="px-1 text-sm text-neutral-500">No courses yet — generate one.</p>
+            <p className="px-1 text-sm text-tertiary">No courses yet — generate one.</p>
           )}
         </aside>
 
@@ -555,7 +555,7 @@ export default function CurriculumPage() {
                   {u.lessons.map((l) => (
                     <label
                       key={l.id}
-                      className="mt-1 flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+                      className="mt-1 flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
                     >
                       <input
                         type="checkbox"
@@ -566,7 +566,7 @@ export default function CurriculumPage() {
                         }
                       />
                       <span>
-                        <span className={l.completedAt ? 'text-neutral-400 line-through' : ''}>
+                        <span className={l.completedAt ? 'text-faint line-through' : ''}>
                           {l.title}
                         </span>
                         {l.bloomVerb && (
@@ -574,9 +574,7 @@ export default function CurriculumPage() {
                             {l.bloomVerb}
                           </span>
                         )}
-                        {l.objective && (
-                          <div className="text-xs text-neutral-500">{l.objective}</div>
-                        )}
+                        {l.objective && <div className="text-xs text-tertiary">{l.objective}</div>}
                       </span>
                     </label>
                   ))}
@@ -593,7 +591,7 @@ export default function CurriculumPage() {
                 {skillData.recommendations.map((r) => (
                   <li key={r.skillId} className="flex items-baseline gap-2">
                     <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
-                    <span className="text-xs text-neutral-500">{r.reason}</span>
+                    <span className="text-xs text-tertiary">{r.reason}</span>
                   </li>
                 ))}
               </ul>
@@ -605,7 +603,7 @@ export default function CurriculumPage() {
             (skillData.radar.skills.length > 0 || skillData.radar.leeches.length > 0) && (
               <div className="panel space-y-2">
                 <h2 className="text-sm font-semibold">Weakness radar</h2>
-                <p className="text-xs text-neutral-500">{skillData.radar.summary}</p>
+                <p className="text-xs text-tertiary">{skillData.radar.summary}</p>
                 {skillData.radar.skills.length > 0 && (
                   <div className="space-y-1.5">
                     {skillData.radar.skills.map((s) => (
@@ -613,11 +611,11 @@ export default function CurriculumPage() {
                         <span className="w-40 min-w-0 flex-1 truncate">{s.name}</span>
                         <div className="h-1.5 w-24 rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                           <div
-                            className="h-full rounded-full bg-red-400"
+                            className="h-full rounded-full bg-rose-400"
                             style={{ width: `${Math.round(s.pKnown * 100)}%` }}
                           />
                         </div>
-                        <span className="w-10 text-right tabular-nums text-neutral-500">
+                        <span className="w-10 text-right tabular-nums text-tertiary">
                           {Math.round(s.pKnown * 100)}%
                         </span>
                       </div>
@@ -633,14 +631,16 @@ export default function CurriculumPage() {
                           <span className="min-w-0 flex-1 truncate">
                             {l.preview ?? `card #${l.cardId}`}
                           </span>
-                          <span className="shrink-0 text-amber-400">×{l.lapses} lapses</span>
+                          <span className="shrink-0 text-status-warning-text">
+                            ×{l.lapses} lapses
+                          </span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 )}
                 {skillData.radar.overconfidentCards > 0 && (
-                  <p className="text-xs text-amber-400">
+                  <p className="text-xs text-status-warning-text">
                     {skillData.radar.overconfidentCards} card(s) you marked “sure” but failed —{' '}
                     <a href="/analytics" className="underline underline-offset-2">
                       drill them on Analytics
@@ -657,7 +657,7 @@ export default function CurriculumPage() {
               Skill tree (unlock when prerequisites reach mastery)
             </h2>
             {skills.length === 0 && (
-              <p className="text-sm text-neutral-500">Skills appear when courses generate them.</p>
+              <p className="text-sm text-tertiary">Skills appear when courses generate them.</p>
             )}
             <div className="relative h-auto min-h-40">
               {skills.map((s, i) => {
@@ -677,7 +677,7 @@ export default function CurriculumPage() {
                       {s.unlocked ? (
                         <Unlock className="h-3 w-3 text-indigo-400" />
                       ) : (
-                        <Lock className="h-3 w-3 text-neutral-500" />
+                        <Lock className="h-3 w-3 text-tertiary" />
                       )}
                       <span className="truncate">{s.name}</span>
                     </div>
@@ -687,7 +687,7 @@ export default function CurriculumPage() {
                         style={{ width: `${Math.round(s.pKnown * 100)}%` }}
                       />
                     </div>
-                    <div className="mt-1 flex justify-between text-[10px] text-neutral-500">
+                    <div className="mt-1 flex justify-between text-[10px] text-tertiary">
                       <span>
                         {s.masteryLabel} · {Math.round(s.pKnown * 100)}%
                       </span>
@@ -705,7 +705,7 @@ export default function CurriculumPage() {
               <CalendarClock className="h-4 w-4" /> Exam mode
             </h2>
             {plan?.cramWarning && (
-              <div className="rounded-lg bg-red-500/10 px-3 py-2 text-xs whitespace-pre-wrap text-red-400">
+              <div className="rounded-lg bg-rose-500/10 px-3 py-2 text-xs whitespace-pre-wrap text-danger-text">
                 {plan.warning ?? CRAM_WARNING}
               </div>
             )}
@@ -715,7 +715,7 @@ export default function CurriculumPage() {
                   Countdown: <strong>{plan.daysLeft} day(s)</strong>
                 </div>
                 {plan.optimalGap && (
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="mt-1 text-xs text-tertiary">
                     Cepeda window: space reviews every{' '}
                     <strong>
                       {plan.optimalGap.minDays}–{plan.optimalGap.maxDays}
@@ -727,9 +727,9 @@ export default function CurriculumPage() {
                 <div className="mt-2 space-y-1">
                   {plan.days.slice(0, 7).map((d) => (
                     <div key={d.date} className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="w-24 text-neutral-500">{d.date}</span>
+                      <span className="w-24 text-tertiary">{d.date}</span>
                       {d.mockExam && (
-                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-400">
+                        <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-status-warning-text">
                           mock exam
                         </span>
                       )}
@@ -783,7 +783,7 @@ export default function CurriculumPage() {
             {mock && startedAt === null && (
               <div className="space-y-2 rounded-lg border border-indigo-500/40 p-3">
                 <div className="text-sm font-medium">Before you start — 10-minute worry dump</div>
-                <p className="text-xs text-neutral-400">{EXPRESSIVE_WRITING_PROMPT}</p>
+                <p className="text-xs text-faint">{EXPRESSIVE_WRITING_PROMPT}</p>
                 <textarea
                   className="input min-h-28"
                   value={worryDump}
@@ -807,7 +807,7 @@ export default function CurriculumPage() {
                   <div className="font-semibold">
                     {mock.title} — {mock.questions.length} questions
                   </div>
-                  <div className={`font-mono text-lg ${remaining <= 2 ? 'text-red-400' : ''}`}>
+                  <div className={`font-mono text-lg ${remaining <= 2 ? 'text-danger-text' : ''}`}>
                     {remaining}:
                     {String(60 - (Math.floor((Date.now() - startedAt) / 1000) % 60)).padStart(
                       2,
@@ -824,7 +824,7 @@ export default function CurriculumPage() {
                       {q.index + 1}. {q.prompt.split('\n')[0]}
                     </div>
                     {q.options && (
-                      <div className="mt-1 text-xs text-neutral-400">
+                      <div className="mt-1 text-xs text-faint">
                         {/* options of one fetched exam question are immutable — index keys are safe */}
                         {q.options.map((o, i) => (
                           <span key={i} className="mr-3">
@@ -851,7 +851,7 @@ export default function CurriculumPage() {
               </div>
             )}
             {mockResult && (
-              <div className="celebrate rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+              <div className="celebrate rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-status-success-text">
                 {mockResult}
               </div>
             )}

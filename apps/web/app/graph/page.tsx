@@ -95,7 +95,7 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
         <Sparkles className="h-4 w-4" />
         Remedial check
       </div>
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-faint">
         Below 70% mastery on a prerequisite blocks the target until you refresh the foundation.
       </p>
       {targets.length > 0 ? (
@@ -123,12 +123,12 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
           </button>
         </div>
       ) : (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           No prerequisite chains registered yet — add dependencies above to enable remedial checks.
         </p>
       )}
-      {check.isPending && <p className="text-xs text-neutral-500">Checking prerequisites…</p>}
-      {r?.message && <p className="text-xs text-neutral-500">{r.message}</p>}
+      {check.isPending && <p className="text-xs text-tertiary">Checking prerequisites…</p>}
+      {r?.message && <p className="text-xs text-tertiary">{r.message}</p>}
       {r?.result && (
         <div
           className={`flex items-start gap-2 rounded-lg p-2.5 text-xs ${
@@ -138,7 +138,7 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
           }`}
         >
           <AlertTriangle
-            className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${r.result.blocked ? 'text-amber-400' : 'text-emerald-400'}`}
+            className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${r.result.blocked ? 'text-status-warning-text' : 'text-status-success-text'}`}
           />
           <span className="min-w-0 flex-1">{r.result.reason}</span>
           <button
@@ -151,7 +151,7 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
         </div>
       )}
       {r?.prereqs && r.prereqs.length > 0 && (
-        <p className="text-[11px] text-neutral-500">
+        <p className="text-[11px] text-tertiary">
           Prerequisites:{' '}
           {r.prereqs
             .map((p) =>
@@ -265,7 +265,7 @@ export default function GraphPage() {
               onClick={() => router.push('/constellation')}
               className="flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20 transition-all"
             >
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+              <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
               <span>3D Constellation</span>
             </button>
             <button
@@ -282,7 +282,7 @@ export default function GraphPage() {
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
                   viewMode === 'web'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    : 'text-faint hover:text-neutral-200'
                 }`}
               >
                 <Network className="h-3.5 w-3.5" /> Force Web
@@ -292,7 +292,7 @@ export default function GraphPage() {
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
                   viewMode === 'prereq'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    : 'text-faint hover:text-neutral-200'
                 }`}
               >
                 <GitFork className="h-3.5 w-3.5" /> Prerequisite DAG & Remedial
@@ -302,10 +302,10 @@ export default function GraphPage() {
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
                   viewMode === 'schema_studio'
                     ? 'bg-indigo-600 text-white'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    : 'text-faint hover:text-neutral-200'
                 }`}
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Ausubel Schema Studio
+                <Sparkles className="h-3.5 w-3.5 text-status-warning-text" /> Ausubel Schema Studio
               </button>
             </div>
           </div>
@@ -324,7 +324,7 @@ export default function GraphPage() {
                   className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs border ${
                     filters[k]
                       ? 'border-neutral-700 bg-neutral-800 text-neutral-200'
-                      : 'border-transparent opacity-40 text-neutral-400'
+                      : 'border-transparent opacity-40 text-faint'
                   }`}
                   onClick={() => setFilters((f) => ({ ...f, [k]: !f[k] }))}
                 >
@@ -333,12 +333,12 @@ export default function GraphPage() {
                 </button>
               ))}
             </div>
-            <span className="text-xs text-neutral-500">Click node to inspect</span>
+            <span className="text-xs text-tertiary">Click node to inspect</span>
           </div>
 
           <div className="panel h-[65vh] overflow-hidden">
             {graph.nodes.length === 0 ? (
-              <div className="grid h-full place-items-center text-sm text-neutral-500">
+              <div className="grid h-full place-items-center text-sm text-tertiary">
                 No nodes yet — capture notes or curriculum skills first.
               </div>
             ) : (
@@ -366,7 +366,7 @@ export default function GraphPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold">Adaptive Prerequisite Flow</h2>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-faint">
                   Concept dependencies ensure you master foundational material before advanced
                   units. When prerequisite recall slips, remedial pauses protect deeper learning.
                 </p>
@@ -394,7 +394,7 @@ export default function GraphPage() {
                   onChange={(e) => setSourceConcept(e.target.value)}
                   className="input text-xs"
                 />
-                <ArrowRight className="h-4 w-4 text-neutral-500 shrink-0" />
+                <ArrowRight className="h-4 w-4 text-tertiary shrink-0" />
                 <input
                   type="text"
                   placeholder="Target (e.g. Neural Networks)"
@@ -416,20 +416,20 @@ export default function GraphPage() {
             </form>
 
             {edgeError && (
-              <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-300">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+              <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-danger-text">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-danger-text" />
                 <span>{edgeError}</span>
               </div>
             )}
 
             {/* Dependencies Table */}
             <div className="space-y-2 pt-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
                 Registered Concept Prerequisite Chains ({deps.length})
               </h3>
 
               {deps.length === 0 ? (
-                <div className="rounded-lg border border-neutral-800 p-6 text-center text-xs text-neutral-500">
+                <div className="rounded-lg border border-neutral-800 p-6 text-center text-xs text-tertiary">
                   No prerequisite relationships configured yet. Add dependencies above to enable
                   remedial pauses.
                 </div>
@@ -442,12 +442,14 @@ export default function GraphPage() {
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-indigo-300">{d.sourceConcept}</span>
-                        <ArrowRight className="h-3.5 w-3.5 text-neutral-500" />
-                        <span className="font-semibold text-emerald-300">{d.targetConcept}</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-tertiary" />
+                        <span className="font-semibold text-status-success-text">
+                          {d.targetConcept}
+                        </span>
                       </div>
                       <button
                         onClick={() => deleteEdgeMutation.mutate(d.id)}
-                        className="btn-ghost text-[10px] text-neutral-500 hover:text-rose-400"
+                        className="btn-ghost text-[10px] text-tertiary hover:text-danger-text"
                         title="Remove dependency"
                       >
                         Remove

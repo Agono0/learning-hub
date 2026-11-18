@@ -241,7 +241,7 @@ export function DesirableDifficultyStudio({
       )}
 
       {/* Main Studio Navigation Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/50 dark:border-(--hub-border)/50 pb-2">
         <div className="flex flex-wrap gap-1.5">
           <Button
             variant={activeTab === 'generative_ladder' ? 'primary' : 'ghost'}
@@ -250,7 +250,7 @@ export function DesirableDifficultyStudio({
               setActiveTab('generative_ladder')
             }}
           >
-            <Flame className="mr-1.5 h-4 w-4 text-amber-500" /> Generative Ladder
+            <Flame className="mr-1.5 h-4 w-4 text-status-warning-text" /> Generative Ladder
           </Button>
 
           <Button
@@ -260,7 +260,7 @@ export function DesirableDifficultyStudio({
               setActiveTab('bjork_phase_space')
             }}
           >
-            <Compass className="mr-1.5 h-4 w-4 text-sky-500" /> Bjork SS/RS Matrix
+            <Compass className="mr-1.5 h-4 w-4 text-status-info-text" /> Bjork SS/RS Matrix
           </Button>
 
           <Button
@@ -270,7 +270,7 @@ export function DesirableDifficultyStudio({
               setActiveTab('testing_crucible')
             }}
           >
-            <Activity className="mr-1.5 h-4 w-4 text-emerald-500" /> Testing Crucible
+            <Activity className="mr-1.5 h-4 w-4 text-status-success-text" /> Testing Crucible
           </Button>
 
           <Button
@@ -280,15 +280,15 @@ export function DesirableDifficultyStudio({
               setActiveTab('fsrs_cards')
             }}
           >
-            <Sparkles className="mr-1.5 h-4 w-4 text-violet-500" /> FSRS Deck ({fsrsCards.length})
+            <Sparkles className="mr-1.5 h-4 w-4 text-indigo-500" /> FSRS Deck ({fsrsCards.length})
           </Button>
         </div>
 
         {/* Challenge Selection Dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium">Concept:</span>
+          <span className="text-xs text-tertiary font-medium">Concept:</span>
           <select
-            className="rounded-lg border border-border/80 bg-background px-2.5 py-1 text-xs font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+            className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs font-medium text-strong focus:outline-hidden focus:ring-1 focus:ring-(--ac-strong)"
             value={sessionState.currentChallengeId}
             onChange={(e) => handleChallengeSelect(e.target.value)}
           >
@@ -318,15 +318,15 @@ export function DesirableDifficultyStudio({
                     onClick={() => handleTierSelect(tier)}
                     className={`flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition-all ${
                       isCurrent
-                        ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/40'
-                        : 'border-border/60 bg-card hover:bg-muted/40'
+                        ? 'border-(--ac-strong) bg-indigo-600/10 shadow-sm ring-1 ring-(--ac-strong)/40'
+                        : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) bg-neutral-100/40 dark:bg-(--hub-panel-2)/40'
                     }`}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-tertiary">
                       Tier {meta.level}
                     </span>
-                    <span className="text-xs font-semibold text-foreground">{meta.label}</span>
-                    <span className="mt-0.5 text-[10px] font-mono font-bold text-primary">
+                    <span className="text-xs font-semibold text-strong">{meta.label}</span>
+                    <span className="mt-0.5 text-[10px] font-mono font-bold text-ac-text">
                       {meta.multiplier}
                     </span>
                   </button>
@@ -336,10 +336,10 @@ export function DesirableDifficultyStudio({
 
             {/* Main Challenge Card */}
             <Panel className="p-5">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
                 <div className="flex items-center gap-2">
                   <Badge tone="violet">Tier {TIER_META[sessionState.currentTier].level}</Badge>
-                  <span className="text-xs font-medium text-muted-foreground">
+                  <span className="text-xs font-medium text-tertiary">
                     {TIER_META[sessionState.currentTier].label}
                   </span>
                 </div>
@@ -348,22 +348,20 @@ export function DesirableDifficultyStudio({
 
               {/* Challenge Prompt */}
               <div className="mt-4 space-y-2">
-                <h4 className="text-sm font-semibold text-foreground">
-                  {currentRung.challengePrompt}
-                </h4>
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
-                  <HelpCircle className="h-4 w-4 shrink-0 text-primary" />
+                <h4 className="text-sm font-semibold text-strong">{currentRung.challengePrompt}</h4>
+                <div className="rounded-lg border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2.5 text-xs text-tertiary flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 shrink-0 text-ac-text" />
                   <span>{currentRung.cue}</span>
                 </div>
               </div>
 
               {/* Tier 1 Stem Mask View */}
               {sessionState.currentTier === 'stem_completion' && (
-                <div className="mt-4 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
-                  <div className="text-[10px] font-bold uppercase text-primary tracking-wider mb-1">
+                <div className="mt-4 rounded-xl border border-dashed border-(--ac-strong)/40 bg-indigo-600/5 p-4">
+                  <div className="text-[10px] font-bold uppercase text-ac-text tracking-wider mb-1">
                     Cued Phonemic Stem Mask:
                   </div>
-                  <p className="font-mono text-sm tracking-wide text-foreground font-medium select-none">
+                  <p className="font-mono text-sm tracking-wide text-strong font-medium select-none">
                     {currentRung.targetExpected
                       .split(' ')
                       .map((word) =>
@@ -378,13 +376,13 @@ export function DesirableDifficultyStudio({
               {sessionState.currentTier === 'semantic_anagram' &&
                 currentRung.scrambledFragments && (
                   <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between text-xs text-tertiary">
                       <span>Click fragments in order to reconstruct thesis:</span>
                       {selectedTokens.length > 0 && (
                         <button
                           type="button"
                           onClick={handleResetTokens}
-                          className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+                          className="flex items-center gap-1 text-[11px] text-ac-text hover:underline"
                         >
                           <RotateCcw className="h-3 w-3" /> Reset Fragments
                         </button>
@@ -401,8 +399,8 @@ export function DesirableDifficultyStudio({
                             onClick={() => handleTokenClick(frag)}
                             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
                               isChosen
-                                ? 'opacity-30 border-border/40 bg-muted cursor-not-allowed line-through'
-                                : 'border-border/80 bg-card hover:border-primary hover:bg-primary/5 shadow-2xs'
+                                ? 'opacity-30 border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100 dark:bg-(--hub-panel-2) cursor-not-allowed line-through'
+                                : 'border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) hover:border-(--ac-strong) hover:bg-indigo-600/5 shadow-2xs'
                             }`}
                           >
                             {frag}
@@ -415,15 +413,15 @@ export function DesirableDifficultyStudio({
 
               {/* User Synthesis Input */}
               <div className="mt-5 space-y-2">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <label className="text-xs font-semibold text-strong flex items-center justify-between">
                   <span>Your Generative Formulation:</span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
+                  <span className="text-[10px] font-mono text-tertiary">
                     {userAttempt.length} chars
                   </span>
                 </label>
                 <textarea
                   rows={4}
-                  className="w-full rounded-xl border border-border/80 bg-background p-3 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-3 text-xs leading-relaxed text-strong placeholder:text-faint focus:border-(--ac-strong) focus:outline-hidden focus:ring-1 focus:ring-(--ac-strong)"
                   placeholder={
                     sessionState.currentTier === 'analogy_synthesis'
                       ? 'Synthesize a physical or organizational metaphor, then describe where it breaks...'
@@ -471,11 +469,11 @@ export function DesirableDifficultyStudio({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {sessionState.lastTelemetry.isCorrect ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      <CheckCircle2 className="h-5 w-5 text-status-success-text" />
                     ) : (
-                      <XCircle className="h-5 w-5 text-amber-500" />
+                      <XCircle className="h-5 w-5 text-status-warning-text" />
                     )}
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold text-strong">
                       {sessionState.lastTelemetry.isCorrect
                         ? 'Generative Target Achieved'
                         : 'Partial Retrieval'}
@@ -487,50 +485,44 @@ export function DesirableDifficultyStudio({
                 </div>
 
                 {/* Feedback message */}
-                <p className="text-xs text-foreground/90 leading-relaxed">
+                <p className="text-xs text-body leading-relaxed">
                   {sessionState.lastTelemetry.feedbackMessage}
                 </p>
 
                 {/* Telemetry Chips */}
-                <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/40 bg-muted/20 p-3 text-xs">
+                <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-3 text-xs">
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">Storage Delta</span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-[10px] text-tertiary block">Storage Delta</span>
+                    <span className="font-mono font-bold text-status-success-text dark:text-status-success-text">
                       +{sessionState.lastTelemetry.storageDelta} SS
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Retention Multiplier
-                    </span>
-                    <span className="font-mono font-bold text-primary">
+                    <span className="text-[10px] text-tertiary block">Retention Multiplier</span>
+                    <span className="font-mono font-bold text-ac-text">
                       {sessionState.lastTelemetry.retentionMultiplier}x
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Cognitive Effort
-                    </span>
-                    <span className="font-mono font-semibold text-foreground">
+                    <span className="text-[10px] text-tertiary block">Cognitive Effort</span>
+                    <span className="font-mono font-semibold text-strong">
                       {sessionState.lastTelemetry.cognitiveEffortIndex} / 100
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Desirable Difficulty
-                    </span>
-                    <span className="font-semibold text-foreground">
+                    <span className="text-[10px] text-tertiary block">Desirable Difficulty</span>
+                    <span className="font-semibold text-strong">
                       {sessionState.lastTelemetry.isDesirablyDifficult ? 'Mastered ✨' : 'Standard'}
                     </span>
                   </div>
                 </div>
 
                 {/* Reference Solution Comparison */}
-                <div className="space-y-1.5 pt-2 border-t border-border/40">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                <div className="space-y-1.5 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40">
+                  <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                     Canonical Reference Solution:
                   </span>
-                  <div className="rounded-lg bg-background p-2.5 text-xs text-foreground/90 border border-border/50">
+                  <div className="rounded-lg bg-white dark:bg-(--hub-panel) p-2.5 text-xs text-body border border-neutral-200/50 dark:border-(--hub-border)/50">
                     <Markdown>{currentRung.referenceSolution}</Markdown>
                   </div>
                 </div>
@@ -544,11 +536,11 @@ export function DesirableDifficultyStudio({
               </Panel>
             ) : (
               <Panel className="p-5 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600/10 text-ac-text">
                   <Brain className="h-6 w-6" />
                 </div>
-                <h4 className="text-sm font-semibold text-foreground">Active Retrieval Primer</h4>
-                <p className="text-xs text-muted-foreground max-w-xs">
+                <h4 className="text-sm font-semibold text-strong">Active Retrieval Primer</h4>
+                <p className="text-xs text-tertiary max-w-xs">
                   Generate your synthesis from memory without consulting the solution. High effort
                   maximizes synaptic long-term potentiation.
                 </p>
@@ -557,17 +549,15 @@ export function DesirableDifficultyStudio({
 
             {/* Concept Overview Card */}
             <Panel className="p-4 space-y-2">
-              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                 Canonical Mechanism
               </span>
-              <p className="text-xs text-foreground/80 leading-relaxed">
+              <p className="text-xs text-body leading-relaxed">
                 {currentChallenge.canonicalDefinition}
               </p>
-              <div className="pt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+              <div className="pt-2 flex items-center justify-between text-[11px] text-tertiary">
                 <span>Domain Analogy:</span>
-                <span className="font-semibold text-foreground">
-                  {currentChallenge.analogyDomain}
-                </span>
+                <span className="font-semibold text-strong">{currentChallenge.analogyDomain}</span>
               </div>
             </Panel>
           </div>
@@ -582,10 +572,10 @@ export function DesirableDifficultyStudio({
             <Panel className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">
+                  <h4 className="text-sm font-semibold text-strong">
                     Bjork Memory Phase-Space (SS vs RS)
                   </h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     Simulate elapsed time to observe decay of momentary accessibility.
                   </p>
                 </div>
@@ -593,36 +583,36 @@ export function DesirableDifficultyStudio({
               </div>
 
               {/* 2D Grid with all concepts plotted */}
-              <div className="relative aspect-video w-full rounded-xl border border-border/80 bg-background/60 p-3 overflow-hidden shadow-inner">
+              <div className="relative aspect-video w-full rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white/60 dark:bg-(--hub-panel)/60 p-3 overflow-hidden shadow-inner">
                 {/* Axes */}
-                <div className="absolute top-2 left-3 text-[10px] font-bold uppercase text-muted-foreground/60 tracking-wider">
+                <div className="absolute top-2 left-3 text-[10px] font-bold uppercase text-faint tracking-wider">
                   Storage Strength (SS: 0-100) ↑
                 </div>
-                <div className="absolute bottom-2 right-3 text-[10px] font-bold uppercase text-muted-foreground/60 tracking-wider">
+                <div className="absolute bottom-2 right-3 text-[10px] font-bold uppercase text-faint tracking-wider">
                   Retrieval Strength (RS: 0-1.0) →
                 </div>
 
                 {/* Quadrant Lines */}
-                <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-border/50" />
-                <div className="absolute inset-y-0 left-1/2 border-l border-dashed border-border/50" />
+                <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-neutral-200/50 dark:border-(--hub-border)/50" />
+                <div className="absolute inset-y-0 left-1/2 border-l border-dashed border-neutral-200/50 dark:border-(--hub-border)/50" />
 
                 {/* Quadrant Backdrops */}
-                <div className="absolute top-2 left-3 text-[9px] font-semibold text-emerald-600/70 dark:text-emerald-400/70">
+                <div className="absolute top-2 left-3 text-[9px] font-semibold text-status-success-text/70 dark:text-status-success-text/70">
                   DESIRABLE SWEET SPOT
                   <br />
                   (High SS / Low RS)
                 </div>
-                <div className="absolute top-2 right-3 text-right text-[9px] font-semibold text-sky-600/70 dark:text-sky-400/70">
+                <div className="absolute top-2 right-3 text-right text-[9px] font-semibold text-status-info-text/70 dark:text-status-info-text/70">
                   OVERLEARNED FLUENCY
                   <br />
                   (High SS / High RS)
                 </div>
-                <div className="absolute bottom-4 left-3 text-[9px] font-semibold text-muted-foreground/50">
+                <div className="absolute bottom-4 left-3 text-[9px] font-semibold text-faint">
                   EXTINCT TRACE
                   <br />
                   (Low SS / Low RS)
                 </div>
-                <div className="absolute bottom-4 right-3 text-right text-[9px] font-semibold text-amber-600/70 dark:text-amber-400/70">
+                <div className="absolute bottom-4 right-3 text-right text-[9px] font-semibold text-status-warning-text/70 dark:text-status-warning-text/70">
                   FLUENCY TRAP
                   <br />
                   (Low SS / High RS)
@@ -654,11 +644,13 @@ export function DesirableDifficultyStudio({
                     >
                       <div className="group relative flex items-center justify-center">
                         <span
-                          className={`h-4 w-4 rounded-full border-2 border-background shadow-md transition-transform group-hover:scale-150 ${
-                            isCurrent ? 'bg-primary ring-2 ring-primary/40' : 'bg-foreground/70'
+                          className={`h-4 w-4 rounded-full border-2 border-white dark:border-(--hub-panel) shadow-md transition-transform group-hover:scale-150 ${
+                            isCurrent
+                              ? 'bg-indigo-600 ring-2 ring-(--ac-strong)/40'
+                              : 'bg-neutral-400 dark:bg-neutral-500'
                           }`}
                         />
-                        <span className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-foreground px-1.5 py-0.5 text-[9px] font-medium text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                        <span className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-neutral-900 px-1.5 py-0.5 text-[9px] font-medium text-neutral-50 dark:bg-neutral-100 dark:text-neutral-900 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
                           {item.title}
                         </span>
                       </div>
@@ -668,12 +660,12 @@ export function DesirableDifficultyStudio({
               </div>
 
               {/* Time Decay Simulation Slider */}
-              <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-2">
+              <div className="rounded-xl border border-neutral-200/50 dark:border-(--hub-border)/50 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-4 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-sky-500" /> Simulated Elapsed Time:
+                  <span className="font-semibold text-strong flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-status-info-text" /> Simulated Elapsed Time:
                   </span>
-                  <span className="font-mono font-bold text-foreground">
+                  <span className="font-mono font-bold text-strong">
                     {simulatedElapsedHours} hours ({(simulatedElapsedHours / 24).toFixed(1)} days)
                   </span>
                 </div>
@@ -686,13 +678,13 @@ export function DesirableDifficultyStudio({
                   value={simulatedElapsedHours}
                   onChange={(e) => setSimulatedElapsedHours(Number(e.target.value))}
                 />
-                <div className="flex justify-between text-[10px] text-muted-foreground">
+                <div className="flex justify-between text-[10px] text-tertiary">
                   <span>0 hrs (Immediate)</span>
                   <span>7 days (168h)</span>
                   <span>14 days (336h)</span>
                   <span>30 days (720h)</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-[11px] text-tertiary mt-1">
                   Notice how time decays <em>Retrieval Strength</em> while <em>Storage Strength</em>{' '}
                   remains durable. This decay creates the <strong>Desirable Difficulty</strong>{' '}
                   opportunity for high-yield retrieval practice!
@@ -704,24 +696,24 @@ export function DesirableDifficultyStudio({
           {/* Right Column: Mathematical Formulations & Concept Inspector (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <Panel className="p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Award className="h-4 w-4 text-primary" /> Bjork Formulation Breakdown
+              <h4 className="text-sm font-semibold text-strong flex items-center gap-2">
+                <Award className="h-4 w-4 text-ac-text" /> Bjork Formulation Breakdown
               </h4>
-              <div className="space-y-2 text-xs text-foreground/80">
-                <div className="rounded-md border border-border/40 bg-muted/20 p-2.5">
-                  <div className="font-mono font-semibold text-primary text-[11px]">
+              <div className="space-y-2 text-xs text-body">
+                <div className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2.5">
+                  <div className="font-mono font-semibold text-ac-text text-[11px]">
                     t_halfLife = 24 × (1 + SS / 12)^1.35
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">
+                  <div className="text-[10px] text-tertiary mt-1">
                     Storage Strength lengthens decay half-life super-linearly from hours to years.
                   </div>
                 </div>
 
-                <div className="rounded-md border border-border/40 bg-muted/20 p-2.5">
-                  <div className="font-mono font-semibold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                <div className="rounded-md border border-neutral-200/40 dark:border-(--hub-border)/40 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-2.5">
+                  <div className="font-mono font-semibold text-status-success-text dark:text-status-success-text text-[11px]">
                     ΔSS = 12 × TierMultiplier × (1.05 - RS) × Headroom
                   </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">
+                  <div className="text-[10px] text-tertiary mt-1">
                     Inverse accessibility: The harder it is to retrieve (lower RS), the greater the
                     consolidation into Storage Strength.
                   </div>
@@ -733,7 +725,7 @@ export function DesirableDifficultyStudio({
             {currentMemory && currentChallenge && (
               <Panel className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  <h4 className="text-xs font-semibold text-strong uppercase tracking-wider">
                     Active Concept Telemetry
                   </h4>
                   <Badge tone="cyan">{currentMemory.quadrant.replace(/_/g, ' ')}</Badge>
@@ -741,24 +733,24 @@ export function DesirableDifficultyStudio({
 
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Title:</span>
-                    <span className="font-medium text-foreground">{currentChallenge.title}</span>
+                    <span className="text-tertiary">Title:</span>
+                    <span className="font-medium text-strong">{currentChallenge.title}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Storage Strength (SS):</span>
-                    <span className="font-mono font-bold text-foreground">
+                    <span className="text-tertiary">Storage Strength (SS):</span>
+                    <span className="font-mono font-bold text-strong">
                       {currentMemory.storageStrength} / 100
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Initial RS:</span>
-                    <span className="font-mono text-foreground">
+                    <span className="text-tertiary">Initial RS:</span>
+                    <span className="font-mono text-strong">
                       {(currentMemory.retrievalStrength * 100).toFixed(0)}%
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Simulated Decayed RS:</span>
-                    <span className="font-mono font-semibold text-primary">
+                    <span className="text-tertiary">Simulated Decayed RS:</span>
+                    <span className="font-mono font-semibold text-ac-text">
                       {(
                         calculateRetrievalStrengthDecay(
                           currentMemory.retrievalStrength,
@@ -770,14 +762,14 @@ export function DesirableDifficultyStudio({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Half-Life Projection:</span>
-                    <span className="font-mono text-foreground">
+                    <span className="text-tertiary">Half-Life Projection:</span>
+                    <span className="font-mono text-strong">
                       {calculateStorageHalfLifeHours(currentMemory.storageStrength)} hrs
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Target ΔSS on Retrieval:</span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-tertiary">Target ΔSS on Retrieval:</span>
+                    <span className="font-mono font-bold text-status-success-text dark:text-status-success-text">
                       +{currentMemory.projectedStorageDelta} SS
                     </span>
                   </div>
@@ -796,10 +788,10 @@ export function DesirableDifficultyStudio({
             <Panel className="p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">
+                  <h4 className="text-sm font-semibold text-strong">
                     Empirical Testing Effect (Roediger & Karpicke 2006)
                   </h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     Generative Retrieval Practice (Study-Test) vs Passive Restudying (Study-Study).
                   </p>
                 </div>
@@ -825,8 +817,8 @@ export function DesirableDifficultyStudio({
                       }}
                       className={`flex-1 rounded-lg border py-2 text-center text-xs font-semibold transition-all ${
                         isSelected
-                          ? 'border-primary bg-primary/10 text-primary shadow-xs'
-                          : 'border-border/60 bg-card text-muted-foreground hover:bg-muted/30'
+                          ? 'border-(--ac-strong) bg-indigo-600/10 text-ac-text shadow-xs'
+                          : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) text-tertiary bg-neutral-100/30 dark:bg-(--hub-panel-2)/30'
                       }`}
                     >
                       {item.label}
@@ -838,12 +830,12 @@ export function DesirableDifficultyStudio({
               {/* Retention Bars Comparison */}
               <div className="space-y-4 pt-2">
                 {/* Passive Restudy (SS) */}
-                <div className="rounded-xl border border-border/50 bg-muted/20 p-4 space-y-2">
+                <div className="rounded-xl border border-neutral-200/50 dark:border-(--hub-border)/50 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-muted-foreground">
+                    <span className="font-semibold text-tertiary">
                       Passive Restudy (Study-Study)
                     </span>
-                    <span className="font-mono font-bold text-foreground">
+                    <span className="font-mono font-bold text-strong">
                       {crucibleIntervalDays < 0.1
                         ? '82%'
                         : crucibleIntervalDays <= 2
@@ -865,7 +857,7 @@ export function DesirableDifficultyStudio({
                             : 0.21
                     }
                   />
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-tertiary">
                     {crucibleIntervalDays < 0.1
                       ? 'Deceptive short-term peak! High perceptual fluency creates illusion of mastery.'
                       : 'Rapid catastrophic forgetting due to lack of effortful retrieval consolidation.'}
@@ -875,10 +867,10 @@ export function DesirableDifficultyStudio({
                 {/* Generative Retrieval (ST) */}
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <span className="font-semibold text-status-success-text dark:text-status-success-text flex items-center gap-1.5">
                       <Sparkles className="h-4 w-4" /> Generative Retrieval Practice (Study-Test)
                     </span>
-                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="font-mono font-bold text-status-success-text dark:text-status-success-text">
                       {crucibleIntervalDays < 0.1
                         ? '76%'
                         : crucibleIntervalDays <= 2
@@ -900,7 +892,7 @@ export function DesirableDifficultyStudio({
                             : 0.49
                     }
                   />
-                  <p className="text-[11px] text-foreground/80">
+                  <p className="text-[11px] text-body">
                     {crucibleIntervalDays < 0.1
                       ? 'Initially feels harder, but generates durable inter-associative structural nodes.'
                       : 'Robust synaptic consolidation protects against forgetting over long delay intervals.'}
@@ -913,10 +905,10 @@ export function DesirableDifficultyStudio({
           {/* Right Column: Research Insights & Rung Multipliers (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <Panel className="p-5 space-y-3">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" /> Key Empirical Findings
+              <h4 className="text-sm font-semibold text-strong flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-ac-text" /> Key Empirical Findings
               </h4>
-              <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+              <div className="space-y-2 text-xs text-tertiary leading-relaxed">
                 <p>
                   <strong>1. The Fluency Paradox:</strong> Students who restudy predict they will
                   remember far more than students who test themselves, yet at 1 week the testing
@@ -937,7 +929,7 @@ export function DesirableDifficultyStudio({
             </Panel>
 
             <Panel className="p-4 space-y-2">
-              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                 Generative Ladder Friction Multipliers
               </span>
               <div className="space-y-1.5 text-xs">
@@ -946,10 +938,10 @@ export function DesirableDifficultyStudio({
                   return (
                     <div
                       key={tier}
-                      className="flex items-center justify-between border-b border-border/30 pb-1"
+                      className="flex items-center justify-between border-b border-neutral-200/30 dark:border-(--hub-border)/30 pb-1"
                     >
-                      <span className="text-foreground">{meta.label}</span>
-                      <span className="font-mono font-bold text-primary">{meta.multiplier}</span>
+                      <span className="text-strong">{meta.label}</span>
+                      <span className="font-mono font-bold text-ac-text">{meta.multiplier}</span>
                     </div>
                   )
                 })}
@@ -963,12 +955,10 @@ export function DesirableDifficultyStudio({
       {activeTab === 'fsrs_cards' && (
         <div className="flex flex-col gap-4">
           <Panel className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-4">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">
-                  FSRS Generative Review Deck
-                </h4>
-                <p className="text-xs text-muted-foreground">
+                <h4 className="text-sm font-semibold text-strong">FSRS Generative Review Deck</h4>
+                <p className="text-xs text-tertiary">
                   Generated cards with boosted initial stability from deliberate retrieval practice.
                 </p>
               </div>
@@ -992,7 +982,7 @@ export function DesirableDifficultyStudio({
             </div>
 
             {copyStatus && (
-              <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-status-success-text dark:text-status-success-text">
                 {copyStatus}
               </div>
             )}
@@ -1000,11 +990,11 @@ export function DesirableDifficultyStudio({
             {/* Cards List */}
             {fsrsCards.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-(--hub-panel-2) text-tertiary">
                   <Sparkles className="h-6 w-6" />
                 </div>
-                <h5 className="text-sm font-semibold text-foreground">No Generative Cards Yet</h5>
-                <p className="text-xs text-muted-foreground max-w-sm">
+                <h5 className="text-sm font-semibold text-strong">No Generative Cards Yet</h5>
+                <p className="text-xs text-tertiary max-w-sm">
                   Complete retrieval challenges in the Generative Ladder tab. Each successful
                   attempt will automatically synthesize an FSRS review card with enhanced stability!
                 </p>
@@ -1023,46 +1013,49 @@ export function DesirableDifficultyStudio({
                 {fsrsCards.map((card) => (
                   <div
                     key={card.id}
-                    className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:border-primary/50 transition-all"
+                    className="flex flex-col justify-between rounded-xl border border-neutral-200/70 dark:border-(--hub-border)/70 bg-white dark:bg-(--hub-panel) p-4 shadow-2xs hover:border-(--ac-strong)/50 transition-all"
                   >
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                      <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-2">
                         <Badge tone="violet">
                           Tier {card.metadata.tier.replace('_', ' ').toUpperCase()}
                         </Badge>
-                        <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="font-mono text-xs font-bold text-status-success-text dark:text-status-success-text">
                           Initial S: {card.suggestedInitialStability}d
                         </span>
                       </div>
 
                       <div className="space-y-1">
-                        <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        <div className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                           Front Prompt
                         </div>
-                        <div className="text-xs text-foreground/90 font-medium">
+                        <div className="text-xs text-body font-medium">
                           <Markdown>{card.front}</Markdown>
                         </div>
                       </div>
 
-                      <div className="space-y-1 pt-2 border-t border-border/30">
-                        <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                      <div className="space-y-1 pt-2 border-t border-neutral-200/30 dark:border-(--hub-border)/30">
+                        <div className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                           Back Synthesis
                         </div>
-                        <div className="text-xs text-foreground/80">
+                        <div className="text-xs text-body">
                           <Markdown>{card.back}</Markdown>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-[10px] text-muted-foreground">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40 text-[10px] text-tertiary">
                       <div className="flex flex-wrap gap-1">
                         {card.tags.map((t) => (
-                          <span key={t} className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                          <span
+                            key={t}
+                            className="rounded bg-neutral-100 dark:bg-(--hub-panel-2) px-1.5 py-0.5 font-mono"
+                          >
                             #{t}
                           </span>
                         ))}
                       </div>
-                      <span className="font-mono text-primary font-bold">
+                      <span className="font-mono text-ac-text font-bold">
                         {card.metadata.retentionMultiplier}x Boost
                       </span>
                     </div>

@@ -194,7 +194,7 @@ export function SelfExplanationStudio({
       />
 
       {/* Main Studio Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/50 dark:border-(--hub-border)/50 pb-2">
         <div className="flex flex-wrap gap-1.5">
           <Button
             variant={activeTab === 'derivation_workbench' ? 'primary' : 'ghost'}
@@ -203,7 +203,7 @@ export function SelfExplanationStudio({
               setActiveTab('derivation_workbench')
             }}
           >
-            <Brain className="mr-1.5 h-4 w-4 text-primary" /> Derivation Workbench
+            <Brain className="mr-1.5 h-4 w-4 text-ac-text" /> Derivation Workbench
           </Button>
 
           <Button
@@ -213,7 +213,7 @@ export function SelfExplanationStudio({
               setActiveTab('schema_inversion')
             }}
           >
-            <Zap className="mr-1.5 h-4 w-4 text-amber-500" /> Boundary Inversion
+            <Zap className="mr-1.5 h-4 w-4 text-status-warning-text" /> Boundary Inversion
           </Button>
 
           <Button
@@ -223,7 +223,7 @@ export function SelfExplanationStudio({
               setActiveTab('proof_chain')
             }}
           >
-            <Layers className="mr-1.5 h-4 w-4 text-emerald-500" /> Proof Chain
+            <Layers className="mr-1.5 h-4 w-4 text-status-success-text" /> Proof Chain
           </Button>
 
           <Button
@@ -233,15 +233,15 @@ export function SelfExplanationStudio({
               setActiveTab('fsrs_deck')
             }}
           >
-            <Sparkles className="mr-1.5 h-4 w-4 text-violet-500" /> FSRS Deck ({fsrsCards.length})
+            <Sparkles className="mr-1.5 h-4 w-4 text-indigo-500" /> FSRS Deck ({fsrsCards.length})
           </Button>
         </div>
 
         {/* Problem Selector Dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium">Derivation:</span>
+          <span className="text-xs text-tertiary font-medium">Derivation:</span>
           <select
-            className="rounded-lg border border-border/80 bg-background px-2.5 py-1 text-xs font-medium text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+            className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs font-medium text-strong focus:outline-hidden focus:ring-1 focus:ring-(--ac-strong)"
             value={currentProblem.id}
             onChange={(e) => handleSelectProblem(e.target.value)}
           >
@@ -271,16 +271,16 @@ export function SelfExplanationStudio({
                     onClick={() => handleSelectStep(idx)}
                     className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${
                       isSelected
-                        ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                        ? 'border-(--ac-strong) bg-indigo-600/10 text-ac-text font-bold shadow-xs'
                         : isDone
-                          ? 'border-emerald-500/40 bg-card text-emerald-600 dark:text-emerald-400'
-                          : 'border-border/60 bg-card text-muted-foreground hover:bg-muted/40'
+                          ? 'border-emerald-500/40 bg-white dark:bg-(--hub-panel) text-status-success-text dark:text-status-success-text'
+                          : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) text-tertiary bg-neutral-100/40 dark:bg-(--hub-panel-2)/40'
                     }`}
                   >
                     {isDone ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" />
                     ) : (
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                      <span className="h-2 w-2 rounded-full bg-neutral-100 dark:bg-(--hub-panel-2)-foreground/40" />
                     )}
                     <span>Step {st.stepNumber}</span>
                   </button>
@@ -290,10 +290,10 @@ export function SelfExplanationStudio({
 
             {/* Active Step Derivation Card */}
             <Panel className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
                 <div className="flex items-center gap-2">
                   <Badge tone="cyan">Step {currentStep.stepNumber}</Badge>
-                  <span className="text-xs font-semibold text-foreground">
+                  <span className="text-xs font-semibold text-strong">
                     {currentStep.ruleCategory.toUpperCase()} DERIVATION
                   </span>
                 </div>
@@ -302,18 +302,18 @@ export function SelfExplanationStudio({
 
               {/* Statement & Notation */}
               <div className="space-y-2">
-                <p className="text-xs font-medium text-foreground/90 leading-relaxed">
+                <p className="text-xs font-medium text-body leading-relaxed">
                   {currentStep.claimOrStatement}
                 </p>
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3 font-mono text-xs text-foreground tracking-wide overflow-x-auto">
+                <div className="rounded-xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-neutral-100/20 dark:bg-(--hub-panel-2)/20 p-3 font-mono text-xs text-strong tracking-wide overflow-x-auto">
                   {currentStep.mathematicalNotation}
                 </div>
               </div>
 
               {/* Aleven & Koedinger (2002) Rule Naming Section */}
-              <div className="space-y-2 pt-2 border-t border-border/40">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Target className="h-3.5 w-3.5 text-primary" /> Name the Governing Principle or
+              <div className="space-y-2 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40">
+                <label className="text-xs font-semibold text-strong flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5 text-ac-text" /> Name the Governing Principle or
                   Invariant:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -326,8 +326,8 @@ export function SelfExplanationStudio({
                         onClick={() => handleRuleClick(rule)}
                         className={`rounded-lg border p-2.5 text-left text-xs transition-all ${
                           isSelected
-                            ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary/40'
-                            : 'border-border/60 bg-card text-foreground hover:bg-muted/30'
+                            ? 'border-(--ac-strong) bg-indigo-600/10 text-ac-text font-bold shadow-xs ring-1 ring-(--ac-strong)/40'
+                            : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) text-strong bg-neutral-100/30 dark:bg-(--hub-panel-2)/30'
                         }`}
                       >
                         {rule}
@@ -338,16 +338,16 @@ export function SelfExplanationStudio({
               </div>
 
               {/* Free-Text Self-Explanation Input */}
-              <div className="space-y-2 pt-2 border-t border-border/40">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+              <div className="space-y-2 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40">
+                <label className="text-xs font-semibold text-strong flex items-center justify-between">
                   <span>Generative Self-Explanation (Why is this step valid?):</span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
+                  <span className="text-[10px] font-mono text-tertiary">
                     {userText.length} chars
                   </span>
                 </label>
                 <textarea
                   rows={4}
-                  className="w-full rounded-xl border border-border/80 bg-background p-3 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-primary"
+                  className="w-full rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-3 text-xs leading-relaxed text-strong placeholder:text-faint focus:border-(--ac-strong) focus:outline-hidden focus:ring-1 focus:ring-(--ac-strong)"
                   placeholder="Explain the causal mechanics: Because [axiom/invariant], this guarantees that [sub-goal consequence]..."
                   value={userText}
                   onChange={(e) => setUserText(e.target.value)}
@@ -384,11 +384,11 @@ export function SelfExplanationStudio({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {currentTelemetry.justificationType === 'principle_based' ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      <CheckCircle2 className="h-5 w-5 text-status-success-text" />
                     ) : (
-                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      <AlertTriangle className="h-5 w-5 text-status-warning-text" />
                     )}
-                    <span className="text-sm font-semibold text-foreground">
+                    <span className="text-sm font-semibold text-strong">
                       {currentTelemetry.justificationType.replace('_', ' ').toUpperCase()}
                     </span>
                   </div>
@@ -399,41 +399,41 @@ export function SelfExplanationStudio({
                   </Badge>
                 </div>
 
-                <p className="text-xs text-foreground/90 leading-relaxed">
+                <p className="text-xs text-body leading-relaxed">
                   {currentTelemetry.feedbackMessage}
                 </p>
 
                 {/* Canonical Principle Comparison */}
-                <div className="space-y-1.5 pt-2 border-t border-border/40">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                <div className="space-y-1.5 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40">
+                  <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                     Canonical Expert Principle Grounding:
                   </span>
-                  <div className="rounded-lg bg-background p-3 text-xs text-foreground/90 border border-border/50 leading-relaxed">
+                  <div className="rounded-lg bg-white dark:bg-(--hub-panel) p-3 text-xs text-body border border-neutral-200/50 dark:border-(--hub-border)/50 leading-relaxed">
                     <Markdown>{currentStep.canonicalPrincipleJustification}</Markdown>
                   </div>
                 </div>
 
                 {/* Sub-goal Purpose */}
                 <div className="space-y-1 pt-1">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                  <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                     Mechanistic Sub-Goal (Catrambone 1998):
                   </span>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-tertiary leading-relaxed">
                     {currentStep.goalOperatorPurpose}
                   </p>
                 </div>
 
                 {/* Deficiencies Checklist if any */}
                 {currentTelemetry.identifiedDeficiencies.length > 0 && (
-                  <div className="space-y-1.5 pt-2 border-t border-border/30">
-                    <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 tracking-wider">
+                  <div className="space-y-1.5 pt-2 border-t border-neutral-200/30 dark:border-(--hub-border)/30">
+                    <span className="text-[10px] font-bold uppercase text-status-warning-text dark:text-status-warning-text tracking-wider">
                       Identified Reasoning Gaps:
                     </span>
                     <div className="space-y-1">
                       {currentTelemetry.identifiedDeficiencies.map((d, i) => (
                         <div
                           key={i}
-                          className="rounded bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-300"
+                          className="rounded bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-status-warning-text"
                         >
                           {d}
                         </div>
@@ -451,11 +451,11 @@ export function SelfExplanationStudio({
               </Panel>
             ) : (
               <Panel className="p-5 flex flex-col items-center justify-center text-center space-y-3 min-h-[220px]">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600/10 text-ac-text">
                   <BookOpen className="h-6 w-6" />
                 </div>
-                <h4 className="text-sm font-semibold text-foreground">Self-Explanation Primer</h4>
-                <p className="text-xs text-muted-foreground max-w-xs">
+                <h4 className="text-sm font-semibold text-strong">Self-Explanation Primer</h4>
+                <p className="text-xs text-tertiary max-w-xs">
                   Select the governing rule and explain why this step holds. Merely rereading the
                   formula creates an illusion of competence; articulating the underlying axiom
                   builds durable schemas.
@@ -465,10 +465,10 @@ export function SelfExplanationStudio({
 
             {/* Theorem Overview Panel */}
             <Panel className="p-4 space-y-2">
-              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                 Full Theorem Statement
               </span>
-              <p className="text-xs text-foreground/80 leading-relaxed font-medium">
+              <p className="text-xs text-body leading-relaxed font-medium">
                 {currentProblem.theoremStatement}
               </p>
             </Panel>
@@ -482,12 +482,12 @@ export function SelfExplanationStudio({
           {/* Left Column: Counterfactual Invariant Diagnostic (7 cols) */}
           <div className="lg:col-span-7 flex flex-col gap-4">
             <Panel className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
                 <div>
-                  <h4 className="text-sm font-semibold text-foreground">
+                  <h4 className="text-sm font-semibold text-strong">
                     Alexander Renkl (2002) Schema Inversion Test
                   </h4>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     Test the boundary conditions: What breaks if the governing invariant is
                     violated?
                   </p>
@@ -499,17 +499,17 @@ export function SelfExplanationStudio({
 
               {/* Counterfactual Premise Box */}
               <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">
-                <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 tracking-wider">
+                <span className="text-[10px] font-bold uppercase text-status-warning-text dark:text-status-warning-text tracking-wider">
                   Counterfactual Mutation Premise:
                 </span>
-                <p className="text-xs font-semibold text-foreground leading-relaxed">
+                <p className="text-xs font-semibold text-strong leading-relaxed">
                   {currentStep.inversionChallenge.counterfactualPremise}
                 </p>
               </div>
 
               {/* Diagnostic Question */}
               <div className="space-y-2">
-                <h5 className="text-xs font-bold text-foreground">
+                <h5 className="text-xs font-bold text-strong">
                   {currentStep.inversionChallenge.diagnosticPrompt}
                 </h5>
 
@@ -530,7 +530,7 @@ export function SelfExplanationStudio({
                             ? opt.isCorrect
                               ? 'border-emerald-500 bg-emerald-500/10 shadow-xs ring-1 ring-emerald-500/40'
                               : 'border-rose-500 bg-rose-500/10 shadow-xs ring-1 ring-rose-500/40'
-                            : 'border-border/60 bg-card hover:bg-muted/30'
+                            : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) bg-neutral-100/30 dark:bg-(--hub-panel-2)/30'
                         }`}
                       >
                         <div className="flex items-start gap-2.5">
@@ -540,17 +540,17 @@ export function SelfExplanationStudio({
                                 ? opt.isCorrect
                                   ? 'border-emerald-500 bg-emerald-500 text-white'
                                   : 'border-rose-500 bg-rose-500 text-white'
-                                : 'border-muted-foreground/40'
+                                : 'border-neutral-300/60 dark:border-(--hub-border)/60'
                             }`}
                           >
                             {isSelected && (opt.isCorrect ? '✓' : '✕')}
                           </span>
                           <div className="space-y-1">
-                            <p className="text-xs text-foreground font-medium leading-relaxed">
+                            <p className="text-xs text-strong font-medium leading-relaxed">
                               {opt.text}
                             </p>
                             {isSelected && (
-                              <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/30">
+                              <p className="text-[11px] text-tertiary pt-1 border-t border-neutral-200/30 dark:border-(--hub-border)/30">
                                 {opt.rationale}
                               </p>
                             )}
@@ -567,25 +567,25 @@ export function SelfExplanationStudio({
           {/* Right Column: Failure Consequence & Necessary Conditions (5 cols) */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <Panel className="p-4 space-y-3">
-              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                 Catastrophic Failure Consequence
               </span>
-              <p className="text-xs text-foreground/90 leading-relaxed font-medium">
+              <p className="text-xs text-body leading-relaxed font-medium">
                 {currentStep.inversionChallenge.failureConsequence}
               </p>
             </Panel>
 
             <Panel className="p-4 space-y-3">
-              <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+              <span className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                 Required Invariant
               </span>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground">
+                <span className="text-xs font-semibold text-strong">
                   {currentStep.governingRuleName}
                 </span>
                 <Badge tone="cyan">{currentStep.ruleCategory.toUpperCase()}</Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[11px] text-tertiary">
                 Inversion testing forces recognition of necessary and sufficient conditions,
                 preventing shallow pattern matching.
               </p>
@@ -598,12 +598,12 @@ export function SelfExplanationStudio({
       {activeTab === 'proof_chain' && (
         <div className="flex flex-col gap-4">
           <Panel className="p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-3">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">
+                <h4 className="text-sm font-semibold text-strong">
                   Derivation Chain: {currentProblem.title}
                 </h4>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-tertiary">
                   Complete sequential progression from axioms to final theorem proof.
                 </p>
               </div>
@@ -625,16 +625,16 @@ export function SelfExplanationStudio({
                     }}
                     className={`cursor-pointer rounded-xl border p-4 transition-all ${
                       isSelected
-                        ? 'border-primary bg-primary/5 shadow-xs ring-1 ring-primary/40'
-                        : 'border-border/60 bg-card hover:bg-muted/30'
+                        ? 'border-(--ac-strong) bg-indigo-600/5 shadow-xs ring-1 ring-(--ac-strong)/40'
+                        : 'border-neutral-200/60 dark:border-(--hub-border)/60 bg-white dark:bg-(--hub-panel) bg-neutral-100/30 dark:bg-(--hub-panel-2)/30'
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600/10 text-ac-text text-xs font-bold">
                           {st.stepNumber}
                         </span>
-                        <span className="text-xs font-bold text-foreground">
+                        <span className="text-xs font-bold text-strong">
                           {st.governingRuleName}
                         </span>
                       </div>
@@ -649,11 +649,9 @@ export function SelfExplanationStudio({
                       )}
                     </div>
 
-                    <p className="text-xs text-foreground/80 leading-relaxed mb-2">
-                      {st.claimOrStatement}
-                    </p>
+                    <p className="text-xs text-body leading-relaxed mb-2">{st.claimOrStatement}</p>
 
-                    <div className="rounded-lg bg-background p-2 font-mono text-[11px] text-foreground/90 border border-border/40">
+                    <div className="rounded-lg bg-white dark:bg-(--hub-panel) p-2 font-mono text-[11px] text-body border border-neutral-200/40 dark:border-(--hub-border)/40">
                       {st.mathematicalNotation}
                     </div>
                   </div>
@@ -668,12 +666,12 @@ export function SelfExplanationStudio({
       {activeTab === 'fsrs_deck' && (
         <div className="flex flex-col gap-4">
           <Panel className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-4">
               <div>
-                <h4 className="text-sm font-semibold text-foreground">
+                <h4 className="text-sm font-semibold text-strong">
                   FSRS Self-Explanation &amp; Schema Inversion Review Deck
                 </h4>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-tertiary">
                   Cards generated with initial stability scaled by the Chi Justification Depth
                   Index.
                 </p>
@@ -694,7 +692,7 @@ export function SelfExplanationStudio({
             </div>
 
             {copyStatus && (
-              <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2 text-xs font-semibold text-status-success-text dark:text-status-success-text">
                 {copyStatus}
               </div>
             )}
@@ -702,11 +700,11 @@ export function SelfExplanationStudio({
             {/* Cards Grid */}
             {fsrsCards.length === 0 ? (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-(--hub-panel-2) text-tertiary">
                   <Brain className="h-6 w-6" />
                 </div>
-                <h5 className="text-sm font-semibold text-foreground">No Explanation Cards Yet</h5>
-                <p className="text-xs text-muted-foreground max-w-sm">
+                <h5 className="text-sm font-semibold text-strong">No Explanation Cards Yet</h5>
+                <p className="text-xs text-tertiary max-w-sm">
                   Complete derivation steps and self-explanations in the Derivation Workbench. Each
                   evaluated step synthesizes both a Rule-Naming and a Boundary Inversion card!
                 </p>
@@ -725,44 +723,47 @@ export function SelfExplanationStudio({
                 {fsrsCards.map((card) => (
                   <div
                     key={card.id}
-                    className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:border-primary/50 transition-all"
+                    className="flex flex-col justify-between rounded-xl border border-neutral-200/70 dark:border-(--hub-border)/70 bg-white dark:bg-(--hub-panel) p-4 shadow-2xs hover:border-(--ac-strong)/50 transition-all"
                   >
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                      <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-(--hub-border)/40 pb-2">
                         <Badge tone="violet">{card.tags[0]?.replace('-', ' ').toUpperCase()}</Badge>
-                        <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="font-mono text-xs font-bold text-status-success-text dark:text-status-success-text">
                           Initial S: {card.suggestedInitialStability}d
                         </span>
                       </div>
 
                       <div className="space-y-1">
-                        <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        <div className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                           Front Stimulus
                         </div>
-                        <div className="text-xs text-foreground/90 font-medium">
+                        <div className="text-xs text-body font-medium">
                           <Markdown>{card.front}</Markdown>
                         </div>
                       </div>
 
-                      <div className="space-y-1 pt-2 border-t border-border/30">
-                        <div className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                      <div className="space-y-1 pt-2 border-t border-neutral-200/30 dark:border-(--hub-border)/30">
+                        <div className="text-[10px] font-bold uppercase text-tertiary tracking-wider">
                           Back Explanation
                         </div>
-                        <div className="text-xs text-foreground/80">
+                        <div className="text-xs text-body">
                           <Markdown>{card.back}</Markdown>
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-[10px] text-muted-foreground">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-200/40 dark:border-(--hub-border)/40 text-[10px] text-tertiary">
                       <div className="flex flex-wrap gap-1">
                         {card.tags.map((t) => (
-                          <span key={t} className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                          <span
+                            key={t}
+                            className="rounded bg-neutral-100 dark:bg-(--hub-panel-2) px-1.5 py-0.5 font-mono"
+                          >
                             #{t}
                           </span>
                         ))}
                       </div>
-                      <span className="font-mono text-primary font-bold">
+                      <span className="font-mono text-ac-text font-bold">
                         {card.metadata.retentionMultiplier}x Boost
                       </span>
                     </div>

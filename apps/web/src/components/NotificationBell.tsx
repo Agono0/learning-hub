@@ -16,9 +16,9 @@ import type { DashboardData } from '@/server/handlers/dashboard/route'
 const REMINDERS_KEY = 'lh-reminders-enabled'
 const LAST_FIRE_KEY = 'lh-reminders-last-fire'
 const TONE_STYLE: Record<string, string> = {
-  info: 'text-neutral-300',
-  warning: 'text-amber-400',
-  danger: 'text-red-400',
+  info: 'text-secondary',
+  warning: 'text-status-warning-text',
+  danger: 'text-danger-text',
 }
 
 /** Send a native notification when running inside Tauri; no-op elsewhere. */
@@ -104,11 +104,11 @@ export function NotificationBell() {
         aria-label={`Notifications${count ? ` (${count} need attention)` : ''}`}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative grid h-9 w-9 place-items-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+        className="relative grid h-9 w-9 place-items-center rounded-lg text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
       >
         {reminders ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
         {count > 0 && (
-          <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+          <span className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full bg-rose-500 text-[9px] font-bold text-white">
             {count}
           </span>
         )}
@@ -117,7 +117,7 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-2 shadow-xl dark:border-(--hub-border) dark:bg-(--hub-panel)">
           <div className="flex items-center justify-between px-2 pb-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            <span className="text-xs font-semibold uppercase tracking-wide text-tertiary">
               Needs attention
             </span>
             <button
@@ -129,9 +129,7 @@ export function NotificationBell() {
             </button>
           </div>
           {items.length === 0 ? (
-            <p className="px-2 pb-2 text-sm text-neutral-500">
-              Nothing needs attention — all quiet.
-            </p>
+            <p className="px-2 pb-2 text-sm text-tertiary">Nothing needs attention — all quiet.</p>
           ) : (
             <ul className="space-y-0.5">
               {items.map((n) => (
@@ -139,12 +137,12 @@ export function NotificationBell() {
                   <Link
                     href={n.href}
                     onClick={() => setOpen(false)}
-                    className="block rounded-lg px-2 py-1.5 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]"
+                    className="block rounded-lg px-2 py-1.5 hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
                   >
-                    <span className={`block text-sm ${TONE_STYLE[n.tone] ?? 'text-neutral-300'}`}>
+                    <span className={`block text-sm ${TONE_STYLE[n.tone] ?? 'text-secondary'}`}>
                       {n.title}
                     </span>
-                    {n.detail && <span className="block text-xs text-neutral-500">{n.detail}</span>}
+                    {n.detail && <span className="block text-xs text-tertiary">{n.detail}</span>}
                   </Link>
                 </li>
               ))}

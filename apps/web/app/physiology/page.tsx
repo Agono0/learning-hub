@@ -100,7 +100,7 @@ export default function PhysiologyPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeView === 'circadian'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Sun className="h-4 w-4" />
@@ -113,7 +113,7 @@ export default function PhysiologyPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeView === 'coherence'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Wind className="h-4 w-4" />
@@ -126,7 +126,7 @@ export default function PhysiologyPage() {
           className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
             activeView === 'log'
               ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
           }`}
         >
           <Activity className="h-4 w-4" />
@@ -150,7 +150,9 @@ export default function PhysiologyPage() {
           <div className="panel space-y-3">
             <div className="flex items-center justify-between">
               <p className="label">Today&apos;s log</p>
-              {savedMsg && <span className="celebrate text-xs text-emerald-400">{savedMsg}</span>}
+              {savedMsg && (
+                <span className="celebrate text-xs text-status-success-text">{savedMsg}</span>
+              )}
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
               <label className="space-y-1">
@@ -246,7 +248,7 @@ export default function PhysiologyPage() {
             <div className="panel space-y-1">
               <p className="label">Sleep vs retention</p>
               <p className="text-sm text-neutral-200">{i?.sleep.insight ?? 'Loading…'}</p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 &lt;6h days: {i?.sleep.nShort ?? 0} · rested days: {i?.sleep.nRest ?? 0}
                 {i?.sleep.deltaPct != null
                   ? ` · gap ${Math.abs(i.sleep.deltaPct).toFixed(1)} pp`
@@ -256,7 +258,7 @@ export default function PhysiologyPage() {
             <div className="panel space-y-1">
               <p className="label">Exercise timing (van Dongen 2016)</p>
               <p className="text-sm text-neutral-200">{i?.exercise.nudge ?? 'Loading…'}</p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 {i?.exercise.hoursAfterLearning != null
                   ? `last logged: T+${i.exercise.hoursAfterLearning}h`
                   : 'no exercise logged yet'}
@@ -265,7 +267,7 @@ export default function PhysiologyPage() {
             <div className="panel space-y-1">
               <p className="label">Caffeine cutoff (8h rule)</p>
               <p className="text-sm text-neutral-200">{i?.caffeine.advice ?? 'Loading…'}</p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 assumes bedtime {data.data?.bedtimeHour ?? 23}:00 — keep your cutoff hour in the
                 daily log for precision
               </p>
@@ -276,7 +278,7 @@ export default function PhysiologyPage() {
                 {i?.arousal.zone ?? '—'}
                 {i?.arousal.value != null ? ` (arousal ${i.arousal.value}/10)` : ''}
               </p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-tertiary">
                 {i?.arousal.advice ?? 'Log arousal to place yourself on the inverted-U.'}
               </p>
             </div>
@@ -286,11 +288,11 @@ export default function PhysiologyPage() {
           <div className="panel">
             <p className="label mb-2">History</p>
             {(data.data?.history.length ?? 0) === 0 ? (
-              <p className="text-sm text-neutral-500">No logs yet — save today&apos;s numbers.</p>
+              <p className="text-sm text-tertiary">No logs yet — save today&apos;s numbers.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="text-neutral-500">
+                  <thead className="text-tertiary">
                     <tr>
                       <th className="py-1 pr-3">date</th>
                       <th className="py-1 pr-3">sleep</th>
@@ -301,7 +303,7 @@ export default function PhysiologyPage() {
                       <th className="py-1">notes</th>
                     </tr>
                   </thead>
-                  <tbody className="text-neutral-300">
+                  <tbody className="text-secondary">
                     {data.data?.history.slice(0, 14).map((h) => (
                       <tr
                         key={h.id}

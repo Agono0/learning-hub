@@ -107,7 +107,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
           <button
             onClick={onClose}
             type="button"
-            className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100"
+            className="rounded-lg p-1.5 text-faint hover:bg-neutral-800 hover:text-neutral-100"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" />
@@ -123,20 +123,20 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
 
         {/* 30-Day Forecast Visualizer */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-neutral-400">
+          <div className="flex items-center justify-between text-xs text-faint">
             <span className="flex items-center gap-1.5 font-medium">
               <Calendar className="h-4 w-4" /> 30-Day Due Forecast ({data?.totalCards ?? 0} total
               active cards)
             </span>
             {overdueCount > 0 && (
-              <span className="flex items-center gap-1 font-semibold text-rose-400">
+              <span className="flex items-center gap-1 font-semibold text-danger-text">
                 <Flame className="h-3.5 w-3.5" /> {overdueCount} Overdue
               </span>
             )}
           </div>
 
           {isLoading ? (
-            <div className="h-28 flex items-center justify-center text-xs text-neutral-500">
+            <div className="h-28 flex items-center justify-center text-xs text-tertiary">
               Calculating load distribution...
             </div>
           ) : (
@@ -167,7 +167,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
                         }`}
                       />
                     </div>
-                    <span className="text-[9px] text-neutral-500 truncate select-none">
+                    <span className="text-[9px] text-tertiary truncate select-none">
                       {idx % 5 === 0 ? item.day.slice(5) : ''}
                     </span>
                   </div>
@@ -180,10 +180,10 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
         {/* Controls: Easy Days & Smoothing */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
               Easy Days (Low / Zero Load)
             </h3>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Select days of the week when reviews should be smoothly rescheduled onto adjacent
               days.
             </p>
@@ -208,7 +208,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
             </div>
 
             <div className="pt-2">
-              <label className="text-xs text-neutral-400 block mb-1">
+              <label className="text-xs text-faint block mb-1">
                 Max Daily Cap: <span className="font-semibold text-neutral-200">{maxPerDay}</span>{' '}
                 reviews
               </label>
@@ -236,16 +236,16 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
 
           {/* Backlog Recovery */}
           <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-4 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
               Overdue Backlog Recovery
             </h3>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               Gradually spread accumulated overdue cards over future days. Prioritizes lowest
               stability cards first to salvage decaying memory traces.
             </p>
 
             <div>
-              <label className="text-xs text-neutral-400 block mb-1">
+              <label className="text-xs text-faint block mb-1">
                 Daily Catch-Up Cap:{' '}
                 <span className="font-semibold text-neutral-200">{dailyBacklogCap}</span> cards/day
               </label>
@@ -260,10 +260,10 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
               />
             </div>
 
-            <div className="text-xs text-neutral-400">
+            <div className="text-xs text-faint">
               Current Overdue:{' '}
               <span
-                className={`font-semibold ${overdueCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}
+                className={`font-semibold ${overdueCount > 0 ? 'text-danger-text' : 'text-status-success-text'}`}
               >
                 {overdueCount} cards
               </span>

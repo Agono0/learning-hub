@@ -18,7 +18,7 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { hapticHeavy, hapticLight } from '@/platform/haptics'
 import { AdaptiveExamStudio } from '@/components/AdaptiveExamStudio'
-import { Button, Callout, PageHeader, Panel, Skeleton, useToast } from '@/ui'
+import { Button, Callout, PageHeader, Panel, Sheet, Skeleton, useToast } from '@/ui'
 
 interface ExamQuestion {
   cardId: number
@@ -58,6 +58,8 @@ interface ExamGradedResult {
 export default function ExamSimulatorPage() {
   const { toast } = useToast()
   const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
+  // unanswered-warning confirm (replaces the old window.confirm) — null = hidden
+  const [confirmUnanswered, setConfirmUnanswered] = useState<number | null>(null)
 
   // Setup state
   const [selectedDeckId, setSelectedDeckId] = useState<string>('all')
@@ -81,7 +83,12 @@ export default function ExamSimulatorPage() {
   answersRef.current = answers
 
   // Fetch initial decks list
-  const { data: initialData, isLoading: initialLoading } = useQuery<ExamAssembly>({
+  const {
+    data: initialData,
+    isLoading: initialLoading,
+    isError: initialError,
+    refetch: retryInitial,
+  } = useQuery<ExamAssembly>({
     queryKey: ['exam-sim-initial'],
     queryFn: () => apiGet('/api/curriculum/exam/simulator?count=1&durationMinutes=15'),
   })
@@ -224,9 +231,32 @@ export default function ExamSimulatorPage() {
     })
   }
 
-  if (initialLoading) {
+  if (initialError) {
     return (
       <div className="container max-w-4xl space-y-6 py-6">
+        <PageHeader
+          title="Mock Exam Simulator"
+          subtitle="Timed mock exams with delayed blind grading."
+        />
+        <Callout tone="danger" title="Couldn't load the exam simulator">
+          <div className="mt-1 flex items-center gap-3">
+            <span>The request failed. Check your connection and retry.</span>
+            <Button variant="secondary" onClick={() => void retryInitial()}>
+              Try again
+            </Button>
+          </div>
+        </Callout>
+      </div>
+    )
+  }
+
+  if (initialLoading) {
+    return (
+      <div
+        className="container max-w-4xl space-y-6 py-6"
+        aria-busy="true"
+        aria-label="Loading exam simulator"
+      >
         <PageHeader
           title="Mock Exam Simulator"
           subtitle="Timed mock exams with delayed blind grading."
@@ -364,8 +394,8 @@ export default function ExamSimulatorPage() {
         <Panel className="p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase text-neutral-400">Exam Mode</span>
-              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
+              <span className="text-xs font-semibold uppercase text-faint">Exam Mode</span>
+              <span className="text-xs font-medium text-neutral-600 dark:text-secondary">
                 Question {currentIndex + 1} of {examData.totalQuestions}
               </span>
             </div>
@@ -375,7 +405,7 @@ export default function ExamSimulatorPage() {
               aria-label="Remaining time"
               className={`flex items-center gap-1.5 font-mono text-base font-bold tabular-nums px-2.5 py-1 rounded-md ${
                 isUrgent
-                  ? 'bg-rose-100 text-rose-600 animate-pulse dark:bg-rose-950/60 dark:text-rose-400'
+                  ? 'bg-rose-100 text-rose-600 animate-pulse dark:bg-rose-950/60 dark:text-danger-text'
                   : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'
               }`}
             >
@@ -399,13 +429,8 @@ export default function ExamSimulatorPage() {
               variant="ghost"
               onClick={() => {
                 const unanswered = examData.totalQuestions - answeredCount
-                if (unanswered > 0) {
-                  if (confirm(`You still have ${unanswered} unanswered question(s). Submit now?`)) {
-                    gradeExamMutation.mutate()
-                  }
-                } else {
-                  gradeExamMutation.mutate()
-                }
+                if (unanswered > 0) setConfirmUnanswered(unanswered)
+                else gradeExamMutation.mutate()
               }}
               disabled={gradeExamMutation.isPending}
             >
@@ -432,10 +457,10 @@ export default function ExamSimulatorPage() {
                     isCur
                       ? 'ring-2 ring-indigo-500 font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
                       : isFlg
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-status-warning-text'
                         : hasAns
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-status-success-text'
+                          : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-faint'
                   }`}
                 >
                   {idx + 1}
@@ -444,6 +469,34 @@ export default function ExamSimulatorPage() {
             })}
           </div>
         </Panel>
+
+        <Sheet
+          open={confirmUnanswered !== null}
+          onClose={() => setConfirmUnanswered(null)}
+          title="Submit with unanswered questions?"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setConfirmUnanswered(null)}>
+                Keep working
+              </Button>
+              <Button
+                variant="primary"
+                loading={gradeExamMutation.isPending}
+                onClick={() => {
+                  setConfirmUnanswered(null)
+                  gradeExamMutation.mutate()
+                }}
+              >
+                Submit exam
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-secondary">
+            You still have {confirmUnanswered} unanswered question
+            {confirmUnanswered === 1 ? '' : 's'}. Unanswered questions are graded as incorrect.
+          </p>
+        </Sheet>
 
         {/* Current Question Body */}
         <Panel className="p-6 space-y-4">
@@ -456,7 +509,7 @@ export default function ExamSimulatorPage() {
               type="button"
               onClick={() => toggleFlag(currentQuestion.cardId)}
               className={`flex items-center gap-1 text-xs font-medium ${
-                isCurrentFlagged ? 'text-amber-500' : 'text-neutral-400 hover:text-neutral-600'
+                isCurrentFlagged ? 'text-status-warning-text' : 'text-faint hover:text-neutral-600'
               }`}
             >
               <Flag className="h-3.5 w-3.5" />
@@ -519,7 +572,7 @@ export default function ExamSimulatorPage() {
             >
               Previous
             </Button>
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-faint">
               {answeredCount} of {examData.totalQuestions} answered
             </span>
             <Button
@@ -548,21 +601,21 @@ export default function ExamSimulatorPage() {
         {/* Score Banner */}
         <Panel className="p-6 text-center space-y-3">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
-            <Award className={`h-10 w-10 ${passed ? 'text-emerald-500' : 'text-amber-500'}`} />
+            <Award
+              className={`h-10 w-10 ${passed ? 'text-status-success-text' : 'text-status-warning-text'}`}
+            />
           </div>
           <div>
             <div
-              className={`text-4xl font-extrabold ${passed ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+              className={`text-4xl font-extrabold ${passed ? 'text-status-success-text dark:text-status-success-text' : 'text-status-warning-text dark:text-status-warning-text'}`}
             >
               {gradedReport.score}%
             </div>
-            <div className="text-sm font-medium text-neutral-500">
+            <div className="text-sm font-medium text-tertiary">
               {gradedReport.correctCount} of {gradedReport.totalQuestions} Questions Correct
             </div>
           </div>
-          <p className="text-xs text-neutral-400 max-w-md mx-auto">
-            {gradedReport.feedbackSummary}
-          </p>
+          <p className="text-xs text-faint max-w-md mx-auto">{gradedReport.feedbackSummary}</p>
         </Panel>
 
         {/* Bloom Taxonomy Breakdown */}
@@ -572,9 +625,9 @@ export default function ExamSimulatorPage() {
             const pct = b.total > 0 ? Math.round((b.correct / b.total) * 100) : 0
             return (
               <Panel key={lvl} className="p-3 text-center space-y-1">
-                <div className="text-[10px] uppercase font-semibold text-neutral-400">{lvl}</div>
+                <div className="text-[10px] uppercase font-semibold text-faint">{lvl}</div>
                 <div className="text-xl font-bold">{pct}%</div>
-                <div className="text-[11px] text-neutral-500">
+                <div className="text-[11px] text-tertiary">
                   {b.correct} / {b.total}
                 </div>
               </Panel>
@@ -590,7 +643,7 @@ export default function ExamSimulatorPage() {
                 <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
                   Turn Misses into Spaced Repetition Cards
                 </h3>
-                <p className="text-xs text-amber-700 dark:text-amber-300">
+                <p className="text-xs text-amber-700 dark:text-status-warning-text">
                   {gradedReport.missedCards.length} missed question(s) identified. Reinforce them in
                   your daily review.
                 </p>
@@ -607,7 +660,7 @@ export default function ExamSimulatorPage() {
                   Socratic Voice Drill
                 </Link>
                 {cardsAdded ? (
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-status-success-text dark:text-status-success-text">
                     <CheckCircle2 className="h-4 w-4" /> Added to Decks
                   </span>
                 ) : (
@@ -626,22 +679,22 @@ export default function ExamSimulatorPage() {
 
         {/* Detailed Question Review */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-neutral-500">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-tertiary">
             Question Review (Delayed Feedback)
           </h3>
 
           {gradedReport.results.map((res, idx) => (
             <Panel key={res.cardId} className="p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-neutral-400">
+                <span className="text-xs font-semibold text-faint">
                   Q{idx + 1} · {res.bloomLevel}
                 </span>
                 {res.correct ? (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-status-success-text dark:text-status-success-text">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Correct
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-danger-text">
                     <XCircle className="h-3.5 w-3.5" /> Missed
                   </span>
                 )}
@@ -651,22 +704,20 @@ export default function ExamSimulatorPage() {
 
               <div className="grid gap-2 text-xs pt-1 sm:grid-cols-2">
                 <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                  <span className="font-semibold text-neutral-400 block mb-0.5">Your Answer:</span>
+                  <span className="font-semibold text-faint block mb-0.5">Your Answer:</span>
                   <span
                     className={
                       res.correct
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-rose-600 dark:text-rose-400'
+                        ? 'text-status-success-text dark:text-status-success-text'
+                        : 'text-rose-600 dark:text-danger-text'
                     }
                   >
                     {res.userAnswer || '(blank)'}
                   </span>
                 </div>
                 <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                  <span className="font-semibold text-neutral-400 block mb-0.5">
-                    Correct Answer:
-                  </span>
-                  <span className="text-neutral-700 dark:text-neutral-300 font-medium">
+                  <span className="font-semibold text-faint block mb-0.5">Correct Answer:</span>
+                  <span className="text-neutral-700 dark:text-secondary font-medium">
                     {res.correctAnswer || 'See reference'}
                   </span>
                 </div>

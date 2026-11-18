@@ -87,7 +87,7 @@ function StatsWidget({ data: d }: WidgetProps) {
         value={
           <span className="flex items-baseline gap-1.5">
             {d.streak.current}
-            <span className="text-sm font-normal text-neutral-500">/ {d.streak.best}d</span>
+            <span className="text-sm font-normal text-tertiary">/ {d.streak.best}d</span>
           </span>
         }
         icon={<Flame className="h-4 w-4" />}
@@ -116,7 +116,7 @@ function StatsWidget({ data: d }: WidgetProps) {
         label="Daily quest"
         value={
           questDone ? (
-            <span className="text-emerald-600 dark:text-emerald-400">Done</span>
+            <span className="text-status-success-text dark:text-status-success-text">Done</span>
           ) : d.quest ? (
             'In progress'
           ) : (
@@ -153,7 +153,7 @@ function OpenLoopsWidget({ data: d }: WidgetProps) {
   if (d.openLoops.length === 0) return null
   return (
     <section className="panel">
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+      <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
         Pick up where you left off
       </div>
       <ul className="mt-3 space-y-2">
@@ -166,11 +166,11 @@ function OpenLoopsWidget({ data: d }: WidgetProps) {
               {loop.kind === 'lesson' ? (
                 <CirclePlay className="h-4 w-4 shrink-0 text-indigo-400" />
               ) : (
-                <CalendarClock className="h-4 w-4 shrink-0 text-amber-400" />
+                <CalendarClock className="h-4 w-4 shrink-0 text-status-warning-text" />
               )}
               <span className="min-w-0 flex-1 truncate">
                 {loop.title}
-                <span className="text-neutral-500"> · {loop.context}</span>
+                <span className="text-tertiary"> · {loop.context}</span>
               </span>
               <span className="shrink-0 text-xs text-indigo-400">continue →</span>
             </Link>
@@ -194,19 +194,19 @@ function QuoteWidget({ data: d }: WidgetProps) {
   })
   return (
     <section className="panel h-full">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
         <QuoteIcon className="h-3.5 w-3.5" /> Daily quote
       </div>
       {d.quote ? (
         <blockquote className="mt-3">
           <p className="text-base italic leading-relaxed">“{d.quote.text}”</p>
-          <footer className="mt-2 text-xs text-neutral-500">
+          <footer className="mt-2 text-xs text-tertiary">
             — {d.quote.author}
             {d.quote.context ? ` · ${d.quote.context}` : ''}
           </footer>
         </blockquote>
       ) : (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-500">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-tertiary">
           <span>No quotes seeded yet on this device.</span>
           <button
             className="btn-ghost text-xs"
@@ -224,28 +224,28 @@ function QuoteWidget({ data: d }: WidgetProps) {
 function AgendaWidget({ data: d }: WidgetProps) {
   return (
     <section className="panel h-full">
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+      <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
         Today&apos;s agenda
       </div>
       {d.agenda.length > 0 ? (
-        <ol className="mt-3 space-y-1.5 text-sm text-neutral-400">
+        <ol className="mt-3 space-y-1.5 text-sm text-faint">
           {d.agenda.map((item, i) => (
             <li key={item.kind + item.href}>
               <Link
                 href={item.href}
                 className="flex items-baseline gap-2 rounded px-1 py-0.5 hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
               >
-                <span className="text-neutral-600 dark:text-neutral-500">{i + 1} ·</span>
+                <span className="text-neutral-600 dark:text-tertiary">{i + 1} ·</span>
                 <span className="min-w-0 flex-1">
                   {item.title}
-                  {item.detail && <span className="text-neutral-500"> · {item.detail}</span>}
+                  {item.detail && <span className="text-tertiary"> · {item.detail}</span>}
                 </span>
               </Link>
             </li>
           ))}
         </ol>
       ) : (
-        <p className="mt-3 text-sm text-neutral-500">
+        <p className="mt-3 text-sm text-tertiary">
           Everything done for today — rest consolidates it.
         </p>
       )}
@@ -281,7 +281,7 @@ function ActivityTimelineWidget(_props: WidgetProps) {
   return (
     <section className="panel h-full">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
           <Activity className="h-3.5 w-3.5" /> Activity
         </div>
         <Link href="/analytics" className="text-[10px] text-indigo-400 hover:underline">
@@ -289,7 +289,7 @@ function ActivityTimelineWidget(_props: WidgetProps) {
         </Link>
       </div>
       {entries.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-500">
+        <p className="mt-3 text-sm text-tertiary">
           Nothing logged in the last 7 days — your reviews, focus sessions and planted trees will
           appear here.
         </p>
@@ -297,11 +297,11 @@ function ActivityTimelineWidget(_props: WidgetProps) {
         <ul className="mt-3 space-y-1.5 text-sm">
           {entries.map((e, i) => (
             <li key={`${e.at}-${i}`} className="flex items-baseline gap-2">
-              <span className="w-14 shrink-0 text-[10px] text-neutral-400">
+              <span className="w-14 shrink-0 text-[10px] text-faint">
                 {new Date(e.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
               </span>
               <span className="min-w-0 flex-1 truncate">{e.title}</span>
-              {e.detail && <span className="shrink-0 text-xs text-neutral-500">{e.detail}</span>}
+              {e.detail && <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>}
             </li>
           ))}
         </ul>
@@ -322,7 +322,7 @@ function InsightsWidget(_props: WidgetProps) {
   return (
     <section className="panel h-full">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
           <Telescope className="h-3.5 w-3.5" /> What helps you
         </div>
         <Link href="/analytics" className="text-[10px] text-indigo-400 hover:underline">
@@ -332,7 +332,7 @@ function InsightsWidget(_props: WidgetProps) {
       {top ? (
         <p className="mt-3 text-sm leading-relaxed">{top.statement}</p>
       ) : (
-        <p className="mt-3 text-sm text-neutral-500">
+        <p className="mt-3 text-sm text-tertiary">
           Keep logging sleep, exercise and mood — correlations with your retention will surface
           here.
         </p>
@@ -370,13 +370,13 @@ function UntestedMaterialWidget(_props: WidgetProps) {
   const items = data?.items ?? []
   return (
     <section className="panel h-full">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
         <BookOpen className="h-3.5 w-3.5" /> Read but never tested
       </div>
       {isLoading ? (
-        <p className="mt-3 text-sm text-neutral-500">Checking what you never tested…</p>
+        <p className="mt-3 text-sm text-tertiary">Checking what you never tested…</p>
       ) : items.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-500">
+        <p className="mt-3 text-sm text-tertiary">
           Everything you&apos;ve read has at least one card — no fluency illusions here.
         </p>
       ) : (
@@ -388,11 +388,11 @@ function UntestedMaterialWidget(_props: WidgetProps) {
                   {it.kind === 'source' ? (
                     <BookOpen className="h-4 w-4 shrink-0 text-indigo-400" />
                   ) : (
-                    <FileText className="h-4 w-4 shrink-0 text-amber-400" />
+                    <FileText className="h-4 w-4 shrink-0 text-status-warning-text" />
                   )}
                   <span className="min-w-0 flex-1 truncate">{it.title}</span>
                   {it.lastOpenedAt && (
-                    <span className="shrink-0 text-[10px] text-neutral-400">
+                    <span className="shrink-0 text-[10px] text-faint">
                       opened{' '}
                       {new Date(it.lastOpenedAt).toLocaleDateString(undefined, {
                         month: 'short',
@@ -417,7 +417,7 @@ function UntestedMaterialWidget(_props: WidgetProps) {
             ))}
           </ul>
           {items.length > UNTESTED_MAX_ROWS && (
-            <p className="mt-2 text-[10px] text-neutral-500">
+            <p className="mt-2 text-[10px] text-tertiary">
               and {items.length - UNTESTED_MAX_ROWS} more read-but-untested items.
             </p>
           )}
@@ -466,22 +466,20 @@ function PluginWidget({ def }: { def: PluginWidgetDef }) {
         {items.map((it, i) => (
           <li key={i} className="flex items-baseline gap-2">
             <span className="min-w-0 flex-1 truncate">{it.title}</span>
-            {it.detail && <span className="shrink-0 text-xs text-neutral-500">{it.detail}</span>}
+            {it.detail && <span className="shrink-0 text-xs text-tertiary">{it.detail}</span>}
           </li>
         ))}
       </ul>
     ) : (
-      <p className="mt-3 text-sm text-neutral-500">Nothing from the plugin yet.</p>
+      <p className="mt-3 text-sm text-tertiary">Nothing from the plugin yet.</p>
     )
   ) : (
-    def.description && <p className="mt-3 text-sm text-neutral-500">{def.description}</p>
+    def.description && <p className="mt-3 text-sm text-tertiary">{def.description}</p>
   )
 
   const inner = (
     <section className="panel h-full">
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        {def.title}
-      </div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">{def.title}</div>
       {body}
     </section>
   )

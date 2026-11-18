@@ -83,20 +83,20 @@ export function ConceptInspectorHUD({
 
   const tierStyles = isMastered
     ? {
-        badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+        badge: 'bg-emerald-500/10 text-status-success-text border-emerald-500/30',
         bar: 'bg-emerald-400',
         glow: 'shadow-emerald-500/20',
         status: 'Mastered Concept',
       }
     : isWeak
       ? {
-          badge: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+          badge: 'bg-rose-500/10 text-danger-text border-rose-500/30',
           bar: 'bg-rose-500',
           glow: 'shadow-rose-500/20',
           status: 'Needs Consolidation',
         }
       : {
-          badge: 'bg-sky-500/10 text-sky-400 border-sky-500/30',
+          badge: 'bg-sky-500/10 text-status-info-text border-sky-500/30',
           bar: 'bg-sky-400',
           glow: 'shadow-sky-500/20',
           status: 'Learning in Progress',
@@ -124,7 +124,7 @@ export function ConceptInspectorHUD({
               <span className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
               {tierStyles.status}
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-faint">
               <Layers className="h-3 w-3 text-indigo-400" />
               {activeDomain}
             </span>
@@ -136,7 +136,7 @@ export function ConceptInspectorHUD({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all text-xs"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-faint hover:text-white transition-all text-xs"
           >
             ✕
           </button>
@@ -146,7 +146,7 @@ export function ConceptInspectorHUD({
       {/* Critical Curriculum Bottleneck Banner */}
       {activeBottleneck && (
         <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
-          <div className="flex items-center gap-1.5 font-semibold text-amber-400">
+          <div className="flex items-center gap-1.5 font-semibold text-status-warning-text">
             <AlertTriangle className="h-3.5 w-3.5" />
             <span>Curriculum Bottleneck</span>
           </div>
@@ -159,9 +159,9 @@ export function ConceptInspectorHUD({
       {/* Mastery & Retention Dual Gauges */}
       <div className="my-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-white/5 bg-white/5 p-3">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+          <div className="flex items-center justify-between text-xs text-faint mb-1.5">
             <span className="flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-amber-400" /> BKT Mastery
+              <Sparkles className="h-3.5 w-3.5 text-status-warning-text" /> BKT Mastery
             </span>
             <span className="font-bold text-white">{masteryPct}%</span>
           </div>
@@ -174,9 +174,9 @@ export function ConceptInspectorHUD({
         </div>
 
         <div className="rounded-xl border border-white/5 bg-white/5 p-3">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+          <div className="flex items-center justify-between text-xs text-faint mb-1.5">
             <span className="flex items-center gap-1">
-              <Activity className="h-3.5 w-3.5 text-sky-400" /> FSRS Retention
+              <Activity className="h-3.5 w-3.5 text-status-info-text" /> FSRS Retention
             </span>
             <span className="font-bold text-white">{retentionPct}%</span>
           </div>
@@ -192,11 +192,11 @@ export function ConceptInspectorHUD({
       {/* Prerequisite Bottlenecks Alert */}
       {unmasteredPrereqs.length > 0 && (
         <div className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs">
-          <div className="flex items-center gap-1.5 font-semibold text-rose-400 mb-1">
+          <div className="flex items-center gap-1.5 font-semibold text-danger-text mb-1">
             <AlertTriangle className="h-3.5 w-3.5" />
             <span>{unmasteredPrereqs.length} Foundational Prerequisite(s) Unmastered</span>
           </div>
-          <p className="text-[11px] text-slate-300 leading-relaxed mb-2">
+          <p className="text-[11px] text-secondary leading-relaxed mb-2">
             Progress on this concept will be impeded until prerequisite foundations are reinforced.
           </p>
           <div className="space-y-1">
@@ -206,7 +206,9 @@ export function ConceptInspectorHUD({
                 className="flex items-center justify-between rounded-lg bg-black/30 px-2 py-1 text-[11px]"
               >
                 <span className="text-slate-200">{prereq.title}</span>
-                <span className="font-mono text-rose-400">{Math.round(prereq.mastery * 100)}%</span>
+                <span className="font-mono text-danger-text">
+                  {Math.round(prereq.mastery * 100)}%
+                </span>
               </div>
             ))}
           </div>
@@ -214,7 +216,7 @@ export function ConceptInspectorHUD({
       )}
 
       {/* Meta Specs */}
-      <div className="mb-4 flex items-center justify-between text-xs text-slate-400 px-1">
+      <div className="mb-4 flex items-center justify-between text-xs text-faint px-1">
         <span>
           Lapses: <strong className="text-white">{lapses}</strong>
         </span>
@@ -249,7 +251,7 @@ export function ConceptInspectorHUD({
           <button
             type="button"
             onClick={() => drillHandler(activeId)}
-            className="flex w-full sm:flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-600/20 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-600/30 hover:text-white transition-all active:scale-95 shadow-sm"
+            className="flex w-full sm:flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-600/20 px-3 py-2 text-xs font-semibold text-status-success-text hover:bg-emerald-600/30 hover:text-white transition-all active:scale-95 shadow-sm"
           >
             <Zap className="h-3.5 w-3.5" />
             <span>Targeted Drill</span>

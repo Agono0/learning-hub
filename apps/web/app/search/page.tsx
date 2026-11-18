@@ -75,11 +75,11 @@ function SearchTipsStrip() {
   if (!m) return null
   return (
     <details className="mt-2 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)">
-      <summary className="cursor-pointer text-neutral-600 dark:text-neutral-300">
+      <summary className="cursor-pointer text-neutral-600 dark:text-secondary">
         Search tips — {m.title}
       </summary>
-      <p className="mt-1.5 text-neutral-500">{m.summary}</p>
-      <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-neutral-500">
+      <p className="mt-1.5 text-tertiary">{m.summary}</p>
+      <ol className="mt-1.5 list-decimal space-y-1 pl-5 text-tertiary">
         {m.steps.map((s, i) => (
           <li key={i}>{s}</li>
         ))}
@@ -148,7 +148,7 @@ function SearchPageInner() {
 
       <Panel>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
           <input
             className="input pl-9 pr-9"
             placeholder="Search your entire library…"
@@ -165,7 +165,7 @@ function SearchPageInner() {
                 setNl(null)
               }}
               aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-faint hover:text-neutral-700 dark:hover:text-neutral-200"
             >
               <X className="h-4 w-4" />
             </button>
@@ -195,9 +195,9 @@ function SearchPageInner() {
           </button>
         </div>
 
-        {nlError && <p className="mt-2 text-xs text-rose-500">{nlError}</p>}
+        {nlError && <p className="mt-2 text-xs text-danger-text">{nlError}</p>}
         {nl && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-tertiary">
             {nl.usedAI ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-indigo-600/10 px-2 py-0.5 text-indigo-600 dark:text-indigo-300">
                 <Sparkles className="h-3 w-3" /> AI plan:{' '}
@@ -222,7 +222,7 @@ function SearchPageInner() {
                 className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
                   activeKind === k || (activeKind === 'all' && presentKinds.length === 1)
                     ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                    : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-(--hub-border) dark:text-neutral-400'
+                    : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-(--hub-border) dark:text-faint'
                 }`}
               >
                 {KIND_LABELS[k] ?? k}
@@ -236,7 +236,7 @@ function SearchPageInner() {
       {debounced ? (
         shown.length > 0 ? (
           <div className="space-y-2">
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-tertiary">
               {shown.length} result{shown.length === 1 ? '' : 's'}
               {data?.mode === 'like' ? ' · substring fallback (FTS unavailable)' : ''}
               {isFetching ? ' · …' : ''}
@@ -249,17 +249,17 @@ function SearchPageInner() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-sm">{hit.title || '(untitled)'}</span>
-                  <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500 dark:bg-(--hub-panel-2)">
+                  <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-tertiary dark:bg-(--hub-panel-2)">
                     {KIND_LABELS[hit.kind] ?? hit.kind}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-neutral-500 leading-relaxed">{hit.snippet}</p>
+                <p className="mt-1 text-sm text-tertiary leading-relaxed">{hit.snippet}</p>
               </button>
             ))}
           </div>
         ) : (
           !isFetching && (
-            <EmptyState title="No matches" icon={<Search className="h-10 w-10 text-neutral-400" />}>
+            <EmptyState title="No matches" icon={<Search className="h-10 w-10 text-faint" />}>
               <p>
                 Nothing found for “{debounced}”. Try fewer words, a synonym — or use Ask above to
                 let the planner try several keyword angles.
@@ -268,10 +268,7 @@ function SearchPageInner() {
           )
         )
       ) : (
-        <EmptyState
-          title="Search your library"
-          icon={<Search className="h-10 w-10 text-neutral-400" />}
-        >
+        <EmptyState title="Search your library" icon={<Search className="h-10 w-10 text-faint" />}>
           <p>
             Every note, card, lesson, highlight, idea, journal entry, quote, source, project, mind
             map, canvas, palace, goal, habit, capture, SQ3R session and tutor chat — one box.
@@ -311,7 +308,7 @@ function useSearch(q: string): { data: SearchResponse | undefined; isFetching: b
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="animate-pulse text-sm text-neutral-400">Loading…</div>}>
+    <Suspense fallback={<div className="animate-pulse text-sm text-faint">Loading…</div>}>
       <SearchPageInner />
     </Suspense>
   )

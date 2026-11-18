@@ -337,16 +337,16 @@ export default function SettingsPage() {
                 className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                   provider === p.key
                     ? 'border-indigo-500 bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
-                    : 'border-neutral-200 hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-[#1a1a1f]'
+                    : 'border-neutral-200 hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
                 }`}
               >
                 {p.label}
               </button>
             ))}
           </div>
-          {meta.hint && <p className="mt-2 text-xs text-amber-500">{meta.hint}</p>}
+          {meta.hint && <p className="mt-2 text-xs text-status-warning-text">{meta.hint}</p>}
           {provider === 'custom-endpoint' && (
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-tertiary">
               The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and must
               reply <code>{'{ "result": string | object }'}</code> —{' '}
               <a
@@ -404,7 +404,7 @@ export default function SettingsPage() {
                   setModel(preset.model)
                   setBaseUrl(preset.baseUrl)
                 }}
-                className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-[#18181d] dark:text-neutral-300 dark:hover:border-indigo-500 dark:hover:text-indigo-300"
+                className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:border-indigo-500 dark:hover:text-indigo-300"
               >
                 {preset.label}
               </button>
@@ -473,7 +473,9 @@ export default function SettingsPage() {
             <Wand2 className="h-4 w-4" /> {test.isPending ? 'Testing…' : 'Test connection'}
           </button>
           {testResult && (
-            <span className={`text-sm ${testResult.ok ? 'text-emerald-500' : 'text-red-500'}`}>
+            <span
+              className={`text-sm ${testResult.ok ? 'text-status-success-text' : 'text-danger-text'}`}
+            >
               {testResult.text}
             </span>
           )}
@@ -500,7 +502,7 @@ export default function SettingsPage() {
             className="w-full accent-indigo-500"
           />
           {retention > 0.95 && (
-            <p className="mt-1 text-xs text-amber-500">
+            <p className="mt-1 text-xs text-status-warning-text">
               Above 95% the scheduler schedules many more reviews for tiny gains — 90% is the sweet
               spot.
             </p>
@@ -521,7 +523,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="label">Theme</div>
-            <div className="text-sm text-neutral-500">
+            <div className="text-sm text-tertiary">
               Dark, Light, or follow your OS color scheme automatically.
             </div>
           </div>
@@ -549,7 +551,7 @@ export default function SettingsPage() {
                   className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
                     active
                       ? 'bg-white text-indigo-600 shadow-xs dark:bg-(--hub-panel-2) dark:text-indigo-300'
-                      : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -563,7 +565,7 @@ export default function SettingsPage() {
         {/* Color palette — re-skins the whole app and the 3D world mood. */}
         <div>
           <div className="label mb-1">Color palette</div>
-          <div className="mb-2.5 text-sm text-neutral-500">
+          <div className="mb-2.5 text-sm text-tertiary">
             Tints the entire interface — and the 3D forest's sky and light. Calm is the default.
           </div>
           <div
@@ -597,7 +599,7 @@ export default function SettingsPage() {
                     <span className="block text-xs font-semibold">
                       {p.label}
                       {p.id === 'calm' && (
-                        <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-neutral-400">
+                        <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-faint">
                           Default
                         </span>
                       )}
@@ -618,7 +620,7 @@ export default function SettingsPage() {
               <Vibrate className="h-4 w-4 text-indigo-400" />
               Haptics
             </div>
-            <p className="mt-0.5 text-xs text-neutral-500">
+            <p className="mt-0.5 text-xs text-tertiary">
               Vibration feedback on grading and session boundaries. Off = completely silent.
             </p>
           </div>
@@ -638,7 +640,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="label">FSRS-6 Weight Optimizer &amp; Calibration</div>
-            <p className="mt-0.5 text-xs text-neutral-500">
+            <p className="mt-0.5 text-xs text-tertiary">
               Trains personalized 21-parameter FSRS-6 weights directly on your local review log (MAP
               regularization toward population defaults; requires ≥50 spaced reviews).
             </p>
@@ -646,8 +648,8 @@ export default function SettingsPage() {
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
               s?.hasCustomWeights
-                ? 'bg-emerald-500/15 text-emerald-500'
-                : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-neutral-400'
+                ? 'bg-emerald-500/15 text-status-success-text'
+                : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-faint'
             }`}
           >
             {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
@@ -657,13 +659,13 @@ export default function SettingsPage() {
         {fsrsQuery.data && (
           <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-(--hub-border)">
             <div>
-              <div className="text-neutral-500">Spaced transitions</div>
+              <div className="text-tertiary">Spaced transitions</div>
               <div className="mt-0.5 text-sm font-semibold">
                 {fsrsQuery.data.active.sampleCount}
               </div>
             </div>
             <div>
-              <div className="text-neutral-500">Default Log-Loss</div>
+              <div className="text-tertiary">Default Log-Loss</div>
               <div className="mt-0.5 text-sm font-semibold">
                 {fsrsQuery.data.baseline.logLoss !== null
                   ? fsrsQuery.data.baseline.logLoss.toFixed(4)
@@ -671,7 +673,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <div className="text-neutral-500">Active Log-Loss</div>
+              <div className="text-tertiary">Active Log-Loss</div>
               <div className="mt-0.5 text-sm font-semibold text-indigo-400">
                 {fsrsQuery.data.active.logLoss !== null
                   ? fsrsQuery.data.active.logLoss.toFixed(4)
@@ -679,7 +681,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              <div className="text-neutral-500">Calibration RMSE</div>
+              <div className="text-tertiary">Calibration RMSE</div>
               <div className="mt-0.5 text-sm font-semibold">
                 {fsrsQuery.data.active.rmse !== null
                   ? `${(fsrsQuery.data.active.rmse * 100).toFixed(2)}%`
@@ -701,7 +703,7 @@ export default function SettingsPage() {
           />
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-neutral-500">
+        <label className="flex items-center gap-2 text-xs text-tertiary">
           <input
             type="checkbox"
             checked={rescheduleOnSave}
@@ -743,7 +745,9 @@ export default function SettingsPage() {
         </div>
 
         {fsrsMessage && (
-          <p className={`text-xs ${fsrsMessage.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
+          <p
+            className={`text-xs ${fsrsMessage.ok ? 'text-status-success-text' : 'text-status-warning-text'}`}
+          >
             {fsrsMessage.text}
           </p>
         )}
@@ -756,7 +760,7 @@ export default function SettingsPage() {
               <Bell className="h-4 w-4 text-indigo-400" />
               Reminders &amp; Push Notifications
             </div>
-            <p className="mt-0.5 text-xs text-neutral-500">
+            <p className="mt-0.5 text-xs text-tertiary">
               Calm, respectful desktop &amp; push reminders (Tauri &amp; Web Notifications). Strict
               quiet hours, daily cap, and anti-nag spacing.
             </p>
@@ -796,7 +800,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <div className="flex justify-between text-xs text-neutral-400 mb-1">
+              <div className="flex justify-between text-xs text-faint mb-1">
                 <span>Daily reminder limit</span>
                 <span className="font-semibold text-neutral-200">{remindersDailyCap} / day</span>
               </div>
@@ -808,7 +812,7 @@ export default function SettingsPage() {
                 onChange={(e) => setRemindersDailyCap(Number(e.target.value))}
                 className="w-full accent-indigo-500"
               />
-              <p className="text-[11px] text-neutral-500 mt-1">
+              <p className="text-[11px] text-tertiary mt-1">
                 Maximum notifications dispatched in a single calendar day across all triggers.
               </p>
             </div>
@@ -826,7 +830,7 @@ export default function SettingsPage() {
                   return (
                     <label
                       key={kind.id}
-                      className="flex items-center gap-2 cursor-pointer text-neutral-300"
+                      className="flex items-center gap-2 cursor-pointer text-secondary"
                     >
                       <input
                         type="checkbox"
@@ -871,7 +875,7 @@ export default function SettingsPage() {
               >
                 Send test notification
               </button>
-              {testNotifMsg && <span className="text-xs text-neutral-400">{testNotifMsg}</span>}
+              {testNotifMsg && <span className="text-xs text-faint">{testNotifMsg}</span>}
             </div>
           </div>
         )}
@@ -892,9 +896,9 @@ export default function SettingsPage() {
       <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save settings'}
       </button>
-      {save.isSuccess && <span className="text-sm text-emerald-500">Saved.</span>}
+      {save.isSuccess && <span className="text-sm text-status-success-text">Saved.</span>}
       {save.isError && (
-        <span className="text-sm text-red-500">
+        <span className="text-sm text-danger-text">
           Save failed — check the headers JSON (must be an object of strings).
         </span>
       )}
@@ -1000,9 +1004,9 @@ function OnlineIdentitySection() {
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
             mode === 'device_key'
-              ? 'bg-emerald-500/10 text-emerald-400'
+              ? 'bg-emerald-500/10 text-status-success-text'
               : mode === 'offline'
-                ? 'bg-neutral-500/10 text-neutral-400'
+                ? 'bg-neutral-500/10 text-faint'
                 : 'bg-indigo-500/10 text-indigo-400'
           }`}
         >
@@ -1014,7 +1018,7 @@ function OnlineIdentitySection() {
         </span>
       </div>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-faint">
         Learning HUB is 100% offline-first. Connect opt-in to participate in live study rooms,
         community deck/course sharing, and cooperative boss raids.
       </p>
@@ -1031,11 +1035,11 @@ function OnlineIdentitySection() {
                 className={`rounded-lg border p-3 text-left transition-all ${
                   mode === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -1066,7 +1070,7 @@ function OnlineIdentitySection() {
         </div>
 
         <div className="space-y-2 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-secondary">
             <input
               type="checkbox"
               checked={showLeaderboard}
@@ -1075,7 +1079,7 @@ function OnlineIdentitySection() {
             />
             Show study progress on global opt-in weekly leaderboard
           </label>
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-neutral-300">
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-secondary">
             <input
               type="checkbox"
               checked={allowBuddies}
@@ -1095,7 +1099,7 @@ function OnlineIdentitySection() {
           >
             {saveMutation.isPending ? 'Saving…' : 'Update Online Identity'}
           </button>
-          {savedMsg && <span className="text-xs text-emerald-400">Identity updated!</span>}
+          {savedMsg && <span className="text-xs text-status-success-text">Identity updated!</span>}
         </div>
       </div>
     </section>
@@ -1116,7 +1120,7 @@ function PowerToolsSection() {
         </span>
       </div>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-faint">
         Global hotkey{' '}
         <kbd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200">
           Ctrl+Shift+Space
@@ -1141,11 +1145,11 @@ function PowerToolsSection() {
                 className={`rounded-lg border p-2 text-center text-xs transition-all ${
                   hudStyle === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300 font-medium'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 <div>{opt.label}</div>
-                <div className="text-[10px] text-neutral-500">{opt.desc}</div>
+                <div className="text-[10px] text-tertiary">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -1159,7 +1163,7 @@ function PowerToolsSection() {
           >
             <Layout className="h-3.5 w-3.5" /> Test Open Quick-HUD
           </button>
-          <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+          <div className="flex items-center gap-2 text-[11px] text-tertiary">
             <Smartphone className="h-3.5 w-3.5" />
             <span>Android Home-Screen review glance widget receiver configured.</span>
           </div>
@@ -1215,7 +1219,7 @@ function AnkiConnectSection() {
         </span>
       </div>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-faint">
         Seamlessly synchronize cards and review intervals with Anki desktop via localhost:8765
         loopback, or export portable .apkg decks.
       </p>
@@ -1248,11 +1252,11 @@ function AnkiConnectSection() {
                 className={`rounded-lg border p-3 text-left transition-all ${
                   syncMode === opt.id
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -1268,10 +1272,10 @@ function AnkiConnectSection() {
             <RefreshCw className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
             {isTesting ? 'Testing…' : 'Test AnkiConnect Link'}
           </button>
-          <span className="text-xs text-neutral-400">
+          <span className="text-xs text-faint">
             {ankiQuery.data?.count ?? 0} mapped cards synchronized
           </span>
-          {testStatus && <span className="text-xs text-neutral-300">{testStatus}</span>}
+          {testStatus && <span className="text-xs text-secondary">{testStatus}</span>}
         </div>
       </div>
     </section>
@@ -1326,14 +1330,14 @@ function WorldSettingsSection() {
     <section className="panel space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-base font-semibold">
-          <TreePine className="h-4 w-4 text-emerald-400" /> 3D Forest of Focus & Timers
+          <TreePine className="h-4 w-4 text-status-success-text" /> 3D Forest of Focus & Timers
         </h2>
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-status-success-text">
           Three.js Low-Poly
         </span>
       </div>
 
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-faint">
         Configure camera presentation, default 3D visual timer themes, and ambient soundscapes.
       </p>
 
@@ -1367,12 +1371,12 @@ function WorldSettingsSection() {
                 }}
                 className={`rounded-lg border p-3 text-left transition-all ${
                   viewMode === opt.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -1397,8 +1401,8 @@ function WorldSettingsSection() {
                 }}
                 className={`rounded-lg border p-2 text-center text-xs transition-all ${
                   timerTheme === t.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-semibold'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text font-semibold'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 {t.label}
@@ -1436,12 +1440,12 @@ function WorldSettingsSection() {
                 }}
                 className={`rounded-lg border p-3 text-left transition-all ${
                   integrationMode === opt.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-neutral-500 mt-1 leading-snug">{opt.desc}</div>
+                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
               </button>
             ))}
           </div>
@@ -1465,8 +1469,8 @@ function WorldSettingsSection() {
                 }}
                 className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${
                   soundscape === s.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-semibold'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-neutral-400 hover:border-neutral-300'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text font-semibold'
+                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
                 }`}
               >
                 {s.label}
@@ -1476,7 +1480,9 @@ function WorldSettingsSection() {
         </div>
 
         {saved && (
-          <span className="text-xs text-emerald-400 font-medium">3D preferences saved.</span>
+          <span className="text-xs text-status-success-text font-medium">
+            3D preferences saved.
+          </span>
         )}
       </div>
     </section>

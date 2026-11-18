@@ -73,15 +73,15 @@ export function RelatedPanel({
       <div className="label mb-2 flex items-center gap-1.5">
         <Link2 className="h-3 w-3" /> {title}
       </div>
-      {hits === null && !notFound && <div className="text-xs text-neutral-400">…</div>}
+      {hits === null && !notFound && <div className="text-xs text-faint">…</div>}
       {notFound && (
-        <p className="text-xs text-neutral-400 leading-relaxed">
+        <p className="text-xs text-faint leading-relaxed">
           Semantic index hasn&apos;t seen this item yet. Build it in Settings → Semantic search
           index.
         </p>
       )}
       {hits !== null && hits.length === 0 && (
-        <p className="text-xs text-neutral-400">No close neighbours yet.</p>
+        <p className="text-xs text-faint">No close neighbours yet.</p>
       )}
       {hits !== null && hits.length > 0 && (
         <ul className="space-y-1.5">
@@ -92,7 +92,7 @@ export function RelatedPanel({
                 className="block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
               >
                 <span className="block truncate font-medium">{h.title}</span>
-                <span className="text-[10px] uppercase tracking-wide text-neutral-400">
+                <span className="text-[10px] uppercase tracking-wide text-faint">
                   {KIND_LABEL[h.kind] ?? h.kind} · {Math.round(h.score * 100)}%
                 </span>
               </button>

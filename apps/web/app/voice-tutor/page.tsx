@@ -259,7 +259,7 @@ function VoiceTutorContent() {
                   key={t}
                   type="button"
                   onClick={() => setTopic(t)}
-                  className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300"
+                  className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-secondary"
                 >
                   {t}
                 </button>
@@ -282,7 +282,7 @@ function VoiceTutorContent() {
           <Panel className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-100 pb-3 dark:border-(--hub-border)">
               <div>
-                <span className="text-xs text-neutral-400">Exam Topic</span>
+                <span className="text-xs text-faint">Exam Topic</span>
                 <h2 className="text-base font-bold">{topic}</h2>
               </div>
 
@@ -293,9 +293,9 @@ function VoiceTutorContent() {
                   title={speechEnabled ? 'Mute vocal output' : 'Enable vocal output'}
                 >
                   {speechEnabled ? (
-                    <Volume2 className="h-4 w-4 text-emerald-500" />
+                    <Volume2 className="h-4 w-4 text-status-success-text" />
                   ) : (
-                    <VolumeX className="h-4 w-4 text-neutral-400" />
+                    <VolumeX className="h-4 w-4 text-faint" />
                   )}
                 </Button>
                 <Button
@@ -324,8 +324,8 @@ function VoiceTutorContent() {
                       isActive
                         ? 'border border-indigo-500/50 bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300'
                         : isPassed
-                          ? 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
-                          : 'bg-neutral-50 text-neutral-400 dark:bg-neutral-900/50 dark:text-neutral-500'
+                          ? 'bg-neutral-100 text-tertiary dark:bg-neutral-800 dark:text-faint'
+                          : 'bg-neutral-50 text-faint dark:bg-neutral-900/50 dark:text-tertiary'
                     }`}
                   >
                     <div className="text-[10px] uppercase">Rung {r.rung}</div>
@@ -367,7 +367,7 @@ function VoiceTutorContent() {
                 )}
               </button>
             </div>
-            <div className="mt-2 text-xs font-medium text-neutral-500">
+            <div className="mt-2 text-xs font-medium text-tertiary">
               {isListening
                 ? 'Listening to your answer...'
                 : isSpeaking
@@ -427,7 +427,7 @@ function VoiceTutorContent() {
               disabled={isPending || isSpeaking}
               title="Request next Socratic clue"
             >
-              <HelpCircle className="h-4 w-4 mr-1 text-amber-500" />
+              <HelpCircle className="h-4 w-4 mr-1 text-status-warning-text" />
               Hint
             </Button>
           </div>
@@ -441,9 +441,7 @@ export default function VoiceTutorPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-4xl py-6 text-sm text-neutral-400">
-          Loading Voice Tutor...
-        </div>
+        <div className="mx-auto max-w-4xl py-6 text-sm text-faint">Loading Voice Tutor...</div>
       }
     >
       <VoiceTutorContent />

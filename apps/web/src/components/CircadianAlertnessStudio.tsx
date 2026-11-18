@@ -198,7 +198,7 @@ export function CircadianAlertnessStudio({
   return (
     <div className="space-y-6">
       {/* Real-time Physiological State Banner */}
-      <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-neutral-900/60 p-5 shadow-lg backdrop-blur-md">
+      <div className="rounded-2xl border border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-indigo-950/20 to-neutral-900/60 p-5 shadow-lg backdrop-blur-md">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -211,19 +211,23 @@ export function CircadianAlertnessStudio({
               </span>
             </div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              {currentStatusPoint?.zone === 'peak' && <Zap className="h-5 w-5 text-amber-400" />}
-              {currentStatusPoint?.zone === 'dip' && <Coffee className="h-5 w-5 text-amber-500" />}
+              {currentStatusPoint?.zone === 'peak' && (
+                <Zap className="h-5 w-5 text-status-warning-text" />
+              )}
+              {currentStatusPoint?.zone === 'dip' && (
+                <Coffee className="h-5 w-5 text-status-warning-text" />
+              )}
               {currentStatusPoint?.zone === 'optimal' && (
                 <Brain className="h-5 w-5 text-indigo-400" />
               )}
               {currentStatusPoint?.zone === 'wind_down' && (
-                <Moon className="h-5 w-5 text-purple-400" />
+                <Moon className="h-5 w-5 text-indigo-400" />
               )}
               {currentStatusPoint?.zone === 'sleep' && <Moon className="h-5 w-5 text-blue-400" />}
               Current State: {currentStatusPoint?.zone.toUpperCase()} Focus (
               {currentStatusPoint?.alertness}% Alertness)
             </h3>
-            <p className="text-xs text-neutral-300 max-w-xl">
+            <p className="text-xs text-secondary max-w-xl">
               {currentStatusPoint?.recommendedActivity}
             </p>
           </div>
@@ -251,7 +255,7 @@ export function CircadianAlertnessStudio({
       <Panel
         title={
           <div className="flex items-center gap-2">
-            <Sun className="h-4 w-4 text-amber-400" />
+            <Sun className="h-4 w-4 text-status-warning-text" />
             <span>Chronotype Profile & Sleep Architecture</span>
           </div>
         }
@@ -264,13 +268,13 @@ export function CircadianAlertnessStudio({
               className={`rounded-xl border p-3.5 text-left transition ${
                 chronotype === 'morning_lark'
                   ? 'border-amber-400 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-400'
-                  : 'border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                  : 'border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-bold flex items-center gap-1.5">🌅 Morning Lark</span>
                 {chronotype === 'morning_lark' && (
-                  <CheckCircle2 className="h-4 w-4 text-amber-400" />
+                  <CheckCircle2 className="h-4 w-4 text-status-warning-text" />
                 )}
               </div>
               <p className="text-xs opacity-80">
@@ -285,7 +289,7 @@ export function CircadianAlertnessStudio({
               className={`rounded-xl border p-3.5 text-left transition ${
                 chronotype === 'intermediate'
                   ? 'border-indigo-400 bg-indigo-500/10 text-white shadow-sm ring-1 ring-indigo-400'
-                  : 'border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                  : 'border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
@@ -306,13 +310,13 @@ export function CircadianAlertnessStudio({
               onClick={() => setChronotype('night_owl')}
               className={`rounded-xl border p-3.5 text-left transition ${
                 chronotype === 'night_owl'
-                  ? 'border-purple-400 bg-purple-500/10 text-white shadow-sm ring-1 ring-purple-400'
-                  : 'border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                  ? 'border-indigo-400 bg-indigo-500/10 text-white shadow-sm ring-1 ring-indigo-400'
+                  : 'border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-bold flex items-center gap-1.5">🦉 Night Owl</span>
-                {chronotype === 'night_owl' && <CheckCircle2 className="h-4 w-4 text-purple-400" />}
+                {chronotype === 'night_owl' && <CheckCircle2 className="h-4 w-4 text-indigo-400" />}
               </div>
               <p className="text-xs opacity-80">
                 Delayed phase. Slower morning start; maximum working memory & flow 16:30–22:00.
@@ -323,10 +327,12 @@ export function CircadianAlertnessStudio({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2 border-t border-white/5">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1">
-                  <Sun className="h-3.5 w-3.5 text-amber-400" /> Typical Wake Hour
+                <label className="text-xs font-semibold text-secondary flex items-center gap-1">
+                  <Sun className="h-3.5 w-3.5 text-status-warning-text" /> Typical Wake Hour
                 </label>
-                <span className="text-xs font-mono font-bold text-amber-400">{wakeHour}:00</span>
+                <span className="text-xs font-mono font-bold text-status-warning-text">
+                  {wakeHour}:00
+                </span>
               </div>
               <input
                 type="range"
@@ -341,7 +347,7 @@ export function CircadianAlertnessStudio({
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-neutral-300 flex items-center gap-1">
+                <label className="text-xs font-semibold text-secondary flex items-center gap-1">
                   <Moon className="h-3.5 w-3.5 text-indigo-400" /> Target Bedtime
                 </label>
                 <span className="text-xs font-mono font-bold text-indigo-400">
@@ -369,7 +375,7 @@ export function CircadianAlertnessStudio({
       <Panel
         title={
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-emerald-400" />
+            <Activity className="h-4 w-4 text-status-success-text" />
             <span>24-Hour Circadian Alertness & Cognitive Windows</span>
           </div>
         }
@@ -389,7 +395,7 @@ export function CircadianAlertnessStudio({
                         : point.zone === 'dip'
                           ? 'bg-rose-400'
                           : point.zone === 'wind_down'
-                            ? 'bg-purple-400'
+                            ? 'bg-indigo-400'
                             : 'bg-indigo-900/60'
 
                   return (
@@ -402,7 +408,7 @@ export function CircadianAlertnessStudio({
                         <span className="font-bold">
                           {point.hour}:00 · {point.alertness}%
                         </span>
-                        <span className="text-neutral-400">{point.zone}</span>
+                        <span className="text-faint">{point.zone}</span>
                       </div>
 
                       {isCurrent && (
@@ -421,7 +427,7 @@ export function CircadianAlertnessStudio({
                       />
                       <span
                         className={`text-[9px] mt-1 font-mono ${
-                          isCurrent ? 'font-bold text-white' : 'text-neutral-500'
+                          isCurrent ? 'font-bold text-white' : 'text-tertiary'
                         }`}
                       >
                         {point.hour}
@@ -432,7 +438,7 @@ export function CircadianAlertnessStudio({
               </div>
 
               {/* Legend */}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400 pt-1">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-faint pt-1">
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm bg-amber-400" /> Working Memory Peak
                 </span>
@@ -443,7 +449,7 @@ export function CircadianAlertnessStudio({
                   <span className="h-2.5 w-2.5 rounded-sm bg-rose-400" /> Post-Lunch Dip
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-sm bg-purple-400" /> Wind-Down / Journaling
+                  <span className="h-2.5 w-2.5 rounded-sm bg-indigo-400" /> Wind-Down / Journaling
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-sm bg-indigo-900/60" /> Nocturnal Replay
@@ -457,45 +463,45 @@ export function CircadianAlertnessStudio({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
-                  <Zap className="h-3.5 w-3.5 text-amber-400" /> Deep Focus
+                <span className="text-xs font-bold text-status-warning-text flex items-center gap-1">
+                  <Zap className="h-3.5 w-3.5 text-status-warning-text" /> Deep Focus
                 </span>
                 <Badge tone="warning">
                   {circadianResult.windows.workingMemoryPeak.startHour}:00–
                   {circadianResult.windows.workingMemoryPeak.endHour}:00
                 </Badge>
               </div>
-              <p className="text-xs text-neutral-300">
+              <p className="text-xs text-secondary">
                 {circadianResult.windows.workingMemoryPeak.description}
               </p>
             </div>
 
             <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-300 flex items-center gap-1">
-                  <Coffee className="h-3.5 w-3.5 text-rose-400" /> Circadian Dip
+                <span className="text-xs font-bold text-danger-text flex items-center gap-1">
+                  <Coffee className="h-3.5 w-3.5 text-danger-text" /> Circadian Dip
                 </span>
                 <Badge tone="danger">
                   {circadianResult.windows.postLunchDip.startHour}:00–
                   {circadianResult.windows.postLunchDip.endHour}:00
                 </Badge>
               </div>
-              <p className="text-xs text-neutral-300">
+              <p className="text-xs text-secondary">
                 {circadianResult.windows.postLunchDip.description}
               </p>
             </div>
 
-            <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3.5 space-y-1.5">
+            <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-purple-300 flex items-center gap-1">
-                  <Brain className="h-3.5 w-3.5 text-purple-400" /> Creative Incubation
+                <span className="text-xs font-bold text-indigo-300 flex items-center gap-1">
+                  <Brain className="h-3.5 w-3.5 text-indigo-400" /> Creative Incubation
                 </span>
                 <Badge tone="violet">
                   {circadianResult.windows.creativeIncubation.startHour}:00–
                   {circadianResult.windows.creativeIncubation.endHour}:00
                 </Badge>
               </div>
-              <p className="text-xs text-neutral-300">
+              <p className="text-xs text-secondary">
                 {circadianResult.windows.creativeIncubation.description}
               </p>
             </div>
@@ -510,7 +516,7 @@ export function CircadianAlertnessStudio({
                   {circadianResult.windows.nocturnalConsolidation.endHour}:00
                 </Badge>
               </div>
-              <p className="text-xs text-neutral-300">
+              <p className="text-xs text-secondary">
                 {circadianResult.windows.nocturnalConsolidation.description}
               </p>
             </div>
@@ -522,7 +528,7 @@ export function CircadianAlertnessStudio({
       <Panel
         title={
           <div className="flex items-center gap-2">
-            <Coffee className="h-4 w-4 text-amber-500" />
+            <Coffee className="h-4 w-4 text-status-warning-text" />
             <span>Caffeine Clearance & Sleep Architecture Simulator</span>
           </div>
         }
@@ -533,7 +539,7 @@ export function CircadianAlertnessStudio({
             <div className="lg:col-span-2 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white/5 rounded-xl border border-white/10">
                 <div>
-                  <span className="text-xs text-neutral-400">Bedtime Remaining Caffeine:</span>
+                  <span className="text-xs text-faint">Bedtime Remaining Caffeine:</span>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xl font-bold font-mono text-white">
                       {caffeineResult.bedtimeRemainingMg} mg
@@ -553,8 +559,8 @@ export function CircadianAlertnessStudio({
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs text-neutral-400">Recommended Cutoff:</span>
-                  <div className="text-lg font-bold font-mono text-amber-400">
+                  <span className="text-xs text-faint">Recommended Cutoff:</span>
+                  <div className="text-lg font-bold font-mono text-status-warning-text">
                     {caffeineResult.recommendedCutoffHour}:00
                   </div>
                 </div>
@@ -580,7 +586,7 @@ export function CircadianAlertnessStudio({
 
               {/* Logged Doses List */}
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-neutral-300">
+                <span className="text-xs font-semibold text-secondary">
                   Logged Caffeine Doses Today:
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -589,13 +595,13 @@ export function CircadianAlertnessStudio({
                       key={idx}
                       className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs"
                     >
-                      <Coffee className="h-3 w-3 text-amber-400" />
+                      <Coffee className="h-3 w-3 text-status-warning-text" />
                       <span className="font-mono font-semibold">{dose.mg}mg</span>
-                      <span className="text-neutral-500">at {dose.hour}:00</span>
+                      <span className="text-tertiary">at {dose.hour}:00</span>
                       <button
                         type="button"
                         onClick={() => removeDose(idx)}
-                        className="text-neutral-500 hover:text-rose-400 ml-1 font-bold"
+                        className="text-tertiary hover:text-danger-text ml-1 font-bold"
                         title="Remove dose"
                       >
                         ×
@@ -603,9 +609,7 @@ export function CircadianAlertnessStudio({
                     </div>
                   ))}
                   {doses.length === 0 && (
-                    <span className="text-xs text-neutral-500 italic">
-                      No caffeine logged today
-                    </span>
+                    <span className="text-xs text-tertiary italic">No caffeine logged today</span>
                   )}
                 </div>
               </div>
@@ -628,7 +632,7 @@ export function CircadianAlertnessStudio({
                     <span>
                       {p.icon} {p.label}
                     </span>
-                    <span className="text-[10px] font-mono text-neutral-400">{p.mg}mg</span>
+                    <span className="text-[10px] font-mono text-faint">{p.mg}mg</span>
                   </button>
                 ))}
               </div>
@@ -636,10 +640,7 @@ export function CircadianAlertnessStudio({
               <div className="space-y-2 pt-2 border-t border-white/5">
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label
-                      htmlFor={customDoseMgId}
-                      className="text-[10px] text-neutral-400 block mb-1"
-                    >
+                    <label htmlFor={customDoseMgId} className="text-[10px] text-faint block mb-1">
                       Custom mg
                     </label>
                     <input
@@ -653,10 +654,7 @@ export function CircadianAlertnessStudio({
                     />
                   </div>
                   <div className="flex-1">
-                    <label
-                      htmlFor={customDoseHourId}
-                      className="text-[10px] text-neutral-400 block mb-1"
-                    >
+                    <label htmlFor={customDoseHourId} className="text-[10px] text-faint block mb-1">
                       Hour (0-23)
                     </label>
                     <input
@@ -689,7 +687,7 @@ export function CircadianAlertnessStudio({
         }
       >
         <div className="space-y-4">
-          <p className="text-xs text-neutral-300">
+          <p className="text-xs text-secondary">
             Synthesizes stereophonic pure sine carriers directly into headphones to elicit
             frequency-following responses in the auditory cortex (Herrmann 2001). Requires stereo
             headphones.
@@ -702,7 +700,7 @@ export function CircadianAlertnessStudio({
               className={`rounded-xl border p-3.5 text-left transition ${
                 binauralMode === 'gamma_40hz' && isPlayingAudio
                   ? 'border-amber-400 bg-amber-500/10 text-white shadow-sm ring-1 ring-amber-400'
-                  : 'border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                  : 'border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
@@ -725,7 +723,7 @@ export function CircadianAlertnessStudio({
               className={`rounded-xl border p-3.5 text-left transition ${
                 binauralMode === 'alpha_10hz' && isPlayingAudio
                   ? 'border-indigo-400 bg-indigo-500/10 text-white shadow-sm ring-1 ring-indigo-400'
-                  : 'border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                  : 'border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
@@ -747,8 +745,8 @@ export function CircadianAlertnessStudio({
               onClick={() => startBinauralAudio('delta_2hz')}
               className={`rounded-xl border p-3.5 text-left transition ${
                 binauralMode === 'delta_2hz' && isPlayingAudio
-                  ? 'border-purple-400 bg-purple-500/10 text-white shadow-sm ring-1 ring-purple-400'
-                  : 'border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                  ? 'border-indigo-400 bg-indigo-500/10 text-white shadow-sm ring-1 ring-indigo-400'
+                  : 'border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
@@ -756,7 +754,7 @@ export function CircadianAlertnessStudio({
                   🌙 2.5Hz Delta Wind-Down
                 </span>
                 {binauralMode === 'delta_2hz' && isPlayingAudio && (
-                  <span className="h-2 w-2 rounded-full bg-purple-400 animate-ping" />
+                  <span className="h-2 w-2 rounded-full bg-indigo-400 animate-ping" />
                 )}
               </div>
               <p className="text-xs opacity-80">
@@ -773,7 +771,7 @@ export function CircadianAlertnessStudio({
                   <VolumeX className="h-4 w-4 mr-1.5" />
                   Stop Entrainment
                 </Button>
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs text-faint">
                   Carrier active: <strong className="text-white">{binauralMode}</strong>
                 </span>
               </div>
@@ -782,7 +780,7 @@ export function CircadianAlertnessStudio({
                 <label htmlFor={binauralVolumeId} className="sr-only">
                   Binaural audio volume
                 </label>
-                <Volume2 className="h-4 w-4 text-neutral-400" />
+                <Volume2 className="h-4 w-4 text-faint" />
                 <input
                   id={binauralVolumeId}
                   type="range"

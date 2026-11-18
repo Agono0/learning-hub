@@ -42,13 +42,16 @@ export function SpatialLocusHUD({
 
   const assetBadge =
     locus.assetType === 'holographic_orb'
-      ? { label: 'Holographic Orb', color: 'border-sky-500/30 bg-sky-500/10 text-sky-400' }
+      ? { label: 'Holographic Orb', color: 'border-sky-500/30 bg-sky-500/10 text-status-info-text' }
       : locus.assetType === 'wall_canvas'
         ? {
             label: 'Wall Canvas',
-            color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+            color: 'border-emerald-500/30 bg-emerald-500/10 text-status-success-text',
           }
-        : { label: 'Pedestal Plaque', color: 'border-amber-500/30 bg-amber-500/10 text-amber-400' }
+        : {
+            label: 'Pedestal Plaque',
+            color: 'border-amber-500/30 bg-amber-500/10 text-status-warning-text',
+          }
 
   return (
     <div
@@ -71,7 +74,7 @@ export function SpatialLocusHUD({
               {assetBadge.label}
             </span>
             <span className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300">
-              <Sparkles className="h-3 w-3 text-amber-300" />
+              <Sparkles className="h-3 w-3 text-status-warning-text" />
               {retentionBonusMultiplier.toFixed(2)}x Spatial Retention
             </span>
           </div>
@@ -82,7 +85,7 @@ export function SpatialLocusHUD({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all text-xs"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-faint hover:text-white transition-all text-xs"
           >
             ✕
           </button>
@@ -92,7 +95,7 @@ export function SpatialLocusHUD({
       {/* Spatial Telemetry Bar */}
       <div className="my-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl border border-white/5 bg-white/5 px-3 py-2">
-          <span className="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase tracking-wider text-faint block mb-0.5">
             Proximity
           </span>
           <span className="font-mono text-sm font-bold text-white">
@@ -100,7 +103,7 @@ export function SpatialLocusHUD({
           </span>
         </div>
         <div className="rounded-xl border border-white/5 bg-white/5 px-3 py-2">
-          <span className="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5 flex items-center gap-1">
+          <span className="text-[10px] uppercase tracking-wider text-faint block mb-0.5 flex items-center gap-1">
             <Volume2 className="h-3 w-3 text-indigo-400" /> Spatial Pan
           </span>
           <span className="font-mono text-sm font-bold text-white">{panDirection}</span>
@@ -111,15 +114,15 @@ export function SpatialLocusHUD({
       {cardContent ? (
         <div className="my-3 space-y-3 rounded-xl border border-white/5 bg-slate-950/60 p-4">
           <div className="space-y-1">
-            <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+            <span className="text-[10px] uppercase font-semibold text-faint tracking-wider">
               Prompt (Front)
             </span>
             <p className="text-sm font-semibold text-slate-100">{cardContent.front}</p>
           </div>
 
           {isRevealed ? (
-            <div className="space-y-1 border-t border-white/10 pt-2 animate-fadeIn">
-              <span className="text-[10px] uppercase font-semibold text-emerald-400 tracking-wider">
+            <div className="space-y-1 border-t border-white/10 pt-2 animate-fade-in">
+              <span className="text-[10px] uppercase font-semibold text-status-success-text tracking-wider">
                 Mnemonic Target (Back)
               </span>
               <p className="text-xs text-slate-200 leading-relaxed">{cardContent.back}</p>
@@ -128,7 +131,7 @@ export function SpatialLocusHUD({
             <button
               type="button"
               onClick={() => setIsRevealed(true)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all shadow-sm"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-2 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all shadow-sm"
             >
               <Eye className="h-3.5 w-3.5 text-indigo-400" />
               <span>Reveal Answer (Space)</span>
@@ -141,28 +144,28 @@ export function SpatialLocusHUD({
               <button
                 type="button"
                 onClick={() => onRecordRecall(1)}
-                className="rounded-lg border border-rose-500/30 bg-rose-500/10 py-1.5 text-center text-xs font-semibold text-rose-300 hover:bg-rose-500/20 active:scale-95 transition-all"
+                className="rounded-lg border border-rose-500/30 bg-rose-500/10 py-1.5 text-center text-xs font-semibold text-danger-text hover:bg-rose-500/20 active:scale-95 transition-all"
               >
                 Again
               </button>
               <button
                 type="button"
                 onClick={() => onRecordRecall(2)}
-                className="rounded-lg border border-amber-500/30 bg-amber-500/10 py-1.5 text-center text-xs font-semibold text-amber-300 hover:bg-amber-500/20 active:scale-95 transition-all"
+                className="rounded-lg border border-amber-500/30 bg-amber-500/10 py-1.5 text-center text-xs font-semibold text-status-warning-text hover:bg-amber-500/20 active:scale-95 transition-all"
               >
                 Hard
               </button>
               <button
                 type="button"
                 onClick={() => onRecordRecall(3)}
-                className="rounded-lg border border-sky-500/30 bg-sky-500/10 py-1.5 text-center text-xs font-semibold text-sky-300 hover:bg-sky-500/20 active:scale-95 transition-all"
+                className="rounded-lg border border-sky-500/30 bg-sky-500/10 py-1.5 text-center text-xs font-semibold text-status-info-text hover:bg-sky-500/20 active:scale-95 transition-all"
               >
                 Good
               </button>
               <button
                 type="button"
                 onClick={() => onRecordRecall(4)}
-                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 py-1.5 text-center text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all"
+                className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 py-1.5 text-center text-xs font-semibold text-status-success-text hover:bg-emerald-500/20 active:scale-95 transition-all"
               >
                 Easy
               </button>
@@ -170,7 +173,7 @@ export function SpatialLocusHUD({
           )}
         </div>
       ) : (
-        <div className="my-3 rounded-xl border border-white/5 bg-white/5 p-3 text-xs text-slate-400">
+        <div className="my-3 rounded-xl border border-white/5 bg-white/5 p-3 text-xs text-faint">
           <p>
             {locus.contentPreview ||
               'Spatial anchor placeholder — link a flashcard to enable spatial review.'}

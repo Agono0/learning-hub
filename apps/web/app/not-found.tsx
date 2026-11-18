@@ -10,7 +10,7 @@ export default function NotFound() {
       <Compass className="mx-auto h-10 w-10 text-indigo-400" />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Page not found</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-tertiary">
           This route does not exist — it may have moved, or never existed.
         </p>
       </div>

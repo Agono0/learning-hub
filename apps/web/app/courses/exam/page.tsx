@@ -48,7 +48,7 @@ function Exam() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-neutral-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
   if (error || !data)
     return <Callout tone="danger">{error?.message ?? 'This course has no final exam.'}</Callout>
 
@@ -58,7 +58,7 @@ function Exam() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Link href={`/courses/course?id=${id}`} className="text-sm text-neutral-500 hover:underline">
+      <Link href={`/courses/course?id=${id}`} className="text-sm text-tertiary hover:underline">
         ← Back to course
       </Link>
       <PageHeader
@@ -66,10 +66,7 @@ function Exam() {
         subtitle={`${data.exercises.length} questions · pass with ${Math.round(data.passScore * 100)}%${data.bestScore !== null ? ` · your best so far: ${Math.round(data.bestScore * 100)}%` : ''}`}
         icon={
           data.minutes ? (
-            <Clock
-              className="h-5 w-5 text-neutral-400"
-              aria-label={`about ${data.minutes} minutes`}
-            />
+            <Clock className="h-5 w-5 text-faint" aria-label={`about ${data.minutes} minutes`} />
           ) : undefined
         }
       />
@@ -104,7 +101,7 @@ function Exam() {
       )}
 
       {data.minutes && !result && (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Suggested time: about {data.minutes} minutes. There is no countdown — take the time you
           need.
         </p>
@@ -115,13 +112,13 @@ function Exam() {
         return (
           <Panel
             key={i}
-            title={<span className="text-neutral-500">Question {i + 1}</span>}
+            title={<span className="text-tertiary">Question {i + 1}</span>}
             actions={
               r &&
               (r.correct ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" aria-label="correct" />
+                <CheckCircle2 className="h-5 w-5 text-status-success-text" aria-label="correct" />
               ) : (
-                <XCircle className="h-5 w-5 text-rose-500" aria-label="incorrect" />
+                <XCircle className="h-5 w-5 text-danger-text" aria-label="incorrect" />
               ))
             }
           >
@@ -144,7 +141,7 @@ function Exam() {
                   <p key={j}>{f}</p>
                 ))}
                 {exercise.explanation && (
-                  <Markdown className="text-neutral-600 dark:text-neutral-300">
+                  <Markdown className="text-neutral-600 dark:text-secondary">
                     {exercise.explanation}
                   </Markdown>
                 )}
@@ -160,7 +157,7 @@ function Exam() {
             Submit exam
           </Button>
           {unanswered > 0 && (
-            <span className="text-xs text-neutral-500">
+            <span className="text-xs text-tertiary">
               {unanswered} question(s) unanswered — they count as wrong.
             </span>
           )}
@@ -183,7 +180,7 @@ function Exam() {
 
 export default function ExamPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
       <Exam />
     </Suspense>
   )

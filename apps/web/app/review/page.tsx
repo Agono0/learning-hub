@@ -63,11 +63,14 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 import {
-  InkPad,
-  PageHeader,
+  Button,
   CognitiveLoadMeter,
+  InkPad,
   MetacognitionRadar,
   MetacognitiveCalibrationCard,
+  PageHeader,
+  SelectField,
+  Skeleton,
 } from '@/ui'
 import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
 import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
@@ -154,7 +157,7 @@ interface SessionPayload {
 }
 
 const GRADES: { grade: Grade; label: string; color: string }[] = [
-  { grade: 1, label: 'Again', color: 'bg-red-600 hover:bg-red-500' },
+  { grade: 1, label: 'Again', color: 'bg-rose-600 hover:bg-rose-500' },
   { grade: 2, label: 'Hard', color: 'bg-amber-600 hover:bg-amber-500' },
   { grade: 3, label: 'Good', color: 'bg-indigo-600 hover:bg-indigo-500' },
   { grade: 4, label: 'Easy', color: 'bg-emerald-600 hover:bg-emerald-500' },
@@ -843,11 +846,11 @@ function ReviewPageInner() {
                   className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                     deckId === null
                       ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                      : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                      : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-secondary dark:hover:bg-(--hub-panel-2)'
                   }`}
                 >
                   📚 All decks
-                  <span className="ml-2 text-xs text-neutral-500">
+                  <span className="ml-2 text-xs text-tertiary">
                     {(decksData?.decks ?? []).reduce((acc, d) => acc + d.due, 0)} due
                   </span>
                 </button>
@@ -858,11 +861,11 @@ function ReviewPageInner() {
                     className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                       deckId === d.id
                         ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                        : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                        : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-secondary dark:hover:bg-(--hub-panel-2)'
                     }`}
                   >
                     {d.emoji} {d.name}
-                    <span className="ml-2 text-xs text-neutral-500">{d.due} due</span>
+                    <span className="ml-2 text-xs text-tertiary">{d.due} due</span>
                   </button>
                 ))}
               </div>
@@ -883,17 +886,17 @@ function ReviewPageInner() {
                         className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                           isSelected
                             ? 'border-indigo-500 bg-indigo-600/20 text-indigo-200 font-medium'
-                            : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                            : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-secondary dark:hover:bg-(--hub-panel-2)'
                         }`}
                       >
                         {isSelected ? '✓ ' : ''}
                         {d.emoji} {d.name}
-                        <span className="ml-2 text-xs text-neutral-500">{d.due} due</span>
+                        <span className="ml-2 text-xs text-tertiary">{d.due} due</span>
                       </button>
                     )
                   })}
                 </div>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-tertiary">
                   {selectedDeckIds.length > 1
                     ? `Interleaving ${selectedDeckIds.length} decks with round-robin subject rotation (Rohrer 2020: d=0.83 over blocked practice).`
                     : 'Select 2 or more decks to blend into an interleaved study session.'}
@@ -906,16 +909,16 @@ function ReviewPageInner() {
               <div className="label mb-2">Mode</div>
               <div className="flex flex-wrap gap-2">
                 {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
-                  <button
+                  <Button
                     key={m}
                     onClick={() => setMode(m)}
-                    className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300 font-medium' : ''}`}
+                    variant={mode === m ? 'secondary' : 'ghost'}
                   >
                     {m === 'commute' ? '🎧 commute' : m}
-                  </button>
+                  </Button>
                 ))}
               </div>
-              <p className="mt-2 text-xs text-neutral-500">
+              <p className="mt-2 text-xs text-tertiary">
                 {mode === 'normal' &&
                   'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
                 {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
@@ -934,14 +937,15 @@ function ReviewPageInner() {
                 onChange={(e) => setLimit(Number(e.target.value))}
                 className="input"
               />
-              <div className="label mb-2 mt-3">
-                Retrieval criterion{' '}
-                <span className="font-normal text-neutral-500">
-                  (correct recalls after a mistake)
-                </span>
-              </div>
-              <select
-                className="input"
+              <SelectField
+                label={
+                  <>
+                    Retrieval criterion{' '}
+                    <span className="font-normal normal-case tracking-normal">
+                      (correct recalls after a mistake)
+                    </span>
+                  </>
+                }
                 value={srCriterion}
                 onChange={(e) => setSrCriterion(Number(e.target.value))}
               >
@@ -950,8 +954,8 @@ function ReviewPageInner() {
                     {n} — {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
                   </option>
                 ))}
-              </select>
-              <p className="mt-2 text-xs text-neutral-500">
+              </SelectField>
+              <p className="mt-2 text-xs text-tertiary">
                 Successive relearning: a failed card repeats (spaced) until it has been recalled
                 correctly this many times (Rawson &amp; Dunlosky 2011).
               </p>
@@ -960,7 +964,7 @@ function ReviewPageInner() {
           <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3 bg-neutral-50/50 dark:bg-neutral-900/30">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-amber-400" />
+                <Zap className="h-4 w-4 text-status-warning-text" />
                 <span className="text-sm font-medium">⚡ Speed Drill Mode</span>
               </div>
               <button
@@ -968,20 +972,20 @@ function ReviewPageInner() {
                 onClick={() => setSpeedDrillActive(!speedDrillActive)}
                 className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors ${
                   speedDrillActive
-                    ? 'border-amber-500 bg-amber-500/20 text-amber-300'
-                    : 'border-neutral-300 dark:border-neutral-700 text-neutral-500 hover:text-neutral-300'
+                    ? 'border-amber-500 bg-amber-500/20 text-status-warning-text'
+                    : 'border-neutral-300 dark:border-neutral-700 text-tertiary hover:text-secondary'
                 }`}
               >
                 {speedDrillActive ? 'Enabled' : 'Disabled'}
               </button>
             </div>
-            <p className="text-xs text-neutral-500 mb-2">
+            <p className="text-xs text-tertiary mb-2">
               Timed retrieval sprints (Kornell 2009): enforces rapid active recall before surface
               cues take over.
             </p>
             {speedDrillActive && (
               <div className="flex items-center gap-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border) text-xs">
-                <span className="text-neutral-400">Time per card:</span>
+                <span className="text-faint">Time per card:</span>
                 {[5, 8, 10, 15].map((s) => (
                   <button
                     key={s}
@@ -989,8 +993,8 @@ function ReviewPageInner() {
                     onClick={() => setSpeedLimitSec(s)}
                     className={`rounded px-2 py-0.5 border ${
                       speedLimitSec === s
-                        ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
-                        : 'border-neutral-300 dark:border-neutral-700 text-neutral-400'
+                        ? 'border-amber-500 bg-amber-500/20 text-status-warning-text font-bold'
+                        : 'border-neutral-300 dark:border-neutral-700 text-faint'
                     }`}
                   >
                     {s}s
@@ -1000,16 +1004,16 @@ function ReviewPageInner() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="btn"
+            <Button
+              variant="primary"
               disabled={(decksData?.decks ?? []).length === 0}
               onClick={() => setStarted(true)}
             >
               <Zap className="h-4 w-4" /> Start session
-            </button>
-            <button
-              type="button"
-              className="btn-ghost text-xs flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs flex items-center gap-1.5"
               disabled={isPlayingDigest}
               onClick={async () => {
                 setIsPlayingDigest(true)
@@ -1042,15 +1046,15 @@ function ReviewPageInner() {
             >
               <Headphones className="h-4 w-4 text-indigo-400" />
               {isPlayingDigest ? 'Playing Audio Digest…' : 'Generate 5m Commute Digest'}
-            </button>
-            <button
-              type="button"
-              className="btn-ghost text-xs flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs flex items-center gap-1.5"
               onClick={() => setShowWorkloadModal(true)}
             >
               <Sliders className="h-4 w-4 text-indigo-400" /> Workload &amp; Easy Days
-            </button>
-            {digestStatus && <span className="text-xs text-neutral-400">{digestStatus}</span>}
+            </Button>
+            {digestStatus && <span className="text-xs text-faint">{digestStatus}</span>}
           </div>
         </div>
         <WorkloadBalancerModal
@@ -1069,25 +1073,25 @@ function ReviewPageInner() {
         <PageHeader title="Session complete" />
         <div className="panel celebrate space-y-3">
           <div className="flex items-center gap-3">
-            <Sparkles className="h-8 w-8 text-amber-400" />
+            <Sparkles className="h-8 w-8 text-status-warning-text" />
             <div>
               <div className="text-lg font-bold">
                 {stats.correct} / {stats.total} recalled ({stats.accuracy}%)
               </div>
-              <div className="text-sm text-neutral-500">+{stats.xp} XP earned</div>
+              <div className="text-sm text-tertiary">+{stats.xp} XP earned</div>
               {worldCoins > 0 && (
-                <div className="text-xs text-amber-400">
+                <div className="text-xs text-status-warning-text">
                   +{worldCoins} Study Coins from verified reviews (anti-cheat checked)
                 </div>
               )}
               {blindGraded.length > 0 && (
-                <div className="text-xs text-amber-400">
+                <div className="text-xs text-status-warning-text">
                   {blindGraded.length} graded blind — corrections surface at your next session.
                 </div>
               )}
               {speedDrillActive && stats.total > 0 && (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-300">
-                  <Zap className="h-3.5 w-3.5 text-amber-400" />
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-status-warning-text">
+                  <Zap className="h-3.5 w-3.5 text-status-warning-text" />
                   <span>
                     Speed Drill Sprint: {stats.total} cards · {stats.accuracy}% accuracy under{' '}
                     {speedLimitSec}s pressure
@@ -1097,8 +1101,8 @@ function ReviewPageInner() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              className="btn"
+            <Button
+              variant="primary"
               onClick={() => {
                 setStarted(false)
                 setFinishedAt(null)
@@ -1107,15 +1111,18 @@ function ReviewPageInner() {
               }}
             >
               <RotateCcw className="h-4 w-4" /> New session
-            </button>
-            <button
-              type="button"
-              className="btn-ghost flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5"
               onClick={() => setShowWorkloadModal(true)}
             >
               <Sliders className="h-4 w-4" /> Workload &amp; Forecast
-            </button>
-            <a href="/" className="btn-ghost">
+            </Button>
+            <a
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-secondary dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
+            >
               <Home className="h-4 w-4" /> Dashboard
             </a>
           </div>
@@ -1168,7 +1175,20 @@ function ReviewPageInner() {
   }
 
   if (session.isLoading) {
-    return <div className="panel text-sm text-neutral-500">Building session…</div>
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Building session">
+        <Skeleton className="h-9 w-48" />
+        <div className="panel space-y-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-11 w-28" />
+          <Skeleton className="h-11 w-28" />
+          <Skeleton className="h-11 w-28" />
+        </div>
+      </div>
+    )
   }
 
   // delayed feedback (Butler & Roediger 2008): the blind-graded misses of the
@@ -1178,7 +1198,7 @@ function ReviewPageInner() {
   }
 
   if (!current) {
-    return <div className="panel text-sm text-neutral-500">No cards due in this deck.</div>
+    return <div className="panel text-sm text-tertiary">No cards due in this deck.</div>
   }
 
   // ─── Active card ───
@@ -1188,7 +1208,7 @@ function ReviewPageInner() {
         title={session.data?.course ? 'Mixed practice' : 'Review'}
         subtitle={session.data?.course ? session.data.course.title : undefined}
         actions={
-          <div className="flex items-center gap-3 text-sm text-neutral-500">
+          <div className="flex items-center gap-3 text-sm text-tertiary">
             <span>
               {idx + 1} / {queue.length}
             </span>
@@ -1207,8 +1227,8 @@ function ReviewPageInner() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={() => {
                 if (isListening) {
                   stopSpeaking()
@@ -1217,24 +1237,26 @@ function ReviewPageInner() {
                   void runVoiceReviewForCurrentCard(current)
                 }
               }}
-              className="btn-ghost flex items-center gap-1 text-[11px] py-1 px-2 border border-indigo-400/30"
+              className="flex items-center gap-1 text-[11px] py-1 px-2 border border-indigo-400/30"
             >
-              <Mic className={`h-3.5 w-3.5 ${isListening ? 'text-rose-400 animate-pulse' : ''}`} />
+              <Mic
+                className={`h-3.5 w-3.5 ${isListening ? 'text-danger-text animate-pulse' : ''}`}
+              />
               {isListening ? 'Listening…' : 'Speak'}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => setCommuteAutoPlay(!commuteAutoPlay)}
-              className="btn-ghost text-[11px] py-1 px-2 border border-indigo-400/30"
+              className="text-[11px] py-1 px-2 border border-indigo-400/30"
             >
               {commuteAutoPlay ? 'Pause Loop' : 'Resume Loop'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       <div className="panel min-h-[280px] space-y-4">
-        <div className="flex gap-2 text-[10px] uppercase tracking-widest text-neutral-500">
+        <div className="flex gap-2 text-[10px] uppercase tracking-widest text-tertiary">
           <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
             {current.type}
           </span>
@@ -1255,9 +1277,9 @@ function ReviewPageInner() {
               onAnswered={setExerciseResult}
             />
             {exerciseResult && (
-              <button className="btn" onClick={advanceAfterExercise}>
+              <Button variant="primary" onClick={advanceAfterExercise}>
                 Next card <ArrowRight className="h-4 w-4" />
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -1265,16 +1287,18 @@ function ReviewPageInner() {
             {flowAlert && (
               <div className="mb-3 flex items-center justify-between rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-sky-400 shrink-0" />
+                  <Zap className="h-4 w-4 text-status-info-text shrink-0" />
                   <div>
-                    <span className="font-semibold text-sky-300">Flow Pacing Intervention</span>
+                    <span className="font-semibold text-status-info-text">
+                      Flow Pacing Intervention
+                    </span>
                     <p className="mt-0.5 text-xs text-sky-200/90">{flowAlert.message}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setFlowAlert(null)}
-                  className="rounded px-2 py-1 text-xs text-sky-300 hover:bg-sky-500/20"
+                  className="rounded px-2 py-1 text-xs text-status-info-text hover:bg-sky-500/20"
                 >
                   Dismiss
                 </button>
@@ -1282,26 +1306,26 @@ function ReviewPageInner() {
             )}
             {hyperNotice && (
               <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-                <div className="flex items-center justify-between font-semibold text-amber-300">
+                <div className="flex items-center justify-between font-semibold text-status-warning-text">
                   <span>Metacognitive Hypercorrection (Butterfield &amp; Metcalfe)</span>
                   <button
                     onClick={() => setHyperNotice(null)}
-                    className="text-xs text-amber-400 hover:text-amber-200"
+                    className="text-xs text-status-warning-text hover:text-amber-200"
                   >
                     Dismiss
                   </button>
                 </div>
                 <p className="mt-1 text-xs text-amber-200/90">{hyperNotice.prompt}</p>
-                <p className="mt-1 text-[11px] italic text-amber-300/75">
+                <p className="mt-1 text-[11px] italic text-status-warning-text/75">
                   {hyperNotice.contrastNote}
                 </p>
               </div>
             )}
             {speedDrillActive && (
               <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
-                <div className="flex items-center justify-between text-xs font-semibold text-amber-300">
+                <div className="flex items-center justify-between text-xs font-semibold text-status-warning-text">
                   <span className="flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5 text-amber-400" /> Speed Drill Sprint
+                    <Zap className="h-3.5 w-3.5 text-status-warning-text" /> Speed Drill Sprint
                   </span>
                   <span className="font-mono text-sm">{speedSecondsLeft}s</span>
                 </div>
@@ -1312,7 +1336,7 @@ function ReviewPageInner() {
                         ? 'bg-emerald-500'
                         : speedSecondsLeft > 2
                           ? 'bg-amber-500'
-                          : 'bg-red-500'
+                          : 'bg-rose-500'
                     }`}
                     style={{ width: `${Math.min(100, (speedSecondsLeft / speedLimitSec) * 100)}%` }}
                   />
@@ -1334,28 +1358,28 @@ function ReviewPageInner() {
             <div className="flex flex-wrap items-center gap-2 pt-2">
               {!revealed && !current.blind ? (
                 <>
-                  <button className="btn" onClick={reveal}>
+                  <Button variant="primary" onClick={reveal}>
                     <Eye className="h-4 w-4" /> Reveal{' '}
                     <span className="text-xs opacity-70">space</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn ${oralListening ? 'animate-pulse bg-rose-500 text-white' : 'btn-ghost'}`}
+                  </Button>
+                  <Button
+                    variant={oralListening ? 'danger' : 'ghost'}
                     onClick={() => void handleOralRecall()}
                     title="Speak your answer aloud (Oral retrieval practice, generation effect)"
                   >
                     <Mic className="h-4 w-4" />
                     {oralListening ? 'Listening…' : 'Say aloud'}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 GRADES.map((g) => {
                   const nextLabel = current.previews?.[g.grade]
                   const isSuggested = suggestedOralGrade?.grade === g.grade
                   return (
-                    <button
+                    <Button
                       key={g.grade}
-                      className={`btn ${g.color} ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
+                      variant="bare"
+                      className={`${g.color} text-white ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
                       onClick={() => commit(g.grade)}
                       disabled={gradeMutation.isPending}
                     >
@@ -1366,12 +1390,12 @@ function ReviewPageInner() {
                         </span>
                       )}
                       <span className="text-xs opacity-65">{g.grade}</span>
-                    </button>
+                    </Button>
                   )
                 })
               )}
               {suggestedOralGrade && (
-                <div className="mt-1 flex w-full items-center gap-1.5 text-xs text-amber-300">
+                <div className="mt-1 flex w-full items-center gap-1.5 text-xs text-status-warning-text">
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>
                     Spoken: &ldquo;{suggestedOralGrade.spoken}&rdquo; — suggested grade highlighted
@@ -1381,30 +1405,30 @@ function ReviewPageInner() {
               )}
               {current.blind && !revealed && (
                 <span
-                  className="text-xs text-amber-400"
+                  className="text-xs text-status-warning-text"
                   title="Delayed feedback (Butler & Roediger 2008): committing a grade before seeing the answer beat immediate feedback on a final test. Your misses (rating 1–2) surface for restudy at the start of the next session."
                 >
                   graded blind — corrections at your next session
                 </span>
               )}
               <div className="ml-auto flex items-center gap-1 text-xs">
-                <span className="text-neutral-500">confidence</span>
+                <span className="text-tertiary">confidence</span>
                 <button
                   onClick={() => setConfidence(1)}
-                  className={`rounded px-2 py-1 ${confidence === 1 ? 'bg-emerald-600/20 text-emerald-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+                  className={`rounded px-2 py-1 ${confidence === 1 ? 'bg-emerald-600/20 text-status-success-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
                 >
                   <Check className="inline h-3 w-3" /> sure
                 </button>
                 <button
                   onClick={() => setConfidence(0)}
-                  className={`rounded px-2 py-1 ${confidence === 0 ? 'bg-amber-600/20 text-amber-400' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-[#1a1a1f]'}`}
+                  className={`rounded px-2 py-1 ${confidence === 0 ? 'bg-amber-600/20 text-status-warning-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
                 >
                   <X className="inline h-3 w-3" /> unsure
                 </button>
               </div>
               {revealed && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     const prompt = getCardVoicePrompt(current)
                     const canon =
@@ -1418,20 +1442,20 @@ function ReviewPageInner() {
                     })
                     setGenerationModalOpen(true)
                   }}
-                  className="btn-ghost flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
+                  className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
                   title="Practice 4-tier active generation ladder (Slamecka & Graf 1978)"
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Generation Practice
-                </button>
+                </Button>
               )}
             </div>
           </>
         )}
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-neutral-500">
-        <button
-          className="btn-ghost"
+      <div className="flex items-center gap-2 text-xs text-tertiary">
+        <Button
+          variant="ghost"
           disabled={undoStack.length === 0 || undoMutation.isPending}
           onClick={() => {
             const last = undoStack[undoStack.length - 1]
@@ -1445,7 +1469,7 @@ function ReviewPageInner() {
           }}
         >
           <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
-        </button>
+        </Button>
         {current.type !== 'exercise' && (
           <span>
             {current.blind
@@ -1453,24 +1477,25 @@ function ReviewPageInner() {
               : 'keys: 1-4 grade · space reveal/Good · e undo'}
           </span>
         )}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setCoherenceModalOpen(true)}
-          className="btn-ghost flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300"
+          className="flex items-center gap-1.5 text-xs text-status-info-text hover:text-status-info-text"
           title="0.1 Hz Baroreflex Resonance Breathing Priming"
         >
           <Wind className="h-3.5 w-3.5" />
           <span>Coherence Priming</span>
-        </button>
-        <button
-          className="btn-ghost ml-auto"
+        </Button>
+        <Button
+          variant="ghost"
+          className="ml-auto"
           onClick={() => {
             setStarted(false)
             setFinishedAt(null)
           }}
         >
           End session <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
 
       {generationModalOpen && generationTargetCard && (
@@ -1495,7 +1520,7 @@ function ReviewPageInner() {
               <button
                 type="button"
                 onClick={() => setCoherenceModalOpen(false)}
-                className="text-xs text-slate-400 hover:text-white"
+                className="text-xs text-faint hover:text-white"
               >
                 Close and return to review
               </button>
@@ -1537,7 +1562,7 @@ function CorrectionsScreen({
         subtitle="blind-graded misses from your last session"
       />
       <div className="panel space-y-3">
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           You committed these blind — read question and answer together now. Butler &amp; Roediger
           (2008): feedback after the attempt sticks better than feedback during it.
         </p>
@@ -1545,11 +1570,11 @@ function CorrectionsScreen({
           {corrections.map((c) => (
             <li key={c.id} className="space-y-1 py-3 text-sm">
               <div className="flex items-center gap-2">
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-neutral-500 dark:bg-(--hub-panel-2)">
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
                   {c.type}
                 </span>
                 <span
-                  className={`text-[10px] ${c.rating === 1 ? 'text-red-400' : 'text-amber-400'}`}
+                  className={`text-[10px] ${c.rating === 1 ? 'text-danger-text' : 'text-status-warning-text'}`}
                 >
                   {c.rating === 1 ? 'graded again' : 'graded hard'}
                 </span>
@@ -1559,9 +1584,9 @@ function CorrectionsScreen({
             </li>
           ))}
         </ul>
-        <button className="btn" onClick={onDone}>
+        <Button variant="primary" onClick={onDone}>
           Got it — start the session <ArrowRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -1572,14 +1597,14 @@ function EnergyBar({ energy }: { energy: number }) {
   const Icon = low ? BatteryLow : Battery
   return (
     <span
-      className={`flex items-center gap-1 ${low ? 'text-red-400' : 'text-emerald-400'}`}
+      className={`flex items-center gap-1 ${low ? 'text-danger-text' : 'text-status-success-text'}`}
       title="session energy — mistakes drain it"
     >
       <Icon className="h-4 w-4" />
       {Array.from({ length: MAX_ENERGY }, (_, i) => (
         <span
           key={i}
-          className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-red-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-(--hub-border)'}`}
+          className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-rose-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-(--hub-border)'}`}
         />
       ))}
     </span>
@@ -1638,15 +1663,15 @@ function CardFront(props: {
         <div className="flex items-start justify-between gap-2">
           <div className="text-xl font-medium">{front}</div>
           {isSpeechAvailable() && (
-            <button
-              type="button"
-              className="btn-ghost shrink-0 border p-2"
+            <Button
+              variant="ghost"
+              className="shrink-0 border p-2"
               aria-label="Read card aloud"
               title="Read aloud"
               onClick={() => speak(front)}
             >
               <Volume2 className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
         {revealed && (
@@ -1696,10 +1721,12 @@ function CardFront(props: {
           })}
         </div>
         {content.cloze.hint && !revealed && (
-          <div className="text-xs text-neutral-500">hint: {content.cloze.hint}</div>
+          <div className="text-xs text-tertiary">hint: {content.cloze.hint}</div>
         )}
         {revealed && content.cloze.mode === 'typein' && (
-          <div className={`text-sm ${clozeCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+          <div
+            className={`text-sm ${clozeCorrect ? 'text-status-success-text' : 'text-danger-text'}`}
+          >
             {clozeCorrect ? 'correct' : `answer: ${content.cloze.answers.join(', ')}`}
           </div>
         )}
@@ -1731,7 +1758,7 @@ function CardFront(props: {
         />
         {revealed && (
           <div
-            className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-emerald-400' : 'text-red-400'}`}
+            className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-status-success-text' : 'text-danger-text'}`}
           >
             {typeinCorrect(props.typeinValue, content)
               ? 'correct'
@@ -1757,7 +1784,7 @@ function CardFront(props: {
         )}
         <div className="text-xl font-medium">{question}</div>
         {!revealed && (
-          <div className="text-sm text-neutral-500">
+          <div className="text-sm text-tertiary">
             options appear after you commit — recall first (stepwise MCQ)
           </div>
         )}
@@ -1773,10 +1800,10 @@ function CardFront(props: {
                   onClick={() => props.setMcqPick(i)}
                   className={`block w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                     show && isCorrect
-                      ? 'border-emerald-600 bg-emerald-600/10 text-emerald-300'
+                      ? 'border-emerald-600 bg-emerald-600/10 text-status-success-text'
                       : picked
-                        ? 'border-red-600 bg-red-600/10 text-red-300'
-                        : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-neutral-300 dark:hover:bg-[#1a1a1f]'
+                        ? 'border-rose-600 bg-rose-600/10 text-danger-text'
+                        : 'border-neutral-200 text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-secondary dark:hover:bg-(--hub-panel-2)'
                   }`}
                 >
                   {String.fromCharCode(65 + i)}. {opt}
@@ -1784,7 +1811,7 @@ function CardFront(props: {
               )
             })}
             {props.mcqPick !== null && content.mcq.rationale && (
-              <div className="text-xs text-neutral-500">{content.mcq.rationale}</div>
+              <div className="text-xs text-tertiary">{content.mcq.rationale}</div>
             )}
           </div>
         )}
@@ -1815,15 +1842,15 @@ function CardFront(props: {
             const isTarget = i === ps.stepIndex
             return (
               <li key={i} className={`flex gap-2 ${isTarget ? 'font-medium text-indigo-300' : ''}`}>
-                <span className="text-neutral-500">{i + 1}.</span>
+                <span className="text-tertiary">{i + 1}.</span>
                 <span>{visible ? step : '•••'}</span>
               </li>
             )
           })}
         </ol>
-        <div className="text-sm text-neutral-500">
+        <div className="text-sm text-tertiary">
           {revealed ? (
-            <span className="text-base text-emerald-400">
+            <span className="text-base text-status-success-text">
               justified by: {ps.justification}
               {ps.sourceLemma ? ` (lemma: ${ps.sourceLemma})` : ''}
             </span>
@@ -1864,9 +1891,7 @@ function CardFront(props: {
             ),
           )}
         </div>
-        {g.translation && revealed && (
-          <div className="text-sm text-neutral-500">{g.translation}</div>
-        )}
+        {g.translation && revealed && <div className="text-sm text-tertiary">{g.translation}</div>}
       </div>
     )
   }
@@ -1876,7 +1901,7 @@ function CardFront(props: {
       <div className="space-y-2">
         <div className="label">matching set (play it in Games)</div>
         {revealed && (
-          <ul className="list-inside list-disc text-sm text-neutral-300">
+          <ul className="list-inside list-disc text-sm text-secondary">
             {content.matching.pairs.map((p, i) => (
               <li key={i}>
                 {p.left} → {p.right}
@@ -1888,7 +1913,7 @@ function CardFront(props: {
     )
   }
 
-  return <div className="text-sm text-neutral-500">Unsupported card format.</div>
+  return <div className="text-sm text-tertiary">Unsupported card format.</div>
 }
 
 /** Image occlusion: absolutely-positioned normalized-rect overlays, labels on reveal. */
@@ -1928,7 +1953,7 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
           } else if (!revealed) {
             // Masked before reveal
             overlayStyle = isTarget
-              ? 'border-2 border-cyan-400 bg-cyan-600/70 shadow-lg shadow-cyan-500/20 animate-pulse'
+              ? 'border-2 border-sky-400 bg-sky-600/70 shadow-lg shadow-cyan-500/20 animate-pulse'
               : 'border border-amber-600/80 bg-amber-800/80'
           } else {
             // Revealed
@@ -1957,13 +1982,13 @@ function OcclusionView({ card, revealed }: { card: CardRow; revealed: boolean })
           )
         })}
         {size === null && (
-          <div className="absolute inset-0 grid place-items-center text-xs text-neutral-500">
+          <div className="absolute inset-0 grid place-items-center text-xs text-tertiary">
             loading image…
           </div>
         )}
       </div>
       {!revealed && (
-        <div className="text-center text-xs text-neutral-400">
+        <div className="text-center text-xs text-faint">
           {mode === 'hide-all-guess-one'
             ? 'Identify the highlighted blue region'
             : 'Identify the occluded region'}
@@ -1983,7 +2008,7 @@ function SketchView({ card, revealed }: { card: CardRow; revealed: boolean }) {
       <div className="text-base font-medium text-neutral-100">{sketch.prompt}</div>
 
       <div className="space-y-1.5">
-        <div className="text-xs text-neutral-400">Draw or write your answer:</div>
+        <div className="text-xs text-faint">Draw or write your answer:</div>
         <InkPad
           height={220}
           readOnly={revealed}
@@ -1998,7 +2023,7 @@ function SketchView({ card, revealed }: { card: CardRow; revealed: boolean }) {
 
       {revealed && (
         <div className="rounded-xl border border-neutral-700/80 bg-neutral-900/80 p-4 space-y-3">
-          <div className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+          <div className="text-xs font-bold uppercase tracking-wider text-status-success-text flex items-center gap-1.5">
             <Check className="h-4 w-4" />
             Reference Solution
           </div>
@@ -2017,8 +2042,8 @@ function SketchView({ card, revealed }: { card: CardRow; revealed: boolean }) {
 
           {sketch.rubric && sketch.rubric.length > 0 && (
             <div className="space-y-1 pt-1">
-              <div className="text-xs font-medium text-neutral-400">Recall check:</div>
-              <ul className="list-disc pl-5 text-xs text-neutral-300 space-y-0.5">
+              <div className="text-xs font-medium text-faint">Recall check:</div>
+              <ul className="list-disc pl-5 text-xs text-secondary space-y-0.5">
                 {sketch.rubric.map((item, i) => (
                   <li key={i}>{item}</li>
                 ))}

@@ -25,28 +25,28 @@ const STATUS_CONFIG = {
     label: 'Calibrated Intuition',
     badgeTone: 'success' as const,
     icon: Sparkles,
-    color: 'text-emerald-500',
+    color: 'text-status-success-text',
     description: 'Your subjective confidence matches your empirical recall accurately.',
   },
   mild_overconfidence: {
     label: 'Mild Overconfidence',
     badgeTone: 'warning' as const,
     icon: TrendingUp,
-    color: 'text-amber-500',
+    color: 'text-status-warning-text',
     description: 'Subjective feeling of knowing slightly exceeds retrieval success.',
   },
   fluency_illusion: {
     label: 'Fluency Illusion (Dunning-Kruger)',
     badgeTone: 'danger' as const,
     icon: ShieldAlert,
-    color: 'text-rose-500',
+    color: 'text-danger-text',
     description: 'Perceptual familiarity is deceiving you into believing material is mastered.',
   },
   underconfident: {
     label: 'Underconfidence Bias',
     badgeTone: 'cyan' as const,
     icon: TrendingDown,
-    color: 'text-cyan-500',
+    color: 'text-status-info-text',
     description: 'Actual recall is stronger than your self-predicted confidence.',
   },
 }
@@ -85,7 +85,7 @@ export function MetacognitionRadar({
                 {cfg.label}
               </Badge>
             </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <p className="text-xs text-tertiary dark:text-faint">
               Koriat &amp; Bjork fluency illusion index · {sampleSize ?? 0} trials analyzed
             </p>
           </div>
@@ -94,9 +94,9 @@ export function MetacognitionRadar({
         <div className="text-right">
           <div className="text-lg font-bold font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-end gap-1">
             <span>{calibrationPct}%</span>
-            <span className="text-xs font-normal text-neutral-400">calibrated</span>
+            <span className="text-xs font-normal text-faint">calibrated</span>
           </div>
-          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+          <div className="text-[11px] text-tertiary dark:text-faint">
             Brier Score: {brierScore.toFixed(2)}
           </div>
         </div>
@@ -105,21 +105,21 @@ export function MetacognitionRadar({
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         <div className="rounded-lg bg-neutral-500/5 border border-neutral-200/40 dark:border-neutral-800/60 p-3">
-          <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+          <div className="text-xs text-tertiary dark:text-faint flex items-center justify-between">
             <span>Confidence Bias</span>
             {bias > 0 ? (
-              <span className="text-rose-500 font-semibold flex items-center gap-0.5 text-xs">
+              <span className="text-danger-text font-semibold flex items-center gap-0.5 text-xs">
                 <TrendingUp className="h-3 w-3" /> +{biasPct}% Over
               </span>
             ) : bias < 0 ? (
-              <span className="text-cyan-500 font-semibold flex items-center gap-0.5 text-xs">
+              <span className="text-status-info-text font-semibold flex items-center gap-0.5 text-xs">
                 <TrendingDown className="h-3 w-3" /> {biasPct}% Under
               </span>
             ) : (
-              <span className="text-emerald-500 font-semibold text-xs">Neutral</span>
+              <span className="text-status-success-text font-semibold text-xs">Neutral</span>
             )}
           </div>
-          <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">
+          <div className="mt-1 text-xs text-neutral-600 dark:text-secondary">
             {bias > 0.15
               ? 'Over-predicting recall success. High risk of passive recognition.'
               : bias < -0.1
@@ -129,7 +129,7 @@ export function MetacognitionRadar({
         </div>
 
         <div className="rounded-lg bg-neutral-500/5 border border-neutral-200/40 dark:border-neutral-800/60 p-3">
-          <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+          <div className="text-xs text-tertiary dark:text-faint flex items-center justify-between">
             <span>Desirable Difficulty</span>
             <span className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs uppercase tracking-wide">
               {difficultyAdjustment === 'escalate_to_free_production'
@@ -139,7 +139,7 @@ export function MetacognitionRadar({
                   : 'Maintain Spacing'}
             </span>
           </div>
-          <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">
+          <div className="mt-1 text-xs text-neutral-600 dark:text-secondary">
             {difficultyAdjustment === 'escalate_to_free_production'
               ? 'Switching from recognition to free recall to burst familiarity.'
               : difficultyAdjustment === 'support_with_cues'
@@ -152,7 +152,7 @@ export function MetacognitionRadar({
       {/* Advisory */}
       <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/20 p-3 text-xs flex items-start gap-2.5">
         <StatusIcon className={cx('h-4 w-4 shrink-0 mt-0.5', cfg.color)} />
-        <div className="text-neutral-700 dark:text-neutral-300">
+        <div className="text-neutral-700 dark:text-secondary">
           <span className="font-semibold text-neutral-900 dark:text-neutral-100">
             Metacognitive Advisory:{' '}
           </span>

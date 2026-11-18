@@ -152,27 +152,27 @@ export function WorkloadStudio() {
       {/* Top Telemetry / Status Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
+          <span className="text-[10px] font-semibold uppercase text-faint flex items-center gap-1">
             <Layers className="h-3 w-3 text-indigo-400" /> Total Active Cards
           </span>
           <div className="text-2xl font-bold font-mono text-white">{totalCards}</div>
-          <p className="text-[10px] text-neutral-500">Scheduled in spaced repetition</p>
+          <p className="text-[10px] text-tertiary">Scheduled in spaced repetition</p>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
-            <BarChart3 className="h-3 w-3 text-emerald-400" /> {forecastDays}-Day Forecast
+          <span className="text-[10px] font-semibold uppercase text-faint flex items-center gap-1">
+            <BarChart3 className="h-3 w-3 text-status-success-text" /> {forecastDays}-Day Forecast
           </span>
           <div className="text-2xl font-bold font-mono text-white">{stats.total}</div>
-          <p className="text-[10px] text-neutral-500">~{stats.avg} reviews / day average</p>
+          <p className="text-[10px] text-tertiary">~{stats.avg} reviews / day average</p>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
-            <Flame className="h-3 w-3 text-amber-400" /> Peak Day Volume
+          <span className="text-[10px] font-semibold uppercase text-faint flex items-center gap-1">
+            <Flame className="h-3 w-3 text-status-warning-text" /> Peak Day Volume
           </span>
-          <div className="text-2xl font-bold font-mono text-amber-400">{stats.max}</div>
-          <p className="text-[10px] text-neutral-500">
+          <div className="text-2xl font-bold font-mono text-status-warning-text">{stats.max}</div>
+          <p className="text-[10px] text-tertiary">
             {stats.peakDay ? `on ${stats.peakDay}` : 'None'}
           </p>
         </div>
@@ -182,18 +182,18 @@ export function WorkloadStudio() {
             overdueCount > 0 ? 'border-rose-500/30 bg-rose-500/10' : 'border-white/10 bg-white/5'
           }`}
         >
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
+          <span className="text-[10px] font-semibold uppercase text-faint flex items-center gap-1">
             <AlertTriangle
-              className={`h-3 w-3 ${overdueCount > 0 ? 'text-rose-400' : 'text-neutral-500'}`}
+              className={`h-3 w-3 ${overdueCount > 0 ? 'text-danger-text' : 'text-tertiary'}`}
             />{' '}
             Overdue Backlog
           </span>
           <div
-            className={`text-2xl font-bold font-mono ${overdueCount > 0 ? 'text-rose-400' : 'text-white'}`}
+            className={`text-2xl font-bold font-mono ${overdueCount > 0 ? 'text-danger-text' : 'text-white'}`}
           >
             {overdueCount}
           </div>
-          <p className="text-[10px] text-neutral-500">
+          <p className="text-[10px] text-tertiary">
             {overdueCount > 0 ? 'Urgent attention needed' : 'Zero overdue cards'}
           </p>
         </div>
@@ -203,7 +203,7 @@ export function WorkloadStudio() {
       {feedback && (
         <Callout tone="success">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-text" />
             <span>{feedback}</span>
           </div>
         </Callout>
@@ -214,14 +214,14 @@ export function WorkloadStudio() {
         <Panel
           title={
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-rose-400" />
+              <AlertTriangle className="h-4 w-4 text-danger-text" />
               <span>Overdue Backlog Recovery</span>
               <Badge tone="danger">{overdueCount} Cards Pending</Badge>
             </div>
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-neutral-300">
+            <p className="text-xs text-secondary">
               When reviews accumulate, cramming causes cognitive fatigue and high relapse rates. The
               recovery engine gently spreads overdue cards across upcoming days by retrievability,
               protecting your retention.
@@ -236,7 +236,7 @@ export function WorkloadStudio() {
                   >
                     Daily Catch-up Quota:
                   </label>
-                  <span className="text-xs font-mono font-bold text-rose-400">
+                  <span className="text-xs font-mono font-bold text-danger-text">
                     {dailyBacklogCap} cards/day
                   </span>
                 </div>
@@ -250,7 +250,7 @@ export function WorkloadStudio() {
                   onChange={(e) => setDailyBacklogCap(Number(e.target.value))}
                   className="w-full max-w-xs accent-rose-400"
                 />
-                <p className="text-[10px] text-neutral-400">
+                <p className="text-[10px] text-faint">
                   Reschedules the backlog over approximately{' '}
                   {Math.ceil(overdueCount / dailyBacklogCap)} days.
                 </p>
@@ -261,7 +261,7 @@ export function WorkloadStudio() {
                 onClick={() => catchUpMutation.mutate()}
                 disabled={catchUpMutation.isPending}
               >
-                <Zap className="h-4 w-4 mr-1.5 text-amber-300" />
+                <Zap className="h-4 w-4 mr-1.5 text-status-warning-text" />
                 {catchUpMutation.isPending ? 'Rescheduling...' : 'Reschedule Backlog Gently'}
               </Button>
             </div>
@@ -306,7 +306,7 @@ export function WorkloadStudio() {
                     className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition ${
                       forecastDays === days
                         ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'text-neutral-400 hover:text-white'
+                        : 'text-faint hover:text-white'
                     }`}
                   >
                     {days}d
@@ -349,7 +349,7 @@ export function WorkloadStudio() {
                           <span className="font-bold">
                             {item.day} ({WEEKDAYS[weekday]})
                           </span>
-                          <span className="text-neutral-400">
+                          <span className="text-faint">
                             {item.count} cards {isEasy ? '· Easy Day' : ''}
                           </span>
                         </div>
@@ -361,7 +361,7 @@ export function WorkloadStudio() {
                         />
 
                         {/* Date label */}
-                        <span className="text-[8px] mt-1 font-mono text-neutral-500 group-hover:text-white">
+                        <span className="text-[8px] mt-1 font-mono text-tertiary group-hover:text-white">
                           {item.day.slice(8)}
                         </span>
                       </div>
@@ -370,7 +370,7 @@ export function WorkloadStudio() {
                 </div>
 
                 {/* Legend */}
-                <div className="flex flex-wrap items-center justify-between text-xs text-neutral-400 pt-1 px-1">
+                <div className="flex flex-wrap items-center justify-between text-xs text-faint pt-1 px-1">
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5">
                       <span className="h-2.5 w-2.5 rounded-sm bg-emerald-400" /> Optimal Load (&lt;
@@ -385,7 +385,7 @@ export function WorkloadStudio() {
                     </span>
                   </div>
 
-                  <span className="text-[11px] font-mono text-neutral-500">
+                  <span className="text-[11px] font-mono text-tertiary">
                     Target Cap: {maxPerDay} / day
                   </span>
                 </div>
@@ -405,7 +405,7 @@ export function WorkloadStudio() {
       <Panel
         title={
           <div className="flex items-center gap-2">
-            <Sliders className="h-4 w-4 text-emerald-400" />
+            <Sliders className="h-4 w-4 text-status-success-text" />
             <span>Load Smoothing & Easy Days Configuration</span>
           </div>
         }
@@ -428,7 +428,7 @@ export function WorkloadStudio() {
                       className={`h-9 w-12 rounded-xl text-xs font-semibold transition ${
                         active
                           ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400'
-                          : 'bg-white/5 text-neutral-400 border border-white/10 hover:bg-white/10 hover:text-white'
+                          : 'bg-white/5 text-faint border border-white/10 hover:bg-white/10 hover:text-white'
                       }`}
                     >
                       {name}
@@ -436,7 +436,7 @@ export function WorkloadStudio() {
                   )
                 })}
               </div>
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-tertiary">
                 Spaced repetition reviews will be routed into adjacent weekdays to keep designated
                 rest days calm.
               </p>
@@ -451,7 +451,7 @@ export function WorkloadStudio() {
                 >
                   Target Daily Review Cap:
                 </label>
-                <span className="text-xs font-mono font-bold text-emerald-400">
+                <span className="text-xs font-mono font-bold text-status-success-text">
                   {maxPerDay} cards/day
                 </span>
               </div>
@@ -465,7 +465,7 @@ export function WorkloadStudio() {
                 onChange={(e) => setMaxPerDay(Number(e.target.value))}
                 className="w-full accent-emerald-400"
               />
-              <p className="text-[11px] text-neutral-500">
+              <p className="text-[11px] text-tertiary">
                 Spikes above this threshold will be smoothed within a safe +/- 5% interval fuzz
                 window.
               </p>
@@ -473,7 +473,7 @@ export function WorkloadStudio() {
           </div>
 
           <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-faint">
               Retention Invariant: Only shifts due dates by at most 2 days or 5% of interval (Rule 7
               compliant).
             </span>
@@ -483,7 +483,7 @@ export function WorkloadStudio() {
               onClick={() => balanceMutation.mutate()}
               disabled={balanceMutation.isPending || forecast.length === 0}
             >
-              <Sparkles className="h-4 w-4 mr-1.5 text-amber-300" />
+              <Sparkles className="h-4 w-4 mr-1.5 text-status-warning-text" />
               {balanceMutation.isPending ? 'Smoothing Spikes...' : 'Smooth Review Spikes'}
             </Button>
           </div>

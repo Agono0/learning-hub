@@ -51,7 +51,7 @@ export function SleepConsolidationHUD({
     >
       {/* Ambient background glow */}
       <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-purple-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
 
       {/* Header */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
@@ -66,7 +66,7 @@ export function SleepConsolidationHUD({
                 {isNightMode ? 'SWS Night Active' : 'Ready for Sleep'}
               </Badge>
             </h3>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-faint">
               Slow-Wave Sleep neocortical transfer protocol (Rasch &amp; Born 2007)
             </p>
           </div>
@@ -99,41 +99,37 @@ export function SleepConsolidationHUD({
       {/* Visual Telemetry Grid */}
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-neutral-800/80 bg-neutral-900/60 p-3.5">
-          <div className="text-xs text-neutral-400 flex items-center justify-between">
+          <div className="text-xs text-faint flex items-center justify-between">
             <span>Harmonic Cues Queued</span>
             <Volume2 className="h-3.5 w-3.5 text-indigo-400" />
           </div>
           <div className="mt-1 text-xl font-bold font-mono text-neutral-100 flex items-baseline gap-1.5">
             {activeCuesCount}
-            <span className="text-xs font-normal text-neutral-400">earcons</span>
+            <span className="text-xs font-normal text-faint">earcons</span>
           </div>
-          <div className="mt-0.5 text-[11px] text-neutral-500">
-            {playedCuesCount} replayed tonight
-          </div>
+          <div className="mt-0.5 text-[11px] text-tertiary">{playedCuesCount} replayed tonight</div>
         </div>
 
         <div className="rounded-xl border border-neutral-800/80 bg-neutral-900/60 p-3.5">
-          <div className="text-xs text-neutral-400 flex items-center justify-between">
+          <div className="text-xs text-faint flex items-center justify-between">
             <span>Forecasted Boost</span>
-            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
           </div>
-          <div className="mt-1 text-xl font-bold font-mono text-emerald-400 flex items-baseline gap-1.5">
-            +{boostPct}%<span className="text-xs font-normal text-neutral-400">retention</span>
+          <div className="mt-1 text-xl font-bold font-mono text-status-success-text flex items-baseline gap-1.5">
+            +{boostPct}%<span className="text-xs font-normal text-faint">retention</span>
           </div>
-          <div className="mt-0.5 text-[11px] text-neutral-500">
-            Empirical SWS effect size d ≈ 0.45
-          </div>
+          <div className="mt-0.5 text-[11px] text-tertiary">Empirical SWS effect size d ≈ 0.45</div>
         </div>
 
         <div className="rounded-xl border border-neutral-800/80 bg-neutral-900/60 p-3.5">
-          <div className="text-xs text-neutral-400 flex items-center justify-between">
+          <div className="text-xs text-faint flex items-center justify-between">
             <span>Acoustic Wave</span>
-            <Activity className="h-3.5 w-3.5 text-cyan-400" />
+            <Activity className="h-3.5 w-3.5 text-status-info-text" />
           </div>
-          <div className="mt-1 text-xl font-bold font-mono text-cyan-300 flex items-baseline gap-1.5">
+          <div className="mt-1 text-xl font-bold font-mono text-status-info-text flex items-baseline gap-1.5">
             {currentFrequency ? `${Math.round(currentFrequency)} Hz` : 'Silent / Standby'}
           </div>
-          <div className="mt-0.5 text-[11px] text-neutral-500">Whisper volume (≤ 35 dBA)</div>
+          <div className="mt-0.5 text-[11px] text-tertiary">Whisper volume (≤ 35 dBA)</div>
         </div>
       </div>
 

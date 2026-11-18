@@ -149,7 +149,7 @@ export function InteractiveMindmapStudio({
       {/* Mindmap Studio Header */}
       <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-900/80 px-6 py-4 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/20 text-status-info-text border border-sky-500/30">
             <Network className="h-4 w-4" />
           </div>
           <div>
@@ -159,7 +159,7 @@ export function InteractiveMindmapStudio({
               onChange={(e) => setTitle(e.target.value)}
               className="bg-transparent text-sm font-bold text-white tracking-tight outline-none focus:border-b focus:border-sky-400"
             />
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-faint">
               Interactive radial concept editor with automated flashcard mining
             </p>
           </div>
@@ -174,7 +174,7 @@ export function InteractiveMindmapStudio({
               'flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all shadow-sm',
               isMiningOpen
                 ? 'border-indigo-500/40 bg-indigo-600/30 text-indigo-200'
-                : 'border-white/10 bg-white/5 text-slate-300 hover:text-white',
+                : 'border-white/10 bg-white/5 text-secondary hover:text-white',
             )}
           >
             <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
@@ -185,9 +185,9 @@ export function InteractiveMindmapStudio({
           <button
             type="button"
             onClick={handleExportSvg}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white transition-all shadow-sm"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-secondary hover:text-white transition-all shadow-sm"
           >
-            <Download className="h-3.5 w-3.5 text-slate-400" />
+            <Download className="h-3.5 w-3.5 text-faint" />
             <span>SVG</span>
           </button>
 
@@ -196,7 +196,7 @@ export function InteractiveMindmapStudio({
             <button
               type="button"
               onClick={() => onSaveMindmap({ title, markdown, nodes: layoutNodes })}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-600/20 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-600/30 hover:text-white transition-all shadow-sm"
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-600/20 px-3 py-1.5 text-xs font-semibold text-status-success-text hover:bg-emerald-600/30 hover:text-white transition-all shadow-sm"
             >
               <Save className="h-3.5 w-3.5" />
               <span>Save Map</span>
@@ -312,7 +312,7 @@ export function InteractiveMindmapStudio({
             >
               +
             </button>
-            <span className="px-1 text-[11px] font-mono text-slate-400">
+            <span className="px-1 text-[11px] font-mono text-faint">
               {Math.round(zoomLevel * 100)}%
             </span>
             <button
@@ -342,7 +342,7 @@ export function InteractiveMindmapStudio({
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white tracking-tight">Active Node</span>
-                <span className="text-[10px] text-slate-400 font-mono">{selectedNode.id}</span>
+                <span className="text-[10px] text-faint font-mono">{selectedNode.id}</span>
               </div>
               <input
                 type="text"
@@ -405,8 +405,8 @@ export function InteractiveMindmapStudio({
 
           {/* Markdown Outline Editor */}
           <div className="flex-1 flex flex-col gap-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1.5 font-semibold text-slate-300">
+            <div className="flex items-center justify-between text-xs text-faint">
+              <span className="flex items-center gap-1.5 font-semibold text-secondary">
                 <FileText className="h-3.5 w-3.5 text-indigo-400" /> Outline Source
               </span>
               <span className="text-[11px]">Markdown format</span>

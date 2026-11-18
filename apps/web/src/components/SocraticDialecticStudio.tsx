@@ -310,11 +310,11 @@ export function SocraticDialecticStudio({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-white tracking-tight">{activeCase.title}</h2>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-secondary">
                 {activeCase.domain}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-faint">
               Socratic Dialectic Arena & Toulmin Argumentation Model (Lakatos Heuristic Lifecycle)
             </p>
           </div>
@@ -335,8 +335,8 @@ export function SocraticDialecticStudio({
           </select>
 
           {/* XP Pill */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300">
-            <Award className="h-3.5 w-3.5 text-amber-400" />
+          <div className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-status-warning-text">
+            <Award className="h-3.5 w-3.5 text-status-warning-text" />
             <span>{userXp} XP</span>
           </div>
 
@@ -344,7 +344,7 @@ export function SocraticDialecticStudio({
           <button
             type="button"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
             title="Toggle Audio Cues"
           >
             {soundEnabled ? (
@@ -420,10 +420,10 @@ export function SocraticDialecticStudio({
             {/* Left 2 Cols: Transcript */}
             <div className="space-y-4 lg:col-span-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint">
                   Dialectic Turns ({activeCase.plantedFallacies.length})
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-tertiary">
                   Select a turn to inspect argumentation warrants and flag logical fallacies
                 </span>
               </div>
@@ -454,21 +454,21 @@ export function SocraticDialecticStudio({
                             className={cx(
                               'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
                               isThesis
-                                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                                : 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+                                ? 'bg-sky-500/20 text-status-info-text border border-sky-500/30'
+                                : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
                             )}
                           >
                             {isThesis
                               ? activeCase.thesisAgent.name
                               : activeCase.antithesisAgent.name}
                           </span>
-                          <span className="text-[11px] text-slate-400 font-medium">
+                          <span className="text-[11px] text-faint font-medium">
                             {isThesis
                               ? activeCase.thesisAgent.role
                               : activeCase.antithesisAgent.role}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono text-slate-500">Turn #{i + 1}</span>
+                        <span className="text-[10px] font-mono text-tertiary">Turn #{i + 1}</span>
                       </div>
 
                       <p className="text-sm font-medium text-slate-200 leading-relaxed">
@@ -484,15 +484,15 @@ export function SocraticDialecticStudio({
             <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/80 p-5 backdrop-blur-xl">
               <div className="flex items-center justify-between border-b border-white/5 pb-3">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-400" />
+                  <AlertCircle className="h-4 w-4 text-status-warning-text" />
                   <h3 className="text-sm font-bold text-white tracking-tight">
                     Fallacy Spotter Radar
                   </h3>
                 </div>
-                <span className="text-[10px] font-semibold text-slate-400">12 Formal Types</span>
+                <span className="text-[10px] font-semibold text-faint">12 Formal Types</span>
               </div>
 
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-secondary">
                 Identify the logical fallacy embedded in Turn #{selectedTurnIndex + 1}:
               </p>
 
@@ -510,14 +510,14 @@ export function SocraticDialecticStudio({
               </select>
 
               {flaggedFallacyKey && (
-                <div className="rounded-xl border border-white/5 bg-slate-950/70 p-3 text-xs space-y-1.5 animate-fadeIn">
+                <div className="rounded-xl border border-white/5 bg-slate-950/70 p-3 text-xs space-y-1.5 animate-fade-in">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block">
                     Fallacy Definition
                   </span>
-                  <p className="text-slate-300">
+                  <p className="text-secondary">
                     {COMPREHENSIVE_FALLACY_CATALOG[flaggedFallacyKey].description}
                   </p>
-                  <p className="text-[11px] text-slate-400 italic">
+                  <p className="text-[11px] text-faint italic">
                     Trap: {COMPREHENSIVE_FALLACY_CATALOG[flaggedFallacyKey].cognitiveTrap}
                   </p>
                 </div>
@@ -536,7 +536,7 @@ export function SocraticDialecticStudio({
               {fallacyFlagFeedback && (
                 <div
                   className={cx(
-                    'rounded-xl border p-3.5 text-xs space-y-1 animate-fadeIn',
+                    'rounded-xl border p-3.5 text-xs space-y-1 animate-fade-in',
                     fallacyFlagFeedback.correct
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
                       : 'border-rose-500/30 bg-rose-500/10 text-rose-200',
@@ -544,9 +544,9 @@ export function SocraticDialecticStudio({
                 >
                   <div className="flex items-center gap-1.5 font-bold">
                     {fallacyFlagFeedback.correct ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                     ) : (
-                      <XCircle className="h-4 w-4 text-rose-400" />
+                      <XCircle className="h-4 w-4 text-danger-text" />
                     )}
                     <span>
                       {fallacyFlagFeedback.correct ? 'Correct Diagnosis!' : 'Diagnosis Disputed'} (+
@@ -580,7 +580,7 @@ export function SocraticDialecticStudio({
 
             {/* Quick Add Node Form */}
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-secondary">
                 Attach New Toulmin Element
               </span>
 
@@ -626,43 +626,43 @@ export function SocraticDialecticStudio({
           <div className="space-y-6">
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-amber-400" />
+                <Flame className="h-5 w-5 text-status-warning-text" />
                 <h3 className="text-sm font-bold text-white tracking-tight">
                   Imre Lakatos Proofs & Refutations Crucible (1976)
                 </h3>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-secondary leading-relaxed">
                 When a conjecture faces a counterexample, dogmatic thinkers surrender or dodge.
                 Lakatosian dialecticians systematically refine theorems via{' '}
-                <strong className="text-amber-300">Monster-Barring</strong>,{' '}
-                <strong className="text-amber-300">Exception-Incorporation</strong>, or{' '}
-                <strong className="text-amber-300">Lemma-Incorporation</strong>.
+                <strong className="text-status-warning-text">Monster-Barring</strong>,{' '}
+                <strong className="text-status-warning-text">Exception-Incorporation</strong>, or{' '}
+                <strong className="text-status-warning-text">Lemma-Incorporation</strong>.
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               {/* Challenge Box */}
               <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
                   Step 1: Primitive Conjecture
                 </span>
                 <div className="rounded-xl border border-white/5 bg-slate-950 p-4 text-xs font-semibold text-slate-200">
                   "{activeCase.lakatosChallenge.primitiveConjecture}"
                 </div>
 
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-danger-text block">
                   Step 2: The Socratic Refutation (Counterexample)
                 </span>
                 <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-4 text-xs text-rose-200 leading-relaxed">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                    <AlertTriangle className="h-4 w-4 text-danger-text shrink-0 mt-0.5" />
                     <span>{activeCase.lakatosChallenge.counterexample}</span>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/5 bg-white/5 p-3 text-[11px] text-slate-400 space-y-1">
-                  <span className="font-bold text-slate-300">Implicit Target Lemmas:</span>
-                  <ul className="list-disc list-inside space-y-0.5 text-slate-400">
+                <div className="rounded-xl border border-white/5 bg-white/5 p-3 text-[11px] text-faint space-y-1">
+                  <span className="font-bold text-secondary">Implicit Target Lemmas:</span>
+                  <ul className="list-disc list-inside space-y-0.5 text-faint">
                     {activeCase.lakatosChallenge.targetLemmas.map((l, idx) => (
                       <li key={idx}>{l}</li>
                     ))}
@@ -672,7 +672,7 @@ export function SocraticDialecticStudio({
 
               {/* Tactic & Refinement Box */}
               <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
                   Step 3: Select Your Dialectical Tactic
                 </span>
 
@@ -711,7 +711,7 @@ export function SocraticDialecticStudio({
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
                     Step 4: Formulate Your Refined Conjecture
                   </span>
                   <textarea
@@ -736,7 +736,7 @@ export function SocraticDialecticStudio({
                 {lakatosFeedback && (
                   <div
                     className={cx(
-                      'rounded-xl border p-3.5 text-xs space-y-1 animate-fadeIn',
+                      'rounded-xl border p-3.5 text-xs space-y-1 animate-fade-in',
                       lakatosFeedback.valid
                         ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
                         : 'border-amber-500/30 bg-amber-500/10 text-amber-200',
@@ -758,14 +758,14 @@ export function SocraticDialecticStudio({
         {activeTab === 'protege' && (
           <div className="max-w-2xl mx-auto space-y-5">
             <div className="flex items-center gap-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-status-info-text border border-sky-500/30">
                 <User className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
                 <h3 className="text-sm font-bold text-white tracking-tight">
                   Teach Alex (The Protégé Effect, Chase et al. 2009)
                 </h3>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-secondary">
                   Alex is your curious study partner. When you explain a concept to teach someone
                   else, your own neural consolidation increases by up to 34%.
                 </p>
@@ -773,7 +773,7 @@ export function SocraticDialecticStudio({
             </div>
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-faint block">
                 Alex's Inquiry:
               </span>
               <div className="rounded-xl border border-white/5 bg-slate-950 p-4 text-xs font-semibold text-sky-300 leading-relaxed">
@@ -782,7 +782,7 @@ export function SocraticDialecticStudio({
               </div>
 
               <div className="space-y-1.5 pt-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
                   Your Explanation to Alex:
                 </span>
                 <textarea
@@ -805,16 +805,16 @@ export function SocraticDialecticStudio({
               </button>
 
               {protegeReply && (
-                <div className="mt-4 rounded-xl border border-sky-500/30 bg-slate-950 p-4 space-y-2 animate-fadeIn text-xs">
+                <div className="mt-4 rounded-xl border border-sky-500/30 bg-slate-950 p-4 space-y-2 animate-fade-in text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sky-300">Alex's Reaction:</span>
-                    <span className="font-mono text-[11px] text-slate-400">
+                    <span className="font-bold text-status-info-text">Alex's Reaction:</span>
+                    <span className="font-mono text-[11px] text-faint">
                       Concept Coverage: {Math.round(protegeReply.coverage * 100)}%
                     </span>
                   </div>
                   <p className="text-slate-200 leading-relaxed">"{protegeReply.reply}"</p>
                   {protegeReply.missingConcepts.length > 0 && (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-faint">
                       Unaddressed core ideas: {protegeReply.missingConcepts.join(', ')}
                     </p>
                   )}
@@ -834,7 +834,7 @@ export function SocraticDialecticStudio({
               </h3>
             </div>
             {exportNotice && (
-              <span className="text-xs font-semibold text-emerald-400 animate-fadeIn">
+              <span className="text-xs font-semibold text-status-success-text animate-fade-in">
                 {exportNotice}
               </span>
             )}
@@ -865,14 +865,14 @@ export function SocraticDialecticStudio({
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-200 hover:text-white hover:bg-white/10 transition-all"
                 title="Convert into FSRS Spaced Repetition Cards"
               >
-                <Download className="h-3.5 w-3.5 text-emerald-400" />
+                <Download className="h-3.5 w-3.5 text-status-success-text" />
                 <span>Deck Bridge</span>
               </button>
             </div>
           </div>
 
           {verdictResult && (
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-xs space-y-1.5 animate-fadeIn">
+            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-xs space-y-1.5 animate-fade-in">
               <div className="flex items-center justify-between font-bold text-indigo-300">
                 <span>Epistemic Synthesis Score: {verdictResult.score}/100</span>
                 <span>

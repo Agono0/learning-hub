@@ -300,7 +300,7 @@ export default function FeynmanPage() {
                 className={`rounded-md px-3 py-1 text-xs font-medium transition ${
                   viewMode === 'studio'
                     ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                    : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
                 }`}
               >
                 Socratic Studio
@@ -311,7 +311,7 @@ export default function FeynmanPage() {
                 className={`rounded-md px-3 py-1 text-xs font-medium transition ${
                   viewMode === 'dialogue'
                     ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200'
+                    : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
                 }`}
               >
                 AI Dialogue
@@ -366,7 +366,7 @@ export default function FeynmanPage() {
                     className={`rounded-lg border px-2 py-1.5 text-center transition-colors ${
                       initialConfidence === val
                         ? 'border-indigo-500 bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
-                        : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-400'
+                        : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-faint'
                     }`}
                   >
                     {label}
@@ -443,19 +443,19 @@ export default function FeynmanPage() {
           ))}
         </div>
         {error && (
-          <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-500">
+          <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
             {error}
           </div>
         )}
         {feynmanReport && feynmanReport.socraticProbes.length > 0 && !grade && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-neutral-100 pt-2 dark:border-(--hub-border)">
-            <span className="text-[11px] font-medium text-neutral-400">Socratic probes:</span>
+            <span className="text-[11px] font-medium text-faint">Socratic probes:</span>
             {feynmanReport.socraticProbes.slice(0, 2).map((p) => (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => setInput(p.prompt)}
-                className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-300"
+                className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary"
                 title={p.prompt}
               >
                 {p.prompt}
@@ -494,11 +494,11 @@ export default function FeynmanPage() {
           <h2 className="text-sm font-semibold">
             Self-assessment rubric — grade substance, not style
           </h2>
-          <p className="text-xs text-neutral-500">{graderManual.manual.summary}</p>
+          <p className="text-xs text-tertiary">{graderManual.manual.summary}</p>
           {graderManual.manual.rubric?.map((r) => (
             <div key={r.key}>
               <label className="label mb-1 block">{r.label}</label>
-              <p className="mb-1 text-[11px] text-neutral-500">{r.hint}</p>
+              <p className="mb-1 text-[11px] text-tertiary">{r.hint}</p>
               {r.key === 'coverage' ? (
                 <input
                   className="input w-32"
@@ -556,14 +556,14 @@ export default function FeynmanPage() {
           )}
           <div className="flex items-center gap-4">
             <div className="text-4xl font-bold text-indigo-500">{grade.coverage}%</div>
-            <div className="text-sm text-neutral-500">
+            <div className="text-sm text-tertiary">
               {manual ? 'concept coverage (self-graded)' : 'concept coverage'}
             </div>
           </div>
           {grade.misconceptions.length > 0 && (
             <div>
               <div className="label mb-1">Misconceptions</div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-red-400">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-danger-text">
                 {/* fixed list from one grade response — never reordered, index keys are safe */}
                 {grade.misconceptions.map((m, i) => (
                   <li key={i}>{m}</li>
@@ -574,7 +574,7 @@ export default function FeynmanPage() {
           {grade.gaps.length > 0 && (
             <div>
               <div className="label mb-1">Gaps</div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-amber-400">
+              <ul className="list-disc space-y-1 pl-5 text-sm text-status-warning-text">
                 {/* fixed list from one grade response — never reordered, index keys are safe */}
                 {grade.gaps.map((g, i) => (
                   <li key={i}>{g}</li>
@@ -614,7 +614,7 @@ export default function FeynmanPage() {
                 </button>
               </div>
               {savedCards !== null && (
-                <p className="celebrate text-xs text-emerald-400">
+                <p className="celebrate text-xs text-status-success-text">
                   {savedCards} card(s) created — scheduled for review.
                 </p>
               )}
@@ -631,7 +631,7 @@ export default function FeynmanPage() {
                       className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
                     >
                       <div className="font-medium">{c.front}</div>
-                      <div className="mt-1 text-neutral-500">{c.back}</div>
+                      <div className="mt-1 text-tertiary">{c.back}</div>
                     </div>
                   ))}
                 </div>

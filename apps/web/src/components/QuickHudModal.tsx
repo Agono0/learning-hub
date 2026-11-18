@@ -197,7 +197,7 @@ export function QuickHudModal() {
         : 'fixed top-12 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl shadow-2xl'
 
   const cardClasses =
-    'relative w-full max-w-xl rounded-2xl border border-neutral-700/60 bg-[#16161a]/95 text-neutral-100 shadow-2xl backdrop-blur-md overflow-hidden flex flex-col'
+    'relative w-full max-w-xl rounded-2xl border border-neutral-700/60 bg-neutral-900/95 text-neutral-100 shadow-2xl backdrop-blur-md overflow-hidden flex flex-col'
 
   const currentCard = dueCards[cardIdx]
 
@@ -210,13 +210,13 @@ export function QuickHudModal() {
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-500/20 text-indigo-400">
               <Zap className="h-3.5 w-3.5" />
             </div>
-            <span className="font-semibold text-xs tracking-wide uppercase text-neutral-400">
+            <span className="font-semibold text-xs tracking-wide uppercase text-faint">
               Learning HUB Quick-HUD
             </span>
           </div>
 
           {/* Style Selector & Close */}
-          <div className="flex items-center gap-1.5 text-xs text-neutral-400">
+          <div className="flex items-center gap-1.5 text-xs text-faint">
             <button
               onClick={() =>
                 setHudStyle((s) =>
@@ -245,7 +245,7 @@ export function QuickHudModal() {
             className={`flex items-center gap-1.5 border-b-2 py-2.5 px-3 transition-colors ${
               activeTab === 'review'
                 ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                : 'border-transparent text-faint hover:text-neutral-200'
             }`}
           >
             <Brain className="h-3.5 w-3.5" />
@@ -256,7 +256,7 @@ export function QuickHudModal() {
             className={`flex items-center gap-1.5 border-b-2 py-2.5 px-3 transition-colors ${
               activeTab === 'capture'
                 ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                : 'border-transparent text-faint hover:text-neutral-200'
             }`}
           >
             <Inbox className="h-3.5 w-3.5" />
@@ -267,7 +267,7 @@ export function QuickHudModal() {
             className={`flex items-center gap-1.5 border-b-2 py-2.5 px-3 transition-colors ${
               activeTab === 'search'
                 ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                : 'border-transparent text-faint hover:text-neutral-200'
             }`}
           >
             <Search className="h-3.5 w-3.5" />
@@ -280,10 +280,10 @@ export function QuickHudModal() {
           {activeTab === 'review' && (
             <div>
               {reviewLoading ? (
-                <div className="text-center text-sm text-neutral-500">Checking due cards…</div>
+                <div className="text-center text-sm text-tertiary">Checking due cards…</div>
               ) : currentCard ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                  <div className="flex items-center justify-between text-[11px] text-faint">
                     <span>
                       Card {cardIdx + 1} of {dueCards.length}
                     </span>
@@ -298,7 +298,7 @@ export function QuickHudModal() {
                     <div className="space-y-3 border-t border-neutral-800 pt-3">
                       <div className="text-sm text-indigo-300">{currentCard.back}</div>
                       <div className="flex items-center justify-between pt-2">
-                        <span className="text-[11px] text-neutral-500">
+                        <span className="text-[11px] text-tertiary">
                           Press 1 (Again) · 2 (Hard) · 3 (Good) · 4 (Easy)
                         </span>
                         <div className="flex gap-1.5">
@@ -335,7 +335,7 @@ export function QuickHudModal() {
                     </div>
                   ) : (
                     <div className="pt-2 flex justify-between items-center">
-                      <span className="text-[11px] text-neutral-500">
+                      <span className="text-[11px] text-tertiary">
                         Press Space to reveal answer
                       </span>
                       <button
@@ -351,9 +351,7 @@ export function QuickHudModal() {
                 <div className="text-center space-y-2 py-4">
                   <Sparkles className="h-7 w-7 text-indigo-400 mx-auto" />
                   <div className="text-sm font-medium text-neutral-200">All caught up!</div>
-                  <p className="text-xs text-neutral-500">
-                    No cards due for micro-review right now.
-                  </p>
+                  <p className="text-xs text-tertiary">No cards due for micro-review right now.</p>
                 </div>
               )}
             </div>
@@ -390,7 +388,7 @@ export function QuickHudModal() {
               </div>
 
               {captureSuccess && (
-                <div className="flex items-center gap-1 text-xs text-emerald-400 animate-fadeIn">
+                <div className="flex items-center gap-1 text-xs text-status-success-text animate-fade-in">
                   <Check className="h-3.5 w-3.5" /> Saved to Learning HUB inbox!
                 </div>
               )}
@@ -417,7 +415,7 @@ export function QuickHudModal() {
                 </button>
               </form>
 
-              {searchHint && <p className="px-2 py-1 text-xs text-neutral-400">{searchHint}</p>}
+              {searchHint && <p className="px-2 py-1 text-xs text-faint">{searchHint}</p>}
               {searchResults.length > 0 && (
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                   {searchResults.map((m) => (
@@ -425,13 +423,13 @@ export function QuickHudModal() {
                       key={m.cardId}
                       className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-2.5 text-xs space-y-1"
                     >
-                      <div className="flex justify-between items-center text-neutral-400">
+                      <div className="flex justify-between items-center text-faint">
                         <span className="font-medium text-neutral-200">{m.front}</span>
                         <span className="rounded bg-indigo-950/60 px-1.5 py-0.5 text-[10px] text-indigo-400 font-mono">
                           {Math.round(m.score * 100)}% match
                         </span>
                       </div>
-                      <div className="text-neutral-400">{m.back}</div>
+                      <div className="text-faint">{m.back}</div>
                     </div>
                   ))}
                 </div>

@@ -322,7 +322,7 @@ export function WorkedExampleStudio({
       {/* Top Controls & Problem Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-faint">
             Calibrated Problem:
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -335,7 +335,7 @@ export function WorkedExampleStudio({
                   className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
                     isSelected
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                      : 'bg-white/5 text-secondary hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {p.title.split(' ')[0]} ({p.domain.replace('_', ' ')})
@@ -349,7 +349,7 @@ export function WorkedExampleStudio({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setAudioMuted(!audioMuted)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
             title={audioMuted ? 'Unmute Earcons' : 'Mute Earcons'}
             aria-label={audioMuted ? 'Unmute audio feedback' : 'Mute audio feedback'}
           >
@@ -357,7 +357,7 @@ export function WorkedExampleStudio({
           </button>
           <button
             onClick={handleResetSession}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all"
             title="Reset Derivation Progression"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -390,7 +390,7 @@ export function WorkedExampleStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'derivation'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -405,13 +405,13 @@ export function WorkedExampleStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'self_explanation'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Brain className="h-4 w-4" />
           <span>Self-Explanation Lab (Chi 1989)</span>
           {Object.keys(sessionState.selfExplanationScores).length > 0 && (
-            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-400 font-bold">
+            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-status-success-text font-bold">
               {Object.keys(sessionState.selfExplanationScores).length} done
             </span>
           )}
@@ -425,10 +425,10 @@ export function WorkedExampleStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'erroneous_crucible'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
-          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <AlertTriangle className="h-4 w-4 text-status-warning-text" />
           <span>Erroneous Example Crucible (Große 2007)</span>
         </button>
 
@@ -440,10 +440,10 @@ export function WorkedExampleStudio({
           className={`flex items-center gap-2 border-b-2 px-5 py-3 transition-all ${
             activeTab === 'fsrs_export'
               ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
-          <Sparkles className="h-4 w-4 text-emerald-400" />
+          <Sparkles className="h-4 w-4 text-status-success-text" />
           <span>FSRS Flashcard Bridge</span>
         </button>
       </div>
@@ -459,12 +459,12 @@ export function WorkedExampleStudio({
             <p className="text-sm font-medium text-slate-200 leading-relaxed">
               {currentProblem.problemStatement}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-              <span className="font-semibold text-slate-500">Prerequisites:</span>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-faint">
+              <span className="font-semibold text-tertiary">Prerequisites:</span>
               {currentProblem.prerequisites.map((pre, idx) => (
                 <span
                   key={idx}
-                  className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-slate-300"
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-secondary"
                 >
                   {pre}
                 </span>
@@ -503,16 +503,16 @@ export function WorkedExampleStudio({
                       <span
                         className={`flex h-6 w-6 items-center justify-center rounded-lg text-xs font-black ${
                           isCompleted
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-emerald-500/20 text-status-success-text border border-emerald-500/30'
                             : isCurrent
                               ? 'bg-indigo-500 text-white'
-                              : 'bg-white/10 text-slate-400'
+                              : 'bg-white/10 text-faint'
                         }`}
                       >
                         {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : step.stepIndex}
                       </span>
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
                           Sub-Goal Chunk
                         </span>
                         <h4 className="text-xs font-bold text-white">{step.subgoalLabel}</h4>
@@ -526,10 +526,10 @@ export function WorkedExampleStudio({
                       {/* One-click Export to FSRS */}
                       <button
                         onClick={() => handleExportFlashcard(step.stepIndex)}
-                        className="rounded-lg border border-white/10 bg-white/5 p-1 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                        className="rounded-lg border border-white/10 bg-white/5 p-1 text-faint hover:bg-white/10 hover:text-white transition-all"
                         title="Export Step to FSRS Spaced Repetition Card"
                       >
-                        <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                        <Sparkles className="h-3.5 w-3.5 text-status-success-text" />
                       </button>
                     </div>
                   </div>
@@ -544,7 +544,7 @@ export function WorkedExampleStudio({
                         <div className="rounded-xl border border-white/10 bg-slate-950 p-4 font-mono text-sm font-bold text-emerald-300 overflow-x-auto">
                           <code>{step.content}</code>
                         </div>
-                        <p className="text-xs text-slate-300 leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
+                        <p className="text-xs text-secondary leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
                           <strong>Theoretical Justification:</strong> {step.explanation}
                         </p>
                       </div>
@@ -561,7 +561,7 @@ export function WorkedExampleStudio({
                         {/* Multiple Choice Fading Option */}
                         {step.scaffoldOptions ? (
                           <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-slate-300">
+                            <span className="text-xs font-semibold text-secondary">
                               Select the mathematically sound derivation formulation:
                             </span>
                             {step.scaffoldOptions.map((opt, optIdx) => {
@@ -580,7 +580,7 @@ export function WorkedExampleStudio({
                                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
                                       isSelected
                                         ? 'bg-indigo-500 text-white'
-                                        : 'bg-white/10 text-slate-400'
+                                        : 'bg-white/10 text-faint'
                                     }`}
                                   >
                                     {String.fromCharCode(65 + optIdx)}
@@ -595,7 +595,7 @@ export function WorkedExampleStudio({
                         {/* Cloze Deletion / Free Generation Fading Option */}
                         {step.clozeTarget ? (
                           <div className="flex flex-col gap-2">
-                            <span className="text-xs font-semibold text-slate-300">
+                            <span className="text-xs font-semibold text-secondary">
                               Fill in the missing target variable / expression:
                             </span>
                             <div className="rounded-xl border border-white/10 bg-slate-950 p-3 font-mono text-xs text-slate-200">
@@ -628,14 +628,14 @@ export function WorkedExampleStudio({
                           <div
                             className={`rounded-xl border p-3 text-xs font-semibold flex items-center gap-2 ${
                               stepFeedbackIsCorrect
-                                ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                                : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
+                                ? 'border-emerald-500/40 bg-emerald-500/15 text-status-success-text'
+                                : 'border-rose-500/40 bg-rose-500/15 text-danger-text'
                             }`}
                           >
                             {stepFeedbackIsCorrect ? (
-                              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                              <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-text" />
                             ) : (
-                              <XCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                              <XCircle className="h-4 w-4 shrink-0 text-danger-text" />
                             )}
                             <span>{stepFeedback}</span>
                           </div>
@@ -645,9 +645,9 @@ export function WorkedExampleStudio({
                         <div className="flex items-center justify-between gap-3 pt-2">
                           <button
                             onClick={handleRequestHint}
-                            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 hover:text-white transition-all"
+                            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all"
                           >
-                            <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+                            <Lightbulb className="h-3.5 w-3.5 text-status-warning-text" />
                             <span>Request Hint ({2 - sessionState.hintsUsed} remaining)</span>
                           </button>
 
@@ -669,7 +669,7 @@ export function WorkedExampleStudio({
 
                     {/* Locked Future Step Indicator */}
                     {isFuture && !isCompleted && !isCurrent ? (
-                      <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
+                      <div className="flex items-center gap-2 text-xs text-tertiary py-1">
                         <Layers className="h-3.5 w-3.5" />
                         <span>
                           Step locked until Step {sessionState.currentStepIndex} is verified.
@@ -685,9 +685,9 @@ export function WorkedExampleStudio({
           {/* Completion Celebration Banner */}
           {sessionState.isCompleted && (
             <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/40 p-6 text-center backdrop-blur-md">
-              <Award className="mx-auto h-12 w-12 text-emerald-400 mb-2 animate-bounce" />
+              <Award className="mx-auto h-12 w-12 text-status-success-text mb-2 animate-bounce" />
               <h3 className="text-base font-black text-white">Derivation Successfully Mastered!</h3>
-              <p className="text-xs text-slate-300 max-w-lg mx-auto mt-1">
+              <p className="text-xs text-secondary max-w-lg mx-auto mt-1">
                 You progressed through the Renkl-Atkinson scaffolding continuum, internalized the
                 governing theoretical invariants, and maintained working memory capacity balance.
               </p>
@@ -717,7 +717,7 @@ export function WorkedExampleStudio({
             <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">
               Chi et al. (1989) Principle-Based Self-Explanation
             </span>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-secondary leading-relaxed">
               Self-explaining worked examples stimulates germane cognitive load by forcing the
               active generation of domain inferences, linking surface mathematical moves to deep
               structural invariants.
@@ -738,7 +738,7 @@ export function WorkedExampleStudio({
                 className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                   activePromptIndex === pIdx
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                    : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
                 }`}
               >
                 Prompt #{pIdx + 1} ({p.promptType.replace('_', ' ')})
@@ -761,7 +761,7 @@ export function WorkedExampleStudio({
 
               {/* Guiding Rubric Hints */}
               <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3 text-xs text-slate-400">
-                <span className="font-semibold text-slate-300 block mb-1">
+                <span className="font-semibold text-secondary block mb-1">
                   Required Rubric Coverage:
                 </span>
                 <ul className="list-disc list-inside space-y-0.5 text-[11px]">
@@ -804,15 +804,15 @@ export function WorkedExampleStudio({
                     <span
                       className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
                         selfExplanationResult.score >= 0.75
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-amber-500/20 text-amber-400'
+                          ? 'bg-emerald-500/20 text-status-success-text'
+                          : 'bg-amber-500/20 text-status-warning-text'
                       }`}
                     >
                       Keyword Coverage: {Math.round(selfExplanationResult.keywordCoverage * 100)}%
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300">
+                  <p className="text-xs text-secondary">
                     {selfExplanationResult.constructiveFeedback}
                   </p>
 
@@ -821,7 +821,7 @@ export function WorkedExampleStudio({
                     <span className="font-semibold text-indigo-400 block mb-1">
                       Canonical Exemplar Comparison:
                     </span>
-                    <p className="italic text-slate-300">
+                    <p className="italic text-secondary">
                       {selfExplanationResult.exemplarComparison}
                     </p>
                   </div>
@@ -836,10 +836,10 @@ export function WorkedExampleStudio({
       {activeTab === 'erroneous_crucible' && (
         <div className="flex flex-col gap-5">
           <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 shadow-xl backdrop-blur-md">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-status-warning-text block mb-1">
               Große & Renkl (2007) Erroneous Example Diagnostic Lab
             </span>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-secondary leading-relaxed">
               Research demonstrates that debugging incorrect examples combined with correct examples
               fosters deep conceptual schemas and inoculates against negative transfer.
             </p>
@@ -861,7 +861,7 @@ export function WorkedExampleStudio({
                   className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
                     activeErroneousIndex === vIdx
                       ? 'bg-amber-600 text-white'
-                      : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                      : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   Flawed Case #{vIdx + 1}
@@ -872,18 +872,18 @@ export function WorkedExampleStudio({
 
           {currentProblem.erroneousVariants[activeErroneousIndex] && (
             <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900/90 p-5">
-              <h4 className="text-xs font-bold text-slate-300">
+              <h4 className="text-xs font-bold text-secondary">
                 A flawed proof variant was introduced. Pinpoint the flawed step and classify the
                 root misconception:
               </h4>
 
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs text-rose-300">
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 font-mono text-xs text-danger-text">
                 <code>{currentProblem.erroneousVariants[activeErroneousIndex].flawedContent}</code>
               </div>
 
               {/* Step Selection */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-400">
+                <span className="text-xs font-semibold text-faint">
                   Which step contains the flaw?
                 </span>
                 {currentProblem.steps.map((st) => (
@@ -893,7 +893,7 @@ export function WorkedExampleStudio({
                     className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
                       selectedFlawedStep === st.stepIndex
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                        : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     Step {st.stepIndex}
@@ -903,9 +903,7 @@ export function WorkedExampleStudio({
 
               {/* Misconception Category Selector */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-400">
-                  Misconception Category:
-                </span>
+                <span className="text-xs font-semibold text-faint">Misconception Category:</span>
                 {(
                   [
                     'invariant_violation',
@@ -922,7 +920,7 @@ export function WorkedExampleStudio({
                     className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
                       selectedMisconception === cat
                         ? 'bg-amber-600 text-white'
-                        : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
+                        : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     {cat.replace('_', ' ')}
@@ -960,8 +958,8 @@ export function WorkedExampleStudio({
                     <span
                       className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
                         erroneousResult.compositeScore >= 0.7
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-rose-500/20 text-rose-400'
+                          ? 'bg-emerald-500/20 text-status-success-text'
+                          : 'bg-rose-500/20 text-danger-text'
                       }`}
                     >
                       {erroneousResult.isStepIdentifiedCorrectly &&
@@ -970,7 +968,7 @@ export function WorkedExampleStudio({
                         : 'Diagnosis Needed Adjustment'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300">{erroneousResult.diagnosticSummary}</p>
+                  <p className="text-xs text-secondary">{erroneousResult.diagnosticSummary}</p>
                 </div>
               )}
             </div>
@@ -982,10 +980,10 @@ export function WorkedExampleStudio({
       {activeTab === 'fsrs_export' && (
         <div className="flex flex-col gap-5">
           <div className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-xl backdrop-blur-md">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-status-success-text block mb-1">
               FSRS v5 Spaced Repetition Flashcard Bridge
             </span>
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-secondary leading-relaxed">
               Export each faded step into high-yield active recall flashcards. Cards feature
               sub-goal chunking, theoretical justifications, and custom tags for long-term
               retention.
@@ -1010,19 +1008,19 @@ export function WorkedExampleStudio({
                       <span className="text-[10px] font-mono uppercase text-indigo-400 font-bold">
                         Step {step.stepIndex} • {step.subgoalLabel}
                       </span>
-                      <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-slate-300 font-mono">
+                      <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-secondary font-mono">
                         Diff: {card.suggestedDifficulty}/10
                       </span>
                     </div>
 
                     <div className="rounded-xl border border-white/5 bg-slate-950/80 p-3 text-xs text-slate-300">
                       <strong>Card Front:</strong>
-                      <p className="mt-1 text-[11px] text-slate-400 line-clamp-3">{card.front}</p>
+                      <p className="mt-1 text-[11px] text-faint line-clamp-3">{card.front}</p>
                     </div>
 
                     <div className="rounded-xl border border-white/5 bg-slate-950/80 p-3 text-xs text-slate-300">
                       <strong>Card Back:</strong>
-                      <p className="mt-1 text-[11px] text-emerald-400/90 line-clamp-3">
+                      <p className="mt-1 text-[11px] text-status-success-text/90 line-clamp-3">
                         {card.back}
                       </p>
                     </div>
@@ -1031,7 +1029,7 @@ export function WorkedExampleStudio({
                   <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/5">
                     <div className="flex gap-1">
                       {card.tags.map((t, tIdx) => (
-                        <span key={tIdx} className="text-[10px] text-slate-500">
+                        <span key={tIdx} className="text-[10px] text-tertiary">
                           #{t}
                         </span>
                       ))}

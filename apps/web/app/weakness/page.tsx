@@ -127,20 +127,20 @@ export default function WeaknessRadarPage() {
       {/* Top metric overview */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Panel className="p-4 text-center">
-          <div className="text-2xl font-bold text-amber-500">{confusionPairs.length}</div>
-          <div className="text-xs text-neutral-500">Confusion Pairs</div>
+          <div className="text-2xl font-bold text-status-warning-text">{confusionPairs.length}</div>
+          <div className="text-xs text-tertiary">Confusion Pairs</div>
         </Panel>
         <Panel className="p-4 text-center">
-          <div className="text-2xl font-bold text-rose-500">{data.leechCount}</div>
-          <div className="text-xs text-neutral-500">Active Leeches</div>
+          <div className="text-2xl font-bold text-danger-text">{data.leechCount}</div>
+          <div className="text-xs text-tertiary">Active Leeches</div>
         </Panel>
         <Panel className="p-4 text-center">
           <div className="text-2xl font-bold text-indigo-500">{topicForecasts.length}</div>
-          <div className="text-xs text-neutral-500">Tracked Topics</div>
+          <div className="text-xs text-tertiary">Tracked Topics</div>
         </Panel>
         <Panel className="p-4 text-center">
-          <div className="text-2xl font-bold text-emerald-500">{data.totalCards}</div>
-          <div className="text-xs text-neutral-500">Total Cards</div>
+          <div className="text-2xl font-bold text-status-success-text">{data.totalCards}</div>
+          <div className="text-xs text-tertiary">Total Cards</div>
         </Panel>
       </div>
 
@@ -184,27 +184,23 @@ export default function WeaknessRadarPage() {
                 <Panel key={`${pair.cardIdA}-${pair.cardIdB}`} className="p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2 dark:border-(--hub-border)">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                      <AlertTriangle className="h-4 w-4 text-status-warning-text" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-tertiary">
                         {pair.failCoOccurrenceCount} Co-Occurring Lapses
                       </span>
                     </div>
-                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    <span className="text-xs font-medium text-status-warning-text dark:text-status-warning-text">
                       Interference Probability: {Math.round(pair.interferenceProbability * 100)}%
                     </span>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/50">
-                      <div className="text-xs font-medium text-neutral-400">
-                        Card A (#{pair.cardIdA})
-                      </div>
+                      <div className="text-xs font-medium text-faint">Card A (#{pair.cardIdA})</div>
                       <div className="mt-1 text-sm font-medium">{pair.previewA}</div>
                     </div>
                     <div className="rounded-lg bg-neutral-50 p-3 dark:bg-neutral-900/50">
-                      <div className="text-xs font-medium text-neutral-400">
-                        Card B (#{pair.cardIdB})
-                      </div>
+                      <div className="text-xs font-medium text-faint">Card B (#{pair.cardIdB})</div>
                       <div className="mt-1 text-sm font-medium">{pair.previewB}</div>
                     </div>
                   </div>
@@ -252,7 +248,7 @@ export default function WeaknessRadarPage() {
                         <span className="font-semibold">{topic.deckName}</span>
                       </div>
                       {topic.urgentCardsCount > 0 && (
-                        <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                        <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/60 dark:text-danger-text">
                           {topic.urgentCardsCount} due now
                         </span>
                       )}
@@ -260,9 +256,9 @@ export default function WeaknessRadarPage() {
 
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-neutral-500">Current Retention:</span>
+                        <span className="text-tertiary">Current Retention:</span>
                         <span
-                          className={`font-semibold ${cur >= 85 ? 'text-emerald-500' : cur >= 70 ? 'text-amber-500' : 'text-rose-500'}`}
+                          className={`font-semibold ${cur >= 85 ? 'text-status-success-text' : cur >= 70 ? 'text-status-warning-text' : 'text-danger-text'}`}
                         >
                           {cur}%
                         </span>
@@ -271,25 +267,25 @@ export default function WeaknessRadarPage() {
 
                       <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
                         <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                          <div className="text-[10px] text-neutral-400">In 7 Days</div>
+                          <div className="text-[10px] text-faint">In 7 Days</div>
                           <div
-                            className={`font-semibold ${d7 >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}
+                            className={`font-semibold ${d7 >= 80 ? 'text-status-success-text' : 'text-status-warning-text'}`}
                           >
                             {d7}%
                           </div>
                         </div>
                         <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                          <div className="text-[10px] text-neutral-400">In 14 Days</div>
+                          <div className="text-[10px] text-faint">In 14 Days</div>
                           <div
-                            className={`font-semibold ${d14 >= 75 ? 'text-emerald-500' : 'text-amber-500'}`}
+                            className={`font-semibold ${d14 >= 75 ? 'text-status-success-text' : 'text-status-warning-text'}`}
                           >
                             {d14}%
                           </div>
                         </div>
                         <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                          <div className="text-[10px] text-neutral-400">In 30 Days</div>
+                          <div className="text-[10px] text-faint">In 30 Days</div>
                           <div
-                            className={`font-semibold ${d30 >= 70 ? 'text-amber-500' : 'text-rose-500'}`}
+                            className={`font-semibold ${d30 >= 70 ? 'text-status-warning-text' : 'text-danger-text'}`}
                           >
                             {d30}%
                           </div>
@@ -334,8 +330,8 @@ export default function WeaknessRadarPage() {
                   <Panel key={leech.cardId} className="p-4 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2 dark:border-(--hub-border)">
                       <div className="flex items-center gap-2">
-                        <Split className="h-4 w-4 text-rose-500" />
-                        <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                        <Split className="h-4 w-4 text-danger-text" />
+                        <span className="text-xs font-semibold text-rose-600 dark:text-danger-text">
                           Leech Card #{leech.cardId} · {leech.lapses} Lapses
                         </span>
                       </div>
@@ -364,14 +360,14 @@ export default function WeaknessRadarPage() {
                               cardId: leech.cardId,
                             })
                           }
-                          className="px-2 py-1 text-xs rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 transition"
+                          className="px-2 py-1 text-xs rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 transition"
                           title="Create visual anchor sketch"
                         >
                           <Layers className="h-3 w-3 inline mr-1" />
                           Dual-Code
                         </button>
                         {isDone ? (
-                          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                          <span className="flex items-center gap-1 text-xs text-status-success-text dark:text-status-success-text font-medium">
                             <CheckCircle2 className="h-3.5 w-3.5" /> Decomposed
                           </span>
                         ) : (
@@ -392,17 +388,17 @@ export default function WeaknessRadarPage() {
                     </div>
 
                     <div className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900/50">
-                      <div className="font-semibold text-neutral-400 mb-1">Overloaded Leech:</div>
+                      <div className="font-semibold text-faint mb-1">Overloaded Leech:</div>
                       <div className="font-medium text-sm text-neutral-800 dark:text-neutral-200">
                         {leech.originalFront}
                       </div>
-                      <div className="mt-1 text-neutral-600 dark:text-neutral-400 border-t border-neutral-200 pt-1 dark:border-neutral-800">
+                      <div className="mt-1 text-neutral-600 dark:text-faint border-t border-neutral-200 pt-1 dark:border-neutral-800">
                         {leech.originalBack}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">
                         Proposed Atomic Replacements:
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -414,10 +410,10 @@ export default function WeaknessRadarPage() {
                             <div className="font-semibold text-indigo-700 dark:text-indigo-300">
                               {cand.front}
                             </div>
-                            <div className="mt-1 text-neutral-700 dark:text-neutral-300">
+                            <div className="mt-1 text-neutral-700 dark:text-secondary">
                               {cand.back}
                             </div>
-                            <div className="mt-1.5 text-[10px] text-neutral-400 italic">
+                            <div className="mt-1.5 text-[10px] text-faint italic">
                               {cand.rationale}
                             </div>
                           </div>

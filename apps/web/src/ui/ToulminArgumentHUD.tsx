@@ -43,36 +43,36 @@ const NODE_TYPE_META: Record<
   },
   ground: {
     label: 'Grounds',
-    color: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
-    badge: 'bg-emerald-500/20 text-emerald-300',
+    color: 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text',
+    badge: 'bg-emerald-500/20 text-status-success-text',
     icon: <CheckCircle2 className="h-3 w-3" />,
     hint: 'Empirical data, observations & experimental facts',
   },
   warrant: {
     label: 'Warrant',
-    color: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
-    badge: 'bg-amber-500/20 text-amber-300',
+    color: 'border-amber-500/40 bg-amber-500/10 text-status-warning-text',
+    badge: 'bg-amber-500/20 text-status-warning-text',
     icon: <Scale className="h-3 w-3" />,
     hint: 'Inferential principle connecting grounds to claim',
   },
   backing: {
     label: 'Backing',
-    color: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
-    badge: 'bg-cyan-500/20 text-cyan-300',
+    color: 'border-sky-500/40 bg-sky-500/10 text-status-info-text',
+    badge: 'bg-sky-500/20 text-status-info-text',
     icon: <Shield className="h-3 w-3" />,
     hint: 'Underlying scientific theoretical backing',
   },
   qualifier: {
     label: 'Qualifier',
-    color: 'border-purple-500/40 bg-purple-500/10 text-purple-300',
-    badge: 'bg-purple-500/20 text-purple-300',
+    color: 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300',
+    badge: 'bg-indigo-500/20 text-indigo-300',
     icon: <Lightbulb className="h-3 w-3" />,
     hint: 'Boundary probability or degree of certainty',
   },
   rebuttal: {
     label: 'Rebuttal',
-    color: 'border-rose-500/40 bg-rose-500/10 text-rose-300',
-    badge: 'bg-rose-500/20 text-rose-300',
+    color: 'border-rose-500/40 bg-rose-500/10 text-danger-text',
+    badge: 'bg-rose-500/20 text-danger-text',
     icon: <AlertTriangle className="h-3 w-3" />,
     hint: 'Conditions of exception where warrant fails',
   },
@@ -92,10 +92,10 @@ export function ToulminArgumentHUD({
 
   const rigorColor =
     evaluation.epistemicRigorScore >= 80
-      ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+      ? 'text-status-success-text border-emerald-500/30 bg-emerald-500/10'
       : evaluation.epistemicRigorScore >= 50
-        ? 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-        : 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+        ? 'text-status-warning-text border-amber-500/30 bg-amber-500/10'
+        : 'text-danger-text border-rose-500/30 bg-rose-500/10'
 
   return (
     <div
@@ -113,8 +113,8 @@ export function ToulminArgumentHUD({
               Toulmin Argument Model (1958)
             </span>
             {evaluation.isBloomLevel6Synthesized && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-300 animate-pulse">
-                <Award className="h-3 w-3 text-emerald-400" />
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-status-success-text animate-pulse">
+                <Award className="h-3 w-3 text-status-success-text" />
                 Bloom Level 6: Evaluated
               </span>
             )}
@@ -160,7 +160,7 @@ export function ToulminArgumentHUD({
       {/* Metrics Row */}
       <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/5 bg-slate-950/40 text-center text-xs">
         <div className="p-2.5">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Grounding Ratio
           </span>
           <span className="font-mono text-sm font-bold text-slate-200">
@@ -168,7 +168,7 @@ export function ToulminArgumentHUD({
           </span>
         </div>
         <div className="p-2.5">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Warrant Backing
           </span>
           <span className="font-mono text-sm font-bold text-slate-200">
@@ -176,7 +176,7 @@ export function ToulminArgumentHUD({
           </span>
         </div>
         <div className="p-2.5">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Boundary Defeaters
           </span>
           <span className="font-mono text-sm font-bold text-slate-200">
@@ -188,7 +188,7 @@ export function ToulminArgumentHUD({
       {/* Interactive Node Matrix */}
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-faint">
             Argument Elements ({graph.nodes.length})
           </span>
           {onAddNode && (
@@ -196,21 +196,21 @@ export function ToulminArgumentHUD({
               <button
                 type="button"
                 onClick={() => onAddNode('ground')}
-                className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/20 transition-all"
+                className="flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-status-success-text hover:bg-emerald-500/20 transition-all"
               >
                 <Plus className="h-3 w-3" /> Ground
               </button>
               <button
                 type="button"
                 onClick={() => onAddNode('warrant')}
-                className="flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-300 hover:bg-amber-500/20 transition-all"
+                className="flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-status-warning-text hover:bg-amber-500/20 transition-all"
               >
                 <Plus className="h-3 w-3" /> Warrant
               </button>
               <button
                 type="button"
                 onClick={() => onAddNode('rebuttal')}
-                className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-300 hover:bg-rose-500/20 transition-all"
+                className="flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-danger-text hover:bg-rose-500/20 transition-all"
               >
                 <Plus className="h-3 w-3" /> Rebuttal
               </button>
@@ -246,11 +246,11 @@ export function ToulminArgumentHUD({
                   </span>
                   <div className="flex items-center gap-1.5">
                     {node.verified && (
-                      <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-0.5">
+                      <span className="text-[10px] text-status-success-text font-semibold flex items-center gap-0.5">
                         <CheckCircle2 className="h-3 w-3" /> Verified
                       </span>
                     )}
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-faint font-mono">
                       {Math.round(node.confidence * 100)}%
                     </span>
                   </div>
@@ -261,8 +261,8 @@ export function ToulminArgumentHUD({
                 </p>
 
                 {isSelected && (
-                  <div className="mt-3 border-t border-white/10 pt-2 flex items-center justify-between gap-2 animate-fadeIn text-[11px]">
-                    <span className="text-slate-400 italic">{meta.hint}</span>
+                  <div className="mt-3 border-t border-white/10 pt-2 flex items-center justify-between gap-2 animate-fade-in text-[11px]">
+                    <span className="text-faint italic">{meta.hint}</span>
                     {onChallengeNode && (
                       <button
                         type="button"
@@ -272,7 +272,7 @@ export function ToulminArgumentHUD({
                         }}
                         className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 font-semibold text-white hover:bg-white/20 transition-all"
                       >
-                        <Flame className="h-3 w-3 text-amber-400" /> Challenge Node
+                        <Flame className="h-3 w-3 text-status-warning-text" /> Challenge Node
                       </button>
                     )}
                   </div>
@@ -289,7 +289,7 @@ export function ToulminArgumentHUD({
           <button
             type="button"
             onClick={() => setShowVulnerabilities((p) => !p)}
-            className="flex w-full items-center justify-between text-xs font-semibold text-amber-300"
+            className="flex w-full items-center justify-between text-xs font-semibold text-status-warning-text"
           >
             <div className="flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
@@ -309,10 +309,10 @@ export function ToulminArgumentHUD({
               {evaluation.structuralVulnerabilities.map((v, i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-slate-300 space-y-1"
+                  className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-secondary space-y-1"
                 >
                   <p className="font-semibold text-amber-200">{v.issue}</p>
-                  <p className="text-[11px] text-slate-400">{v.recommendation}</p>
+                  <p className="text-[11px] text-faint">{v.recommendation}</p>
                 </div>
               ))}
             </div>

@@ -63,10 +63,10 @@ export function AdaptiveExamHUD({
 
   const abilityColor =
     currentTheta >= 1.0
-      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-status-success-text'
       : currentTheta >= 0.0
         ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300'
-        : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+        : 'border-amber-500/30 bg-amber-500/10 text-status-warning-text'
 
   return (
     <div
@@ -82,7 +82,7 @@ export function AdaptiveExamHUD({
             <Target className="h-4 w-4" />
           </span>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-faint block">
               Item Response Theory (CAT 3PL)
             </span>
             <span className="text-xs font-bold text-white">
@@ -94,18 +94,18 @@ export function AdaptiveExamHUD({
         <div className="flex items-center gap-3">
           {/* SPRT Decision Badge */}
           {sprtDecision === 'pass' ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300 animate-pulse">
-              <Award className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-status-success-text animate-pulse">
+              <Award className="h-3.5 w-3.5 text-status-success-text" />
               Mastery Verified (SPRT Pass)
             </span>
           ) : sprtDecision === 'fail' ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-[11px] font-extrabold text-rose-300">
-              <AlertTriangle className="h-3.5 w-3.5 text-rose-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-[11px] font-extrabold text-danger-text">
+              <AlertTriangle className="h-3.5 w-3.5 text-danger-text" />
               Remediation Needed
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-300">
-              <Activity className="h-3.5 w-3.5 text-sky-400" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-secondary">
+              <Activity className="h-3.5 w-3.5 text-status-info-text" />
               Converging Trajectory
             </span>
           )}
@@ -124,7 +124,7 @@ export function AdaptiveExamHUD({
       <div className="grid grid-cols-2 divide-x divide-white/5 border-b border-white/5 sm:grid-cols-4 bg-slate-900/50 text-center text-xs">
         {/* Latent Ability (Theta) */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Latent Ability (θ)
           </span>
           <div className="flex items-center justify-center gap-1.5">
@@ -141,14 +141,14 @@ export function AdaptiveExamHUD({
 
         {/* Standard Error (SEM) */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Measurement Precision (SEM)
           </span>
           <div className="flex items-center justify-center gap-1.5">
             <span className="font-mono text-base font-black text-white">
               ±{currentSem.toFixed(2)}
             </span>
-            <span className="text-[10px] text-slate-400 font-mono">
+            <span className="text-[10px] text-faint font-mono">
               (target ≤ {targetSem.toFixed(2)})
             </span>
           </div>
@@ -156,7 +156,7 @@ export function AdaptiveExamHUD({
 
         {/* Confidence Convergence */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Confidence Convergence
           </span>
           <div className="flex flex-col items-center gap-1">
@@ -174,7 +174,7 @@ export function AdaptiveExamHUD({
 
         {/* Item Difficulty Alignment */}
         <div className="p-3">
-          <span className="text-[10px] uppercase font-semibold text-slate-400 block mb-0.5">
+          <span className="text-[10px] uppercase font-semibold text-faint block mb-0.5">
             Item Difficulty (b)
           </span>
           <div className="flex items-center justify-center gap-1.5">
@@ -186,9 +186,7 @@ export function AdaptiveExamHUD({
                 : '0.00'}
             </span>
             {predictedProbability !== null && (
-              <span className="text-[10px] text-slate-400 font-mono">
-                (~{predictedProbability}% P)
-              </span>
+              <span className="text-[10px] text-faint font-mono">(~{predictedProbability}% P)</span>
             )}
           </div>
         </div>

@@ -27,9 +27,9 @@ interface InsightsResponse {
 }
 
 const TONE = {
-  positive: 'text-emerald-600 dark:text-emerald-300 bg-emerald-600/10',
-  negative: 'text-amber-600 dark:text-amber-300 bg-amber-500/10',
-  none: 'text-neutral-500 bg-neutral-200/60 dark:bg-(--hub-border)',
+  positive: 'text-status-success-text dark:text-status-success-text bg-emerald-600/10',
+  negative: 'text-status-warning-text dark:text-status-warning-text bg-amber-500/10',
+  none: 'text-tertiary bg-neutral-200/60 dark:bg-(--hub-border)',
 } as const
 
 export function InsightsSection() {
@@ -49,7 +49,7 @@ export function InsightsSection() {
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <Telescope className="h-4 w-4 text-indigo-400" /> What helps you learn
         </h2>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Correlations between your logged sleep, exercise, mood and focus — and your outcomes.
           {q.data && q.data.daysWithRetention < 10
             ? ` Only ${q.data.daysWithRetention} day${q.data.daysWithRetention === 1 ? '' : 's'} with review data so far.`
@@ -57,7 +57,7 @@ export function InsightsSection() {
         </p>
       </div>
 
-      {q.isLoading && <p className="text-sm text-neutral-400">Crunching your logs…</p>}
+      {q.isLoading && <p className="text-sm text-faint">Crunching your logs…</p>}
 
       {meaningful.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -76,7 +76,7 @@ export function InsightsSection() {
                     <Icon className="h-3 w-3" /> r={i.r?.toFixed(2)}
                   </span>
                 </div>
-                <p className="mt-1 text-[11px] text-neutral-400">{i.caveat}</p>
+                <p className="mt-1 text-[11px] text-faint">{i.caveat}</p>
               </div>
             )
           })}
@@ -85,15 +85,15 @@ export function InsightsSection() {
 
       {rest.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer text-xs text-neutral-500">
+          <summary className="cursor-pointer text-xs text-tertiary">
             {meaningful.length > 0 ? 'Other tracked pairs' : 'Tracked pairs'} ({rest.length})
           </summary>
           <ul className="mt-2 space-y-1.5">
             {rest.map((i) => (
-              <li key={i.id} className="flex items-start gap-2 text-xs text-neutral-500">
+              <li key={i.id} className="flex items-start gap-2 text-xs text-tertiary">
                 <Minus className="mt-0.5 h-3 w-3 shrink-0" />
                 <span>
-                  {i.statement} <span className="text-neutral-400">{i.caveat}</span>
+                  {i.statement} <span className="text-faint">{i.caveat}</span>
                 </span>
               </li>
             ))}

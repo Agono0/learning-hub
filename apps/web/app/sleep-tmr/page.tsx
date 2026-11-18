@@ -182,17 +182,15 @@ export default function SleepTmrPage() {
         <div className="space-y-2 pt-8 text-center">
           <Moon className="mx-auto h-12 w-12 animate-pulse text-indigo-400/80" />
           <h1 className="text-xl font-medium text-neutral-200">Sleep replay running</h1>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             Soft cues every 20–40 seconds. Keep this screen open.
           </p>
         </div>
         <div className="space-y-2 text-center" aria-live="polite">
           <div className="font-mono text-4xl text-indigo-300">{playedCount}</div>
-          <div className="text-xs uppercase tracking-wider text-neutral-500">
-            cues played tonight
-          </div>
+          <div className="text-xs uppercase tracking-wider text-tertiary">cues played tonight</div>
           {currentFreq ? (
-            <div className="flex items-center justify-center gap-1 text-xs text-emerald-400">
+            <div className="flex items-center justify-center gap-1 text-xs text-status-success-text">
               <Sparkles className="h-3 w-3" /> cue ({Math.round(currentFreq)} Hz)
             </div>
           ) : null}
@@ -268,7 +266,7 @@ export default function SleepTmrPage() {
         }
       >
         {mintRecent.data ? (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             {mintRecent.data.minted > 0
               ? `${mintRecent.data.minted} cards from the last 24 hours queued.`
               : 'No reviews in the last 24 hours to queue.'}
@@ -303,7 +301,7 @@ export default function SleepTmrPage() {
                 >
                   <div className="min-w-0 space-y-0.5">
                     <div className="font-medium">Card #{c.cardId}</div>
-                    <div className="text-neutral-500">
+                    <div className="text-tertiary">
                       {c.earconSignature.baseFrequency} Hz ·{' '}
                       {c.earconSignature.harmonicType.replace('_', ' ')} · replayed{' '}
                       {c.timesCuedSleep}×

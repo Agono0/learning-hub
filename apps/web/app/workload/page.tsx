@@ -29,12 +29,12 @@ export default function WorkloadStudioPage() {
               <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
               <span>90-Day Forecast</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+              <ShieldCheck className="h-3.5 w-3.5 text-status-success-text" />
               <span>Safe Fuzz Smoothing</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-300">
-              <Calendar className="h-3.5 w-3.5 text-sky-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
+              <Calendar className="h-3.5 w-3.5 text-status-info-text" />
               <span>Easy Days</span>
             </span>
           </div>
@@ -52,7 +52,7 @@ export default function WorkloadStudioPage() {
             Spaced Repetition & Cognitive Capacity Principles
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-neutral-400 leading-relaxed">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-faint leading-relaxed">
           <div className="space-y-1">
             <span className="font-semibold text-neutral-200">
               Spike Attenuation via Interval Fuzzing

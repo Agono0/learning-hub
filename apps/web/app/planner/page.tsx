@@ -87,7 +87,7 @@ export default function PlannerPage() {
       <CalendarSubscriptionCard />
 
       {engagement.data?.engagement && engagement.data.engagement.sent > 0 && (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-tertiary">
           Reminder engagement (7 days): {engagement.data.engagement.clicked} of{' '}
           {engagement.data.engagement.sent} notifications opened (
           {engagement.data.engagement.engagementPct}%).
@@ -153,7 +153,7 @@ function CalendarSubscriptionCard() {
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
             Add to calendar
           </h3>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="text-xs text-tertiary dark:text-faint">
             Live feed: exam dates, this week&apos;s plan blocks, and the 7-day review forecast —
             updates automatically in your calendar app.
           </p>

@@ -26,7 +26,7 @@ import {
   PageHeader,
   Panel,
   SelectField,
-  Stat,
+  StatCard,
   Tabs,
   TextArea,
   TextField,
@@ -183,7 +183,7 @@ function PromptBuilder() {
             className="input h-40 font-mono text-[12px] leading-5"
             value={prompt}
           />
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-tertiary">
             Works with ChatGPT, Claude, Gemini, Copilot or a local model. Long courses may need
             “continue” — paste the whole reply below either way.
           </p>
@@ -307,7 +307,7 @@ function ImportPanel({ step }: { step?: number }) {
             <div className="min-w-0">
               <div className="font-semibold">{checked.preview.title}</div>
               {checked.preview.subtitle && (
-                <div className="text-sm text-neutral-500">{checked.preview.subtitle}</div>
+                <div className="text-sm text-tertiary">{checked.preview.subtitle}</div>
               )}
               <div className="mt-1 flex flex-wrap gap-1">
                 {checked.preview.level && <Badge>{checked.preview.level}</Badge>}
@@ -319,20 +319,22 @@ function ImportPanel({ step }: { step?: number }) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat label="Lessons" value={checked.preview.stats.lessons} />
-            <Stat
+            <StatCard label="Lessons" value={checked.preview.stats.lessons} variant="standard" />
+            <StatCard
               label="Exercises"
               value={checked.preview.stats.exercises}
               hint={`${Object.keys(checked.preview.stats.exerciseTypes).length} types`}
+              variant="standard"
             />
-            <Stat label="Projects" value={checked.preview.stats.projects} />
-            <Stat
+            <StatCard label="Projects" value={checked.preview.stats.projects} variant="standard" />
+            <StatCard
               label="Est. time"
               value={
                 checked.preview.stats.estMinutes
                   ? `${Math.round(checked.preview.stats.estMinutes / 60)} h`
                   : '—'
               }
+              variant="standard"
             />
           </div>
           <details className="text-sm">
@@ -341,14 +343,14 @@ function ImportPanel({ step }: { step?: number }) {
               {checked.preview.outline.map((m, i) => (
                 <li key={i}>
                   {m.title}{' '}
-                  <span className="text-xs text-neutral-500">({m.lessons.length} lessons)</span>
+                  <span className="text-xs text-tertiary">({m.lessons.length} lessons)</span>
                 </li>
               ))}
             </ol>
           </details>
           {checked.warnings.length > 0 && (
             <details className="text-sm">
-              <summary className="flex cursor-pointer items-center gap-1 text-amber-700 dark:text-amber-300">
+              <summary className="flex cursor-pointer items-center gap-1 text-amber-700 dark:text-status-warning-text">
                 <AlertTriangle className="h-4 w-4" /> {checked.warnings.length} suggestion(s) to
                 make it a better course
               </summary>
@@ -363,7 +365,7 @@ function ImportPanel({ step }: { step?: number }) {
             </details>
           )}
           {checked.fixes.length > 0 && (
-            <details className="text-xs text-neutral-500">
+            <details className="text-xs text-tertiary">
               <summary className="cursor-pointer">
                 {checked.fixes.length} small thing(s) were repaired automatically
               </summary>
@@ -422,7 +424,7 @@ function NewCourse() {
 
 export default function NewCoursePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
       <NewCourse />
     </Suspense>
   )

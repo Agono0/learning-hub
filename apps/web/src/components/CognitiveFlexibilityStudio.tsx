@@ -203,7 +203,7 @@ export function CognitiveFlexibilityStudio({
       <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-faint">
               Ill-Structured Domain Suite:
             </span>
             <Badge tone="cyan">{suite.domainFamily}</Badge>
@@ -228,7 +228,7 @@ export function CognitiveFlexibilityStudio({
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   isSelected
-                    ? 'border border-cyan-500/40 bg-cyan-500/20 text-cyan-300'
+                    ? 'border border-sky-500/40 bg-sky-500/20 text-status-info-text'
                     : 'border border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -258,8 +258,8 @@ export function CognitiveFlexibilityStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'landscape_criss_cross'
-              ? 'border-cyan-400 text-cyan-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-sky-400 text-status-info-text'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -277,8 +277,8 @@ export function CognitiveFlexibilityStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'six_hats_crucible'
-              ? 'border-violet-400 text-violet-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-indigo-400 text-indigo-300'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Compass className="h-4 w-4" />
@@ -296,8 +296,8 @@ export function CognitiveFlexibilityStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'reductive_bias_diagnostic'
-              ? 'border-amber-400 text-amber-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-amber-400 text-status-warning-text'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <ShieldAlert className="h-4 w-4" />
@@ -315,8 +315,8 @@ export function CognitiveFlexibilityStudio({
           }}
           className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-semibold transition-colors ${
             activeTab === 'fsrs_deck'
-              ? 'border-emerald-400 text-emerald-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-400 text-status-success-text'
+              : 'border-transparent text-faint hover:text-slate-200'
           }`}
         >
           <Sparkles className="h-4 w-4" />
@@ -335,14 +335,14 @@ export function CognitiveFlexibilityStudio({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <Badge tone="cyan">{primaryCase.domain}</Badge>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-tertiary">
                   Criss-Cross Coverage: {Math.round(evaluation.crissCrossDensity * 100)}%
                 </span>
               </div>
               <h3 className="text-lg font-bold text-slate-100">{primaryCase.title}</h3>
-              <p className="text-xs leading-relaxed text-slate-300">{primaryCase.contextSummary}</p>
+              <p className="text-xs leading-relaxed text-secondary">{primaryCase.contextSummary}</p>
               <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 p-3 text-xs leading-relaxed text-amber-200">
-                <span className="font-bold text-amber-300">Core Dilemma: </span>
+                <span className="font-bold text-status-warning-text">Core Dilemma: </span>
                 {primaryCase.coreDilemma}
               </div>
             </div>
@@ -351,10 +351,10 @@ export function CognitiveFlexibilityStudio({
           {/* Spiro Thematic Nodes Matrix */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-secondary">
                 Spiro Thematic Nodes (Revisit across multiple case traversals)
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-faint">
                 Click nodes to mark as identified in current analysis
               </span>
             </div>
@@ -369,7 +369,7 @@ export function CognitiveFlexibilityStudio({
                     onClick={() => handleToggleThematicNode(node.id)}
                     className={`flex flex-col gap-2 rounded-xl border p-4 text-left transition-all ${
                       isSelected
-                        ? 'border-violet-500/50 bg-violet-950/30 ring-1 ring-violet-400/40'
+                        ? 'border-indigo-500/50 bg-indigo-950/30 ring-1 ring-indigo-400/40'
                         : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
                     }`}
                   >
@@ -379,10 +379,10 @@ export function CognitiveFlexibilityStudio({
                         {node.crossCuttingCategory}
                       </Badge>
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-300">{node.description}</p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
+                    <p className="text-xs leading-relaxed text-secondary">{node.description}</p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-faint">
                       <CheckCircle2
-                        className={`h-3 w-3 ${isSelected ? 'text-emerald-400' : 'text-slate-600'}`}
+                        className={`h-3 w-3 ${isSelected ? 'text-status-success-text' : 'text-slate-600'}`}
                       />
                       <span>{isSelected ? 'Node Criss-Crossed' : 'Click to Criss-Cross'}</span>
                     </div>
@@ -395,7 +395,7 @@ export function CognitiveFlexibilityStudio({
           {/* Comparison / Analogous Case Studies */}
           {suite.comparisonCases.length > 0 && (
             <div className="flex flex-col gap-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-bold uppercase tracking-wider text-secondary">
                 Cross-Domain Isomorphic Comparison Case
               </span>
               {suite.comparisonCases.map((comp) => (
@@ -404,11 +404,11 @@ export function CognitiveFlexibilityStudio({
                   className="flex flex-col gap-2 rounded-xl border border-slate-800/80 bg-slate-950/40 p-4"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-cyan-300">{comp.title}</span>
+                    <span className="text-xs font-bold text-status-info-text">{comp.title}</span>
                     <Badge tone="neutral">{comp.domain}</Badge>
                   </div>
-                  <p className="text-xs leading-relaxed text-slate-400">{comp.contextSummary}</p>
-                  <div className="text-[11px] text-amber-300/90">
+                  <p className="text-xs leading-relaxed text-faint">{comp.contextSummary}</p>
+                  <div className="text-[11px] text-status-warning-text/90">
                     <strong>Dilemma:</strong> {comp.coreDilemma}
                   </div>
                 </div>
@@ -432,13 +432,13 @@ export function CognitiveFlexibilityStudio({
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-xs font-bold uppercase tracking-wider text-faint">
                           Active Thinking Modality:
                         </span>
                         <Badge tone="cyan">{activeHat.replace('_', ' ').toUpperCase()}</Badge>
                         <Badge tone="neutral">Lens: {activeLens.replace('_', ' ')}</Badge>
                       </div>
-                      <span className="text-xs text-cyan-400 font-mono">
+                      <span className="text-xs text-status-info-text font-mono">
                         PDI Contribution: +{(1 / 6).toFixed(2)}
                       </span>
                     </div>
@@ -448,20 +448,22 @@ export function CognitiveFlexibilityStudio({
                     </h3>
 
                     {/* Active Lens Interpretation Context */}
-                    <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/20 p-3 text-xs text-cyan-200 leading-relaxed">
-                      <strong className="text-cyan-300">Systemic Lens Angle ({activeLens}):</strong>{' '}
+                    <div className="rounded-lg border border-sky-500/20 bg-sky-950/20 p-3 text-xs text-sky-200 leading-relaxed">
+                      <strong className="text-status-info-text">
+                        Systemic Lens Angle ({activeLens}):
+                      </strong>{' '}
                       {activeLensText}
                     </div>
 
                     {/* Expert Key Observations */}
                     <div className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-faint">
                         Expert Domain Observations for this Hat:
                       </span>
-                      <ul className="flex flex-col gap-1 text-xs text-slate-300">
+                      <ul className="flex flex-col gap-1 text-xs text-secondary">
                         {currentHatAnalysis.keyObservations.map((obs, i) => (
                           <li key={i} className="flex items-start gap-2">
-                            <span className="text-cyan-400">•</span>
+                            <span className="text-status-info-text">•</span>
                             <span>{obs}</span>
                           </li>
                         ))}
@@ -486,7 +488,7 @@ export function CognitiveFlexibilityStudio({
 
                 {/* Student Analysis Workbench Input */}
                 <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  <span className="text-xs font-bold uppercase tracking-wider text-secondary">
                     Your Cognitive Analysis ({activeHat.replace('_', ' ')} ×{' '}
                     {activeLens.replace('_', ' ')})
                   </span>
@@ -495,10 +497,10 @@ export function CognitiveFlexibilityStudio({
                     value={studentNotes}
                     onChange={(e) => setStudentNotes(e.target.value)}
                     placeholder="Articulate your perspective shifting observations: What does this hat reveal that other modalities completely miss? What unintended systemic cascades must be anticipated?"
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   />
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-tertiary">
                       Recording this attempt deepens entropy and unlocks context-free FSRS
                       stability.
                     </span>
@@ -523,12 +525,12 @@ export function CognitiveFlexibilityStudio({
           <Panel className="border-slate-800 bg-slate-900/60 p-5">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-amber-400" />
+                <ShieldAlert className="h-4 w-4 text-status-warning-text" />
                 <h3 className="text-sm font-bold text-slate-100">
                   Feltovich, Spiro & Coulson (1989) Reductive Oversimplification Traps
                 </h3>
               </div>
-              <p className="text-xs leading-relaxed text-slate-300">
+              <p className="text-xs leading-relaxed text-secondary">
                 In complex non-linear domains, learners habitually reduce complex multidimensional
                 phenomena to single, intuitive, linear models. Diagnose and disprove each reductive
                 bias below to cultivate cognitive resilience.
@@ -564,7 +566,7 @@ export function CognitiveFlexibilityStudio({
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="flex flex-col gap-1 rounded-lg border border-rose-500/20 bg-rose-950/20 p-3">
-                      <span className="text-[11px] font-bold text-rose-300 uppercase tracking-wider">
+                      <span className="text-[11px] font-bold text-danger-text uppercase tracking-wider">
                         Superficial / Reductive Mental Model:
                       </span>
                       <p className="text-xs text-rose-100/90 leading-relaxed">
@@ -573,7 +575,7 @@ export function CognitiveFlexibilityStudio({
                     </div>
 
                     <div className="flex flex-col gap-1 rounded-lg border border-emerald-500/20 bg-emerald-950/20 p-3">
-                      <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                      <span className="text-[11px] font-bold text-status-success-text uppercase tracking-wider">
                         Nuanced Multi-Perspective Reality:
                       </span>
                       <p className="text-xs text-emerald-100/90 leading-relaxed">
@@ -582,14 +584,14 @@ export function CognitiveFlexibilityStudio({
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-1 text-xs text-slate-300">
-                    <span className="font-semibold text-amber-300">
+                  <div className="flex flex-col gap-1 text-xs text-secondary">
+                    <span className="font-semibold text-status-warning-text">
                       Catastrophic Failure Consequence:
                     </span>
                     <span>{trap.failureConsequence}</span>
                   </div>
 
-                  <div className="text-[11px] text-cyan-300/90">
+                  <div className="text-[11px] text-status-info-text/90">
                     <strong>Remedial Criss-Cross Step:</strong> {trap.remedialCrissCrossStep}
                   </div>
                 </div>
@@ -605,7 +607,7 @@ export function CognitiveFlexibilityStudio({
           <Panel className="border-slate-800 bg-slate-900/60 p-5">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-faint">
                   FSRS-6 Cross-Cutting Generalization Deck
                 </span>
                 <Badge tone="success">
@@ -616,7 +618,7 @@ export function CognitiveFlexibilityStudio({
               <h3 className="text-base font-bold text-slate-100">
                 Cognitive Flexibility Spaced Retrieval Cards
               </h3>
-              <p className="text-xs leading-relaxed text-slate-300">
+              <p className="text-xs leading-relaxed text-secondary">
                 These cards test your ability to re-represent ill-structured problems from opposing
                 perspectives under spaced conditions. By disentangling retrieval from local context
                 cues, each card gains up to a 1.35x FSRS initial stability multiplier.
@@ -646,7 +648,7 @@ export function CognitiveFlexibilityStudio({
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <Badge tone="cyan">{card.hat.replace('_', ' ').toUpperCase()}</Badge>
-                      <span className="text-[10px] font-mono text-emerald-400">
+                      <span className="text-[10px] font-mono text-status-success-text">
                         {card.fsrsStabilityMultiplier}x Stability
                       </span>
                     </div>
@@ -659,7 +661,9 @@ export function CognitiveFlexibilityStudio({
                       <Markdown>{card.solutionBack}</Markdown>
                     </div>
 
-                    <div className="text-[10px] text-amber-400/90">{card.reductiveTrapWarning}</div>
+                    <div className="text-[10px] text-status-warning-text/90">
+                      {card.reductiveTrapWarning}
+                    </div>
                   </div>
 
                   <div className="mt-4 flex items-center justify-end">
