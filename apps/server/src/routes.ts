@@ -96,6 +96,10 @@ import {
   calculatePFMetrics,
   evaluateStudentRepresentation,
   generatePFFSRSCards,
+  getCanonicalConcepTestSuites,
+  getConcepTestSuiteById,
+  calculatePIMetrics,
+  generatePIFSRSCards,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -238,6 +242,28 @@ const pfDeckBodySchema = z.object({
   scenarioId: z.string().default('pf-variance-dispersion'),
   pfiScore: z.number().min(0).max(100).default(85),
   cigScore: z.number().min(0).max(100).default(80),
+})
+
+const piDialogueBodySchema = z.object({
+  suiteId: z.string().default('ct-thermal-expansion-plate'),
+})
+
+const piEvaluateBodySchema = z.object({
+  suiteId: z.string().default('ct-thermal-expansion-plate'),
+  q1InitialOptionId: z.string().optional(),
+  q1InitialConfidence: z.number().min(1).max(5).default(3),
+  q1RevoteOptionId: z.string().optional(),
+  q1RevoteConfidence: z.number().min(1).max(5).default(4),
+  q2TransferOptionId: z.string().optional(),
+  peerDiscussionOccurred: z.boolean().default(true),
+  vote1AccuracyPct: z.number().min(0).max(100).default(38),
+  vote2AccuracyPct: z.number().min(0).max(100).default(82),
+})
+
+const piDeckBodySchema = z.object({
+  suiteId: z.string().default('ct-thermal-expansion-plate'),
+  hakeGain: z.number().min(0).max(1).default(0.75),
+  isomorphicCorrect: z.boolean().default(true),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1364,6 +1390,94 @@ async function postPFDeck(req: IncomingMessage, res: ServerResponse): Promise<vo
   })
 }
 
+/** GET /cognitive/pi/conceptests — list canonical ConcepTest suites */
+async function getPIConceptests(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const suites = getCanonicalConcepTestSuites()
+  sendJson(res, 200, {
+    ok: true,
+    suites: suites.map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      subtitle: s.subtitle,
+      canonicalInvariant: s.canonicalInvariant,
+      q1Prompt: s.q1Prompt,
+      q2IsomorphicPrompt: s.q2IsomorphicPrompt,
+      peerDialogueCount: s.simulatedPeers.length,
+    })),
+  })
+}
+
+/** POST /cognitive/pi/dialogue — retrieve simulated peer discussion dialogue */
+async function postPIDialogue(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, piDialogueBodySchema)
+  const suite = getConcepTestSuiteById(body.suiteId) ?? getCanonicalConcepTestSuites()[0]!
+  sendJson(res, 200, {
+    ok: true,
+    suiteId: suite.id,
+    suiteTitle: suite.title,
+    classroomVoteDistribution: suite.q1ClassroomVoteDistribution,
+    simulatedPeers: suite.simulatedPeers,
+  })
+}
+
+/** POST /cognitive/pi/evaluate — evaluate peer instruction trajectory metrics (Hake g, Mazur PI, DCR, ITP) */
+async function postPIEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, piEvaluateBodySchema)
+  const suite = getConcepTestSuiteById(body.suiteId) ?? getCanonicalConcepTestSuites()[0]!
+
+  const q1Correct = suite.q1Options.find((o) => o.isCorrect)?.id
+  const q2Correct = suite.q2Options.find((o) => o.isCorrect)?.id
+
+  const q1Initial = body.q1InitialOptionId ?? suite.q1Options[0]!.id
+  const q1Revote = body.q1RevoteOptionId ?? q1Correct ?? q1Initial
+  const q2Transfer = body.q2TransferOptionId ?? q2Correct ?? suite.q2Options[0]!.id
+
+  const metrics = calculatePIMetrics({
+    suite,
+    q1InitialOptionId: q1Initial,
+    q1InitialConfidence: body.q1InitialConfidence,
+    q1RevoteOptionId: q1Revote,
+    q1RevoteConfidence: body.q1RevoteConfidence,
+    q2TransferOptionId: q2Transfer,
+    peerDiscussionOccurred: body.peerDiscussionOccurred,
+    simulatedClassroomAccuracyVote1: body.vote1AccuracyPct,
+    simulatedClassroomAccuracyVote2: body.vote2AccuracyPct,
+  })
+
+  sendJson(res, 200, {
+    ok: true,
+    suiteTitle: suite.title,
+    metrics,
+  })
+}
+
+/** POST /cognitive/pi/deck — generate calibrated FSRS-6 ConcepTest flashcards */
+async function postPIDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, piDeckBodySchema)
+  const suite = getConcepTestSuiteById(body.suiteId) ?? getCanonicalConcepTestSuites()[0]!
+  const dummyMetrics = calculatePIMetrics({
+    suite,
+    q1InitialOptionId: suite.q1Options[0]!.id,
+    q1InitialConfidence: 3,
+    q1RevoteOptionId: suite.q1Options.find((o) => o.isCorrect)!.id,
+    q1RevoteConfidence: 5,
+    q2TransferOptionId: body.isomorphicCorrect
+      ? suite.q2Options.find((o) => o.isCorrect)!.id
+      : suite.q2Options[0]!.id,
+    peerDiscussionOccurred: true,
+    simulatedClassroomAccuracyVote1: 35,
+    simulatedClassroomAccuracyVote2: 85,
+  })
+  const cards = generatePIFSRSCards(suite, dummyMetrics)
+  sendJson(res, 200, {
+    ok: true,
+    suiteTitle: suite.title,
+    count: cards.length,
+    cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -1590,6 +1704,30 @@ export const routes: Route[] = [
     path: '/cognitive/pf/deck',
     summary: 'generate calibrated FSRS-6 review deck scaled by productive failure index',
     handler: postPFDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/pi/conceptests',
+    summary: 'list canonical ConcepTest suites for peer instruction',
+    handler: getPIConceptests,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/pi/dialogue',
+    summary: 'retrieve simulated peer deliberation dialogue for ConcepTest suite',
+    handler: postPIDialogue,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/pi/evaluate',
+    summary: 'evaluate peer instruction trajectory metrics (Hake g, Mazur PI, DCR, ITP)',
+    handler: postPIEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/pi/deck',
+    summary: 'generate calibrated FSRS-6 review deck for ConcepTest suite',
+    handler: postPIDeck,
   },
 ]
 

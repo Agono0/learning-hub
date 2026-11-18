@@ -55,6 +55,7 @@ import {
   Swords,
   Target,
   Timer,
+  Users,
   Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -118,6 +119,7 @@ export const NAV: NavGroup[] = [
       { href: '/spatial', label: 'Spatial Cognition', icon: Compass },
       { href: '/zpd', label: 'Dynamic Assessment', icon: Radar },
       { href: '/productive-failure', label: 'Productive Failure', icon: Lightbulb },
+      { href: '/peer-instruction', label: 'Peer Instruction', icon: Users },
     ],
   },
   {

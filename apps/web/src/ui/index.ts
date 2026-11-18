@@ -81,6 +81,7 @@ export { OntologicalShiftHUD, type OntologicalShiftHUDProps } from './Ontologica
 export { SpatialCognitionHUD, type SpatialCognitionHUDProps } from './SpatialCognitionHUD'
 export { DynamicAssessmentHUD, type DynamicAssessmentHUDProps } from './DynamicAssessmentHUD'
 export { ProductiveFailureHUD, type ProductiveFailureHUDProps } from './ProductiveFailureHUD'
+export { PeerInstructionHUD, type PeerInstructionHUDProps } from './PeerInstructionHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'

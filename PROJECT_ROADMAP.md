@@ -45,6 +45,7 @@
 | **T-P2-28** | **P2**   | Spatial Cognition        | **Completed** | Spatial Cognition & Mental Rotation Model-Checking Studio: Shepard-Metzler linear RT disparity model, Hegarty kinematic gear simulation, and STEM spatial lab.                              |
 | **T-P2-29** | **P2**   | Dynamic Assessment & ZPD | **Completed** | Dynamic Assessment & Zone of Proximal Development Studio: Vygotsky ADL/PDL, Feuerstein LPAD/CMI, Campione-Brown 5-tier graduated prompting, Budoff LPS, and multi-host parity.              |
 | **T-P2-30** | **P2**   | Productive Failure       | **Completed** | Productive Failure & Canonical Consolidation Studio: Manu Kapur 2-phase model, Tanmay Sinha predictor metrics (PFI, GDI, ISS, CIG, ATS), juxtaposition matrix, and multi-host parity.       |
+| **T-P2-31** | **P2**   | Peer Instruction         | **Completed** | Peer Instruction & Interactive ConcepTest Studio: Eric Mazur interactive polling/deliberation, Michelle Smith isomorphic transfer, Hake normalized gain, and multi-host parity.             |
 
 ---
 
@@ -540,4 +541,18 @@
   5. Implement runtime-neutral API handler `apps/web/src/server/handlers/productive-failure/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
   6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
 - **Files Affected:** `packages/core/src/productive-failure/*`, `apps/web/src/ui/ProductiveFailureHUD.tsx`, `apps/web/src/components/ProductiveFailureStudio.tsx`, `apps/web/app/productive-failure/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/productive-failure/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/pf-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed**.
+
+### T-P2-31: Peer Instruction & Interactive ConcepTest Studio (Mazur 1997, 2001; Smith et al. Science 2009; Hake 1998; Crouch & Mazur 2001)
+
+- **Problem:** Passive lecture formats produce superficial retention and leave deep intuitive misconceptions intact; students can execute algorithmic formulas while failing qualitative conceptual probes. Furthermore, group work without structured individual accountability can devolve into peer copying rather than authentic schema restructuring.
+- **Root Cause:** Absence of a structured Peer Instruction and ConcepTest deliberative loop with individual silent commitment ($Q_1$), Mazur decision window boundary triggers ($30\%-70\%$), paired peer deliberation with intentional cognitive dissonance, post-discussion revote ($Q_1'$), and Michelle Smith isomorphic transfer verification ($Q_2$).
+- **Proposed Solution:**
+  1. Build `packages/core/src/peer-instruction/conceptest-engine.ts` with Zod validation, quantitative metrics (Hake Normalized Learning Gain $\langle g \rangle$, Mazur Polarization Index $PI$, Discussion Convergence Ratio $DCR$, Smith Isomorphic Transfer Precision $ITP$, $\Delta CAC$), 5 canonical multidisciplinary ConcepTest suites (Thermal Expansion Plate, DC Bulb Dimming, Archimedes Melting Ice, Darwinian Antibiotic Selection, Liquidity Trap Monetary QE), simulated peer deliberation dialogues with intentional dissonance, and calibrated FSRS-6 decks.
+  2. Implement `PeerInstructionHUD.tsx` with UI Signature design compliance (zero ghost classes, mode-aware tokens) tracking Hake $\langle g \rangle$, Mazur $PI$, Convergence $DCR$, Smith $Q_2$ transfer, and Mazur window actions.
+  3. Implement `PeerInstructionStudio.tsx` with 4 interactive tabs (1. Individual Vote $Q_1$, 2. Peer Deliberation Arena, 3. Revote & Synthesis, 4. Isomorphic $Q_2$ & Flashcard Generation).
+  4. Build page `apps/web/app/peer-instruction/page.tsx` and register route `/peer-instruction` in global navigation (`nav.ts`).
+  5. Implement runtime-neutral API handler `apps/web/src/server/handlers/peer-instruction/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
+  6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
+- **Files Affected:** `packages/core/src/peer-instruction/*`, `apps/web/src/ui/PeerInstructionHUD.tsx`, `apps/web/src/components/PeerInstructionStudio.tsx`, `apps/web/app/peer-instruction/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/peer-instruction/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/pi-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed**.

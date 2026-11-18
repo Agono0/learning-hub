@@ -45,6 +45,7 @@ import {
   thresholdCommand,
   zpdCommand,
   pfCommand,
+  piCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -825,6 +826,12 @@ const builtinCommands: RegisteredCommand[] = [
     usage:
       '[metrics|scenarios|eval|deck] [--scenario pf-variance-dispersion --reps 3 --affective 4]',
     run: (runArgs) => pfCommand(runArgs),
+  },
+  {
+    name: 'pi',
+    description: 'Eric Mazur & Michelle Smith peer instruction & interactive conceptest studio',
+    usage: '[eval|suites|dialogue|deck] [--suite ct-thermal-expansion-plate --pre 38 --post 82]',
+    run: (runArgs) => piCommand(runArgs),
   },
 ]
 

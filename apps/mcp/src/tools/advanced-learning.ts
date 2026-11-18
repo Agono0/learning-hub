@@ -45,6 +45,10 @@ import {
   calculatePFMetrics,
   evaluateStudentRepresentation,
   generatePFFSRSCards,
+  getCanonicalConcepTestSuites,
+  getConcepTestSuiteById,
+  calculatePIMetrics,
+  generatePIFSRSCards,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -683,6 +687,148 @@ export const advancedLearningTools: RegisteredTool[] = [
         initialStabilityDays: cards[0]?.initialStabilityDays,
         initialDifficulty: cards[0]?.initialDifficulty,
         masteryBand: metrics.masteryBand,
+        cards,
+      })
+    },
+  ),
+
+  // ── 9. Peer Instruction & Interactive ConcepTests (Eric Mazur & Michelle Smith) ──
+  tool(
+    'pi_list_conceptests',
+    'Lists all canonical ConcepTest suites across physics, circuits, fluid mechanics, genetics, and macroeconomics.',
+    {},
+    async () => {
+      const suites = getCanonicalConcepTestSuites()
+      return json({
+        count: suites.length,
+        suites: suites.map((s) => ({
+          id: s.id,
+          domain: s.domain,
+          title: s.title,
+          subtitle: s.subtitle,
+          canonicalInvariant: s.canonicalInvariant,
+          q1Prompt: s.q1Prompt,
+          q2IsomorphicPrompt: s.q2IsomorphicPrompt,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'pi_simulate_peer_dialogue',
+    'Retrieves simulated peer deliberation dialogues and classroom vote distributions for a designated ConcepTest.',
+    {
+      suiteId: z
+        .string()
+        .default('ct-thermal-expansion-plate')
+        .describe('ConcepTest suite identifier.'),
+    },
+    async ({ suiteId }) => {
+      const suite = getConcepTestSuiteById(suiteId) ?? getCanonicalConcepTestSuites()[0]
+      return json({
+        suiteId: suite.id,
+        suiteTitle: suite.title,
+        classroomVoteDistribution: suite.q1ClassroomVoteDistribution,
+        simulatedPeers: suite.simulatedPeers,
+      })
+    },
+  ),
+
+  tool(
+    'pi_evaluate_trajectory',
+    'Computes Hake normalized learning gain (<g>), Mazur polarization index (PI), discussion convergence ratio (DCR), and Smith et al. (Science 2009) isomorphic transfer verification.',
+    {
+      suiteId: z
+        .string()
+        .default('ct-thermal-expansion-plate')
+        .describe('ConcepTest suite identifier.'),
+      q1InitialOptionId: z.string().optional().describe('Individual initial vote option ID.'),
+      q1InitialConfidence: z.number().min(1).max(5).default(3),
+      q1RevoteOptionId: z.string().optional().describe('Post-discussion revote option ID.'),
+      q1RevoteConfidence: z.number().min(1).max(5).default(4),
+      q2TransferOptionId: z.string().optional().describe('Isomorphic transfer probe Q2 option ID.'),
+      peerDiscussionOccurred: z.boolean().default(true),
+      vote1AccuracyPct: z.number().min(0).max(100).default(38),
+      vote2AccuracyPct: z.number().min(0).max(100).default(82),
+    },
+    async ({
+      suiteId,
+      q1InitialOptionId,
+      q1InitialConfidence,
+      q1RevoteOptionId,
+      q1RevoteConfidence,
+      q2TransferOptionId,
+      peerDiscussionOccurred,
+      vote1AccuracyPct,
+      vote2AccuracyPct,
+    }) => {
+      const suite = getConcepTestSuiteById(suiteId) ?? getCanonicalConcepTestSuites()[0]
+      const q1Initial = q1InitialOptionId ?? suite.q1Options[0].id
+      const q1Revote = q1RevoteOptionId ?? suite.q1Options.find((o) => o.isCorrect)?.id ?? q1Initial
+      const q2Transfer =
+        q2TransferOptionId ?? suite.q2Options.find((o) => o.isCorrect)?.id ?? suite.q2Options[0].id
+
+      const metrics = calculatePIMetrics({
+        suite,
+        q1InitialOptionId: q1Initial,
+        q1InitialConfidence: q1InitialConfidence ?? 3,
+        q1RevoteOptionId: q1Revote,
+        q1RevoteConfidence: q1RevoteConfidence ?? 4,
+        q2TransferOptionId: q2Transfer,
+        peerDiscussionOccurred: peerDiscussionOccurred ?? true,
+        simulatedClassroomAccuracyVote1: vote1AccuracyPct ?? 38,
+        simulatedClassroomAccuracyVote2: vote2AccuracyPct ?? 82,
+      })
+
+      return json({
+        suiteTitle: suite.title,
+        hakeNormalizedGain: metrics.hakeNormalizedGain,
+        mazurPolarizationIndex: metrics.mazurPolarizationIndex,
+        peerDiscussionConvergence: metrics.peerDiscussionConvergence,
+        isomorphicTransferScore: metrics.isomorphicTransferScore,
+        confidenceCalibrationDelta: metrics.confidenceCalibrationDelta,
+        mazurWindowRecommendedAction: metrics.mazurWindowRecommendedAction,
+        engagementBand: metrics.engagementBand,
+        smithLearningVerification: metrics.smithLearningVerification,
+        qualitativeSummary: metrics.qualitativeSummary,
+        pedagogicalAdvice: metrics.pedagogicalAdvice,
+      })
+    },
+  ),
+
+  tool(
+    'pi_generate_deck',
+    'Generates calibrated FSRS-6 review flashcards for a ConcepTest with stability and difficulty scaled by Hake gain and Smith transfer.',
+    {
+      suiteId: z
+        .string()
+        .default('ct-thermal-expansion-plate')
+        .describe('ConcepTest suite identifier.'),
+      hakeGain: z.number().min(0).max(1).default(0.75),
+      isomorphicCorrect: z.boolean().default(true),
+    },
+    async ({ suiteId, hakeGain, isomorphicCorrect }) => {
+      const suite = getConcepTestSuiteById(suiteId) ?? getCanonicalConcepTestSuites()[0]
+      const dummyMetrics = calculatePIMetrics({
+        suite,
+        q1InitialOptionId: suite.q1Options[0].id,
+        q1InitialConfidence: 3,
+        q1RevoteOptionId: suite.q1Options.find((o) => o.isCorrect)!.id,
+        q1RevoteConfidence: 5,
+        q2TransferOptionId: isomorphicCorrect
+          ? suite.q2Options.find((o) => o.isCorrect)!.id
+          : suite.q2Options[0].id,
+        peerDiscussionOccurred: true,
+        simulatedClassroomAccuracyVote1: 35,
+        simulatedClassroomAccuracyVote2: Math.round(35 + (hakeGain ?? 0.75) * 65),
+      })
+      const cards = generatePIFSRSCards(suite, dummyMetrics)
+
+      return json({
+        suiteTitle: suite.title,
+        cardsCount: cards.length,
+        initialStabilityDays: cards[0]?.initialStabilityDays,
+        initialDifficulty: cards[0]?.initialDifficulty,
         cards,
       })
     },
