@@ -783,6 +783,12 @@ export default function SettingsPage() {
               quiet hours, daily cap, and anti-nag spacing.
             </p>
           </div>
+          <Link
+            href="/notifications"
+            className="text-xs underline underline-offset-2 text-secondary"
+          >
+            Open Notification Center for per-channel control
+          </Link>
           <PermissionGate permission="notifications" reason="delivery of every reminder below" />
           <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
             <input

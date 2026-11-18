@@ -13,6 +13,7 @@ import { ultimateCognitiveExpansion } from '../src/migrations/024-ultimate-cogni
 import { cognitiveUpsertKeys } from '../src/migrations/025-cognitive-upsert-keys'
 import { exposureEventsMigration } from '../src/migrations/026-exposure-events'
 import { hapticsSetting } from '../src/migrations/027-haptics-setting'
+import { notificationCenter } from '../src/migrations/028-notification-center'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -100,12 +101,13 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 027 haptics-setting last, after 026, 025, 024 and 023', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(hapticsSetting)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(exposureEventsMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(cognitiveUpsertKeys)
-    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(ultimateCognitiveExpansion)
-    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(deckDelayedFeedback)
+  it('registers 028 notification-center last, after 027, 026, 025, 024 and 023', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(notificationCenter)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(hapticsSetting)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(exposureEventsMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(cognitiveUpsertKeys)
+    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(ultimateCognitiveExpansion)
+    expect(MIGRATIONS[MIGRATIONS.length - 6]).toBe(deckDelayedFeedback)
   })
 })
 

@@ -110,6 +110,8 @@ import * as readingId from '../server/handlers/reading/[id]/route'
 import * as reading from '../server/handlers/reading/route'
 import * as remindersClick from '../server/handlers/reminders/click/route'
 import * as remindersLog from '../server/handlers/reminders/log/route'
+import * as notificationsPrefs from '../server/handlers/notifications/prefs/route'
+import * as notificationsLog from '../server/handlers/notifications/log/route'
 import * as remindersPlan from '../server/handlers/reminders/plan/route'
 import * as reviewAttemptImage from '../server/handlers/review/attempt-image/route'
 import * as reviewStats from '../server/handlers/review/stats/route'
@@ -303,6 +305,8 @@ add('reading/ingest', readingIngest)
 add('reading/sq3r', readingSq3r)
 add('reminders/click', remindersClick)
 add('reminders/log', remindersLog)
+add('notifications/prefs', notificationsPrefs)
+add('notifications/log', notificationsLog)
 add('reminders/plan', remindersPlan)
 add('review', review)
 add('review/attempt-image', reviewAttemptImage)

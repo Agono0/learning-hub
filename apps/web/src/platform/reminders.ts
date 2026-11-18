@@ -7,6 +7,20 @@
  */
 import { apiGet, apiSend, isTauri } from '@/lib/transport'
 import type { ReminderCandidate } from '@learning-hub/core/reminders'
+import {
+  REMINDER_KIND_TO_CHANNEL,
+  defaultNotificationPrefs,
+  evaluateDelivery,
+  parseNotificationPrefs,
+  type NotificationPrefs,
+} from '@learning-hub/core/notification-center'
+
+/** Shape of the prefs payload the dispatcher needs from /api/notifications/prefs. */
+interface NotificationPrefsPayload {
+  ok: boolean
+  prefs: NotificationPrefs
+  deliveredToday?: number
+}
 
 export async function requestNotificationPermission(): Promise<boolean> {
   if (isTauri) {
@@ -83,15 +97,41 @@ export async function deliverNotification(candidate: ReminderCandidate): Promise
 
 export async function checkAndDispatchReminders(): Promise<number> {
   try {
-    const res = await apiGet<{ ok: boolean; candidates: ReminderCandidate[] }>(
-      '/api/reminders/plan',
-    )
+    const [res, prefsRes] = await Promise.all([
+      apiGet<{ ok: boolean; candidates: ReminderCandidate[] }>('/api/reminders/plan'),
+      apiGet<NotificationPrefsPayload>('/api/notifications/prefs'),
+    ])
     if (!res?.candidates || res.candidates.length === 0) return 0
 
     let sent = 0
     // Dispatch highest priority candidate first (calm spacing: at most one candidate per run)
     const next = res.candidates[0]!
-    const ok = await deliverNotification(next)
+
+    // User-managed gate (Notification Center policy): channel choice, quiet
+    // hours, DND and the daily cap apply on top of the reminder planner.
+    const prefs = prefsRes?.prefs
+      ? parseNotificationPrefs(prefsRes.prefs)
+      : defaultNotificationPrefs()
+    const deliveredToday = prefsRes?.deliveredToday ?? 0
+    const channel = REMINDER_KIND_TO_CHANNEL[next.kind as keyof typeof REMINDER_KIND_TO_CHANNEL]
+    const decision = evaluateDelivery(channel ?? 'review_due', prefs, {
+      now: new Date(),
+      deliveredToday,
+    })
+
+    const ok = decision === 'deliver' ? await deliverNotification(next) : false
+    // Every decision lands in the ledger — delivered AND suppressed, with the
+    // reason — so the Notification Center history is honest and searchable.
+    if (channel) {
+      await apiSend('/api/notifications/log', 'POST', {
+        channel,
+        title: next.title,
+        body: next.body,
+        actionUrl: next.actionUrl ?? null,
+        decision,
+        createdAt: new Date().toISOString(),
+      }).catch(() => {})
+    }
     if (ok) {
       sent++
       await apiSend('/api/reminders/log', 'POST', {

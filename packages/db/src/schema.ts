@@ -992,6 +992,11 @@ export const userSettings = table('user_settings', {
   onboardingCompleted: integer('onboarding_completed', { mode: 'boolean' })
     .notNull()
     .default(false),
+  /** Notification Center policy JSON (per-channel enable/OS, quiet hours, cap, DND). */
+  notificationPrefs: text('notification_prefs', { mode: 'json' })
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
   remindersEnabled: integer('reminders_enabled', { mode: 'boolean' }).notNull().default(true),
   remindersQuietStart: text('reminders_quiet_start').notNull().default('22:00'),
   remindersQuietEnd: text('reminders_quiet_end').notNull().default('08:00'),
@@ -1153,6 +1158,32 @@ export const reminderClicks = table(
       .$defaultFn(() => new Date().toISOString()),
   },
   (t) => [index('reminder_clicks_clicked_at_idx').on(t.clickedAt)],
+)
+
+/**
+ * Append-only ledger of EVERY notification decision (delivered AND
+ * suppressed, with reason) — the Notification Center history feed. Append-only
+ * per rule 8; there is no UPDATE/DELETE path anywhere.
+ */
+export const notificationLog = table(
+  'notification_log',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** Channel id from `@learning-hub/core/notification-center`. */
+    channel: text('channel').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull().default(''),
+    actionUrl: text('action_url'),
+    /** DeliveryDecision: 'deliver' | 'suppress_*' — honest, inspectable. */
+    decision: text('decision').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('notification_log_created_idx').on(t.createdAt),
+    index('notification_log_channel_idx').on(t.channel, t.createdAt),
+  ],
 )
 
 /** Mind-map diagrams: nodes and edges with hierarchical and radial coordinates. */

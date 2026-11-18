@@ -24,6 +24,7 @@ describe('navigation model & theme helpers', () => {
     }
     expect(hrefs.length).toBeGreaterThanOrEqual(48)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/permissions')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/notifications')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/workload')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/generation')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-coding')).toBe(true)
