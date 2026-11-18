@@ -11,6 +11,8 @@ import {
   CALIBRATED_ANALOGICAL_SUITES,
   CALIBRATED_FLEXIBILITY_SUITES,
   CALIBRATED_INTERACTIVITY_SUITES,
+  CALIBRATED_EQUILIBRIUM_SUITES,
+  evaluateReflectiveEquilibrium,
   analyzeElementInteractivity,
   calculateInstructionalEfficiency,
   CALIBRATED_INVARIANCE_CATEGORIES,
@@ -621,5 +623,101 @@ export function interactivityCommand(args: string[]): void {
     const paas = calculateInstructionalEfficiency(Number(effort), Number(perf))
     console.log(`
 Paas efficiency:       ${paas.efficiency.toFixed(2)} (${paas.classification.replace(/_/g, ' ')})`)
+  }
+}
+
+/**
+ * `equilibrium evaluate` — Rawls wide reflective equilibrium + Tetlock
+ * calibration over a calibrated philosophy-of-science suite. Prints the
+ * coherence index, triad resolution state, Brier grade, and next steps.
+ *
+ * Flags: --suite <key> [--resolve <triadId:strategy> ...] [--predict '<json>']
+ * The resolve flag pairs a dissonant-triad id with a strategy
+ * (revise_principle | override_judgment | reformulate_theory); the predict
+ * flag takes an array of {propositionId, subjectiveConfidence, actualOutcome}
+ * records for the Brier stream.
+ */
+export function equilibriumCommand(args: string[]): void {
+  const sub = args[0] || 'evaluate'
+  if (sub !== 'evaluate') {
+    console.error(
+      `Unknown subcommand: ${sub}. Usage: learning-hub equilibrium evaluate --suite <key>`,
+    )
+    return
+  }
+  const suiteKey = parseFlag(args, '--suite') || 'distributed_consensus_wre'
+  const suite = CALIBRATED_EQUILIBRIUM_SUITES[suiteKey]
+  if (!suite) {
+    console.error(
+      `Unknown suite "${suiteKey}". Available: ${Object.keys(CALIBRATED_EQUILIBRIUM_SUITES).join(', ')}`,
+    )
+    return
+  }
+
+  // Resolve triads from repeated --resolve triadId:strategy flags.
+  const resolvedTriadStrategies: Record<
+    string,
+    'revise_principle' | 'override_judgment' | 'reformulate_theory'
+  > = {}
+  const resolveFlags = args.filter((a) => a.startsWith('--resolve='))
+  for (const flag of resolveFlags) {
+    const pair = flag.slice('--resolve='.length)
+    const [triadId, strategy] = pair.split(':')
+    const isStrategy = (
+      v: string,
+    ): v is 'revise_principle' | 'override_judgment' | 'reformulate_theory' =>
+      v === 'revise_principle' || v === 'override_judgment' || v === 'reformulate_theory'
+    if (triadId && isStrategy(strategy)) resolvedTriadStrategies[triadId] = strategy
+  }
+
+  // Optional prediction records from a --predict JSON array.
+  const predictRaw = parseFlag(args, '--predict')
+  let recordedPredictions: Array<{
+    propositionId: string
+    propositionText: string
+    subjectiveConfidence: number
+    actualOutcome: boolean
+    domainContext: string
+  }> = suite.predictionBank.map((p) => ({ ...p }))
+  if (predictRaw) {
+    try {
+      const custom = JSON.parse(predictRaw) as typeof recordedPredictions
+      if (Array.isArray(custom) && custom.length > 0) recordedPredictions = custom
+    } catch {
+      console.error('Could not parse --predict JSON; falling back to the suite prediction bank.')
+    }
+  }
+
+  const sessionState = {
+    suiteId: suite.id,
+    activeAdjustments: {},
+    resolvedTriadStrategies,
+    recordedPredictions,
+  }
+
+  const evaluation = evaluateReflectiveEquilibrium(suite, sessionState)
+  console.log(`
+⚖️  Reflective Equilibrium: ${suite.name} (${suite.domain})`)
+  console.log(`   ${suite.philosophicalContext.slice(0, 140)}…`)
+  console.log(`
+   Coherence index:        ${evaluation.coherenceIndex}/100`)
+  console.log(`   Composite epistemic:    ${evaluation.compositeEpistemicScore}/100`)
+  console.log(
+    `   Triads resolved:        ${Object.keys(resolvedTriadStrategies).length}/${suite.dissonantTriads.length}`,
+  )
+  console.log(`   Unresolved contrad.:    ${evaluation.unresolvedContradictionCount}`)
+  console.log(`   Equilibrium achieved:   ${evaluation.isEquilibriumAchieved ? 'YES' : 'not yet'}`)
+  const brier = evaluation.brierMetrics
+  console.log(
+    `\n   Brier score:            ${brier.brierScore.toFixed(3)} (${brier.calibrationGrade})`,
+  )
+  console.log(`   Overconfidence gap:     ${brier.overconfidenceGap?.toFixed(3) ?? '—'}`)
+  console.log(`\n   ${evaluation.feedbackSummary}`)
+  if (evaluation.isEquilibriumAchieved) {
+    console.log('\n   Rawls: the web is in wide reflective equilibrium — principles and')
+    console.log('   judgments cohere without forced revision. Export cards from the studio.')
+  } else {
+    console.log('\n   Not yet at equilibrium: resolve the remaining dissonant triads by')
+    console.log('   revising a principle, overriding the judgment, or reformulating the theory.')
   }
 }

@@ -56,6 +56,9 @@ import {
   evaluateCognitiveFlexibility,
   exportFlexibilityToFSRSCards,
   CALIBRATED_INTERACTIVITY_SUITES,
+  CALIBRATED_EQUILIBRIUM_SUITES,
+  evaluateReflectiveEquilibrium,
+  exportEquilibriumToFSRSCards,
   analyzeElementInteractivity,
   calculateInstructionalEfficiency,
   judgmentOfLearningSchema,
@@ -911,6 +914,65 @@ async function postInteractivity(req: IncomingMessage, res: ServerResponse): Pro
       ? calculateInstructionalEfficiency(body.mentalEffort, body.performance)
       : null
   sendJson(res, 200, { ok: true, analysis, paas, paasClassification: paas?.classification ?? null })
+}
+
+/** POST /cognitive/equilibrium — Rawls reflective equilibrium + Tetlock calibration. */
+async function postEquilibrium(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(
+    req,
+    z.object({
+      suiteKey: z.string().optional(),
+      sessionState: z
+        .object({
+          suiteId: z.string(),
+          activeAdjustments: z.record(
+            z.string(),
+            z.object({
+              adjustedConfidence: z.number().min(0.5).max(1),
+              revisedStatement: z.string().optional(),
+            }),
+          ),
+          resolvedTriadStrategies: z.record(
+            z.string(),
+            z.enum(['revise_principle', 'override_judgment', 'reformulate_theory']),
+          ),
+          recordedPredictions: z.array(
+            z.object({
+              propositionId: z.string(),
+              propositionText: z.string(),
+              subjectiveConfidence: z.number().min(0.5).max(1),
+              actualOutcome: z.boolean(),
+              domainContext: z.string(),
+            }),
+          ),
+        })
+        .optional(),
+      exportCards: z.boolean().default(false),
+    }),
+  )
+
+  if (!body.sessionState) {
+    const suites = Object.entries(CALIBRATED_EQUILIBRIUM_SUITES).map(([key, suite]) => ({
+      suiteId: key,
+      name: suite.name,
+      domain: suite.domain,
+      nodes: suite.nodes.length,
+      edges: suite.edges.length,
+      dissonantTriads: suite.dissonantTriads.length,
+      predictionBank: suite.predictionBank.length,
+    }))
+    sendJson(res, 200, { ok: true, suites })
+    return
+  }
+
+  const suite = CALIBRATED_EQUILIBRIUM_SUITES[body.sessionState.suiteId]
+  if (!suite) {
+    jsonError(res, 404, `Unknown suite "${body.sessionState.suiteId}"`)
+    return
+  }
+  const evaluation = evaluateReflectiveEquilibrium(suite, body.sessionState)
+  const cards = body.exportCards ? exportEquilibriumToFSRSCards(suite, evaluation) : undefined
+  sendJson(res, 200, { ok: true, evaluation, cards })
 }
 
 /** POST /cognitive/analogy — Gentner structure-mapping evaluation over the calibrated suites. */
@@ -2465,6 +2527,12 @@ export const routes: Route[] = [
     path: '/cognitive/analogy',
     summary: 'Gentner structure-mapping evaluation over the calibrated analogy suites',
     handler: postAnalogy,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/equilibrium',
+    summary: 'Rawls reflective equilibrium + Tetlock calibration (philosophy suites)',
+    handler: postEquilibrium,
   },
   {
     method: 'POST',

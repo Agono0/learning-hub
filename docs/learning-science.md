@@ -683,6 +683,28 @@ flexibility plan` CLI command, and `POST /cognitive/flexibility` headless
   route; rendered in the /flexibility studio.
 - **Status:** ✅
 
+### Reflective Equilibrium & Epistemic Calibration — Rawls (1971); Goodman (1955); Tetlock (2005)
+
+Wide reflective equilibrium: general principles, considered judgments and
+background theories adjust mutually until they cohere — justification comes
+from mutual support, not foundations. Confidence in verifiable claims is
+graded by Brier calibration against resolved outcomes.
+
+- **Evidence:** Rawls (1971) and Daniels (1979) formalize the mutual-
+  adjustment loop; Goodman (1955) grounds justification in convergence;
+  Tetlock (2005) grades forecasters from Superforecaster to Dunning-Kruger
+  via Brier scores and finds frequent measured revision (foxes) superior.
+- **In Learning HUB:** `packages/core/src/equilibrium/reflective-equilibrium-engine.ts`
+  (coherence index, dissonant-triad resolution strategies, Brier calibration
+  grading, FSRS conflict/calibration card exporter);
+  `CALIBRATED_EQUILIBRIUM_SUITES` (3 suites); the `reflective_equilibrium`
+  MCP tool, `learning-hub equilibrium evaluate` CLI command, and `POST
+  /cognitive/equilibrium` headless route; rendered in the /equilibrium
+  studio.
+- **Status:** ✅
+
+
+
 ### Nelson–Narens Monitoring vs Control & Goodman–Kruskal γ — Nelson & Narens (1990); Nelson (1984)
 
 Metamemory as a two-stream loop: **monitoring** (how accurately Judgments of
