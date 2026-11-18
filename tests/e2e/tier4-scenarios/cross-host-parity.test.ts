@@ -283,9 +283,12 @@ describe('Tier 4: Cross-Host Parity (web handler == headless server == MCP)', ()
     expect(serverJson.trueRetention).toEqual(webStats.trueRetention)
     expect(mcpRes.trueRetention).toEqual(webStats.trueRetention)
 
-    // Delta: +5 effective reviews today, +2 correct (rating > 1) — undo excluded.
+    // Delta: +5 effective reviews today, +3 correct — the tally counts
+    // rating > 1 as correct (grade 2 Hard included: r2 g3, r5 g2, r6 g3),
+    // which is deliberately looser than the crucible's rating >= 3. The
+    // undone review is excluded from both numbers on every host.
     expect(webStats.todayReviews).toBe(baseStats.todayReviews + 5)
-    expect(webStats.todayCorrect).toBe(baseStats.todayCorrect + 2)
+    expect(webStats.todayCorrect).toBe(baseStats.todayCorrect + 3)
     expect(serverJson.today.reviews).toBe(webStats.todayReviews)
     expect(serverJson.today.correct).toBe(webStats.todayCorrect)
     expect(todayJson.reviews.count).toBe(webStats.todayReviews)
@@ -304,10 +307,11 @@ describe('Tier 4: Cross-Host Parity (web handler == headless server == MCP)', ()
     const serverRow = serverJson.decks.find((d) => d.id === deckId)
     expect(serverRow).toBeDefined()
 
-    // 4 cards total, none new after the review script; due counts must match
+    // 4 cards total; card3's undo restored it to its pre-review state (new),
+    // so exactly 1 card is back in the new state. Due counts must match
     // across hosts regardless of how FSRS rescheduled the missed card.
     expect(webRow.total).toBe(4)
-    expect(webRow.newCards).toBe(0)
+    expect(webRow.newCards).toBe(1)
     expect(serverRow!.total).toBe(webRow.total)
     expect(serverRow!.due).toBe(webRow.due)
     expect(serverRow!.newCards).toBe(webRow.newCards)
