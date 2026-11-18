@@ -59,12 +59,15 @@
   --color-indigo-900: var(--ac-deep);
   --color-indigo-950: var(--ac-deep);
 
-  /* Mode-scoped semantic text tokens (values on :root / .dark below). */
-  --color-text-strong: var(--text-strong);
-  --color-text-body: var(--text-body);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-tertiary);
-  --color-text-faint: var(--text-faint);
+  /* Mode-scoped semantic text tokens (values on :root / .dark below). The
+     theme keys omit the `text-` prefix because the utility already carries
+     it: --color-strong -> text-strong / bg-strong, --color-tertiary ->
+     text-tertiary, … */
+  --color-strong: var(--text-strong);
+  --color-body: var(--text-body);
+  --color-secondary: var(--text-secondary);
+  --color-tertiary: var(--text-tertiary);
+  --color-faint: var(--text-faint);
   --color-ac-text: var(--ac-text);
 
   /* Danger = rose, one hue (docs/ui-design-signature.md §3.2). */
