@@ -6,50 +6,9 @@
  * 2. 3D Spatial Audio gain and stereo panning calculations for WebXR / Web Audio.
  * 3. Procedural spatial layout generators for Classical Villa, Modern Gallery, and Cyber Sanctum.
  */
-import { z } from 'zod'
+import type { EnvironmentArchetype, SpatialLocus, SpatialVector3 } from './types'
 
-export type EnvironmentArchetype =
-  'roman_villa' | 'modern_gallery' | 'cyber_sanctum' | 'renaissance_library' | 'zen_monastery'
-
-export const spatialVector3Schema = z.tuple([z.number(), z.number(), z.number()])
-export type SpatialVector3 = z.infer<typeof spatialVector3Schema>
-
-export const spatialLocusSchema = z.object({
-  id: z.string().min(1),
-  cardId: z.number().int().positive().optional(),
-  title: z.string().default('Locus Anchor'),
-  position: spatialVector3Schema, // [x, y, z] in meters
-  rotationY: z.number().default(0), // Yaw angle in radians
-  assetType: z
-    .enum(['pedestal_plaque', 'wall_canvas', 'holographic_orb'])
-    .default('pedestal_plaque'),
-  contentPreview: z.string().optional(),
-})
-export type SpatialLocus = z.infer<typeof spatialLocusSchema>
-
-export const palace3dSceneSchema = z.object({
-  palaceId: z.number().int().positive(),
-  title: z.string().min(1),
-  environmentArchetype: z
-    .enum([
-      'roman_villa',
-      'modern_gallery',
-      'cyber_sanctum',
-      'renaissance_library',
-      'zen_monastery',
-    ])
-    .default('roman_villa'),
-  cameraStartPos: z.object({
-    x: z.number().default(0),
-    y: z.number().default(1.6), // Standard standing eye height (1.6m)
-    z: z.number().default(5),
-    pitch: z.number().default(0),
-    yaw: z.number().default(0),
-  }),
-  loci: z.array(spatialLocusSchema).default([]),
-  audioPanningEnabled: z.boolean().default(true),
-})
-export type Palace3dScene = z.infer<typeof palace3dSceneSchema>
+export * from './types'
 
 // ─── Spatial Audio Positioning Math ─────────────────────────────────────────
 

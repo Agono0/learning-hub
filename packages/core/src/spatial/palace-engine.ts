@@ -11,7 +11,7 @@
  * 5. Interactive Palace Review Session State Machine.
  */
 
-import type { EnvironmentArchetype, SpatialLocus, SpatialVector3 } from './index'
+import type { EnvironmentArchetype, SpatialLocus, SpatialVector3 } from './types'
 
 export interface WallSegment {
   id: string
