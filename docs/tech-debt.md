@@ -12,7 +12,7 @@
 
 ## P1 — drift and correctness risks (fix first)
 
-### TD-01 · OPEN — "today / due / stats" aggregation re-implemented per host
+### TD-01 · FIXED (`590ddbb`) — "today / due / stats" aggregation re-implemented per host
 The same SQL blocks live in 4 hosts and had already started to diverge
 (response shapes differ, undo-filters differ):
 
@@ -23,12 +23,13 @@ The same SQL blocks live in 4 hosts and had already started to diverge
 | Retention + forecast composition | server routes.ts:579, web `review/stats/route.ts:8`, MCP index.ts:334, CLI index.ts:193 |
 | Deck listing aggregate | server routes.ts:437 vs web `decks/route.ts:17` — byte-identical SQL, **response shapes already diverged** (web adds desiredRetention/hasCustomWeights) |
 
-**Demonstrated cost:** every fix to a tally must be replicated ≤6×; the
-deck-listing shapes already disagree, so hosts report different decks UIs.
-**Fix path:** extract `repos/stats.ts` + extend `repos/fsrs.ts`-style deck repo
-(`packages/db/src/repos/`), call from all hosts, pick fields per host. This is
-the repo's own prescribed convention ("put reusable queries in repos/ as soon
-as a second caller needs it" — `repos/index.ts` header).
+**Demonstrated cost:** every fix to a tally had to be replicated ≤6×; the
+deck-listing shapes already disagreed, so hosts reported different decks UIs.
+**Fix shipped:** `repos/stats.ts` (getDueCardCount, getNewCardCount,
+getTodayReviewTallies, getTrueRetention, getDueForecast, getStreakRow,
+getXpTotals, getDeckSummaries) now backs web dashboard/review-stats/decks,
+server today/stats/listDecks, MCP review_stats and CLI today/stats; the
+aggregate deck SQL exists once and every host projects the same rows.
 **Related, FIXED:** hypercorrection + metacognition JOL derivation was the
 same disease — unified in commit `495b385` via `repos/cognitive-trials.ts`.
 
