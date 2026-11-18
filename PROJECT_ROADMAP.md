@@ -401,7 +401,7 @@
   3. Implement `CognitiveApprenticeshipStudio.tsx` with expert think-aloud modeling traces, articulation crucible, comparative novice-expert reflection canvas, and FSRS tacit heuristic card deck generator.
   4. Build `apps/web/app/apprenticeship/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/apprenticeship/*`, `apps/web/src/ui/CognitiveApprenticeshipHUD.tsx`, `apps/web/src/components/CognitiveApprenticeshipStudio.tsx`, `apps/web/app/apprenticeship/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed**.
+- **Status:** **Completed (Merged in PR #45)**.
 
 ---
 
@@ -410,9 +410,23 @@
 - **Problem:** Learners frequently engage in passive reading and rote memorization with flat emotional arousal, failing to activate intrinsic dopamine-driven curiosity circuits that dramatically accelerate memory encoding and spontaneous recall.
 - **Root Cause:** Absence of structured Information Gap engines that deliberately prime epistemic deprivation (awareness of missing knowledge), calculate individual curiosity gap curves, and sequence optimal incongruity triggers before revealing explanations.
 - **Proposed Solution:**
-  1. Build `packages/core/src/curiosity/information-gap-engine.ts` implementing George Loewenstein's (1994) Information Gap Theory and Daniel Berlyne's (1960) epistemic vs perceptual curiosity metrics, computing curiosity drive $C = f(\\text{KnowledgeAwareness}, \\text{GapSalience})$, incongruity resolution scoring, and Kang et al. (2009) memory facilitation prediction.
+  1. Build `packages/core/src/curiosity/information-gap-engine.ts` implementing George Loewenstein's (1994) Information Gap Theory and Daniel Berlyne's (1960) epistemic vs perceptual curiosity metrics, computing curiosity drive $C = f(\text{KnowledgeAwareness}, \text{GapSalience})$, incongruity resolution scoring, and Kang et al. (2009) memory facilitation prediction.
   2. Implement `InformationGapHUD.tsx` tracking epistemic tension index, curiosity salience score, and curiosity-driven retention multipliers.
   3. Implement `InformationGapStudio.tsx` with curiosity priming mysteries, progressive clue reveal crucibles, incongruity paradox resolvers, and FSRS curiosity-boosted deck generator.
   4. Build `apps/web/app/curiosity/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/curiosity/*`, `apps/web/src/ui/InformationGapHUD.tsx`, `apps/web/src/components/InformationGapStudio.tsx`, `apps/web/app/curiosity/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-23: Self-Regulated Learning & Metacognitive Matrix Studio (Zimmerman 2000, 2002; Pintrich 2004; Winne & Hadwin 1998)
+
+- **Problem:** Learners lack systematic self-regulated learning (SRL) cycles: they fail to set proximal task goals (Forethought), monitor real-time cognitive strategy execution (Performance/Volitional Control), and objectively adapt their study heuristics through self-reflection and causal attribution (Self-Reflection), falling into passive, disorganized study traps.
+- **Root Cause:** Absence of cyclical tripartite Self-Regulated Learning tracking engines that orchestrate Zimmerman's 3-phase cyclical model (Forethought -> Performance -> Self-Reflection) with Pintrich's motivational/affective monitoring and Winne & Hadwin's COPES metacognitive conditions/operations/products/evaluations/standards architecture.
+- **Proposed Solution:**
+  1. Build `packages/core/src/srl/self-regulated-learning-engine.ts` modeling Barry Zimmerman's cyclical phases, goal-setting specificity calibration (proximal vs distal), volitional strategy deployment scoring, attributional style analysis (internal/controllable vs external/uncontrollable), and Winne-Hadwin COPES schema evaluation.
+  2. Implement `SelfRegulatedLearningHUD.tsx` tracking cyclical SRL maturity index, volitional control efficiency, causal attribution alignment, and goal attainment scaling.
+  3. Implement `SelfRegulatedLearningStudio.tsx` with tripartite phase wizard (Forethought goal planner, Performance volition monitor, Self-Reflection attribution crucible) and FSRS-6 regulatory calibration flashcards.
+  4. Build `apps/web/app/srl/page.tsx` and register route in navigation.
+- **Files Affected:** `packages/core/src/srl/*`, `apps/web/src/ui/SelfRegulatedLearningHUD.tsx`, `apps/web/src/components/SelfRegulatedLearningStudio.tsx`, `apps/web/app/srl/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.

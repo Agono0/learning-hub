@@ -64,6 +64,7 @@ export {
   CognitiveApprenticeshipHUD,
   type CognitiveApprenticeshipHUDProps,
 } from './CognitiveApprenticeshipHUD'
+export { InformationGapHUD, type InformationGapHUDProps } from './InformationGapHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
