@@ -20,6 +20,7 @@ import {
   Flame,
   Gauge,
   GitCompare,
+  GitGraph,
   Globe,
   GraduationCap,
   Headphones,
@@ -107,6 +108,7 @@ export const NAV: NavGroup[] = [
       { href: '/srl', label: 'Self-Regulated Learning', icon: ShieldCheck },
       { href: '/dual-process', label: 'Dual-Process Diagnostic', icon: Split },
       { href: '/representations', label: 'Multi-Representational', icon: Boxes },
+      { href: '/epistemic', label: 'Epistemic Network', icon: GitGraph },
     ],
   },
   {

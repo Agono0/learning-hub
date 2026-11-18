@@ -74,6 +74,7 @@ export {
   RepresentationalFluencyHUD,
   type RepresentationalFluencyHUDProps,
 } from './RepresentationalFluencyHUD'
+export { EpistemicNetworkHUD, type EpistemicNetworkHUDProps } from './EpistemicNetworkHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
