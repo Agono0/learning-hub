@@ -60,6 +60,8 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/anchored')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/contrasting')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/collaborative')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/system-dynamics')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/model-inquiry')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })

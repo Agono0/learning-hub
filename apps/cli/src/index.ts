@@ -53,6 +53,7 @@ import {
   contrastingCommand,
   collaborativeCommand,
   systemDynamicsCommand,
+  modelInquiryCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -887,6 +888,13 @@ const builtinCommands: RegisteredCommand[] = [
       'Forrester (1968), Sterman (2000) & Meadows (2008) System Dynamics & Feedback Studio',
     usage: '[scenarios|simulate|eval|deck] [--id <id>] [--steps <n>]',
     run: (runArgs) => systemDynamicsCommand(runArgs),
+  },
+  {
+    name: 'model-inquiry',
+    description:
+      'Clement (2008), Nersessian (2002) & Johnson-Laird (1983) Model-Based Inquiry & Gedankenexperiment',
+    usage: '[scenarios|perturb|simulate|eval|deck] [--id <id>] [--case <caseId>]',
+    run: (runArgs) => modelInquiryCommand(runArgs),
   },
 ]
 

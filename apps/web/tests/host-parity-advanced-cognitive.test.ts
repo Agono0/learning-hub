@@ -36,6 +36,7 @@ import {
   contrastingCommand,
   collaborativeCommand,
   systemDynamicsCommand,
+  modelInquiryCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -850,6 +851,107 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.scenarioId).toBe('diabetes-beta-cell-homeostasis')
       expect(data.cardsCount).toBe(4)
     })
+
+    it('model_inquiry_list_scenarios lists canonical Gedankenexperiment scenarios via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'model_inquiry_list_scenarios')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        scenarios: Array<{ id: string; title: string }>
+      }
+      expect(data.count).toBe(5)
+      expect(data.scenarios[0]!.id).toBe('galileo_falling_bodies')
+    })
+
+    it('model_inquiry_perturb_extreme_case simulates asymptotic limit via MCP', async () => {
+      const tool = advancedLearningTools.find(
+        (t) => t.name === 'model_inquiry_perturb_extreme_case',
+      )!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'galileo_falling_bodies',
+        extremeCaseId: 'ec_feather_cannonball',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        valid: boolean
+        contradictionRevealed: boolean
+        consequence: string
+      }
+      expect(data.valid).toBe(true)
+      expect(data.contradictionRevealed).toBe(true)
+      expect(data.consequence).toContain('vacuum')
+    })
+
+    it('model_inquiry_simulate_mental_run runs causal steps via MCP', async () => {
+      const tool = advancedLearningTools.find(
+        (t) => t.name === 'model_inquiry_simulate_mental_run',
+      )!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'galileo_falling_bodies',
+        stepIds: [
+          'step_drop_isolated',
+          'step_connect_cord',
+          'step_deduction_drag',
+          'step_deduction_combined_mass',
+          'step_contradiction_crucible',
+        ],
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        valid: boolean
+        fidelityScore: number
+        contradictionsExposed: string[]
+      }
+      expect(data.valid).toBe(true)
+      expect(data.fidelityScore).toBe(100)
+      expect(data.contradictionsExposed.length).toBeGreaterThan(0)
+    })
+
+    it('model_inquiry_evaluate_session computes MBRI telemetry via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'model_inquiry_evaluate_session')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        session: {
+          scenarioId: 'galileo_falling_bodies',
+          selectedExtremeCaseIds: ['ec_feather_cannonball', 'ec_split_identical_halves'],
+          extremeCasePredictions: {
+            ec_feather_cannonball: 'Equal fall speed in vacuum',
+          },
+          simulativeStepOrder: [
+            'step_drop_isolated',
+            'step_connect_cord',
+            'step_deduction_drag',
+            'step_deduction_combined_mass',
+            'step_contradiction_crucible',
+          ],
+          identifiedContradictions: ['Branch contradiction'],
+          selectedBridgingId: 'bridge_twin_halves',
+          bridgingExplanation: 'Symmetric halves fall identically',
+          revisedModelHypothesis: 'Gravitational acceleration is independent of mass',
+        },
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        evaluation: { compositeIndex: number; tier: string }
+        cardsCount: number
+      }
+      expect(data.evaluation.compositeIndex).toBeGreaterThanOrEqual(60)
+      expect(data.cardsCount).toBeGreaterThanOrEqual(2)
+    })
+
+    it('model_inquiry_generate_deck produces calibrated FSRS-6 deck via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'model_inquiry_generate_deck')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'einsteins_light_chaser',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        scenarioId: string
+        cardsCount: number
+      }
+      expect(data.scenarioId).toBe('einsteins_light_chaser')
+      expect(data.cardsCount).toBeGreaterThanOrEqual(2)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -1090,6 +1192,24 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('modelInquiryCommand executes scenarios, perturb, simulate, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        modelInquiryCommand(['scenarios'])
+        expect(consoleSpy).toHaveBeenCalled()
+        modelInquiryCommand(['perturb', '--id', 'galileo_falling_bodies'])
+        expect(consoleSpy).toHaveBeenCalled()
+        modelInquiryCommand(['simulate', '--id', 'galileo_falling_bodies'])
+        expect(consoleSpy).toHaveBeenCalled()
+        modelInquiryCommand(['deck', '--id', 'galileo_falling_bodies'])
+        expect(consoleSpy).toHaveBeenCalled()
+        modelInquiryCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -1143,6 +1263,11 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/system-dynamics/simulate')
       expect(registeredPaths).toContain('POST /cognitive/system-dynamics/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/system-dynamics/deck')
+      expect(registeredPaths).toContain('GET /cognitive/model-inquiry/scenarios')
+      expect(registeredPaths).toContain('POST /cognitive/model-inquiry/perturb')
+      expect(registeredPaths).toContain('POST /cognitive/model-inquiry/simulate')
+      expect(registeredPaths).toContain('POST /cognitive/model-inquiry/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/model-inquiry/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1788,6 +1913,79 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.data.ok).toBe(true)
       expect(result.data.cardsCount).toBe(4)
       expect(result.data.cards.length).toBe(4)
+    })
+
+    it('GET /cognitive/model-inquiry/scenarios returns canonical scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/model-inquiry/scenarios')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.scenarios.length).toBe(5)
+    })
+
+    it('POST /cognitive/model-inquiry/perturb simulates extreme case via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/model-inquiry/perturb', {
+        scenarioId: 'galileo_falling_bodies',
+        extremeCaseId: 'ec_feather_cannonball',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.result.valid).toBe(true)
+      expect(result.data.result.contradictionRevealed).toBe(true)
+    })
+
+    it('POST /cognitive/model-inquiry/simulate runs mental animation via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/model-inquiry/simulate', {
+        scenarioId: 'galileo_falling_bodies',
+        stepIds: [
+          'step_drop_isolated',
+          'step_connect_cord',
+          'step_deduction_drag',
+          'step_deduction_combined_mass',
+          'step_contradiction_crucible',
+        ],
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.result.fidelityScore).toBe(100)
+    })
+
+    it('POST /cognitive/model-inquiry/evaluate evaluates session and computes MBRI via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/model-inquiry/evaluate', {
+        scenarioId: 'galileo_falling_bodies',
+        selectedExtremeCaseIds: ['ec_feather_cannonball', 'ec_split_identical_halves'],
+        extremeCasePredictions: {
+          ec_feather_cannonball: 'Equal fall speed in vacuum',
+        },
+        simulativeStepOrder: [
+          'step_drop_isolated',
+          'step_connect_cord',
+          'step_deduction_drag',
+          'step_deduction_combined_mass',
+          'step_contradiction_crucible',
+        ],
+        identifiedContradictions: ['Branch contradiction'],
+        selectedBridgingId: 'bridge_twin_halves',
+        bridgingExplanation: 'Symmetric halves fall identically',
+        revisedModelHypothesis: 'Gravitational acceleration is independent of mass',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.compositeIndex).toBeGreaterThanOrEqual(60)
+      expect(result.data.cardsCount).toBeGreaterThanOrEqual(2)
+    })
+
+    it('POST /cognitive/model-inquiry/deck generates calibrated FSRS-6 deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/model-inquiry/deck', {
+        scenarioId: 'galileo_falling_bodies',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cardsCount).toBeGreaterThanOrEqual(2)
     })
   })
 })
