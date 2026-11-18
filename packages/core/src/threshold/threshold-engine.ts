@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * Threshold Concepts & Liminal Space Navigation Engine
  *
@@ -468,3 +469,12 @@ export function bridgeThresholdToCurriculum(
     reasoningNotes,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const liminalEvaluateInputSchema = z.object({
+  conceptId: z.string().default('tc_pointers_memory'),
+  probeResponses: z.record(z.string(), z.string()),
+  baseMastery: z.number().min(0).max(1),
+})
+export type LiminalEvaluateInput = z.infer<typeof liminalEvaluateInputSchema>

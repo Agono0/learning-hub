@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * Structural Causal Modeling (SCM) & Counterfactual Simulator Engine
  *
@@ -922,3 +923,12 @@ export function bridgeCausalToCurriculum(
     reasoningNotes,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const counterfactualQueryInputSchema = z.object({
+  evidence: z.string(),
+  interventions: z.record(z.string(), z.number()),
+  targetVariableId: z.string().default('ExamScore'),
+})
+export type CounterfactualQueryInput = z.infer<typeof counterfactualQueryInputSchema>

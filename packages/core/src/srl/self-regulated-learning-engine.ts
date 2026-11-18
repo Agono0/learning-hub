@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * Self-Regulated Learning (SRL) & Metacognitive Matrix Engine
  *
@@ -632,3 +633,13 @@ export class SelfRegulatedLearningSession {
     ]
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const srlEvaluateInputSchema = z.object({
+  forethoughtScore: z.number().min(0).max(10),
+  performanceScore: z.number().min(0).max(10),
+  reflectionScore: z.number().min(0).max(10),
+  challengeId: z.string().optional(),
+})
+export type SrlEvaluateInput = z.infer<typeof srlEvaluateInputSchema>

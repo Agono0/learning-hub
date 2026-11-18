@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * @file packages/core/src/anchored/anchored-engine.ts
  * @description Anchored Instruction & Situated Macrocontext Problem-Solving Engine.
@@ -19,8 +20,6 @@
  *   - IKRS: Inert Knowledge Resistance Score (0–100, composite situated problem-solving index)
  *   - FSRS-6 review deck calibration scaled by situated transfer stability.
  */
-
-import { z } from 'zod'
 
 // ── Enums & Types ────────────────────────────────────────────────────────────
 
@@ -1462,3 +1461,18 @@ export function generateAnchoredFSRSDeck(
     cards,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const anchoredSensitivityInputSchema = z.object({
+  caseId: z.string(),
+  parameterId: z.string(),
+  variedValue: z.number(),
+})
+export type AnchoredSensitivityInput = z.infer<typeof anchoredSensitivityInputSchema>
+
+export const anchoredDeckInputSchema = z.object({
+  caseId: z.string(),
+  ikrsBaseline: z.number().min(0).max(100).optional(),
+})
+export type AnchoredDeckInput = z.infer<typeof anchoredDeckInputSchema>

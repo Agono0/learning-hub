@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * @file packages/core/src/flexibility/cognitive-flexibility-engine.ts
  * @description Cognitive Flexibility & Multi-Perspective Shifting Engine.
@@ -794,3 +795,27 @@ export class CognitiveFlexibilitySession {
     this.activeLens = 'mechanistic_technical'
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const crissCrossStepAttemptSchema = z.object({
+  caseId: z.string(),
+  selectedHat: z.enum(['white_hat', 'red_hat', 'black_hat', 'yellow_hat', 'green_hat', 'blue_hat']),
+  activeLens: z.enum([
+    'mechanistic_technical',
+    'socio_economic',
+    'ecological_systemic',
+    'teleological_ethical',
+  ]),
+  studentObservations: z.string(),
+  identifiedThematicNodeIds: z.array(z.string()),
+  diagnosedReductiveTrapIds: z.array(z.string()),
+})
+export type CrissCrossStepAttemptInput = z.infer<typeof crissCrossStepAttemptSchema>
+
+export const flexibilityEvaluateInputSchema = z.object({
+  suiteKey: z.string().optional(),
+  attempts: z.array(crissCrossStepAttemptSchema).max(100).optional(),
+  exportCards: z.boolean().default(false),
+})
+export type FlexibilityEvaluateInput = z.infer<typeof flexibilityEvaluateInputSchema>

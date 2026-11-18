@@ -606,3 +606,11 @@ export function bridgeEpistemicToCurriculum(model: EpistemicDiscourseModel, base
     epistemicDensity: model.network.networkDensity,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const epistemicAnalyzeInputSchema = z.object({
+  discourseTexts: z.array(z.string().min(1)).min(1),
+  baseMastery: z.number().min(0).max(1).default(0.75),
+})
+export type EpistemicAnalyzeInput = z.infer<typeof epistemicAnalyzeInputSchema>

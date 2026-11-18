@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * @file Structural Invariance & Interleaved Discrimination Engine
  * @description Implements Rohrer & Taylor's (2007) shuffled-practice scheduling,
@@ -918,3 +919,19 @@ export const CALIBRATED_INVARIANCE_PROBLEMS: ProblemTemplate[] = [
 function round4(n: number): number {
   return Math.round(n * 10000) / 10000
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const invarianceAttemptSchema = z.object({
+  problemId: z.string(),
+  trueCategoryId: z.string(),
+  chosenCategoryId: z.string(),
+  reactionMs: z.number().nonnegative().optional(),
+})
+export type InvarianceAttempt = z.infer<typeof invarianceAttemptSchema>
+
+export const invariancePlanQuerySchema = z.object({
+  mode: z.enum(['interleaved', 'blocked']).default('interleaved'),
+  attemptsJson: z.string().optional(),
+})
+export type InvariancePlanQuery = z.infer<typeof invariancePlanQuerySchema>

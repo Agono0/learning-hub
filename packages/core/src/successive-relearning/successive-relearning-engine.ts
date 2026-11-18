@@ -695,3 +695,13 @@ export const CALIBRATED_SUCCESSIVE_SUITES: Record<
     ],
   },
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const relearningSavingsInputSchema = z.object({
+  initialLearningSeconds: z.number().nonnegative(),
+  relearningSeconds: z.number().nonnegative(),
+  daysElapsed: z.number().nonnegative().default(7),
+  initialTrialsCount: z.number().int().nonnegative().default(3),
+})
+export type RelearningSavingsInput = z.infer<typeof relearningSavingsInputSchema>

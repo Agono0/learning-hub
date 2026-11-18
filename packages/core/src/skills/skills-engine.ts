@@ -899,3 +899,13 @@ export function executeSkillSimulation(
     suggestedNextSkill,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const skillsAuditInputSchema = z.object({ code: z.string(), file: z.string().optional() })
+export const skillsRunInputSchema = z.object({
+  skillName: z.string(),
+  topic: z.string().default('Autonomous Drill'),
+  context: z.string().optional(),
+})
+export const skillsCatalogQuerySchema = z.object({ category: z.string().optional() })

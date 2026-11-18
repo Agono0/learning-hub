@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * Claim-Evidence-Reasoning (CER) & Epistemic Argumentation Engine
  *
@@ -22,8 +23,6 @@
  * 6. FSRS-6 Calibrated Argumentation Spaced Repetition Deck
  * 7. 5 Canonical Multidisciplinary Scientific Debates
  */
-
-import { z } from 'zod'
 
 // ============================================================================
 // 1. Zod Enums & Schemas
@@ -1029,3 +1028,17 @@ export function generateCERFSRSDeck(
     cards,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const cerCounterInputSchema = z.object({
+  debateId: z.string(),
+  claimId: z.string(),
+})
+export type CerCounterInput = z.infer<typeof cerCounterInputSchema>
+
+export const cerDeckInputSchema = z.object({
+  debateId: z.string(),
+  ersBaseline: z.number().min(0).max(100).optional(),
+})
+export type CerDeckInput = z.infer<typeof cerDeckInputSchema>

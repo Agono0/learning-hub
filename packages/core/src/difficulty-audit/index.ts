@@ -158,6 +158,12 @@ export const selfReportedBehaviorSchema = z.object({
 })
 export type SelfReportedBehavior = z.infer<typeof selfReportedBehaviorSchema>
 
+/** POST /cognitive/difficulty-audit body = self-report + tz offset for the server's telemetry derivation. */
+export const difficultyAuditInputSchema = selfReportedBehaviorSchema.extend({
+  tzOffset: z.number().int().min(-720).max(840).optional(),
+})
+export type DifficultyAuditInput = z.infer<typeof difficultyAuditInputSchema>
+
 /**
  * Real telemetry the system can measure without asking (revlog-derived).
  * All fields are aggregates over the audit window.
