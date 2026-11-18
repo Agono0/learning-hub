@@ -10,7 +10,15 @@ import { normalizeThemePreference } from '../src/components/ThemeSync'
 
 describe('navigation model & theme helpers', () => {
   it('preserves all routes across the 4 canonical scaffolder groups', () => {
-    expect(NAV.map((g) => g.group)).toEqual(['Learn', 'Explore', 'Discipline', 'Create & Analyze'])
+    // IA split (docs/ux-audit.md P1-2): the science studios live in their own
+    // collapsed group so the Learn list stays scannable.
+    expect(NAV.map((g) => g.group)).toEqual([
+      'Learn',
+      'Practice studios',
+      'Explore',
+      'Discipline',
+      'Create & Analyze',
+    ])
     // Self-consistency instead of a magic count: every new page PR has to
     // remember to bump the old hardcoded number (it drifted twice), so assert
     // the invariants that actually matter — uniqueness, icons, primary
@@ -64,7 +72,12 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/system-dynamics')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/model-inquiry')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
-    expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
+    expect(DEFAULT_COLLAPSED_GROUPS).toEqual([
+      'Practice studios',
+      'Explore',
+      'Discipline',
+      'Create & Analyze',
+    ])
   })
 
   it('matches active routes with trailing-slash tolerance', () => {

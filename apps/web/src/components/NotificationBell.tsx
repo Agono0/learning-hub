@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Bell, BellOff } from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import { deliverLocalNotification, requestPermission } from '@/platform/permissions'
+import { IconButton } from '@/ui'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 
 const REMINDERS_KEY = 'lh-reminders-enabled'
@@ -94,12 +95,11 @@ export function NotificationBell() {
 
   return (
     <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        aria-label={`Notifications${count ? ` (${count} need attention)` : ''}`}
+      <IconButton
+        label={`Notifications${count ? ` (${count} need attention)` : ''}`}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative grid h-9 w-9 place-items-center rounded-lg text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+        className="relative rounded-lg"
       >
         {reminders ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
         {count > 0 && (
@@ -107,7 +107,7 @@ export function NotificationBell() {
             {count}
           </span>
         )}
-      </button>
+      </IconButton>
 
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white p-2 shadow-xl dark:border-(--hub-border) dark:bg-(--hub-panel)">

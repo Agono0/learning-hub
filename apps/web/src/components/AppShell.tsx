@@ -35,9 +35,13 @@ import { QuickHudModal } from './QuickHudModal'
 import { OnboardingWizard } from './OnboardingWizard'
 import { apiGet, apiSend, hubStoragePersistent, onHubStoragePersistence } from '@/lib/transport'
 import { initReminderScheduler } from '@/platform/reminders'
-import { useToast } from '@/ui'
+import { IconButton, useToast } from '@/ui'
 
-const COLLAPSED_STORAGE_KEY = 'lh-sidebar-collapsed'
+// v2: the 'Practice studios' group was added to the defaults in the IA
+// restructure (docs/ux-audit.md P1-2); existing saved arrays predate it, so a
+// one-time key bump re-applies the calmer defaults instead of showing the new
+// group expanded for everyone.
+const COLLAPSED_STORAGE_KEY = 'lh-sidebar-collapsed-v2'
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
@@ -455,14 +459,9 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
         <Brand compact />
         <span className="text-sm font-semibold tracking-tight">Learning HUB</span>
         <span className="ml-auto flex items-center gap-1">
-          <button
-            type="button"
-            onClick={openCommandPalette}
-            aria-label="Search"
-            className="grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
-          >
+          <IconButton label="Search" onClick={openCommandPalette} className="rounded-lg">
             <Search className="h-4 w-4" />
-          </button>
+          </IconButton>
           <button
             type="button"
             onClick={sync.trigger}

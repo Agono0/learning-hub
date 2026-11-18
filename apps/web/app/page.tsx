@@ -166,13 +166,13 @@ export default function DashboardPage() {
           {row.map((cell) => (
             <div key={cell.id} className="group/widget relative">
               {cell.chrome && (
-                <div className="absolute -top-2 right-2 z-10 hidden gap-1 group-hover/widget:flex">
+                <div className="absolute -top-2 right-2 z-10 hidden gap-1 group-hover/widget:flex [@media(pointer:coarse)]:flex">
                   <button
                     type="button"
                     aria-label={`Move ${cell.title} earlier`}
                     disabled={rowIdx === 0 && cell.id === order[0]}
                     onClick={() => move(cell.id, -1)}
-                    className="rounded-md border border-neutral-200 bg-white p-1 text-faint shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
+                    className="rounded-md border border-neutral-200 bg-white p-1.5 text-faint shadow-xs hover:text-neutral-700 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
                   >
                     <ArrowUp className="h-3 w-3" />
                   </button>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
                     aria-label={`Move ${cell.title} later`}
                     disabled={cell.id === order[order.length - 1]}
                     onClick={() => move(cell.id, 1)}
-                    className="rounded-md border border-neutral-200 bg-white p-1 text-faint shadow-xs hover:text-neutral-700 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
+                    className="rounded-md border border-neutral-200 bg-white p-1.5 text-faint shadow-xs hover:text-neutral-700 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:text-neutral-200"
                   >
                     <ArrowDown className="h-3 w-3" />
                   </button>

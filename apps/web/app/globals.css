@@ -452,6 +452,15 @@ body {
 .sheet-panel {
   animation: sheet-up var(--duration-base) var(--ease-drawer) both;
 }
+
+/* Centered desktop dialogs scale from 0.96 + fade (ui-design-signature §5.4);
+   the bottom-sheet slide stays a phone pattern. */
+@media (min-width: 768px) {
+  .sheet-panel {
+    animation-name: scale-in;
+    animation-timing-function: var(--ease-enter);
+  }
+}
 .sheet-backdrop {
   animation: fade-in var(--duration-fast) ease-out both;
 }

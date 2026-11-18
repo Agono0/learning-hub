@@ -1415,13 +1415,13 @@ function ReviewPageInner() {
                 <span className="text-tertiary">confidence</span>
                 <button
                   onClick={() => setConfidence(1)}
-                  className={`rounded px-2 py-1 ${confidence === 1 ? 'bg-emerald-600/20 text-status-success-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
+                  className={`rounded px-2 py-1 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${confidence === 1 ? 'bg-emerald-600/20 text-status-success-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
                 >
                   <Check className="inline h-3 w-3" /> sure
                 </button>
                 <button
                   onClick={() => setConfidence(0)}
-                  className={`rounded px-2 py-1 ${confidence === 0 ? 'bg-amber-600/20 text-status-warning-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
+                  className={`rounded px-2 py-1 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${confidence === 0 ? 'bg-amber-600/20 text-status-warning-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
                 >
                   <X className="inline h-3 w-3" /> unsure
                 </button>
@@ -1675,7 +1675,7 @@ function CardFront(props: {
           )}
         </div>
         {revealed && (
-          <div className="border-t border-neutral-200 pt-4 text-lg text-indigo-300 dark:border-(--hub-border)">
+          <div className="animate-fade-in-up border-t border-neutral-200 pt-4 text-lg text-ac-text dark:border-(--hub-border)">
             {content.basic.back}
           </div>
         )}
@@ -1725,7 +1725,7 @@ function CardFront(props: {
         )}
         {revealed && content.cloze.mode === 'typein' && (
           <div
-            className={`text-sm ${clozeCorrect ? 'text-status-success-text' : 'text-danger-text'}`}
+            className={`animate-fade-in-up text-sm ${clozeCorrect ? 'text-status-success-text' : 'text-danger-text'}`}
           >
             {clozeCorrect ? 'correct' : `answer: ${content.cloze.answers.join(', ')}`}
           </div>
@@ -1758,7 +1758,7 @@ function CardFront(props: {
         />
         {revealed && (
           <div
-            className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-status-success-text' : 'text-danger-text'}`}
+            className={`animate-fade-in-up text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-status-success-text' : 'text-danger-text'}`}
           >
             {typeinCorrect(props.typeinValue, content)
               ? 'correct'
@@ -1789,7 +1789,7 @@ function CardFront(props: {
           </div>
         )}
         {revealed && (
-          <div className="space-y-2">
+          <div className="animate-fade-in-up space-y-2">
             {content.mcq.options.map((opt, i) => {
               const picked = props.mcqPick === i
               const isCorrect = i === content.mcq!.correctIndex

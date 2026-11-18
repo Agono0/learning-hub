@@ -70,10 +70,26 @@ function ToneIcon({ tone }: { tone: ToastTone }) {
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastRecord[]>([])
+  // Toasts marked for removal play the exit transition before unmounting
+  // (motion law: exits collapse instead of vanishing).
+  const [leaving, setLeaving] = useState<Set<number>>(() => new Set())
   const seqRef = useRef(1)
 
   const dismiss = useCallback((id: number) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
+    setLeaving((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      setTimeout(() => {
+        setItems((list) => list.filter((item) => item.id !== id))
+        setLeaving((cur) => {
+          const done = new Set(cur)
+          done.delete(id)
+          return done
+        })
+      }, 180)
+      return next
+    })
   }, [])
 
   const toast = useCallback(
@@ -110,7 +126,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={item.id}
             role={item.tone === 'danger' ? 'alert' : 'status'}
             className={cx(
-              'pointer-events-auto flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm shadow-lg backdrop-blur transition-all',
+              'pointer-events-auto flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm shadow-lg backdrop-blur',
+              // enter: fade + 12px rise; exit: quick fade + slight settle
+              'animate-fade-in-up',
+              leaving.has(item.id) &&
+                'translate-y-1 scale-[0.98] opacity-0 transition-[opacity,transform] duration-(--duration-fast) ease-(--ease-exit)',
               TONE_STYLES[item.tone],
             )}
           >
@@ -129,7 +149,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => dismiss(item.id)}
               aria-label="Dismiss notification"
-              className="rounded-md p-1 text-faint hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200"
+              className="-m-1 rounded-md p-2 text-faint transition-colors hover:bg-neutral-100 hover:text-neutral-600 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200"
             >
               <X className="h-3.5 w-3.5" />
             </button>

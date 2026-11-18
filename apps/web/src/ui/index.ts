@@ -6,6 +6,8 @@
  * hand-rolled markup; add a component here when a pattern repeats twice.
  */
 export { Button, type ButtonProps } from './Button'
+export { IconButton, type IconButtonProps } from './IconButton'
+export { Menu, type MenuItem, type MenuProps } from './Menu'
 export { Panel, type PanelProps } from './Panel'
 export { PageHeader, type PageHeaderProps } from './PageHeader'
 export { TextField, TextArea, SelectField } from './Field'

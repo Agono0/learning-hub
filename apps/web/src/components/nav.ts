@@ -84,6 +84,7 @@ export interface NavGroup {
 
 export const NAV: NavGroup[] = [
   {
+    // The daily core loop — everything a learner touches every session.
     group: 'Learn',
     defaultCollapsed: false,
     items: [
@@ -101,12 +102,20 @@ export const NAV: NavGroup[] = [
       { href: '/feynman', label: 'Feynman', icon: NotebookPen },
       { href: '/audio-commute', label: 'Commute Audio', icon: Headphones },
       { href: '/sleep-tmr', label: 'Sleep TMR', icon: Moon },
+      { href: '/workload', label: 'Workload', icon: Gauge },
+    ],
+  },
+  {
+    // The learning-science technique studios, one collapsed group so the core
+    // loop above stays scannable (docs/ux-audit.md P1-2).
+    group: 'Practice studios',
+    defaultCollapsed: true,
+    items: [
       { href: '/metacognition', label: 'Metacognition', icon: Brain },
       { href: '/generation', label: 'Generation', icon: Zap },
       { href: '/dual-coding', label: 'Dual Coding', icon: Eye },
       { href: '/self-explanation', label: 'Self-Explanation', icon: BookOpen },
       { href: '/interleaving', label: 'Interleaving', icon: Shuffle },
-      { href: '/workload', label: 'Workload', icon: Gauge },
       { href: '/analogy', label: 'Analogical Transfer', icon: GitCompare },
       { href: '/flexibility', label: 'Cognitive Flexibility', icon: Compass },
       { href: '/equilibrium', label: 'Reflective Equilibrium', icon: Scale },
