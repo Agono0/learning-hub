@@ -89,6 +89,8 @@ import {
   evaluateLiminalTrajectory,
   bridgeThresholdToCurriculum,
   computeThresholdSignificanceIndex,
+  ZpdEvaluationInputSchema,
+  ZpdPromptInputSchema,
   calculateZpdMetrics,
   listZpdScenarios,
   getZpdScenarioById,
@@ -239,27 +241,6 @@ const thresholdLiminalBodySchema = z.object({
   conceptId: z.string().default('tc_pointers_memory'),
   probeResponses: z.record(z.string(), z.string()),
   baseMastery: z.number().min(0).max(1).default(0.75),
-})
-
-const zpdEvaluateBodySchema = z.object({
-  scenarioId: z.string().default('algo_dynamic_programming'),
-  preTestScore: z.number().min(0).max(100).default(25),
-  postTestScore: z.number().min(0).max(100).default(80),
-  promptsConsumed: z.number().int().min(0).max(5).default(2),
-  transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
-})
-
-const zpdPromptBodySchema = z.object({
-  scenarioId: z.string().default('algo_dynamic_programming'),
-  tierLevel: z.number().int().min(1).max(5).default(1),
-})
-
-const zpdDeckBodySchema = z.object({
-  scenarioId: z.string().default('algo_dynamic_programming'),
-  preTestScore: z.number().min(0).max(100).default(25),
-  postTestScore: z.number().min(0).max(100).default(80),
-  promptsConsumed: z.number().int().min(0).max(5).default(2),
-  transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
 })
 
 const pfEvaluateBodySchema = z.object({
@@ -1417,7 +1398,7 @@ async function getZpdScenarios(_req: IncomingMessage, res: ServerResponse): Prom
 
 /** POST /cognitive/zpd/evaluate — evaluate ZPD metrics & learning potential */
 async function postZpdEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await readJson(req, zpdEvaluateBodySchema)
+  const body = await readJson(req, ZpdEvaluationInputSchema)
   const scenario = getZpdScenarioById(body.scenarioId) || listZpdScenarios()[0]!
   const metrics = calculateZpdMetrics(
     body.preTestScore,
@@ -1438,7 +1419,7 @@ async function postZpdEvaluate(req: IncomingMessage, res: ServerResponse): Promi
 
 /** POST /cognitive/zpd/prompt — request graduated prompt at tier level */
 async function postZpdPrompt(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await readJson(req, zpdPromptBodySchema)
+  const body = await readJson(req, ZpdPromptInputSchema)
   const scenario = getZpdScenarioById(body.scenarioId) || listZpdScenarios()[0]!
   const prompt = getGraduatedPromptAtTier(scenario.mediatedProblem, body.tierLevel)
   sendJson(res, 200, {
@@ -1451,7 +1432,7 @@ async function postZpdPrompt(req: IncomingMessage, res: ServerResponse): Promise
 
 /** POST /cognitive/zpd/deck — generate calibrated FSRS-6 review deck */
 async function postZpdDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await readJson(req, zpdDeckBodySchema)
+  const body = await readJson(req, ZpdEvaluationInputSchema)
   const scenario = getZpdScenarioById(body.scenarioId) || listZpdScenarios()[0]!
   const metrics = calculateZpdMetrics(
     body.preTestScore,

@@ -139,6 +139,57 @@ export const FSRSZpdFlashcardSchema = z.object({
 })
 export type FSRSZpdFlashcard = z.infer<typeof FSRSZpdFlashcardSchema>
 
+/**
+ * Canonical input payload for ZPD trajectory evaluation and FSRS deck generation
+ * (shared by the REST server, MCP tools, and CLI; hosts MUST NOT re-declare it).
+ * Defaults describe the canonical demo trajectory: independent baseline (ADL) 25,
+ * mediated post-test (PDL) 80, 2 graduated prompts consumed, near/medium/far
+ * transfer scores 85/75/70 on the default dynamic-programming scenario.
+ */
+export const ZpdEvaluationInputSchema = z.object({
+  scenarioId: z
+    .string()
+    .min(1)
+    .default('algo_dynamic_programming')
+    .describe('Assessment scenario identifier.'),
+  preTestScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .default(25)
+    .describe('Independent baseline score (ADL).'),
+  postTestScore: z.number().min(0).max(100).default(80).describe('Mediated post-test score (PDL).'),
+  promptsConsumed: z
+    .number()
+    .int()
+    .min(0)
+    .max(5)
+    .default(2)
+    .describe('Graduated prompts accessed (0..5).'),
+  transferScores: z
+    .array(z.number().min(0).max(100))
+    .default([85, 75, 70])
+    .describe('Scores on near, medium, far transfer tasks.'),
+})
+export type ZpdEvaluationInput = z.infer<typeof ZpdEvaluationInputSchema>
+
+/** Canonical input payload for graduated prompt retrieval at a tier level (1..5). */
+export const ZpdPromptInputSchema = z.object({
+  scenarioId: z
+    .string()
+    .min(1)
+    .default('algo_dynamic_programming')
+    .describe('Assessment scenario identifier.'),
+  tierLevel: z
+    .number()
+    .int()
+    .min(1)
+    .max(5)
+    .default(1)
+    .describe('Graduated prompt tier level (1..5).'),
+})
+export type ZpdPromptInput = z.infer<typeof ZpdPromptInputSchema>
+
 // ============================================================================
 // 2. CANONICAL MULTIDISCIPLINARY SCENARIOS
 // ============================================================================
