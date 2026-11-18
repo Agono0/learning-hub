@@ -699,11 +699,9 @@ graded by Brier calibration against resolved outcomes.
   grading, FSRS conflict/calibration card exporter);
   `CALIBRATED_EQUILIBRIUM_SUITES` (3 suites); the `reflective_equilibrium`
   MCP tool, `learning-hub equilibrium evaluate` CLI command, and `POST
-  /cognitive/equilibrium` headless route; rendered in the /equilibrium
+/cognitive/equilibrium` headless route; rendered in the /equilibrium
   studio.
 - **Status:** ✅
-
-
 
 ### Nelson–Narens Monitoring vs Control & Goodman–Kruskal γ — Nelson & Narens (1990); Nelson (1984)
 
