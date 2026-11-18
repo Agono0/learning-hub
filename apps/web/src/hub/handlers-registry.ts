@@ -179,6 +179,7 @@ import * as inquiry from '../server/handlers/inquiry/route'
 import * as reciprocalTeaching from '../server/handlers/reciprocal-teaching/route'
 import * as argumentation from '../server/handlers/argumentation/route'
 import * as anchored from '../server/handlers/anchored/route'
+import * as contrasting from '../server/handlers/contrasting/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -378,6 +379,7 @@ add('inquiry', inquiry)
 add('reciprocal-teaching', reciprocalTeaching)
 add('argumentation', argumentation)
 add('anchored', anchored)
+add('contrasting', contrasting)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

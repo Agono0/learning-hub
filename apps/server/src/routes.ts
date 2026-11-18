@@ -121,6 +121,10 @@ import {
   simulateAnchoredSensitivity,
   generateAnchoredFSRSDeck,
   type LearnerSolutionSubmission,
+  CANONICAL_CONTRASTING_SETS,
+  evaluateContrastingAttempt,
+  generateContrastingFSRSDeck,
+  type InventedMetricSubmission,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -407,6 +411,25 @@ const anchoredSensitivityBodySchema = z.object({
 const anchoredDeckBodySchema = z.object({
   caseId: z.string().default('case-jasper-flight'),
   ikrsBaseline: z.number().min(0).max(100).default(85),
+})
+
+const contrastingEvaluateBodySchema = z.object({
+  setId: z.string().default('set-density-buoyancy'),
+  inventedMetricName: z.string().default('Density Ratio Invariant'),
+  formulaDescription: z
+    .string()
+    .default('Ratio of object mass to displacement volume across contrasting variants.'),
+  selectedDimensionIds: z.array(z.string()).default(['dim-mass', 'dim-volume']),
+  variantRankings: z.array(z.string()).default([]),
+  impasseEncountered: z.boolean().default(true),
+  reflectionNotes: z
+    .string()
+    .default('Noticed that volume or mass alone fails, but mass/volume coordinates cases.'),
+})
+
+const contrastingDeckBodySchema = z.object({
+  setId: z.string().default('set-density-buoyancy'),
+  cdtsBaseline: z.number().min(0).max(100).default(85),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1992,6 +2015,78 @@ async function postAnchoredDeck(req: IncomingMessage, res: ServerResponse): Prom
   })
 }
 
+/** GET /cognitive/contrasting/sets — list canonical contrasting cases and invention sets */
+async function getContrastingSets(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const sets = CANONICAL_CONTRASTING_SETS
+  sendJson(res, 200, {
+    ok: true,
+    sets: sets.map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      difficulty: s.difficulty,
+      problemOverview: s.problemOverview,
+      variantsCount: s.variants.length,
+      dimensionsCount: s.dimensions.length,
+      canonicalGoal: s.canonicalTelling.formalLawName,
+      canonicalEquation: s.canonicalTelling.formalEquation,
+    })),
+  })
+}
+
+/** POST /cognitive/contrasting/evaluate — evaluate contrasting cases invention attempt */
+async function postContrastingEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, contrastingEvaluateBodySchema)
+  const caseSet =
+    CANONICAL_CONTRASTING_SETS.find((s) => s.id === body.setId) ?? CANONICAL_CONTRASTING_SETS[0]!
+  const submission: InventedMetricSubmission = {
+    setId: caseSet.id,
+    inventedMetricName: body.inventedMetricName,
+    formulaDescription: body.formulaDescription,
+    selectedDimensionIds: body.selectedDimensionIds,
+    variantRankings:
+      body.variantRankings.length > 0
+        ? body.variantRankings
+        : [...caseSet.variants].sort((a, b) => a.outcomeValue - b.outcomeValue).map((v) => v.id),
+    impasseEncountered: body.impasseEncountered,
+    reflectionNotes: body.reflectionNotes,
+  }
+  const evaluation = evaluateContrastingAttempt(caseSet, submission)
+  sendJson(res, 200, {
+    ok: true,
+    setTitle: caseSet.title,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/contrasting/deck — generate calibrated FSRS-6 review deck */
+async function postContrastingDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, contrastingDeckBodySchema)
+  const caseSet =
+    CANONICAL_CONTRASTING_SETS.find((s) => s.id === body.setId) ?? CANONICAL_CONTRASTING_SETS[0]!
+  const dummySubmission: InventedMetricSubmission = {
+    setId: caseSet.id,
+    inventedMetricName: 'Ratio Invariant',
+    formulaDescription: 'Invariant ratio coordinating variants across dimensions.',
+    selectedDimensionIds: caseSet.dimensions.filter((d) => d.isDeepDimension).map((d) => d.id),
+    variantRankings: [...caseSet.variants]
+      .sort((a, b) => a.outcomeValue - b.outcomeValue)
+      .map((v) => v.id),
+    impasseEncountered: true,
+    reflectionNotes: 'Productive impasse generated prior to canonical lecture.',
+  }
+  const evaluation = evaluateContrastingAttempt(caseSet, dummySubmission)
+  evaluation.cdts = body.cdtsBaseline
+  const deck = generateContrastingFSRSDeck(caseSet, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    setTitle: caseSet.title,
+    cdtsBaseline: deck.cdtsBaseline,
+    cardsCount: deck.cards.length,
+    cards: deck.cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2338,6 +2433,25 @@ export const routes: Route[] = [
     path: '/cognitive/anchored/deck',
     summary: 'generate calibrated FSRS-6 review deck for anchored macrocontext',
     handler: postAnchoredDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/contrasting/sets',
+    summary:
+      'list canonical contrasting case sets for invention and perceptual differentiation (Schwartz & Bransford 1998, 2004)',
+    handler: getContrastingSets,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/contrasting/evaluate',
+    summary: 'evaluate contrasting cases invention attempt (FDRS, IMI, PFRI, CDTS)',
+    handler: postContrastingEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/contrasting/deck',
+    summary: 'generate calibrated FSRS-6 review deck for contrasting cases',
+    handler: postContrastingDeck,
   },
 ]
 

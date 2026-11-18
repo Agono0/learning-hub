@@ -50,6 +50,7 @@ import {
   reciprocalTeachingCommand,
   cerCommand,
   anchoredCommand,
+  contrastingCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -863,6 +864,13 @@ const builtinCommands: RegisteredCommand[] = [
       'CTGV (1990, 1992) Anchored Instruction & Situated Macrocontext Problem-Solving Studio',
     usage: '[cases|sensitivity|eval|deck] [--case <id>]',
     run: (runArgs) => anchoredCommand(runArgs),
+  },
+  {
+    name: 'contrasting',
+    description:
+      'Schwartz & Bransford (1998, 2004) Contrasting Cases & Inventing with Examples Studio',
+    usage: '[sets|eval|deck] [--id <id>]',
+    run: (runArgs) => contrastingCommand(runArgs),
   },
 ]
 

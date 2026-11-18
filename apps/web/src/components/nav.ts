@@ -126,6 +126,7 @@ export const NAV: NavGroup[] = [
       { href: '/reciprocal-teaching', label: 'Reciprocal Teaching', icon: MessageSquare },
       { href: '/argumentation', label: 'Argumentation', icon: Scale },
       { href: '/anchored', label: 'Anchored Instruction', icon: Anchor },
+      { href: '/contrasting', label: 'Contrasting Cases', icon: GitFork },
     ],
   },
   {
