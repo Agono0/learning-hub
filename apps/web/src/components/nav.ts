@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   CalendarRange,
   Compass,
+  Cpu,
   DatabaseBackup,
   Dumbbell,
   Eye,
@@ -92,6 +93,7 @@ export const NAV: NavGroup[] = [
       { href: '/analogy', label: 'Analogical Transfer', icon: GitCompare },
       { href: '/flexibility', label: 'Cognitive Flexibility', icon: Compass },
       { href: '/equilibrium', label: 'Reflective Equilibrium', icon: Scale },
+      { href: '/interactivity', label: 'Element Interactivity', icon: Cpu },
     ],
   },
   {
