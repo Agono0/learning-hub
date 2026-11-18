@@ -47,6 +47,8 @@
 | **T-P2-30** | **P2**   | Productive Failure       | **Completed** | Productive Failure & Canonical Consolidation Studio: Manu Kapur 2-phase model, Tanmay Sinha predictor metrics (PFI, GDI, ISS, CIG, ATS), juxtaposition matrix, and multi-host parity.       |
 | **T-P2-31** | **P2**   | Peer Instruction         | **Completed** | Peer Instruction & Interactive ConcepTest Studio: Eric Mazur interactive polling/deliberation, Michelle Smith isomorphic transfer, Hake normalized gain, and multi-host parity.             |
 | **T-P2-32** | **P2**   | Scientific Inquiry       | **Completed** | Dual-Space Scientific Discovery & Inquiry Simulation Studio: Klahr & Dunbar (1988) SDDS, Chen & Klahr (1999) VOTAT control, Chinn & Brewer (1993) anomalous data, and multi-host parity.    |
+| **T-P2-33** | **P2**   | Reciprocal Teaching      | **Completed** | Reciprocal Teaching & Dialogic Questioning Studio: Palincsar & Brown (1984) 4 roles, Chi (2014) ICAP taxonomy, King guided questioning, and multi-host parity (PR #62).                     |
+| **T-P2-34** | **P2**   | Epistemic Argumentation  | **Completed** | Claim-Evidence-Reasoning & Epistemic Argumentation Studio: McNeill & Krajcik (2012) CER framework, Toulmin (1958) TAP hierarchy, Osborne (2004) dialogic rebuttal, and multi-host parity.   |
 
 ---
 
@@ -584,4 +586,18 @@
   5. Implement runtime-neutral API handler `apps/web/src/server/handlers/reciprocal-teaching/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
   6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
 - **Files Affected:** `packages/core/src/reciprocal-teaching/*`, `apps/web/src/ui/ReciprocalTeachingHUD.tsx`, `apps/web/src/components/ReciprocalTeachingStudio.tsx`, `apps/web/app/reciprocal-teaching/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/reciprocal-teaching/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/rt-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed & Verified** (PR #62).
+
+### T-P2-34: Claim-Evidence-Reasoning (CER) & Epistemic Argumentation Studio (McNeill & Krajcik 2012; Toulmin 1958; Osborne 2004; Kuhn 1991)
+
+- **Problem:** Learners frequently generate unsubstantiated claims, conflate empirical data with causal explanation, ignore counter-evidence, and struggle to articulate formal scientific warrants connecting observations to underlying natural laws ($d < 0.25$). Epistemic argumentation is often reduced to rhetorical assertion rather than dialectic evaluation.
+- **Root Cause:** Absence of an interactive epistemic argumentation workbench operationalizing McNeill & Krajcik's Claim-Evidence-Reasoning (CER) pedagogical framework, Toulmin's Argument Pattern (TAP Level 1 to 5 hierarchy: Claim, Data, Warrant, Backing, Qualifier, Rebuttal), and Jonathan Osborne's dialogic argumentation scaffolds across controversial multidisciplinary scientific debates.
+- **Proposed Solution:**
+  1. Build `packages/core/src/argumentation/cer-engine.ts` with Zod validation, quantitative epistemic metrics (CER Completeness Score $CCS$, Evidence Quality Index $EQI$, Reasoning Depth Index $RDI$, Toulmin Argument Pattern $TAP \in [1, 5]$, and Epistemic Rigor Score $ERS \in [0, 100]$), 5 canonical multidisciplinary scientific debate cases (AMOC Tipping Point, Quantum Non-Locality & Bell Inequality, Transgenerational Epigenetic Inheritance, Monoamine Hypothesis & Depression Etiology, Linguistic Relativity & Color Cognition), deterministic Socratic adversarial counter-arguer, and calibrated FSRS-6 spaced repetition decks.
+  2. Implement `ArgumentationHUD.tsx` conforming strictly to UI Signature (zero ghost classes, mode-aware tokens) displaying ERS telemetry, TAP hierarchical pyramid, CCS/EQI/RDI radial breakdowns, and epistemic strengths/diagnostic feedback.
+  3. Implement `ArgumentationStudio.tsx` with 4 interactive tabs (1. Phenomenon & Competing Claims, 2. Evidence Pool & Quality Discrimination, 3. Causal Reasoning & Dialectic Rebuttal, 4. Dialectic Synthesis & Calibrated FSRS Deck).
+  4. Build page `apps/web/app/argumentation/page.tsx` and register route `/argumentation` in global navigation (`nav.ts`).
+  5. Implement runtime-neutral API handler `apps/web/src/server/handlers/argumentation/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
+  6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
+- **Files Affected:** `packages/core/src/argumentation/*`, `apps/web/src/ui/ArgumentationHUD.tsx`, `apps/web/src/components/ArgumentationStudio.tsx`, `apps/web/app/argumentation/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/argumentation/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/cer-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed & Verified**.

@@ -31,6 +31,7 @@ import {
   piCommand,
   inquiryCommand,
   reciprocalTeachingCommand,
+  cerCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -426,6 +427,70 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.icap.ics).toBeGreaterThan(0)
       expect(data.strategy.rsbs).toBeGreaterThan(0)
     })
+
+    it('cer_list_debates lists canonical scientific debate cases', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cer_list_debates')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        debates: Array<{ id: string; domain: string; title: string }>
+      }
+      expect(data.count).toBeGreaterThanOrEqual(5)
+      expect(data.debates.some((d) => d.id === 'debate-amoc-tipping')).toBe(true)
+    })
+
+    it('cer_counter_argue generates adversarial counter-argument via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cer_counter_argue')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        debateId: 'debate-amoc-tipping',
+        selectedClaimId: 'claim-amoc-tipping-near',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        counterClaim: string
+        rebuttalChallenge: string
+      }
+      expect(data.counterClaim).toBeDefined()
+      expect(data.rebuttalChallenge).toBeDefined()
+    })
+
+    it('cer_evaluate_argument computes CCS, EQI, RDI, TAP, and ERS via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cer_evaluate_argument')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        debateId: 'debate-amoc-tipping',
+        selectedClaimId: 'claim-amoc-tipping-near',
+        claimStatement:
+          'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+        selectedEvidenceIds: [
+          'ev-amoc-sst-autocorr',
+          'ev-amoc-paleo-glacier',
+          'ev-amoc-cmip6-bias',
+        ],
+        userEvidenceSynthesis:
+          'Subpolar SST fingerprints exhibit critical slowing down with increased variance, mirrored by Heinrich Stadial 1 paleorecords where freshwater pulses suppressed overturning by >70%. CMIP6 stability is an artifact of deep salinity restoring.',
+        selectedPrincipleIds: ['princ-salt-advection', 'princ-critical-slowing'],
+        userReasoningStatement:
+          'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, which reduces northward transport of saline waters, creating runaway positive feedback. Furthermore, bifurcation theory demonstrates that increased autocorrelation causally indicates loss of dynamical resilience.',
+        targetedCounterArgumentId: 'counter-amoc-rapid',
+        userRebuttalStatement:
+          'Opponents cite the 2004–2022 RAPID-MOCHA mooring array as evidence of stability; however, this rebuttal is flawed because 18 years of instrumental data is statistically insufficient to disentangle multi-decadal Atlantic Multidecadal Variability from long-term centennial deceleration.',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        ers: number
+        tapLevel: number
+        ccs: number
+        eqi: number
+        rdi: number
+      }
+      expect(data.ers).toBeGreaterThanOrEqual(70)
+      expect(data.tapLevel).toBe(5)
+      expect(data.ccs).toBe(100)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -588,6 +653,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('cerCommand executes debates, counter, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        cerCommand(['debates'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cerCommand(['counter', '--debate', 'debate-amoc-tipping'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cerCommand(['deck', '--debate', 'debate-amoc-tipping'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cerCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -622,6 +703,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/rt/peer')
       expect(registeredPaths).toContain('POST /cognitive/rt/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/rt/deck')
+      expect(registeredPaths).toContain('GET /cognitive/cer/debates')
+      expect(registeredPaths).toContain('POST /cognitive/cer/counter')
+      expect(registeredPaths).toContain('POST /cognitive/cer/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/cer/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -923,6 +1008,63 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       const mock = createMockHttp('POST', '/cognitive/rt/deck', {
         passageId: 'passage-endosymbiosis',
         sampleText: 'Cardiolipin proves endosymbiosis because eukaryotes lack it.',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('GET /cognitive/cer/debates returns scientific debate cases via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/cer/debates')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.debates.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('POST /cognitive/cer/counter generates adversarial counter via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/cer/counter', {
+        debateId: 'debate-amoc-tipping',
+        claimId: 'claim-amoc-tipping-near',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.counterArgument).toBeDefined()
+    })
+
+    it('POST /cognitive/cer/evaluate computes CER argument telemetry via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/cer/evaluate', {
+        debateId: 'debate-amoc-tipping',
+        selectedClaimId: 'claim-amoc-tipping-near',
+        claimStatement:
+          'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+        selectedEvidenceIds: [
+          'ev-amoc-sst-autocorr',
+          'ev-amoc-paleo-glacier',
+          'ev-amoc-cmip6-bias',
+        ],
+        userEvidenceSynthesis:
+          'Subpolar SST fingerprints exhibit critical slowing down with increased variance, mirrored by Heinrich Stadial 1 paleorecords where freshwater pulses suppressed overturning by >70%. CMIP6 stability is an artifact of deep salinity restoring.',
+        selectedPrincipleIds: ['princ-salt-advection', 'princ-critical-slowing'],
+        userReasoningStatement:
+          'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, which reduces northward transport of saline waters, creating runaway positive feedback. Furthermore, bifurcation theory demonstrates that increased autocorrelation causally indicates loss of dynamical resilience.',
+        targetedCounterArgumentId: 'counter-amoc-rapid',
+        userRebuttalStatement:
+          'Opponents cite the 2004–2022 RAPID-MOCHA mooring array as evidence of stability; however, this rebuttal is flawed because 18 years of instrumental data is statistically insufficient to disentangle multi-decadal Atlantic Multidecadal Variability from long-term centennial deceleration.',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.ers).toBeGreaterThanOrEqual(70)
+      expect(result.data.evaluation.tapLevel).toBe(5)
+    })
+
+    it('POST /cognitive/cer/deck generates calibrated FSRS-6 review deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/cer/deck', {
+        debateId: 'debate-amoc-tipping',
+        ersBaseline: 85,
       })
       const result = await mock.execute()
       expect(result.statusCode).toBe(200)

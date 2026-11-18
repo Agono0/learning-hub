@@ -111,6 +111,11 @@ import {
   generatePeerDialogicTurn,
   generateReciprocalFSRSDeck,
   type DialogueTurn,
+  CANONICAL_SCIENTIFIC_DEBATES,
+  evaluateCERArgument,
+  generateAdversarialCounterArgument,
+  generateCERFSRSDeck,
+  type CERArgumentSubmission,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -334,6 +339,49 @@ const rtEvaluateBodySchema = z.object({
 const rtDeckBodySchema = z.object({
   passageId: z.string().default('passage-endosymbiosis'),
   sampleText: z.string().default('Cardiolipin proves endosymbiosis because eukaryotes lack it.'),
+})
+
+const cerCounterBodySchema = z.object({
+  debateId: z.string().default('debate-amoc-tipping'),
+  claimId: z.string().default('claim-amoc-tipping-near'),
+})
+
+const cerEvaluateBodySchema = z.object({
+  debateId: z.string().default('debate-amoc-tipping'),
+  selectedClaimId: z.string().default('claim-amoc-tipping-near'),
+  claimStatement: z
+    .string()
+    .default(
+      'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+    ),
+  selectedEvidenceIds: z
+    .array(z.string())
+    .default(['ev-amoc-sst-autocorr', 'ev-amoc-paleo-glacier', 'ev-amoc-cmip6-bias']),
+  userEvidenceSynthesis: z
+    .string()
+    .default(
+      'Subpolar SST fingerprints exhibit critical slowing down with increased variance, mirrored by Heinrich Stadial 1 paleorecords where freshwater pulses suppressed overturning by >70%. CMIP6 stability is an artifact of deep salinity restoring.',
+    ),
+  selectedPrincipleIds: z
+    .array(z.string())
+    .default(['princ-salt-advection', 'princ-critical-slowing']),
+  userReasoningStatement: z
+    .string()
+    .default(
+      'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, which reduces northward transport of saline waters, creating runaway positive feedback. Furthermore, bifurcation theory demonstrates that increased autocorrelation causally indicates loss of dynamical resilience.',
+    ),
+  targetedCounterArgumentId: z.string().optional().default('counter-amoc-rapid'),
+  userRebuttalStatement: z
+    .string()
+    .optional()
+    .default(
+      'Opponents cite the 2004–2022 RAPID-MOCHA mooring array as evidence of stability; however, this rebuttal is flawed because 18 years of instrumental data is statistically insufficient to disentangle multi-decadal Atlantic Multidecadal Variability from long-term centennial deceleration.',
+    ),
+})
+
+const cerDeckBodySchema = z.object({
+  debateId: z.string().default('debate-amoc-tipping'),
+  ersBaseline: z.number().min(0).max(100).default(85),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1755,6 +1803,91 @@ async function postReciprocalDeck(req: IncomingMessage, res: ServerResponse): Pr
   })
 }
 
+/** GET /cognitive/cer/debates — list canonical scientific debate cases */
+async function getScientificDebates(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const debates = CANONICAL_SCIENTIFIC_DEBATES
+  sendJson(res, 200, {
+    ok: true,
+    debates: debates.map((d) => ({
+      id: d.id,
+      title: d.title,
+      domain: d.domain,
+      phenomenon: d.phenomenonContext,
+      claimsCount: d.competingClaims.length,
+      evidenceCount: d.evidencePool.length,
+      principlesCount: d.scientificPrinciples.length,
+      countersCount: d.counterArguments.length,
+    })),
+  })
+}
+
+/** POST /cognitive/cer/counter — generate adversarial counter-argument */
+async function postCERCounter(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cerCounterBodySchema)
+  const debate =
+    CANONICAL_SCIENTIFIC_DEBATES.find((d) => d.id === body.debateId) ??
+    CANONICAL_SCIENTIFIC_DEBATES[0]!
+  const counter = generateAdversarialCounterArgument(debate, body.claimId)
+  sendJson(res, 200, {
+    ok: true,
+    debateTitle: debate.title,
+    counterArgument: counter,
+  })
+}
+
+/** POST /cognitive/cer/evaluate — evaluate CER argument telemetry */
+async function postCEREvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cerEvaluateBodySchema)
+  const debate =
+    CANONICAL_SCIENTIFIC_DEBATES.find((d) => d.id === body.debateId) ??
+    CANONICAL_SCIENTIFIC_DEBATES[0]!
+  const submission: CERArgumentSubmission = {
+    debateId: debate.id,
+    selectedClaimId: body.selectedClaimId,
+    claimStatement: body.claimStatement,
+    selectedEvidenceIds: body.selectedEvidenceIds,
+    userEvidenceSynthesis: body.userEvidenceSynthesis,
+    selectedPrincipleIds: body.selectedPrincipleIds,
+    userReasoningStatement: body.userReasoningStatement,
+    targetedCounterArgumentId: body.targetedCounterArgumentId,
+    userRebuttalStatement: body.userRebuttalStatement,
+  }
+  const evaluation = evaluateCERArgument(debate, submission)
+  sendJson(res, 200, {
+    ok: true,
+    debateTitle: debate.title,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/cer/deck — generate calibrated FSRS-6 review deck */
+async function postCERDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cerDeckBodySchema)
+  const debate =
+    CANONICAL_SCIENTIFIC_DEBATES.find((d) => d.id === body.debateId) ??
+    CANONICAL_SCIENTIFIC_DEBATES[0]!
+  const submission: CERArgumentSubmission = {
+    debateId: debate.id,
+    selectedClaimId: debate.competingClaims[0]!.id,
+    claimStatement: debate.competingClaims[0]!.claim,
+    selectedEvidenceIds: [debate.evidencePool[0]!.id],
+    userEvidenceSynthesis: 'Primary empirical observational synthesis.',
+    selectedPrincipleIds: [debate.scientificPrinciples[0]!.id],
+    userReasoningStatement: 'Governing causal law links observational evidence to claim.',
+    targetedCounterArgumentId: debate.counterArguments[0]?.id,
+    userRebuttalStatement: 'Addressing counter-evidence with boundary conditions.',
+  }
+  const evaluation = evaluateCERArgument(debate, submission)
+  const deck = generateCERFSRSDeck(debate, submission, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    debateTitle: debate.title,
+    ersBaseline: deck.ersBaseline,
+    cardsCount: deck.cards.length,
+    cards: deck.cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2053,6 +2186,30 @@ export const routes: Route[] = [
     path: '/cognitive/rt/deck',
     summary: 'generate calibrated FSRS-6 review deck for reciprocal dialogue session',
     handler: postReciprocalDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/cer/debates',
+    summary: 'list canonical scientific debate cases for claim-evidence-reasoning',
+    handler: getScientificDebates,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/cer/counter',
+    summary: 'generate adversarial Toulmin counter-argument for chosen claim',
+    handler: postCERCounter,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/cer/evaluate',
+    summary: 'evaluate CER argument telemetry (CCS, EQI, RDI, TAP level, ERS)',
+    handler: postCEREvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/cer/deck',
+    summary: 'generate calibrated FSRS-6 review deck for scientific debate',
+    handler: postCERDeck,
   },
 ]
 
