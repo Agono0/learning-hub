@@ -934,3 +934,12 @@ export class ReflectiveEquilibriumSession {
     }
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────
+
+export const equilibriumEvaluateInputSchema = z.object({
+  suiteKey: z.string().optional(),
+  sessionState: equilibriumSessionStateSchema.optional(),
+  exportCards: z.boolean().default(false),
+})
+export type EquilibriumEvaluateInput = z.infer<typeof equilibriumEvaluateInputSchema>
