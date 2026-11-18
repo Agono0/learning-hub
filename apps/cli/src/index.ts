@@ -30,6 +30,7 @@ import {
   difficultyCommand,
   feynmanCommand,
   flexibilityCommand,
+  interactivityCommand,
   generationCommand,
   invarianceCommand,
   metacognitionCommand,
@@ -752,6 +753,12 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Spiro criss-crossing schedule for ill-structured cases',
     usage: 'plan [--suite <key>]',
     run: (runArgs) => flexibilityCommand(runArgs),
+  },
+  {
+    name: 'interactivity',
+    description: 'Sweller element-interactivity analysis + Paas efficiency',
+    usage: 'analyze [--suite <key>] [--extraneous 1] [--effort 5 --performance 70]',
+    run: (runArgs) => interactivityCommand(runArgs),
   },
 ]
 

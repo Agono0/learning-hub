@@ -54,6 +54,9 @@ import {
   evaluateStructureMappingAttempt,
   evaluateCognitiveFlexibility,
   exportFlexibilityToFSRSCards,
+  CALIBRATED_INTERACTIVITY_SUITES,
+  analyzeElementInteractivity,
+  calculateInstructionalEfficiency,
 } from '@learning-hub/core'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 
@@ -764,6 +767,58 @@ export const cognitiveTools: RegisteredTool[] = [
       const evaluation = evaluateCognitiveFlexibility(suite, attempts)
       const cards = exportCards ? exportFlexibilityToFSRSCards(suite, evaluation) : undefined
       return json({ ok: true, evaluation, cards })
+    },
+  ),
+
+  tool(
+    'element_interactivity',
+    "Sweller (1988) Element Interactivity + Paas & Van Merrienboer (1994) instructional-efficiency engine over the calibrated systemic-cascade suites: analyze a suite's coupling density, transitive depth, interactivity index, and estimated novice vs expert-chunked cognitive load breakdowns; plus Paas efficiency scoring from a self-reported mental-effort rating and performance score.",
+    {
+      suiteKey: z
+        .enum(['raft_consensus_protocol', 'cardiovascular_hemodynamics'])
+        .optional()
+        .describe('Omit to list the calibrated suites'),
+      extraneousLoadFactor: z
+        .number()
+        .min(0)
+        .max(3)
+        .default(1)
+        .describe('0.0 = cleanest presentation, 3.0 = split-attention mess'),
+      mentalEffort: z
+        .number()
+        .min(1)
+        .max(9)
+        .optional()
+        .describe('Paas self-rated mental effort (1-9)'),
+      performance: z.number().min(0).max(100).optional().describe('Performance score (0-100)'),
+    },
+    async ({ suiteKey, extraneousLoadFactor, mentalEffort, performance }) => {
+      if (!suiteKey) {
+        return json({
+          ok: true,
+          suites: Object.entries(CALIBRATED_INTERACTIVITY_SUITES).map(([key, suite]) => ({
+            suiteId: key,
+            title: suite.title ?? key,
+            elements: suite.elements.length,
+            interactions: suite.edges.length,
+          })),
+        })
+      }
+      const suite = CALIBRATED_INTERACTIVITY_SUITES[suiteKey]
+      if (!suite) {
+        return json({ ok: false, error: `Unknown suite "${suiteKey}"` })
+      }
+      const analysis = analyzeElementInteractivity(suite, extraneousLoadFactor)
+      const paas =
+        mentalEffort !== undefined && performance !== undefined
+          ? calculateInstructionalEfficiency(mentalEffort, performance)
+          : undefined
+      return json({
+        ok: true,
+        analysis,
+        paas: paas ?? null,
+        paasClassification: paas?.classification ?? null,
+      })
     },
   ),
 ]

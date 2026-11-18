@@ -629,6 +629,24 @@ Measuring the exact alignment between predicted memory retention and empirical r
 - **In Learning HUB:** `computeBrierScore` and `computeCalibrationMetrics` in `packages/core/src/analytics.ts`, reliability diagram in `apps/web/app/analytics/page.tsx`.
 - **Status:** ✅
 
+### Element Interactivity & Paas Efficiency — Sweller (1988); Paas & Van Merriënboer (1994)
+
+Cognitive load scales with the number of interacting elements that must be
+held in working memory simultaneously: high-element-interactivity material
+overwhelves novices but compresses into single chunks for experts.
+
+- **Evidence:** Sweller (1988) — element interactivity is the intrinsic
+  load driver; Paas & Van Merriënboer (1994) — instructional efficiency
+  E = (Z_performance − Z_effort) / √2 separates efficient learning from
+  effortful grinding.
+- **In Learning HUB:** `packages/core/src/interactivity/element-interactivity-engine.ts`
+  (coupling density, transitive depth, novice vs expert-chunked load
+  breakdowns, Paas efficiency scorer); `CALIBRATED_INTERACTIVITY_SUITES`
+  (2 suites); the `element_interactivity` MCP tool, `learning-hub
+interactivity analyze` CLI command, and `POST /cognitive/interactivity`
+  headless route; rendered in the /interactivity studio.
+- **Status:** ✅
+
 ### Analogical Transfer & Schema Induction — Gick & Holyoak (1980/1983); Gentner (1983)
 
 Structure-mapping: transfer happens through relational similarity, not
