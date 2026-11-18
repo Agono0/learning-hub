@@ -10,6 +10,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { Bell } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { isPushSubscribed, isPushSupported, subscribeToPush } from '@/platform/pwa'
+import { PermissionGate } from '@/ui'
 
 export function PushSettingsPanel() {
   const vapid = useQuery<{ vapidPublicKey: string | null }>({
@@ -63,6 +64,12 @@ export function PushSettingsPanel() {
           </button>
         )}
       </div>
+      {supported && configured && (
+        <PermissionGate
+          permission="notifications"
+          reason="push rides on the browser notification permission"
+        />
+      )}
       {enable.isError && (
         <p className="text-xs text-danger-text">{(enable.error as Error).message}</p>
       )}

@@ -28,6 +28,7 @@ import {
   X,
 } from 'lucide-react'
 import { DEFAULT_COLLAPSED_GROUPS, NAV, PRIMARY_NAV_ITEMS, isActive } from './nav'
+import { PermissionNudge } from './PermissionNudge'
 import { NotificationBell } from './NotificationBell'
 import { CommandPalette, openCommandPalette } from './CommandPalette'
 import { QuickHudModal } from './QuickHudModal'
@@ -565,6 +566,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0">
         <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
           <StorageWarning />
+          <PermissionNudge />
           {children}
         </div>
       </main>
