@@ -63,11 +63,14 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 import {
-  InkPad,
-  PageHeader,
+  Button,
   CognitiveLoadMeter,
+  InkPad,
   MetacognitionRadar,
   MetacognitiveCalibrationCard,
+  PageHeader,
+  SelectField,
+  Skeleton,
 } from '@/ui'
 import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
 import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
@@ -906,13 +909,13 @@ function ReviewPageInner() {
               <div className="label mb-2">Mode</div>
               <div className="flex flex-wrap gap-2">
                 {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
-                  <button
+                  <Button
                     key={m}
                     onClick={() => setMode(m)}
-                    className={`btn-ghost ${mode === m ? 'bg-indigo-600/10 text-indigo-300 font-medium' : ''}`}
+                    variant={mode === m ? 'secondary' : 'ghost'}
                   >
                     {m === 'commute' ? '🎧 commute' : m}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <p className="mt-2 text-xs text-tertiary">
@@ -934,12 +937,15 @@ function ReviewPageInner() {
                 onChange={(e) => setLimit(Number(e.target.value))}
                 className="input"
               />
-              <div className="label mb-2 mt-3">
-                Retrieval criterion{' '}
-                <span className="font-normal text-tertiary">(correct recalls after a mistake)</span>
-              </div>
-              <select
-                className="input"
+              <SelectField
+                label={
+                  <>
+                    Retrieval criterion{' '}
+                    <span className="font-normal normal-case tracking-normal">
+                      (correct recalls after a mistake)
+                    </span>
+                  </>
+                }
                 value={srCriterion}
                 onChange={(e) => setSrCriterion(Number(e.target.value))}
               >
@@ -948,7 +954,7 @@ function ReviewPageInner() {
                     {n} — {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
                   </option>
                 ))}
-              </select>
+              </SelectField>
               <p className="mt-2 text-xs text-tertiary">
                 Successive relearning: a failed card repeats (spaced) until it has been recalled
                 correctly this many times (Rawson &amp; Dunlosky 2011).
@@ -998,16 +1004,16 @@ function ReviewPageInner() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="btn"
+            <Button
+              variant="primary"
               disabled={(decksData?.decks ?? []).length === 0}
               onClick={() => setStarted(true)}
             >
               <Zap className="h-4 w-4" /> Start session
-            </button>
-            <button
-              type="button"
-              className="btn-ghost text-xs flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs flex items-center gap-1.5"
               disabled={isPlayingDigest}
               onClick={async () => {
                 setIsPlayingDigest(true)
@@ -1040,14 +1046,14 @@ function ReviewPageInner() {
             >
               <Headphones className="h-4 w-4 text-indigo-400" />
               {isPlayingDigest ? 'Playing Audio Digest…' : 'Generate 5m Commute Digest'}
-            </button>
-            <button
-              type="button"
-              className="btn-ghost text-xs flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs flex items-center gap-1.5"
               onClick={() => setShowWorkloadModal(true)}
             >
               <Sliders className="h-4 w-4 text-indigo-400" /> Workload &amp; Easy Days
-            </button>
+            </Button>
             {digestStatus && <span className="text-xs text-faint">{digestStatus}</span>}
           </div>
         </div>
@@ -1095,8 +1101,8 @@ function ReviewPageInner() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              className="btn"
+            <Button
+              variant="primary"
               onClick={() => {
                 setStarted(false)
                 setFinishedAt(null)
@@ -1105,15 +1111,18 @@ function ReviewPageInner() {
               }}
             >
               <RotateCcw className="h-4 w-4" /> New session
-            </button>
-            <button
-              type="button"
-              className="btn-ghost flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5"
               onClick={() => setShowWorkloadModal(true)}
             >
               <Sliders className="h-4 w-4" /> Workload &amp; Forecast
-            </button>
-            <a href="/" className="btn-ghost">
+            </Button>
+            <a
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
+            >
               <Home className="h-4 w-4" /> Dashboard
             </a>
           </div>
@@ -1166,7 +1175,20 @@ function ReviewPageInner() {
   }
 
   if (session.isLoading) {
-    return <div className="panel text-sm text-tertiary">Building session…</div>
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Building session">
+        <Skeleton className="h-9 w-48" />
+        <div className="panel space-y-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-11 w-28" />
+          <Skeleton className="h-11 w-28" />
+          <Skeleton className="h-11 w-28" />
+        </div>
+      </div>
+    )
   }
 
   // delayed feedback (Butler & Roediger 2008): the blind-graded misses of the
@@ -1205,8 +1227,8 @@ function ReviewPageInner() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={() => {
                 if (isListening) {
                   stopSpeaking()
@@ -1215,20 +1237,20 @@ function ReviewPageInner() {
                   void runVoiceReviewForCurrentCard(current)
                 }
               }}
-              className="btn-ghost flex items-center gap-1 text-[11px] py-1 px-2 border border-indigo-400/30"
+              className="flex items-center gap-1 text-[11px] py-1 px-2 border border-indigo-400/30"
             >
               <Mic
                 className={`h-3.5 w-3.5 ${isListening ? 'text-danger-text animate-pulse' : ''}`}
               />
               {isListening ? 'Listening…' : 'Speak'}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => setCommuteAutoPlay(!commuteAutoPlay)}
-              className="btn-ghost text-[11px] py-1 px-2 border border-indigo-400/30"
+              className="text-[11px] py-1 px-2 border border-indigo-400/30"
             >
               {commuteAutoPlay ? 'Pause Loop' : 'Resume Loop'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -1255,9 +1277,9 @@ function ReviewPageInner() {
               onAnswered={setExerciseResult}
             />
             {exerciseResult && (
-              <button className="btn" onClick={advanceAfterExercise}>
+              <Button variant="primary" onClick={advanceAfterExercise}>
                 Next card <ArrowRight className="h-4 w-4" />
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -1336,28 +1358,28 @@ function ReviewPageInner() {
             <div className="flex flex-wrap items-center gap-2 pt-2">
               {!revealed && !current.blind ? (
                 <>
-                  <button className="btn" onClick={reveal}>
+                  <Button variant="primary" onClick={reveal}>
                     <Eye className="h-4 w-4" /> Reveal{' '}
                     <span className="text-xs opacity-70">space</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn ${oralListening ? 'animate-pulse bg-rose-500 text-white' : 'btn-ghost'}`}
+                  </Button>
+                  <Button
+                    variant={oralListening ? 'danger' : 'ghost'}
                     onClick={() => void handleOralRecall()}
                     title="Speak your answer aloud (Oral retrieval practice, generation effect)"
                   >
                     <Mic className="h-4 w-4" />
                     {oralListening ? 'Listening…' : 'Say aloud'}
-                  </button>
+                  </Button>
                 </>
               ) : (
                 GRADES.map((g) => {
                   const nextLabel = current.previews?.[g.grade]
                   const isSuggested = suggestedOralGrade?.grade === g.grade
                   return (
-                    <button
+                    <Button
                       key={g.grade}
-                      className={`btn ${g.color} ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
+                      variant="bare"
+                      className={`${g.color} text-white ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
                       onClick={() => commit(g.grade)}
                       disabled={gradeMutation.isPending}
                     >
@@ -1368,7 +1390,7 @@ function ReviewPageInner() {
                         </span>
                       )}
                       <span className="text-xs opacity-65">{g.grade}</span>
-                    </button>
+                    </Button>
                   )
                 })
               )}
@@ -1405,8 +1427,8 @@ function ReviewPageInner() {
                 </button>
               </div>
               {revealed && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     const prompt = getCardVoicePrompt(current)
                     const canon =
@@ -1420,11 +1442,11 @@ function ReviewPageInner() {
                     })
                     setGenerationModalOpen(true)
                   }}
-                  className="btn-ghost flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
+                  className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
                   title="Practice 4-tier active generation ladder (Slamecka & Graf 1978)"
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Generation Practice
-                </button>
+                </Button>
               )}
             </div>
           </>
@@ -1432,8 +1454,8 @@ function ReviewPageInner() {
       </div>
 
       <div className="flex items-center gap-2 text-xs text-tertiary">
-        <button
-          className="btn-ghost"
+        <Button
+          variant="ghost"
           disabled={undoStack.length === 0 || undoMutation.isPending}
           onClick={() => {
             const last = undoStack[undoStack.length - 1]
@@ -1447,7 +1469,7 @@ function ReviewPageInner() {
           }}
         >
           <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
-        </button>
+        </Button>
         {current.type !== 'exercise' && (
           <span>
             {current.blind
@@ -1455,24 +1477,25 @@ function ReviewPageInner() {
               : 'keys: 1-4 grade · space reveal/Good · e undo'}
           </span>
         )}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setCoherenceModalOpen(true)}
-          className="btn-ghost flex items-center gap-1.5 text-xs text-status-info-text hover:text-status-info-text"
+          className="flex items-center gap-1.5 text-xs text-status-info-text hover:text-status-info-text"
           title="0.1 Hz Baroreflex Resonance Breathing Priming"
         >
           <Wind className="h-3.5 w-3.5" />
           <span>Coherence Priming</span>
-        </button>
-        <button
-          className="btn-ghost ml-auto"
+        </Button>
+        <Button
+          variant="ghost"
+          className="ml-auto"
           onClick={() => {
             setStarted(false)
             setFinishedAt(null)
           }}
         >
           End session <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
 
       {generationModalOpen && generationTargetCard && (
@@ -1561,9 +1584,9 @@ function CorrectionsScreen({
             </li>
           ))}
         </ul>
-        <button className="btn" onClick={onDone}>
+        <Button variant="primary" onClick={onDone}>
           Got it — start the session <ArrowRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -1640,15 +1663,15 @@ function CardFront(props: {
         <div className="flex items-start justify-between gap-2">
           <div className="text-xl font-medium">{front}</div>
           {isSpeechAvailable() && (
-            <button
-              type="button"
-              className="btn-ghost shrink-0 border p-2"
+            <Button
+              variant="ghost"
+              className="shrink-0 border p-2"
               aria-label="Read card aloud"
               title="Read aloud"
               onClick={() => speak(front)}
             >
               <Volume2 className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
         {revealed && (
