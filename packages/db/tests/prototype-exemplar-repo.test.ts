@@ -131,9 +131,7 @@ describe('append-only session ledger', () => {
       submission: { ...BIRD_SUBMISSION, typicalityRatings: { 'bird-robin-old': 99 } },
       evaluation: birdEvaluation(),
     }
-    expect(() =>
-      saveSession(bad, db),
-    ).toThrow()
+    expect(() => saveSession(bad, db)).toThrow()
     expect(countSessions(db)).toBe(0)
   })
 })

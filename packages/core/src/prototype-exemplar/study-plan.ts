@@ -357,7 +357,8 @@ export function planCategorizationStudy(
       const dueDay = dayKeyPlus(summary.lastCompletedAt, intervalDays)
       // 0-based index of the due day relative to day 0 (now's day key).
       const dayIndex = Math.round(
-        (Date.parse(`${dueDay}T00:00:00.000Z`) - Date.parse(`${dayKey(new Date(now))}T00:00:00.000Z`)) /
+        (Date.parse(`${dueDay}T00:00:00.000Z`) -
+          Date.parse(`${dayKey(new Date(now))}T00:00:00.000Z`)) /
           DAY_MS,
       )
       if (dayIndex < 0) continue // ladder step already elapsed before day 0
@@ -389,7 +390,9 @@ export function planCategorizationStudy(
     const queue = dueByDay.get(i) ?? []
     for (const refresh of queue) {
       if (blocks.length < dailyBlockBudget) {
-        blocks.push(buildBlock(refresh.setId, 'refresh', refresh.retrievalOrdinal, refresh.intervalDays))
+        blocks.push(
+          buildBlock(refresh.setId, 'refresh', refresh.retrievalOrdinal, refresh.intervalDays),
+        )
       } else {
         const nextDay = i + 1
         if (nextDay >= horizonDays) {

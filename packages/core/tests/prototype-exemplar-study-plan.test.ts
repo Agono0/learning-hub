@@ -243,17 +243,23 @@ describe('history summary & boundaries', () => {
 
   it('mastery respects the configured thresholds', () => {
     const sessions = [session('proto-bird-typicality', '2026-01-12T08:00:00.000Z', 70)]
-    const strict = summarizeStudyHistory(sessions, { masteryAccuracy: 80, minSessionsForMastery: 2 })
-    const lenient = summarizeStudyHistory(sessions, { masteryAccuracy: 70, minSessionsForMastery: 1 })
+    const strict = summarizeStudyHistory(sessions, {
+      masteryAccuracy: 80,
+      minSessionsForMastery: 2,
+    })
+    const lenient = summarizeStudyHistory(sessions, {
+      masteryAccuracy: 70,
+      minSessionsForMastery: 1,
+    })
     expect(strict.summaries[0]!.mastered).toBe(false)
     expect(lenient.summaries[0]!.mastered).toBe(true)
   })
 
   it('reports unknown sets in the plan notes and skips them', () => {
-    const plan = planCategorizationStudy(
-      [session('no-such-set', '2026-01-12T08:00:00.000Z', 90)],
-      { now: NOW, horizonDays: 3 },
-    )
+    const plan = planCategorizationStudy([session('no-such-set', '2026-01-12T08:00:00.000Z', 90)], {
+      now: NOW,
+      horizonDays: 3,
+    })
     expect(plan.notes.some((n) => n.includes('no-such-set'))).toBe(true)
     expect(plan.setSummaries.every((s) => s.sessionsCount === 0 || s.setId !== 'no-such-set')).toBe(
       true,
@@ -265,18 +271,12 @@ describe('history summary & boundaries', () => {
     expect(() => studyPlanOptionsSchema.parse({ now: NOW, horizonDays: 0 })).toThrow()
     expect(() => studyPlanOptionsSchema.parse({ now: NOW, dailyBlockBudget: 9 })).toThrow()
     expect(() =>
-      planCategorizationStudy(
-        [
-          session('proto-bird-typicality', '2026-01-12T08:00:00.000Z', 150),
-        ],
-        { now: NOW },
-      ),
+      planCategorizationStudy([session('proto-bird-typicality', '2026-01-12T08:00:00.000Z', 150)], {
+        now: NOW,
+      }),
     ).toThrow()
     expect(() =>
-      planCategorizationStudy(
-        [session('proto-bird-typicality', 'yesterday', 80)],
-        { now: NOW },
-      ),
+      planCategorizationStudy([session('proto-bird-typicality', 'yesterday', 80)], { now: NOW }),
     ).toThrow()
   })
 })

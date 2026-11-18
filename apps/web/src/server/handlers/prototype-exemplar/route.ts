@@ -61,10 +61,7 @@ const postPrototypeExemplarBodySchema = z.discriminatedUnion('action', [
     /** Completed-session history; when present the response gains `schedule`. */
     sessions: z.array(studyPlanSessionSchema).max(500).default([]),
     /** Schedule controls (defaults come from the core planner's defaults). */
-    scheduleOptions: studyPlanOptionsSchema
-      .omit({ now: true })
-      .partial()
-      .default({}),
+    scheduleOptions: studyPlanOptionsSchema.omit({ now: true }).partial().default({}),
     /** Planning instant (ISO). Defaults to the handler's clock when absent. */
     now: z.string().optional(),
   }),

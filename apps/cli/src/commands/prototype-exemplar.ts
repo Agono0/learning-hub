@@ -63,8 +63,12 @@ function printEvaluation(evaluation: CategorizationEvaluation): void {
   console.log(`CRI:                ${evaluation.cri}/100 (composite index)`)
   console.log(`Maturity Band:      ${evaluation.maturityBand}`)
   console.log(`Better Model:       ${evaluation.modelComparison.betterRepresentation}`)
-  console.log(`  Prototype fit:    LL ${evaluation.modelComparison.prototype.logLikelihood} (AIC ${evaluation.modelComparison.prototype.aic}, BIC ${evaluation.modelComparison.prototype.bic})`)
-  console.log(`  GCM fit:          LL ${evaluation.modelComparison.exemplar.logLikelihood} (AIC ${evaluation.modelComparison.exemplar.aic}, BIC ${evaluation.modelComparison.exemplar.bic})`)
+  console.log(
+    `  Prototype fit:    LL ${evaluation.modelComparison.prototype.logLikelihood} (AIC ${evaluation.modelComparison.prototype.aic}, BIC ${evaluation.modelComparison.prototype.bic})`,
+  )
+  console.log(
+    `  GCM fit:          LL ${evaluation.modelComparison.exemplar.logLikelihood} (AIC ${evaluation.modelComparison.exemplar.aic}, BIC ${evaluation.modelComparison.exemplar.bic})`,
+  )
   if (evaluation.modelComparison.ruleFit) {
     console.log(
       `  Rule fit:         ${Math.round(evaluation.modelComparison.ruleFit.agreement * 100)}% agreement (Ashby & Gott 1988)`,
@@ -80,12 +84,15 @@ function printEvaluation(evaluation: CategorizationEvaluation): void {
   }
   console.log('─'.repeat(65))
   for (const strength of evaluation.strengths) console.log(`Strength:   ${strength}`)
-  for (const vulnerability of evaluation.vulnerabilities) console.log(`Watch out:  ${vulnerability}`)
+  for (const vulnerability of evaluation.vulnerabilities)
+    console.log(`Watch out:  ${vulnerability}`)
   for (const feedback of evaluation.pedagogicalFeedback) console.log(`Next step:  ${feedback}`)
 }
 
 function printSchedule(schedule: StudyPlan): void {
-  console.log(`\nStudy Schedule — ${schedule.horizonDays} days from ${schedule.days[0]?.day ?? '?'}`)
+  console.log(
+    `\nStudy Schedule — ${schedule.horizonDays} days from ${schedule.days[0]?.day ?? '?'}`,
+  )
   console.log('Landauer & Bjork (1978) expanding retrieval; Kang (2016) interleaving')
   console.log('═'.repeat(65))
   for (const day of schedule.days) {
@@ -95,9 +102,7 @@ function printSchedule(schedule: StudyPlan): void {
     }
     for (const block of day.blocks) {
       const refresh =
-        block.kind === 'refresh'
-          ? ` #${block.retrievalOrdinal} (+${block.intervalDays}d)`
-          : ''
+        block.kind === 'refresh' ? ` #${block.retrievalOrdinal} (+${block.intervalDays}d)` : ''
       console.log(
         `${day.day}  ${block.kind}${refresh}: ${block.setTitle} — ${block.trials.length} trials`,
       )
@@ -205,9 +210,7 @@ export function prototypeExemplarCommand(args: string[]): void {
     return
   }
 
-  console.log(
-    'Usage: learning-hub prototype-exemplar [scenarios|evaluate|plan|deck]',
-  )
+  console.log('Usage: learning-hub prototype-exemplar [scenarios|evaluate|plan|deck]')
   console.log('  scenarios                       list the canonical category sets')
   console.log('  evaluate [--data|--file|--stdin] [--json]')
   console.log('                                  evaluate a completed session submission')

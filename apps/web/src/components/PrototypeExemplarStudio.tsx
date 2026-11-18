@@ -662,7 +662,9 @@ export function PrototypeExemplarStudio() {
                             className="flex flex-wrap items-center gap-1.5 text-secondary"
                           >
                             <Badge tone={block.kind === 'frontier' ? 'accent' : 'cyan'}>
-                              {block.kind === 'frontier' ? 'frontier' : `refresh #${block.retrievalOrdinal}`}
+                              {block.kind === 'frontier'
+                                ? 'frontier'
+                                : `refresh #${block.retrievalOrdinal}`}
                             </Badge>
                             <span className="min-w-0 flex-1 truncate">{block.setTitle}</span>
                             <span className="text-tertiary">{block.trials.length} trials</span>
@@ -760,7 +762,12 @@ export function PrototypeExemplarStudio() {
 /** One save state chip for the History header (honest: saved / not saved). */
 function SaveStateBadge({ state }: { state: 'idle' | 'pending' | 'success' | 'error' }) {
   if (state === 'pending') return <Badge tone="warning">saving…</Badge>
-  if (state === 'success') return <Badge tone="success" dot>saved</Badge>
+  if (state === 'success')
+    return (
+      <Badge tone="success" dot>
+        saved
+      </Badge>
+    )
   if (state === 'error') return <Badge tone="danger">not saved</Badge>
   return null
 }
@@ -771,7 +778,11 @@ function SaveStateBadge({ state }: { state: 'idle' | 'pending' | 'success' | 'er
  * band); there is no resume: "start new" (the header's Evaluate button) is the
  * only primary action, so the record stays an honest log of what happened.
  */
-function PrototypeExemplarHistory({ saveState }: { saveState: 'idle' | 'pending' | 'success' | 'error' }) {
+function PrototypeExemplarHistory({
+  saveState,
+}: {
+  saveState: 'idle' | 'pending' | 'success' | 'error'
+}) {
   const historyQuery = useQuery({
     queryKey: ['prototype-exemplar', 'history'],
     queryFn: async (): Promise<ListSessionsResponse> => {
@@ -846,7 +857,8 @@ function PrototypeExemplarHistory({ saveState }: { saveState: 'idle' | 'pending'
                 </Badge>
                 <Badge tone="cyan">TSC {session.metrics.tsc}</Badge>
                 <Badge tone="neutral">
-                  {MATURITY_BAND_LABELS[session.metrics.maturityBand] ?? session.metrics.maturityBand}
+                  {MATURITY_BAND_LABELS[session.metrics.maturityBand] ??
+                    session.metrics.maturityBand}
                 </Badge>
               </div>
             </li>

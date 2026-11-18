@@ -114,9 +114,7 @@ export function listSessions(
     .orderBy(desc(prototypeExemplarSessions.createdAt), desc(prototypeExemplarSessions.id))
     .limit(limit)
     .all()
-  return rows
-    .map(parseStoredRow)
-    .filter((s): s is StoredPrototypeExemplarSession => s !== null)
+  return rows.map(parseStoredRow).filter((s): s is StoredPrototypeExemplarSession => s !== null)
 }
 
 /** Newest stored session, or null when the learner has never completed one. */
@@ -190,9 +188,7 @@ export function countSessions(database?: LearningHubDB): number {
  * persistence-agnostic; this is the one shared translation for web, MCP, CLI
  * and the headless server). Invalid rows are skipped — the plan never lies.
  */
-export function toStudyPlanSessions(
-  sessions: StoredPrototypeExemplarSession[],
-): Array<{
+export function toStudyPlanSessions(sessions: StoredPrototypeExemplarSession[]): Array<{
   setId: string
   completedAt: string
   accuracy: number
