@@ -475,7 +475,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
           <Shapes className="h-3.5 w-3.5" /> Categorization
         </div>
-        <Link href="/prototype-exemplar" className="text-[10px] text-indigo-400 hover:underline">
+        <Link href="/prototype-exemplar" className="text-[10px] text-ac-text hover:underline">
           studio →
         </Link>
       </div>
