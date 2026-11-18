@@ -180,6 +180,7 @@ import * as reciprocalTeaching from '../server/handlers/reciprocal-teaching/rout
 import * as argumentation from '../server/handlers/argumentation/route'
 import * as anchored from '../server/handlers/anchored/route'
 import * as contrasting from '../server/handlers/contrasting/route'
+import * as collaborative from '../server/handlers/collaborative/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -380,6 +381,7 @@ add('reciprocal-teaching', reciprocalTeaching)
 add('argumentation', argumentation)
 add('anchored', anchored)
 add('contrasting', contrasting)
+add('collaborative', collaborative)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

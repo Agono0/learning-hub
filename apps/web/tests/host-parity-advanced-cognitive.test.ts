@@ -34,6 +34,7 @@ import {
   cerCommand,
   anchoredCommand,
   contrastingCommand,
+  collaborativeCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -644,6 +645,102 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.cardsCount).toBe(4)
       expect(data.cards[0]!.fsrsParameters.stability).toBeGreaterThanOrEqual(6.0)
     })
+
+    it('collaborative_list_scenarios lists canonical CSCL scenarios via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'collaborative_list_scenarios')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        scenarios: Array<{ id: string; title: string }>
+      }
+      expect(data.count).toBe(5)
+      expect(data.scenarios[0]!.title).toContain('Synaptic Tagging')
+    })
+
+    it('collaborative_generate_partner_turn produces automated Socratic response via MCP', async () => {
+      const tool = advancedLearningTools.find(
+        (t) => t.name === 'collaborative_generate_partner_turn',
+      )!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'collab-neuro-synaptic-plasticity',
+        learnerTurnText: 'Because you argued late-LTP is sufficient, consider saturation.',
+        turnIndex: 0,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        scenarioId: string
+        peerTurn: { speaker: string; text: string }
+      }
+      expect(data.scenarioId).toBe('collab-neuro-synaptic-plasticity')
+      expect(data.peerTurn.speaker).toBe('peer_partner')
+      expect(data.peerTurn.text).toBeDefined()
+    })
+
+    it('collaborative_evaluate_discourse calculates TDI, EED, SCR, and CEI via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'collaborative_evaluate_discourse')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'collab-neuro-synaptic-plasticity',
+        learnerInitialPosition:
+          'Late-LTP provides the primary protein synthesis substrate for synaptic efficacy, but requires spatial regulation to prevent saturation.',
+        dialogueTurns: [
+          {
+            id: 'turn-1',
+            speaker: 'learner',
+            role: 'proposer',
+            text: 'Because you stated that local protein synthesis at dendritic spines is the sole determinant of retention, how does your proposal account for the BCM paradox where untagged neighboring synapses drift into runaway excitability?',
+            speechAct: 'transactive_critique',
+            epistemicKeywords: ['bcm_paradox'],
+          },
+          {
+            id: 'turn-2',
+            speaker: 'learner',
+            role: 'synthesizer',
+            text: 'Building upon your argument, if we integrate Frey-Morris synaptic tagging with homeostatic synaptic scaling, weak stimulation sets a local tag whereas strong stimulation triggers cell-wide PRPs, therefore reconciling local specificity with global dynamic range.',
+            speechAct: 'transactive_synthesis',
+            epistemicKeywords: ['tag_and_capture'],
+          },
+        ],
+        jointSynthesis:
+          'We conclude that memory persistence depends on Frey-Morris Synaptic Tagging & Capture Coordination combined with a BCM sliding threshold: local tags capture global PRPs while homeostatic LTD depotentiates untagged inputs to maintain contrast.',
+        individualTransferAnswer:
+          'When applying this to artificial neural networks, local gradient updates serve as synaptic tags while global weight decay acts as homeostatic LTD, preventing catastrophic gradient explosion.',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        cei: number
+        tdi: number
+        eed: number
+        scr: number
+        maturityBand: string
+      }
+      expect(data.cei).toBeGreaterThanOrEqual(80)
+      expect(data.tdi).toBeGreaterThanOrEqual(80)
+      expect(data.eed).toBeGreaterThanOrEqual(70)
+      expect(data.maturityBand).toBe('dialectical_synthesizer')
+    })
+
+    it('collaborative_generate_deck produces calibrated FSRS-6 deck via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'collaborative_generate_deck')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'collab-neuro-synaptic-plasticity',
+        ceiBaseline: 90,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        scenarioId: string
+        scenarioTitle: string
+        ceiBaseline: number
+        cardsCount: number
+        cards: Array<{
+          cardType: string
+          fsrsParameters: { stability: number; difficulty: number }
+        }>
+      }
+      expect(data.scenarioId).toBe('collab-neuro-synaptic-plasticity')
+      expect(data.cardsCount).toBe(4)
+      expect(data.cards[0]!.fsrsParameters.stability).toBeGreaterThanOrEqual(7.0)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -852,6 +949,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('collaborativeCommand executes scenarios, partner, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        collaborativeCommand(['scenarios'])
+        expect(consoleSpy).toHaveBeenCalled()
+        collaborativeCommand(['partner', '--id', 'collab-neuro-synaptic-plasticity'])
+        expect(consoleSpy).toHaveBeenCalled()
+        collaborativeCommand(['deck', '--id', 'collab-neuro-synaptic-plasticity'])
+        expect(consoleSpy).toHaveBeenCalled()
+        collaborativeCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -897,6 +1010,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('GET /cognitive/contrasting/sets')
       expect(registeredPaths).toContain('POST /cognitive/contrasting/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/contrasting/deck')
+      expect(registeredPaths).toContain('GET /cognitive/collaborative/scenarios')
+      expect(registeredPaths).toContain('POST /cognitive/collaborative/partner')
+      expect(registeredPaths).toContain('POST /cognitive/collaborative/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/collaborative/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1382,6 +1499,77 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       const mock = createMockHttp('POST', '/cognitive/contrasting/deck', {
         setId: 'set-density-buoyancy',
         cdtsBaseline: 88,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBe(4)
+      expect(result.data.cards[0].fsrsParameters).toBeDefined()
+    })
+
+    it('GET /cognitive/collaborative/scenarios returns canonical CSCL scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/collaborative/scenarios')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.scenarios.length).toBe(5)
+      expect(result.data.scenarios[0].title).toContain('Synaptic Tagging')
+    })
+
+    it('POST /cognitive/collaborative/partner generates automated peer response via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/collaborative/partner', {
+        scenarioId: 'collab-neuro-synaptic-plasticity',
+        learnerTurnText: 'Because you argued late-LTP is sufficient, consider saturation.',
+        turnIndex: 0,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.peerTurn.speaker).toBe('peer_partner')
+      expect(result.data.peerTurn.text).toBeDefined()
+    })
+
+    it('POST /cognitive/collaborative/evaluate computes transactive telemetry via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/collaborative/evaluate', {
+        scenarioId: 'collab-neuro-synaptic-plasticity',
+        learnerInitialPosition:
+          'Late-LTP provides the primary protein synthesis substrate for synaptic efficacy, but requires spatial regulation to prevent saturation.',
+        dialogueTurns: [
+          {
+            id: 'turn-1',
+            speaker: 'learner',
+            role: 'proposer',
+            text: 'Because you stated that local protein synthesis at dendritic spines is the sole determinant of retention, how does your proposal account for the BCM paradox where untagged neighboring synapses drift into runaway excitability?',
+            speechAct: 'transactive_critique',
+            epistemicKeywords: ['bcm_paradox'],
+          },
+          {
+            id: 'turn-2',
+            speaker: 'learner',
+            role: 'synthesizer',
+            text: 'Building upon your argument, if we integrate Frey-Morris synaptic tagging with homeostatic synaptic scaling, weak stimulation sets a local tag whereas strong stimulation triggers cell-wide PRPs, therefore reconciling local specificity with global dynamic range.',
+            speechAct: 'transactive_synthesis',
+            epistemicKeywords: ['tag_and_capture'],
+          },
+        ],
+        jointSynthesis:
+          'We conclude that memory persistence depends on Frey-Morris Synaptic Tagging & Capture Coordination combined with a BCM sliding threshold: local tags capture global PRPs while homeostatic LTD depotentiates untagged inputs to maintain contrast.',
+        individualTransferAnswer:
+          'When applying this to artificial neural networks, local gradient updates serve as synaptic tags while global weight decay acts as homeostatic LTD, preventing catastrophic gradient explosion.',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.cei).toBeGreaterThanOrEqual(80)
+      expect(result.data.evaluation.tdi).toBeGreaterThanOrEqual(80)
+      expect(result.data.evaluation.eed).toBeGreaterThanOrEqual(70)
+      expect(result.data.evaluation.maturityBand).toBe('dialectical_synthesizer')
+    })
+
+    it('POST /cognitive/collaborative/deck generates calibrated FSRS-6 review deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/collaborative/deck', {
+        scenarioId: 'collab-neuro-synaptic-plasticity',
+        ceiBaseline: 90,
       })
       const result = await mock.execute()
       expect(result.statusCode).toBe(200)

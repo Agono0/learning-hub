@@ -24,6 +24,7 @@ import {
   GitCompare,
   GitFork,
   GitGraph,
+  GitMerge,
   Globe,
   GraduationCap,
   Headphones,
@@ -127,6 +128,7 @@ export const NAV: NavGroup[] = [
       { href: '/argumentation', label: 'Argumentation', icon: Scale },
       { href: '/anchored', label: 'Anchored Instruction', icon: Anchor },
       { href: '/contrasting', label: 'Contrasting Cases', icon: GitFork },
+      { href: '/collaborative', label: 'Collaborative Scripts', icon: GitMerge },
     ],
   },
   {
