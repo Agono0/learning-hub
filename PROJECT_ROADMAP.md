@@ -415,7 +415,7 @@
   3. Implement `InformationGapStudio.tsx` with curiosity priming mysteries, progressive clue reveal crucibles, incongruity paradox resolvers, and FSRS curiosity-boosted deck generator.
   4. Build `apps/web/app/curiosity/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/curiosity/*`, `apps/web/src/ui/InformationGapHUD.tsx`, `apps/web/src/components/InformationGapStudio.tsx`, `apps/web/app/curiosity/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed**.
+- **Status:** **Completed (Merged in PR #47)**.
 
 ---
 
@@ -429,4 +429,18 @@
   3. Implement `SelfRegulatedLearningStudio.tsx` with tripartite phase wizard (Forethought goal planner, Performance volition monitor, Self-Reflection attribution crucible) and FSRS-6 regulatory calibration flashcards.
   4. Build `apps/web/app/srl/page.tsx` and register route in navigation.
 - **Files Affected:** `packages/core/src/srl/*`, `apps/web/src/ui/SelfRegulatedLearningHUD.tsx`, `apps/web/src/components/SelfRegulatedLearningStudio.tsx`, `apps/web/app/srl/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-24: Dual-Process Diagnostic & Cognitive Forcing Studio (Kahneman 2011; Croskerry 2002; Stanovich & West 2000)
+
+- **Problem:** Learners default to intuitive, rapid System 1 heuristics during complex diagnostic problem-solving, falling prey to cognitive biases (premature closure, anchoring, search satisficing, confirmation bias) without deliberate System 2 analytic override.
+- **Root Cause:** Absence of structured Cognitive Forcing Functions (CFFs) that enforce deliberate metacognitive pauses, bias vulnerability audits, and differential diagnostic branch verification.
+- **Proposed Solution:**
+  1. Build `packages/core/src/dualprocess/cognitive-forcing-engine.ts` modeling Kahneman-Tversky System 1 vs System 2 dynamics, Pat Croskerry's clinical cognitive forcing functions, Stanovich's tripartite mind architecture (autonomous mind, algorithmic mind, reflective mind), and differential diagnostic tree branching.
+  2. Implement `DualProcessHUD.tsx` tracking heuristic override latency, cognitive bias resistance index, and System 2 analytical effort scores.
+  3. Implement `DualProcessStudio.tsx` with high-stakes diagnostic decision matrices, cognitive forcing checkpoints, bias vulnerability audits, and FSRS-6 debiasing heuristic flashcards.
+  4. Build `apps/web/app/dual-process/page.tsx` and register route in navigation.
+- **Files Affected:** `packages/core/src/dualprocess/*`, `apps/web/src/ui/DualProcessHUD.tsx`, `apps/web/src/components/DualProcessStudio.tsx`, `apps/web/app/dual-process/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.
