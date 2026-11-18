@@ -41,7 +41,7 @@ export function IconButton({
       aria-busy={loading || undefined}
       disabled={disabled || loading}
       className={cx(
-        'inline-grid place-items-center rounded-lg transition-colors disabled:opacity-50',
+        'inline-grid place-items-center rounded-lg transition-colors active:scale-[0.98] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none',
         variant === 'ghost'
           ? 'text-tertiary hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200'
           : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:bg-(--hub-border)',

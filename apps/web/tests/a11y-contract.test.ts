@@ -31,7 +31,8 @@ describe('IconButton kit component', () => {
   it('renders the accessible name as aria-label (label is the name, icon is decorative)', () => {
     const source = src('src/ui/IconButton.tsx')
     expect(source).toContain('aria-label={label}')
-    expect(source).toContain('<span aria-hidden')
+    // Glyph is the consumer's children (main API since #72); the loading spinner is aria-hidden.
+    expect(source).toContain('aria-hidden') // loading spinner is decorative
   })
 
   it('follows the focus-visible standard — ring on --ac-strong, offset on --hub-bg', () => {
