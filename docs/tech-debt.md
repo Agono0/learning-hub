@@ -34,12 +34,17 @@ aggregate deck SQL exists once and every host projects the same rows.
 **Related, FIXED:** hypercorrection + metacognition JOL derivation was the
 same disease — unified in commit `495b385` via `repos/cognitive-trials.ts`.
 
-### TD-02 · OPEN — /cognitive/* payload schemas re-declared per host
+### TD-02 · PARTIAL (#81) — /cognitive/* payload schemas re-declared per host
 
 ~30 cognitive endpoints' zod input schemas exist three times: server
 `routes.ts:124-400`, MCP tool arg shapes (`tools/*.ts`), CLI flag parsing
-(`commands/advanced-learning.ts`). One divergence already exists: the ZPD
-`pre`/`post` defaults differ between the CLI flags and the server schema.
+(`commands/advanced-learning.ts`). First increment shipped (PR #81): core owns the ZPD payload schemas (the
+demonstrated default drift is fixed across server/MCP/CLI) and five
+evaluate-route payloads reuse core submission schemas — including a fix
+where the CER route had silently dropped core's `min()` constraints.
+Remaining: ~20 route groups still without core input schemas, and the
+inquiry/trial shape mismatch (route adds labId/previousSettings — an API
+decision, not a refactor).
 **Fix path:** each core engine exports its input schema (the pattern
 `generationTrialInputSchema` already uses); hosts import instead of re-declare.
 Add a structural test: every `/cognitive/*` route schema is imported from core.
@@ -82,31 +87,35 @@ calibration math ×5, `hashString` ×2. **Fix path:** opportunistically switch a
 file to the shared helper when touching it; add the canonical names to
 `math.ts` (`clamp`, `hashString`) so new code stops re-deriving.
 
-### TD-07 · OPEN — core barrel exports 102 modules via `export *`
+### TD-07 · FIXED (#78) — `practice` exported; barrel risk realized and contained
 
 Name-collision risk grows with every domain; nothing is tree-shakeable.
-`practice` is missing from the barrel while `types.ts` depends on it and six
-domains import it (surface inconsistency; tests deep-import it).
-**Fix path:** add `practice` to `src/index.ts` deliberately; keep `export *`
-(no demonstrated tree-shaking need), add a duplicate-export guard test if a
-collision ever lands.
+`practice` is now exported from the barrel (PR #78) — and the predicted
+collision immediately materialized: `normalizeAnswer` exists in both
+`cards.ts` and `practice/text.ts`, so the root barrel needed an explicit
+resolution (kept the pre-existing `./cards` binding; the
+`@learning-hub/core/practice` subpath keeps its own). `export *` stays
+(no demonstrated tree-shaking need).
 
-### TD-08 · OPEN — 7 web handlers bypass `withRoute`
+### TD-08 · PARTIAL (#78) — 5 of 7 wrapped
 
 `analytics`, `achievements`, `journal/weekly`, `curriculum/skills`,
 `images/[id]` (intentional: binary response), `review/stats`, `graph` — these
 return bare JSON without the ApiError envelope, so their failure shape
-differs from every other route. **Fix path:** wrap the six JSON ones;
-document the images exception in `lib/api.ts`.
+differs from every other route. **Shipped (PR #78):** analytics, achievements, journal/weekly,
+curriculum/skills and graph now return the ApiError envelope.
+Remaining: review/stats (rewritten by PR #73 while unwrapped — wrap on
+next touch) and images/[id] (intentional binary response — document the
+exception in `lib/api.ts`).
 
-### TD-09 · OPEN — ad-hoc TanStack Query keys
+### TD-09 · FIXED (#76) — typed query-key factory + 60 sites migrated
 
 No key factory; `'decks'` appears as a literal in 22 files, invalidations
 scattered. One factory exists (`lib/curriculum-api.ts` `curriculumKeys`) —
 the model to replicate. **Fix path:** add `src/lib/query-keys.ts`, migrate
 mechanically when feature agents are idle (wide but shallow).
 
-### TD-10 · OPEN — zustand is a dead dependency
+### TD-10 · FIXED (#78) — zustand removed
 
 Declared in `apps/web/package.json`, zero `create(` usage, no stores dir.
 **Fix path:** remove it (or adopt it consciously); either way the stack
@@ -120,7 +129,7 @@ TD-01 first (shared repos), then move route groups into `routes/<area>.ts`
 modules with the same `Route[]` table pattern; add the missing domains only
 after the parity test (TD-04) exists.
 
-### TD-12 · OPEN — type-only cycles behind the acyclicity guard
+### TD-12 · FIXED (#78) — leaf-module types broke both cycles
 
 `spatial/palace-engine.ts:14` and `knowledge-graph/traversal.ts:13` import
 types from their own barrels (`./index` re-exports them back). Erased at
