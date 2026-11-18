@@ -83,6 +83,7 @@ import {
   speakText,
   stopSpeaking,
 } from '@/lib/audio-engine'
+import { queryKeys } from '@/lib/query-keys'
 
 interface CardRow {
   id: number
@@ -214,7 +215,7 @@ function ReviewPageInner() {
   const [digestStatus, setDigestStatus] = useState<string | null>(null)
 
   const { data: decksData } = useQuery<{ decks: DeckInfo[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const session = useQuery<SessionPayload, Error, SessionPayload>({
@@ -487,7 +488,7 @@ function ReviewPageInner() {
       // The re-queued copy extends the queue, so a re-queue on the LAST card
       // must also extend the end check — otherwise the retry is dropped.
       resetCardState()
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       if (idx + 1 >= queue.length + (requeue ? 1 : 0)) setFinishedAt(Date.now())
       else setIdx((i) => i + 1)
     },
@@ -529,7 +530,7 @@ function ReviewPageInner() {
       setIdx(last.gradedIdx)
       resetCardState()
       setFinishedAt(null)
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
 
@@ -625,7 +626,7 @@ function ReviewPageInner() {
     }
     setExerciseResult(null)
     resetCardState()
-    void qc.invalidateQueries({ queryKey: ['decks'] })
+    void qc.invalidateQueries({ queryKey: queryKeys.decks })
     if (idx + 1 >= queue.length + (requeue ? 1 : 0)) setFinishedAt(Date.now())
     else setIdx((i) => i + 1)
   }, [

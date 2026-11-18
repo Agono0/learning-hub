@@ -18,6 +18,7 @@ import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import type { ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -262,7 +263,7 @@ export default function TutorPage() {
     },
     onSuccess: () => {
       setSummary(null)
-      void queryClient.invalidateQueries({ queryKey: ['decks'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.decks })
     },
     onError: (e) => setError(e instanceof Error ? e.message : String(e)),
   })

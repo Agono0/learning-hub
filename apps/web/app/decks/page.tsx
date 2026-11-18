@@ -45,6 +45,7 @@ import {
   Toggle,
   type LeitnerBoxData,
 } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface DeckInfo {
   id: number
@@ -158,7 +159,7 @@ export default function DecksPage() {
   })
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const cards = useQuery<{ cards: CardRow[] }>({
@@ -205,7 +206,7 @@ export default function DecksPage() {
     mutationFn: () => apiSend('/api/decks', 'POST', { name: newDeckName }),
     onSuccess: () => {
       setNewDeckName('')
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
   const patchDeck = useMutation({
@@ -219,7 +220,7 @@ export default function DecksPage() {
         delayedFeedback: payload.delayedFeedback,
       }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
   const optimizeDeck = useMutation({
@@ -239,7 +240,7 @@ export default function DecksPage() {
       } else {
         setDeckFsrsNote('Deck FSRS-6 weights updated.')
       }
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
   const [deckFsrsNote, setDeckFsrsNote] = useState<string | null>(null)
@@ -251,7 +252,7 @@ export default function DecksPage() {
     mutationFn: (id: number) => apiSend(`/api/decks/${id}`, 'DELETE'),
     onSuccess: () => {
       setActiveDeck(null)
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
   const deleteCard = useMutation({
@@ -262,7 +263,7 @@ export default function DecksPage() {
   const deckName = (id: number) => decks.data?.decks.find((d) => d.id === id)?.name ?? `deck ${id}`
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['cards'] })
-    void qc.invalidateQueries({ queryKey: ['decks'] })
+    void qc.invalidateQueries({ queryKey: queryKeys.decks })
   }
 
   if (decks.isError) {

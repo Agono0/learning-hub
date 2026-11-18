@@ -21,6 +21,7 @@ import {
 import { curriculumApi, curriculumKeys, type CatalogCourse } from '@/lib/curriculum-api'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, EmptyState, PageHeader, Panel, ProgressBar, ProgressRing, Sheet } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface StarterCourseItem {
   slug: string
@@ -130,7 +131,7 @@ export default function CoursesPage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: curriculumKeys.courses() })
       void qc.invalidateQueries({ queryKey: ['starter-catalog'] })
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       void qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Button, Callout, EmptyState, Panel } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 export interface ForecastItem {
   day: string // YYYY-MM-DD
@@ -59,7 +60,7 @@ export function WorkloadStudio() {
 
   // Fetch available decks
   const decksQ = useQuery<{ decks: DeckOption[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckOption[] }>('/api/decks'),
   })
 

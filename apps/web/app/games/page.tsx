@@ -54,6 +54,7 @@ import {
   Tabs,
   TextField,
 } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 type GameTab = 'matching' | 'generation' | 'boss' | 'duels' | 'social'
 
@@ -174,7 +175,7 @@ function MatchingGameSection() {
   const [deckId, setDeckId] = useState<number | null>(null)
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
   const game = useQuery<GameData>({
@@ -209,7 +210,7 @@ function MatchingGameSection() {
           key={game.data.pairs.map((p) => p.cardId).join('-')}
           deckId={deckId}
           game={game.data}
-          onPlayed={() => void qc.invalidateQueries({ queryKey: ['decks'] })}
+          onPlayed={() => void qc.invalidateQueries({ queryKey: queryKeys.decks })}
         />
       )}
       {deckId !== null && game.data && game.data.pairs.length === 0 && (

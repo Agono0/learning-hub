@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { getDeviceIdentity } from '@/lib/device'
+import { queryKeys } from '@/lib/query-keys'
 
 type SyncProviderKind = 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
 
@@ -181,7 +182,7 @@ export default function BackupPage() {
   }, [syncQuery.data])
 
   const decks = useQuery<{ decks: DeckInfo[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
 
@@ -278,7 +279,7 @@ export default function BackupPage() {
           kind: 'ok',
           text: `imported "${vars.deckName || data.deckName}": ${data.imported} cards${data.rejectedCards ? `, ${data.rejectedCards} rejected` : ''}${data.skippedModels?.length ? `, skipped models: ${data.skippedModels.join(', ')}` : ''}`,
         })
-        void qc.invalidateQueries({ queryKey: ['decks'] })
+        void qc.invalidateQueries({ queryKey: queryKeys.decks })
       } else {
         log({ kind: 'error', text: data.error ?? 'import failed' })
       }

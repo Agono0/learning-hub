@@ -12,6 +12,7 @@ import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, CheckCircle2, Flame, Sliders, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { queryKeys } from '@/lib/query-keys'
 
 interface ForecastItem {
   day: string
@@ -65,7 +66,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
       setFeedback(`Smoothed ${res.shiftedCount ?? 0} reviews without compromising retention.`)
       void queryClient.invalidateQueries({ queryKey: ['workload'] })
       void queryClient.invalidateQueries({ queryKey: ['review'] })
-      void queryClient.invalidateQueries({ queryKey: ['decks'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
 
@@ -82,7 +83,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
       setFeedback(`Spread ${res.shiftedCount ?? 0} backlog cards lowest-stability first.`)
       void queryClient.invalidateQueries({ queryKey: ['workload'] })
       void queryClient.invalidateQueries({ queryKey: ['review'] })
-      void queryClient.invalidateQueries({ queryKey: ['decks'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
 
