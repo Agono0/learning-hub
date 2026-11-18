@@ -10,6 +10,9 @@ import {
   buildPretestQuestion,
   CALIBRATED_ANALOGICAL_SUITES,
   CALIBRATED_FLEXIBILITY_SUITES,
+  CALIBRATED_INTERACTIVITY_SUITES,
+  analyzeElementInteractivity,
+  calculateInstructionalEfficiency,
   CALIBRATED_INVARIANCE_CATEGORIES,
   CALIBRATED_INVARIANCE_PROBLEMS,
   computeCategoryContrastMatrix,
@@ -569,4 +572,54 @@ export function flexibilityCommand(args: string[]): void {
   }
   console.log('\nSpiro et al. (1988): revisit the same case under different lenses —')
   console.log('ill-structured domains resist single-schema mastery.')
+}
+
+/**
+ * `interactivity` — Sweller (1988) element-interactivity analysis + Paas
+ * instructional-efficiency scoring over a calibrated systemic-cascade suite.
+ *
+ * Flags: --suite <key> [--extraneous 0..3] [--effort 1..9 --performance 0..100]
+ */
+export function interactivityCommand(args: string[]): void {
+  const sub = args[0] || 'analyze'
+  if (sub !== 'analyze') {
+    console.error(
+      `Unknown subcommand: ${sub}. Usage: learning-hub interactivity analyze [--suite <key>]`,
+    )
+    return
+  }
+  const suiteKey = parseFlag(args, '--suite') || 'raft_consensus_protocol'
+  const suite = CALIBRATED_INTERACTIVITY_SUITES[suiteKey]
+  if (!suite) {
+    console.error(
+      `Unknown suite "${suiteKey}". Available: ${Object.keys(CALIBRATED_INTERACTIVITY_SUITES).join(', ')}`,
+    )
+    return
+  }
+  const extraneous = Number(parseFlag(args, '--extraneous') || '1')
+  const analysis = analyzeElementInteractivity(suite, extraneous)
+
+  console.log(`
+🧮 Element Interactivity Analysis: ${suite.title}`)
+  console.log(
+    `Elements:              ${analysis.totalElements} · interactions ${analysis.totalInteractions}`,
+  )
+  console.log(
+    `Coupling density:      ${analysis.couplingDensity} · max transitive depth ${analysis.maxTransitiveDepth}`,
+  )
+  console.log(`Interactivity index:   ${analysis.interactivityIndex}/100`)
+  console.log(
+    `Novice load:           intrinsic ${analysis.estimatedNoviceLoad.intrinsicLoad}, extraneous ${analysis.estimatedNoviceLoad.extraneousLoad}, germane ${analysis.estimatedNoviceLoad.germaneLoad}`,
+  )
+  console.log(
+    `Expert chunked load:   intrinsic ${analysis.estimatedExpertChunkedLoad.intrinsicLoad}, extraneous ${analysis.estimatedExpertChunkedLoad.extraneousLoad}, germane ${analysis.estimatedExpertChunkedLoad.germaneLoad}`,
+  )
+
+  const effort = parseFlag(args, '--effort')
+  const perf = parseFlag(args, '--performance')
+  if (effort && perf) {
+    const paas = calculateInstructionalEfficiency(Number(effort), Number(perf))
+    console.log(`
+Paas efficiency:       ${paas.efficiency.toFixed(2)} (${paas.classification.replace(/_/g, ' ')})`)
+  }
 }

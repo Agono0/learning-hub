@@ -278,6 +278,38 @@ describe('Headless REST Server Cognitive Routes', () => {
     expect(typeof data.advisory).toBe('string')
   })
 
+  it('POST /cognitive/interactivity analyzes a suite + Paas efficiency', async () => {
+    const suitesRes = await fetch(`${baseUrl}/cognitive/interactivity`, {
+      method: 'POST',
+      body: '{}',
+    })
+    expect(suitesRes.status).toBe(200)
+    const suites = await suitesRes.json()
+    expect(suites.ok).toBe(true)
+    expect(suites.suites.length).toBeGreaterThanOrEqual(2)
+
+    const evalRes = await fetch(`${baseUrl}/cognitive/interactivity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suiteKey: 'raft_consensus_protocol',
+        extraneousLoadFactor: 1,
+        mentalEffort: 6,
+        performance: 75,
+      }),
+    })
+    expect(evalRes.status).toBe(200)
+    const data = await evalRes.json()
+    expect(data.ok).toBe(true)
+    expect(data.analysis.suiteId).toBe('raft_consensus_protocol')
+    expect(typeof data.analysis.couplingDensity).toBe('number')
+    expect(typeof data.analysis.interactivityIndex).toBe('number')
+    expect(data.analysis.estimatedNoviceLoad).toBeDefined()
+    expect(data.analysis.estimatedExpertChunkedLoad).toBeDefined()
+    expect(data.paas).not.toBeNull()
+    expect(typeof data.paasClassification).toBe('string')
+  })
+
   it('GET /cognitive/metacognition/hypercorrection returns the crucible report + queue', async () => {
     const res = await fetch(`${baseUrl}/cognitive/metacognition/hypercorrection?limit=200`)
     expect(res.status).toBe(200)

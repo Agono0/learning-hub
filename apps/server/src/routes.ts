@@ -50,6 +50,9 @@ import {
   evaluateStructureMappingAttempt,
   evaluateCognitiveFlexibility,
   exportFlexibilityToFSRSCards,
+  CALIBRATED_INTERACTIVITY_SUITES,
+  analyzeElementInteractivity,
+  calculateInstructionalEfficiency,
   judgmentOfLearningSchema,
   pretestRelatedness,
   selectPretestCandidates,
@@ -499,6 +502,42 @@ async function postDifficultyAudit(req: IncomingMessage, res: ServerResponse): P
   sendJson(res, 200, { ok: true, report, measured })
 }
 
+/** POST /cognitive/interactivity — Sweller element-interactivity + Paas efficiency. */
+async function postInteractivity(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(
+    req,
+    z.object({
+      suiteKey: z.string().optional(),
+      extraneousLoadFactor: z.coerce.number().min(0).max(3).default(1),
+      mentalEffort: z.coerce.number().min(1).max(9).optional(),
+      performance: z.coerce.number().min(0).max(100).optional(),
+    }),
+  )
+
+  if (!body.suiteKey) {
+    const suites = Object.entries(CALIBRATED_INTERACTIVITY_SUITES).map(([key, suite]) => ({
+      suiteId: key,
+      title: suite.title,
+      elements: suite.elements.length,
+      interactions: suite.edges.length,
+    }))
+    sendJson(res, 200, { ok: true, suites })
+    return
+  }
+
+  const suite = CALIBRATED_INTERACTIVITY_SUITES[body.suiteKey]
+  if (!suite) {
+    jsonError(res, 404, `Unknown suite "${body.suiteKey}"`)
+    return
+  }
+  const analysis = analyzeElementInteractivity(suite, body.extraneousLoadFactor)
+  const paas =
+    body.mentalEffort !== undefined && body.performance !== undefined
+      ? calculateInstructionalEfficiency(body.mentalEffort, body.performance)
+      : null
+  sendJson(res, 200, { ok: true, analysis, paas, paasClassification: paas?.classification ?? null })
+}
+
 /** POST /cognitive/analogy — Gentner structure-mapping evaluation over the calibrated suites. */
 async function postAnalogy(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJson(
@@ -934,6 +973,13 @@ export const routes: Route[] = [
     path: '/cognitive/flexibility',
     summary: 'Spiro criss-crossing evaluation over the calibrated flexibility suites',
     handler: postFlexibility,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/interactivity',
+    summary:
+      'Sweller element-interactivity analysis + Paas efficiency (?suiteKey=&extraneousLoadFactor=&mentalEffort=&performance=)',
+    handler: postInteractivity,
   },
 ]
 
