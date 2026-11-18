@@ -115,6 +115,42 @@ export function getStreakRow(options: StatsQueryOptions = {}): typeof streaks.$i
   return db.select().from(streaks).limit(1).all()[0] ?? null
 }
 
+/** One day of the review series (from the `v_daily_reviews` view). */
+export interface DailyReviewsPoint {
+  /** Day key (`YYYY-MM-DD`, UTC). */
+  day: string
+  reviews: number
+  correct: number
+  avgTimeMs: number | null
+}
+
+/**
+ * The last `days` days of the `v_daily_reviews` series, ascending (oldest
+ * first). The view already excludes undone reviews (`revlog_undos`), so an
+ * erased review never counts. One definition, every host: the CLI stats panel
+ * previously queried the view inline.
+ */
+export function dailyReviewsSeries(
+  options: StatsQueryOptions & { days?: number } = {},
+): DailyReviewsPoint[] {
+  const db = options.database ?? getDb()
+  const days = Math.max(1, options.days ?? 7)
+  const rows = db.all<{
+    day: string
+    reviews: number
+    correct: number
+    avg_time_ms: number | null
+  }>(
+    sql`SELECT day, reviews, correct, avg_time_ms FROM v_daily_reviews ORDER BY day DESC LIMIT ${days}`,
+  )
+  return rows.reverse().map((r) => ({
+    day: r.day,
+    reviews: Number(r.reviews),
+    correct: Number(r.correct),
+    avgTimeMs: r.avg_time_ms ?? null,
+  }))
+}
+
 /** XP totals: lifetime sum and today's sum (UTC day bucket). */
 export interface XpTotals {
   total: number

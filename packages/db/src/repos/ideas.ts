@@ -2,7 +2,7 @@
  * Ideas & Idea-Links repository — Zettelkasten incubator (Luhmann 1981), staged ideation
  * (seed -> growing -> validated -> project), and hybrid offspring evolutionary synthesis.
  */
-import { desc, eq, or } from 'drizzle-orm'
+import { desc, eq, like, or } from 'drizzle-orm'
 import {
   incubatorScore,
   promoteToProject,
@@ -92,6 +92,27 @@ export function getIdea(id: number, opts: { db?: LearningHubDB } = {}): IdeaRow 
   const db = opts.db ?? getDb()
   const [row] = db.select().from(ideas).where(eq(ideas.id, id)).limit(1).all()
   return row ?? null
+}
+
+/**
+ * LIKE keyword search across idea titles and content, most recently updated
+ * first. One definition, every host: the MCP `idea_search` tool previously
+ * carried its own inline copy of this exact query.
+ */
+export function ideaSearch(
+  query: string,
+  opts: { limit?: number; db?: LearningHubDB } = {},
+): IdeaRow[] {
+  const db = opts.db ?? getDb()
+  const pattern = `%${query}%`
+  const limit = opts.limit ?? 25
+  return db
+    .select()
+    .from(ideas)
+    .where(or(like(ideas.title, pattern), like(ideas.content, pattern)))
+    .orderBy(desc(ideas.updatedAt))
+    .limit(limit)
+    .all()
 }
 
 /**

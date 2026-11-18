@@ -4,20 +4,24 @@
  * Coordinates active session state, commitment-lock early exits with mandatory
  * 60s cooldown and reflection, allowlists, and companion extension bridge pairing.
  */
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm'
 import {
   COOLDOWN_SECONDS,
   DEFAULT_ALLOWED_DOMAINS,
   exitGate,
   normalizeDomain,
   normalizeExeName,
+  XP_REWARDS,
   type FocusAllowlistInput,
   type FocusLockStatus,
+  type FrictionTrigger,
   type MaxFocusStartInput,
-} from '@learning-hub/core/focus-lock'
+} from '@learning-hub/core'
+import { updateStreakInTx } from '../review-service'
 import { getDb, type LearningHubDB } from '../index'
 import { focusAllowlists, focusBridge, focusSessions, frictionEvents } from '../schema'
 import { withTransaction, type Transaction } from '../transaction'
+import { awardXp } from './xp'
 
 export type DbOrTx = LearningHubDB | Transaction
 
@@ -477,6 +481,205 @@ export function cancelMaxFocusEarlyExit(database?: LearningHubDB): { lock: Focus
 
     return { lock: getActiveFocusLock(tx) }
   }, conn)
+}
+
+// ─── Standard (pomodoro/deep/custom) session lifecycle ─────────────────────
+//
+// Shared by the CLI `focus` command, the web /api/focus routes, and MCP focus
+// tools — previously each host carried its own INSERT/UPDATE copies and the
+// completion semantics (when XP and streak activity fire) had drifted.
+
+/** Row shape of `focus_sessions` (re-exported for host typing convenience). */
+export type FocusSessionRow = typeof focusSessions.$inferSelect
+
+/** Input for {@link startFocusSession}. */
+export interface StartFocusSessionInput {
+  plannedMinutes: number
+  /** pomodoro (default) | deep | custom */
+  type?: 'pomodoro' | 'deep' | 'custom'
+  /** Optional task label; trimmed, empty → null (web POST parity). */
+  task?: string | null
+  now?: Date
+}
+
+/**
+ * Start a standard focus session (not Max-locked). The web POST /api/focus
+ * route and the CLI `focus` command previously each inserted their own row.
+ */
+export function startFocusSession(
+  input: StartFocusSessionInput,
+  opts: { db?: LearningHubDB } = {},
+): FocusSessionRow {
+  const conn = opts.db ?? getDb()
+  const [created] = conn
+    .insert(focusSessions)
+    .values({
+      startedAt: (input.now ?? new Date()).toISOString(),
+      plannedMinutes: input.plannedMinutes,
+      type: input.type ?? 'pomodoro',
+      task: input.task?.trim() || null,
+    })
+    .returning()
+    .all()
+  return created!
+}
+
+/**
+ * Start a pomodoro session — the CLI `focus <minutes>` shape of
+ * {@link startFocusSession}.
+ */
+export function createPomodoroSession(
+  plannedMinutes: number,
+  opts: { task?: string | null; now?: Date; db?: LearningHubDB } = {},
+): FocusSessionRow {
+  return startFocusSession(
+    { plannedMinutes, type: 'pomodoro', task: opts.task, now: opts.now },
+    { db: opts.db },
+  )
+}
+
+/** Actual minutes rounded to one decimal, from `startedAt` to `now`. */
+function elapsedMinutes(startedAt: string, now: Date): number {
+  return Math.round(((now.getTime() - new Date(startedAt).getTime()) / 60_000) * 10) / 10
+}
+
+export interface FinishFocusSessionResult {
+  session: FocusSessionRow
+  /** XP paid by THIS call (0 when the session was already ended). */
+  xpAwarded: number
+}
+
+/**
+ * Complete a focus session: stamp `endedAt`/`actualMinutes`, mark completed,
+ * and pay the canonical focus XP plus streak activity — but only on the
+ * open→completed transition (an already-ended session can never be completed
+ * retroactively; web PATCH /api/focus/[id] parity). One transaction so the
+ * session state and its rewards commit atomically.
+ */
+export function finishFocusSession(
+  sessionId: number,
+  opts: { actualMinutes?: number; now?: Date; db?: LearningHubDB } = {},
+): FinishFocusSessionResult {
+  const conn = opts.db ?? getDb()
+
+  return withTransaction((tx) => {
+    const existing = tx.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get()
+    if (!existing) throw new Error(`Focus session #${sessionId} not found`)
+    if (existing.endedAt) return { session: existing, xpAwarded: 0 }
+
+    const now = opts.now ?? new Date()
+    const actualMinutes = opts.actualMinutes ?? elapsedMinutes(existing.startedAt, now)
+    const [row] = tx
+      .update(focusSessions)
+      .set({ endedAt: now.toISOString(), actualMinutes, completed: true })
+      .where(eq(focusSessions.id, sessionId))
+      .returning()
+      .all()
+
+    // Rule 7: XP via the canonical awardXp path (repos/xp.ts); focus work
+    // counts toward the streak exactly like the web completion route.
+    awardXp(tx, {
+      source: 'focus',
+      meta: { sessionId, plannedMinutes: existing.plannedMinutes, task: existing.task },
+    })
+    updateStreakInTx(tx, now)
+
+    return { session: row!, xpAwarded: XP_REWARDS.focusSession }
+  }, conn)
+}
+
+/**
+ * Abandon a focus session (CLI Ctrl+C = leak): stamp `endedAt`/`actualMinutes`,
+ * keep `completed` false, and record the leak count (default 1). No XP is paid.
+ */
+export function abandonFocusSession(
+  sessionId: number,
+  opts: { actualMinutes?: number; leaks?: number; now?: Date; db?: LearningHubDB } = {},
+): FocusSessionRow {
+  const conn = opts.db ?? getDb()
+
+  return withTransaction((tx) => {
+    const existing = tx.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get()
+    if (!existing) throw new Error(`Focus session #${sessionId} not found`)
+    if (existing.endedAt) return existing
+
+    const now = opts.now ?? new Date()
+    const actualMinutes = opts.actualMinutes ?? elapsedMinutes(existing.startedAt, now)
+    const [row] = tx
+      .update(focusSessions)
+      .set({
+        endedAt: now.toISOString(),
+        actualMinutes,
+        completed: false,
+        leaks: opts.leaks ?? 1,
+      })
+      .where(eq(focusSessions.id, sessionId))
+      .returning()
+      .all()
+    return row!
+  }, conn)
+}
+
+/** Recent sessions, newest first (MCP focus summary / web GET /api/focus). */
+export function listRecentFocusSessions(
+  opts: { limit?: number; db?: LearningHubDB } = {},
+): FocusSessionRow[] {
+  const conn = opts.db ?? getDb()
+  const limit = opts.limit ?? 10
+  return conn.select().from(focusSessions).orderBy(desc(focusSessions.startedAt)).limit(limit).all()
+}
+
+/** Per-trigger friction (distraction-gate) counts: total events and how many proceeded. */
+export interface FrictionTriggerCount {
+  trigger: FrictionTrigger
+  count: number
+  proceeded: number
+}
+
+/**
+ * Friction events grouped by trigger with the proceeded tally — the MCP focus
+ * summary previously carried this aggregate inline.
+ */
+export function frictionByTrigger(
+  opts: { limit?: number; db?: LearningHubDB } = {},
+): FrictionTriggerCount[] {
+  const conn = opts.db ?? getDb()
+  const rows = conn
+    .select({
+      trigger: frictionEvents.trigger,
+      count: sql<number>`count(*)`,
+      proceeded: sql<number>`sum(CASE WHEN proceeded THEN 1 ELSE 0 END)`,
+    })
+    .from(frictionEvents)
+    .groupBy(frictionEvents.trigger)
+    .all()
+  const mapped = rows.map((f) => ({
+    trigger: f.trigger,
+    count: Number(f.count),
+    proceeded: Number(f.proceeded ?? 0),
+  }))
+  return opts.limit !== undefined ? mapped.slice(0, opts.limit) : mapped
+}
+
+/**
+ * Focus minutes logged over the last `days` days (window on `startedAt`),
+ * counting COMPLETED sessions only — the weekly report's semantics
+ * (`computeWeeklyReportMetrics` skips uncompleted sessions), which the CLI
+ * `stats` panel previously diverged from by summing abandoned leaks too.
+ */
+export function sumFocusMinutes(
+  opts: { days?: number; now?: Date; db?: LearningHubDB } = {},
+): number {
+  const conn = opts.db ?? getDb()
+  const now = opts.now ?? new Date()
+  const days = opts.days ?? 7
+  const since = new Date(now.getTime() - days * 86_400_000).toISOString()
+  const [row] = conn
+    .select({ minutes: sql<number>`coalesce(sum(max(actual_minutes, 0)), 0)` })
+    .from(focusSessions)
+    .where(and(eq(focusSessions.completed, true), gte(focusSessions.startedAt, since)))
+    .all()
+  return Number(row?.minutes ?? 0)
 }
 
 // ─── Allowlist CRUD ────────────────────────────────────────────────────────
