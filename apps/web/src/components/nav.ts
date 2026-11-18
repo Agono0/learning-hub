@@ -99,6 +99,7 @@ export const NAV: NavGroup[] = [
       { href: '/deliberate', label: 'Deliberate Practice', icon: Target },
       { href: '/skills', label: 'Agent Skills', icon: Bot },
       { href: '/successive-relearning', label: 'Successive Relearning', icon: Repeat },
+      { href: '/apprenticeship', label: 'Cognitive Apprenticeship', icon: GraduationCap },
     ],
   },
   {
