@@ -25,7 +25,9 @@ export function getRecentSearches(): string[] {
     const raw = window.localStorage.getItem(RECENT_KEY)
     const parsed: unknown = raw ? JSON.parse(raw) : []
     if (!Array.isArray(parsed)) return []
-    return parsed.filter((x): x is string => typeof x === 'string' && x.trim().length >= 2).slice(0, RECENT_LIMIT)
+    return parsed
+      .filter((x): x is string => typeof x === 'string' && x.trim().length >= 2)
+      .slice(0, RECENT_LIMIT)
   } catch {
     return []
   }

@@ -1,17 +1,23 @@
 'use client'
 
 /**
- * ⌘K / Ctrl+K command palette (M5): jump to any page and full-text search
- * across notes, cards, lessons, highlights and ideas (FTS5 via /api/search,
- * with an honest "no results" state). Mounted once in the AppShell.
+ * ⌘K / Ctrl+K command palette (M5): jump to any page, run quick actions, and
+ * full-text search across all 17 knowledge surfaces (FTS5 via /api/search,
+ * with an honest "no results" state and the engine mode surfaced per group).
+ * Recent searches are device-local (capped at 5, clearable) — loaded only
+ * after mount so SSR never reads localStorage. Mounted once in the AppShell.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import {
+  BellRing,
   Box,
+  Boxes,
   FileCheck,
   Headphones,
+  History,
+  LockKeyhole,
   Mic,
   Moon,
   Radar,
@@ -19,27 +25,24 @@ import {
   Search as SearchIcon,
   Sparkles,
   Timer,
+  X,
   Zap,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { NAV } from './nav'
 import { apiGet } from '@/lib/transport'
+import { clearRecentSearches, getRecentSearches, rememberSearch } from '@/lib/recent-searches'
+import { SEARCH_KIND_LABELS, type SearchHitKind } from '@/lib/search-kinds'
 
 interface SearchHit {
-  kind: 'note' | 'card' | 'lesson' | 'highlight' | 'idea'
+  kind: SearchHitKind
   id: number
   title: string
   snippet: string
   href: string
 }
 
-const KIND_LABEL: Record<SearchHit['kind'], string> = {
-  note: 'Notes',
-  card: 'Cards',
-  lesson: 'Lessons',
-  highlight: 'Highlights',
-  idea: 'Ideas',
-}
+const KIND_LABEL = SEARCH_KIND_LABELS
 
 const OPEN_PALETTE_EVENT = 'lh:open-command-palette'
 
@@ -55,6 +58,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [debounced, setDebounced] = useState('')
+  const [recents, setRecents] = useState<string[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const toggle = useCallback(() => setOpen((o) => !o), [])
@@ -84,6 +88,12 @@ export function CommandPalette() {
       if (debounceRef.current) clearTimeout(debounceRef.current)
     }
   }, [query])
+
+  // Recent searches are device-local (localStorage): never read during render —
+  // load after mount / each open so SSR and the first pass stay honest ([]).
+  useEffect(() => {
+    if (open) setRecents(getRecentSearches())
+  }, [open])
 
   const { data: contributions } = useQuery<{
     paletteActions: Array<{ id: string; label: string; href?: string; hud?: string }>
@@ -139,7 +149,10 @@ export function CommandPalette() {
             >
               <Command.Item
                 value={`search everything ${debounced}`}
-                onSelect={() => go(`/search?q=${encodeURIComponent(debounced)}`)}
+                onSelect={() => {
+                  setRecents(rememberSearch(debounced))
+                  go(`/search?q=${encodeURIComponent(debounced)}`)
+                }}
                 className="cursor-pointer rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
                 <SearchIcon className="h-4 w-4 shrink-0 text-faint" />
@@ -160,7 +173,10 @@ export function CommandPalette() {
                 <Command.Item
                   key={`${hit.kind}-${hit.id}`}
                   value={`${KIND_LABEL[hit.kind]} ${hit.title} ${hit.snippet}`}
-                  onSelect={() => go(hit.href)}
+                  onSelect={() => {
+                    setRecents(rememberSearch(debounced))
+                    go(hit.href)
+                  }}
                   className="cursor-pointer rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
                 >
                   <span className="min-w-0 flex-1">
@@ -174,6 +190,41 @@ export function CommandPalette() {
                   </span>
                 </Command.Item>
               ))}
+            </Command.Group>
+          )}
+
+          {debounced.length === 0 && recents.length > 0 && (
+            <Command.Group
+              heading={
+                <span className="px-2 text-[10px] uppercase tracking-widest text-faint">
+                  Recent
+                </span>
+              }
+            >
+              {recents.map((q, i) => (
+                <Command.Item
+                  key={`recent-${i}-${q}`}
+                  value={`recent search ${q}`}
+                  onSelect={() => {
+                    setRecents(rememberSearch(q))
+                    go(`/search?q=${encodeURIComponent(q)}`)
+                  }}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+                >
+                  <History className="h-4 w-4 shrink-0 text-faint" />
+                  <span className="min-w-0 flex-1 truncate">{q}</span>
+                </Command.Item>
+              ))}
+              <Command.Item
+                value="clear recent searches"
+                onSelect={() => {
+                  clearRecentSearches()
+                  setRecents([])
+                }}
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-tertiary data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <X className="h-3 w-3 shrink-0" /> Clear recents
+              </Command.Item>
             </Command.Group>
           )}
 
@@ -257,6 +308,27 @@ export function CommandPalette() {
                 className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
               >
                 <Radar className="h-4 w-4 shrink-0 text-faint" /> Open Weakness Radar v2
+              </Command.Item>
+              <Command.Item
+                value="action open notification center inbox alerts"
+                onSelect={() => go('/notifications')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <BellRing className="h-4 w-4 shrink-0 text-faint" /> Open Notification Center
+              </Command.Item>
+              <Command.Item
+                value="action open permission center access"
+                onSelect={() => go('/permissions')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <LockKeyhole className="h-4 w-4 shrink-0 text-faint" /> Open Permission Center
+              </Command.Item>
+              <Command.Item
+                value="action browse all decks library"
+                onSelect={() => go('/decks')}
+                className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm data-[selected=true]:bg-indigo-600/10 data-[selected=true]:text-indigo-600 dark:data-[selected=true]:text-indigo-300"
+              >
+                <Boxes className="h-4 w-4 shrink-0 text-faint" /> Browse all decks
               </Command.Item>
               {(paletteActions ?? []).map((a) => (
                 <Command.Item
