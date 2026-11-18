@@ -1,0 +1,50 @@
+'use client'
+
+/**
+ * @file app/apprenticeship/page.tsx
+ * @description Cognitive Apprenticeship & Expert Modeling Studio.
+ *
+ * Implements:
+ * - Allan Collins, John Seely Brown & Susan E. Newman (1989): Cognitive Apprenticeship
+ * - Jean Lave & Etienne Wenger (1991): Situated Learning & Legitimate Peripheral Participation (LPP)
+ */
+
+import React from 'react'
+import { Brain, Compass, Layers, Users } from 'lucide-react'
+import { PageHeader } from '@/ui'
+import { CognitiveApprenticeshipStudio } from '@/components/CognitiveApprenticeshipStudio'
+
+export default function CognitiveApprenticeshipPage() {
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+      {/* Page Header */}
+      <PageHeader
+        title="Cognitive Apprenticeship & Expert Modeling Studio"
+        subtitle="Harness Allan Collins, John Seely Brown & Susan Newman's (1989) Cognitive Apprenticeship and Jean Lave & Etienne Wenger's (1991) Situated Learning: deconstruct invisible expert think-aloud heuristics, articulate tacit decision models, contrast novice pitfalls, and fade cognitive scaffolds as you progress from peripheral observer to master modeler."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
+              <Compass className="h-3.5 w-3.5 text-primary" />
+              <span>Collins-Brown (1989)</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
+              <Users className="h-3.5 w-3.5 text-blue-500" />
+              <span>LPP Situated Mastery</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
+              <Brain className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Tacit Extraction</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground shadow-sm">
+              <Layers className="h-3.5 w-3.5 text-purple-500" />
+              <span>Scaffold Fading</span>
+            </div>
+          </div>
+        }
+      />
+
+      {/* Main Studio Body */}
+      <CognitiveApprenticeshipStudio />
+    </div>
+  )
+}

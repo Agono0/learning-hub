@@ -387,7 +387,7 @@
   3. Implement `DeliberatePracticeStudio.tsx` with micro-skill repetition drills, impasse recovery crucible, error taxonomy auditor, and FSRS micro-repair card generator.
   4. Build `apps/web/app/deliberate/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/deliberate/*`, `apps/web/src/ui/DeliberatePracticeHUD.tsx`, `apps/web/src/components/DeliberatePracticeStudio.tsx`, `apps/web/app/deliberate/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed**.
+- **Status:** **Completed (Merged in PR #43)**.
 
 ---
 
@@ -396,9 +396,23 @@
 - **Problem:** Tacit expert decision-making and cognitive problem-solving heuristics remain invisible to learners, preventing them from developing adaptive metacognitive executive control.
 - **Root Cause:** Absence of cognitive apprenticeship frameworks that externalize expert internal monologues across the 6 canonical dimensions: Modeling, Coaching, Scaffolding, Articulation, Reflection, and Exploration.
 - **Proposed Solution:**
-  1. Build `packages/core/src/apprenticeship/cognitive-apprenticeship-engine.ts` modeling Collins-Brown-Newman cognitive apprenticeship methods, expert think-aloud protocol parsing, and situated learning heuristics.
-  2. Implement `CognitiveApprenticeshipHUD.tsx` tracking scaffolding fade ratio, articulation depth, and metacognitive reflection alignment.
-  3. Implement `CognitiveApprenticeshipStudio.tsx` with expert think-aloud modeling player, coaching intervention simulator, and FSRS situated heuristic deck generator.
+  1. Build `packages/core/src/apprenticeship/cognitive-apprenticeship-engine.ts` modeling Collins-Brown-Newman cognitive apprenticeship methods, expert think-aloud protocol parsing, situated learning heuristics, and Legitimate Peripheral Participation (LPP) trajectory metrics.
+  2. Implement `CognitiveApprenticeshipHUD.tsx` tracking scaffolding fading index, tacit extraction rate, and legitimate peripheral participation levels.
+  3. Implement `CognitiveApprenticeshipStudio.tsx` with expert think-aloud modeling traces, articulation crucible, comparative novice-expert reflection canvas, and FSRS tacit heuristic card deck generator.
   4. Build `apps/web/app/apprenticeship/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/apprenticeship/*`, `apps/web/src/ui/CognitiveApprenticeshipHUD.tsx`, `apps/web/src/components/CognitiveApprenticeshipStudio.tsx`, `apps/web/app/apprenticeship/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-22: Epistemic Curiosity & Information Gap Studio (Loewenstein 1994; Berlyne 1960; Kang et al. 2009)
+
+- **Problem:** Learners frequently engage in passive reading and rote memorization with flat emotional arousal, failing to activate intrinsic dopamine-driven curiosity circuits that dramatically accelerate memory encoding and spontaneous recall.
+- **Root Cause:** Absence of structured Information Gap engines that deliberately prime epistemic deprivation (awareness of missing knowledge), calculate individual curiosity gap curves, and sequence optimal incongruity triggers before revealing explanations.
+- **Proposed Solution:**
+  1. Build `packages/core/src/curiosity/information-gap-engine.ts` implementing George Loewenstein's (1994) Information Gap Theory and Daniel Berlyne's (1960) epistemic vs perceptual curiosity metrics, computing curiosity drive $C = f(\\text{KnowledgeAwareness}, \\text{GapSalience})$, incongruity resolution scoring, and Kang et al. (2009) memory facilitation prediction.
+  2. Implement `InformationGapHUD.tsx` tracking epistemic tension index, curiosity salience score, and curiosity-driven retention multipliers.
+  3. Implement `InformationGapStudio.tsx` with curiosity priming mysteries, progressive clue reveal crucibles, incongruity paradox resolvers, and FSRS curiosity-boosted deck generator.
+  4. Build `apps/web/app/curiosity/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/curiosity/*`, `apps/web/src/ui/InformationGapHUD.tsx`, `apps/web/src/components/InformationGapStudio.tsx`, `apps/web/app/curiosity/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.

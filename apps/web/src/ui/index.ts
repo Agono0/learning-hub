@@ -60,6 +60,10 @@ export {
   SuccessiveRelearningHUD,
   type SuccessiveRelearningHUDProps,
 } from './SuccessiveRelearningHUD'
+export {
+  CognitiveApprenticeshipHUD,
+  type CognitiveApprenticeshipHUDProps,
+} from './CognitiveApprenticeshipHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
