@@ -91,6 +91,11 @@ import {
   getZpdScenarioById,
   getGraduatedPromptAtTier,
   generateFSRSZpdDeck,
+  getCanonicalPFScenarios,
+  getPFScenarioById,
+  calculatePFMetrics,
+  evaluateStudentRepresentation,
+  generatePFFSRSCards,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -207,6 +212,32 @@ const zpdDeckBodySchema = z.object({
   postTestScore: z.number().min(0).max(100).default(80),
   promptsConsumed: z.number().int().min(0).max(5).default(2),
   transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
+})
+
+const pfEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('pf-variance-dispersion'),
+  title: z.string().default('Intuitive Hypothesis'),
+  description: z.string().default(''),
+  mechanism: z.string().default(''),
+  structuralFeatures: z.array(z.string()).default([]),
+})
+
+const pfMetricsBodySchema = z.object({
+  scenarioId: z.string().default('pf-variance-dispersion'),
+  representationCount: z.number().int().min(1).max(10).default(3),
+  impasseEncountered: z.boolean().default(true),
+  affectiveImpasseRating: z.number().min(1).max(5).default(4),
+  impasseDepthScore: z.number().min(0).max(100).default(75),
+  featureAlignment: z.number().min(0).max(100).default(85),
+  parameterMapping: z.number().min(0).max(100).default(80),
+  invariantGrasp: z.number().min(0).max(100).default(80),
+  transferSuccessCount: z.number().int().min(0).max(3).default(3),
+})
+
+const pfDeckBodySchema = z.object({
+  scenarioId: z.string().default('pf-variance-dispersion'),
+  pfiScore: z.number().min(0).max(100).default(85),
+  cigScore: z.number().min(0).max(100).default(80),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1227,6 +1258,112 @@ async function postZpdDeck(req: IncomingMessage, res: ServerResponse): Promise<v
   })
 }
 
+/** GET /cognitive/pf/scenarios — list canonical Productive Failure scenarios */
+async function getPFScenarios(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const scenarios = getCanonicalPFScenarios()
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: scenarios.map((s) => ({
+      id: s.id,
+      domain: s.domain,
+      title: s.title,
+      subtitle: s.subtitle,
+      targetConcept: s.targetConcept,
+    })),
+  })
+}
+
+/** POST /cognitive/pf/evaluate — evaluate student representation against invariants */
+async function postPFEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, pfEvaluateBodySchema)
+  const scenario = getPFScenarioById(body.scenarioId) || getCanonicalPFScenarios()[0]!
+  const representation = evaluateStudentRepresentation(scenario.id, {
+    title: body.title,
+    description: body.description,
+    mechanism: body.mechanism,
+    structuralFeatures: body.structuralFeatures,
+  })
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: scenario.id,
+    representation,
+  })
+}
+
+/** POST /cognitive/pf/metrics — compute quantitative Productive Failure metrics */
+async function postPFMetrics(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, pfMetricsBodySchema)
+  const scenario = getPFScenarioById(body.scenarioId) || getCanonicalPFScenarios()[0]!
+  const representations = scenario.exemplarStudentRepresentations.slice(0, body.representationCount)
+  const impasse = {
+    impasseEncountered: body.impasseEncountered,
+    failureModeIdentified: 'Boundary distortion breakdown',
+    boundaryConditionsTested: ['Outliers', 'Zeros'],
+    knowledgeGapArticulated: 'Need canonical invariant parameterization',
+    affectiveImpasseRating: body.affectiveImpasseRating,
+    impasseDepthScore: body.impasseDepthScore,
+  }
+  const consolidationRatings = {
+    featureAlignment: body.featureAlignment,
+    parameterMapping: body.parameterMapping,
+    invariantGrasp: body.invariantGrasp,
+  }
+  const transferResults = scenario.transferProbes.map((probe, idx) => ({
+    probeId: probe.probeId,
+    isCorrect: idx < body.transferSuccessCount,
+    confidence: 4,
+  }))
+
+  const metrics = calculatePFMetrics({
+    representations,
+    impasse,
+    consolidationRatings,
+    transferResults,
+  })
+
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    metrics,
+  })
+}
+
+/** POST /cognitive/pf/deck — generate calibrated FSRS-6 deck */
+async function postPFDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, pfDeckBodySchema)
+  const scenario = getPFScenarioById(body.scenarioId) || getCanonicalPFScenarios()[0]!
+  const dummyMetrics = calculatePFMetrics({
+    representations: scenario.exemplarStudentRepresentations,
+    impasse: {
+      impasseEncountered: true,
+      failureModeIdentified: 'Boundary limit',
+      boundaryConditionsTested: ['Outliers'],
+      knowledgeGapArticulated: 'Need invariant model',
+      affectiveImpasseRating: 4,
+      impasseDepthScore: 80,
+    },
+    consolidationRatings: {
+      featureAlignment: body.cigScore,
+      parameterMapping: body.cigScore,
+      invariantGrasp: body.cigScore,
+    },
+    transferResults: scenario.transferProbes.map((p) => ({
+      probeId: p.probeId,
+      isCorrect: true,
+      confidence: 4,
+    })),
+  })
+  const deck = generatePFFSRSCards(scenario, dummyMetrics)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    cardsCount: deck.length,
+    initialStabilityDays: deck[0]?.initialStabilityDays,
+    initialDifficulty: deck[0]?.initialDifficulty,
+    deck,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -1429,6 +1566,30 @@ export const routes: Route[] = [
     path: '/cognitive/zpd/deck',
     summary: 'generate FSRS-6 review deck with stability scaled by learning potential',
     handler: postZpdDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/pf/scenarios',
+    summary: 'list Manu Kapur & Tanmay Sinha canonical productive failure scenarios',
+    handler: getPFScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/pf/evaluate',
+    summary: 'evaluate intuitive student-generated representation against invariants',
+    handler: postPFEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/pf/metrics',
+    summary: 'compute quantitative productive failure metrics (PFI, GDI, ISS, CIG, ATS)',
+    handler: postPFMetrics,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/pf/deck',
+    summary: 'generate calibrated FSRS-6 review deck scaled by productive failure index',
+    handler: postPFDeck,
   },
 ]
 

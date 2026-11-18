@@ -27,6 +27,7 @@ import {
   causalCommand,
   thresholdCommand,
   zpdCommand,
+  pfCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -268,6 +269,45 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.learningPotentialScore).toBeGreaterThan(0.5)
       expect(data.typology).toBe('high_potential_gainer')
     })
+
+    it('pf_list_scenarios lists canonical productive failure scenarios', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'pf_list_scenarios')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        scenarios: Array<{ id: string; domain: string; title: string }>
+      }
+      expect(data.count).toBeGreaterThanOrEqual(5)
+      expect(data.scenarios.some((s) => s.id === 'pf-variance-dispersion')).toBe(true)
+    })
+
+    it('pf_calculate_metrics computes PFI, GDI, and mastery band', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'pf_calculate_metrics')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        scenarioId: 'pf-variance-dispersion',
+        representationCount: 3,
+        affectiveImpasseRating: 5,
+        impasseDepthScore: 90,
+        featureAlignment: 90,
+        parameterMapping: 90,
+        invariantGrasp: 90,
+        transferSuccessCount: 3,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        productiveFailureIndex: number
+        generationDiversityIndex: number
+        impasseSensitivityScore: number
+        consolidationIntegrationGain: number
+        adaptiveTransferScore: number
+        masteryBand: string
+      }
+      expect(data.productiveFailureIndex).toBeGreaterThanOrEqual(80)
+      expect(data.masteryBand).toBe('Master Adaptive Transferer')
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -366,11 +406,27 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('pfCommand executes scenarios, eval, metrics, and deck subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        pfCommand(['scenarios'])
+        expect(consoleSpy).toHaveBeenCalled()
+        pfCommand(['eval', '--title', 'Custom Model', '--mechanism', 'Squared dispersion'])
+        expect(consoleSpy).toHaveBeenCalled()
+        pfCommand(['metrics', '--reps', '3', '--affective', '5'])
+        expect(consoleSpy).toHaveBeenCalled()
+        pfCommand(['deck', '--pfi', '85'])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
   describe('Server REST Routes Parity', () => {
-    it('registers all 8 cognitive expansion routes in server route table', () => {
+    it('registers all cognitive expansion routes in server route table', () => {
       const registeredPaths = routes.map((r) => `${r.method} ${r.path}`)
       expect(registeredPaths).toContain('GET /cognitive/skills/catalog')
       expect(registeredPaths).toContain('POST /cognitive/skills/audit')
@@ -384,6 +440,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/zpd/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/zpd/prompt')
       expect(registeredPaths).toContain('POST /cognitive/zpd/deck')
+      expect(registeredPaths).toContain('GET /cognitive/pf/scenarios')
+      expect(registeredPaths).toContain('POST /cognitive/pf/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/pf/metrics')
+      expect(registeredPaths).toContain('POST /cognitive/pf/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -515,6 +575,47 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.data.metrics.potentialDevelopmentalLevel).toBe(85)
       expect(result.data.metrics.zpdBandwidth).toBe(55)
       expect(result.data.metrics.learningPotentialScore).toBeGreaterThan(0.5)
+    })
+
+    it('GET /cognitive/pf/scenarios returns canonical productive failure scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/pf/scenarios')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.scenarios.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('POST /cognitive/pf/evaluate evaluates student representation via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/pf/evaluate', {
+        scenarioId: 'pf-variance-dispersion',
+        title: 'Squared Deviation Model',
+        description: 'Quadratic spread around mean',
+        mechanism: 'Mean of squared distances',
+        structuralFeatures: ['outlier sensitivity'],
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.representation.title).toBe('Squared Deviation Model')
+      expect(result.data.representation.intuitivePlausibilityScore).toBeGreaterThan(60)
+    })
+
+    it('POST /cognitive/pf/metrics computes PFI and mastery band via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/pf/metrics', {
+        scenarioId: 'pf-variance-dispersion',
+        representationCount: 3,
+        affectiveImpasseRating: 5,
+        impasseDepthScore: 90,
+        featureAlignment: 90,
+        parameterMapping: 90,
+        invariantGrasp: 90,
+        transferSuccessCount: 3,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.metrics.productiveFailureIndex).toBeGreaterThanOrEqual(80)
+      expect(result.data.metrics.masteryBand).toBe('Master Adaptive Transferer')
     })
   })
 })

@@ -44,6 +44,7 @@ import {
   srlCommand,
   thresholdCommand,
   zpdCommand,
+  pfCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -817,6 +818,13 @@ const builtinCommands: RegisteredCommand[] = [
       'Vygotsky & Feuerstein dynamic assessment & zone of proximal development diagnostic',
     usage: '[eval|scenarios|prompt|deck] [--scenario algo_dynamic_programming --pre 30 --post 80]',
     run: (runArgs) => zpdCommand(runArgs),
+  },
+  {
+    name: 'pf',
+    description: 'Manu Kapur & Tanmay Sinha productive failure & canonical consolidation studio',
+    usage:
+      '[metrics|scenarios|eval|deck] [--scenario pf-variance-dispersion --reps 3 --affective 4]',
+    run: (runArgs) => pfCommand(runArgs),
   },
 ]
 

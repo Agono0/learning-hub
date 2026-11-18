@@ -44,6 +44,7 @@
 | **T-P2-27** | **P2**   | Conceptual Change        | **Completed** | Conceptual Change & Ontological Category Shift Studio: Chi 6 process attributes, Vosniadou synthetic model risk, and Posner accommodation engine (PR #55).                                  |
 | **T-P2-28** | **P2**   | Spatial Cognition        | **Completed** | Spatial Cognition & Mental Rotation Model-Checking Studio: Shepard-Metzler linear RT disparity model, Hegarty kinematic gear simulation, and STEM spatial lab.                              |
 | **T-P2-29** | **P2**   | Dynamic Assessment & ZPD | **Completed** | Dynamic Assessment & Zone of Proximal Development Studio: Vygotsky ADL/PDL, Feuerstein LPAD/CMI, Campione-Brown 5-tier graduated prompting, Budoff LPS, and multi-host parity.              |
+| **T-P2-30** | **P2**   | Productive Failure       | **Completed** | Productive Failure & Canonical Consolidation Studio: Manu Kapur 2-phase model, Tanmay Sinha predictor metrics (PFI, GDI, ISS, CIG, ATS), juxtaposition matrix, and multi-host parity.       |
 
 ---
 
@@ -523,4 +524,20 @@
   5. Implement runtime-neutral API handler `apps/web/src/server/handlers/zpd/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
   6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
 - **Files Affected:** `packages/core/src/dynamic-assessment/*`, `apps/web/src/ui/DynamicAssessmentHUD.tsx`, `apps/web/src/components/DynamicAssessmentStudio.tsx`, `apps/web/app/zpd/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/zpd/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/zpd-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-30: Productive Failure & Canonical Consolidation Studio (Kapur 2008, 2012, 2016; Sinha & Kapur 2021; Loibl, Roll & Rummel 2017)
+
+- **Problem:** Direct instruction prior to unguided problem solving creates premature cognitive closure and an illusion of competence; conversely, unguided discovery learning alone leads to persistent misconceptions and cognitive overload.
+- **Root Cause:** Absence of a structured two-phase Productive Failure pedagogical engine that primes prior knowledge activation and epistemic impasse through unguided exploration before providing canonical consolidation juxtaposing student-generated representations against expert formalisms.
+- **Proposed Solution:**
+  1. Build `packages/core/src/productive-failure/pf-engine.ts` with Zod validation, quantitative metrics ($PFI$, $GDI$, $ISS$, $CIG$, $ATS$, $\Phi$), 5 multidisciplinary scenarios (Variance/Dispersion, Distributed Consensus, Heat Engines/Thermodynamics, B+ Tree Indexing, Epidemiological Herd Immunity), student representation authoring/evaluation, impasse stress-testing, and calibrated FSRS-6 decks.
+  2. Implement `ProductiveFailureHUD.tsx` with UI Signature design compliance (zero ghost classes, mode-aware tokens) tracking PFI, GDI, ISS, CIG, ATS, and failure-to-mastery ratio.
+  3. Implement `ProductiveFailureStudio.tsx` with 4 interactive tabs (1. Exploration & Generation Workbench, 2. Impasse Crucible, 3. Canonical Consolidation & Juxtaposition Matrix, 4. Adaptive Transfer Probes & Cards).
+  4. Build page `apps/web/app/productive-failure/page.tsx` and register route `/productive-failure` in global navigation (`nav.ts`).
+  5. Implement runtime-neutral API handler `apps/web/src/server/handlers/productive-failure/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
+  6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
+- **Files Affected:** `packages/core/src/productive-failure/*`, `apps/web/src/ui/ProductiveFailureHUD.tsx`, `apps/web/src/components/ProductiveFailureStudio.tsx`, `apps/web/app/productive-failure/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/productive-failure/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/pf-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed**.

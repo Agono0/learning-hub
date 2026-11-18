@@ -80,6 +80,7 @@ export { ThresholdLiminalHUD, type ThresholdLiminalHUDProps } from './ThresholdL
 export { OntologicalShiftHUD, type OntologicalShiftHUDProps } from './OntologicalShiftHUD'
 export { SpatialCognitionHUD, type SpatialCognitionHUDProps } from './SpatialCognitionHUD'
 export { DynamicAssessmentHUD, type DynamicAssessmentHUDProps } from './DynamicAssessmentHUD'
+export { ProductiveFailureHUD, type ProductiveFailureHUDProps } from './ProductiveFailureHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
