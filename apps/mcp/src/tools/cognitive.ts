@@ -57,6 +57,9 @@ import {
   evaluateCognitiveFlexibility,
   exportFlexibilityToFSRSCards,
   CALIBRATED_INTERACTIVITY_SUITES,
+  CALIBRATED_EQUILIBRIUM_SUITES,
+  evaluateReflectiveEquilibrium,
+  exportEquilibriumToFSRSCards as exportEquilibriumCards,
   analyzeElementInteractivity,
   calculateInstructionalEfficiency,
 } from '@learning-hub/core'
@@ -754,6 +757,78 @@ export const cognitiveTools: RegisteredTool[] = [
         paas: paas ?? null,
         paasClassification: paas?.classification ?? null,
       })
+    },
+  ),
+
+  tool(
+    'reflective_equilibrium',
+    "Rawls (1971) Wide Reflective Equilibrium + Tetlock (2005) epistemic calibration over the calibrated philosophy-of-science suites: evaluate a session's coherence index, unresolved dissonant-triad count, Brier calibration metrics (Superforecaster → Dunning-Kruger grading), and composite epistemic score — with an FSRS conflict/calibration card export. Pass suiteKey alone to list suites and their prediction banks.",
+    {
+      suiteKey: z
+        .enum([
+          'distributed_consensus_wre',
+          'algorithmic_fairness_wre',
+          'medical_triage_ethics_wre',
+        ])
+        .optional()
+        .describe('Omit to list the calibrated suites'),
+      sessionState: z
+        .object({
+          suiteId: z.string(),
+          activeAdjustments: z
+            .record(
+              z.string(),
+              z.object({
+                adjustedConfidence: z.number().min(0.5).max(1),
+                revisedStatement: z.string().optional(),
+              }),
+            )
+            .default({}),
+          resolvedTriadStrategies: z
+            .record(
+              z.string(),
+              z.enum(['revise_principle', 'override_judgment', 'reformulate_theory']),
+            )
+            .default({}),
+          recordedPredictions: z
+            .array(
+              z.object({
+                propositionId: z.string(),
+                propositionText: z.string(),
+                subjectiveConfidence: z.number().min(0.5).max(1),
+                actualOutcome: z.boolean(),
+                domainContext: z.string(),
+              }),
+            )
+            .max(100)
+            .default([]),
+        })
+        .optional()
+        .describe('Session state to evaluate; omit to list suites'),
+      exportCards: z.boolean().default(false),
+    },
+    async ({ suiteKey, sessionState, exportCards }) => {
+      if (!suiteKey || !sessionState) {
+        return json({
+          ok: true,
+          suites: Object.entries(CALIBRATED_EQUILIBRIUM_SUITES).map(([key, suite]) => ({
+            suiteId: key,
+            name: suite.name,
+            domain: suite.domain,
+            nodes: suite.nodes.length,
+            edges: suite.edges.length,
+            dissonantTriads: suite.dissonantTriads.length,
+            predictionBank: suite.predictionBank.length,
+          })),
+        })
+      }
+      const suite = CALIBRATED_EQUILIBRIUM_SUITES[suiteKey]
+      if (!suite) {
+        return json({ ok: false, error: `Unknown suite "${suiteKey}"` })
+      }
+      const evaluation = evaluateReflectiveEquilibrium(suite, sessionState)
+      const cards = exportCards ? exportEquilibriumCards(suite, evaluation) : undefined
+      return json({ ok: true, evaluation, cards })
     },
   ),
 ]

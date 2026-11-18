@@ -278,6 +278,44 @@ describe('Headless REST Server Cognitive Routes', () => {
     expect(typeof data.advisory).toBe('string')
   })
 
+  it('POST /cognitive/equilibrium evaluates a reflective-equilibrium session', async () => {
+    const suitesRes = await fetch(`${baseUrl}/cognitive/equilibrium`, {
+      method: 'POST',
+      body: '{}',
+    })
+    expect(suitesRes.status).toBe(200)
+    const suites = await suitesRes.json()
+    expect(suites.ok).toBe(true)
+    expect(suites.suites.length).toBeGreaterThanOrEqual(3)
+
+    const suiteKey = suites.suites[0].suiteId
+    const evalRes = await fetch(`${baseUrl}/cognitive/equilibrium`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suiteKey,
+        sessionState: {
+          suiteId: suiteKey,
+          activeAdjustments: {},
+          resolvedTriadStrategies: {},
+          recordedPredictions: suites.suites[0].predictionBank > 0 ? [] : [],
+        },
+        exportCards: true,
+      }),
+    })
+    expect(evalRes.status).toBe(200)
+    const data = await evalRes.json()
+    expect(data.ok).toBe(true)
+    expect(typeof data.evaluation.coherenceIndex).toBe('number')
+    expect(data.evaluation.brierMetrics).toBeDefined()
+    expect(typeof data.evaluation.compositeEpistemicScore).toBe('number')
+    expect(typeof data.evaluation.isEquilibriumAchieved).toBe('boolean')
+    expect(typeof data.evaluation.feedbackSummary).toBe('string')
+    // Fresh session with no resolutions: FSRS cards can only come from
+    // resolved conflicts, so an empty session exports an empty deck.
+    expect(Array.isArray(data.cards)).toBe(true)
+  })
+
   it('POST /cognitive/interactivity analyzes a suite + Paas efficiency', async () => {
     const suitesRes = await fetch(`${baseUrl}/cognitive/interactivity`, {
       method: 'POST',
