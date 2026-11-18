@@ -1,0 +1,21 @@
+/**
+ * @file apps/web/app/anchored/page.tsx
+ * @description Anchored Instruction & Situated Macrocontext Studio Page.
+ */
+
+import React from 'react'
+import { AnchoredInstructionStudio } from '@/components/AnchoredInstructionStudio'
+
+export const metadata = {
+  title: 'Anchored Instruction Studio | Learning HUB',
+  description:
+    'Vanderbilt CTGV generative macrocontexts overcoming the inert knowledge problem through authentic problem solving, sub-goal hierarchies, and sensitivity simulation.',
+}
+
+export default function AnchoredInstructionPage() {
+  return (
+    <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <AnchoredInstructionStudio />
+    </div>
+  )
+}

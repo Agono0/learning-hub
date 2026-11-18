@@ -32,6 +32,7 @@ import {
   inquiryCommand,
   reciprocalTeachingCommand,
   cerCommand,
+  anchoredCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -491,6 +492,88 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.tapLevel).toBe(5)
       expect(data.ccs).toBe(100)
     })
+
+    it('anchored_list_macrocontexts lists canonical anchored macrocontext cases', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'anchored_list_macrocontexts')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        macrocontexts: Array<{ id: string; title: string }>
+      }
+      expect(data.count).toBe(5)
+      expect(data.macrocontexts[0]!.title).toContain('Jasper Woodbury')
+    })
+
+    it('anchored_simulate_sensitivity calculates parameter variations via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'anchored_simulate_sensitivity')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        caseId: 'case-jasper-flight',
+        parameterId: 'data-headwind',
+        variedValue: 35,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        caseId: string
+        simulatedOutputs: Record<string, number>
+        constraintImpacts: Array<{ constraintId: string }>
+      }
+      expect(data.caseId).toBe('case-jasper-flight')
+      expect(data.constraintImpacts).toBeDefined()
+    })
+
+    it('anchored_evaluate_solution computes SGAI, EIER, CPR, and IKRS via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'anchored_evaluate_solution')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        caseId: 'case-jasper-flight',
+        extractedDataValues: {
+          'data-dist-oneway': 120,
+          'data-cruising-speed': 100,
+          'data-headwind': 20,
+          'data-fuel-burn': 8.0,
+          'data-total-fuel': 36,
+          'data-reserve-required': 5,
+          'data-ground-time': 0.5,
+          'data-departure-time': 16.0,
+          'data-sunset-time': 18.75,
+        },
+        subGoalSequence: [
+          'sg-outbound-groundspeed',
+          'sg-outbound-time',
+          'sg-inbound-groundspeed',
+          'sg-inbound-time',
+          'sg-total-flight-time',
+          'sg-total-mission-time',
+          'sg-fuel-consumed',
+          'sg-fuel-remaining',
+        ],
+        calculatedSubGoalOutputs: {
+          'sg-outbound-groundspeed': 80,
+          'sg-outbound-time': 1.5,
+          'sg-inbound-groundspeed': 120,
+          'sg-inbound-time': 1.0,
+          'sg-total-flight-time': 2.5,
+          'sg-total-mission-time': 19.0,
+          'sg-fuel-consumed': 20.0,
+          'sg-fuel-remaining': 16.0,
+        },
+        finalDecisionChoice: 'optimal_decision',
+        decisionJustification:
+          'We verify both operational boundary constraints: first, fuel remaining at final touchdown exceeds the mandatory 5.0 gallons minimum reserve; second, our return flight completes prior to the 18.75 sunset landing deadline.',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        ikrs: number
+        sgai: number
+        eier: number
+        cpr: number
+        decisionApproved: boolean
+      }
+      expect(data.ikrs).toBeGreaterThanOrEqual(80)
+      expect(data.sgai).toBe(100)
+      expect(data.eier).toBeGreaterThanOrEqual(80)
+      expect(data.decisionApproved).toBe(true)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -669,6 +752,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('anchoredCommand executes cases, sensitivity, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        anchoredCommand(['cases'])
+        expect(consoleSpy).toHaveBeenCalled()
+        anchoredCommand(['sensitivity', '--case', 'case-jasper-flight'])
+        expect(consoleSpy).toHaveBeenCalled()
+        anchoredCommand(['deck', '--case', 'case-jasper-flight'])
+        expect(consoleSpy).toHaveBeenCalled()
+        anchoredCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -707,6 +806,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/cer/counter')
       expect(registeredPaths).toContain('POST /cognitive/cer/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/cer/deck')
+      expect(registeredPaths).toContain('GET /cognitive/anchored/cases')
+      expect(registeredPaths).toContain('POST /cognitive/anchored/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/anchored/sensitivity')
+      expect(registeredPaths).toContain('POST /cognitive/anchored/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1070,6 +1173,86 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.statusCode).toBe(200)
       expect(result.data.ok).toBe(true)
       expect(result.data.cards.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('GET /cognitive/anchored/cases returns macrocontext cases via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/anchored/cases')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cases).toHaveLength(5)
+      expect(result.data.cases[0].title).toContain('Jasper Woodbury')
+    })
+
+    it('POST /cognitive/anchored/sensitivity performs what-if parameter simulation via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/anchored/sensitivity', {
+        caseId: 'case-jasper-flight',
+        parameterId: 'data-headwind',
+        variedValue: 35,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.simulation.caseId).toBe('case-jasper-flight')
+      expect(result.data.simulation.constraintImpacts).toBeDefined()
+    })
+
+    it('POST /cognitive/anchored/evaluate computes situated problem-solving telemetry via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/anchored/evaluate', {
+        caseId: 'case-jasper-flight',
+        extractedDataValues: {
+          'data-dist-oneway': 120,
+          'data-cruising-speed': 100,
+          'data-headwind': 20,
+          'data-fuel-burn': 8.0,
+          'data-total-fuel': 36,
+          'data-reserve-required': 5,
+          'data-ground-time': 0.5,
+          'data-departure-time': 16.0,
+          'data-sunset-time': 18.75,
+        },
+        subGoalSequence: [
+          'sg-outbound-groundspeed',
+          'sg-outbound-time',
+          'sg-inbound-groundspeed',
+          'sg-inbound-time',
+          'sg-total-flight-time',
+          'sg-total-mission-time',
+          'sg-fuel-consumed',
+          'sg-fuel-remaining',
+        ],
+        calculatedSubGoalOutputs: {
+          'sg-outbound-groundspeed': 80,
+          'sg-outbound-time': 1.5,
+          'sg-inbound-groundspeed': 120,
+          'sg-inbound-time': 1.0,
+          'sg-total-flight-time': 2.5,
+          'sg-total-mission-time': 19.0,
+          'sg-fuel-consumed': 20.0,
+          'sg-fuel-remaining': 16.0,
+        },
+        finalDecisionChoice: 'optimal_decision',
+        decisionJustification:
+          'We verify both operational boundary constraints: first, fuel remaining at final touchdown exceeds the mandatory 5.0 gallons minimum reserve; second, our return flight completes prior to the 18.75 sunset landing deadline.',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.ikrs).toBeGreaterThanOrEqual(80)
+      expect(result.data.evaluation.sgai).toBe(100)
+      expect(result.data.evaluation.decisionApproved).toBe(true)
+    })
+
+    it('POST /cognitive/anchored/deck generates calibrated FSRS-6 review deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/anchored/deck', {
+        caseId: 'case-jasper-flight',
+        ikrsBaseline: 90,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBe(4)
+      expect(result.data.cards[0].fsrsParameters).toBeDefined()
     })
   })
 })

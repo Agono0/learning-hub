@@ -49,6 +49,7 @@
 | **T-P2-32** | **P2**   | Scientific Inquiry       | **Completed** | Dual-Space Scientific Discovery & Inquiry Simulation Studio: Klahr & Dunbar (1988) SDDS, Chen & Klahr (1999) VOTAT control, Chinn & Brewer (1993) anomalous data, and multi-host parity.    |
 | **T-P2-33** | **P2**   | Reciprocal Teaching      | **Completed** | Reciprocal Teaching & Dialogic Questioning Studio: Palincsar & Brown (1984) 4 roles, Chi (2014) ICAP taxonomy, King guided questioning, and multi-host parity (PR #62).                     |
 | **T-P2-34** | **P2**   | Epistemic Argumentation  | **Completed** | Claim-Evidence-Reasoning & Epistemic Argumentation Studio: McNeill & Krajcik (2012) CER framework, Toulmin (1958) TAP hierarchy, Osborne (2004) dialogic rebuttal, and multi-host parity.   |
+| **T-P2-35** | **P2**   | Anchored Instruction     | **Completed** | Anchored Instruction & Situated Macrocontext Studio: CTGV (1990, 1992) Jasper Woodbury problem solving, Catrambone (1998) sub-goal hierarchy, what-if sensitivity, and multi-host parity.   |
 
 ---
 
@@ -600,4 +601,18 @@
   5. Implement runtime-neutral API handler `apps/web/src/server/handlers/argumentation/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
   6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
 - **Files Affected:** `packages/core/src/argumentation/*`, `apps/web/src/ui/ArgumentationHUD.tsx`, `apps/web/src/components/ArgumentationStudio.tsx`, `apps/web/app/argumentation/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/argumentation/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/cer-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed & Verified**.
+
+### T-P2-35: Anchored Instruction & Situated Macrocontext Studio (Cognition & Technology Group at Vanderbilt 1990, 1992, 1993; Bransford 1990; Catrambone 1998)
+
+- **Problem:** Students regularly acquire "inert knowledge" (Whitehead 1929; Bereiter & Scardamalia 1985)—facts and formulas that can be recalled on isolated tests but remain unretrieved and unapplied in authentic, complex real-world situations with competing constraints ($d < 0.28$).
+- **Root Cause:** Traditional curricula isolate formulas from rich narrative contexts, depriving learners of the perceptual and situational cues needed to spontaneously trigger problem formulation, signal discrimination against narrative distractors, and sub-goal chunking.
+- **Proposed Solution:**
+  1. Build `packages/core/src/anchored/anchored-engine.ts` grounded in the Cognition & Technology Group at Vanderbilt (CTGV) Jasper Woodbury series and Catrambone's Sub-Goal Learning Model. Includes 5 canonical multidisciplinary macrocontexts (Jasper Woodbury Cessna Flight, Deep Ocean Alvin Submersible Vent Mission, Mars Base Jezero Closed-Loop ECLSS, Outbreak Super-Spreader Network Containment Grid, High-Frequency Renewable Microgrid Blackstart Recovery).
+  2. Implement quantitative telemetry: Embedded Information Extraction Ratio ($EIER \in [0, 100]$), Sub-Goal Alignment Index ($SGAI \in [0, 100]$), Constraint Propagation Rigor ($CPR \in [0, 100]$), and composite Inert Knowledge Resistance Score ($IKRS \in [0, 100]$) with situated maturity bands (`inert_knower`, `procedural_solver`, `contextual_strategist`, `macrocontext_master`).
+  3. Include a deterministic "What-If" Sensitivity Simulator that varies narrative parameters and tests boundary constraints, plus calibrated FSRS-6 spaced repetition card synthesis.
+  4. Implement `AnchoredInstructionHUD.tsx` adhering to UI Signature (zero ghost classes, mode-aware tokens) visualizing IKRS/SGAI/EIER/CPR gauges, maturity badges, and real-time sub-goal dependency feedback.
+  5. Implement `AnchoredInstructionStudio.tsx` with 4 interactive stages (1. Narrative Anchor & Clues, 2. Sub-Goal Decomposition, 3. What-If Sensitivity Simulator, 4. Mission Decision & FSRS Deck).
+  6. Deliver full multi-host parity across MCP (`apps/mcp`), CLI (`apps/cli`), Server (`apps/server`), and Web runtime-neutral API handlers registered in `handlers-registry.ts` and `nav.ts`.
+- **Files Affected:** `packages/core/src/anchored/*`, `apps/web/src/ui/AnchoredInstructionHUD.tsx`, `apps/web/src/components/AnchoredInstructionStudio.tsx`, `apps/web/app/anchored/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/anchored/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/anchored-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed & Verified**.

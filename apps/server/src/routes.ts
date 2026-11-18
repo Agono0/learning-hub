@@ -116,6 +116,11 @@ import {
   generateAdversarialCounterArgument,
   generateCERFSRSDeck,
   type CERArgumentSubmission,
+  CANONICAL_MACROCONTEXT_CASES,
+  evaluateAnchoredSolution,
+  simulateAnchoredSensitivity,
+  generateAnchoredFSRSDeck,
+  type LearnerSolutionSubmission,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -382,6 +387,26 @@ const cerEvaluateBodySchema = z.object({
 const cerDeckBodySchema = z.object({
   debateId: z.string().default('debate-amoc-tipping'),
   ersBaseline: z.number().min(0).max(100).default(85),
+})
+
+const anchoredEvaluateBodySchema = z.object({
+  caseId: z.string().default('case-jasper-flight'),
+  extractedDataValues: z.record(z.string(), z.number()).default({}),
+  subGoalSequence: z.array(z.string()).default([]),
+  calculatedSubGoalOutputs: z.record(z.string(), z.number()).default({}),
+  finalDecisionChoice: z.string().default('choice-direct-flight'),
+  decisionJustification: z.string().default('Standard navigation flight plan.'),
+})
+
+const anchoredSensitivityBodySchema = z.object({
+  caseId: z.string().default('case-jasper-flight'),
+  parameterId: z.string().default('data-headwind-speed'),
+  variedValue: z.number().default(25),
+})
+
+const anchoredDeckBodySchema = z.object({
+  caseId: z.string().default('case-jasper-flight'),
+  ikrsBaseline: z.number().min(0).max(100).default(85),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1888,6 +1913,85 @@ async function postCERDeck(req: IncomingMessage, res: ServerResponse): Promise<v
   })
 }
 
+/** GET /cognitive/anchored/cases — list canonical anchored macrocontexts */
+async function getAnchoredCases(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const cases = CANONICAL_MACROCONTEXT_CASES
+  sendJson(res, 200, {
+    ok: true,
+    cases: cases.map((c) => ({
+      id: c.id,
+      title: c.title,
+      domain: c.domain,
+      difficulty: c.difficulty,
+      missionGoal: c.missionGoal,
+      embeddedDataCount: c.embeddedData.length,
+      subGoalsCount: c.subGoalHierarchy.length,
+      constraintsCount: c.constraints.length,
+    })),
+  })
+}
+
+/** POST /cognitive/anchored/evaluate — evaluate situated problem-solving trajectory */
+async function postAnchoredEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, anchoredEvaluateBodySchema)
+  const macroCase =
+    CANONICAL_MACROCONTEXT_CASES.find((c) => c.id === body.caseId) ??
+    CANONICAL_MACROCONTEXT_CASES[0]!
+  const submission: LearnerSolutionSubmission = {
+    caseId: macroCase.id,
+    extractedDataValues: body.extractedDataValues,
+    subGoalSequence: body.subGoalSequence,
+    calculatedSubGoalOutputs: body.calculatedSubGoalOutputs,
+    finalDecisionChoice: body.finalDecisionChoice,
+    decisionJustification: body.decisionJustification,
+  }
+  const evaluation = evaluateAnchoredSolution(macroCase, submission)
+  sendJson(res, 200, {
+    ok: true,
+    caseTitle: macroCase.title,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/anchored/sensitivity — what-if sensitivity simulator */
+async function postAnchoredSensitivity(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, anchoredSensitivityBodySchema)
+  const macroCase =
+    CANONICAL_MACROCONTEXT_CASES.find((c) => c.id === body.caseId) ??
+    CANONICAL_MACROCONTEXT_CASES[0]!
+  const simulation = simulateAnchoredSensitivity(macroCase, body.parameterId, body.variedValue)
+  sendJson(res, 200, {
+    ok: true,
+    simulation,
+  })
+}
+
+/** POST /cognitive/anchored/deck — generate calibrated FSRS-6 review deck */
+async function postAnchoredDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, anchoredDeckBodySchema)
+  const macroCase =
+    CANONICAL_MACROCONTEXT_CASES.find((c) => c.id === body.caseId) ??
+    CANONICAL_MACROCONTEXT_CASES[0]!
+  const dummySubmission: LearnerSolutionSubmission = {
+    caseId: macroCase.id,
+    extractedDataValues: {},
+    subGoalSequence: macroCase.subGoalHierarchy.map((sg) => sg.id),
+    calculatedSubGoalOutputs: {},
+    finalDecisionChoice: 'optimal_decision',
+    decisionJustification: 'Optimal calibrated pathway.',
+  }
+  const evaluation = evaluateAnchoredSolution(macroCase, dummySubmission)
+  evaluation.ikrs = body.ikrsBaseline
+  const deck = generateAnchoredFSRSDeck(macroCase, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    caseTitle: macroCase.title,
+    ikrsBaseline: deck.ikrsBaseline,
+    cardsCount: deck.cards.length,
+    cards: deck.cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2210,6 +2314,30 @@ export const routes: Route[] = [
     path: '/cognitive/cer/deck',
     summary: 'generate calibrated FSRS-6 review deck for scientific debate',
     handler: postCERDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/anchored/cases',
+    summary: 'list canonical anchored macrocontext problem-solving cases (CTGV 1990, 1992)',
+    handler: getAnchoredCases,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/anchored/evaluate',
+    summary: 'evaluate situated problem-solving solution (SGAI, EIER, CPR, IKRS)',
+    handler: postAnchoredEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/anchored/sensitivity',
+    summary: 'simulate what-if parameter sensitivity across macrocontext constraints',
+    handler: postAnchoredSensitivity,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/anchored/deck',
+    summary: 'generate calibrated FSRS-6 review deck for anchored macrocontext',
+    handler: postAnchoredDeck,
   },
 ]
 

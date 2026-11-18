@@ -58,6 +58,11 @@ import {
   generateAdversarialCounterArgument,
   generateCERFSRSDeck,
   type CERArgumentSubmission,
+  CANONICAL_MACROCONTEXT_CASES,
+  evaluateAnchoredSolution,
+  simulateAnchoredSensitivity,
+  generateAnchoredFSRSDeck,
+  type LearnerSolutionSubmission,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1039,4 +1044,115 @@ export async function cerCommand(args: string[]): Promise<void> {
   console.log('─'.repeat(65))
   console.log(`Strengths:   ${evalResult.epistemicStrengths.join('; ')}`)
   console.log(`Feedback:    ${evalResult.feedback.join(' ')}`)
+}
+
+// ── 13. Anchored Instruction & Situated Macrocontext Command (CTGV 1990, 1992) ──
+export async function anchoredCommand(args: string[]): Promise<void> {
+  const cases = CANONICAL_MACROCONTEXT_CASES
+  const sub = args[0]
+
+  if (sub === 'cases' || sub === 'list') {
+    console.log('\n⚓ Canonical Macrocontext Scenarios (CTGV 1990, 1992, Jasper Woodbury)')
+    console.log('═'.repeat(65))
+    cases.forEach((c) => {
+      console.log(`• [${c.id}] ${c.title}`)
+      console.log(`  Domain: ${c.domain} | Difficulty: ${c.difficulty}`)
+      console.log(`  Mission Goal: "${c.missionGoal}"`)
+      console.log(
+        `  Embedded Data: ${c.embeddedData.length} items | Sub-Goals: ${c.subGoalHierarchy.length} | Constraints: ${c.constraints.length}`,
+      )
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  const caseId = parseFlag(args, '--case') || 'case-jasper-flight'
+  const macroCase = cases.find((c) => c.id === caseId) ?? cases[0]!
+
+  if (sub === 'sensitivity') {
+    const paramId = parseFlag(args, '--param') || 'data-headwind-speed'
+    const valueStr = parseFlag(args, '--val') || '25'
+    const variedValue = parseFloat(valueStr)
+    const sim = simulateAnchoredSensitivity(macroCase, paramId, variedValue)
+
+    console.log('\n🎛️ Anchored What-If Sensitivity Simulator')
+    console.log('═'.repeat(65))
+    console.log(`Case:          ${macroCase.title}`)
+    console.log(
+      `Parameter:     ${sim.parameterId} (Original: ${sim.originalValue} -> Varied: ${sim.variedValue})`,
+    )
+    console.log('─'.repeat(65))
+    console.log('Simulated Outputs:')
+    Object.entries(sim.simulatedOutputs).forEach(([k, v]) => {
+      console.log(`  • ${k}: ${v.toFixed(3)}`)
+    })
+    console.log('─'.repeat(65))
+    console.log('Constraint Impacts:')
+    sim.constraintImpacts.forEach((ci) => {
+      const status = ci.isSatisfied ? '✅ SATISFIED' : '❌ VIOLATED'
+      console.log(
+        `  [${status}] ${ci.constraintId} (margin: ${ci.margin.toFixed(2)}) ${ci.warningMessage ? '— ' + ci.warningMessage : ''}`,
+      )
+    })
+    return
+  }
+
+  if (sub === 'deck') {
+    const dummySubmission: LearnerSolutionSubmission = {
+      caseId: macroCase.id,
+      extractedDataValues: {},
+      subGoalSequence: macroCase.subGoalHierarchy.map((sg) => sg.id),
+      calculatedSubGoalOutputs: {},
+      finalDecisionChoice: 'optimal_decision',
+      decisionJustification: 'Optimal calibrated pathway.',
+    }
+    const evaluation = evaluateAnchoredSolution(macroCase, dummySubmission)
+    evaluation.ikrs = 88
+    const deck = generateAnchoredFSRSDeck(macroCase, evaluation)
+
+    console.log('\n📦 Calibrated FSRS-6 Anchored Problem-Solving Deck')
+    console.log(`Case:             ${deck.caseTitle}`)
+    console.log(`IKRS Baseline:    ${deck.ikrsBaseline}/100 IKRS`)
+    console.log(`Cards Generated:  ${deck.cards.length}`)
+    console.log('═'.repeat(65))
+    deck.cards.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Type: ${c.cardType.toUpperCase()} (S: ${c.fsrsParameters.stability}d, D: ${c.fsrsParameters.difficulty})`,
+      )
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval
+  const sampleSubmission: LearnerSolutionSubmission = {
+    caseId: macroCase.id,
+    extractedDataValues: Object.fromEntries(
+      macroCase.embeddedData.filter((d) => d.isRelevant).map((d) => [d.id, d.value]),
+    ),
+    subGoalSequence: macroCase.subGoalHierarchy.map((sg) => sg.id),
+    calculatedSubGoalOutputs: Object.fromEntries(
+      macroCase.subGoalHierarchy.map((sg) => [sg.id, sg.expectedValue]),
+    ),
+    finalDecisionChoice: 'optimal_decision',
+    decisionJustification:
+      'All navigation, fuel reserves, and flight constraints met with verified margin across daylight hours and fuel limits.',
+  }
+
+  const evalResult = evaluateAnchoredSolution(macroCase, sampleSubmission)
+
+  console.log('\n⚓ Anchored Problem-Solving Telemetry (CTGV 1990, 1992, Catrambone 1998)')
+  console.log('═'.repeat(65))
+  console.log(`Case:                ${macroCase.title}`)
+  console.log(`IKRS Score:          ${evalResult.ikrs}/100 (Inert Knowledge Resistance Score)`)
+  console.log(`Maturity Band:       ${evalResult.maturityBand.toUpperCase()}`)
+  console.log(`Sub-Goal Alignment:  ${evalResult.sgai}/100 SGAI`)
+  console.log(`Data Extraction:     ${evalResult.eier}/100 EIER (Signal vs Distractor)`)
+  console.log(`Constraint Rigor:    ${evalResult.cpr}/100 CPR`)
+  console.log(`Decision Approved:   ${evalResult.decisionApproved ? 'YES' : 'NO'}`)
+  console.log('─'.repeat(65))
+  console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
+  console.log(`Feedback:     ${evalResult.pedagogicalFeedback.join(' ')}`)
 }
