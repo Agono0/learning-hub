@@ -55,6 +55,7 @@ import {
   Scale,
   Search as SearchIcon,
   Settings,
+  Shapes,
   ShieldCheck,
   Shuffle,
   Sparkles,
@@ -166,6 +167,7 @@ export const NAV: NavGroup[] = [
       { href: '/games', label: 'Games', icon: Brain },
       { href: '/online', label: 'Online Hub', icon: Globe },
       { href: '/world', label: '3D World', icon: Compass },
+      { href: '/prototype-exemplar', label: 'Prototype & Exemplar', icon: Shapes },
     ],
   },
   {
