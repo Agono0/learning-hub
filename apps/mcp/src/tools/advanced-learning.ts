@@ -35,6 +35,11 @@ import {
   getStandardThresholdConcepts,
   evaluateLiminalTrajectory,
   bridgeThresholdToCurriculum,
+  calculateZpdMetrics,
+  listZpdScenarios,
+  getZpdScenarioById,
+  getGraduatedPromptAtTier,
+  generateFSRSZpdDeck,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -358,6 +363,150 @@ export const advancedLearningTools: RegisteredTool[] = [
         gatewayMultiplier: bridge.gatewayMultiplier,
         modulatedMastery: bridge.modulatedMastery,
         unlockedDownstreamConcepts: concept.unlockedDownstreamConcepts,
+      })
+    },
+  ),
+
+  // ── 7. Dynamic Assessment & Zone of Proximal Development (Vygotsky & Feuerstein) ──
+  tool(
+    'zpd_list_scenarios',
+    'Lists all canonical dynamic assessment scenarios across computer science, biochemistry, aerospace, law, and economics.',
+    {},
+    async () => {
+      const scenarios = listZpdScenarios()
+      return json({
+        count: scenarios.length,
+        scenarios: scenarios.map((s) => ({
+          id: s.id,
+          domain: s.domain,
+          title: s.title,
+          subtitle: s.subtitle,
+          theoreticalCore: s.theoreticalCore,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'zpd_evaluate_trajectory',
+    'Evaluates baseline ADL, mediated PDL, and computes ZPD bandwidth, Budoff Learning Potential Score (LPS), Feuerstein Cognitive Modifiability Index (CMI), and prompt efficiency.',
+    {
+      scenarioId: z
+        .string()
+        .default('algo_dynamic_programming')
+        .describe('Assessment scenario identifier.'),
+      preTestScore: z
+        .number()
+        .min(0)
+        .max(100)
+        .default(30)
+        .describe('Independent baseline score (ADL).'),
+      postTestScore: z
+        .number()
+        .min(0)
+        .max(100)
+        .default(80)
+        .describe('Mediated post-test score (PDL).'),
+      promptsConsumed: z
+        .number()
+        .int()
+        .min(0)
+        .max(5)
+        .default(2)
+        .describe('Graduated prompts accessed (0..5).'),
+      transferScores: z
+        .array(z.number().min(0).max(100))
+        .default([85, 75, 70])
+        .describe('Scores on near, medium, far transfer tasks.'),
+    },
+    async ({ scenarioId, preTestScore, postTestScore, promptsConsumed, transferScores }) => {
+      const scenario = getZpdScenarioById(scenarioId) ?? listZpdScenarios()[0]
+      const metrics = calculateZpdMetrics(
+        preTestScore,
+        postTestScore,
+        promptsConsumed,
+        transferScores,
+      )
+
+      return json({
+        scenarioTitle: scenario.title,
+        domain: scenario.domain,
+        actualDevelopmentalLevel: metrics.actualDevelopmentalLevel,
+        potentialDevelopmentalLevel: metrics.potentialDevelopmentalLevel,
+        zpdBandwidth: metrics.zpdBandwidth,
+        learningPotentialScore: metrics.learningPotentialScore,
+        cognitiveModifiabilityIndex: metrics.cognitiveModifiabilityIndex,
+        promptEfficiencyScore: metrics.promptEfficiencyScore,
+        transferAutonomyScore: metrics.transferAutonomyScore,
+        typology: metrics.typology,
+        typologyDescription: metrics.typologyDescription,
+        frustrationHorizon: metrics.frustrationHorizon,
+      })
+    },
+  ),
+
+  tool(
+    'zpd_request_prompt',
+    'Retrieves a standardized graduated prompt at a designated tier (1: Metacognitive, 2: Structural, 3: Heuristic, 4: Subgoal, 5: Worked Demonstration).',
+    {
+      scenarioId: z
+        .string()
+        .default('algo_dynamic_programming')
+        .describe('Assessment scenario identifier.'),
+      tierLevel: z
+        .number()
+        .int()
+        .min(1)
+        .max(5)
+        .default(1)
+        .describe('Graduated prompt tier level (1..5).'),
+    },
+    async ({ scenarioId, tierLevel }) => {
+      const scenario = getZpdScenarioById(scenarioId) ?? listZpdScenarios()[0]
+      const prompt = getGraduatedPromptAtTier(scenario.mediatedProblem, tierLevel)
+
+      return json({
+        scenarioTitle: scenario.title,
+        problemTitle: scenario.mediatedProblem.title,
+        tierLevel,
+        prompt: prompt ?? null,
+      })
+    },
+  ),
+
+  tool(
+    'zpd_generate_deck',
+    'Generates an FSRS-6 review flashcard deck with stability (S0) dynamically modulated by Learning Potential Score (LPS) and Transfer Autonomy.',
+    {
+      scenarioId: z
+        .string()
+        .default('algo_dynamic_programming')
+        .describe('Assessment scenario identifier.'),
+      preTestScore: z.number().min(0).max(100).default(30),
+      postTestScore: z.number().min(0).max(100).default(80),
+      promptsConsumed: z.number().int().min(0).max(5).default(2),
+      transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
+    },
+    async ({ scenarioId, preTestScore, postTestScore, promptsConsumed, transferScores }) => {
+      const scenario = getZpdScenarioById(scenarioId) ?? listZpdScenarios()[0]
+      const metrics = calculateZpdMetrics(
+        preTestScore,
+        postTestScore,
+        promptsConsumed,
+        transferScores,
+      )
+      const deck = generateFSRSZpdDeck(scenario, metrics)
+
+      return json({
+        scenarioTitle: scenario.title,
+        cardsCount: deck.length,
+        metrics: {
+          lps: metrics.learningPotentialScore,
+          cmi: metrics.cognitiveModifiabilityIndex,
+          tas: metrics.transferAutonomyScore,
+          typology: metrics.typology,
+        },
+        cards: deck,
       })
     },
   ),

@@ -116,6 +116,7 @@ export const NAV: NavGroup[] = [
       { href: '/threshold', label: 'Threshold Concepts', icon: KeyRound },
       { href: '/conceptual-change', label: 'Conceptual Change', icon: GitBranch },
       { href: '/spatial', label: 'Spatial Cognition', icon: Compass },
+      { href: '/zpd', label: 'Dynamic Assessment', icon: Radar },
     ],
   },
   {

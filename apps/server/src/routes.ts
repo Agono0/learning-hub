@@ -86,6 +86,11 @@ import {
   evaluateLiminalTrajectory,
   bridgeThresholdToCurriculum,
   computeThresholdSignificanceIndex,
+  calculateZpdMetrics,
+  listZpdScenarios,
+  getZpdScenarioById,
+  getGraduatedPromptAtTier,
+  generateFSRSZpdDeck,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -181,6 +186,27 @@ const thresholdLiminalBodySchema = z.object({
   conceptId: z.string().default('tc_pointers_memory'),
   probeResponses: z.record(z.string(), z.string()),
   baseMastery: z.number().min(0).max(1).default(0.75),
+})
+
+const zpdEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('algo_dynamic_programming'),
+  preTestScore: z.number().min(0).max(100).default(25),
+  postTestScore: z.number().min(0).max(100).default(80),
+  promptsConsumed: z.number().int().min(0).max(5).default(2),
+  transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
+})
+
+const zpdPromptBodySchema = z.object({
+  scenarioId: z.string().default('algo_dynamic_programming'),
+  tierLevel: z.number().int().min(1).max(5).default(1),
+})
+
+const zpdDeckBodySchema = z.object({
+  scenarioId: z.string().default('algo_dynamic_programming'),
+  preTestScore: z.number().min(0).max(100).default(25),
+  postTestScore: z.number().min(0).max(100).default(80),
+  promptsConsumed: z.number().int().min(0).max(5).default(2),
+  transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1129,6 +1155,78 @@ async function postThresholdLiminal(req: IncomingMessage, res: ServerResponse): 
   })
 }
 
+/** GET /cognitive/zpd/scenarios — list canonical ZPD scenarios */
+async function getZpdScenarios(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const scenarios = listZpdScenarios()
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: scenarios.map((s) => ({
+      id: s.id,
+      domain: s.domain,
+      title: s.title,
+      subtitle: s.subtitle,
+      theoreticalCore: s.theoreticalCore,
+    })),
+  })
+}
+
+/** POST /cognitive/zpd/evaluate — evaluate ZPD metrics & learning potential */
+async function postZpdEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, zpdEvaluateBodySchema)
+  const scenario = getZpdScenarioById(body.scenarioId) || listZpdScenarios()[0]!
+  const metrics = calculateZpdMetrics(
+    body.preTestScore,
+    body.postTestScore,
+    body.promptsConsumed,
+    body.transferScores,
+  )
+  sendJson(res, 200, {
+    ok: true,
+    scenario: {
+      id: scenario.id,
+      title: scenario.title,
+      domain: scenario.domain,
+    },
+    metrics,
+  })
+}
+
+/** POST /cognitive/zpd/prompt — request graduated prompt at tier level */
+async function postZpdPrompt(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, zpdPromptBodySchema)
+  const scenario = getZpdScenarioById(body.scenarioId) || listZpdScenarios()[0]!
+  const prompt = getGraduatedPromptAtTier(scenario.mediatedProblem, body.tierLevel)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    tierLevel: body.tierLevel,
+    prompt: prompt ?? null,
+  })
+}
+
+/** POST /cognitive/zpd/deck — generate calibrated FSRS-6 review deck */
+async function postZpdDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, zpdDeckBodySchema)
+  const scenario = getZpdScenarioById(body.scenarioId) || listZpdScenarios()[0]!
+  const metrics = calculateZpdMetrics(
+    body.preTestScore,
+    body.postTestScore,
+    body.promptsConsumed,
+    body.transferScores,
+  )
+  const deck = generateFSRSZpdDeck(scenario, metrics)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    metrics: {
+      lps: metrics.learningPotentialScore,
+      cmi: metrics.cognitiveModifiabilityIndex,
+      typology: metrics.typology,
+    },
+    deck,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -1307,6 +1405,30 @@ export const routes: Route[] = [
     path: '/cognitive/threshold/liminal',
     summary: 'Meyer & Land threshold concepts & liminal navigation evaluation',
     handler: postThresholdLiminal,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/zpd/scenarios',
+    summary: 'list Vygotsky & Feuerstein canonical dynamic assessment scenarios',
+    handler: getZpdScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/zpd/evaluate',
+    summary: 'evaluate ZPD actual/potential levels, Budoff LPS, and Feuerstein CMI',
+    handler: postZpdEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/zpd/prompt',
+    summary: 'retrieve Campione & Brown 5-tier graduated prompt',
+    handler: postZpdPrompt,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/zpd/deck',
+    summary: 'generate FSRS-6 review deck with stability scaled by learning potential',
+    handler: postZpdDeck,
   },
 ]
 

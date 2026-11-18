@@ -26,6 +26,7 @@ import {
   epistemicCommand,
   causalCommand,
   thresholdCommand,
+  zpdCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -228,6 +229,45 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.gatewayMultiplier).toBeGreaterThanOrEqual(1.0)
       expect(data.unlockedDownstreamConcepts.length).toBeGreaterThan(0)
     })
+
+    it('zpd_list_scenarios lists canonical multidisciplinary scenarios', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'zpd_list_scenarios')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        scenarios: Array<{ id: string; domain: string; title: string }>
+      }
+      expect(data.count).toBeGreaterThanOrEqual(4)
+      expect(data.scenarios.some((s) => s.id === 'algo_dynamic_programming')).toBe(true)
+    })
+
+    it('zpd_evaluate_trajectory computes ZPD bandwidth, Budoff LPS and Feuerstein CMI', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'zpd_evaluate_trajectory')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        scenarioId: 'algo_dynamic_programming',
+        preTestScore: 25,
+        postTestScore: 80,
+        promptsConsumed: 2,
+        transferScores: [85, 75, 70],
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        actualDevelopmentalLevel: number
+        potentialDevelopmentalLevel: number
+        zpdBandwidth: number
+        learningPotentialScore: number
+        cognitiveModifiabilityIndex: number
+        typology: string
+      }
+      expect(data.actualDevelopmentalLevel).toBe(25)
+      expect(data.potentialDevelopmentalLevel).toBe(80)
+      expect(data.zpdBandwidth).toBe(55)
+      expect(data.learningPotentialScore).toBeGreaterThan(0.5)
+      expect(data.typology).toBe('high_potential_gainer')
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -312,6 +352,20 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('zpdCommand executes scenarios, prompt, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        zpdCommand(['scenarios'])
+        expect(consoleSpy).toHaveBeenCalled()
+        zpdCommand(['prompt', '--tier', '2'])
+        expect(consoleSpy).toHaveBeenCalled()
+        zpdCommand(['eval', '--pre', '30', '--post', '85'])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -326,6 +380,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/epistemic/analyze')
       expect(registeredPaths).toContain('POST /cognitive/causal/counterfactual')
       expect(registeredPaths).toContain('POST /cognitive/threshold/liminal')
+      expect(registeredPaths).toContain('GET /cognitive/zpd/scenarios')
+      expect(registeredPaths).toContain('POST /cognitive/zpd/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/zpd/prompt')
+      expect(registeredPaths).toContain('POST /cognitive/zpd/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -432,6 +490,31 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.data.concept.title).toContain('Pointer')
       expect(result.data.diagnostic.canCrossPortal).toBe(true)
       expect(result.data.bridge.gatewayMultiplier).toBeGreaterThan(1.0)
+    })
+
+    it('GET /cognitive/zpd/scenarios returns canonical scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/zpd/scenarios')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.scenarios.length).toBeGreaterThanOrEqual(4)
+    })
+
+    it('POST /cognitive/zpd/evaluate computes ZPD metrics via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/zpd/evaluate', {
+        scenarioId: 'algo_dynamic_programming',
+        preTestScore: 30,
+        postTestScore: 85,
+        promptsConsumed: 2,
+        transferScores: [85, 80, 75],
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.metrics.actualDevelopmentalLevel).toBe(30)
+      expect(result.data.metrics.potentialDevelopmentalLevel).toBe(85)
+      expect(result.data.metrics.zpdBandwidth).toBe(55)
+      expect(result.data.metrics.learningPotentialScore).toBeGreaterThan(0.5)
     })
   })
 })
