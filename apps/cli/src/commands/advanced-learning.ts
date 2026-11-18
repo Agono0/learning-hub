@@ -641,12 +641,20 @@ export function piCommand(args: string[]): void {
   console.log('\n👥 Peer Instruction & ConcepTest Diagnostic (Eric Mazur 1997)')
   console.log('═'.repeat(65))
   console.log(`ConcepTest:        ${suite.title} [${suite.domain}]`)
-  console.log(`Hake Gain ⟨g⟩:     ${metrics.hakeNormalizedGain.toFixed(2)} (${metrics.engagementBand})`)
-  console.log(`Vote Polarization: ${(metrics.mazurPolarizationIndex * 100).toFixed(0)}% (PI entropy)`)
-  console.log(`Discussion Ratio:  ${(metrics.peerDiscussionConvergence * 100).toFixed(0)}% (DCR consensus)`)
+  console.log(
+    `Hake Gain ⟨g⟩:     ${metrics.hakeNormalizedGain.toFixed(2)} (${metrics.engagementBand})`,
+  )
+  console.log(
+    `Vote Polarization: ${(metrics.mazurPolarizationIndex * 100).toFixed(0)}% (PI entropy)`,
+  )
+  console.log(
+    `Discussion Ratio:  ${(metrics.peerDiscussionConvergence * 100).toFixed(0)}% (DCR consensus)`,
+  )
   console.log(`Smith Q2 Transfer: ${metrics.isomorphicTransferScore}% (Isomorphic precision)`)
   console.log(`Mazur Window:      ${metrics.mazurWindowRecommendedAction.toUpperCase()}`)
-  console.log(`Learning Verif:    ${metrics.smithLearningVerification ? 'VERIFIED (Science 2009)' : 'PENDING'}`)
+  console.log(
+    `Learning Verif:    ${metrics.smithLearningVerification ? 'VERIFIED (Science 2009)' : 'PENDING'}`,
+  )
   console.log('─'.repeat(65))
   console.log(`Summary:           ${metrics.qualitativeSummary}`)
   console.log(`Pedagogical Advice: ${metrics.pedagogicalAdvice}`)

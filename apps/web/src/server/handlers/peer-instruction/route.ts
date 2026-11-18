@@ -46,8 +46,7 @@ export const GET = withRoute(async () => {
 
 export const POST = withRoute(async (req) => {
   const body = await readJson(req, PIActionSchema)
-  const suite =
-    getConcepTestSuiteById(body.suiteId) || getCanonicalConcepTestSuites()[0]
+  const suite = getConcepTestSuiteById(body.suiteId) || getCanonicalConcepTestSuites()[0]
 
   if (body.action === 'get_dialogue') {
     return Response.json({
@@ -61,13 +60,9 @@ export const POST = withRoute(async (req) => {
 
   const q1Initial = body.q1InitialOptionId || suite.q1Options[0].id
   const q1Revote =
-    body.q1RevoteOptionId ||
-    suite.q1Options.find((o) => o.isCorrect)?.id ||
-    q1Initial
+    body.q1RevoteOptionId || suite.q1Options.find((o) => o.isCorrect)?.id || q1Initial
   const q2Transfer =
-    body.q2TransferOptionId ||
-    suite.q2Options.find((o) => o.isCorrect)?.id ||
-    suite.q2Options[0].id
+    body.q2TransferOptionId || suite.q2Options.find((o) => o.isCorrect)?.id || suite.q2Options[0].id
 
   const metrics = calculatePIMetrics({
     suite,

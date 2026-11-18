@@ -42,14 +42,9 @@ export function PeerInstructionStudio() {
 
   // --- Suite Selection ---
   const canonicalSuites = useMemo(() => getCanonicalConcepTestSuites(), [])
-  const [selectedSuiteId, setSelectedSuiteId] = useState<string>(
-    canonicalSuites[0].id
-  )
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string>(canonicalSuites[0].id)
   const suite: ConcepTestSuite = useMemo(() => {
-    return (
-      canonicalSuites.find((s) => s.id === selectedSuiteId) ||
-      canonicalSuites[0]
-    )
+    return canonicalSuites.find((s) => s.id === selectedSuiteId) || canonicalSuites[0]
   }, [canonicalSuites, selectedSuiteId])
 
   // --- Step 1: Initial Vote State (Q1) ---
@@ -59,8 +54,7 @@ export function PeerInstructionStudio() {
 
   // --- Step 2: Peer Discussion State ---
   const [selectedPeerIdx, setSelectedPeerIdx] = useState<number>(0)
-  const [discussionAcknowledged, setDiscussionAcknowledged] =
-    useState<boolean>(false)
+  const [discussionAcknowledged, setDiscussionAcknowledged] = useState<boolean>(false)
 
   // --- Step 3: Revote State (Q1') ---
   const [q1Revote, setQ1Revote] = useState<string | null>(null)
@@ -69,8 +63,7 @@ export function PeerInstructionStudio() {
 
   // --- Step 4: Isomorphic Transfer State (Q2) ---
   const [q2TransferVote, setQ2TransferVote] = useState<string | null>(null)
-  const [q2TransferSubmitted, setQ2TransferSubmitted] =
-    useState<boolean>(false)
+  const [q2TransferSubmitted, setQ2TransferSubmitted] = useState<boolean>(false)
 
   // --- FSRS Deck State ---
   const [flippedCardIdx, setFlippedCardIdx] = useState<number | null>(null)
@@ -99,8 +92,7 @@ export function PeerInstructionStudio() {
       suite,
       q1InitialOptionId: q1InitialVote || suite.q1Options[0].id,
       q1InitialConfidence,
-      q1RevoteOptionId:
-        q1Revote || q1InitialVote || suite.q1Options[0].id,
+      q1RevoteOptionId: q1Revote || q1InitialVote || suite.q1Options[0].id,
       q1RevoteConfidence,
       q2TransferOptionId: q2TransferVote || suite.q2Options[0].id,
       peerDiscussionOccurred: discussionAcknowledged,
@@ -176,13 +168,7 @@ export function PeerInstructionStudio() {
         label="Peer Instruction Phases"
         value={activeTab}
         onChange={(k) =>
-          setActiveTab(
-            k as
-              | 'initial_vote'
-              | 'peer_discussion'
-              | 'revote'
-              | 'isomorphic_transfer'
-          )
+          setActiveTab(k as 'initial_vote' | 'peer_discussion' | 'revote' | 'isomorphic_transfer')
         }
         items={[
           {
@@ -213,9 +199,7 @@ export function PeerInstructionStudio() {
                 <span className="text-[10px] font-semibold tracking-wider uppercase text-sky-600 dark:text-sky-400">
                   Step 1: Silent Individual Poll (Mazur 1997)
                 </span>
-                <h2 className="text-base font-bold text-strong">
-                  {suite.title}
-                </h2>
+                <h2 className="text-base font-bold text-strong">{suite.title}</h2>
                 <p className="text-xs text-secondary">{suite.subtitle}</p>
               </div>
               <Badge tone="accent" className="text-xs">
@@ -229,9 +213,7 @@ export function PeerInstructionStudio() {
                 <Compass className="w-3.5 h-3.5 text-sky-500" />
                 Underlying Physical Premise:
               </span>
-              <p className="text-secondary leading-relaxed">
-                {suite.priorKnowledgePremise}
-              </p>
+              <p className="text-secondary leading-relaxed">{suite.priorKnowledgePremise}</p>
             </div>
 
             {/* Q1 Qualitative Problem Prompt */}
@@ -278,9 +260,7 @@ export function PeerInstructionStudio() {
             {/* Confidence Slider */}
             <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-secondary">
-                  Your Confidence Level:
-                </span>
+                <span className="font-semibold text-secondary">Your Confidence Level:</span>
                 <span className="font-mono font-bold text-strong">
                   {q1InitialConfidence === 1
                     ? '1 - Wild Guess'
@@ -300,9 +280,7 @@ export function PeerInstructionStudio() {
                 step={1}
                 disabled={q1InitialSubmitted}
                 value={q1InitialConfidence}
-                onChange={(e) =>
-                  setQ1InitialConfidence(Number(e.target.value))
-                }
+                onChange={(e) => setQ1InitialConfidence(Number(e.target.value))}
                 className="w-full accent-sky-500 cursor-pointer"
               />
             </div>
@@ -372,8 +350,7 @@ export function PeerInstructionStudio() {
               </span>
               <div className="space-y-2">
                 {suite.q1Options.map((opt) => {
-                  const pct =
-                    suite.q1ClassroomVoteDistribution[opt.id] ?? 0.33
+                  const pct = suite.q1ClassroomVoteDistribution[opt.id] ?? 0.33
                   const isYourChoice = q1InitialVote === opt.id
                   return (
                     <div
@@ -408,10 +385,9 @@ export function PeerInstructionStudio() {
                 Mazur Pedagogical Protocol:
               </strong>
               <p>
-                Because between 30% and 70% of the class answered correctly,
-                direct lecture is withheld. You are now paired with a peer who
-                holds an opposing perspective. Discuss your reasoning and
-                convince them of your mental model.
+                Because between 30% and 70% of the class answered correctly, direct lecture is
+                withheld. You are now paired with a peer who holds an opposing perspective. Discuss
+                your reasoning and convince them of your mental model.
               </p>
             </div>
           </Panel>
@@ -425,9 +401,7 @@ export function PeerInstructionStudio() {
                   <Users className="w-4 h-4 text-sky-500" />
                   Your Discussion Partner
                 </h3>
-                <span className="text-xs text-tertiary">
-                  Switch discussion partner
-                </span>
+                <span className="text-xs text-tertiary">Switch discussion partner</span>
               </div>
 
               <div className="flex gap-2">
@@ -448,16 +422,14 @@ export function PeerInstructionStudio() {
               {(() => {
                 const activePeer = suite.simulatedPeers[selectedPeerIdx]
                 const peerChoice = suite.q1Options.find(
-                  (o) => o.id === activePeer.initialChoiceOptionId
+                  (o) => o.id === activePeer.initialChoiceOptionId,
                 )
 
                 return (
                   <Panel className="p-5 rounded-xl border border-sky-300/60 dark:border-sky-800/60 bg-sky-50/20 dark:bg-sky-950/20 space-y-3">
                     <div className="flex items-center justify-between border-b border-sky-200 dark:border-sky-900/50 pb-2">
                       <div>
-                        <h4 className="text-xs font-bold text-strong">
-                          {activePeer.peerName}
-                        </h4>
+                        <h4 className="text-xs font-bold text-strong">{activePeer.peerName}</h4>
                         <span className="text-[10px] text-tertiary">
                           Advocating Option {peerChoice?.label} (Confidence:{' '}
                           {activePeer.initialConfidence}/5)
@@ -479,12 +451,8 @@ export function PeerInstructionStudio() {
                     </div>
 
                     <div className="text-[11px] space-y-1">
-                      <strong className="text-strong">
-                        Underlying Heuristic Model:{' '}
-                      </strong>
-                      <span className="text-secondary">
-                        {activePeer.heuristicMentalModel}
-                      </span>
+                      <strong className="text-strong">Underlying Heuristic Model: </strong>
+                      <span className="text-secondary">{activePeer.heuristicMentalModel}</span>
                     </div>
 
                     <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-strong space-y-1">
@@ -492,9 +460,7 @@ export function PeerInstructionStudio() {
                         <Sparkles className="w-3.5 h-3.5" />
                         Socratic Counter-Challenge to Ask Peer:
                       </strong>
-                      <p className="text-secondary">
-                        {activePeer.counterArgumentTrigger}
-                      </p>
+                      <p className="text-secondary">{activePeer.counterArgumentTrigger}</p>
                     </div>
                   </Panel>
                 )
@@ -509,8 +475,7 @@ export function PeerInstructionStudio() {
                   Cognitive Deliberation Synthesis
                 </h3>
                 <p className="text-xs text-secondary">
-                  Reflect on whether your peer’s argument challenged your initial
-                  intuition.
+                  Reflect on whether your peer’s argument challenged your initial intuition.
                 </p>
               </div>
 
@@ -519,10 +484,9 @@ export function PeerInstructionStudio() {
                   Michelle Smith et al. (Science 2009) Insight:
                 </span>
                 <p className="text-secondary leading-relaxed">
-                  In classroom trials across thousands of students, paired peer
-                  discussion resulted in correct mental model restructuring in
-                  over 85% of conflicting pairs, even when neither student was
-                  initially certain of the answer.
+                  In classroom trials across thousands of students, paired peer discussion resulted
+                  in correct mental model restructuring in over 85% of conflicting pairs, even when
+                  neither student was initially certain of the answer.
                 </p>
               </div>
 
@@ -531,14 +495,12 @@ export function PeerInstructionStudio() {
                   <input
                     type="checkbox"
                     checked={discussionAcknowledged}
-                    onChange={(e) =>
-                      setDiscussionAcknowledged(e.target.checked)
-                    }
+                    onChange={(e) => setDiscussionAcknowledged(e.target.checked)}
                     className="mt-0.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500"
                   />
                   <span>
-                    I have deliberated with my peer, critically evaluated their
-                    heuristic, and am ready to cast my revote.
+                    I have deliberated with my peer, critically evaluated their heuristic, and am
+                    ready to cast my revote.
                   </span>
                 </label>
               </div>
@@ -582,24 +544,19 @@ export function PeerInstructionStudio() {
 
             {/* Q1 Options Revote */}
             <div className="space-y-2.5">
-              <span className="text-xs font-semibold text-strong">
-                Cast Your Final Vote on Q1:
-              </span>
+              <span className="text-xs font-semibold text-strong">Cast Your Final Vote on Q1:</span>
               {suite.q1Options.map((opt) => {
                 const isSelected = q1Revote === opt.id
                 let optionStyle =
                   'border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) hover:border-neutral-300'
                 if (q1RevoteSubmitted) {
                   if (opt.isCorrect) {
-                    optionStyle =
-                      'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
+                    optionStyle = 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
                   } else if (isSelected && !opt.isCorrect) {
-                    optionStyle =
-                      'border-rose-500 bg-rose-50/40 dark:bg-rose-950/30'
+                    optionStyle = 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/30'
                   }
                 } else if (isSelected) {
-                  optionStyle =
-                    'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
+                  optionStyle = 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
                 }
 
                 return (
@@ -616,9 +573,7 @@ export function PeerInstructionStudio() {
                           {opt.label}
                         </span>
                         <div>
-                          <p className="text-strong leading-relaxed">
-                            {opt.text}
-                          </p>
+                          <p className="text-strong leading-relaxed">{opt.text}</p>
                           {q1RevoteSubmitted && opt.commonMisconception && (
                             <p className="text-[11px] text-tertiary mt-1">
                               <strong>Common Misconception: </strong>
@@ -632,9 +587,7 @@ export function PeerInstructionStudio() {
                           {opt.isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                           ) : (
-                            isSelected && (
-                              <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                            )
+                            isSelected && <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                           )}
                         </div>
                       )}
@@ -647,9 +600,7 @@ export function PeerInstructionStudio() {
             {/* Revote Confidence */}
             <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-secondary">
-                  Post-Discussion Confidence:
-                </span>
+                <span className="font-semibold text-secondary">Post-Discussion Confidence:</span>
                 <span className="font-mono font-bold text-strong">
                   {q1RevoteConfidence}/5 (Calibration shift:{' '}
                   {metrics.confidenceCalibrationDelta > 0 ? '+' : ''}
@@ -662,9 +613,7 @@ export function PeerInstructionStudio() {
                 max={5}
                 disabled={q1RevoteSubmitted}
                 value={q1RevoteConfidence}
-                onChange={(e) =>
-                  setQ1RevoteConfidence(Number(e.target.value))
-                }
+                onChange={(e) => setQ1RevoteConfidence(Number(e.target.value))}
                 className="w-full accent-emerald-500 cursor-pointer"
               />
             </div>
@@ -700,9 +649,7 @@ export function PeerInstructionStudio() {
                     <GraduationCap className="w-4 h-4" />
                     Instructor Canonical Synthesis:
                   </span>
-                  <p className="text-secondary leading-relaxed">
-                    {suite.instructorExplanation}
-                  </p>
+                  <p className="text-secondary leading-relaxed">{suite.instructorExplanation}</p>
                 </div>
 
                 <div className="flex justify-end pt-2">
@@ -735,8 +682,7 @@ export function PeerInstructionStudio() {
                   Isomorphic Transfer Challenge (Q2)
                 </h2>
                 <p className="text-xs text-secondary">
-                  Testing the identical structural invariant in a completely
-                  novel surface context
+                  Testing the identical structural invariant in a completely novel surface context
                 </p>
               </div>
               <Badge tone="accent" className="text-xs">
@@ -763,15 +709,12 @@ export function PeerInstructionStudio() {
                   'border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) hover:border-neutral-300'
                 if (q2TransferSubmitted) {
                   if (opt.isCorrect) {
-                    optionStyle =
-                      'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
+                    optionStyle = 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/30'
                   } else if (isSelected && !opt.isCorrect) {
-                    optionStyle =
-                      'border-rose-500 bg-rose-50/40 dark:bg-rose-950/30'
+                    optionStyle = 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/30'
                   }
                 } else if (isSelected) {
-                  optionStyle =
-                    'border-sky-500 bg-sky-50/30 dark:bg-sky-950/20'
+                  optionStyle = 'border-sky-500 bg-sky-50/30 dark:bg-sky-950/20'
                 }
 
                 return (
@@ -787,18 +730,14 @@ export function PeerInstructionStudio() {
                         <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-neutral-100 dark:bg-(--hub-panel-2) text-strong shrink-0 mt-0.5">
                           {opt.label}
                         </span>
-                        <p className="text-strong leading-relaxed">
-                          {opt.text}
-                        </p>
+                        <p className="text-strong leading-relaxed">{opt.text}</p>
                       </div>
                       {q2TransferSubmitted && (
                         <div>
                           {opt.isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                           ) : (
-                            isSelected && (
-                              <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                            )
+                            isSelected && <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                           )}
                         </div>
                       )}
@@ -823,20 +762,12 @@ export function PeerInstructionStudio() {
             ) : (
               <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1.5">
                 <div>
-                  <strong className="text-strong">
-                    Deep Structural Mapping:{' '}
-                  </strong>
-                  <span className="text-secondary">
-                    {suite.deepStructuralMapping}
-                  </span>
+                  <strong className="text-strong">Deep Structural Mapping: </strong>
+                  <span className="text-secondary">{suite.deepStructuralMapping}</span>
                 </div>
                 <div>
-                  <strong className="text-strong">
-                    Surface Context Contrast:{' '}
-                  </strong>
-                  <span className="text-secondary">
-                    {suite.surfaceContextDifference}
-                  </span>
+                  <strong className="text-strong">Surface Context Contrast: </strong>
+                  <span className="text-secondary">{suite.surfaceContextDifference}</span>
                 </div>
               </div>
             )}
@@ -854,8 +785,8 @@ export function PeerInstructionStudio() {
                   Calibrated FSRS-6 Flashcards ({fsrsCards.length})
                 </h3>
                 <p className="text-xs text-secondary">
-                  Stability S₀ = {fsrsCards[0]?.initialStabilityDays}d |
-                  Difficulty D₀ = {fsrsCards[0]?.initialDifficulty}
+                  Stability S₀ = {fsrsCards[0]?.initialStabilityDays}d | Difficulty D₀ ={' '}
+                  {fsrsCards[0]?.initialDifficulty}
                 </p>
               </div>
 
@@ -875,9 +806,7 @@ export function PeerInstructionStudio() {
                 return (
                   <div
                     key={idx}
-                    onClick={() =>
-                      setFlippedCardIdx(isFlipped ? null : idx)
-                    }
+                    onClick={() => setFlippedCardIdx(isFlipped ? null : idx)}
                     className="p-4 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel-2)/50 hover:border-neutral-300 dark:hover:border-neutral-700 cursor-pointer transition-all space-y-2 min-h-[140px] flex flex-col justify-between"
                   >
                     <div>
@@ -894,9 +823,7 @@ export function PeerInstructionStudio() {
 
                     <div className="pt-2 border-t border-neutral-100 dark:border-(--hub-border)/60 flex items-center justify-between text-[10px] text-tertiary">
                       <span className="truncate">{card.targetFactor}</span>
-                      <span className="font-mono">
-                        S₀: {card.initialStabilityDays}d
-                      </span>
+                      <span className="font-mono">S₀: {card.initialStabilityDays}d</span>
                     </div>
                   </div>
                 )

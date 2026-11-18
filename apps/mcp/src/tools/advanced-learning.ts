@@ -766,9 +766,7 @@ export const advancedLearningTools: RegisteredTool[] = [
       const q1Initial = q1InitialOptionId ?? suite.q1Options[0].id
       const q1Revote = q1RevoteOptionId ?? suite.q1Options.find((o) => o.isCorrect)?.id ?? q1Initial
       const q2Transfer =
-        q2TransferOptionId ??
-        suite.q2Options.find((o) => o.isCorrect)?.id ??
-        suite.q2Options[0].id
+        q2TransferOptionId ?? suite.q2Options.find((o) => o.isCorrect)?.id ?? suite.q2Options[0].id
 
       const metrics = calculatePIMetrics({
         suite,

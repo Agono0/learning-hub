@@ -73,7 +73,9 @@ describe('Peer Instruction & ConcepTest Engine (Eric Mazur & Michelle Smith)', (
       expect(metrics.smithLearningVerification).toBe(true)
       expect(metrics.isomorphicTransferScore).toBe(100)
       expect(metrics.confidenceCalibrationDelta).toBeGreaterThan(0)
-      expect(metrics.qualitativeSummary).toContain('Authentic conceptual restructuring demonstrated')
+      expect(metrics.qualitativeSummary).toContain(
+        'Authentic conceptual restructuring demonstrated',
+      )
     })
 
     it('computes Robust Conceptual Gain for moderate progress', () => {
@@ -224,11 +226,7 @@ describe('Peer Instruction & ConcepTest Engine (Eric Mazur & Michelle Smith)', (
     })
 
     it('verifies all MazurWindowActionEnum values', () => {
-      expect(MazurWindowActionEnum.options).toEqual([
-        're_explain',
-        'peer_discussion',
-        'proceed',
-      ])
+      expect(MazurWindowActionEnum.options).toEqual(['re_explain', 'peer_discussion', 'proceed'])
     })
 
     it('verifies all PIEngagementBandEnum values', () => {

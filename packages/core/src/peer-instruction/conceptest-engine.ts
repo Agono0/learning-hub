@@ -87,9 +87,7 @@ export const SimulatedPeerPerspectiveSchema = z.object({
   heuristicMentalModel: z.string().min(1),
   counterArgumentTrigger: z.string().min(1),
 })
-export type SimulatedPeerPerspective = z.infer<
-  typeof SimulatedPeerPerspectiveSchema
->
+export type SimulatedPeerPerspective = z.infer<typeof SimulatedPeerPerspectiveSchema>
 
 /**
  * Full ConcepTest Suite containing Q1, Peer Dialogue Models, and Isomorphic Q2.
@@ -120,7 +118,7 @@ export const ConcepTestSuiteSchema = z.object({
       back: z.string().min(1),
       targetFactor: z.string().min(1),
       cardDepth: z.enum(['concep_test', 'peer_dissonance', 'isomorphic_transfer']),
-    })
+    }),
   ),
 })
 export type ConcepTestSuite = z.infer<typeof ConcepTestSuiteSchema>
@@ -215,8 +213,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
           'Consider two atoms sitting directly on the circumference of the hole. As the plate heats, the distance between those two atoms MUST increase because of thermal vibration. If every single atom around the perimeter gets farther away from its neighbors, the total circumference increases (C = 2πr), which mathematically forces the diameter to increase!',
         heuristicMentalModel:
           'Circumferential distance stretching and isotropic affine transformation.',
-        counterArgumentTrigger:
-          'If circumference expands, how can diameter shrink when C = π * d?',
+        counterArgumentTrigger: 'If circumference expands, how can diameter shrink when C = π * d?',
       },
     ],
     q2IsomorphicPrompt:
@@ -279,8 +276,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
     title: 'DC Circuits & Potential Conservation',
     domain: 'Electromagnetism & Circuit Theory',
     subtitle: 'Series/Parallel Bulb Dimming & Current Distribution (Mazur 1997)',
-    priorKnowledgePremise:
-      "Ohm's Law (V = IR) and basic series/parallel resistance formulas.",
+    priorKnowledgePremise: "Ohm's Law (V = IR) and basic series/parallel resistance formulas.",
     canonicalInvariant:
       'An ideal battery provides a constant potential difference (EMF), NOT a constant electric current. Adding parallel branches decreases overall equivalent circuit resistance, increasing total current delivered by the source.',
     instructorExplanation:
@@ -362,8 +358,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         label: 'B',
         text: 'Total current remains constant, so the kettle current drops in half.',
         isCorrect: false,
-        peerArgumentHint:
-          'Assumes home electrical panel has a constant current throttle.',
+        peerArgumentHint: 'Assumes home electrical panel has a constant current throttle.',
       },
       {
         id: 'opt-q2-c',
@@ -440,8 +435,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         isCorrect: false,
         commonMisconception:
           'Overcompensation fallacy: knowing water contracts upon melting, but failing to realize the displaced volume already accounts for the density difference.',
-        peerArgumentHint:
-          'Buoyant equilibrium already compensates for the density difference.',
+        peerArgumentHint: 'Buoyant equilibrium already compensates for the density difference.',
       },
     ],
     q1ClassroomVoteDistribution: {
@@ -467,8 +461,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         initialConfidence: 5,
         qualitativeArgument:
           'A floating object displaces its WEIGHT, not its volume! The submerged part of the ice displaces exactly 10 grams of water if the ice cube weighs 10 grams. When those 10 grams of ice melt, they become exactly 10 grams of liquid water, which occupies the exact same volume as the 10 grams of water it was displacing. It fits into the hole like a key in a lock!',
-        heuristicMentalModel:
-          'Archimedes mass-conservation and displaced volume equivalence.',
+        heuristicMentalModel: 'Archimedes mass-conservation and displaced volume equivalence.',
         counterArgumentTrigger:
           'If the melted ice has the same mass as the displaced water, how could its liquid volume be any different?',
       },
@@ -513,8 +506,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         cardDepth: 'concep_test',
       },
       {
-        front:
-          'ConcepTest Misconception: Why do learners think floating ice will overflow?',
+        front: 'ConcepTest Misconception: Why do learners think floating ice will overflow?',
         back: 'They observe the ice tip protruding above the surface and assume that extra volume will add to the glass. They overlook that ice is ~9% less dense than water; upon melting into liquid, its volume contracts by the exact volume of the protruding tip.',
         targetFactor: 'Protrusion Fallacy',
         cardDepth: 'peer_dissonance',
@@ -532,8 +524,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
     id: 'ct-darwinian-natural-selection',
     title: 'Evolutionary Biology & Stochastic Selection',
     domain: 'Genetics & Population Biology',
-    subtitle:
-      'Antibiotic Resistance: Lamarckian Adaptation vs Darwinian Selection',
+    subtitle: 'Antibiotic Resistance: Lamarckian Adaptation vs Darwinian Selection',
     priorKnowledgePremise:
       'Bacteria reproduce rapidly by fission; genetic mutations occur during DNA replication.',
     canonicalInvariant:
@@ -550,8 +541,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         isCorrect: false,
         commonMisconception:
           'Lamarckian teleological adaptation: believing organisms intentionally mutate in response to environmental need.',
-        peerArgumentHint:
-          'Can an organism choose its own random DNA copying errors?',
+        peerArgumentHint: 'Can an organism choose its own random DNA copying errors?',
       },
       {
         id: 'opt-b',
@@ -584,8 +574,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         initialConfidence: 4,
         qualitativeArgument:
           'Bacteria are living organisms with complex signaling pathways. When stressed by a poison, their repair mechanisms activate to fight off the toxin. Over several generations of exposure, they learn to resist it, just like human muscles adapt to lifting heavy weights!',
-        heuristicMentalModel:
-          'Physiological acclimatization mapped onto evolutionary genetics.',
+        heuristicMentalModel: 'Physiological acclimatization mapped onto evolutionary genetics.',
         counterArgumentTrigger:
           'If you expose sterile bacteria with identical cloned DNA without mutations to penicillin, can any of them "learn" to survive?',
       },
@@ -594,9 +583,8 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         initialChoiceOptionId: 'opt-b',
         initialConfidence: 5,
         qualitativeArgument:
-          "Evolution is not intentional! In a billion bacteria, DNA polymerase makes random typos. A few mutants already had altered enzymes before penicillin was ever added. Penicillin just acted as a lethal filter: it wiped out the normal bacteria, leaving only the mutants to inherit the dish.",
-        heuristicMentalModel:
-          'Stochastic variation filtered by selective environmental pressure.',
+          'Evolution is not intentional! In a billion bacteria, DNA polymerase makes random typos. A few mutants already had altered enzymes before penicillin was ever added. Penicillin just acted as a lethal filter: it wiped out the normal bacteria, leaving only the mutants to inherit the dish.',
+        heuristicMentalModel: 'Stochastic variation filtered by selective environmental pressure.',
         counterArgumentTrigger:
           'If mutations were directed by need, why do bacteria also produce fatal mutations that kill them?',
       },
@@ -640,8 +628,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         cardDepth: 'concep_test',
       },
       {
-        front:
-          'ConcepTest Misconception: Why do people hold Lamarckian views of evolution?',
+        front: 'ConcepTest Misconception: Why do people hold Lamarckian views of evolution?',
         back: 'People conflate individual physiological acclimatization (like building muscle or tanning) with population-level genetic evolution, teleologically assuming organisms mutate intentionally to overcome challenges.',
         targetFactor: 'Lamarckian Teleology Fallacy',
         cardDepth: 'peer_dissonance',
@@ -709,8 +696,7 @@ const CANONICAL_CONCEPTEST_SUITES: ConcepTestSuite[] = [
         initialConfidence: 4,
         qualitativeArgument:
           'If you have twice as many dollar bills chasing the exact same amount of goods and services, the value of each dollar is cut in half! That is basic supply and demand. Every economics textbook says M * V = P * Y: if you double M, P must double!',
-        heuristicMentalModel:
-          'Linear currency dilution with static transaction velocity.',
+        heuristicMentalModel: 'Linear currency dilution with static transaction velocity.',
         counterArgumentTrigger:
           'What happens to V if banks leave the cash sitting inside the Federal Reserve vaults instead of lending it?',
       },
@@ -796,9 +782,7 @@ export function getCanonicalConcepTestSuites(): ConcepTestSuite[] {
 /**
  * Retrieves a specific ConcepTest suite by ID.
  */
-export function getConcepTestSuiteById(
-  id: string
-): ConcepTestSuite | undefined {
+export function getConcepTestSuiteById(id: string): ConcepTestSuite | undefined {
   return CANONICAL_CONCEPTEST_SUITES.find((s) => s.id === id)
 }
 
@@ -837,12 +821,8 @@ export function calculatePIMetrics(params: CalculatePIMetricsParams): PIMetrics 
   const isQ2TransferCorrect = q2TransferOptionId === q2CorrectOption?.id
 
   // 1. Classroom Pre/Post Percentages
-  const prePct =
-    params.simulatedClassroomAccuracyVote1 ??
-    (isQ1InitialCorrect ? 65 : 35)
-  const postPct =
-    params.simulatedClassroomAccuracyVote2 ??
-    (isQ1RevoteCorrect ? 82 : 45)
+  const prePct = params.simulatedClassroomAccuracyVote1 ?? (isQ1InitialCorrect ? 65 : 35)
+  const postPct = params.simulatedClassroomAccuracyVote2 ?? (isQ1RevoteCorrect ? 82 : 45)
 
   // 2. Hake Normalized Learning Gain <g>
   // <g> = (post% - pre%) / (100% - pre%)
@@ -864,8 +844,7 @@ export function calculatePIMetrics(params: CalculatePIMetricsParams): PIMetrics 
     entropy -= p * Math.log2(p)
   }
   const maxEntropy = Math.log2(suite.q1Options.length)
-  const mazurPolarizationIndex =
-    Math.round((entropy / Math.max(0.1, maxEntropy)) * 100) / 100
+  const mazurPolarizationIndex = Math.round((entropy / Math.max(0.1, maxEntropy)) * 100) / 100
 
   // 4. Peer Discussion Convergence Ratio (DCR)
   let peerDiscussionConvergence = 0.5
@@ -878,12 +857,8 @@ export function calculatePIMetrics(params: CalculatePIMetricsParams): PIMetrics 
 
   // 6. Confidence-Accuracy Calibration Delta (ΔCAC)
   // Positive delta means confidence increased with accuracy or decreased with misconception
-  const initialCalib = isQ1InitialCorrect
-    ? q1InitialConfidence
-    : -q1InitialConfidence
-  const revoteCalib = isQ1RevoteCorrect
-    ? q1RevoteConfidence
-    : -q1RevoteConfidence
+  const initialCalib = isQ1InitialCorrect ? q1InitialConfidence : -q1InitialConfidence
+  const revoteCalib = isQ1RevoteCorrect ? q1RevoteConfidence : -q1RevoteConfidence
   const confidenceCalibrationDelta = revoteCalib - initialCalib
 
   // 7. Mazur Window Action Recommendation
@@ -951,7 +926,7 @@ export function calculatePIMetrics(params: CalculatePIMetricsParams): PIMetrics 
  */
 export function generatePIFSRSCards(
   suite: ConcepTestSuite,
-  metrics: PIMetrics
+  metrics: PIMetrics,
 ): Array<{
   front: string
   back: string
@@ -967,7 +942,7 @@ export function generatePIFSRSCards(
       (1.5 +
         Math.max(0, metrics.hakeNormalizedGain) * 2.0 +
         (metrics.isomorphicTransferScore / 100.0) * 1.3) *
-        10
+        10,
     ) / 10
 
   // Higher Smith learning verification -> lower difficulty D0

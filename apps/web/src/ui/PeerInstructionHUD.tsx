@@ -138,9 +138,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">normalized</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">
-            (post - pre) / (100 - pre)
-          </p>
+          <p className="text-[10px] text-tertiary truncate">(post - pre) / (100 - pre)</p>
         </div>
 
         {/* Mazur Polarization Index (PI) */}
@@ -155,9 +153,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">entropy</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">
-            Cognitive spread across choices
-          </p>
+          <p className="text-[10px] text-tertiary truncate">Cognitive spread across choices</p>
         </div>
 
         {/* Peer Discussion Convergence (DCR) */}
@@ -172,9 +168,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">consensus</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">
-            Paired resolution rate
-          </p>
+          <p className="text-[10px] text-tertiary truncate">Paired resolution rate</p>
         </div>
 
         {/* Isomorphic Transfer Score (Q2) */}
@@ -189,9 +183,7 @@ export function PeerInstructionHUD({
             </span>
             <span className="text-[11px] text-secondary">isomorphic</span>
           </div>
-          <p className="text-[10px] text-tertiary truncate">
-            Novel context invariance
-          </p>
+          <p className="text-[10px] text-tertiary truncate">Novel context invariance</p>
         </div>
       </div>
 
@@ -213,9 +205,7 @@ export function PeerInstructionHUD({
             </span>
           </div>
         </div>
-        <ProgressBar
-          value={Math.max(0, Math.min(1.0, metrics.hakeNormalizedGain))}
-        />
+        <ProgressBar value={Math.max(0, Math.min(1.0, metrics.hakeNormalizedGain))} />
       </div>
 
       {/* Diagnostic & Pedagogical Advice banner */}
@@ -224,9 +214,7 @@ export function PeerInstructionHUD({
           <GraduationCap className="w-3.5 h-3.5 text-sky-500" />
           <span>Peer Instruction Diagnostic</span>
         </div>
-        <p className="text-secondary leading-relaxed">
-          {metrics.qualitativeSummary}
-        </p>
+        <p className="text-secondary leading-relaxed">{metrics.qualitativeSummary}</p>
         <p className="text-tertiary text-[11px]">
           <strong className="text-secondary">Instructional Guidance: </strong>
           {metrics.pedagogicalAdvice}
