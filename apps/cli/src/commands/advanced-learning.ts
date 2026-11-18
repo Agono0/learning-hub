@@ -38,6 +38,8 @@ import {
   evaluateLiminalTrajectory,
   bridgeThresholdToCurriculum,
   computeThresholdSignificanceIndex,
+  ZpdEvaluationInputSchema,
+  ZpdPromptInputSchema,
   calculateZpdMetrics,
   listZpdScenarios,
   getZpdScenarioById,
@@ -385,7 +387,9 @@ export function thresholdCommand(args: string[]): void {
 
 export function zpdCommand(args: string[]): void {
   const sub = args[0] || 'eval'
-  const scenarioId = parseFlag(args, '--scenario') || 'algo_dynamic_programming'
+  // Flag defaults come from the canonical core payload schema (single source of truth).
+  const zpdDefaults = ZpdEvaluationInputSchema.parse({})
+  const scenarioId = parseFlag(args, '--scenario') || zpdDefaults.scenarioId
 
   if (sub === 'scenarios' || sub === 'list') {
     const scenarios = listZpdScenarios()
@@ -400,7 +404,9 @@ export function zpdCommand(args: string[]): void {
   }
 
   if (sub === 'prompt') {
-    const tier = Number(parseFlag(args, '--tier') || '1')
+    const tier = Number(
+      parseFlag(args, '--tier') || String(ZpdPromptInputSchema.parse({}).tierLevel),
+    )
     const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
     const prompt = getGraduatedPromptAtTier(scenario.mediatedProblem, tier)
     console.log(`\n💡 Graduated Prompt (Tier ${tier}/5) — ${scenario.title}`)
@@ -418,10 +424,15 @@ export function zpdCommand(args: string[]): void {
   }
 
   if (sub === 'deck') {
-    const pre = Number(parseFlag(args, '--pre') || '30')
-    const post = Number(parseFlag(args, '--post') || '85')
+    const pre = Number(parseFlag(args, '--pre') || String(zpdDefaults.preTestScore))
+    const post = Number(parseFlag(args, '--post') || String(zpdDefaults.postTestScore))
     const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
-    const metrics = calculateZpdMetrics(pre, post, 2, [80, 75, 70])
+    const metrics = calculateZpdMetrics(
+      pre,
+      post,
+      zpdDefaults.promptsConsumed,
+      zpdDefaults.transferScores,
+    )
     const deck = generateFSRSZpdDeck(scenario, metrics)
     console.log(`\n🗂️ FSRS-6 Calibrated Flashcard Deck — ${scenario.title}`)
     console.log('═'.repeat(65))
@@ -437,11 +448,11 @@ export function zpdCommand(args: string[]): void {
   }
 
   // Default: eval
-  const pre = Number(parseFlag(args, '--pre') || '25')
-  const post = Number(parseFlag(args, '--post') || '80')
-  const hints = Number(parseFlag(args, '--hints') || '2')
+  const pre = Number(parseFlag(args, '--pre') || String(zpdDefaults.preTestScore))
+  const post = Number(parseFlag(args, '--post') || String(zpdDefaults.postTestScore))
+  const hints = Number(parseFlag(args, '--hints') || String(zpdDefaults.promptsConsumed))
   const scenario = getZpdScenarioById(scenarioId) || listZpdScenarios()[0]!
-  const metrics = calculateZpdMetrics(pre, post, hints, [85, 75, 70])
+  const metrics = calculateZpdMetrics(pre, post, hints, zpdDefaults.transferScores)
 
   console.log('\n🎯 Dynamic Assessment & Zone of Proximal Development Diagnostic')
   console.log(

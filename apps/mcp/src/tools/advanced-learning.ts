@@ -35,6 +35,8 @@ import {
   getStandardThresholdConcepts,
   evaluateLiminalTrajectory,
   bridgeThresholdToCurriculum,
+  ZpdEvaluationInputSchema,
+  ZpdPromptInputSchema,
   calculateZpdMetrics,
   listZpdScenarios,
   getZpdScenarioById,
@@ -65,20 +67,24 @@ import {
   generateAdversarialCounterArgument,
   generateCERFSRSDeck,
   type CERArgumentSubmission,
+  CERArgumentSubmissionSchema,
   CANONICAL_MACROCONTEXT_CASES,
   evaluateAnchoredSolution,
   simulateAnchoredSensitivity,
   generateAnchoredFSRSDeck,
   type LearnerSolutionSubmission,
+  LearnerSolutionSubmissionSchema,
   CANONICAL_CONTRASTING_SETS,
   evaluateContrastingAttempt,
   generateContrastingFSRSDeck,
   type InventedMetricSubmission,
+  InventedMetricSubmissionSchema,
   CANONICAL_COLLABORATIVE_SCENARIOS,
   evaluateCollaborativeDiscourse,
   generateCollaborativePeerTurn,
   generateCollaborativeFSRSDeck,
   type DiscourseSubmission,
+  DiscourseSubmissionSchema,
   CANONICAL_SYSTEM_DYNAMICS_SCENARIOS,
   evaluateLearnerModel,
   generateSystemDynamicsFSRSDeck,
@@ -89,6 +95,7 @@ import {
   simulateMentalAnimation,
   evaluateInquirySession,
   generateModelInquiryFsrsDeck,
+  InquirySessionInputSchema,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -439,35 +446,7 @@ export const advancedLearningTools: RegisteredTool[] = [
   tool(
     'zpd_evaluate_trajectory',
     'Evaluates baseline ADL, mediated PDL, and computes ZPD bandwidth, Budoff Learning Potential Score (LPS), Feuerstein Cognitive Modifiability Index (CMI), and prompt efficiency.',
-    {
-      scenarioId: z
-        .string()
-        .default('algo_dynamic_programming')
-        .describe('Assessment scenario identifier.'),
-      preTestScore: z
-        .number()
-        .min(0)
-        .max(100)
-        .default(30)
-        .describe('Independent baseline score (ADL).'),
-      postTestScore: z
-        .number()
-        .min(0)
-        .max(100)
-        .default(80)
-        .describe('Mediated post-test score (PDL).'),
-      promptsConsumed: z
-        .number()
-        .int()
-        .min(0)
-        .max(5)
-        .default(2)
-        .describe('Graduated prompts accessed (0..5).'),
-      transferScores: z
-        .array(z.number().min(0).max(100))
-        .default([85, 75, 70])
-        .describe('Scores on near, medium, far transfer tasks.'),
-    },
+    ZpdEvaluationInputSchema.shape,
     async ({ scenarioId, preTestScore, postTestScore, promptsConsumed, transferScores }) => {
       const scenario = getZpdScenarioById(scenarioId) ?? listZpdScenarios()[0]
       const metrics = calculateZpdMetrics(
@@ -497,19 +476,7 @@ export const advancedLearningTools: RegisteredTool[] = [
   tool(
     'zpd_request_prompt',
     'Retrieves a standardized graduated prompt at a designated tier (1: Metacognitive, 2: Structural, 3: Heuristic, 4: Subgoal, 5: Worked Demonstration).',
-    {
-      scenarioId: z
-        .string()
-        .default('algo_dynamic_programming')
-        .describe('Assessment scenario identifier.'),
-      tierLevel: z
-        .number()
-        .int()
-        .min(1)
-        .max(5)
-        .default(1)
-        .describe('Graduated prompt tier level (1..5).'),
-    },
+    ZpdPromptInputSchema.shape,
     async ({ scenarioId, tierLevel }) => {
       const scenario = getZpdScenarioById(scenarioId) ?? listZpdScenarios()[0]
       const prompt = getGraduatedPromptAtTier(scenario.mediatedProblem, tierLevel)
@@ -526,16 +493,7 @@ export const advancedLearningTools: RegisteredTool[] = [
   tool(
     'zpd_generate_deck',
     'Generates an FSRS-6 review flashcard deck with stability (S0) dynamically modulated by Learning Potential Score (LPS) and Transfer Autonomy.',
-    {
-      scenarioId: z
-        .string()
-        .default('algo_dynamic_programming')
-        .describe('Assessment scenario identifier.'),
-      preTestScore: z.number().min(0).max(100).default(30),
-      postTestScore: z.number().min(0).max(100).default(80),
-      promptsConsumed: z.number().int().min(0).max(5).default(2),
-      transferScores: z.array(z.number().min(0).max(100)).default([85, 75, 70]),
-    },
+    ZpdEvaluationInputSchema.shape,
     async ({ scenarioId, preTestScore, postTestScore, promptsConsumed, transferScores }) => {
       const scenario = getZpdScenarioById(scenarioId) ?? listZpdScenarios()[0]
       const metrics = calculateZpdMetrics(
@@ -1230,34 +1188,31 @@ export const advancedLearningTools: RegisteredTool[] = [
     'cer_evaluate_argument',
     'Evaluates an argument submission against the McNeill-Krajcik CER framework and Erduran-Osborne TAP 5-level hierarchy, calculating CCS, EQI, RDI, TAP, and ERS.',
     {
-      debateId: z.string().default('debate-amoc-tipping'),
-      selectedClaimId: z.string().default('claim-amoc-tipping-near'),
-      claimStatement: z
-        .string()
-        .default(
-          'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
-        ),
-      selectedEvidenceIds: z
-        .array(z.string())
-        .default(['ev-amoc-sst-autocorr', 'ev-amoc-paleo-glacier']),
-      userEvidenceSynthesis: z
-        .string()
-        .default(
-          'Subpolar SST fingerprints exhibit critical slowing down with increased variance and Heinrich Stadial 1 paleorecords show massive freshwater shutdown.',
-        ),
-      selectedPrincipleIds: z
-        .array(z.string())
-        .default(['princ-salt-advection', 'princ-critical-slowing']),
-      userReasoningStatement: z
-        .string()
-        .default(
-          'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, creating runaway positive feedback.',
-        ),
-      userRebuttalStatement: z
-        .string()
-        .default(
-          'Opponents cite RAPID-MOCHA mooring data; however, 18 years of instrumental data is statistically insufficient to distinguish multi-decadal variability from centennial collapse.',
-        ),
+      // Payload shape owned by core (C8); the tool only layers its demo defaults on top.
+      ...CERArgumentSubmissionSchema.shape,
+      debateId: CERArgumentSubmissionSchema.shape.debateId.default('debate-amoc-tipping'),
+      selectedClaimId:
+        CERArgumentSubmissionSchema.shape.selectedClaimId.default('claim-amoc-tipping-near'),
+      claimStatement: CERArgumentSubmissionSchema.shape.claimStatement.default(
+        'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+      ),
+      selectedEvidenceIds: CERArgumentSubmissionSchema.shape.selectedEvidenceIds.default([
+        'ev-amoc-sst-autocorr',
+        'ev-amoc-paleo-glacier',
+      ]),
+      userEvidenceSynthesis: CERArgumentSubmissionSchema.shape.userEvidenceSynthesis.default(
+        'Subpolar SST fingerprints exhibit critical slowing down with increased variance and Heinrich Stadial 1 paleorecords show massive freshwater shutdown.',
+      ),
+      selectedPrincipleIds: CERArgumentSubmissionSchema.shape.selectedPrincipleIds.default([
+        'princ-salt-advection',
+        'princ-critical-slowing',
+      ]),
+      userReasoningStatement: CERArgumentSubmissionSchema.shape.userReasoningStatement.default(
+        'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, creating runaway positive feedback.',
+      ),
+      userRebuttalStatement: CERArgumentSubmissionSchema.shape.userRebuttalStatement.default(
+        'Opponents cite RAPID-MOCHA mooring data; however, 18 years of instrumental data is statistically insufficient to distinguish multi-decadal variability from centennial collapse.',
+      ),
     },
     async ({
       debateId,
@@ -1355,25 +1310,31 @@ export const advancedLearningTools: RegisteredTool[] = [
     'anchored_evaluate_solution',
     'Evaluates a learner situated solution submission within an anchored macrocontext, calculating SGAI, EIER, CPR, IKRS, and constraint violations.',
     {
-      caseId: z.string().default('case-jasper-flight'),
-      extractedDataValues: z.record(z.string(), z.number()).default({
+      // Payload shape owned by core (C8); the tool only layers its demo defaults on top.
+      ...LearnerSolutionSubmissionSchema.shape,
+      caseId: LearnerSolutionSubmissionSchema.shape.caseId.default('case-jasper-flight'),
+      extractedDataValues: LearnerSolutionSubmissionSchema.shape.extractedDataValues.default({
         'data-dist-leg1': 120,
         'data-speed-cruise': 140,
         'data-fuel-cap': 48,
         'data-fuel-burn': 12,
       }),
-      subGoalSequence: z
-        .array(z.string())
-        .default(['sg-flight-time', 'sg-fuel-burn', 'sg-reserve-check']),
-      calculatedSubGoalOutputs: z.record(z.string(), z.number()).default({
-        'sg-flight-time': 0.857,
-        'sg-fuel-burn': 10.28,
-        'sg-reserve-check': 37.72,
-      }),
-      finalDecisionChoice: z.string().default('choice-direct-flight'),
-      decisionJustification: z
-        .string()
-        .default('Fuel reserves exceed required 45-minute FAA reserves under visual flight rules.'),
+      subGoalSequence: LearnerSolutionSubmissionSchema.shape.subGoalSequence.default([
+        'sg-flight-time',
+        'sg-fuel-burn',
+        'sg-reserve-check',
+      ]),
+      calculatedSubGoalOutputs:
+        LearnerSolutionSubmissionSchema.shape.calculatedSubGoalOutputs.default({
+          'sg-flight-time': 0.857,
+          'sg-fuel-burn': 10.28,
+          'sg-reserve-check': 37.72,
+        }),
+      finalDecisionChoice:
+        LearnerSolutionSubmissionSchema.shape.finalDecisionChoice.default('choice-direct-flight'),
+      decisionJustification: LearnerSolutionSubmissionSchema.shape.decisionJustification.default(
+        'Fuel reserves exceed required 45-minute FAA reserves under visual flight rules.',
+      ),
     },
     async ({
       caseId,
@@ -1486,30 +1447,30 @@ export const advancedLearningTools: RegisteredTool[] = [
     'contrasting_evaluate_invention',
     'Evaluates a learner invented metric or general rule across contrasting cases, calculating FDRS, IMI, PFRI, and CDTS.',
     {
-      setId: z.string().default('set-density-buoyancy'),
-      inventedMetricName: z.string().default('Packing Density Ratio'),
-      formulaDescription: z
-        .string()
-        .default(
-          'Dividing mass by volume yields density; values below 1.0 float, while values above 1.0 sink to bottom.',
-        ),
-      selectedDimensionIds: z
-        .array(z.string())
-        .default(['dim-mass-vol-ratio', 'dim-displacement-equilibrium']),
-      variantRankings: z
-        .array(z.string())
-        .default([
-          'cyl-balsa-disc',
-          'cyl-hollow-steel',
-          'cyl-oak-block',
-          'cyl-neutral-gel',
-          'cyl-aluminum-rod',
-          'cyl-lead-bullet',
-        ]),
-      impasseEncountered: z.boolean().default(true),
-      reflectionNotes: z
-        .string()
-        .default('Heavy oak floats while light lead sinks because of displaced water volume.'),
+      // Payload shape owned by core (C8); the tool only layers its demo defaults on top.
+      // impasseEncountered (default true) is inherited from the core schema.
+      ...InventedMetricSubmissionSchema.shape,
+      setId: InventedMetricSubmissionSchema.shape.setId.default('set-density-buoyancy'),
+      inventedMetricName:
+        InventedMetricSubmissionSchema.shape.inventedMetricName.default('Packing Density Ratio'),
+      formulaDescription: InventedMetricSubmissionSchema.shape.formulaDescription.default(
+        'Dividing mass by volume yields density; values below 1.0 float, while values above 1.0 sink to bottom.',
+      ),
+      selectedDimensionIds: InventedMetricSubmissionSchema.shape.selectedDimensionIds.default([
+        'dim-mass-vol-ratio',
+        'dim-displacement-equilibrium',
+      ]),
+      variantRankings: InventedMetricSubmissionSchema.shape.variantRankings.default([
+        'cyl-balsa-disc',
+        'cyl-hollow-steel',
+        'cyl-oak-block',
+        'cyl-neutral-gel',
+        'cyl-aluminum-rod',
+        'cyl-lead-bullet',
+      ]),
+      reflectionNotes: InventedMetricSubmissionSchema.shape.reflectionNotes.default(
+        'Heavy oak floats while light lead sinks because of displaced water volume.',
+      ),
     },
     async ({
       setId,
@@ -1631,33 +1592,17 @@ export const advancedLearningTools: RegisteredTool[] = [
     'collaborative_evaluate_discourse',
     'Evaluates collaborative dialogue against Transactive Discourse Index (TDI), Epistemic Elaboration Depth (EED), and Script Compliance (SCR).',
     {
-      scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
-      learnerInitialPosition: z.string(),
-      dialogueTurns: z.array(
-        z.object({
-          id: z.string(),
-          speaker: z.enum(['learner', 'peer_partner', 'synthesizer_agent']),
-          role: z.enum(['proposer', 'questioner', 'synthesizer', 'challenger']),
-          text: z.string(),
-          speechAct: z.enum([
-            'transactive_critique',
-            'transactive_extension',
-            'transactive_synthesis',
-            'transactive_justification',
-            'non_transactive',
-          ]),
-          targetTurnId: z.string().optional(),
-          epistemicKeywords: z.array(z.string()).default([]),
-        }),
+      // Payload shape owned by core (C8); the tool only adds the scenario default.
+      ...DiscourseSubmissionSchema.shape,
+      scenarioId: DiscourseSubmissionSchema.shape.scenarioId.default(
+        'collab-neuro-synaptic-plasticity',
       ),
-      jointSynthesis: z.string(),
-      individualTransferAnswer: z.string(),
     },
     async (submission) => {
       const scenario =
         CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === submission.scenarioId) ??
         CANONICAL_COLLABORATIVE_SCENARIOS[0]!
-      const evaluation = evaluateCollaborativeDiscourse(scenario, submission as DiscourseSubmission)
+      const evaluation = evaluateCollaborativeDiscourse(scenario, submission)
       return json({
         scenarioTitle: scenario.title,
         cei: evaluation.cei,
@@ -1924,16 +1869,10 @@ export const advancedLearningTools: RegisteredTool[] = [
     'model_inquiry_evaluate_session',
     'Evaluates a complete model inquiry session across ECDI, SAF, BAS, MMS, and assigns a cognitive maturity tier.',
     {
+      // Session payload shape owned by core (C8); the tool only adds the scenario default.
       session: z.object({
-        scenarioId: z.string().default('galileo_falling_bodies'),
-        initialModelNotes: z.string().optional(),
-        selectedExtremeCaseIds: z.array(z.string()).default([]),
-        extremeCasePredictions: z.record(z.string(), z.string()).default({}),
-        simulativeStepOrder: z.array(z.string()).default([]),
-        identifiedContradictions: z.array(z.string()).default([]),
-        selectedBridgingId: z.string().optional(),
-        bridgingExplanation: z.string().optional(),
-        revisedModelHypothesis: z.string().optional(),
+        ...InquirySessionInputSchema.shape,
+        scenarioId: InquirySessionInputSchema.shape.scenarioId.default('galileo_falling_bodies'),
       }),
     },
     async ({ session }) => {
