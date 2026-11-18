@@ -64,6 +64,10 @@ export {
   CognitiveApprenticeshipHUD,
   type CognitiveApprenticeshipHUDProps,
 } from './CognitiveApprenticeshipHUD'
+export {
+  SelfRegulatedLearningHUD,
+  type SelfRegulatedLearningHUDProps,
+} from './SelfRegulatedLearningHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
