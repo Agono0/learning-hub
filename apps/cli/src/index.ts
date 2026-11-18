@@ -49,6 +49,7 @@ import {
   inquiryCommand,
   reciprocalTeachingCommand,
   cerCommand,
+  anchoredCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -855,6 +856,13 @@ const builtinCommands: RegisteredCommand[] = [
       'McNeill & Krajcik CER, Toulmin TAP & Osborne epistemic scientific argumentation studio',
     usage: '[debates|counter|eval|deck] [--debate <id>]',
     run: (runArgs) => cerCommand(runArgs),
+  },
+  {
+    name: 'anchored',
+    description:
+      'CTGV (1990, 1992) Anchored Instruction & Situated Macrocontext Problem-Solving Studio',
+    usage: '[cases|sensitivity|eval|deck] [--case <id>]',
+    run: (runArgs) => anchoredCommand(runArgs),
   },
 ]
 

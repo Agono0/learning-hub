@@ -4,6 +4,7 @@
  * page shows up everywhere — Windows, Android, browser — by adding one entry.
  */
 import {
+  Anchor,
   BookOpen,
   Bot,
   Box,
@@ -124,6 +125,7 @@ export const NAV: NavGroup[] = [
       { href: '/inquiry', label: 'Scientific Inquiry', icon: FlaskConical },
       { href: '/reciprocal-teaching', label: 'Reciprocal Teaching', icon: MessageSquare },
       { href: '/argumentation', label: 'Argumentation', icon: Scale },
+      { href: '/anchored', label: 'Anchored Instruction', icon: Anchor },
     ],
   },
   {

@@ -65,6 +65,11 @@ import {
   generateAdversarialCounterArgument,
   generateCERFSRSDeck,
   type CERArgumentSubmission,
+  CANONICAL_MACROCONTEXT_CASES,
+  evaluateAnchoredSolution,
+  simulateAnchoredSensitivity,
+  generateAnchoredFSRSDeck,
+  type LearnerSolutionSubmission,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1299,6 +1304,136 @@ export const advancedLearningTools: RegisteredTool[] = [
       return json({
         debateTitle: debate.title,
         ersBaseline: deck.ersBaseline,
+        cardsCount: deck.cards.length,
+        cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 12. Anchored Instruction & Situated Macrocontext (CTGV 1990, 1992) ──
+  tool(
+    'anchored_list_macrocontexts',
+    'Lists all canonical Anchored Instruction macrocontext scenarios (CTGV 1990, 1992, Jasper Woodbury framework) across aviation, marine geophysics, astrobiology, epidemiology, and power grids.',
+    {},
+    async () => {
+      return json({
+        count: CANONICAL_MACROCONTEXT_CASES.length,
+        macrocontexts: CANONICAL_MACROCONTEXT_CASES.map((c) => ({
+          id: c.id,
+          domain: c.domain,
+          title: c.title,
+          difficulty: c.difficulty,
+          missionGoal: c.missionGoal,
+          embeddedDataCount: c.embeddedData.length,
+          subGoalsCount: c.subGoalHierarchy.length,
+          constraintsCount: c.constraints.length,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'anchored_evaluate_solution',
+    'Evaluates a learner situated solution submission within an anchored macrocontext, calculating SGAI, EIER, CPR, IKRS, and constraint violations.',
+    {
+      caseId: z.string().default('case-jasper-flight'),
+      extractedDataValues: z.record(z.string(), z.number()).default({
+        'data-dist-leg1': 120,
+        'data-speed-cruise': 140,
+        'data-fuel-cap': 48,
+        'data-fuel-burn': 12,
+      }),
+      subGoalSequence: z
+        .array(z.string())
+        .default(['sg-flight-time', 'sg-fuel-burn', 'sg-reserve-check']),
+      calculatedSubGoalOutputs: z.record(z.string(), z.number()).default({
+        'sg-flight-time': 0.857,
+        'sg-fuel-burn': 10.28,
+        'sg-reserve-check': 37.72,
+      }),
+      finalDecisionChoice: z.string().default('choice-direct-flight'),
+      decisionJustification: z
+        .string()
+        .default('Fuel reserves exceed required 45-minute FAA reserves under visual flight rules.'),
+    },
+    async ({
+      caseId,
+      extractedDataValues,
+      subGoalSequence,
+      calculatedSubGoalOutputs,
+      finalDecisionChoice,
+      decisionJustification,
+    }) => {
+      const macroCase =
+        CANONICAL_MACROCONTEXT_CASES.find((c) => c.id === caseId) ??
+        CANONICAL_MACROCONTEXT_CASES[0]!
+      const submission: LearnerSolutionSubmission = {
+        caseId: macroCase.id,
+        extractedDataValues,
+        subGoalSequence,
+        calculatedSubGoalOutputs,
+        finalDecisionChoice,
+        decisionJustification,
+      }
+      const evaluation = evaluateAnchoredSolution(macroCase, submission)
+      return json({
+        caseTitle: macroCase.title,
+        ikrs: evaluation.ikrs,
+        sgai: evaluation.sgai,
+        eier: evaluation.eier,
+        cpr: evaluation.cpr,
+        maturityBand: evaluation.maturityBand,
+        decisionApproved: evaluation.decisionApproved,
+        pedagogicalFeedback: evaluation.pedagogicalFeedback,
+        strengths: evaluation.strengths,
+        vulnerabilities: evaluation.vulnerabilities,
+        subGoalFeedback: evaluation.subGoalFeedback,
+      })
+    },
+  ),
+
+  tool(
+    'anchored_simulate_sensitivity',
+    'Performs what-if sensitivity simulations by modifying a single embedded narrative parameter and recalculating macrocontext constraints.',
+    {
+      caseId: z.string().default('case-jasper-flight'),
+      parameterId: z.string().default('data-headwind-speed'),
+      variedValue: z.number().default(25),
+    },
+    async ({ caseId, parameterId, variedValue }) => {
+      const macroCase =
+        CANONICAL_MACROCONTEXT_CASES.find((c) => c.id === caseId) ??
+        CANONICAL_MACROCONTEXT_CASES[0]!
+      const simulation = simulateAnchoredSensitivity(macroCase, parameterId, variedValue)
+      return json(simulation)
+    },
+  ),
+
+  tool(
+    'anchored_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards from an anchored macrocontext case, scaled by Inert Knowledge Resistance Score.',
+    {
+      caseId: z.string().default('case-jasper-flight'),
+      ikrsScore: z.number().min(0).max(100).default(85),
+    },
+    async ({ caseId, ikrsScore }) => {
+      const macroCase =
+        CANONICAL_MACROCONTEXT_CASES.find((c) => c.id === caseId) ??
+        CANONICAL_MACROCONTEXT_CASES[0]!
+      const dummySubmission: LearnerSolutionSubmission = {
+        caseId: macroCase.id,
+        extractedDataValues: {},
+        subGoalSequence: macroCase.subGoalHierarchy.map((sg) => sg.id),
+        calculatedSubGoalOutputs: {},
+        finalDecisionChoice: 'optimal_decision',
+        decisionJustification: 'Optimal calibrated pathway.',
+      }
+      const evaluation = evaluateAnchoredSolution(macroCase, dummySubmission)
+      evaluation.ikrs = ikrsScore
+      const deck = generateAnchoredFSRSDeck(macroCase, evaluation)
+      return json({
+        caseTitle: macroCase.title,
+        ikrsBaseline: deck.ikrsBaseline,
         cardsCount: deck.cards.length,
         cards: deck.cards,
       })
