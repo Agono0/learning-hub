@@ -29,6 +29,7 @@ import {
   zpdCommand,
   pfCommand,
   piCommand,
+  inquiryCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -345,6 +346,43 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.hakeNormalizedGain).toBeGreaterThan(0.5)
       expect(data.smithLearningVerification).toBe(true)
     })
+
+    it('inquiry_list_labs lists canonical scientific discovery laboratories', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'inquiry_list_labs')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        labs: Array<{ id: string; domain: string; title: string }>
+      }
+      expect(data.count).toBeGreaterThanOrEqual(5)
+      expect(data.labs.some((l) => l.id === 'lab-pendulum-period')).toBe(true)
+    })
+
+    it('inquiry_evaluate_sdds computes VOTAT rigor, confirmation bias, and discovery index', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'inquiry_evaluate_sdds')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        labId: 'lab-pendulum-period',
+        votatCompliantFraction: 1.0,
+        anomalousReaction: 'theory_revision',
+        falsificationTrialCount: 1,
+        finalHypothesisCapturesInvariant: true,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        votatRigorIndex: number
+        confirmationBiasIndex: number
+        anomalousDataResolutionIndex: number
+        scientificDiscoveryIndex: number
+        inquiryMasteryBand: string
+      }
+      expect(data.votatRigorIndex).toBe(1.0)
+      expect(data.anomalousDataResolutionIndex).toBe(100)
+      expect(data.scientificDiscoveryIndex).toBeGreaterThanOrEqual(80)
+      expect(data.inquiryMasteryBand).toBe('Master Empirical Scientist')
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -475,6 +513,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('inquiryCommand executes labs, trial, eval, and deck subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        inquiryCommand(['labs'])
+        expect(consoleSpy).toHaveBeenCalled()
+        inquiryCommand(['trial', '--lab', 'lab-pendulum-period', '--length', '1.5'])
+        expect(consoleSpy).toHaveBeenCalled()
+        inquiryCommand(['eval', '--lab', 'lab-pendulum-period', '--vri', '1.0'])
+        expect(consoleSpy).toHaveBeenCalled()
+        inquiryCommand(['deck', '--lab', 'lab-pendulum-period', '--sdi', '85'])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -501,6 +555,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/pi/dialogue')
       expect(registeredPaths).toContain('POST /cognitive/pi/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/pi/deck')
+      expect(registeredPaths).toContain('GET /cognitive/inquiry/labs')
+      expect(registeredPaths).toContain('POST /cognitive/inquiry/trial')
+      expect(registeredPaths).toContain('POST /cognitive/inquiry/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/inquiry/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -704,6 +762,51 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         suiteId: 'ct-thermal-expansion-plate',
         hakeGain: 0.75,
         isomorphicCorrect: true,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBeGreaterThanOrEqual(3)
+    })
+
+    it('GET /cognitive/inquiry/labs returns canonical inquiry laboratories via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/inquiry/labs')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.labs.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('POST /cognitive/inquiry/trial executes laboratory simulation via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/inquiry/trial', {
+        labId: 'lab-pendulum-period',
+        variableSettings: { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 },
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.trial.observedOutputs.period).toBeGreaterThan(0)
+    })
+
+    it('POST /cognitive/inquiry/evaluate computes VOTAT and discovery index via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/inquiry/evaluate', {
+        labId: 'lab-pendulum-period',
+        votatCompliantFraction: 1.0,
+        anomalousReaction: 'theory_revision',
+        falsificationTrialCount: 1,
+        finalHypothesisCapturesInvariant: true,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.metrics.scientificDiscoveryIndex).toBeGreaterThanOrEqual(80)
+      expect(result.data.metrics.votatRigorIndex).toBe(1.0)
+    })
+
+    it('POST /cognitive/inquiry/deck generates calibrated FSRS-6 review cards via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/inquiry/deck', {
+        labId: 'lab-pendulum-period',
+        sdiScore: 85,
       })
       const result = await mock.execute()
       expect(result.statusCode).toBe(200)

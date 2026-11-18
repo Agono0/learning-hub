@@ -100,6 +100,11 @@ import {
   getConcepTestSuiteById,
   calculatePIMetrics,
   generatePIFSRSCards,
+  getCanonicalInquiryLabs,
+  getInquiryLabById,
+  runInquiryTrial,
+  calculateInquiryMetrics,
+  generateInquiryFSRSCards,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -264,6 +269,36 @@ const piDeckBodySchema = z.object({
   suiteId: z.string().default('ct-thermal-expansion-plate'),
   hakeGain: z.number().min(0).max(1).default(0.75),
   isomorphicCorrect: z.boolean().default(true),
+})
+
+const inquiryTrialBodySchema = z.object({
+  labId: z.string().default('lab-pendulum-period'),
+  trialIndex: z.number().int().nonnegative().default(0),
+  variableSettings: z.record(z.string(), z.number()).default({}),
+  previousSettings: z.record(z.string(), z.number()).optional(),
+})
+
+const inquiryEvaluateBodySchema = z.object({
+  labId: z.string().default('lab-pendulum-period'),
+  votatCompliantFraction: z.number().min(0).max(1).default(1.0),
+  anomalousReaction: z
+    .enum([
+      'ignore',
+      'reject',
+      'exclude',
+      'hold_in_abeyance',
+      'reinterpretation',
+      'peripheral_change',
+      'theory_revision',
+    ])
+    .default('theory_revision'),
+  falsificationTrialCount: z.number().int().min(0).default(1),
+  finalHypothesisCapturesInvariant: z.boolean().default(true),
+})
+
+const inquiryDeckBodySchema = z.object({
+  labId: z.string().default('lab-pendulum-period'),
+  sdiScore: z.number().min(0).max(100).default(85),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1478,6 +1513,105 @@ async function postPIDeck(req: IncomingMessage, res: ServerResponse): Promise<vo
   })
 }
 
+/** GET /cognitive/inquiry/labs — list canonical scientific discovery inquiry laboratories */
+async function getInquiryLabs(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const labs = getCanonicalInquiryLabs()
+  sendJson(res, 200, {
+    ok: true,
+    labs: labs.map((l) => ({
+      id: l.id,
+      title: l.title,
+      domain: l.domain,
+      subtitle: l.subtitle,
+      researchQuestion: l.researchQuestion,
+      canonicalInvariantLaw: l.canonicalInvariantLaw,
+      independentVariables: l.independentVariables,
+      dependentOutputs: l.dependentOutputs,
+      anomalousScenariosCount: l.anomalousScenarios.length,
+    })),
+  })
+}
+
+/** POST /cognitive/inquiry/trial — execute simulation trial and check VOTAT isolation */
+async function postInquiryTrial(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, inquiryTrialBodySchema)
+  const lab = getInquiryLabById(body.labId) ?? getCanonicalInquiryLabs()[0]!
+  const trial = runInquiryTrial(lab, body.trialIndex, body.variableSettings, body.previousSettings)
+  sendJson(res, 200, {
+    ok: true,
+    labId: lab.id,
+    labTitle: lab.title,
+    trial,
+  })
+}
+
+/** POST /cognitive/inquiry/evaluate — evaluate SDDS discovery metrics (VOTAT, CBI, ADRI, SDI) */
+async function postInquiryEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, inquiryEvaluateBodySchema)
+  const lab = getInquiryLabById(body.labId) ?? getCanonicalInquiryLabs()[0]!
+
+  const t1 = runInquiryTrial(lab, 0, { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 })
+  const t2Settings =
+    body.votatCompliantFraction >= 0.5
+      ? { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 }
+      : { length: 1.5, mass: 0.8, angle: 45, gravity: 9.81 }
+  const t2 = runInquiryTrial(lab, 1, t2Settings, t1.variableSettings)
+
+  const metrics = calculateInquiryMetrics({
+    lab,
+    trials: [t1, t2],
+    anomalousSubmissions: [
+      {
+        anomalyId: lab.anomalousScenarios[0]?.id ?? 'a1',
+        reaction: body.anomalousReaction,
+        articulatedExplanation: 'Accommodated invariant schema',
+      },
+    ],
+    falsificationTrialCount: body.falsificationTrialCount,
+    finalHypothesisCapturesInvariant: body.finalHypothesisCapturesInvariant,
+  })
+
+  sendJson(res, 200, {
+    ok: true,
+    labTitle: lab.title,
+    metrics,
+  })
+}
+
+/** POST /cognitive/inquiry/deck — generate calibrated FSRS-6 review flashcards */
+async function postInquiryDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, inquiryDeckBodySchema)
+  const lab = getInquiryLabById(body.labId) ?? getCanonicalInquiryLabs()[0]!
+  const dummyMetrics = calculateInquiryMetrics({
+    lab,
+    trials: [
+      runInquiryTrial(lab, 0, { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 }),
+      runInquiryTrial(
+        lab,
+        1,
+        { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 },
+        { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 },
+      ),
+    ],
+    anomalousSubmissions: [
+      {
+        anomalyId: lab.anomalousScenarios[0]?.id ?? 'a1',
+        reaction: body.sdiScore >= 70 ? 'theory_revision' : 'ignore',
+        articulatedExplanation: 'Calibrated model',
+      },
+    ],
+    falsificationTrialCount: 1,
+    finalHypothesisCapturesInvariant: body.sdiScore >= 60,
+  })
+  const cards = generateInquiryFSRSCards(lab, dummyMetrics)
+  sendJson(res, 200, {
+    ok: true,
+    labTitle: lab.title,
+    count: cards.length,
+    cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -1728,6 +1862,30 @@ export const routes: Route[] = [
     path: '/cognitive/pi/deck',
     summary: 'generate calibrated FSRS-6 review deck for ConcepTest suite',
     handler: postPIDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/inquiry/labs',
+    summary: 'list canonical scientific discovery inquiry laboratories',
+    handler: getInquiryLabs,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/inquiry/trial',
+    summary: 'execute simulation trial and check VOTAT isolation',
+    handler: postInquiryTrial,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/inquiry/evaluate',
+    summary: 'evaluate SDDS discovery metrics (VOTAT, CBI, ADRI, SDI)',
+    handler: postInquiryEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/inquiry/deck',
+    summary: 'generate calibrated FSRS-6 review flashcards for inquiry lab',
+    handler: postInquiryDeck,
   },
 ]
 

@@ -46,6 +46,7 @@ import {
   zpdCommand,
   pfCommand,
   piCommand,
+  inquiryCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -832,6 +833,12 @@ const builtinCommands: RegisteredCommand[] = [
     description: 'Eric Mazur & Michelle Smith peer instruction & interactive conceptest studio',
     usage: '[eval|suites|dialogue|deck] [--suite ct-thermal-expansion-plate --pre 38 --post 82]',
     run: (runArgs) => piCommand(runArgs),
+  },
+  {
+    name: 'inquiry',
+    description: 'Klahr & Dunbar dual-space scientific discovery & VOTAT inquiry simulation studio',
+    usage: '[eval|labs|trial|deck] [--lab lab-pendulum-period --vri 1.0 --sdi 85]',
+    run: (runArgs) => inquiryCommand(runArgs),
   },
 ]
 

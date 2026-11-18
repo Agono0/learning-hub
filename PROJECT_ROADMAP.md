@@ -46,6 +46,7 @@
 | **T-P2-29** | **P2**   | Dynamic Assessment & ZPD | **Completed** | Dynamic Assessment & Zone of Proximal Development Studio: Vygotsky ADL/PDL, Feuerstein LPAD/CMI, Campione-Brown 5-tier graduated prompting, Budoff LPS, and multi-host parity.              |
 | **T-P2-30** | **P2**   | Productive Failure       | **Completed** | Productive Failure & Canonical Consolidation Studio: Manu Kapur 2-phase model, Tanmay Sinha predictor metrics (PFI, GDI, ISS, CIG, ATS), juxtaposition matrix, and multi-host parity.       |
 | **T-P2-31** | **P2**   | Peer Instruction         | **Completed** | Peer Instruction & Interactive ConcepTest Studio: Eric Mazur interactive polling/deliberation, Michelle Smith isomorphic transfer, Hake normalized gain, and multi-host parity.             |
+| **T-P2-32** | **P2**   | Scientific Inquiry       | **Completed** | Dual-Space Scientific Discovery & Inquiry Simulation Studio: Klahr & Dunbar (1988) SDDS, Chen & Klahr (1999) VOTAT control, Chinn & Brewer (1993) anomalous data, and multi-host parity.    |
 
 ---
 
@@ -555,4 +556,18 @@
   5. Implement runtime-neutral API handler `apps/web/src/server/handlers/peer-instruction/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
   6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
 - **Files Affected:** `packages/core/src/peer-instruction/*`, `apps/web/src/ui/PeerInstructionHUD.tsx`, `apps/web/src/components/PeerInstructionStudio.tsx`, `apps/web/app/peer-instruction/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/peer-instruction/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/pi-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed**.
+
+### T-P2-32: Dual-Space Scientific Discovery & Inquiry Simulation Studio (Klahr & Dunbar 1988; Chen & Klahr 1999; Chinn & Brewer 1993; de Jong & van Joolingen 1998)
+
+- **Problem:** Naive learners given interactive simulations suffer from confirmation bias, unsystematic multi-variable confounding (violating the Control of Variables Strategy / VOTAT), uncoordinated search across hypothesis and experiment spaces, and persistent rationalization or rejection of anomalous empirical evidence.
+- **Root Cause:** Absence of a structured Scientific Discovery as Dual Search (SDDS) engine that scaffolds hypothesis space search, enforces VOTAT variable isolation tracking, confronts learners with seeded anomalous observations, and measures Chinn & Brewer epistemic accommodation.
+- **Proposed Solution:**
+  1. Build `packages/core/src/inquiry/inquiry-engine.ts` with Zod validation, quantitative discovery metrics (VOTAT Rigor Index $VRI$, Confirmation Bias Index $CBI$, Anomalous Data Resolution Index $ADRI$, Hypothesis-Evidence Alignment Score $HEAS$, Scientific Discovery Index $SDI$, and SDDS search efficiency ratio), 5 canonical multidisciplinary simulation laboratories (Galilean Pendulum, Michaelis-Menten Kinetics, Photosynthesis Limiting Factors, Faraday-Lenz Induction, Monetary Expansion QE Trap), deterministic simulation kernel, and calibrated FSRS-6 review deck generator.
+  2. Implement `InquiryHUD.tsx` with UI Signature design compliance (zero ghost classes, mode-aware tokens) tracking VRI, CBI, ADRI, SDI, and mastery bands.
+  3. Implement `InquiryStudio.tsx` with 4 interactive tabs (1. Hypothesis Formulation & Parameter Workbench, 2. Empirical Trials & VOTAT Audit, 3. Anomalous Evidence & Epistemic Resolution, 4. Causal Law Synthesis & Calibrated Cards).
+  4. Build page `apps/web/app/inquiry/page.tsx` and register route `/inquiry` in global navigation (`nav.ts`).
+  5. Implement runtime-neutral API handler `apps/web/src/server/handlers/inquiry/route.ts` and register in `apps/web/src/hub/handlers-registry.ts`.
+  6. Deliver multi-host parity across MCP (`apps/mcp/src/tools/advanced-learning.ts`), CLI (`apps/cli/src/commands/advanced-learning.ts`), and Server (`apps/server/src/routes.ts`).
+- **Files Affected:** `packages/core/src/inquiry/*`, `apps/web/src/ui/InquiryHUD.tsx`, `apps/web/src/components/InquiryStudio.tsx`, `apps/web/app/inquiry/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/inquiry/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/inquiry-studio-integration.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed**.

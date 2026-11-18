@@ -175,6 +175,7 @@ import * as threshold from '../server/handlers/threshold/route'
 import * as zpd from '../server/handlers/zpd/route'
 import * as productiveFailure from '../server/handlers/productive-failure/route'
 import * as peerInstruction from '../server/handlers/peer-instruction/route'
+import * as inquiry from '../server/handlers/inquiry/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -370,6 +371,7 @@ add('threshold', threshold)
 add('zpd', zpd)
 add('productive-failure', productiveFailure)
 add('peer-instruction', peerInstruction)
+add('inquiry', inquiry)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

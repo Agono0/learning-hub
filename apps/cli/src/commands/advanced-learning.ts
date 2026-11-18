@@ -44,6 +44,11 @@ import {
   getConcepTestSuiteById,
   calculatePIMetrics,
   generatePIFSRSCards,
+  getCanonicalInquiryLabs,
+  getInquiryLabById,
+  runInquiryTrial,
+  calculateInquiryMetrics,
+  generateInquiryFSRSCards,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -658,4 +663,136 @@ export function piCommand(args: string[]): void {
   console.log('─'.repeat(65))
   console.log(`Summary:           ${metrics.qualitativeSummary}`)
   console.log(`Pedagogical Advice: ${metrics.pedagogicalAdvice}`)
+}
+
+// ── 10. Scientific Discovery & Inquiry Simulation Command ───────────────────
+
+export function inquiryCommand(args: string[]): void {
+  const sub = args[0] || 'eval'
+  const labId = parseFlag(args, '--lab') || 'lab-pendulum-period'
+
+  if (sub === 'labs' || sub === 'list') {
+    const labs = getCanonicalInquiryLabs()
+    console.log('\n🔬 Canonical Scientific Inquiry Laboratories (Klahr & Dunbar 1988)')
+    console.log('═'.repeat(65))
+    labs.forEach((l) => {
+      console.log(`• [${l.id}] ${l.title}`)
+      console.log(`  Domain:    ${l.domain}`)
+      console.log(`  Question:  ${l.researchQuestion}`)
+      console.log(`  Invariant: ${l.canonicalInvariantLaw}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  const lab = getInquiryLabById(labId) ?? getCanonicalInquiryLabs()[0]!
+
+  if (sub === 'trial') {
+    const trial = runInquiryTrial(lab, 0, {
+      length: parseFloat(parseFlag(args, '--length') || '1.0'),
+      mass: parseFloat(parseFlag(args, '--mass') || '0.2'),
+      angle: parseFloat(parseFlag(args, '--angle') || '15'),
+      gravity: parseFloat(parseFlag(args, '--gravity') || '9.81'),
+    })
+
+    console.log('\n🔬 Scientific Inquiry Experimental Trial Simulation')
+    console.log('═'.repeat(65))
+    console.log(`Laboratory: ${lab.title}`)
+    console.log(`Outputs:`)
+    Object.entries(trial.observedOutputs).forEach(([k, v]) => {
+      console.log(`  ${k}: ${v}`)
+    })
+    return
+  }
+
+  if (sub === 'deck') {
+    const sdiScore = parseInt(parseFlag(args, '--sdi') || '85', 10)
+    const dummyMetrics = calculateInquiryMetrics({
+      lab,
+      trials: [
+        runInquiryTrial(lab, 0, { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 }),
+        runInquiryTrial(
+          lab,
+          1,
+          { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 },
+          { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 },
+        ),
+      ],
+      anomalousSubmissions: [
+        {
+          anomalyId: lab.anomalousScenarios[0]?.id ?? 'a1',
+          reaction: sdiScore >= 70 ? 'theory_revision' : 'ignore',
+          articulatedExplanation: 'Calibrated invariant model',
+        },
+      ],
+      falsificationTrialCount: 1,
+      finalHypothesisCapturesInvariant: sdiScore >= 60,
+    })
+
+    const deck = generateInquiryFSRSCards(lab, dummyMetrics)
+
+    console.log('\n📦 Calibrated FSRS-6 Scientific Inquiry Deck')
+    console.log(`Laboratory:        ${lab.title}`)
+    console.log(`Cards Generated:   ${deck.length}`)
+    console.log(`Initial Stability: ${deck[0]?.initialStabilityDays} days (S0)`)
+    console.log(`Initial Diff:      ${deck[0]?.initialDifficulty} / 10 (D0)`)
+    console.log('═'.repeat(65))
+    deck.forEach((c, idx) => {
+      console.log(`[Card ${idx + 1}] (${c.cardDepth})`)
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: evaluation
+  const votatRigor = parseFloat(parseFlag(args, '--vri') || '1.0')
+  const reaction =
+    (parseFlag(args, '--reaction') as
+      | 'ignore'
+      | 'reject'
+      | 'exclude'
+      | 'hold_in_abeyance'
+      | 'reinterpretation'
+      | 'peripheral_change'
+      | 'theory_revision') || 'theory_revision'
+
+  const t1 = runInquiryTrial(lab, 0, { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 })
+  const t2Settings =
+    votatRigor >= 0.5
+      ? { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 }
+      : { length: 1.5, mass: 0.8, angle: 45, gravity: 9.81 }
+  const t2 = runInquiryTrial(lab, 1, t2Settings, t1.variableSettings)
+
+  const metrics = calculateInquiryMetrics({
+    lab,
+    trials: [t1, t2],
+    anomalousSubmissions: [
+      {
+        anomalyId: lab.anomalousScenarios[0]?.id ?? 'a1',
+        reaction,
+        articulatedExplanation: 'Accommodated invariant schema',
+      },
+    ],
+    falsificationTrialCount: 1,
+    finalHypothesisCapturesInvariant: true,
+  })
+
+  console.log('\n🔬 Scientific Discovery & Inquiry Telemetry (SDDS Engine)')
+  console.log('═'.repeat(65))
+  console.log(`Laboratory:        ${lab.title} [${lab.domain}]`)
+  console.log(
+    `VOTAT Rigor (VRI): ${(metrics.votatRigorIndex * 100).toFixed(0)}% (Chen & Klahr 1999)`,
+  )
+  console.log(
+    `Confirmation Bias: ${(metrics.confirmationBiasIndex * 100).toFixed(0)}% (Wason 1960)`,
+  )
+  console.log(`Anomaly Resolution: ${metrics.anomalousDataResolutionIndex}% (Chinn & Brewer 1993)`)
+  console.log(`Discovery Index:   ${metrics.scientificDiscoveryIndex} / 100 SDI`)
+  console.log(`Mastery Band:      ${metrics.inquiryMasteryBand}`)
+  console.log(`SDDS Efficiency:   ${(metrics.sddsSearchEfficiencyRatio * 100).toFixed(0)}%`)
+  console.log('─'.repeat(65))
+  console.log(`Diagnostic:        ${metrics.qualitativeDiagnostic}`)
+  console.log(`Instructional:     ${metrics.pedagogicalAdvice}`)
 }
