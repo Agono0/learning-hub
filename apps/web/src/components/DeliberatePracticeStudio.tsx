@@ -219,26 +219,26 @@ export function DeliberatePracticeStudio() {
     <div className="space-y-6">
       {/* Toast alert */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-foreground px-4 py-2.5 text-xs text-background shadow-lg transition-all">
+        <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-neutral-900 dark:bg-neutral-100 px-4 py-2.5 text-xs text-white dark:text-neutral-900 shadow-lg transition-all">
           {toastMessage}
         </div>
       )}
 
       {/* Header & Suite Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-neutral-200 dark:border-(--hub-border) pb-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Target className="h-6 w-6 text-primary" />
+          <h2 className="text-xl font-bold tracking-tight text-strong flex items-center gap-2">
+            <Target className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
             Deliberate Practice &amp; Progressive Error Recovery Studio
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-secondary mt-0.5">
             Anders Ericsson (1993, 2016) • Kurt VanLehn (1990) Impasse Schema Repair • Keith &amp;
             Frese (2008) EMT
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <label htmlFor="suite-select" className="text-xs font-medium text-muted-foreground">
+          <label htmlFor="suite-select" className="text-xs font-medium text-secondary">
             Practice Suite:
           </label>
           <select
@@ -248,7 +248,7 @@ export function DeliberatePracticeStudio() {
               setSelectedSuiteId(e.target.value)
               handleReset()
             }}
-            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-3 py-1.5 text-xs font-medium text-strong shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-600"
           >
             {Object.values(CALIBRATED_DELIBERATE_SUITES).map((s) => (
               <option key={s.id} value={s.id}>
@@ -272,14 +272,14 @@ export function DeliberatePracticeStudio() {
       />
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-border/80 text-sm font-medium">
+      <div className="flex border-b border-neutral-200 dark:border-(--hub-border) text-sm font-medium">
         <button
           type="button"
           onClick={() => setActiveTab('drills')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'drills'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold'
+              : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
           <Crosshair className="h-4 w-4" />
@@ -290,8 +290,8 @@ export function DeliberatePracticeStudio() {
           onClick={() => setActiveTab('impasse')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'impasse'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold'
+              : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
           <Wrench className="h-4 w-4" />
@@ -303,8 +303,8 @@ export function DeliberatePracticeStudio() {
           onClick={() => setActiveTab('taxonomy')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'taxonomy'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold'
+              : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
           <ShieldAlert className="h-4 w-4" />
@@ -315,8 +315,8 @@ export function DeliberatePracticeStudio() {
           onClick={() => setActiveTab('deck')}
           className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors ${
             activeTab === 'deck'
-              ? 'border-primary text-primary font-semibold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 font-semibold'
+              : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
           <Brain className="h-4 w-4" />
@@ -327,15 +327,15 @@ export function DeliberatePracticeStudio() {
       {/* TAB 1: Micro-Skill Repetition Drills */}
       {activeTab === 'drills' && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-border/80 bg-card p-5 space-y-4">
+          <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 className="text-base font-semibold text-strong">
                   Targeted Micro-Skill Deficit Drills
                 </h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-secondary">
                   Immediate informative feedback with deliberate deficit targeting. Current Tier:{' '}
-                  <span className="font-semibold text-foreground capitalize">
+                  <span className="font-semibold text-strong capitalize">
                     {currentTier.replace('_', ' ')}
                   </span>
                 </p>
@@ -351,11 +351,11 @@ export function DeliberatePracticeStudio() {
                 return (
                   <div
                     key={drill.id}
-                    className="rounded-lg border border-border/80 bg-card p-5 space-y-3.5 text-xs"
+                    className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) p-5 space-y-3.5 text-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground text-sm">{drill.title}</span>
+                        <span className="font-bold text-strong text-sm">{drill.title}</span>
                         <Badge tone="accent">Deficit: {drill.targetedDeficit}</Badge>
                       </div>
                       {isAnswered && (
@@ -367,7 +367,7 @@ export function DeliberatePracticeStudio() {
                       )}
                     </div>
 
-                    <p className="text-foreground text-xs leading-relaxed">{drill.prompt}</p>
+                    <p className="text-strong text-xs leading-relaxed">{drill.prompt}</p>
 
                     {/* Options */}
                     <div className="space-y-2 pt-1">
@@ -375,7 +375,7 @@ export function DeliberatePracticeStudio() {
                         const isSelected = answer?.optionId === opt.id
 
                         let optionStyle =
-                          'bg-muted/30 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                          'bg-neutral-50 dark:bg-(--hub-sunken) border-neutral-200 dark:border-(--hub-border) text-secondary hover:text-strong hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'
                         if (isAnswered) {
                           if (opt.isCorrect) {
                             optionStyle =
@@ -424,7 +424,7 @@ export function DeliberatePracticeStudio() {
                                 if (matched) setActiveImpasseId(matched.id)
                                 setActiveTab('impasse')
                               }}
-                              className="underline hover:text-foreground text-[11px]"
+                              className="underline hover:text-strong text-[11px]"
                             >
                               Resolve in Impasse Crucible →
                             </button>
@@ -449,10 +449,10 @@ export function DeliberatePracticeStudio() {
           <Panel className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-semibold text-foreground">
+                <h3 className="text-base font-semibold text-strong">
                   VanLehn Impasse-Driven Schema Repair Crucible
                 </h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-secondary">
                   When current mental procedures fail, sub-goal repair is executed to eliminate
                   mal-rules.
                 </p>
@@ -472,13 +472,13 @@ export function DeliberatePracticeStudio() {
                         ? 'border-emerald-500/40 bg-emerald-500/5'
                         : activeImpasseId === checkpoint.id
                           ? 'border-rose-500/50 bg-rose-500/5 shadow-md'
-                          : 'border-border/80 bg-card'
+                          : 'border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel)'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        <span className="font-bold text-foreground text-sm">
+                        <span className="font-bold text-strong text-sm">
                           {checkpoint.title}
                         </span>
                         <Badge tone="danger">{checkpoint.bugClass.replace('_', ' ')}</Badge>
@@ -488,9 +488,9 @@ export function DeliberatePracticeStudio() {
                       </Badge>
                     </div>
 
-                    <div className="rounded-lg bg-muted/40 p-3.5 space-y-2 border border-border/50">
-                      <span className="font-semibold text-foreground block">Context Scenario:</span>
-                      <p className="text-muted-foreground leading-relaxed">
+                    <div className="rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-3.5 space-y-2 border border-neutral-200 dark:border-(--hub-border)">
+                      <span className="font-semibold text-strong block">Context Scenario:</span>
+                      <p className="text-secondary leading-relaxed">
                         {checkpoint.contextScenario}
                       </p>
 
@@ -505,7 +505,7 @@ export function DeliberatePracticeStudio() {
                         <span className="font-semibold text-rose-500 block">
                           Erroneous Reasoning:
                         </span>
-                        <p className="text-muted-foreground leading-relaxed">
+                        <p className="text-secondary leading-relaxed">
                           {checkpoint.erroneousReasoning}
                         </p>
                       </div>
@@ -514,7 +514,7 @@ export function DeliberatePracticeStudio() {
                         <span className="font-semibold text-emerald-500 block">
                           Correct Invariant Repair:
                         </span>
-                        <p className="text-muted-foreground leading-relaxed">
+                        <p className="text-secondary leading-relaxed">
                           {checkpoint.correctInvariantRepair}
                         </p>
                       </div>
@@ -526,11 +526,11 @@ export function DeliberatePracticeStudio() {
                     </div>
 
                     {/* Metacognitive Reflection Questions */}
-                    <div className="space-y-2 pt-1 border-t border-border/60">
-                      <span className="font-semibold text-foreground block">
+                    <div className="space-y-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">
+                      <span className="font-semibold text-strong block">
                         Metacognitive Invariant Prompts:
                       </span>
-                      <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                      <ul className="list-disc pl-4 space-y-1 text-secondary">
                         {checkpoint.reflectionQuestions.map((q, qIdx) => (
                           <li key={qIdx}>{q}</li>
                         ))}
@@ -568,17 +568,17 @@ export function DeliberatePracticeStudio() {
       {activeTab === 'taxonomy' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Panel className="p-5 space-y-4">
-            <h3 className="text-base font-semibold text-foreground">
+            <h3 className="text-base font-semibold text-strong">
               Kurt VanLehn Error Bug Audit
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-secondary">
               Total accumulated errors categorized into VanLehn’s 4 core failure modes.
             </p>
 
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-rose-500/10 border border-rose-500/20">
                 <span className="font-semibold text-rose-500">Misconceptions (Severity 4):</span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-strong">
                   {errorTaxonomy.misconceptionCount} errors
                 </span>
               </div>
@@ -586,7 +586,7 @@ export function DeliberatePracticeStudio() {
                 <span className="font-semibold text-amber-500">
                   Procedural Lapses (Severity 3):
                 </span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-strong">
                   {errorTaxonomy.proceduralLapseCount} errors
                 </span>
               </div>
@@ -594,42 +594,42 @@ export function DeliberatePracticeStudio() {
                 <span className="font-semibold text-violet-500">
                   Boundary Oversights (Severity 2):
                 </span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-strong">
                   {errorTaxonomy.boundaryOversightCount} errors
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
                 <span className="font-semibold text-cyan-500">Attentional Slips (Severity 1):</span>
-                <span className="font-bold text-foreground">
+                <span className="font-bold text-strong">
                   {errorTaxonomy.attentionalSlipCount} errors
                 </span>
               </div>
             </div>
 
-            <div className="border-t border-border/60 pt-3 text-xs text-muted-foreground flex justify-between">
+            <div className="border-t border-neutral-200 dark:border-(--hub-border) pt-3 text-xs text-secondary flex justify-between">
               <span>Predominant Failure Mode:</span>
-              <span className="font-bold text-foreground capitalize">
+              <span className="font-bold text-strong capitalize">
                 {errorTaxonomy.predominantBugClass.replace('_', ' ')}
               </span>
             </div>
           </Panel>
 
           <Panel className="p-5 space-y-4">
-            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
+            <h3 className="text-base font-semibold text-strong flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
               Keith &amp; Frese Error Management Audit
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-secondary">
               Cognitive and emotional regulation strategies that transform failure into adaptive
               transfer.
             </p>
 
-            <div className="rounded-lg bg-muted/40 p-4 space-y-3 text-xs border border-border/60">
+            <div className="rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-4 space-y-3 text-xs border border-neutral-200 dark:border-(--hub-border)">
               <div className="space-y-1">
-                <span className="font-semibold text-foreground block">
+                <span className="font-semibold text-strong block">
                   1. Cognitive Decoupling:
                 </span>
-                <p className="text-muted-foreground">
+                <p className="text-secondary">
                   Separate your personal self-worth from tactical step errors. Errors in lock-free
                   concurrency or numerical computing are structural properties of complex systems,
                   not defects of mind.
@@ -637,16 +637,16 @@ export function DeliberatePracticeStudio() {
               </div>
 
               <div className="space-y-1">
-                <span className="font-semibold text-foreground block">2. Invariant Tracking:</span>
-                <p className="text-muted-foreground">
+                <span className="font-semibold text-strong block">2. Invariant Tracking:</span>
+                <p className="text-secondary">
                   Identify the exact invariant that broke (e.g. ABA pointer reuse, exponent
                   overflow) and write a mental contract preventing it.
                 </p>
               </div>
 
               <div className="space-y-1">
-                <span className="font-semibold text-foreground block">3. Transfer Resilience:</span>
-                <p className="text-muted-foreground">
+                <span className="font-semibold text-strong block">3. Transfer Resilience:</span>
+                <p className="text-secondary">
                   Learners trained with Error Management consistently outperform error-avoidant
                   learners on novel, unpredictable edge-case scenarios.
                 </p>
@@ -661,10 +661,10 @@ export function DeliberatePracticeStudio() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-foreground">
+              <h3 className="text-base font-semibold text-strong">
                 FSRS-6 Deliberate Micro-Repair Deck ({exportedCards.length} Cards)
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-secondary">
                 Cards isolating the exact point of cognitive impasse with bug-severity calibrated
                 stability S₀.
               </p>
@@ -680,7 +680,7 @@ export function DeliberatePracticeStudio() {
             {exportedCards.map((card) => (
               <div
                 key={card.id}
-                className="rounded-lg border border-border/80 bg-card p-4 space-y-3 text-xs flex flex-col justify-between"
+                className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) p-4 space-y-3 text-xs flex flex-col justify-between"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -695,15 +695,15 @@ export function DeliberatePracticeStudio() {
                     >
                       {card.bugClass.replace('_', ' ')}
                     </Badge>
-                    <span className="font-bold text-foreground">
+                    <span className="font-bold text-strong">
                       S₀ ×{card.recommendedStabilityMultiplier.toFixed(2)}
                     </span>
                   </div>
 
-                  <p className="font-medium text-foreground whitespace-pre-line">{card.prompt}</p>
+                  <p className="font-medium text-strong whitespace-pre-line">{card.prompt}</p>
                 </div>
 
-                <div className="pt-2 border-t border-border/40 space-y-1.5 text-muted-foreground">
+                <div className="pt-2 border-t border-neutral-200 dark:border-(--hub-border) space-y-1.5 text-secondary">
                   <div className="rounded bg-rose-500/10 p-2 text-rose-500 text-[11px]">
                     {card.erroneousImpasse}
                   </div>
