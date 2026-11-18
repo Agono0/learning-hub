@@ -7,14 +7,16 @@
  * server component's getDashboard() so the page can become a client
  * component that fetches this.
  */
-import { and, asc, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, gte, sql } from 'drizzle-orm'
 import { db } from '@learning-hub/db'
 import {
-  cards,
   courses,
   examDates,
   focusSessions,
   getDailyQuest,
+  getDueCardCount,
+  getStreakRow,
+  getXpTotals,
   journalEntries,
   lessonProgress,
   lessons,
@@ -23,7 +25,6 @@ import {
   quotes,
   streaks,
   units,
-  xpEvents,
 } from '@learning-hub/db'
 import {
   buildAgenda,
@@ -88,17 +89,10 @@ export const GET = withRoute(async (): Promise<Response> => {
   const now = new Date()
   const today = dayKey(now)
 
-  const [{ dueCount }] = await db
-    .select({ dueCount: sql<number>`count(*)` })
-    .from(cards)
-    .where(and(lte(cards.due, now.toISOString()), eq(cards.suspended, false)))
-
-  const [streakRow] = await db.select().from(streaks).limit(1)
-  const [xpRow] = await db.select({ total: sql<number>`coalesce(sum(amount), 0)` }).from(xpEvents)
-  const [xpTodayRow] = await db
-    .select({ today: sql<number>`coalesce(sum(amount), 0)` })
-    .from(xpEvents)
-    .where(gte(xpEvents.createdAt, `${today}T00:00:00.000Z`))
+  // Shared stats repo — the same aggregations MCP/CLI/the headless server serve.
+  const dueCount = getDueCardCount({ now })
+  const streakRow = getStreakRow({ now })
+  const { total: xpTotal, today: xpToday } = getXpTotals({ now })
 
   const { quotes: allQuotes } = listQuotes({ limit: 500 })
   const quote = allQuotes.length ? allQuotes[hashString(today) % allQuotes.length] : null
@@ -172,7 +166,7 @@ export const GET = withRoute(async (): Promise<Response> => {
     Math.ceil((new Date(`${iso}T23:59:59.000Z`).getTime() - now.getTime()) / 86_400_000)
 
   const agenda: AgendaItem[] = buildAgenda({
-    dueCount: Number(dueCount ?? 0),
+    dueCount,
     exams: upcomingExams.map((e) => ({ title: e.title, daysLeft: examDaysLeft(e.date) })),
     inProgressLessons: inProgress.map((l) => ({
       lessonId: l.lessonId,
@@ -190,7 +184,7 @@ export const GET = withRoute(async (): Promise<Response> => {
     lastActiveDate: streakRow?.lastActiveDate ?? null,
   }
   const notifications: NotificationItem[] = buildNotifications({
-    dueCount: Number(dueCount ?? 0),
+    dueCount,
     exams: upcomingExams.map((e) => ({ title: e.title, daysLeft: examDaysLeft(e.date) })),
     streak: streakState,
     today,
@@ -198,7 +192,7 @@ export const GET = withRoute(async (): Promise<Response> => {
   })
 
   const payload: DashboardData = {
-    dueCount: Number(dueCount ?? 0),
+    dueCount,
     streak: streakRow ?? {
       current: 0,
       best: 0,
@@ -206,8 +200,8 @@ export const GET = withRoute(async (): Promise<Response> => {
       weekendAmulet: false,
       lastActiveDate: null,
     },
-    xpTotal: Number(xpRow?.total ?? 0),
-    xpToday: Number(xpTodayRow?.today ?? 0),
+    xpTotal: Number(xpTotal),
+    xpToday: Number(xpToday),
     quote: quote ?? null,
     quest: todayQuest ?? null,
     freshStart: isFreshStartMoment(now),

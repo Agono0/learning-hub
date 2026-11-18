@@ -10,8 +10,10 @@ import {
   cards,
   db,
   deriveMeasuredBehavior,
+  getRevlogTrialRows,
   getWordExposureSummaries,
   recordExposureBatch,
+  reconstructCorrectionTrials,
   revlog,
   withTransaction,
 } from '@learning-hub/db'
@@ -32,6 +34,7 @@ import {
   evaluateHypercorrection,
   evaluateMetacognitiveCalibrationProfile,
   evaluateMetacognitiveProfile,
+  judgmentOfLearningFromRevlogRows,
   toTrialMetacognitiveRecords,
   forecastWorkload,
   fragilityScore,
@@ -40,7 +43,6 @@ import {
   toConsolidationCandidates,
   generationTierEnum,
   pretestRelatedness,
-  type JudgmentOfLearning,
   type WorkloadCardItem,
   CALIBRATED_INVARIANCE_CATEGORIES,
   CALIBRATED_INVARIANCE_PROBLEMS,
@@ -321,28 +323,10 @@ export const cognitiveTools: RegisteredTool[] = [
       deckId: z.number().int().positive().optional(),
     },
     async ({ limit, deckId }) => {
-      const conditions = []
-      if (deckId) conditions.push(eq(cards.deckId, deckId))
-
-      const rows = await db
-        .select({
-          cardId: revlog.cardId,
-          rating: revlog.rating,
-          confidence: revlog.confidence,
-          timeMs: revlog.timeMs,
-        })
-        .from(revlog)
-        .innerJoin(cards, eq(revlog.cardId, cards.id))
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(revlog.id))
-        .limit(limit)
-
-      const trials: JudgmentOfLearning[] = rows.map((r) => ({
-        cardId: r.cardId,
-        confidence: r.confidence === 1 ? 0.9 : 0.35,
-        outcome: r.rating >= 3 ? 1 : 0,
-        latencyMs: r.timeMs,
-      }))
+      // Shared repo query (undone reviews excluded — parity with the web
+      // handler) + core's canonical row→JOL mapping.
+      const rows = getRevlogTrialRows({ limit, deckId })
+      const trials = judgmentOfLearningFromRevlogRows(rows)
 
       const report = evaluateMetacognitiveProfile(trials)
       return json({
@@ -360,64 +344,15 @@ export const cognitiveTools: RegisteredTool[] = [
       limit: z.number().int().min(5).max(500).default(200),
     },
     async ({ limit }) => {
-      const rows = await db
-        .select({
-          cardId: revlog.cardId,
-          rating: revlog.rating,
-          confidence: revlog.confidence,
-          timeMs: revlog.timeMs,
-          stability: cards.stability,
-          difficulty: cards.difficulty,
-        })
-        .from(revlog)
-        .innerJoin(cards, eq(revlog.cardId, cards.id))
-        .orderBy(desc(revlog.id))
-        .limit(limit)
-
-      const chronological = [...rows].reverse()
-      const corrections: {
-        cardId: number
-        initialConfidence: number
-        wasCorrected: boolean
-      }[] = []
-      const armed = new Map<number, 0 | 1>()
-      for (const r of chronological) {
-        const correct = r.rating >= 3
-        const pending = armed.get(r.cardId)
-        if (pending !== undefined && correct) {
-          corrections.push({
-            cardId: r.cardId,
-            initialConfidence: pending === 1 ? 0.9 : 0.35,
-            wasCorrected: true,
-          })
-          armed.delete(r.cardId)
-        }
-        if (!correct) armed.set(r.cardId, r.confidence)
-      }
-
-      const candidates = [...armed.entries()].map(([cardId, confidence]) => {
-        const card = rows.find((r) => r.cardId === cardId)
-        return {
-          cardId,
-          errorConfidence: confidence === 1 ? 0.9 : 0.35,
-          stability: card && card.stability > 0 ? card.stability : 1,
-          difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
-          wasAlreadyCorrected: false,
-        }
-      })
+      // Shared repo query + canonical core reconstruction (packages/db
+      // repos/cognitive-trials): undone reviews excluded, FSRS state joined —
+      // identical trials to the web handler and headless server.
+      const rows = getRevlogTrialRows({ limit })
+      const { corrections, candidates } = reconstructCorrectionTrials(rows)
 
       const crucible = evaluateHypercorrection(corrections)
       const queue = prioritizeRelearningQueue(candidates, corrections)
-      const profile = evaluateMetacognitiveCalibrationProfile(
-        toTrialMetacognitiveRecords(
-          rows.map((r) => ({
-            cardId: r.cardId,
-            rating: r.rating,
-            confidence: r.confidence,
-            timeMs: r.timeMs,
-          })),
-        ),
-      )
+      const profile = evaluateMetacognitiveCalibrationProfile(toTrialMetacognitiveRecords(rows))
 
       return json({
         ok: true,

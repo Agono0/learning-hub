@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest'
+// Optimizer symbols from their defining module (no longer re-exported through
+// ./fsrs — that barrel edge made the import graph cyclic).
 import {
   FSRS6_DEFAULT_WEIGHTS,
   FSRS6_WEIGHT_BOUNDS,
   evaluateFsrsWeights,
-  formatInterval,
   optimizeFsrsWeights,
   parseFsrsWeights,
-  previewGrades,
   rescheduleCardHistory,
   type FsrsOptimizerRevlog,
-} from '../src/fsrs'
+} from '../src/fsrs-optimizer'
+import { formatInterval, previewGrades } from '../src/fsrs'
 
 describe('FSRS-6 weight parser, evaluator, optimizer, and history replayer', () => {
   it('parses 21-weight arrays, Anki comma-separated strings, and migrates 17/19-weight vectors', () => {

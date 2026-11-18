@@ -11,16 +11,16 @@
  * POST → Evaluate explicitly supplied JOL trials (manual mode / parity).
  */
 import { z } from 'zod'
-import { desc, inArray, sql } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import {
   evaluateMetacognitiveCalibrationProfile,
   evaluateMetacognitiveProfile,
   judgmentOfLearningSchema,
   toTrialMetacognitiveRecords,
-  type RevlogTrialRow,
 } from '@learning-hub/core'
+import { getRevlogTrialRows } from '@learning-hub/db'
 import { db } from '@/lib/db'
-import { cards, revlog } from '@learning-hub/db'
+import { cards } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 
 const metacognitionInputSchema = z.object({
@@ -29,18 +29,9 @@ const metacognitionInputSchema = z.object({
 
 /** GET /api/cognitive/metacognition — real calibration profile from revlog. */
 export const GET = withRoute(async () => {
-  const rows: RevlogTrialRow[] = db
-    .select({
-      cardId: revlog.cardId,
-      rating: revlog.rating,
-      confidence: revlog.confidence,
-      timeMs: revlog.timeMs,
-    })
-    .from(revlog)
-    .where(sql`NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = ${revlog.id})`)
-    .orderBy(desc(revlog.id))
-    .limit(1000)
-    .all()
+  // Shared repo query: undone reviews excluded, so every host derives the
+  // same trials from the same effective history (packages/db repos/cognitive-trials).
+  const rows = getRevlogTrialRows({ limit: 1000 })
 
   const records = toTrialMetacognitiveRecords(rows)
   const profile = evaluateMetacognitiveCalibrationProfile(records)

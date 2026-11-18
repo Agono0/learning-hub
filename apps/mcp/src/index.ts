@@ -13,7 +13,7 @@
  *       "args": ["--import", "tsx", "C:\\abs\\path\\apps\\mcp\\src\\index.ts"] } } }
  * (never bare `npx` on Windows — spawn ENOENT)
  */
-import { and, desc, eq, like, lte, or, sql } from 'drizzle-orm'
+import { desc, eq, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { json, tool, type RegisteredTool } from './tool-kit'
 import { curriculumTools } from './tools/curriculum'
@@ -32,16 +32,18 @@ import {
   executeReview,
   focusSessions,
   frictionEvents,
+  getDueCardCount,
   getFsrsStatus,
   getRandomQuote,
   getStarterCatalogStatus,
   getSyncConfig,
+  getTrueRetention,
   goals,
-  ideas,
   ideaLinks,
+  ideas,
   installStarterPack,
-  notes,
   noteLinks,
+  notes,
   optimizeAndPersistFsrs,
   searchAll,
 } from '@learning-hub/db'
@@ -335,16 +337,11 @@ const builtinTools: RegisteredTool[] = [
     'Review statistics: true retention (from v_true_retention) and the current due count.',
     {},
     async () => {
-      const retention = await db.all<{ total: number; retained: number; retention_pct: number }>(
-        sql`SELECT total, retained, retention_pct FROM v_true_retention`,
-      )
-      const [{ dueCount }] = await db
-        .select({ dueCount: sql<number>`count(*)` })
-        .from(cards)
-        .where(and(lte(cards.due, new Date().toISOString()), eq(cards.suspended, false)))
+      // Shared stats repo — one definition for web, CLI and the headless server.
+      const retention = getTrueRetention()
       return json({
-        trueRetention: retention[0] ?? { total: 0, retained: 0, retention_pct: null },
-        dueCount: Number(dueCount ?? 0),
+        trueRetention: retention,
+        dueCount: getDueCardCount(),
       })
     },
   ),

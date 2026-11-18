@@ -21,7 +21,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
-import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs'
+import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs-optimizer'
 import {
   PALETTES,
   applyThemePreference,

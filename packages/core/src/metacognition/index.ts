@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { RevlogTrialRow } from './correction-crucible'
 
 /**
  * @file Metacognitive Calibration & Fluency-Illusion Diagnostic Engine
@@ -138,6 +139,25 @@ export function evaluateMetacognitiveProfile(items: JudgmentOfLearning[]): Metac
 
 export const calculateMetacognitiveBias = calculateConfidenceBias
 export const calculateMetacognitiveReport = evaluateMetacognitiveProfile
+
+/**
+ * Maps raw review-log rows to canonical `JudgmentOfLearning` trials for
+ * {@link evaluateMetacognitiveProfile} — the same confidence mapping as
+ * `toTrialMetacognitiveRecords` (confident → 0.9, uncertain → 0.35, outcome
+ * from the grade, latency passthrough when recorded).
+ *
+ * One definition for every host (web handlers, headless server, MCP, CLI) so
+ * identical review history always yields identical calibration reports; the
+ * per-host inline copies had already started to drift.
+ */
+export function judgmentOfLearningFromRevlogRows(rows: RevlogTrialRow[]): JudgmentOfLearning[] {
+  return rows.map((r) => ({
+    cardId: r.cardId,
+    confidence: r.confidence === 1 ? 0.9 : 0.35,
+    outcome: r.rating >= 3 ? 1 : 0,
+    latencyMs: r.timeMs ?? undefined,
+  }))
+}
 
 export * from './hypercorrection-engine'
 export * from './correction-crucible'

@@ -56,25 +56,27 @@ import {
   modelInquiryCommand,
 } from './commands/advanced-learning'
 import {
-  db,
   awardXp,
   cards,
+  db,
   executeCloudSync,
   executeReview,
   focusSessions,
+  getDueCardCount,
   getFsrsStatus,
   getRandomQuote,
   getStarterCatalogStatus,
+  getStreakRow,
   getSyncConfig,
+  getTrueRetention,
+  getWordExposureSummaries,
+  getXpTotals,
   ideas,
   installStarterPack,
   optimizeAndPersistFsrs,
   quests,
   searchAll,
-  streaks,
   withTransaction,
-  getWordExposureSummaries,
-  xpEvents,
 } from '@learning-hub/db'
 import { balanceWorkload, catchUpBacklog, forecastWorkload } from '@learning-hub/core/workload'
 import {
@@ -173,19 +175,16 @@ async function capture(text: string) {
 
 async function today() {
   const now = new Date()
-  const [{ dueCount }] = await db
-    .select({ dueCount: sql<number>`count(*)` })
-    .from(cards)
-    .where(and(lte(cards.due, now.toISOString()), eq(cards.suspended, false)))
+  const dueCount = getDueCardCount({ now })
   const quest = await db
     .select()
     .from(quests)
     .where(eq(quests.date, dayKey(now)))
     .limit(1)
   const quote = getRandomQuote()
-  const [streakRow] = await db.select().from(streaks).limit(1)
+  const streakRow = getStreakRow({ now })
   const lines = [
-    `Due cards:   ${Number(dueCount ?? 0)}`,
+    `Due cards:   ${dueCount}`,
     `Streak:      ${streakRow?.current ?? 0} days (best ${streakRow?.best ?? 0})`,
     `Quest:       ${quest[0] ? (quest[0].completed ? 'complete ✓' : 'in progress') : 'not generated yet'}`,
   ]
@@ -196,19 +195,11 @@ async function today() {
 
 async function stats() {
   const now = new Date()
-  const [retention] = await db.all<{ total: number; retention_pct: number }>(
-    sql`SELECT total, retention_pct FROM v_true_retention`,
-  )
-  const [{ dueCount }] = await db
-    .select({ dueCount: sql<number>`count(*)` })
-    .from(cards)
-    .where(and(lte(cards.due, now.toISOString()), eq(cards.suspended, false)))
-  const [streakRow] = await db.select().from(streaks).limit(1)
-  const [xpTotal] = await db.select({ total: sql<number>`coalesce(sum(amount),0)` }).from(xpEvents)
-  const [xpToday] = await db
-    .select({ today: sql<number>`coalesce(sum(amount),0)` })
-    .from(xpEvents)
-    .where(gte(xpEvents.createdAt, `${dayKey(now)}T00:00:00.000Z`))
+  // Shared stats repo — one definition for web, MCP and the headless server.
+  const retention = getTrueRetention({ now })
+  const dueCount = getDueCardCount({ now })
+  const streakRow = getStreakRow({ now })
+  const { total: xpTotal, today: xpToday } = getXpTotals({ now })
   const week = await db.all<{ day: string; reviews: number }>(
     sql`SELECT day, reviews FROM v_daily_reviews ORDER BY day DESC LIMIT 7`,
   )
@@ -217,12 +208,12 @@ async function stats() {
     .from(focusSessions)
     .where(gte(focusSessions.startedAt, new Date(now.getTime() - 7 * 86_400_000).toISOString()))
 
-  const level = levelFromXp(Number(xpTotal?.total ?? 0))
+  const level = levelFromXp(xpTotal)
   const lines = [
-    `True retention: ${retention?.retention_pct ?? '—'}%  (${retention?.total ?? 0} real reviews)`,
-    `Due now:        ${Number(dueCount ?? 0)} cards`,
+    `True retention: ${retention.retention_pct ?? '—'}%  (${retention.total} real reviews)`,
+    `Due now:        ${dueCount} cards`,
     `Streak:         ${streakRow?.current ?? 0} days (best ${streakRow?.best ?? 0}, ❄️ ${streakRow?.freezes ?? 2} freezes)`,
-    `XP:             ${Number(xpTotal?.total ?? 0)} total · ${Number(xpToday?.today ?? 0)} today · level ${level} ${bar(levelProgress(Number(xpTotal?.total ?? 0)) * 100, 100)}`,
+    `XP:             ${xpTotal} total · ${xpToday} today · level ${level} ${bar(levelProgress(xpTotal) * 100, 100)}`,
     `Focus (7d):     ${Math.round(Number(focusWeek[0]?.minutes ?? 0))} minutes`,
     '',
     'Reviews last 7 days:',
