@@ -121,20 +121,24 @@ import {
   generateAdversarialCounterArgument,
   generateCERFSRSDeck,
   type CERArgumentSubmission,
+  CERArgumentSubmissionSchema,
   CANONICAL_MACROCONTEXT_CASES,
   evaluateAnchoredSolution,
   simulateAnchoredSensitivity,
   generateAnchoredFSRSDeck,
   type LearnerSolutionSubmission,
+  LearnerSolutionSubmissionSchema,
   CANONICAL_CONTRASTING_SETS,
   evaluateContrastingAttempt,
   generateContrastingFSRSDeck,
   type InventedMetricSubmission,
+  InventedMetricSubmissionSchema,
   CANONICAL_COLLABORATIVE_SCENARIOS,
   evaluateCollaborativeDiscourse,
   generateCollaborativePeerTurn,
   generateCollaborativeFSRSDeck,
   type DiscourseSubmission,
+  DiscourseSubmissionSchema,
   CANONICAL_SYSTEM_DYNAMICS_SCENARIOS,
   evaluateLearnerModel,
   generateSystemDynamicsFSRSDeck,
@@ -146,6 +150,7 @@ import {
   evaluateInquirySession,
   generateModelInquiryFsrsDeck,
   type InquirySessionInput,
+  InquirySessionInputSchema,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -355,37 +360,34 @@ const cerCounterBodySchema = z.object({
   claimId: z.string().default('claim-amoc-tipping-near'),
 })
 
-const cerEvaluateBodySchema = z.object({
-  debateId: z.string().default('debate-amoc-tipping'),
-  selectedClaimId: z.string().default('claim-amoc-tipping-near'),
-  claimStatement: z
-    .string()
-    .default(
-      'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
-    ),
-  selectedEvidenceIds: z
-    .array(z.string())
-    .default(['ev-amoc-sst-autocorr', 'ev-amoc-paleo-glacier', 'ev-amoc-cmip6-bias']),
-  userEvidenceSynthesis: z
-    .string()
-    .default(
-      'Subpolar SST fingerprints exhibit critical slowing down with increased variance, mirrored by Heinrich Stadial 1 paleorecords where freshwater pulses suppressed overturning by >70%. CMIP6 stability is an artifact of deep salinity restoring.',
-    ),
-  selectedPrincipleIds: z
-    .array(z.string())
-    .default(['princ-salt-advection', 'princ-critical-slowing']),
-  userReasoningStatement: z
-    .string()
-    .default(
-      'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, which reduces northward transport of saline waters, creating runaway positive feedback. Furthermore, bifurcation theory demonstrates that increased autocorrelation causally indicates loss of dynamical resilience.',
-    ),
-  targetedCounterArgumentId: z.string().optional().default('counter-amoc-rapid'),
-  userRebuttalStatement: z
-    .string()
-    .optional()
-    .default(
-      'Opponents cite the 2004–2022 RAPID-MOCHA mooring array as evidence of stability; however, this rebuttal is flawed because 18 years of instrumental data is statistically insufficient to disentangle multi-decadal Atlantic Multidecadal Variability from long-term centennial deceleration.',
-    ),
+// Payload shape owned by core (C8); the route only layers its demo defaults on top.
+const cerEvaluateBodySchema = CERArgumentSubmissionSchema.extend({
+  debateId: CERArgumentSubmissionSchema.shape.debateId.default('debate-amoc-tipping'),
+  selectedClaimId:
+    CERArgumentSubmissionSchema.shape.selectedClaimId.default('claim-amoc-tipping-near'),
+  claimStatement: CERArgumentSubmissionSchema.shape.claimStatement.default(
+    'The AMOC has crossed early-warning tipping thresholds and is on course for irreversible bi-stable shutdown this century.',
+  ),
+  selectedEvidenceIds: CERArgumentSubmissionSchema.shape.selectedEvidenceIds.default([
+    'ev-amoc-sst-autocorr',
+    'ev-amoc-paleo-glacier',
+    'ev-amoc-cmip6-bias',
+  ]),
+  userEvidenceSynthesis: CERArgumentSubmissionSchema.shape.userEvidenceSynthesis.default(
+    'Subpolar SST fingerprints exhibit critical slowing down with increased variance, mirrored by Heinrich Stadial 1 paleorecords where freshwater pulses suppressed overturning by >70%. CMIP6 stability is an artifact of deep salinity restoring.',
+  ),
+  selectedPrincipleIds: CERArgumentSubmissionSchema.shape.selectedPrincipleIds.default([
+    'princ-salt-advection',
+    'princ-critical-slowing',
+  ]),
+  userReasoningStatement: CERArgumentSubmissionSchema.shape.userReasoningStatement.default(
+    'According to Stommel salt-advection feedback, high-latitude freshening lowers surface density; consequently, deep convection decelerates, which reduces northward transport of saline waters, creating runaway positive feedback. Furthermore, bifurcation theory demonstrates that increased autocorrelation causally indicates loss of dynamical resilience.',
+  ),
+  targetedCounterArgumentId:
+    CERArgumentSubmissionSchema.shape.targetedCounterArgumentId.default('counter-amoc-rapid'),
+  userRebuttalStatement: CERArgumentSubmissionSchema.shape.userRebuttalStatement.default(
+    'Opponents cite the 2004–2022 RAPID-MOCHA mooring array as evidence of stability; however, this rebuttal is flawed because 18 years of instrumental data is statistically insufficient to disentangle multi-decadal Atlantic Multidecadal Variability from long-term centennial deceleration.',
+  ),
 })
 
 const cerDeckBodySchema = z.object({
@@ -393,13 +395,19 @@ const cerDeckBodySchema = z.object({
   ersBaseline: z.number().min(0).max(100).default(85),
 })
 
-const anchoredEvaluateBodySchema = z.object({
-  caseId: z.string().default('case-jasper-flight'),
-  extractedDataValues: z.record(z.string(), z.number()).default({}),
-  subGoalSequence: z.array(z.string()).default([]),
-  calculatedSubGoalOutputs: z.record(z.string(), z.number()).default({}),
-  finalDecisionChoice: z.string().default('choice-direct-flight'),
-  decisionJustification: z.string().default('Standard navigation flight plan.'),
+// Payload shape owned by core (C8); the route only layers its demo defaults on top.
+const anchoredEvaluateBodySchema = LearnerSolutionSubmissionSchema.extend({
+  caseId: LearnerSolutionSubmissionSchema.shape.caseId.default('case-jasper-flight'),
+  extractedDataValues: LearnerSolutionSubmissionSchema.shape.extractedDataValues.default({}),
+  subGoalSequence: LearnerSolutionSubmissionSchema.shape.subGoalSequence.default([]),
+  calculatedSubGoalOutputs: LearnerSolutionSubmissionSchema.shape.calculatedSubGoalOutputs.default(
+    {},
+  ),
+  finalDecisionChoice:
+    LearnerSolutionSubmissionSchema.shape.finalDecisionChoice.default('choice-direct-flight'),
+  decisionJustification: LearnerSolutionSubmissionSchema.shape.decisionJustification.default(
+    'Standard navigation flight plan.',
+  ),
 })
 
 const anchoredSensitivityBodySchema = z.object({
@@ -413,18 +421,23 @@ const anchoredDeckBodySchema = z.object({
   ikrsBaseline: z.number().min(0).max(100).default(85),
 })
 
-const contrastingEvaluateBodySchema = z.object({
-  setId: z.string().default('set-density-buoyancy'),
-  inventedMetricName: z.string().default('Density Ratio Invariant'),
-  formulaDescription: z
-    .string()
-    .default('Ratio of object mass to displacement volume across contrasting variants.'),
-  selectedDimensionIds: z.array(z.string()).default(['dim-mass', 'dim-volume']),
-  variantRankings: z.array(z.string()).default([]),
-  impasseEncountered: z.boolean().default(true),
-  reflectionNotes: z
-    .string()
-    .default('Noticed that volume or mass alone fails, but mass/volume coordinates cases.'),
+// Payload shape owned by core (C8); the route only layers its demo defaults on top.
+// impasseEncountered (default true) is inherited from the core schema.
+const contrastingEvaluateBodySchema = InventedMetricSubmissionSchema.extend({
+  setId: InventedMetricSubmissionSchema.shape.setId.default('set-density-buoyancy'),
+  inventedMetricName:
+    InventedMetricSubmissionSchema.shape.inventedMetricName.default('Density Ratio Invariant'),
+  formulaDescription: InventedMetricSubmissionSchema.shape.formulaDescription.default(
+    'Ratio of object mass to displacement volume across contrasting variants.',
+  ),
+  selectedDimensionIds: InventedMetricSubmissionSchema.shape.selectedDimensionIds.default([
+    'dim-mass',
+    'dim-volume',
+  ]),
+  variantRankings: InventedMetricSubmissionSchema.shape.variantRankings.default([]),
+  reflectionNotes: InventedMetricSubmissionSchema.shape.reflectionNotes.default(
+    'Noticed that volume or mass alone fails, but mass/volume coordinates cases.',
+  ),
 })
 
 const contrastingDeckBodySchema = z.object({
@@ -438,30 +451,21 @@ const collaborativePartnerBodySchema = z.object({
   turnIndex: z.number().int().min(0).default(0),
 })
 
-const collaborativeEvaluateBodySchema = z.object({
-  scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
-  learnerInitialPosition: z.string().default('Initial framing position.'),
-  dialogueTurns: z
-    .array(
-      z.object({
-        id: z.string(),
-        speaker: z.enum(['learner', 'peer_partner', 'synthesizer_agent']),
-        role: z.enum(['proposer', 'questioner', 'synthesizer', 'challenger']),
-        text: z.string(),
-        speechAct: z.enum([
-          'transactive_critique',
-          'transactive_extension',
-          'transactive_synthesis',
-          'transactive_justification',
-          'non_transactive',
-        ]),
-        targetTurnId: z.string().optional(),
-        epistemicKeywords: z.array(z.string()).default([]),
-      }),
-    )
-    .default([]),
-  jointSynthesis: z.string().default('Joint invariant reconciliation statement.'),
-  individualTransferAnswer: z.string().default('Transfer generalization application.'),
+// Payload shape owned by core (C8); the route only layers its demo defaults on top.
+const collaborativeEvaluateBodySchema = DiscourseSubmissionSchema.extend({
+  scenarioId: DiscourseSubmissionSchema.shape.scenarioId.default(
+    'collab-neuro-synaptic-plasticity',
+  ),
+  learnerInitialPosition: DiscourseSubmissionSchema.shape.learnerInitialPosition.default(
+    'Initial framing position.',
+  ),
+  dialogueTurns: DiscourseSubmissionSchema.shape.dialogueTurns.default([]),
+  jointSynthesis: DiscourseSubmissionSchema.shape.jointSynthesis.default(
+    'Joint invariant reconciliation statement.',
+  ),
+  individualTransferAnswer: DiscourseSubmissionSchema.shape.individualTransferAnswer.default(
+    'Transfer generalization application.',
+  ),
 })
 
 const collaborativeDeckBodySchema = z.object({
@@ -544,16 +548,9 @@ const modelInquirySimulateBodySchema = z.object({
     ]),
 })
 
-const modelInquiryEvaluateBodySchema = z.object({
-  scenarioId: z.string().default('galileo_falling_bodies'),
-  initialModelNotes: z.string().optional(),
-  selectedExtremeCaseIds: z.array(z.string()).default([]),
-  extremeCasePredictions: z.record(z.string(), z.string()).default({}),
-  simulativeStepOrder: z.array(z.string()).default([]),
-  identifiedContradictions: z.array(z.string()).default([]),
-  selectedBridgingId: z.string().optional(),
-  bridgingExplanation: z.string().optional(),
-  revisedModelHypothesis: z.string().optional(),
+// Payload shape owned by core (C8); the route adds only the scenario default.
+const modelInquiryEvaluateBodySchema = InquirySessionInputSchema.extend({
+  scenarioId: InquirySessionInputSchema.shape.scenarioId.default('galileo_falling_bodies'),
 })
 
 const modelInquiryDeckBodySchema = z.object({
