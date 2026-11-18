@@ -135,6 +135,12 @@ import {
   generateSystemDynamicsFSRSDeck,
   runEulerSimulation,
   type LearnerModelHypothesis,
+  listGedankenScenarios,
+  perturbExtremeCase,
+  simulateMentalAnimation,
+  evaluateInquirySession,
+  generateModelInquiryFsrsDeck,
+  type InquirySessionInput,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -533,6 +539,41 @@ const systemDynamicsEvaluateBodySchema = z.object({
 const systemDynamicsDeckBodySchema = z.object({
   scenarioId: z.string().default('climate-permafrost-methane'),
   sdiBaseline: z.number().min(0).max(100).default(85),
+})
+
+const modelInquiryPerturbBodySchema = z.object({
+  scenarioId: z.string().default('galileo_falling_bodies'),
+  extremeCaseId: z.string().default('ec_feather_cannonball'),
+  parameterLimit: z.string().optional(),
+})
+
+const modelInquirySimulateBodySchema = z.object({
+  scenarioId: z.string().default('galileo_falling_bodies'),
+  stepIds: z
+    .array(z.string())
+    .default([
+      'step_drop_isolated',
+      'step_connect_cord',
+      'step_deduction_drag',
+      'step_deduction_combined_mass',
+      'step_contradiction_crucible',
+    ]),
+})
+
+const modelInquiryEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('galileo_falling_bodies'),
+  initialModelNotes: z.string().optional(),
+  selectedExtremeCaseIds: z.array(z.string()).default([]),
+  extremeCasePredictions: z.record(z.string(), z.string()).default({}),
+  simulativeStepOrder: z.array(z.string()).default([]),
+  identifiedContradictions: z.array(z.string()).default([]),
+  selectedBridgingId: z.string().optional(),
+  bridgingExplanation: z.string().optional(),
+  revisedModelHypothesis: z.string().optional(),
+})
+
+const modelInquiryDeckBodySchema = z.object({
+  scenarioId: z.string().default('galileo_falling_bodies'),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2364,6 +2405,71 @@ async function postSystemDynamicsDeck(req: IncomingMessage, res: ServerResponse)
   })
 }
 
+/** GET /cognitive/model-inquiry/scenarios — list canonical Gedankenexperiment scenarios */
+async function getModelInquiryScenarios(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const scenarios = listGedankenScenarios()
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: scenarios.map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      historicalOrigin: s.historicalOrigin,
+      targetPhenomenon: s.targetPhenomenon,
+      folkConception: s.folkConception,
+      extremeCasesCount: s.extremeCases.length,
+      simulativeStepsCount: s.simulativeSteps.length,
+      bridgingCount: s.bridgingAnalogies.length,
+      canonicalResolution: s.canonicalResolution.title,
+    })),
+  })
+}
+
+/** POST /cognitive/model-inquiry/perturb — simulate extreme case perturbation */
+async function postModelInquiryPerturb(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, modelInquiryPerturbBodySchema)
+  const result = perturbExtremeCase(body.scenarioId, body.extremeCaseId, body.parameterLimit)
+  sendJson(res, 200, {
+    ok: true,
+    result,
+  })
+}
+
+/** POST /cognitive/model-inquiry/simulate — run mental animation sequence */
+async function postModelInquirySimulate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, modelInquirySimulateBodySchema)
+  const result = simulateMentalAnimation(body.scenarioId, body.stepIds)
+  sendJson(res, 200, {
+    ok: true,
+    result,
+  })
+}
+
+/** POST /cognitive/model-inquiry/evaluate — evaluate model-based inquiry session */
+async function postModelInquiryEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, modelInquiryEvaluateBodySchema)
+  const evaluation = evaluateInquirySession(body as InquirySessionInput)
+  const deck = generateModelInquiryFsrsDeck(body.scenarioId, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    evaluation,
+    cardsCount: deck.length,
+    cards: deck,
+  })
+}
+
+/** POST /cognitive/model-inquiry/deck — generate calibrated FSRS-6 review deck */
+async function postModelInquiryDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, modelInquiryDeckBodySchema)
+  const deck = generateModelInquiryFsrsDeck(body.scenarioId)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: body.scenarioId,
+    cardsCount: deck.length,
+    cards: deck,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2779,6 +2885,36 @@ export const routes: Route[] = [
     path: '/cognitive/system-dynamics/deck',
     summary: 'generate calibrated FSRS-6 review deck for system dynamics',
     handler: postSystemDynamicsDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/model-inquiry/scenarios',
+    summary: 'list canonical Gedankenexperiment scenarios (Clement 2008, Nersessian 2002)',
+    handler: getModelInquiryScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/model-inquiry/perturb',
+    summary: 'simulate extreme case boundary perturbation for Gedankenexperimente',
+    handler: postModelInquiryPerturb,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/model-inquiry/simulate',
+    summary: 'run simulative mental animation step sequence and expose contradictions',
+    handler: postModelInquirySimulate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/model-inquiry/evaluate',
+    summary: 'evaluate model-based inquiry session (ECDI, SAF, BAS, MMS, MBRI)',
+    handler: postModelInquiryEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/model-inquiry/deck',
+    summary: 'generate calibrated FSRS-6 review deck for model-based inquiry',
+    handler: postModelInquiryDeck,
   },
 ]
 
