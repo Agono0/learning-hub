@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import React, { useRef } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { cx } from './cx'
 
