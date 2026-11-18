@@ -434,8 +434,11 @@ function UntestedMaterialWidget(_props: WidgetProps) {
 
 /* ── registry ─────────────────────────────────────────────────────────────── */
 
+import { timerWidgetDef } from './TimerWidget'
+
 export const BUILT_IN_WIDGETS: WidgetDef[] = [
   { id: 'stats', title: 'Stats', span: 'full', component: StatsWidget },
+  timerWidgetDef,
   { id: 'open-loops', title: 'Open loops', span: 'full', component: OpenLoopsWidget },
   { id: 'quote', title: 'Daily quote', span: 'half', component: QuoteWidget },
   { id: 'agenda', title: "Today's agenda", span: 'half', component: AgendaWidget },
