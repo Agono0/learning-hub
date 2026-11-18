@@ -32,11 +32,11 @@ export default function CognitiveApprenticeshipPage() {
               <span>LPP Situated Mastery</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Brain className="h-3.5 w-3.5 text-emerald-500" />
+              <Brain className="h-3.5 w-3.5 text-status-success-text" />
               <span>Tacit Extraction</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Layers className="h-3.5 w-3.5 text-purple-500" />
+              <Layers className="h-3.5 w-3.5 text-ac-text" />
               <span>Scaffold Fading</span>
             </div>
           </div>

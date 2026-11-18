@@ -39,7 +39,7 @@ const PHASE_TONE: Record<DigestCue['phase'], string> = {
   intro: 'text-tertiary dark:text-faint',
   prompt: 'text-neutral-800 dark:text-neutral-100 font-semibold',
   pause: 'text-faint italic',
-  answer: 'text-emerald-700 dark:text-status-success-text',
+  answer: 'text-status-success-text dark:text-status-success-text',
   outro: 'text-tertiary dark:text-faint',
 }
 
@@ -87,7 +87,7 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
     <div className={cx('panel space-y-3', className)} data-testid="audio-digest-card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-          <BookOpenCheck className="h-4 w-4 text-indigo-500" />
+          <BookOpenCheck className="h-4 w-4 text-ac-text" />
           Hands-free digest
         </h3>
         {q.data?.script && (
@@ -101,7 +101,7 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
       {q.isLoading ? (
         <div className="h-16 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       ) : q.isError ? (
-        <p className="text-xs text-rose-600 dark:text-danger-text">
+        <p className="text-xs text-danger-text dark:text-danger-text">
           Could not generate the digest.
         </p>
       ) : cues.length === 0 ? (

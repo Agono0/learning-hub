@@ -250,7 +250,7 @@ export default function DebateArenaPage() {
         <>
           <Panel>{casePicker}</Panel>
           {startCase.isError ? (
-            <p className="text-xs text-rose-600">{errorText(startCase.error)}</p>
+            <p className="text-xs text-danger-text">{errorText(startCase.error)}</p>
           ) : null}
 
           {!debate ? (
@@ -332,15 +332,15 @@ export default function DebateArenaPage() {
                       ))}
                     </div>
                     {flag.isError ? (
-                      <p className="text-xs text-rose-600">{errorText(flag.error)}</p>
+                      <p className="text-xs text-danger-text">{errorText(flag.error)}</p>
                     ) : null}
                     {flagResult ? (
                       <div
                         role="status"
                         className={`flex items-start gap-2 rounded-xl p-3 text-sm ${
                           flagResult.correct
-                            ? 'bg-emerald-600/10 text-emerald-700 dark:text-status-success-text'
-                            : 'bg-amber-500/10 text-amber-700 dark:text-status-warning-text'
+                            ? 'bg-emerald-600/10 text-status-success-text dark:text-status-success-text'
+                            : 'bg-amber-500/10 text-status-warning-text dark:text-status-warning-text'
                         }`}
                       >
                         {flagResult.correct ? (
@@ -378,7 +378,7 @@ export default function DebateArenaPage() {
                       {debate.learnerVerdict ? 'Revise ruling' : 'Submit ruling'}
                     </Button>
                     {submitVerdict.isError ? (
-                      <p className="text-xs text-rose-600">{errorText(submitVerdict.error)}</p>
+                      <p className="text-xs text-danger-text">{errorText(submitVerdict.error)}</p>
                     ) : null}
                     {submitVerdict.data ? (
                       <Callout
@@ -421,7 +421,7 @@ export default function DebateArenaPage() {
                     Explain to Alex
                   </Button>
                   {protege.isError ? (
-                    <p className="text-xs text-rose-600">{errorText(protege.error)}</p>
+                    <p className="text-xs text-danger-text">{errorText(protege.error)}</p>
                   ) : null}
                   {protege.data ? (
                     <Callout

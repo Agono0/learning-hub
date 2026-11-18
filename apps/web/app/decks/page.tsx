@@ -94,9 +94,9 @@ const FORMATS: CardFormat[] = [
 const BOX_LABEL = ['new/learning', 'young', 'young', 'mature', 'mature'] as const
 const BOX_TONE = [
   'bg-neutral-300 text-neutral-700 dark:bg-(--hub-border) dark:text-faint',
-  'bg-amber-500/20 text-amber-700 dark:text-status-warning-text',
-  'bg-amber-500/30 text-amber-700 dark:text-status-warning-text',
-  'bg-emerald-500/20 text-emerald-700 dark:text-status-success-text',
+  'bg-amber-500/20 text-status-warning-text dark:text-status-warning-text',
+  'bg-amber-500/30 text-status-warning-text dark:text-status-warning-text',
+  'bg-emerald-500/20 text-status-success-text dark:text-status-success-text',
   'bg-emerald-500/40 text-emerald-800 dark:text-emerald-200',
 ] as const
 

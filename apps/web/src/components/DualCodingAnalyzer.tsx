@@ -52,7 +52,7 @@ export function DualCodingAnalyzer({ className }: DualCodingAnalyzerProps) {
   return (
     <div className={cx('panel space-y-3', className)} data-testid="dual-coding-analyzer">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-        <Eye className="h-4 w-4 text-indigo-500" />
+        <Eye className="h-4 w-4 text-ac-text" />
         Dual-coding analyzer
       </h3>
       <p className="text-xs text-tertiary dark:text-faint">

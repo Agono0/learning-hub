@@ -312,7 +312,7 @@ export function DualProcessStudio() {
               onClick={() => setSelectedScenarioId(sc.id)}
               className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                 sc.id === selectedScenarioId
-                  ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 shadow-xs'
+                  ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-ac-text dark:text-ac-text shadow-xs'
                   : 'border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) text-secondary hover:text-strong'
               }`}
             >
@@ -349,7 +349,7 @@ export function DualProcessStudio() {
         >
           <div className="flex items-center justify-between text-xs font-bold text-strong mb-1">
             <span>Stage 1: System 1</span>
-            {system1ChoiceId && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+            {system1ChoiceId && <CheckCircle2 className="w-3.5 h-3.5 text-status-success-text" />}
           </div>
           <p className="text-[11px] text-secondary">Rapid Autonomous Triage</p>
         </button>
@@ -368,7 +368,7 @@ export function DualProcessStudio() {
         >
           <div className="flex items-center justify-between text-xs font-bold text-strong mb-1">
             <span>Stage 2: Forcing</span>
-            <span className="text-[10px] text-sky-600 dark:text-sky-400">
+            <span className="text-[10px] text-status-info-text dark:text-status-info-text">
               {completedForcingStepIds.length}/{scenario.cognitiveForcingSteps.length}
             </span>
           </div>
@@ -389,7 +389,7 @@ export function DualProcessStudio() {
         >
           <div className="flex items-center justify-between text-xs font-bold text-strong mb-1">
             <span>Stage 3: Reflection</span>
-            {system2ChoiceId && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+            {system2ChoiceId && <CheckCircle2 className="w-3.5 h-3.5 text-status-success-text" />}
           </div>
           <p className="text-[11px] text-secondary">Stanovich Reflective Audit</p>
         </button>
@@ -430,7 +430,7 @@ export function DualProcessStudio() {
           {/* Initial Salient Data Cards */}
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-secondary mb-2 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-amber-500" />
+              <Eye className="w-3.5 h-3.5 text-status-warning-text" />
               Salient Triage Telemetry (High-Arousal Cues)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -439,7 +439,7 @@ export function DualProcessStudio() {
                   key={idx}
                   className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) text-xs text-strong font-medium flex items-center gap-2"
                 >
-                  <span className="w-5 h-5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold flex items-center justify-center shrink-0">
+                  <span className="w-5 h-5 rounded-md bg-amber-100 dark:bg-amber-950/40 text-status-warning-text dark:text-status-warning-text font-bold flex items-center justify-center shrink-0">
                     {idx + 1}
                   </span>
                   <span>{cue}</span>
@@ -524,8 +524,8 @@ export function DualProcessStudio() {
               />
 
               {system1ChoiceId === scenario.defaultSystem1DiagnosisId && (
-                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 text-xs text-rose-700 dark:text-rose-300">
-                  <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                <div className="flex items-start gap-2.5 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 text-xs text-danger-text dark:text-danger-text">
+                  <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-danger-text dark:text-danger-text" />
                   <div>
                     <strong className="font-bold">Heuristic Trap Triggered: </strong>
                     {scenario.vividHeuristicTrapDescription}
@@ -583,7 +583,7 @@ export function DualProcessStudio() {
           {/* Pause Countdown Banner if active */}
           {isPausing && (
             <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-900/40 text-center space-y-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+              <div className="text-xs font-bold uppercase tracking-wider text-ac-text dark:text-ac-text">
                 Universal Metacognitive Timeout Active
               </div>
               <div className="text-3xl font-extrabold text-strong">{pauseCountdown}s remaining</div>
@@ -596,7 +596,7 @@ export function DualProcessStudio() {
           {/* Cognitive Forcing Step Cards */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-sky-500" />
+              <ShieldAlert className="w-3.5 h-3.5 text-status-info-text" />
               Mandatory Diagnostic Forcing Gates
             </h3>
 
@@ -627,7 +627,7 @@ export function DualProcessStudio() {
                       >
                         {isCompleted ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-500" />
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-status-success-text" />
                             Completed
                           </>
                         ) : (
@@ -642,7 +642,7 @@ export function DualProcessStudio() {
 
                     <div className="p-3 rounded-lg bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border) text-xs">
                       <strong className="text-strong font-semibold flex items-center gap-1 mb-0.5">
-                        <Compass className="w-3.5 h-3.5 text-violet-500" />
+                        <Compass className="w-3.5 h-3.5 text-ac-text" />
                         Forcing Question to Demand:
                       </strong>
                       <span className="text-secondary italic">
@@ -659,7 +659,7 @@ export function DualProcessStudio() {
           <div className="pt-2 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-rose-500" />
+                <Search className="w-3.5 h-3.5 text-danger-text" />
                 Disconfirmation Crucible: Hidden Counter-Anomalies
               </h3>
               <span className="text-xs text-secondary">
@@ -701,7 +701,7 @@ export function DualProcessStudio() {
                         {isDiscovered ? anom : 'Click to inspect diagnostic anomaly telemetry...'}
                       </div>
                       {isDiscovered && (
-                        <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-1">
+                        <p className="text-[11px] text-danger-text dark:text-danger-text mt-1">
                           Directly contradicts the default hypothesis (&ldquo;
                           {scenario.defaultSystem1DiagnosisId}&rdquo;).
                         </p>
@@ -796,7 +796,7 @@ export function DualProcessStudio() {
             <div className="p-5 rounded-2xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-violet-500" />
+                  <Sparkles className="w-5 h-5 text-ac-text" />
                   <h4 className="text-sm font-bold text-strong">Reflective Override Analysis</h4>
                 </div>
                 {metrics.reflectiveOverrideOccurred ? (
@@ -823,7 +823,7 @@ export function DualProcessStudio() {
 
                 <div className="p-3 rounded-xl bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border)">
                   <div className="text-[11px] text-secondary">Stanovich Reflective Tier</div>
-                  <div className="text-xs font-bold text-violet-600 dark:text-violet-400 mt-0.5 uppercase">
+                  <div className="text-xs font-bold text-ac-text dark:text-ac-text mt-0.5 uppercase">
                     {evaluateReflectiveMindTier(metrics.reflectiveMindIndex).replace(/_/g, ' ')}
                   </div>
                 </div>
@@ -831,7 +831,7 @@ export function DualProcessStudio() {
 
               <div className="p-4 rounded-xl bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border) space-y-2">
                 <div className="text-xs font-bold text-strong flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <CheckCircle2 className="w-4 h-4 text-status-success-text" />
                   Authoritative Diagnostic Resolution
                 </div>
                 <p className="text-xs text-secondary leading-relaxed">

@@ -33,12 +33,12 @@ export default function SkillsStudioPage() {
               <Terminal className="h-3.5 w-3.5 text-indigo-400" />
               <span>Matt Pocock /skills</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+              <ShieldCheck className="h-3.5 w-3.5 text-status-success-text" />
               <span>AGENTS.md Linter</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">
-              <Flame className="h-3.5 w-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text">
+              <Flame className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Ericsson (1993)</span>
             </span>
           </div>
@@ -56,7 +56,7 @@ export default function SkillsStudioPage() {
             Autonomous Agent Engineering & Learning Science Foundations
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-neutral-400 leading-relaxed">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-tertiary leading-relaxed">
           <div className="space-y-1">
             <span className="font-semibold text-neutral-200">
               The Idea-to-Ship Spine (Pocock 2024)

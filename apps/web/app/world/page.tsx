@@ -545,7 +545,7 @@ export default function WorldPage() {
                       className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
                         active
                           ? 'bg-emerald-500/15 border-emerald-500/40 text-status-success-text'
-                          : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
+                          : 'bg-slate-800/40 border-slate-700/40 text-tertiary hover:bg-slate-800/80 hover:text-slate-200'
                       }`}
                     >
                       <Icon

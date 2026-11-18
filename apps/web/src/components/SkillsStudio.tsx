@@ -194,7 +194,7 @@ export function SkillsStudio() {
                 className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                   selectedCategory === c.id
                     ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white'
+                    : 'bg-white/5 text-tertiary hover:bg-white/10 hover:text-white'
                 }`}
               >
                 {c.label}
@@ -202,7 +202,7 @@ export function SkillsStudio() {
             ))}
           </div>
 
-          <span className="text-[11px] font-mono text-neutral-500">
+          <span className="text-[11px] font-mono text-tertiary">
             {filteredSkills.length} Autonomous Skills Loaded
           </span>
         </div>
@@ -235,12 +235,12 @@ export function SkillsStudio() {
                   <h4 className="text-xs font-semibold text-neutral-200 line-clamp-1">
                     {s.meta.title}
                   </h4>
-                  <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-tertiary line-clamp-2 leading-relaxed">
                     {s.meta.description}
                   </p>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[10px] text-neutral-500">
+                <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-[10px] text-tertiary">
                   <span>v{s.meta.version}</span>
                   <span className="flex items-center gap-1 font-semibold text-indigo-400">
                     {isSelected ? 'Active' : 'Run Skill'} <ArrowRight className="h-2.5 w-2.5" />
@@ -263,7 +263,7 @@ export function SkillsStudio() {
                   <Terminal className="h-4 w-4 text-indigo-400" />
                   <span>Skill Execution Input</span>
                 </span>
-                <span className="font-mono text-xs text-neutral-400">/{activeSkill.meta.name}</span>
+                <span className="font-mono text-xs text-tertiary">/{activeSkill.meta.name}</span>
               </div>
             }
           >
@@ -345,7 +345,7 @@ export function SkillsStudio() {
                     setContext('')
                   }}
                 >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1 text-neutral-400" />
+                  <RotateCcw className="h-3.5 w-3.5 mr-1 text-tertiary" />
                   Clear
                 </Button>
 
@@ -354,7 +354,7 @@ export function SkillsStudio() {
                   variant="primary"
                   disabled={executeMutation.isPending || !topic.trim()}
                 >
-                  <Play className="h-3.5 w-3.5 mr-1.5 text-amber-300" />
+                  <Play className="h-3.5 w-3.5 mr-1.5 text-status-warning-text" />
                   {executeMutation.isPending
                     ? 'Executing Skill...'
                     : `Run /${activeSkill.meta.name}`}
@@ -367,16 +367,16 @@ export function SkillsStudio() {
           <Panel
             title={
               <span className="flex items-center gap-2">
-                <Code2 className="h-4 w-4 text-emerald-400" />
+                <Code2 className="h-4 w-4 text-status-success-text" />
                 <span>System Prompt Blueprint</span>
               </span>
             }
           >
             <div className="space-y-2 text-xs text-neutral-300">
-              <p className="text-[11px] text-neutral-400 leading-relaxed">
+              <p className="text-[11px] text-tertiary leading-relaxed">
                 Instructions provided to autonomous agents executing this skill:
               </p>
-              <pre className="max-h-48 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[10px] text-emerald-300/90 whitespace-pre-wrap leading-relaxed border border-white/5">
+              <pre className="max-h-48 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[10px] text-status-success-text/90 whitespace-pre-wrap leading-relaxed border border-white/5">
                 {activeSkill.systemPrompt}
               </pre>
               <div className="flex justify-end">
@@ -399,7 +399,7 @@ export function SkillsStudio() {
             title={
               <div className="flex flex-wrap items-center justify-between gap-2 w-full">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-amber-400" />
+                  <Sparkles className="h-4 w-4 text-status-warning-text" />
                   <span>Skill Output Artifacts</span>
                 </div>
 
@@ -411,7 +411,7 @@ export function SkillsStudio() {
                     className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition ${
                       activeTab === 'output'
                         ? 'bg-indigo-600 text-white'
-                        : 'text-neutral-400 hover:text-white'
+                        : 'text-tertiary hover:text-white'
                     }`}
                   >
                     Report
@@ -423,7 +423,7 @@ export function SkillsStudio() {
                       className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition ${
                         activeTab === 'tickets'
                           ? 'bg-indigo-600 text-white'
-                          : 'text-neutral-400 hover:text-white'
+                          : 'text-tertiary hover:text-white'
                       }`}
                     >
                       Tickets ({currentResult.tickets.length})
@@ -436,7 +436,7 @@ export function SkillsStudio() {
                       className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition ${
                         activeTab === 'audit'
                           ? 'bg-indigo-600 text-white'
-                          : 'text-neutral-400 hover:text-white'
+                          : 'text-tertiary hover:text-white'
                       }`}
                     >
                       Audit
@@ -449,7 +449,7 @@ export function SkillsStudio() {
                       className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition ${
                         activeTab === 'cards'
                           ? 'bg-indigo-600 text-white'
-                          : 'text-neutral-400 hover:text-white'
+                          : 'text-tertiary hover:text-white'
                       }`}
                     >
                       Cards ({currentResult.generatedCards.length})
@@ -461,7 +461,7 @@ export function SkillsStudio() {
                     className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition ${
                       activeTab === 'skillmd'
                         ? 'bg-indigo-600 text-white'
-                        : 'text-neutral-400 hover:text-white'
+                        : 'text-tertiary hover:text-white'
                     }`}
                   >
                     SKILL.md
@@ -475,7 +475,7 @@ export function SkillsStudio() {
               {cardSaveStatus && (
                 <Callout tone="success">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success-text" />
                     <span>{cardSaveStatus}</span>
                   </div>
                 </Callout>
@@ -489,12 +489,12 @@ export function SkillsStudio() {
                   </div>
 
                   <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-[11px] text-tertiary">
                       Generated at {new Date(currentResult.timestamp).toLocaleTimeString()}
                     </span>
                     <Button variant="ghost" onClick={() => handleCopy(currentResult.rawOutput)}>
                       {copied ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-400 mr-1" />
+                        <Check className="h-3.5 w-3.5 text-status-success-text mr-1" />
                       ) : (
                         <Copy className="h-3.5 w-3.5 mr-1" />
                       )}
@@ -528,21 +528,21 @@ export function SkillsStudio() {
                         {ticket.description}
                       </p>
 
-                      <div className="space-y-1 text-[11px] text-neutral-400">
+                      <div className="space-y-1 text-[11px] text-tertiary">
                         <div className="font-semibold text-neutral-300">Files Affected:</div>
-                        <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px] text-sky-300">
+                        <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px] text-status-info-text">
                           {ticket.filesAffected.map((f) => (
                             <li key={f}>{f}</li>
                           ))}
                         </ul>
                       </div>
 
-                      <div className="rounded-lg bg-black/40 p-2 text-[10px] font-mono text-emerald-300 border border-white/5 flex items-center justify-between">
+                      <div className="rounded-lg bg-black/40 p-2 text-[10px] font-mono text-status-success-text border border-white/5 flex items-center justify-between">
                         <span>Test: {ticket.testRecipe}</span>
                         <button
                           type="button"
                           onClick={() => handleCopy(ticket.testRecipe)}
-                          className="text-neutral-400 hover:text-white"
+                          className="text-tertiary hover:text-white"
                           title="Copy test recipe"
                         >
                           <Copy className="h-3 w-3" />
@@ -561,7 +561,7 @@ export function SkillsStudio() {
                       currentResult.ruleViolations ?? auditCodeAgainstAgentsRules(context, filepath)
                     return violations.length === 0 ? (
                       <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-2">
-                        <ShieldCheck className="h-8 w-8 text-emerald-400 mx-auto" />
+                        <ShieldCheck className="h-8 w-8 text-status-success-text mx-auto" />
                         <h4 className="text-sm font-bold text-white">
                           Clean Architectural Compliance
                         </h4>
@@ -573,7 +573,7 @@ export function SkillsStudio() {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-rose-400 text-xs font-bold">
+                        <div className="flex items-center gap-2 text-danger-text text-xs font-bold">
                           <AlertTriangle className="h-4 w-4" />
                           <span>{violations.length} Hard Invariant Violation(s) Found:</span>
                         </div>
@@ -583,13 +583,13 @@ export function SkillsStudio() {
                             className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 space-y-1.5 text-xs"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-rose-300">
+                              <span className="font-bold text-danger-text">
                                 Rule {v.ruleId}: {v.ruleName}
                               </span>
                               <Badge tone="danger">Line {v.line ?? '?'}</Badge>
                             </div>
                             <p className="text-neutral-200">{v.message}</p>
-                            <div className="rounded bg-black/40 p-2 text-[11px] font-mono text-emerald-300 border border-white/5">
+                            <div className="rounded bg-black/40 p-2 text-[11px] font-mono text-status-success-text border border-white/5">
                               <strong>Remedy:</strong> {v.remedy}
                             </div>
                           </div>
@@ -630,7 +630,7 @@ export function SkillsStudio() {
                         {card.front}
                       </div>
                       <div className="text-xs text-neutral-300 border-t border-white/5 pt-2">
-                        <span className="text-[10px] text-emerald-400 font-mono uppercase block">
+                        <span className="text-[10px] text-status-success-text font-mono uppercase block">
                           Answer (Back):
                         </span>
                         {card.back}
@@ -652,7 +652,7 @@ export function SkillsStudio() {
                       onClick={() => handleCopy(renderSkillMarkdown(activeSkill))}
                     >
                       {copied ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-400 mr-1" />
+                        <Check className="h-3.5 w-3.5 text-status-success-text mr-1" />
                       ) : (
                         <Copy className="h-3.5 w-3.5 mr-1" />
                       )}

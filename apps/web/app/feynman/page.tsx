@@ -555,7 +555,7 @@ export default function FeynmanPage() {
             />
           )}
           <div className="flex items-center gap-4">
-            <div className="text-4xl font-bold text-indigo-500">{grade.coverage}%</div>
+            <div className="text-4xl font-bold text-ac-text">{grade.coverage}%</div>
             <div className="text-sm text-tertiary">
               {manual ? 'concept coverage (self-graded)' : 'concept coverage'}
             </div>

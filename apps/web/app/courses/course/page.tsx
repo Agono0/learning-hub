@@ -63,7 +63,7 @@ function LessonRow({ lesson }: { lesson: Lesson }) {
         className="flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-neutral-50 dark:hover:bg-(--hub-panel-2)"
       >
         <Icon
-          className={`h-5 w-5 shrink-0 ${lesson.status === 'completed' ? 'text-status-success-text' : lesson.status === 'in_progress' ? 'text-indigo-500' : 'text-faint'}`}
+          className={`h-5 w-5 shrink-0 ${lesson.status === 'completed' ? 'text-status-success-text' : lesson.status === 'in_progress' ? 'text-ac-text' : 'text-faint'}`}
           aria-hidden
         />
         <span className="min-w-0 flex-1">

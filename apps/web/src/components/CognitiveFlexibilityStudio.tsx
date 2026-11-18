@@ -229,7 +229,7 @@ export function CognitiveFlexibilityStudio({
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   isSelected
                     ? 'border border-sky-500/40 bg-sky-500/20 text-status-info-text'
-                    : 'border border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                    : 'border border-slate-800 bg-slate-950/40 text-tertiary hover:text-slate-200'
                 }`}
               >
                 {s.name.split('&')[0].trim()}

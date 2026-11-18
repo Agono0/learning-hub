@@ -130,7 +130,7 @@ export function MetacognitiveCalibrationHUD({
               triggers maximal neurocognitive attention surge (Butterfield & Metcalfe 2001) for
               rapid long-term memory correction.
               {currentIllusion && (
-                <div className="mt-1 font-medium text-amber-700 dark:text-status-warning-text">
+                <div className="mt-1 font-medium text-status-warning-text dark:text-status-warning-text">
                   Root Illusion: {ILLUSION_NAMES[currentIllusion] ?? currentIllusion}
                 </div>
               )}
@@ -176,7 +176,7 @@ export function MetacognitiveCalibrationHUD({
         <div className="rounded-lg border border-neutral-200/50 dark:border-(--hub-border)/50 bg-white/50 dark:bg-(--hub-panel)/50 p-2.5">
           <div className="flex items-center justify-between text-xs text-tertiary">
             <span>Confidence Bias</span>
-            <Brain className="h-3.5 w-3.5 text-indigo-500" />
+            <Brain className="h-3.5 w-3.5 text-ac-text" />
           </div>
           <div className={`mt-1 text-lg font-bold ${getBiasColor()}`}>{getBiasLabel()}</div>
           <p className="mt-1 text-[10px] text-tertiary">

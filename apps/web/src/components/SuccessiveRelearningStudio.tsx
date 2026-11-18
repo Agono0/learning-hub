@@ -307,7 +307,7 @@ export function SuccessiveRelearningStudio() {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-secondary">
                   <span>Current Streak:</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="font-bold text-status-success-text dark:text-status-success-text">
                     {currentItem.sessionConsecutiveStreak} / {currentItem.acquisitionCriterion}
                   </span>
                   <span>• Trials this session: {currentItem.trialsInCurrentSession}</span>
@@ -334,7 +334,7 @@ export function SuccessiveRelearningStudio() {
               <div className="space-y-3 pt-2">
                 {isAnswerRevealed ? (
                   <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-2">
-                    <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 block">
+                    <span className="text-xs font-semibold text-status-success-text dark:text-status-success-text block">
                       Target Master Answer:
                     </span>
                     <p className="text-sm font-medium text-strong leading-relaxed">
@@ -359,7 +359,7 @@ export function SuccessiveRelearningStudio() {
                   <button
                     type="button"
                     onClick={() => handleTrial(false)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-danger-text dark:text-danger-text hover:bg-rose-500/20 transition-colors"
                   >
                     <XCircle className="h-5 w-5" />
                     Mistake / Partial (Reset Streak &amp; Rotate)
@@ -377,7 +377,7 @@ export function SuccessiveRelearningStudio() {
             </div>
           ) : (
             <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) p-8 text-center space-y-4 shadow-sm">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-status-success-text dark:text-status-success-text">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold text-strong">
@@ -448,7 +448,7 @@ export function SuccessiveRelearningStudio() {
                           <span
                             className={
                               entry.savingsPercent > 50
-                                ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                                ? 'text-status-success-text dark:text-status-success-text font-bold'
                                 : 'text-strong font-medium'
                             }
                           >
@@ -479,7 +479,7 @@ export function SuccessiveRelearningStudio() {
           <Panel className="p-5 space-y-4">
             <div>
               <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
+                <AlertCircle className="h-4 w-4 text-status-warning-text" />
                 High-Attrition Outlier Radar (Nelson &amp; Leonesio 1988)
               </h3>
               <p className="text-xs text-secondary mt-0.5">
@@ -513,7 +513,7 @@ export function SuccessiveRelearningStudio() {
               </div>
             ) : (
               <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-6 text-center text-xs text-secondary space-y-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
+                <CheckCircle2 className="h-5 w-5 text-status-success-text mx-auto" />
                 <p className="font-medium text-strong">Zero High-Attrition Outliers Detected</p>
                 <p>All items in this cohort reached criterion within normal trial variance.</p>
               </div>
@@ -560,7 +560,7 @@ export function SuccessiveRelearningStudio() {
                 </div>
 
                 <div className="pt-2 border-t border-neutral-200 dark:border-(--hub-border) space-y-1 text-secondary">
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block">
+                  <span className="text-[11px] font-semibold text-status-success-text dark:text-status-success-text block">
                     Answer:
                   </span>
                   <p className="text-[11px] leading-relaxed">{card.targetAnswer}</p>

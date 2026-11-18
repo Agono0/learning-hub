@@ -174,7 +174,7 @@ export function StudyPlannerMatrix({
               <button
                 type="button"
                 onClick={onRemovePlan}
-                className="p-1.5 text-faint hover:text-rose-600 dark:hover:text-danger-text rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                className="p-1.5 text-faint hover:text-danger-text dark:hover:text-danger-text rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
                 title="Remove Plan"
               >
                 <Trash2 className="h-4 w-4" />
@@ -323,7 +323,7 @@ export function StudyPlannerMatrix({
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                        <GraduationCap className="h-4 w-4 text-indigo-500" />
+                        <GraduationCap className="h-4 w-4 text-ac-text" />
                         {exam.title}
                       </h4>
                       <p className="text-xs text-tertiary font-mono mt-0.5">

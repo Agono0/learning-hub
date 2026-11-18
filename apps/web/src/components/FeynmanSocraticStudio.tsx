@@ -382,7 +382,7 @@ export function FeynmanSocraticStudio({
               <AlertCircle className="h-4 w-4 text-status-warning-text" />
               Detected Complex Vocabulary / Jargon ({report.jargonTerms.length} terms):
             </span>
-            <span className="text-[11px] font-mono text-amber-700 dark:text-status-warning-text">
+            <span className="text-[11px] font-mono text-status-warning-text dark:text-status-warning-text">
               {report.jargonDensity}% density
             </span>
           </div>
@@ -396,7 +396,7 @@ export function FeynmanSocraticStudio({
               </span>
             ))}
           </div>
-          <p className="text-[11px] text-amber-700 dark:text-status-warning-text/80 pt-0.5">
+          <p className="text-[11px] text-status-warning-text dark:text-status-warning-text/80 pt-0.5">
             Tip: Replace these polysyllabic words with tangible physical comparisons to pass the
             child test.
           </p>
@@ -407,7 +407,7 @@ export function FeynmanSocraticStudio({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-faint flex items-center gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+            <MessageSquare className="h-3.5 w-3.5 text-ac-text" />
             Socratic Follow-Up Inquiries ({report.socraticProbes.length})
           </h4>
           <span className="text-[11px] text-faint">

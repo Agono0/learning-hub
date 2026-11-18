@@ -148,7 +148,7 @@ export function ContrastingCasesHUD({
         <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-2">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span className="font-medium flex items-center gap-1">
-              <Target className="h-3.5 w-3.5 text-indigo-500" />
+              <Target className="h-3.5 w-3.5 text-ac-text" />
               Future Readiness (PFRI)
             </span>
             <span className="font-semibold text-strong">{evaluation.pfri}/100</span>
@@ -163,7 +163,7 @@ export function ContrastingCasesHUD({
       {/* Identified Dimensions & Distractors */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-2">
-          <h4 className="text-xs font-semibold text-emerald-700 dark:text-status-success-text flex items-center gap-1">
+          <h4 className="text-xs font-semibold text-status-success-text dark:text-status-success-text flex items-center gap-1">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Discriminated Deep Invariants ({evaluation.identifiedDeepDimensions.length})
           </h4>
@@ -181,7 +181,7 @@ export function ContrastingCasesHUD({
         </div>
 
         <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-2">
-          <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+          <h4 className="text-xs font-semibold text-status-warning-text dark:text-status-warning-text flex items-center gap-1">
             <AlertTriangle className="h-3.5 w-3.5" />
             Superficial Distractors Flagged ({evaluation.superficialDistractorsChosen.length})
           </h4>
@@ -206,7 +206,7 @@ export function ContrastingCasesHUD({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {evaluation.strengths.length > 0 && (
             <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-1.5">
-              <h4 className="text-xs font-semibold text-emerald-700 dark:text-status-success-text flex items-center gap-1">
+              <h4 className="text-xs font-semibold text-status-success-text dark:text-status-success-text flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Differentiated Strengths
               </h4>
@@ -222,7 +222,7 @@ export function ContrastingCasesHUD({
 
           {evaluation.vulnerabilities.length > 0 && (
             <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-1.5">
-              <h4 className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <h4 className="text-xs font-semibold text-status-warning-text dark:text-status-warning-text flex items-center gap-1">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Perceptual Vulnerabilities
               </h4>

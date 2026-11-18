@@ -419,7 +419,7 @@ export function CognitiveApprenticeshipStudio() {
                 >
                   <span className="font-bold">Step {trace.stepNumber}</span>
                   <span className="line-clamp-1">{trace.phase}</span>
-                  {isObserved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
+                  {isObserved && <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />}
                 </button>
               )
             })}
@@ -434,11 +434,11 @@ export function CognitiveApprenticeshipStudio() {
                     Step {currentTrace.stepNumber} • {currentTrace.phase}
                   </span>
                   {observedTraceIds.has(currentTrace.id) ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                    <Badge className="bg-emerald-500/10 text-status-success-text border-emerald-500/30 text-[10px]">
                       Observed
                     </Badge>
                   ) : (
-                    <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/30 text-[10px]">
+                    <Badge className="bg-amber-500/10 text-status-warning-text border-amber-500/30 text-[10px]">
                       Pending Observation
                     </Badge>
                   )}
@@ -486,7 +486,7 @@ export function CognitiveApprenticeshipStudio() {
             {/* Tradeoffs Considered */}
             <div className="space-y-2">
               <span className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                <Wrench className="h-3.5 w-3.5 text-amber-500" />
+                <Wrench className="h-3.5 w-3.5 text-status-warning-text" />
                 Active Tradeoffs Weighed by Master Modeler
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -505,7 +505,7 @@ export function CognitiveApprenticeshipStudio() {
             {/* Rejected Alternatives */}
             {currentTrace.rejectedAlternatives.length > 0 && (
               <div className="space-y-2">
-                <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-danger-text dark:text-danger-text flex items-center gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Rejected Naive Alternatives &amp; Why They Fail
                 </span>
@@ -515,7 +515,7 @@ export function CognitiveApprenticeshipStudio() {
                       key={i}
                       className="rounded-lg border border-rose-500/20 bg-rose-50 dark:bg-rose-950/20 p-3 space-y-1 text-xs"
                     >
-                      <div className="font-semibold text-rose-600 dark:text-rose-400">
+                      <div className="font-semibold text-danger-text dark:text-danger-text">
                         Alternative: {rej.alternative}
                       </div>
                       <div className="text-secondary leading-relaxed">
@@ -531,7 +531,7 @@ export function CognitiveApprenticeshipStudio() {
             {currentTrace.metacognitiveSelfCorrection && (
               <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) p-3.5 space-y-1.5 text-xs">
                 <div className="font-semibold text-strong flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
                   Metacognitive Self-Correction &amp; Boundary Guard
                 </div>
                 <p className="text-tertiary leading-relaxed italic">
@@ -576,8 +576,8 @@ export function CognitiveApprenticeshipStudio() {
                       <Badge
                         className={`text-[10px] ${
                           currentAnswer.score >= 0.8
-                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                            : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                            ? 'bg-emerald-500/10 text-status-success-text border-emerald-500/30'
+                            : 'bg-amber-500/10 text-status-warning-text border-amber-500/30'
                         }`}
                       >
                         {Math.round(currentAnswer.score * 100)}% Alignment
@@ -611,8 +611,8 @@ export function CognitiveApprenticeshipStudio() {
                               <CheckCircle2
                                 className={`h-4 w-4 shrink-0 mt-0.5 ${
                                   opt.tacitAlignmentScore >= 0.8
-                                    ? 'text-emerald-500'
-                                    : 'text-amber-500'
+                                    ? 'text-status-success-text'
+                                    : 'text-status-warning-text'
                                 }`}
                               />
                             )}
@@ -681,7 +681,7 @@ export function CognitiveApprenticeshipStudio() {
                 <Panel key={rc.id} className="p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-neutral-200/80 dark:border-(--hub-border)/80 pb-2.5">
                     <h4 className="text-sm font-bold text-strong flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
+                      <Sparkles className="h-4 w-4 text-status-warning-text" />
                       Reflection: {rc.aspect}
                     </h4>
                     <Button
@@ -696,7 +696,7 @@ export function CognitiveApprenticeshipStudio() {
                   {/* Novice vs Expert Contrast Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-1.5">
-                      <span className="font-semibold text-amber-500 flex items-center gap-1">
+                      <span className="font-semibold text-status-warning-text flex items-center gap-1">
                         <Users className="h-3.5 w-3.5" />
                         Common Novice Intuition
                       </span>
@@ -704,7 +704,7 @@ export function CognitiveApprenticeshipStudio() {
                     </div>
 
                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-1.5">
-                      <span className="font-semibold text-emerald-500 flex items-center gap-1">
+                      <span className="font-semibold text-status-success-text flex items-center gap-1">
                         <Brain className="h-3.5 w-3.5" />
                         Master Modeler Approach
                       </span>
@@ -766,7 +766,7 @@ export function CognitiveApprenticeshipStudio() {
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-strong">{pr.name}</span>
                       {isUnlocked ? (
-                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 text-[10px]">
+                        <Badge className="bg-emerald-500/10 text-status-success-text border-emerald-500/30 text-[10px]">
                           Unlocked
                         </Badge>
                       ) : (
@@ -832,7 +832,7 @@ export function CognitiveApprenticeshipStudio() {
                 </div>
 
                 <div className="space-y-1">
-                  <span className="font-semibold text-rose-600 dark:text-rose-400">
+                  <span className="font-semibold text-danger-text dark:text-danger-text">
                     Novice Intuition Trap:
                   </span>
                   <p className="text-secondary text-[11px]">{card.commonNoviceTrap}</p>

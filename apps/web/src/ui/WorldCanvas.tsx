@@ -166,7 +166,7 @@ export const WorldCanvas = React.forwardRef<WorldCanvasHandle, WorldCanvasProps>
     if (!webglSupported) {
       return (
         <div
-          className={`flex flex-col items-center justify-center bg-emerald-950/20 text-emerald-300 p-6 rounded-2xl border border-emerald-800/30 text-center ${props.className ?? ''}`}
+          className={`flex flex-col items-center justify-center bg-emerald-950/20 text-status-success-text p-6 rounded-2xl border border-emerald-800/30 text-center ${props.className ?? ''}`}
         >
           <p className="font-semibold text-lg mb-1">🌲 Forest of Focus</p>
           <p className="text-sm text-faint">

@@ -139,7 +139,7 @@ function StatsWidget({ data: d }: WidgetProps) {
         hint={
           <Link
             href="/motivation"
-            className="text-xs text-indigo-500 hover:underline dark:text-indigo-400"
+            className="text-xs text-ac-text hover:underline dark:text-indigo-400"
           >
             view quests →
           </Link>

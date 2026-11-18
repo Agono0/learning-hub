@@ -395,7 +395,7 @@ export function SelfRegulatedLearningStudio() {
             {/* Task Description */}
             <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-4 space-y-1.5 text-xs">
               <span className="font-semibold text-strong flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-amber-500" />
+                <Sparkles className="h-4 w-4 text-status-warning-text" />
                 Target Task Scope:
               </span>
               <p className="text-secondary leading-relaxed">{challenge.taskDescription}</p>
@@ -542,7 +542,7 @@ export function SelfRegulatedLearningStudio() {
           <Panel className="p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200/80 dark:border-(--hub-border)/80 pb-3">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-500">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-status-warning-text">
                   Zimmerman Phase 2: Volitional Execution &amp; Control
                 </span>
                 <h3 className="text-base font-bold text-strong">
@@ -577,7 +577,7 @@ export function SelfRegulatedLearningStudio() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Flame className="h-4 w-4 text-amber-500" />
+                        <Flame className="h-4 w-4 text-status-warning-text" />
                         <span className="font-bold text-strong text-sm">{cp.title}</span>
                       </div>
 
@@ -613,7 +613,7 @@ export function SelfRegulatedLearningStudio() {
                       </div>
 
                       <div className="rounded-lg bg-amber-500/10 p-3 border border-amber-500/20 space-y-1">
-                        <strong className="text-amber-500 block">
+                        <strong className="text-status-warning-text block">
                           Metacognitive Self-Instruction Maxim:
                         </strong>
                         <p className="text-secondary italic leading-relaxed">
@@ -657,7 +657,7 @@ export function SelfRegulatedLearningStudio() {
         <div className="space-y-6 animate-fade-in">
           <Panel className="p-5 space-y-4">
             <div className="border-b border-neutral-200/80 dark:border-(--hub-border)/80 pb-3">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-500">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ac-text">
                 Zimmerman Phase 3: Self-Reflection &amp; Adaptation
               </span>
               <h3 className="text-base font-bold text-strong">
@@ -673,7 +673,7 @@ export function SelfRegulatedLearningStudio() {
             <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-4 space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-strong flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                   Self-Evaluation against COPES Standard:
                 </span>
                 <span className="font-mono text-strong font-bold">
@@ -766,7 +766,7 @@ export function SelfRegulatedLearningStudio() {
 
             {/* Expert Reflection Prompt Callout */}
             <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 text-xs space-y-1">
-              <span className="font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+              <span className="font-bold text-ac-text dark:text-ac-text flex items-center gap-1.5">
                 <Brain className="h-4 w-4" />
                 Expert Self-Reflection Guidance:
               </span>
@@ -826,7 +826,7 @@ export function SelfRegulatedLearningStudio() {
                 </div>
 
                 <div className="space-y-1">
-                  <span className="font-semibold text-purple-600 dark:text-purple-400">
+                  <span className="font-semibold text-ac-text dark:text-ac-text">
                     Attribution Insight:
                   </span>
                   <p className="text-secondary text-[11px]">{card.attributionCalibrationInsight}</p>

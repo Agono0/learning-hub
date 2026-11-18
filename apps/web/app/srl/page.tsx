@@ -30,19 +30,19 @@ export default function SelfRegulatedLearningPage() {
               <span>Zimmerman (2000)</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Target className="h-3.5 w-3.5 text-cyan-500" />
+              <Target className="h-3.5 w-3.5 text-status-info-text" />
               <span>COPES Architecture</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Flame className="h-3.5 w-3.5 text-amber-500" />
+              <Flame className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Volitional Control</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Shield className="h-3.5 w-3.5 text-emerald-500" />
+              <Shield className="h-3.5 w-3.5 text-status-success-text" />
               <span>Weiner Attribution</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Brain className="h-3.5 w-3.5 text-purple-500" />
+              <Brain className="h-3.5 w-3.5 text-ac-text" />
               <span>FSRS Regulatory Deck</span>
             </div>
           </div>

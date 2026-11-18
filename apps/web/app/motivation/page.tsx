@@ -617,7 +617,7 @@ function SeasonalStudyPassSection() {
                     ? 'border-emerald-500/30 bg-emerald-950/10 text-neutral-300'
                     : isUnlocked
                       ? 'border-amber-500/40 bg-amber-950/20 text-neutral-100 shadow-md'
-                      : 'border-neutral-800 bg-neutral-900/40 opacity-60 text-neutral-400'
+                      : 'border-neutral-800 bg-neutral-900/40 opacity-60 text-tertiary'
                 }`}
               >
                 <div>

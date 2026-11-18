@@ -136,7 +136,7 @@ export function DeliberatePracticeHUD({
 
           <div className="flex justify-between text-[11px] text-secondary">
             <span>0% Struggle</span>
-            <span className="text-emerald-500 font-medium">65% – 85% Sweet Spot</span>
+            <span className="text-status-success-text font-medium">65% – 85% Sweet Spot</span>
             <span>100% Automatic</span>
           </div>
 
@@ -244,7 +244,7 @@ export function DeliberatePracticeHUD({
             </div>
             <div className="flex justify-between">
               <span>Impasse Repairs Completed:</span>
-              <span className="font-semibold text-emerald-500">
+              <span className="font-semibold text-status-success-text">
                 {deliberateEffort.impasseRepairsCompleted}
               </span>
             </div>
@@ -253,7 +253,7 @@ export function DeliberatePracticeHUD({
       </div>
 
       {/* Keith & Frese (2008) Error Management Training (EMT) Banner */}
-      <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 p-3 text-xs flex items-center justify-between gap-3 text-cyan-600 dark:text-cyan-400">
+      <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 p-3 text-xs flex items-center justify-between gap-3 text-status-info-text dark:text-status-info-text">
         <div>
           <strong>Keith &amp; Frese (2008) Positive Error Climate:</strong> &ldquo;Errors are
           informative signposts, not cognitive failures. Each impasse reveals the exact boundary

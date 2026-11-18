@@ -38,7 +38,7 @@ export function ThresholdLiminalHUD({
     <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) p-4 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-100 dark:border-(--hub-border) pb-3 mb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/40 text-status-warning-text dark:text-status-warning-text">
             <KeyRound className="h-4 w-4" />
           </div>
           <div>
@@ -66,11 +66,11 @@ export function ThresholdLiminalHUD({
         <div className="rounded-lg p-3 border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken)">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
-              <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+              <AlertTriangle className="h-3.5 w-3.5 text-danger-text" />
               Ritualized Mimicry Risk
             </span>
             <span
-              className={`text-xs font-semibold ${mimicryRiskScore > 30 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}
+              className={`text-xs font-semibold ${mimicryRiskScore > 30 ? 'text-danger-text dark:text-danger-text' : 'text-status-success-text dark:text-status-success-text'}`}
             >
               {`${mimicryRiskScore}%`}
             </span>
@@ -112,7 +112,7 @@ export function ThresholdLiminalHUD({
         <div className="rounded-lg p-3 border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken)">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
-              <Layers className="h-3.5 w-3.5 text-indigo-500" />
+              <Layers className="h-3.5 w-3.5 text-ac-text" />
               Gateway Multiplier
             </span>
             <span className="text-xs font-semibold text-strong">
@@ -135,9 +135,9 @@ export function ThresholdLiminalHUD({
       <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-2.5 border border-neutral-200 dark:border-(--hub-border) text-xs">
         <div className="flex items-center gap-2 truncate">
           {canCrossPortal ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0" />
           ) : (
-            <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+            <Sparkles className="h-4 w-4 text-status-warning-text shrink-0" />
           )}
           <div className="truncate">
             <div className="font-medium text-strong truncate">Liminal Navigation Guidance</div>

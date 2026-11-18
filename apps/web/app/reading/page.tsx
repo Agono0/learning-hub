@@ -677,9 +677,9 @@ export default function ReadingPage() {
                       <span
                         className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
                           exposureQuery.data.coverageAnalysis.zone === 'optimal'
-                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/50'
+                            ? 'bg-emerald-950/80 text-status-success-text border border-emerald-700/50'
                             : exposureQuery.data.coverageAnalysis.zone === 'frustration'
-                              ? 'bg-rose-950/80 text-rose-300 border border-rose-700/50'
+                              ? 'bg-rose-950/80 text-danger-text border border-rose-700/50'
                               : 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
                         }`}
                       >

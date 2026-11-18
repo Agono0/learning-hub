@@ -379,10 +379,10 @@ export function DeliberatePracticeStudio() {
                         if (isAnswered) {
                           if (opt.isCorrect) {
                             optionStyle =
-                              'bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-medium'
+                              'bg-emerald-500/15 border-emerald-500/40 text-status-success-text dark:text-status-success-text font-medium'
                           } else if (isSelected && !opt.isCorrect) {
                             optionStyle =
-                              'bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400'
+                              'bg-rose-500/15 border-rose-500/40 text-danger-text dark:text-danger-text'
                           }
                         }
 
@@ -404,8 +404,8 @@ export function DeliberatePracticeStudio() {
                       <div
                         className={`rounded-md p-3 text-xs border ${
                           answer.isCorrect
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-status-success-text dark:text-status-success-text'
+                            : 'bg-rose-500/10 border-rose-500/20 text-danger-text dark:text-danger-text'
                         }`}
                       >
                         <div className="flex items-center justify-between font-semibold pb-1">
@@ -477,7 +477,7 @@ export function DeliberatePracticeStudio() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <AlertTriangle className="h-4 w-4 text-status-warning-text" />
                         <span className="font-bold text-strong text-sm">{checkpoint.title}</span>
                         <Badge tone="danger">{checkpoint.bugClass.replace('_', ' ')}</Badge>
                       </div>
@@ -490,15 +490,15 @@ export function DeliberatePracticeStudio() {
                       <span className="font-semibold text-strong block">Context Scenario:</span>
                       <p className="text-secondary leading-relaxed">{checkpoint.contextScenario}</p>
 
-                      <span className="font-semibold text-rose-500 block pt-1">
+                      <span className="font-semibold text-danger-text block pt-1">
                         Failure Trigger:
                       </span>
-                      <p className="text-rose-500 leading-relaxed">{checkpoint.failureTrigger}</p>
+                      <p className="text-danger-text leading-relaxed">{checkpoint.failureTrigger}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="rounded-lg bg-rose-500/10 p-3.5 border border-rose-500/20 space-y-1">
-                        <span className="font-semibold text-rose-500 block">
+                        <span className="font-semibold text-danger-text block">
                           Erroneous Reasoning:
                         </span>
                         <p className="text-secondary leading-relaxed">
@@ -507,7 +507,7 @@ export function DeliberatePracticeStudio() {
                       </div>
 
                       <div className="rounded-lg bg-emerald-500/10 p-3.5 border border-emerald-500/20 space-y-1">
-                        <span className="font-semibold text-emerald-500 block">
+                        <span className="font-semibold text-status-success-text block">
                           Correct Invariant Repair:
                         </span>
                         <p className="text-secondary leading-relaxed">
@@ -516,7 +516,7 @@ export function DeliberatePracticeStudio() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg bg-cyan-500/10 p-3.5 border border-cyan-500/20 text-cyan-600 dark:text-cyan-400 space-y-1">
+                    <div className="rounded-lg bg-cyan-500/10 p-3.5 border border-cyan-500/20 text-status-info-text dark:text-status-info-text space-y-1">
                       <span className="font-semibold block">Keith &amp; Frese EMT Reframing:</span>
                       <p className="leading-relaxed">{checkpoint.conceptualReframingEMT}</p>
                     </div>
@@ -541,7 +541,7 @@ export function DeliberatePracticeStudio() {
                       >
                         {isRepaired ? (
                           <>
-                            <CheckCircle2 className="h-4 w-4 mr-1.5 text-emerald-500" />
+                            <CheckCircle2 className="h-4 w-4 mr-1.5 text-status-success-text" />
                             Impasse Consolidated
                           </>
                         ) : (
@@ -571,13 +571,13 @@ export function DeliberatePracticeStudio() {
 
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-rose-500/10 border border-rose-500/20">
-                <span className="font-semibold text-rose-500">Misconceptions (Severity 4):</span>
+                <span className="font-semibold text-danger-text">Misconceptions (Severity 4):</span>
                 <span className="font-bold text-strong">
                   {errorTaxonomy.misconceptionCount} errors
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <span className="font-semibold text-amber-500">
+                <span className="font-semibold text-status-warning-text">
                   Procedural Lapses (Severity 3):
                 </span>
                 <span className="font-bold text-strong">
@@ -585,7 +585,7 @@ export function DeliberatePracticeStudio() {
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                <span className="font-semibold text-violet-500">
+                <span className="font-semibold text-ac-text">
                   Boundary Oversights (Severity 2):
                 </span>
                 <span className="font-bold text-strong">
@@ -593,7 +593,7 @@ export function DeliberatePracticeStudio() {
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                <span className="font-semibold text-cyan-500">Attentional Slips (Severity 1):</span>
+                <span className="font-semibold text-status-info-text">Attentional Slips (Severity 1):</span>
                 <span className="font-bold text-strong">
                   {errorTaxonomy.attentionalSlipCount} errors
                 </span>
@@ -696,10 +696,10 @@ export function DeliberatePracticeStudio() {
                 </div>
 
                 <div className="pt-2 border-t border-neutral-200 dark:border-(--hub-border) space-y-1.5 text-secondary">
-                  <div className="rounded bg-rose-500/10 p-2 text-rose-500 text-[11px]">
+                  <div className="rounded bg-rose-500/10 p-2 text-danger-text text-[11px]">
                     {card.erroneousImpasse}
                   </div>
-                  <div className="rounded bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400 text-[11px]">
+                  <div className="rounded bg-emerald-500/10 p-2 text-status-success-text dark:text-status-success-text text-[11px]">
                     <span className="font-semibold block">Repair Invariant:</span>
                     {card.schemaRepairSolution}
                   </div>

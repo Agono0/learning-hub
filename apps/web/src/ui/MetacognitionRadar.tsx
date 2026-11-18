@@ -75,7 +75,7 @@ export function MetacognitionRadar({
     <div className={cx('panel-glass p-5 space-y-4', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-ac-text dark:text-indigo-400 border border-indigo-500/20">
             <Compass className="h-5 w-5" />
           </div>
           <div>

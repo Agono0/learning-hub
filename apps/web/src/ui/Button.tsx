@@ -22,7 +22,7 @@ const VARIANT: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary: 'btn',
   secondary: 'btn-secondary',
   ghost: 'btn-ghost',
-  danger: 'btn bg-rose-600 hover:bg-rose-500',
+  danger: 'btn bg-rose-600 hover:bg-rose-700',
   bare: 'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
 }
 

@@ -168,7 +168,7 @@ export function ReciprocalTeachingHUD({
         <div className="text-[11px] font-medium text-secondary mb-2 flex items-center justify-between">
           <span>Palincsar 4-Role Engagement Profile:</span>
           {evaluation.strategy.neglectedRoles.length > 0 && (
-            <span className="text-amber-600 dark:text-amber-400">
+            <span className="text-status-warning-text dark:text-status-warning-text">
               Neglected: {evaluation.strategy.neglectedRoles.join(', ')}
             </span>
           )}
@@ -184,7 +184,7 @@ export function ReciprocalTeachingHUD({
           </div>
           <div className="flex items-center justify-between rounded bg-neutral-100 dark:bg-neutral-800/50 px-2 py-1 text-xs">
             <span className="text-secondary flex items-center gap-1">
-              <Wrench className="h-3 w-3 text-emerald-500" /> Clarifier
+              <Wrench className="h-3 w-3 text-status-success-text" /> Clarifier
             </span>
             <span className="font-semibold text-strong">
               {evaluation.strategy.roleFrequencies.clarifier}
@@ -192,7 +192,7 @@ export function ReciprocalTeachingHUD({
           </div>
           <div className="flex items-center justify-between rounded bg-neutral-100 dark:bg-neutral-800/50 px-2 py-1 text-xs">
             <span className="text-secondary flex items-center gap-1">
-              <BookOpen className="h-3 w-3 text-purple-500" /> Summarizer
+              <BookOpen className="h-3 w-3 text-ac-text" /> Summarizer
             </span>
             <span className="font-semibold text-strong">
               {evaluation.strategy.roleFrequencies.summarizer}
@@ -200,7 +200,7 @@ export function ReciprocalTeachingHUD({
           </div>
           <div className="flex items-center justify-between rounded bg-neutral-100 dark:bg-neutral-800/50 px-2 py-1 text-xs">
             <span className="text-secondary flex items-center gap-1">
-              <Lightbulb className="h-3 w-3 text-amber-500" /> Predictor
+              <Lightbulb className="h-3 w-3 text-status-warning-text" /> Predictor
             </span>
             <span className="font-semibold text-strong">
               {evaluation.strategy.roleFrequencies.predictor}

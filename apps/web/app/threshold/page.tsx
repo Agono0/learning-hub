@@ -25,7 +25,7 @@ export default function ThresholdPage() {
         subtitle="Identify and cross the transformative, irreversible, and troublesome conceptual portals of your discipline. Overcome ritualized mimicry and resolve cognitive oscillation in the liminal space."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text dark:text-status-warning-text">
               <KeyRound className="h-3.5 w-3.5" />
               <span>Meyer &amp; Land (2003) Gateways</span>
             </span>
@@ -33,7 +33,7 @@ export default function ThresholdPage() {
               <Compass className="h-3.5 w-3.5" />
               <span>Liminal Oscillation Tracker</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text dark:text-status-success-text">
               <Layers className="h-3.5 w-3.5" />
               <span>Mimicry Boundary Probes</span>
             </span>
@@ -47,7 +47,7 @@ export default function ThresholdPage() {
       {/* Learning Science Foundations Card */}
       <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-6">
         <div className="flex items-center gap-2.5 mb-3">
-          <Sparkles className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <Sparkles className="h-5 w-5 text-status-warning-text dark:text-status-warning-text" />
           <h2 className="text-base font-bold text-strong">
             Threshold Concepts &amp; Troublesome Knowledge Foundations
           </h2>
@@ -55,7 +55,7 @@ export default function ThresholdPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-secondary leading-relaxed">
           <div className="space-y-1.5">
             <div className="font-semibold text-strong flex items-center gap-1.5">
-              <KeyRound className="h-3.5 w-3.5 text-amber-500" />
+              <KeyRound className="h-3.5 w-3.5 text-status-warning-text" />
               The Portal Metaphor
             </div>
             <p>
@@ -77,7 +77,7 @@ export default function ThresholdPage() {
           </div>
           <div className="space-y-1.5">
             <div className="font-semibold text-strong flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+              <AlertTriangle className="h-3.5 w-3.5 text-danger-text" />
               Ritualized Mimicry (Perkins 1999)
             </div>
             <p>

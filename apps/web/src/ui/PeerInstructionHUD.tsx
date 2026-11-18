@@ -94,7 +94,7 @@ export function PeerInstructionHUD({
       {/* Header bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+          <div className="p-2 rounded-lg bg-sky-500/10 text-status-info-text dark:text-status-info-text">
             <Users className="w-5 h-5" />
           </div>
           <div>
@@ -145,7 +145,7 @@ export function PeerInstructionHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Vote Polarization (PI)</span>
-            <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+            <HelpCircle className="w-3.5 h-3.5 text-ac-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -160,7 +160,7 @@ export function PeerInstructionHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Convergence Ratio</span>
-            <Users className="w-3.5 h-3.5 text-amber-500" />
+            <Users className="w-3.5 h-3.5 text-status-warning-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-strong">
@@ -175,10 +175,10 @@ export function PeerInstructionHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Smith Q2 Transfer</span>
-            <Target className="w-3.5 h-3.5 text-sky-500" />
+            <Target className="w-3.5 h-3.5 text-status-info-text" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl font-bold font-mono text-sky-600 dark:text-sky-400">
+            <span className="text-xl font-bold font-mono text-status-info-text dark:text-status-info-text">
               {`${metrics.isomorphicTransferScore}%`}
             </span>
             <span className="text-[11px] text-secondary">isomorphic</span>
@@ -191,7 +191,7 @@ export function PeerInstructionHUD({
       <div className="space-y-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">
         <div className="flex items-center justify-between text-xs">
           <span className="text-secondary font-medium flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Sparkles className="w-3.5 h-3.5 text-status-warning-text" />
             Hake Interactive Learning Gain
           </span>
           <div className="flex items-center gap-2">
@@ -211,7 +211,7 @@ export function PeerInstructionHUD({
       {/* Diagnostic & Pedagogical Advice banner */}
       <div className="p-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/50 border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1">
         <div className="flex items-center gap-1.5 font-semibold text-strong">
-          <GraduationCap className="w-3.5 h-3.5 text-sky-500" />
+          <GraduationCap className="w-3.5 h-3.5 text-status-info-text" />
           <span>Peer Instruction Diagnostic</span>
         </div>
         <p className="text-secondary leading-relaxed">{metrics.qualitativeSummary}</p>

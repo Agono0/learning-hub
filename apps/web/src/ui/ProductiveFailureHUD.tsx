@@ -75,7 +75,7 @@ export function ProductiveFailureHUD({
       {/* Header telemetry bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <div className="p-2 rounded-lg bg-amber-500/10 text-status-warning-text dark:text-status-warning-text">
             <Lightbulb className="w-5 h-5" />
           </div>
           <div>
@@ -107,7 +107,7 @@ export function ProductiveFailureHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Productive Failure (PFI)</span>
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Sparkles className="w-3.5 h-3.5 text-status-warning-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-strong">
@@ -122,7 +122,7 @@ export function ProductiveFailureHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Generation Diversity (GDI)</span>
-            <Layers className="w-3.5 h-3.5 text-indigo-500" />
+            <Layers className="w-3.5 h-3.5 text-ac-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -137,7 +137,7 @@ export function ProductiveFailureHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Impasse Depth (ISS)</span>
-            <Flame className="w-3.5 h-3.5 text-rose-500" />
+            <Flame className="w-3.5 h-3.5 text-danger-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-strong">
@@ -188,7 +188,7 @@ export function ProductiveFailureHUD({
       {/* Qualitative Feedback banner */}
       <div className="p-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/50 border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1">
         <div className="flex items-center gap-1.5 font-semibold text-strong">
-          <TrendingUp className="w-3.5 h-3.5 text-amber-500" />
+          <TrendingUp className="w-3.5 h-3.5 text-status-warning-text" />
           <span>Diagnostic Recommendation</span>
         </div>
         <p className="text-secondary leading-relaxed">{metrics.qualitativeFeedback}</p>

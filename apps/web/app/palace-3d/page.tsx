@@ -407,7 +407,7 @@ export default function Palace3dPage() {
               </Button>
             </div>
             {saveLayout.isError ? (
-              <p className="text-xs text-rose-600">{errorText(saveLayout.error)}</p>
+              <p className="text-xs text-danger-text">{errorText(saveLayout.error)}</p>
             ) : saveLayout.isSuccess ? (
               <p className="text-xs text-tertiary">
                 Layout saved (including your current position as the start).
@@ -435,7 +435,7 @@ export default function Palace3dPage() {
                   </span>
                 </div>
                 {attenuation ? (
-                  <div className="absolute right-2 top-2 flex max-w-[60%] items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-[11px] text-emerald-400">
+                  <div className="absolute right-2 top-2 flex max-w-[60%] items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-[11px] text-status-success-text">
                     <Volume2 className="h-3.5 w-3.5 shrink-0" />
                     <span>
                       {attenuation.distance} m · gain {Math.round(attenuation.gain * 100)}% · pan{' '}

@@ -86,7 +86,7 @@ export function DetoxWizard({ className }: DetoxWizardProps) {
           {q.isLoading ? (
             <div className="h-24 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
           ) : q.isError ? (
-            <p className="text-xs text-rose-600 dark:text-danger-text">
+            <p className="text-xs text-danger-text dark:text-danger-text">
               Could not load the wizard.
             </p>
           ) : (

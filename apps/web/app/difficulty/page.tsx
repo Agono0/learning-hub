@@ -63,7 +63,7 @@ export default function DifficultyPage() {
 
       {q.isError ? (
         <Panel title="Could not load telemetry">
-          <p className="text-sm text-rose-600 dark:text-danger-text">
+          <p className="text-sm text-danger-text dark:text-danger-text">
             The measured audit failed to load. Review some cards and reload — the audit needs
             review-log telemetry for spacing and interleaving.
           </p>

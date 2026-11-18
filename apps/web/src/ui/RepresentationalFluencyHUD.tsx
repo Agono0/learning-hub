@@ -92,7 +92,7 @@ export function RepresentationalFluencyHUD({
       {/* Top Banner: Problem Context & Fluency Tier */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-status-info-text dark:text-status-info-text flex items-center justify-center font-bold">
             <GitCompare className="w-5 h-5" />
           </div>
           <div>
@@ -166,7 +166,7 @@ export function RepresentationalFluencyHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-secondary flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-sky-500" />
+              <Compass className="w-3.5 h-3.5 text-status-info-text" />
               Fluency Index
             </span>
             <span className="text-xs font-bold text-strong">
@@ -185,7 +185,7 @@ export function RepresentationalFluencyHUD({
             <span className="text-xs font-medium text-secondary flex items-center gap-1.5">
               <Layers
                 className={`w-3.5 h-3.5 ${
-                  isCoordinationGapHigh ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-500'
+                  isCoordinationGapHigh ? 'text-danger-text dark:text-danger-text' : 'text-status-success-text'
                 }`}
               />
               Coordination Gap
@@ -193,8 +193,8 @@ export function RepresentationalFluencyHUD({
             <span
               className={`text-xs font-bold ${
                 isCoordinationGapHigh
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-danger-text dark:text-danger-text'
+                  : 'text-status-success-text dark:text-status-success-text'
               }`}
             >
               {(metrics.representationalCoordinationGap * 100).toFixed(0)}%
@@ -210,7 +210,7 @@ export function RepresentationalFluencyHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-secondary flex items-center gap-1.5">
-              <Activity className="w-3.5 h-3.5 text-violet-500" />
+              <Activity className="w-3.5 h-3.5 text-ac-text" />
               Cross-Modal Coherence
             </span>
             <span className="text-xs font-bold text-strong">

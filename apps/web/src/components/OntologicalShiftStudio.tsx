@@ -317,7 +317,7 @@ export function OntologicalShiftStudio() {
               onClick={() => setSelectedScenarioId(sc.id)}
               className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                 sc.id === selectedScenarioId
-                  ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 shadow-xs'
+                  ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-ac-text dark:text-ac-text shadow-xs'
                   : 'border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) text-secondary hover:text-strong'
               }`}
             >
@@ -350,7 +350,7 @@ export function OntologicalShiftStudio() {
           }`}
         >
           <div className="flex items-center gap-2 mb-1">
-            <Layers className="w-4 h-4 text-violet-500" />
+            <Layers className="w-4 h-4 text-ac-text" />
             <span className="text-xs font-bold">1. Attribute Crucible</span>
           </div>
           <p className="text-[11px] text-tertiary">Chi 6 Process Dimensions</p>
@@ -366,7 +366,7 @@ export function OntologicalShiftStudio() {
           }`}
         >
           <div className="flex items-center gap-2 mb-1">
-            <GitBranch className="w-4 h-4 text-violet-500" />
+            <GitBranch className="w-4 h-4 text-ac-text" />
             <span className="text-xs font-bold">2. Ontological Tree</span>
           </div>
           <p className="text-[11px] text-tertiary">Category Re-Mapping</p>
@@ -382,7 +382,7 @@ export function OntologicalShiftStudio() {
           }`}
         >
           <div className="flex items-center gap-2 mb-1">
-            <Brain className="w-4 h-4 text-violet-500" />
+            <Brain className="w-4 h-4 text-ac-text" />
             <span className="text-xs font-bold">3. Posner Refutation</span>
           </div>
           <p className="text-[11px] text-tertiary">Anomalies &amp; P-Prims</p>
@@ -398,7 +398,7 @@ export function OntologicalShiftStudio() {
           }`}
         >
           <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="w-4 h-4 text-violet-500" />
+            <BookOpen className="w-4 h-4 text-ac-text" />
             <span className="text-xs font-bold">4. FSRS Shift Deck</span>
           </div>
           <p className="text-[11px] text-tertiary">Spaced Contrast Cards</p>
@@ -429,8 +429,8 @@ export function OntologicalShiftStudio() {
           {/* Naive Belief Anchor Card */}
           <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4 text-amber-500" />
+              <span className="text-xs font-bold text-amber-900 dark:text-status-warning-text flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-status-warning-text" />
                 Naive Intuitive Model (Matter / Direct-Process Trap)
               </span>
               <Badge tone="warning">Heuristic Impetus</Badge>
@@ -444,7 +444,7 @@ export function OntologicalShiftStudio() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-strong flex items-center gap-2">
-                <Layers className="w-4 h-4 text-violet-500" />
+                <Layers className="w-4 h-4 text-ac-text" />
                 Select Process Attributes Across 6 Dimensions
               </h3>
               <span className="text-xs text-secondary">
@@ -494,7 +494,7 @@ export function OntologicalShiftStudio() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-rose-900 dark:text-rose-300">
+                          <span className="text-xs font-bold text-rose-900 dark:text-danger-text">
                             {directMeta.label}
                           </span>
                           <span className="text-[10px] text-tertiary">Direct Process</span>
@@ -517,10 +517,10 @@ export function OntologicalShiftStudio() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                          <span className="text-xs font-bold text-emerald-900 dark:text-status-success-text">
                             {emergentMeta.label}
                           </span>
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                          <span className="text-[10px] text-status-success-text dark:text-status-success-text font-semibold">
                             Emergent System
                           </span>
                         </div>
@@ -592,7 +592,7 @@ export function OntologicalShiftStudio() {
               </p>
               <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-(--hub-border)">
                 <span className="text-[10px] text-tertiary block mb-1">Naive Presupposition:</span>
-                <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-400">
+                <span className="text-[11px] font-semibold text-danger-text dark:text-danger-text">
                   Can be contained, poured, stored, or consumed.
                 </span>
               </div>
@@ -619,7 +619,7 @@ export function OntologicalShiftStudio() {
               </p>
               <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-(--hub-border)">
                 <span className="text-[10px] text-tertiary block mb-1">Direct Presupposition:</span>
-                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                <span className="text-[11px] font-semibold text-status-warning-text dark:text-status-warning-text">
                   Needs a conductor, master agent, or purposeful intent.
                 </span>
               </div>
@@ -648,7 +648,7 @@ export function OntologicalShiftStudio() {
                 <span className="text-[10px] text-tertiary block mb-1">
                   Scientific Presupposition:
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="text-[11px] font-semibold text-status-success-text dark:text-status-success-text">
                   Self-organization via the law of large numbers.
                 </span>
               </div>
@@ -660,7 +660,7 @@ export function OntologicalShiftStudio() {
             <div className="p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-900/50 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <AlertTriangle className="w-4 h-4 text-status-warning-text" />
                   Vosniadou Synthetic Model Alert
                 </span>
                 <Badge tone="warning">Risk: {(syntheticCompromiseRisk * 100).toFixed(0)}%</Badge>
@@ -680,7 +680,7 @@ export function OntologicalShiftStudio() {
           <div className="p-4 rounded-xl bg-neutral-900 text-white space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-400" />
+                <Zap className="w-4 h-4 text-status-warning-text" />
                 <span className="text-xs font-bold">
                   Decentralized Emergence Simulation (Step {simStep + 1}/100)
                 </span>
@@ -739,7 +739,7 @@ export function OntologicalShiftStudio() {
                 />
               </svg>
 
-              <div className="absolute bottom-2 left-3 text-[10px] text-neutral-400">
+              <div className="absolute bottom-2 left-3 text-[10px] text-tertiary">
                 Micro: Stochastic independent components · Macro: Statistical steady-state pattern
               </div>
             </div>
@@ -786,7 +786,7 @@ export function OntologicalShiftStudio() {
           {/* 3 Refutational Anomalies */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-strong flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-violet-500" />
+              <AlertCircle className="w-4 h-4 text-ac-text" />
               Confront Empirical Anomalies (Click to Drive Dissatisfaction)
             </h3>
 
@@ -807,14 +807,14 @@ export function OntologicalShiftStudio() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-bold text-strong">Anomaly {idx + 1}</span>
                       {isInspected ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <CheckCircle2 className="w-4 h-4 text-status-success-text" />
                       ) : (
                         <HelpCircle className="w-4 h-4 text-tertiary" />
                       )}
                     </div>
                     <p className="text-xs text-secondary leading-relaxed">{anomaly}</p>
                     <div className="mt-3 pt-2 border-t border-neutral-200 dark:border-(--hub-border)">
-                      <span className="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">
+                      <span className="text-[10px] text-ac-text dark:text-ac-text font-semibold">
                         {isInspected
                           ? 'Dissatisfaction triggered (+25%)'
                           : 'Click to inspect refutation'}
@@ -830,7 +830,7 @@ export function OntologicalShiftStudio() {
           <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-900/50 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <Sparkles className="w-4 h-4 text-status-success-text" />
                 Target Scientific Emergent Schema (Chi 2013)
               </span>
               <Badge tone="success">
@@ -845,7 +845,7 @@ export function OntologicalShiftStudio() {
           {/* diSessa P-Prim Recontextualization Card */}
           <div className="p-4 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-2">
             <span className="text-xs font-bold text-strong flex items-center gap-1.5">
-              <Brain className="w-4 h-4 text-amber-500" />
+              <Brain className="w-4 h-4 text-status-warning-text" />
               diSessa P-Prim Recontextualization:{' '}
               {CANONICAL_PPRIM_CATALOG[scenario.dominantPPrim].name}
             </span>
@@ -910,7 +910,7 @@ export function OntologicalShiftStudio() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-md bg-violet-500/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 font-bold text-[10px] flex items-center justify-center">
+                    <span className="w-5 h-5 rounded-md bg-violet-500/10 dark:bg-violet-500/20 text-ac-text dark:text-ac-text font-bold text-[10px] flex items-center justify-center">
                       {idx + 1}
                     </span>
                     <span className="text-xs font-bold text-strong uppercase">
@@ -926,14 +926,14 @@ export function OntologicalShiftStudio() {
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30">
-                  <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 block mb-0.5">
+                  <span className="text-[10px] font-bold text-danger-text dark:text-danger-text block mb-0.5">
                     NAIVE TRAP:
                   </span>
                   <p className="text-[11px] text-secondary leading-snug">{card.naiveTrap}</p>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30">
-                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-0.5">
+                  <span className="text-[10px] font-bold text-status-success-text dark:text-status-success-text block mb-0.5">
                     SCIENTIFIC SHIFT:
                   </span>
                   <p className="text-[11px] text-secondary leading-relaxed whitespace-pre-line">

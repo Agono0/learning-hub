@@ -56,7 +56,7 @@ const DOMAIN_COLORS = [
   },
   {
     bg: 'bg-rose-500',
-    text: 'text-rose-600 dark:text-danger-text',
+    text: 'text-danger-text dark:text-danger-text',
     pill: 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800',
   },
   {
@@ -221,7 +221,7 @@ export function InterleavingSchedulerModal({
           {/* Blocked Practice Warning Alert if active */}
           {strategy === 'blocked' && (
             <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-rose-900 dark:text-rose-100 flex items-start gap-3 text-xs">
-              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="h-4 w-4 text-danger-text shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Warning: Blocked Practice Illusion.</span>
                 <p className="mt-0.5 opacity-90 leading-relaxed">
@@ -237,7 +237,7 @@ export function InterleavingSchedulerModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-semibold text-neutral-700 dark:text-secondary">
               <span className="flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                <Layers className="h-3.5 w-3.5 text-ac-text" />
                 Select Domains to Interleave (Select 2+):
               </span>
               <span className="text-[11px] text-faint">
@@ -392,7 +392,7 @@ export function InterleavingSchedulerModal({
           {interleavingResult.discriminationPrompts.length > 0 && (
             <div className="space-y-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                <Sparkles className="h-3.5 w-3.5 text-ac-text" />
                 Category Boundary Discrimination Cues (Carvalho &amp; Goldstone 2014):
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">

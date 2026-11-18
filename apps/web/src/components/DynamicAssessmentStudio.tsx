@@ -158,7 +158,7 @@ export function DynamicAssessmentStudio() {
       <Panel className="p-4 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 dark:border-(--hub-border) pb-2.5">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-indigo-500" />
+            <BookOpen className="w-4 h-4 text-ac-text" />
             <span className="text-xs font-bold uppercase tracking-wider text-secondary">
               Select Assessment Domain
             </span>
@@ -250,7 +250,7 @@ export function DynamicAssessmentStudio() {
                   1
                 </span>
                 <span>Pre-Test (ADL Baseline)</span>
-                {preTestSubmitted && <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-emerald-300" />}
+                {preTestSubmitted && <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-status-success-text" />}
               </button>
 
               <ChevronRight className="w-4 h-4 text-tertiary shrink-0" />
@@ -269,7 +269,7 @@ export function DynamicAssessmentStudio() {
                 </span>
                 <span>Graduated Mediation (MLE)</span>
                 {mediatedSubmitted && (
-                  <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-emerald-300" />
+                  <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-status-success-text" />
                 )}
               </button>
 
@@ -289,7 +289,7 @@ export function DynamicAssessmentStudio() {
                 </span>
                 <span>Post-Test (PDL Gain)</span>
                 {postTestSubmitted && (
-                  <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-emerald-300" />
+                  <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-status-success-text" />
                 )}
               </button>
             </div>
@@ -345,7 +345,7 @@ export function DynamicAssessmentStudio() {
                         'border-status-success-text bg-emerald-50/50 dark:bg-emerald-950/20 text-status-success-text'
                     } else if (isSelected) {
                       optionClass =
-                        'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400'
+                        'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-danger-text dark:text-danger-text'
                     }
                   } else if (isSelected) {
                     optionClass =
@@ -387,7 +387,7 @@ export function DynamicAssessmentStudio() {
                           <CheckCircle2 className="w-4 h-4" /> Correct baseline diagnosis!
                         </span>
                       ) : (
-                        <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                        <span className="text-status-warning-text dark:text-status-warning-text font-semibold flex items-center gap-1">
                           <HelpCircle className="w-4 h-4" /> Baseline gap identified. Proceed to
                           Mediation.
                         </span>
@@ -441,7 +441,7 @@ export function DynamicAssessmentStudio() {
                     onClick={handleRevealNextPrompt}
                     className="flex items-center gap-1.5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 text-xs px-2.5 py-1"
                   >
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                    <Lightbulb className="w-3.5 h-3.5 text-status-warning-text" />
                     <span>
                       {currentPromptTier === 0
                         ? 'Request Level 1 Hint'
@@ -463,7 +463,7 @@ export function DynamicAssessmentStudio() {
                 {revealedPrompts.length > 0 && (
                   <div className="space-y-3 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">
                     <div className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                      <Sparkles className="w-3.5 h-3.5 text-ac-text" />
                       <span>Mediated Scaffolding Cascade ({revealedPrompts.length} Active):</span>
                     </div>
 
@@ -508,7 +508,7 @@ export function DynamicAssessmentStudio() {
                           'border-status-success-text bg-emerald-50/50 dark:bg-emerald-950/20 text-status-success-text'
                       } else if (isSelected) {
                         optionClass =
-                          'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400'
+                          'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-danger-text dark:text-danger-text'
                       }
                     } else if (isSelected) {
                       optionClass =
@@ -606,7 +606,7 @@ export function DynamicAssessmentStudio() {
                         'border-status-success-text bg-emerald-50/50 dark:bg-emerald-950/20 text-status-success-text'
                     } else if (isSelected) {
                       optionClass =
-                        'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400'
+                        'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-danger-text dark:text-danger-text'
                     }
                   } else if (isSelected) {
                     optionClass =
@@ -942,7 +942,7 @@ export function DynamicAssessmentStudio() {
                       {isSubmitted && (
                         <span
                           className={`text-xs font-bold flex items-center gap-1 ${
-                            isCorrect ? 'text-status-success-text' : 'text-rose-500'
+                            isCorrect ? 'text-status-success-text' : 'text-danger-text'
                           }`}
                         >
                           {isCorrect ? (
@@ -985,7 +985,7 @@ export function DynamicAssessmentStudio() {
                               'border-status-success-text bg-emerald-50/50 dark:bg-emerald-950/20 text-status-success-text'
                           } else if (isOptSelected) {
                             optStyle =
-                              'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400'
+                              'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 text-danger-text dark:text-danger-text'
                           }
                         } else if (isOptSelected) {
                           optStyle =
@@ -1059,7 +1059,7 @@ export function DynamicAssessmentStudio() {
                 disabled={deckExported}
                 className="flex items-center gap-1.5"
               >
-                <Zap className="w-4 h-4 text-amber-300" />
+                <Zap className="w-4 h-4 text-status-warning-text" />
                 <span>
                   {deckExported ? 'Deck Synchronized with FSRS' : 'Export Deck to Review Queue'}
                 </span>
@@ -1104,7 +1104,7 @@ export function DynamicAssessmentStudio() {
                           card.front
                         ) : (
                           <div className="space-y-2 text-indigo-900 dark:text-indigo-200">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 block">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-ac-text block">
                               Target Schema Resolution:
                             </span>
                             <p className="whitespace-pre-line">{card.back}</p>

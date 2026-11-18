@@ -186,7 +186,7 @@ export function ExercisePractice({
             ) : result?.correct ? (
               <CheckCircle2 className="h-5 w-5 text-status-success-text" />
             ) : (
-              <XCircle className="h-5 w-5 text-rose-600" />
+              <XCircle className="h-5 w-5 text-danger-text" />
             )}
             {result?.pending
               ? 'Saved'

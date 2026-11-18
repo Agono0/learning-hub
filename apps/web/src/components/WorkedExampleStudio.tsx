@@ -541,7 +541,7 @@ export function WorkedExampleStudio({
                     isCompleted ||
                     (!isCurrent && !isFuture) ? (
                       <div className="flex flex-col gap-3">
-                        <div className="rounded-xl border border-white/10 bg-slate-950 p-4 font-mono text-sm font-bold text-emerald-300 overflow-x-auto">
+                        <div className="rounded-xl border border-white/10 bg-slate-950 p-4 font-mono text-sm font-bold text-status-success-text overflow-x-auto">
                           <code>{step.content}</code>
                         </div>
                         <p className="text-xs text-secondary leading-relaxed bg-white/5 p-3 rounded-xl border border-white/5">
@@ -760,7 +760,7 @@ export function WorkedExampleStudio({
               </div>
 
               {/* Guiding Rubric Hints */}
-              <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3 text-xs text-slate-400">
+              <div className="rounded-xl border border-white/5 bg-slate-950/60 p-3 text-xs text-tertiary">
                 <span className="font-semibold text-secondary block mb-1">
                   Required Rubric Coverage:
                 </span>
@@ -817,7 +817,7 @@ export function WorkedExampleStudio({
                   </p>
 
                   {/* Exemplar Comparison */}
-                  <div className="rounded-lg border border-white/5 bg-slate-900 p-3 text-xs text-slate-400">
+                  <div className="rounded-lg border border-white/5 bg-slate-900 p-3 text-xs text-tertiary">
                     <span className="font-semibold text-indigo-400 block mb-1">
                       Canonical Exemplar Comparison:
                     </span>

@@ -253,7 +253,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
           className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)"
         >
           {sync.isPending ? (
-            <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-indigo-500" />
+            <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-ac-text" />
           ) : (
             <span className="relative">
               <Cloud className="h-3.5 w-3.5 shrink-0" />
@@ -309,7 +309,7 @@ function Rail({ pathname }: { pathname: string | null }) {
           className="relative grid h-10 w-10 place-items-center rounded-xl text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
         >
           {sync.isPending ? (
-            <RefreshCw className="h-5 w-5 animate-spin text-indigo-500" />
+            <RefreshCw className="h-5 w-5 animate-spin text-ac-text" />
           ) : (
             <Cloud className="h-5 w-5" />
           )}
@@ -471,7 +471,7 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
             className="relative grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
           >
             {sync.isPending ? (
-              <RefreshCw className="h-4 w-4 animate-spin text-indigo-500" />
+              <RefreshCw className="h-4 w-4 animate-spin text-ac-text" />
             ) : (
               <Cloud className="h-4 w-4" />
             )}

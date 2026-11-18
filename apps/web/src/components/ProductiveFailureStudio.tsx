@@ -307,7 +307,7 @@ export function ProductiveFailureStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-amber-600 dark:text-amber-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-warning-text dark:text-status-warning-text">
                   Phase 1: Unguided Problem Solving
                 </span>
                 <h2 className="text-base font-bold text-strong">{scenario.title}</h2>
@@ -320,7 +320,7 @@ export function ProductiveFailureStudio() {
 
             <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) space-y-2">
               <span className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
+                <HelpCircle className="w-3.5 h-3.5 text-status-warning-text" />
                 The First-Principles Challenge
               </span>
               <p className="text-xs text-secondary leading-relaxed whitespace-pre-line font-sans">
@@ -338,7 +338,7 @@ export function ProductiveFailureStudio() {
                     key={i}
                     className="p-2.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) text-xs text-secondary flex items-start gap-2"
                   >
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <Lightbulb className="w-3.5 h-3.5 text-status-warning-text shrink-0 mt-0.5" />
                     <span>{prompt}</span>
                   </div>
                 ))}
@@ -352,7 +352,7 @@ export function ProductiveFailureStudio() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-indigo-500" />
+                  <Layers className="w-4 h-4 text-ac-text" />
                   Canonical Student Hypotheses (Kapur 2012)
                 </h3>
                 <span className="text-xs text-tertiary">Click to adopt & inspect</span>
@@ -418,7 +418,7 @@ export function ProductiveFailureStudio() {
             <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
               <div className="border-b border-neutral-200 dark:border-(--hub-border) pb-2">
                 <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <Sparkles className="w-4 h-4 text-status-warning-text" />
                   Generate Your Own Solution Model
                 </h3>
                 <p className="text-xs text-secondary">
@@ -551,7 +551,7 @@ export function ProductiveFailureStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-rose-600 dark:text-rose-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-danger-text dark:text-danger-text">
                   Phase 1 Crucible: Epistemic Impasse
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -570,7 +570,7 @@ export function ProductiveFailureStudio() {
             {/* Boundary Condition Test Grid */}
             <div className="space-y-3">
               <span className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <AlertTriangle className="w-3.5 h-3.5 text-status-warning-text" />
                 Select Boundary Conditions Tested:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
@@ -653,10 +653,10 @@ export function ProductiveFailureStudio() {
             <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-strong flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-rose-500" />
+                  <Flame className="w-3.5 h-3.5 text-danger-text" />
                   Affective Cognitive Friction Rating:
                 </span>
-                <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                <span className="font-mono font-bold text-danger-text dark:text-danger-text">
                   Tier {affectiveRating}:{' '}
                   {affectiveRating === 1
                     ? 'Mild Surprise'
@@ -729,10 +729,10 @@ export function ProductiveFailureStudio() {
 
             {/* Formal Formula Box */}
             <div className="p-4 rounded-xl bg-neutral-900 text-neutral-100 dark:bg-black border border-neutral-800 space-y-2">
-              <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-400">
+              <span className="text-[10px] uppercase font-mono tracking-wider text-tertiary">
                 Formal Mathematical & Architectural Model:
               </span>
-              <div className="font-mono text-sm sm:text-base font-bold text-amber-300 overflow-x-auto py-1">
+              <div className="font-mono text-sm sm:text-base font-bold text-status-warning-text overflow-x-auto py-1">
                 {scenario.canonicalConsolidation.formalFormulaOrModel}
               </div>
             </div>
@@ -768,7 +768,7 @@ export function ProductiveFailureStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="border-b border-neutral-200 dark:border-(--hub-border) pb-2">
               <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                <Compass className="w-4 h-4 text-indigo-500" />
+                <Compass className="w-4 h-4 text-ac-text" />
                 SGR vs CER Juxtaposition Matrix (Loibl et al. 2017)
               </h3>
               <p className="text-xs text-secondary">
@@ -833,7 +833,7 @@ export function ProductiveFailureStudio() {
             {/* Why Intuition Failed vs How Expert Model Solves It */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div className="p-3.5 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/20 space-y-1.5">
-                <span className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-danger-text dark:text-danger-text flex items-center gap-1.5">
                   <XCircle className="w-3.5 h-3.5" />
                   Why Intuition Failed:
                 </span>
@@ -843,7 +843,7 @@ export function ProductiveFailureStudio() {
               </div>
 
               <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/20 space-y-1.5">
-                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-status-success-text dark:text-status-success-text flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   How Expert Model Solves It:
                 </span>
@@ -988,7 +988,7 @@ export function ProductiveFailureStudio() {
                               Invariant Validated
                             </span>
                           ) : (
-                            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                            <span className="text-xs font-semibold text-danger-text dark:text-danger-text flex items-center gap-1">
                               <XCircle className="w-3.5 h-3.5" />
                               Surface Trap Triggered
                             </span>
@@ -1076,11 +1076,11 @@ export function ProductiveFailureStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-amber-600 dark:text-amber-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-warning-text dark:text-status-warning-text">
                   Long-Term Consolidation
                 </span>
                 <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-amber-500" />
+                  <BookOpen className="w-4 h-4 text-status-warning-text" />
                   Calibrated FSRS-6 Flashcards ({fsrsCards.length})
                 </h3>
                 <p className="text-xs text-secondary">

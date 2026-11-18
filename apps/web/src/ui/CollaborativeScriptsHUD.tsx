@@ -37,7 +37,7 @@ const MATURITY_CONFIG: Record<
   },
   cumulative_agreer: {
     label: 'Cumulative Agreer',
-    tone: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30',
+    tone: 'bg-amber-500/15 text-amber-800 dark:text-status-warning-text border-amber-500/30',
     description:
       'Superficial consensus and parallel validations without critical cognitive conflict or deep transactive warrants.',
   },
@@ -63,7 +63,7 @@ export function CollaborativeScriptsHUD({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-wider font-semibold text-tertiary flex items-center gap-1">
-                <Brain className="h-3.5 w-3.5 text-indigo-500" />
+                <Brain className="h-3.5 w-3.5 text-ac-text" />
                 Collaborative Epistemic Index (CEI)
               </span>
             </div>
@@ -89,7 +89,7 @@ export function CollaborativeScriptsHUD({
           <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-2.5 space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-secondary flex items-center gap-1">
-                <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+                <MessageSquare className="h-3.5 w-3.5 text-ac-text" />
                 TDI (Transactivity)
               </span>
               <span className="font-bold text-strong">{evaluation.tdi}%</span>
@@ -103,7 +103,7 @@ export function CollaborativeScriptsHUD({
           <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-2.5 space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-secondary flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                <Sparkles className="h-3.5 w-3.5 text-ac-text" />
                 EED (Epistemic Depth)
               </span>
               <span className="font-bold text-strong">{evaluation.eed}%</span>
@@ -117,7 +117,7 @@ export function CollaborativeScriptsHUD({
           <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-2.5 space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium text-secondary flex items-center gap-1">
-                <Scale className="h-3.5 w-3.5 text-indigo-500" />
+                <Scale className="h-3.5 w-3.5 text-ac-text" />
                 SCR (Script Rigor)
               </span>
               <span className="font-bold text-strong">{evaluation.scr}%</span>
@@ -135,7 +135,7 @@ export function CollaborativeScriptsHUD({
         {/* Speech Acts */}
         <Panel className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-tertiary flex items-center gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+            <MessageSquare className="h-3.5 w-3.5 text-ac-text" />
             Transactive Speech Acts Distribution
           </h3>
 
@@ -170,7 +170,7 @@ export function CollaborativeScriptsHUD({
         {/* Synthesized Invariants */}
         <Panel className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-tertiary flex items-center gap-1.5">
-            <GitMerge className="h-3.5 w-3.5 text-indigo-500" />
+            <GitMerge className="h-3.5 w-3.5 text-ac-text" />
             Reconciled Theoretical Invariants
           </h3>
 
@@ -181,7 +181,7 @@ export function CollaborativeScriptsHUD({
                   key={idx}
                   className="rounded border border-emerald-500/20 bg-emerald-500/10 p-2.5 flex items-start gap-2"
                 >
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0 mt-0.5" />
                   <span className="text-xs font-medium text-emerald-800 dark:text-status-success-text">
                     {inv}
                   </span>
@@ -190,7 +190,7 @@ export function CollaborativeScriptsHUD({
             </div>
           ) : (
             <div className="rounded border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <AlertTriangle className="h-4 w-4 text-status-warning-text shrink-0 mt-0.5" />
               <span>
                 No explicit theoretical invariant was synthesized in the joint conclusion. Review
                 competing perspectives to formulate an integrated reconciling rule.
@@ -211,7 +211,7 @@ export function CollaborativeScriptsHUD({
             <div className="space-y-1.5">
               {evaluation.strengths.map((str, idx) => (
                 <div key={idx} className="flex items-start gap-2 text-xs text-secondary">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0 mt-0.5" />
                   <span>{str}</span>
                 </div>
               ))}

@@ -40,7 +40,7 @@ export default function PretestPage() {
       />
 
       {q.isError ? (
-        <div className="panel text-sm text-rose-600 dark:text-danger-text">
+        <div className="panel text-sm text-danger-text dark:text-danger-text">
           Could not load pretest candidates.
         </div>
       ) : q.isLoading || !q.data ? (

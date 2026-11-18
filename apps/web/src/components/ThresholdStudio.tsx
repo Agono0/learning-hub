@@ -114,7 +114,7 @@ export function ThresholdStudio() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-100 dark:border-(--hub-border)">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-amber-500" />
+                  <KeyRound className="h-4 w-4 text-status-warning-text" />
                   Disciplinal Threshold Gateways &amp; Troublesome Knowledge
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
@@ -157,7 +157,7 @@ export function ThresholdStudio() {
 
                 <div className="rounded-lg p-3 bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border) space-y-2">
                   <div className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    <AlertTriangle className="h-3.5 w-3.5 text-status-warning-text" />
                     Troublesome Nature: {currentConcept.troublesomeType}
                   </div>
                   <p className="text-xs text-secondary italic">
@@ -244,7 +244,7 @@ export function ThresholdStudio() {
                       className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border) text-xs"
                     >
                       <div className="flex items-center gap-2">
-                        <Unlock className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <Unlock className="h-4 w-4 text-status-success-text shrink-0" />
                         <span className="font-semibold text-strong">{item}</span>
                       </div>
                       <Badge tone="neutral">Advanced</Badge>
@@ -268,7 +268,7 @@ export function ThresholdStudio() {
           <Panel>
             <div className="mb-4 pb-3 border-b border-neutral-100 dark:border-(--hub-border)">
               <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertTriangle className="h-4 w-4 text-status-warning-text" />
                 Boundary Perturbation: Ritualized Mimicry Diagnostic
               </h3>
               <p className="text-xs text-secondary mt-0.5">
@@ -304,7 +304,7 @@ export function ThresholdStudio() {
                         </div>
 
                         <div className="p-3 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 space-y-1.5">
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-status-warning-text dark:text-status-warning-text">
                             Perturbed Boundary Problem (Stress Test):
                           </div>
                           <p className="text-xs text-strong">{probe.perturbedProblem}</p>
@@ -454,7 +454,7 @@ export function ThresholdStudio() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-100 dark:border-(--hub-border)">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <Layers className="h-4 w-4 text-indigo-500" />
+                  <Layers className="h-4 w-4 text-ac-text" />
                   Curriculum Gateway Transfer Multiplier
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
@@ -479,7 +479,7 @@ export function ThresholdStudio() {
                   <ArrowRight className="h-4 w-4 text-secondary" />
                   <div>
                     <div className="text-xs text-secondary">Modulated Gateway Mastery</div>
-                    <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    <div className="text-lg font-bold text-status-success-text dark:text-status-success-text">
                       {`${Math.round(curriculumBridge.modulatedMastery * 100)}%`}
                     </div>
                   </div>
@@ -507,7 +507,7 @@ export function ThresholdStudio() {
                 <div className="space-y-1.5 text-xs text-secondary">
                   {curriculumBridge.reasoningNotes.map((note, idx) => (
                     <div key={idx} className="flex items-start gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      <Sparkles className="h-3.5 w-3.5 text-status-warning-text shrink-0 mt-0.5" />
                       <span>{note}</span>
                     </div>
                   ))}

@@ -77,7 +77,7 @@ const TIER_CONFIG: Record<
     shortLabel: 'T2: Anagram',
     multiplier: 1.55,
     description: 'Assemble scrambled concept fragments into coherent syntactic order.',
-    color: 'text-indigo-500',
+    color: 'text-ac-text',
     bgLight: 'bg-indigo-50',
     bgDark: 'dark:bg-indigo-950/30',
   },
@@ -490,7 +490,7 @@ export function GenerationPracticeModal({
                         key={`sel-${tok}-${idx}`}
                         type="button"
                         onClick={() => handleRemoveToken(tok, idx)}
-                        className="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300 transition"
+                        className="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 hover:bg-rose-100 hover:text-danger-text hover:border-rose-300 transition"
                         title="Click to remove"
                       >
                         {tok}
@@ -563,7 +563,7 @@ export function GenerationPracticeModal({
                   {evaluation.isCorrect ? (
                     <CheckCircle2 className="h-5 w-5 text-status-success-text dark:text-status-success-text shrink-0" />
                   ) : (
-                    <AlertCircle className="h-5 w-5 text-rose-600 dark:text-danger-text shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-danger-text dark:text-danger-text shrink-0" />
                   )}
                   <div>
                     <h4 className="text-sm font-semibold">

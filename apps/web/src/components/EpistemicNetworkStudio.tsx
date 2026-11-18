@@ -390,7 +390,7 @@ export function EpistemicNetworkStudio() {
 
       {/* Status banner */}
       {statusMessage && (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 text-xs text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-3 text-xs text-status-success-text dark:text-status-success-text border border-emerald-200 dark:border-emerald-800">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{statusMessage}</span>
         </div>
@@ -806,7 +806,7 @@ export function EpistemicNetworkStudio() {
               </p>
 
               {model.subtractiveGaps.length === 0 ? (
-                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-4 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-300">
+                <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-4 border border-emerald-200 dark:border-emerald-800 text-xs text-status-success-text dark:text-status-success-text">
                   <CheckCircle2 className="h-4 w-4 inline mr-1.5" />
                   No substantial epistemic gaps detected! Network mirrors expert benchmark
                   synthesis.
@@ -820,7 +820,7 @@ export function EpistemicNetworkStudio() {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                          <AlertTriangle className="h-4 w-4 text-status-warning-text shrink-0" />
                           <span className="font-bold text-strong">
                             Missing Connection: {gap.codeA} ↔ {gap.codeB}
                           </span>

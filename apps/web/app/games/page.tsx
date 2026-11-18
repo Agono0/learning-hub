@@ -934,7 +934,7 @@ function SocialLeaderboardSection() {
                     ) : idx === 1 ? (
                       <span className="text-faint font-bold">🥈 2</span>
                     ) : idx === 2 ? (
-                      <span className="text-amber-700 font-bold">🥉 3</span>
+                      <span className="text-status-warning-text font-bold">🥉 3</span>
                     ) : (
                       <span className="text-tertiary">#{idx + 1}</span>
                     )}

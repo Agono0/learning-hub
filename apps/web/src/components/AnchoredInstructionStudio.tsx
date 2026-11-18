@@ -504,7 +504,7 @@ export function AnchoredInstructionStudio() {
                       </div>
                       <p className="text-[11px] text-secondary">Margin: {imp.margin}</p>
                       {imp.warningMessage && (
-                        <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                        <p className="text-[11px] font-medium text-danger-text dark:text-danger-text">
                           {imp.warningMessage}
                         </p>
                       )}

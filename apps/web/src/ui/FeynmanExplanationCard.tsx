@@ -163,7 +163,7 @@ export function FeynmanExplanationCard({
             {report.jargonTerms.map((term) => (
               <span
                 key={term}
-                className="inline-flex items-center gap-1 rounded-md border border-rose-300/50 bg-white/80 px-2 py-0.5 text-xs font-medium text-rose-700 shadow-2xs dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200"
+                className="inline-flex items-center gap-1 rounded-md border border-rose-300/50 bg-white/80 px-2 py-0.5 text-xs font-medium text-danger-text shadow-2xs dark:border-rose-800/60 dark:bg-rose-900/30 dark:text-rose-200"
               >
                 {term}
               </span>
@@ -176,7 +176,7 @@ export function FeynmanExplanationCard({
       {report.socraticProbes.length > 0 && (
         <div className="mt-4 space-y-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-tertiary dark:text-faint">
-            <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+            <MessageSquare className="h-3.5 w-3.5 text-ac-text" />
             <span>Socratic Probes (Deepen Explanatory Grip)</span>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

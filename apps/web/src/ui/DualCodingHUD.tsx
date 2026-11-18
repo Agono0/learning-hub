@@ -269,12 +269,12 @@ export function DualCodingHUD({
 
           {/* Identified Violations or Green Check */}
           {identifiedViolations.length > 0 ? (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-amber-700 dark:text-status-warning-text flex items-start gap-1.5">
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-[11px] text-status-warning-text dark:text-status-warning-text flex items-start gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-status-warning-text mt-0.5" />
               <span className="line-clamp-2">{identifiedViolations[0]}</span>
             </div>
           ) : (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-[11px] text-emerald-700 dark:text-status-success-text flex items-center gap-1.5">
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-[11px] text-status-success-text dark:text-status-success-text flex items-center gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />
               <span>
                 Full compliance with Mayer multimedia learning invariants. Zero split-attention.

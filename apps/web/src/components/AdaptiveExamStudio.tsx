@@ -487,7 +487,7 @@ export function AdaptiveExamStudio({
                       className={cx(
                         'group flex items-center justify-between gap-3 rounded-xl border p-4 transition-all cursor-pointer',
                         isEliminated
-                          ? 'border-white/5 bg-slate-950/40 opacity-40 line-through text-slate-500'
+                          ? 'border-white/5 bg-slate-950/40 opacity-40 line-through text-tertiary'
                           : isSelected
                             ? 'border-indigo-500 bg-indigo-500/20 shadow-md ring-1 ring-indigo-500/40 text-white'
                             : 'border-white/5 bg-slate-950/80 text-slate-200 hover:border-white/15 hover:bg-slate-900',

@@ -76,7 +76,7 @@ function WorkedExample({
             key={i}
             className="flex gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm dark:bg-(--hub-panel)"
           >
-            <span className="font-semibold tabular-nums text-indigo-500">{i + 1}.</span>
+            <span className="font-semibold tabular-nums text-ac-text">{i + 1}.</span>
             <Markdown className="min-w-0 flex-1">{step}</Markdown>
           </li>
         ))}

@@ -146,7 +146,7 @@ function CalendarSubscriptionCard() {
   return (
     <div className="panel flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-400">
+        <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-ac-text dark:text-indigo-400">
           <CalendarCheck className="h-5 w-5" />
         </span>
         <div>

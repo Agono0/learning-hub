@@ -160,7 +160,7 @@ export function CounterfactualStudio() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-100 dark:border-(--hub-border)">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <Sparkles className="h-4 w-4 text-status-warning-text" />
                   Pearl’s 3-Step Counterfactual Simulator (Abduction-Action-Prediction)
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
@@ -342,7 +342,7 @@ export function CounterfactualStudio() {
                       <span className="text-xs font-medium text-secondary">
                         Counterfactual Score Prediction:
                       </span>
-                      <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                      <span className="text-2xl font-black text-status-success-text dark:text-status-success-text">
                         {`${counterfactualResult.counterfactualValue} pts`}
                       </span>
                     </div>
@@ -352,8 +352,8 @@ export function CounterfactualStudio() {
                       <span
                         className={`font-bold ${
                           counterfactualResult.causalLift >= 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
+                            ? 'text-status-success-text dark:text-status-success-text'
+                            : 'text-danger-text dark:text-danger-text'
                         }`}
                       >
                         {`${counterfactualResult.causalLift > 0 ? '+' : ''}${counterfactualResult.causalLift} pts`}
@@ -481,7 +481,7 @@ export function CounterfactualStudio() {
                       <div className="text-xs font-medium text-secondary">
                         Interventional Score P(Y|do(X))
                       </div>
-                      <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="text-lg font-bold text-status-success-text dark:text-status-success-text">
                         {`${interventionalValues.ExamScore} pts`}
                       </div>
                     </div>
@@ -511,7 +511,7 @@ export function CounterfactualStudio() {
           <Panel>
             <div className="mb-4 pb-3 border-b border-neutral-100 dark:border-(--hub-border)">
               <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                <Compass className="h-4 w-4 text-emerald-500" />
+                <Compass className="h-4 w-4 text-status-success-text" />
                 d-Separation &amp; Backdoor Criterion Admissibility Engine
               </h3>
               <p className="text-xs text-secondary mt-0.5">
@@ -562,8 +562,8 @@ export function CounterfactualStudio() {
                 <div
                   className={`p-2.5 rounded-lg border text-xs font-semibold flex items-center gap-2 ${
                     backdoorAnalysis.isAdmissible
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200'
-                      : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-status-success-text dark:text-status-success-text border-emerald-200'
+                      : 'bg-rose-50 dark:bg-rose-950/40 text-danger-text dark:text-danger-text border-rose-200'
                   }`}
                 >
                   {backdoorAnalysis.isAdmissible ? (
@@ -633,7 +633,7 @@ export function CounterfactualStudio() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-neutral-100 dark:border-(--hub-border)">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  <ShieldCheck className="h-4 w-4 text-status-success-text" />
                   Causal Reasoning Diagnostic &amp; Misconception Evaluator
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">

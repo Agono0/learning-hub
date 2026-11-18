@@ -115,7 +115,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
         </div>
 
         {feedback && (
-          <div className="flex items-center gap-2 rounded-lg bg-emerald-950/60 border border-emerald-700/50 p-3 text-xs text-emerald-300">
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-950/60 border border-emerald-700/50 p-3 text-xs text-status-success-text">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{feedback}</span>
           </div>
@@ -198,7 +198,7 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
                     className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors ${
                       active
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700'
+                        : 'bg-neutral-800 text-tertiary hover:bg-neutral-700'
                     }`}
                   >
                     {name}

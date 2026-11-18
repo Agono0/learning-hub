@@ -126,7 +126,7 @@ export function SpatialCognitionHUD({
         <div className="p-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span className="flex items-center gap-1">
-              <RotateCw className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+              <RotateCw className="w-3.5 h-3.5 text-status-info-text dark:text-status-info-text" />
               Rotation Speed
             </span>
             <span className="font-mono font-bold text-strong">
@@ -147,7 +147,7 @@ export function SpatialCognitionHUD({
         <div className="p-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span className="flex items-center gap-1">
-              <Gauge className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Gauge className="w-3.5 h-3.5 text-status-success-text dark:text-status-success-text" />
               Kinematics
             </span>
             <span className="font-mono font-bold text-strong">
@@ -164,7 +164,7 @@ export function SpatialCognitionHUD({
         <div className="p-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span className="flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <Zap className="w-3.5 h-3.5 text-status-warning-text dark:text-status-warning-text" />
               Chirality Acc.
             </span>
             <span className="font-mono font-bold text-strong">
@@ -190,13 +190,13 @@ export function SpatialCognitionHUD({
 
           <div className="flex items-center gap-1.5 text-[11px]">
             {measuredReactionTimeMs <= expectedReactionTimeMs ? (
-              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span className="text-status-success-text dark:text-status-success-text flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Fast Mental Rotation (+
                 {expectedReactionTimeMs - measuredReactionTimeMs} ms lead)
               </span>
             ) : (
               <span className="text-secondary flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Piecemeal latency overhead (+
+                <AlertCircle className="w-3.5 h-3.5 text-status-warning-text" /> Piecemeal latency overhead (+
                 {measuredReactionTimeMs - expectedReactionTimeMs} ms)
               </span>
             )}

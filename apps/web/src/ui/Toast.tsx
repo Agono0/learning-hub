@@ -61,7 +61,7 @@ function ToneIcon({ tone }: { tone: ToastTone }) {
         )}
       />
     )
-  return <Info className="h-4 w-4 shrink-0 text-indigo-500" />
+  return <Info className="h-4 w-4 shrink-0 text-ac-text" />
 }
 
 /**

@@ -38,7 +38,7 @@ export function CounterfactualHUD({
     <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) p-4 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-100 dark:border-(--hub-border) pb-3 mb-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-status-success-text dark:text-status-success-text">
             <GitFork className="h-4 w-4" />
           </div>
           <div>
@@ -66,7 +66,7 @@ export function CounterfactualHUD({
         <div className="rounded-lg p-3 border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken)">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
-              <Zap className="h-3.5 w-3.5 text-amber-500" />
+              <Zap className="h-3.5 w-3.5 text-status-warning-text" />
               Counterfactual Lift
             </span>
             <span className="text-xs font-semibold text-strong">
@@ -114,11 +114,11 @@ export function CounterfactualHUD({
         <div className="rounded-lg p-3 border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken)">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+              <ShieldCheck className="h-3.5 w-3.5 text-status-success-text" />
               Backdoor Admissibility
             </span>
             <span
-              className={`text-xs font-semibold ${isBackdoorAdmissible ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}
+              className={`text-xs font-semibold ${isBackdoorAdmissible ? 'text-status-success-text dark:text-status-success-text' : 'text-danger-text dark:text-danger-text'}`}
             >
               {isBackdoorAdmissible ? 'Admissible' : 'Confounded'}
             </span>
@@ -140,9 +140,9 @@ export function CounterfactualHUD({
       <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-2.5 border border-neutral-200 dark:border-(--hub-border) text-xs">
         <div className="flex items-center gap-2 truncate">
           {confounderRisk === 'HIGH' ? (
-            <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
+            <AlertTriangle className="h-4 w-4 text-danger-text shrink-0" />
           ) : (
-            <Compass className="h-4 w-4 text-emerald-500 shrink-0" />
+            <Compass className="h-4 w-4 text-status-success-text shrink-0" />
           )}
           <div className="truncate">
             <div className="font-medium text-strong truncate">Causal Invariance Status</div>

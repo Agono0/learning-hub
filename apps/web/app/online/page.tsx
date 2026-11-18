@@ -1071,7 +1071,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
                   <div>
                     <div className="font-semibold text-sm flex items-center gap-1.5">
                       <span>{g.name}</span>
-                      <span className="rounded bg-neutral-800 px-1.5 py-0.2 text-[10px] text-neutral-400 font-mono">
+                      <span className="rounded bg-neutral-800 px-1.5 py-0.2 text-[10px] text-tertiary font-mono">
                         [{g.tag}]
                       </span>
                     </div>
@@ -1142,7 +1142,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-neutral-200">{m.alias}</span>
-                    <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400 uppercase">
+                    <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-tertiary uppercase">
                       {m.role}
                     </span>
                   </div>

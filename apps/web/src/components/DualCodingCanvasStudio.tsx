@@ -598,7 +598,7 @@ export function DualCodingCanvasStudio({
           <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-200 dark:border-neutral-700/60 text-xs space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-neutral-700 dark:text-secondary flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                <Sparkles className="h-3.5 w-3.5 text-ac-text" />
                 Recommended Visual Modality:
               </span>
               <Badge tone="accent">{analysis.recommendedModality.replace('_', ' ')}</Badge>
@@ -734,7 +734,7 @@ export function DualCodingCanvasStudio({
                 type="button"
                 onClick={handleClear}
                 disabled={elements.length === 0}
-                className="text-xs px-2 py-1 text-tertiary hover:text-rose-600 dark:text-faint disabled:opacity-40 transition"
+                className="text-xs px-2 py-1 text-tertiary hover:text-danger-text dark:text-faint disabled:opacity-40 transition"
               >
                 Clear
               </button>

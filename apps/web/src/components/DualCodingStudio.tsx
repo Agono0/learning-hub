@@ -269,7 +269,7 @@ export function DualCodingStudio({
               setActiveTab('fsrs_deck')
             }}
           >
-            <Sparkles className="mr-1.5 h-4 w-4 text-indigo-500" /> FSRS Cards ({fsrsCards.length})
+            <Sparkles className="mr-1.5 h-4 w-4 text-ac-text" /> FSRS Cards ({fsrsCards.length})
           </Button>
         </div>
 
@@ -636,7 +636,7 @@ export function DualCodingStudio({
                   {audit.identifiedViolations.map((v, i) => (
                     <div
                       key={i}
-                      className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-status-warning-text"
+                      className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-status-warning-text dark:text-status-warning-text"
                     >
                       {v}
                     </div>

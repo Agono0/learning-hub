@@ -135,7 +135,7 @@ export default function WeaknessRadarPage() {
           <div className="text-xs text-tertiary">Active Leeches</div>
         </Panel>
         <Panel className="p-4 text-center">
-          <div className="text-2xl font-bold text-indigo-500">{topicForecasts.length}</div>
+          <div className="text-2xl font-bold text-ac-text">{topicForecasts.length}</div>
           <div className="text-xs text-tertiary">Tracked Topics</div>
         </Panel>
         <Panel className="p-4 text-center">
@@ -207,7 +207,7 @@ export default function WeaknessRadarPage() {
 
                   <div className="rounded-lg bg-indigo-50/70 p-3 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200">
                     <div className="flex items-center gap-1.5 font-semibold mb-1">
-                      <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                      <Sparkles className="h-3.5 w-3.5 text-ac-text" />
                       Contrast Drill Cue:
                     </div>
                     {pair.contrastPrompt}
@@ -244,11 +244,11 @@ export default function WeaknessRadarPage() {
                   <Panel key={topic.deckId} className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Layers className="h-4 w-4 text-indigo-500" />
+                        <Layers className="h-4 w-4 text-ac-text" />
                         <span className="font-semibold">{topic.deckName}</span>
                       </div>
                       {topic.urgentCardsCount > 0 && (
-                        <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/60 dark:text-danger-text">
+                        <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-danger-text dark:bg-rose-950/60 dark:text-danger-text">
                           {topic.urgentCardsCount} due now
                         </span>
                       )}
@@ -331,7 +331,7 @@ export default function WeaknessRadarPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-2 dark:border-(--hub-border)">
                       <div className="flex items-center gap-2">
                         <Split className="h-4 w-4 text-danger-text" />
-                        <span className="text-xs font-semibold text-rose-600 dark:text-danger-text">
+                        <span className="text-xs font-semibold text-danger-text dark:text-danger-text">
                           Leech Card #{leech.cardId} · {leech.lapses} Lapses
                         </span>
                       </div>

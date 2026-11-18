@@ -232,7 +232,7 @@ export function RepresentationalFluencyStudio() {
               onClick={() => setSelectedProblemId(pr.id)}
               className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                 pr.id === selectedProblemId
-                  ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 shadow-xs'
+                  ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/40 text-status-info-text dark:text-status-info-text shadow-xs'
                   : 'border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) text-secondary hover:text-strong'
               }`}
             >
@@ -266,7 +266,7 @@ export function RepresentationalFluencyStudio() {
         >
           <div className="flex items-center justify-between text-xs font-bold text-strong mb-1">
             <span>1. Multi-Modal Explorer</span>
-            <span className="text-[10px] text-sky-600 dark:text-sky-400">
+            <span className="text-[10px] text-status-info-text dark:text-status-info-text">
               {exploredModalities.length}/5 Explored
             </span>
           </div>
@@ -287,7 +287,7 @@ export function RepresentationalFluencyStudio() {
         >
           <div className="flex items-center justify-between text-xs font-bold text-strong mb-1">
             <span>2. Translation Crucible</span>
-            <span className="text-[10px] text-violet-600 dark:text-violet-400">
+            <span className="text-[10px] text-ac-text dark:text-ac-text">
               {correctChallengeIds.length}/{problem.translationChallenges.length} Solved
             </span>
           </div>
@@ -426,7 +426,7 @@ export function RepresentationalFluencyStudio() {
                 <div className="space-y-1">
                   {primaryArtifact.keyElements.map((elem, idx) => (
                     <div key={idx} className="text-xs text-secondary flex items-start gap-1.5">
-                      <span className="text-sky-500 font-bold">•</span>
+                      <span className="text-status-info-text font-bold">•</span>
                       <span>{elem}</span>
                     </div>
                   ))}
@@ -435,14 +435,14 @@ export function RepresentationalFluencyStudio() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-xs">
                 <div className="p-2.5 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30">
-                  <div className="font-bold text-emerald-800 dark:text-emerald-300 mb-0.5">
+                  <div className="font-bold text-emerald-800 dark:text-status-success-text mb-0.5">
                     Cognitive Affordance:
                   </div>
                   <div className="text-secondary">{primaryArtifact.cognitiveAffordance}</div>
                 </div>
 
                 <div className="p-2.5 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30">
-                  <div className="font-bold text-rose-800 dark:text-rose-300 mb-0.5">
+                  <div className="font-bold text-rose-800 dark:text-danger-text mb-0.5">
                     Cognitive Limitation:
                   </div>
                   <div className="text-secondary">{primaryArtifact.cognitiveLimitation}</div>
@@ -477,7 +477,7 @@ export function RepresentationalFluencyStudio() {
                   <div className="space-y-1">
                     {secondaryArtifact.keyElements.map((elem, idx) => (
                       <div key={idx} className="text-xs text-secondary flex items-start gap-1.5">
-                        <span className="text-violet-500 font-bold">•</span>
+                        <span className="text-ac-text font-bold">•</span>
                         <span>{elem}</span>
                       </div>
                     ))}
@@ -486,14 +486,14 @@ export function RepresentationalFluencyStudio() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-xs">
                   <div className="p-2.5 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30">
-                    <div className="font-bold text-emerald-800 dark:text-emerald-300 mb-0.5">
+                    <div className="font-bold text-emerald-800 dark:text-status-success-text mb-0.5">
                       Cognitive Affordance:
                     </div>
                     <div className="text-secondary">{secondaryArtifact.cognitiveAffordance}</div>
                   </div>
 
                   <div className="p-2.5 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30">
-                    <div className="font-bold text-rose-800 dark:text-rose-300 mb-0.5">
+                    <div className="font-bold text-rose-800 dark:text-danger-text mb-0.5">
                       Cognitive Limitation:
                     </div>
                     <div className="text-secondary">{secondaryArtifact.cognitiveLimitation}</div>
@@ -603,10 +603,10 @@ export function RepresentationalFluencyStudio() {
                           <div className="flex items-center justify-between">
                             <span>{opt}</span>
                             {isCompleted && opt === challenge.correctTargetElement && (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <CheckCircle2 className="w-4 h-4 text-status-success-text shrink-0" />
                             )}
                             {isCompleted && isThisSelected && !isCorrect && (
-                              <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                              <XCircle className="w-4 h-4 text-danger-text shrink-0" />
                             )}
                           </div>
                         </button>
@@ -618,7 +618,7 @@ export function RepresentationalFluencyStudio() {
                   {isCompleted && (
                     <div className="mt-4 p-4 rounded-xl bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1.5">
                       <div className="flex items-center gap-1.5 font-bold text-strong">
-                        <Sparkles className="w-4 h-4 text-sky-500" />
+                        <Sparkles className="w-4 h-4 text-status-info-text" />
                         Ainsworth Structural Translation Isomorphism:
                       </div>
                       <p className="text-secondary leading-relaxed">
@@ -633,7 +633,7 @@ export function RepresentationalFluencyStudio() {
 
           {/* Deep Synthesis Banner */}
           <div className="p-4 rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/30 text-xs text-secondary leading-relaxed space-y-1">
-            <div className="font-bold text-strong text-sky-900 dark:text-sky-300">
+            <div className="font-bold text-strong text-sky-900 dark:text-status-info-text">
               Goldstone & Son (2005) Concreteness Fading Principle:
             </div>
             <p>{problem.deepSynthesisSynthesis}</p>

@@ -265,7 +265,7 @@ export function UniversalIngestStudio() {
             <button
               type="button"
               onClick={loadSample}
-              className="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1"
+              className="text-xs text-ac-text hover:text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1"
             >
               <Copy className="h-3 w-3" /> Load Sample Material
             </button>
@@ -369,7 +369,7 @@ export function UniversalIngestStudio() {
                 <button
                   type="button"
                   onClick={() => selectAll(true)}
-                  className="text-xs text-indigo-500 hover:underline"
+                  className="text-xs text-ac-text hover:underline"
                 >
                   Select All
                 </button>
@@ -486,7 +486,7 @@ export function UniversalIngestStudio() {
                         <button
                           type="button"
                           onClick={() => removeCard(card.id)}
-                          className="p-1 text-faint hover:text-rose-600 dark:hover:text-danger-text rounded"
+                          className="p-1 text-faint hover:text-danger-text dark:hover:text-danger-text rounded"
                           title="Remove Card"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

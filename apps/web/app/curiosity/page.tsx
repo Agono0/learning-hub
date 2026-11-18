@@ -29,15 +29,15 @@ export default function EpistemicCuriosityPage() {
               <span>Loewenstein (1994)</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Compass className="h-3.5 w-3.5 text-cyan-500" />
+              <Compass className="h-3.5 w-3.5 text-status-info-text" />
               <span>Berlyne Collatives</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Zap className="h-3.5 w-3.5 text-amber-500" />
+              <Zap className="h-3.5 w-3.5 text-status-warning-text" />
               <span>Kang Dopamine Boost (1.85x)</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs text-tertiary shadow-sm">
-              <Brain className="h-3.5 w-3.5 text-purple-500" />
+              <Brain className="h-3.5 w-3.5 text-ac-text" />
               <span>FSRS Epistemic Deck</span>
             </div>
           </div>
