@@ -20,6 +20,7 @@ import {
   Flame,
   Gauge,
   GitCompare,
+  GitFork,
   GitGraph,
   Globe,
   GraduationCap,
@@ -109,6 +110,7 @@ export const NAV: NavGroup[] = [
       { href: '/dual-process', label: 'Dual-Process Diagnostic', icon: Split },
       { href: '/representations', label: 'Multi-Representational', icon: Boxes },
       { href: '/epistemic', label: 'Epistemic Network', icon: GitGraph },
+      { href: '/causal', label: 'Causal & Counterfactual', icon: GitFork },
     ],
   },
   {
