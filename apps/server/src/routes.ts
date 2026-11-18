@@ -105,6 +105,12 @@ import {
   runInquiryTrial,
   calculateInquiryMetrics,
   generateInquiryFSRSCards,
+  CANONICAL_TEXT_PASSAGES,
+  classifyICAPEngagement,
+  evaluateReciprocalSession,
+  generatePeerDialogicTurn,
+  generateReciprocalFSRSDeck,
+  type DialogueTurn,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -299,6 +305,35 @@ const inquiryEvaluateBodySchema = z.object({
 const inquiryDeckBodySchema = z.object({
   labId: z.string().default('lab-pendulum-period'),
   sdiScore: z.number().min(0).max(100).default(85),
+})
+
+const rtPeerBodySchema = z.object({
+  passageId: z.string().default('passage-endosymbiosis'),
+  preferredRole: z.enum(['questioner', 'clarifier', 'summarizer', 'predictor']).optional(),
+  userText: z.string().default('What structural evidence proves endosymbiosis?'),
+})
+
+const rtEvaluateBodySchema = z.object({
+  passageId: z.string().default('passage-endosymbiosis'),
+  turns: z
+    .array(
+      z.object({
+        role: z.enum(['questioner', 'clarifier', 'summarizer', 'predictor']),
+        text: z.string(),
+        resolvedMisconceptionId: z.string().optional(),
+      }),
+    )
+    .default([
+      {
+        role: 'questioner',
+        text: 'What specific structural evidence causally proves that the inner mitochondrial membrane is bacterial?',
+      },
+    ]),
+})
+
+const rtDeckBodySchema = z.object({
+  passageId: z.string().default('passage-endosymbiosis'),
+  sampleText: z.string().default('Cardiolipin proves endosymbiosis because eukaryotes lack it.'),
 })
 
 const metacognitionBodySchema = z.object({
@@ -1612,6 +1647,114 @@ async function postInquiryDeck(req: IncomingMessage, res: ServerResponse): Promi
   })
 }
 
+/** GET /cognitive/rt/passages — list canonical text passages */
+async function getReciprocalPassages(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const passages = CANONICAL_TEXT_PASSAGES
+  sendJson(res, 200, {
+    ok: true,
+    passages: passages.map((p) => ({
+      id: p.id,
+      title: p.title,
+      discipline: p.discipline,
+      difficulty: p.difficulty,
+      wordCount: p.wordCount,
+      coreThesis: p.coreThesis,
+      stemsCount: p.stems.length,
+      misconceptionsCount: p.commonMisconceptions.length,
+    })),
+  })
+}
+
+/** POST /cognitive/rt/peer — generate Socratic peer response */
+async function postReciprocalPeer(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, rtPeerBodySchema)
+  const passage =
+    CANONICAL_TEXT_PASSAGES.find((p) => p.id === body.passageId) ?? CANONICAL_TEXT_PASSAGES[0]!
+  const history: DialogueTurn[] = [
+    {
+      id: 'turn-user-hist',
+      speaker: 'user',
+      role: 'questioner',
+      turnIndex: 0,
+      text: body.userText,
+      timestamp: Date.now() - 5000,
+      icapLevel: 'constructive',
+      elaborationScore: 70,
+    },
+  ]
+  const peerTurn = generatePeerDialogicTurn(passage, history, body.preferredRole)
+  sendJson(res, 200, {
+    ok: true,
+    passageTitle: passage.title,
+    peerRole: peerTurn.role,
+    peerText: peerTurn.text,
+    stemId: peerTurn.stemId,
+    icapLevel: peerTurn.icapLevel,
+  })
+}
+
+/** POST /cognitive/rt/evaluate — evaluate dialogue session (ICAP, RSBS, EDI, MRR, RDMS) */
+async function postReciprocalEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, rtEvaluateBodySchema)
+  const passage =
+    CANONICAL_TEXT_PASSAGES.find((p) => p.id === body.passageId) ?? CANONICAL_TEXT_PASSAGES[0]!
+  const turns: DialogueTurn[] = body.turns.map((r, i) => {
+    const { icapLevel, causalScore } = classifyICAPEngagement(r.text, i > 0)
+    return {
+      id: `turn-eval-${i}`,
+      speaker: 'user',
+      role: r.role,
+      turnIndex: i,
+      text: r.text,
+      timestamp: Date.now() - (body.turns.length - i) * 10000,
+      icapLevel,
+      elaborationScore: causalScore,
+      resolvedMisconceptionId: r.resolvedMisconceptionId,
+    }
+  })
+  const evaluation = evaluateReciprocalSession(turns, passage)
+  sendJson(res, 200, {
+    ok: true,
+    passageTitle: passage.title,
+    rdms: evaluation.rdms,
+    masteryBand: evaluation.masteryBand,
+    icap: evaluation.icap,
+    strategy: evaluation.strategy,
+    elaboration: evaluation.elaboration,
+    repair: evaluation.repair,
+    feedback: evaluation.feedback,
+    recommendations: evaluation.recommendations,
+  })
+}
+
+/** POST /cognitive/rt/deck — generate calibrated FSRS-6 review deck */
+async function postReciprocalDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, rtDeckBodySchema)
+  const passage =
+    CANONICAL_TEXT_PASSAGES.find((p) => p.id === body.passageId) ?? CANONICAL_TEXT_PASSAGES[0]!
+  const turns: DialogueTurn[] = [
+    {
+      id: 'turn-sample',
+      speaker: 'user',
+      role: 'clarifier',
+      turnIndex: 0,
+      text: body.sampleText,
+      timestamp: Date.now(),
+      icapLevel: 'constructive',
+      elaborationScore: 75,
+    },
+  ]
+  const evaluation = evaluateReciprocalSession(turns, passage)
+  const deck = generateReciprocalFSRSDeck(passage, turns, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    passageTitle: passage.title,
+    rdmsBaseline: deck.rdmsBaseline,
+    cardsCount: deck.cards.length,
+    cards: deck.cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -1886,6 +2029,30 @@ export const routes: Route[] = [
     path: '/cognitive/inquiry/deck',
     summary: 'generate calibrated FSRS-6 review flashcards for inquiry lab',
     handler: postInquiryDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/rt/passages',
+    summary: 'list canonical complex text passages for reciprocal teaching',
+    handler: getReciprocalPassages,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/rt/peer',
+    summary: 'generate responsive Socratic peer dialogic response (Palincsar scaffolding)',
+    handler: postReciprocalPeer,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/rt/evaluate',
+    summary: 'evaluate reciprocal dialogue session (ICAP, RSBS, EDI, MRR, RDMS)',
+    handler: postReciprocalEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/rt/deck',
+    summary: 'generate calibrated FSRS-6 review deck for reciprocal dialogue session',
+    handler: postReciprocalDeck,
   },
 ]
 

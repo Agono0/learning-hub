@@ -30,6 +30,7 @@ import {
   pfCommand,
   piCommand,
   inquiryCommand,
+  reciprocalTeachingCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -383,6 +384,48 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.scientificDiscoveryIndex).toBeGreaterThanOrEqual(80)
       expect(data.inquiryMasteryBand).toBe('Master Empirical Scientist')
     })
+
+    it('rt_list_passages lists canonical text passages for reciprocal teaching', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'rt_list_passages')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        passages: Array<{ id: string; discipline: string; title: string }>
+      }
+      expect(data.count).toBeGreaterThanOrEqual(5)
+      expect(data.passages.some((p) => p.id === 'passage-endosymbiosis')).toBe(true)
+    })
+
+    it('rt_evaluate_dialogue computes ICAP, RSBS, and RDMS metrics', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'rt_evaluate_dialogue')!
+      expect(tool).toBeDefined()
+
+      const result = (await tool.handler({
+        passageId: 'passage-endosymbiosis',
+        userResponses: [
+          {
+            role: 'questioner',
+            text: 'What specific structural evidence causally proves that the inner mitochondrial membrane is bacterial?',
+          },
+          {
+            role: 'clarifier',
+            text: 'Cardiolipin proves bacterial descent because eukaryotes lack it in outer membranes.',
+            resolvedMisconceptionId: 'misc-endo-1',
+          },
+        ],
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        rdms: number
+        masteryBand: string
+        icap: { ics: number }
+        strategy: { rsbs: number }
+      }
+      expect(data.rdms).toBeGreaterThan(0)
+      expect(data.icap.ics).toBeGreaterThan(0)
+      expect(data.strategy.rsbs).toBeGreaterThan(0)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -529,6 +572,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('reciprocalTeachingCommand executes passages, peer, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        reciprocalTeachingCommand(['passages'])
+        expect(consoleSpy).toHaveBeenCalled()
+        reciprocalTeachingCommand(['peer', '--passage', 'passage-endosymbiosis'])
+        expect(consoleSpy).toHaveBeenCalled()
+        reciprocalTeachingCommand(['deck', '--passage', 'passage-endosymbiosis'])
+        expect(consoleSpy).toHaveBeenCalled()
+        reciprocalTeachingCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -559,6 +618,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/inquiry/trial')
       expect(registeredPaths).toContain('POST /cognitive/inquiry/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/inquiry/deck')
+      expect(registeredPaths).toContain('GET /cognitive/rt/passages')
+      expect(registeredPaths).toContain('POST /cognitive/rt/peer')
+      expect(registeredPaths).toContain('POST /cognitive/rt/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/rt/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -812,6 +875,59 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.statusCode).toBe(200)
       expect(result.data.ok).toBe(true)
       expect(result.data.cards.length).toBeGreaterThanOrEqual(3)
+    })
+
+    it('GET /cognitive/rt/passages returns canonical text passages via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/rt/passages')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.passages.length).toBeGreaterThanOrEqual(5)
+    })
+
+    it('POST /cognitive/rt/peer generates Socratic peer response via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/rt/peer', {
+        passageId: 'passage-endosymbiosis',
+        preferredRole: 'clarifier',
+        userText: 'How does cardiolipin prove endosymbiosis?',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.peerRole).toBe('clarifier')
+    })
+
+    it('POST /cognitive/rt/evaluate computes dialogue maturity via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/rt/evaluate', {
+        passageId: 'passage-endosymbiosis',
+        turns: [
+          {
+            role: 'questioner',
+            text: 'What specific structural evidence causally proves that the inner mitochondrial membrane is bacterial?',
+          },
+          {
+            role: 'clarifier',
+            text: 'Cardiolipin proves bacterial descent because eukaryotes lack it in outer membranes.',
+            resolvedMisconceptionId: 'misc-endo-1',
+          },
+        ],
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.rdms).toBeGreaterThan(0)
+      expect(result.data.icap.ics).toBeGreaterThan(0)
+    })
+
+    it('POST /cognitive/rt/deck generates calibrated FSRS-6 review cards via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/rt/deck', {
+        passageId: 'passage-endosymbiosis',
+        sampleText: 'Cardiolipin proves endosymbiosis because eukaryotes lack it.',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBeGreaterThanOrEqual(4)
     })
   })
 })

@@ -34,6 +34,7 @@ import {
   Lightbulb,
   Map,
   MessageCircleQuestion,
+  MessageSquare,
   Mic,
   Moon,
   Network,
@@ -121,6 +122,7 @@ export const NAV: NavGroup[] = [
       { href: '/productive-failure', label: 'Productive Failure', icon: Lightbulb },
       { href: '/peer-instruction', label: 'Peer Instruction', icon: Users },
       { href: '/inquiry', label: 'Scientific Inquiry', icon: FlaskConical },
+      { href: '/reciprocal-teaching', label: 'Reciprocal Teaching', icon: MessageSquare },
     ],
   },
   {
