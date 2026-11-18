@@ -34,7 +34,16 @@ import { DeckDoctorSheet } from '@/components/DeckDoctorSheet'
 import { InterleavingSchedulerModal } from '@/components/InterleavingSchedulerModal'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
-import { PageHeader, LeitnerProgression, type LeitnerBoxData } from '@/ui'
+import {
+  Button,
+  Callout,
+  LeitnerProgression,
+  PageHeader,
+  SelectField,
+  Skeleton,
+  Toggle,
+  type LeitnerBoxData,
+} from '@/ui'
 
 interface DeckInfo {
   id: number
@@ -254,39 +263,75 @@ export default function DecksPage() {
     void qc.invalidateQueries({ queryKey: ['decks'] })
   }
 
+  if (decks.isError) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Decks & Cards" />
+        <Callout tone="danger" title="Couldn't load decks">
+          <div className="mt-1 flex items-center gap-3">
+            <span>{(decks.error as Error).message}</span>
+            <Button variant="secondary" onClick={() => void decks.refetch()}>
+              Try again
+            </Button>
+          </div>
+        </Callout>
+      </div>
+    )
+  }
+
+  if (!decks.data) {
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading decks">
+        <PageHeader title="Decks & Cards" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="h-9 w-28" />
+        </div>
+        <div className="panel space-y-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Decks & Cards"
         actions={
           <div className="flex gap-2">
-            <button className="btn" onClick={() => setEditing('new')} disabled={!activeDeck}>
+            <Button variant="primary" onClick={() => setEditing('new')} disabled={!activeDeck}>
               <Plus className="h-4 w-4" /> New card
-            </button>
-            <button className="btn-ghost" onClick={() => setBulkOpen(true)} disabled={!activeDeck}>
+            </Button>
+            <Button variant="ghost" onClick={() => setBulkOpen(true)} disabled={!activeDeck}>
               <FilePlus2 className="h-4 w-4" /> Bulk paste
-            </button>
-            <button className="btn-ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
+            </Button>
+            <Button variant="ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
               <Wand2 className="h-4 w-4" /> AI generate
-            </button>
-            <button
-              className="btn-ghost flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5"
               onClick={() => setDoctorDeckId(activeDeck)}
               disabled={!activeDeck}
               title="Run Deck Doctor health inspection and one-click fixes"
             >
               <Stethoscope className="h-4 w-4 text-indigo-400" /> Doctor
-            </button>
-            <button
-              className="btn-ghost flex items-center gap-1.5"
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5"
               onClick={() => setInterleaveOpen(true)}
               title="Interleave multiple decks with Rohrer-Taylor category scheduling"
             >
               <Shuffle className="h-4 w-4 text-status-success-text" /> Interleave
-            </button>
+            </Button>
             <Link
               href="/workload"
-              className="btn-ghost flex items-center gap-1.5"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
               title="Open Workload Balancer & 90-Day Forecaster"
             >
               <Gauge className="h-4 w-4 text-status-info-text" /> Workload
@@ -304,13 +349,13 @@ export default function DecksPage() {
             value={newDeckName}
             onChange={(e) => setNewDeckName(e.target.value)}
           />
-          <button
-            className="btn"
+          <Button
+            variant="primary"
             disabled={!newDeckName.trim() || createDeck.isPending}
             onClick={() => createDeck.mutate()}
           >
             Create
-          </button>
+          </Button>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -380,68 +425,66 @@ export default function DecksPage() {
             <span className="font-medium text-neutral-700 dark:text-secondary">
               Deck FSRS-6 preset:
             </span>
-            <label className="flex items-center gap-1.5 text-tertiary">
-              Retention
-              <select
-                className="input h-8 py-1 text-xs"
-                value={
-                  selectedDeckObj.desiredRetention === null
-                    ? 'inherit'
-                    : String(Math.round(selectedDeckObj.desiredRetention * 100))
-                }
-                onChange={(e) => {
-                  const val = e.target.value
-                  patchDeck.mutate({
-                    id: selectedDeckObj.id,
-                    desiredRetention: val === 'inherit' ? null : Number(val) / 100,
-                  })
-                }}
-              >
-                <option value="inherit">Global default</option>
-                {[80, 85, 88, 90, 92, 95].map((pct) => (
-                  <option key={pct} value={String(pct)}>
-                    {pct}%
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label
-              className="flex items-center gap-1.5 text-tertiary"
-              title="Delayed feedback (Butler & Roediger 2008): delaying feedback until after the response beat immediate feedback for final-test performance. The answer stays hidden — you commit a grade blind — and your misses (rating 1–2, last 24h) are listed for restudy at the start of the next session."
+            <SelectField
+              label="Retention"
+              className="w-40"
+              title="Deck FSRS-6 preset"
+              value={
+                selectedDeckObj.desiredRetention === null
+                  ? 'inherit'
+                  : String(Math.round(selectedDeckObj.desiredRetention * 100))
+              }
+              onChange={(e) => {
+                const val = e.target.value
+                patchDeck.mutate({
+                  id: selectedDeckObj.id,
+                  desiredRetention: val === 'inherit' ? null : Number(val) / 100,
+                })
+              }}
             >
-              Delayed feedback
-              <input
-                type="checkbox"
-                checked={selectedDeckObj.delayedFeedback}
-                onChange={(e) =>
-                  patchDeck.mutate({ id: selectedDeckObj.id, delayedFeedback: e.target.checked })
-                }
-              />
-            </label>
-            <button
-              className="btn-ghost py-1 text-xs"
+              <option value="inherit">Global default</option>
+              {[80, 85, 88, 90, 92, 95].map((pct) => (
+                <option key={pct} value={String(pct)}>
+                  {pct}%
+                </option>
+              ))}
+            </SelectField>
+            <Toggle
+              className="max-w-56"
+              label="Delayed feedback"
+              description="Grade blind; misses return for restudy next session."
+              checked={selectedDeckObj.delayedFeedback}
+              onChange={(checked) =>
+                patchDeck.mutate({ id: selectedDeckObj.id, delayedFeedback: checked })
+              }
+            />
+            <Button
+              variant="ghost"
+              className="py-1 text-xs"
               disabled={optimizeDeck.isPending}
               onClick={() => optimizeDeck.mutate({ deckId: selectedDeckObj.id, mode: 'optimize' })}
             >
               <Sparkles className="h-3.5 w-3.5" /> Optimize deck weights
-            </button>
+            </Button>
             {selectedDeckObj.hasCustomWeights && (
-              <button
-                className="btn-ghost py-1 text-xs"
+              <Button
+                variant="ghost"
+                className="py-1 text-xs"
                 disabled={optimizeDeck.isPending}
                 onClick={() => optimizeDeck.mutate({ deckId: selectedDeckObj.id, mode: 'reset' })}
               >
                 Reset weights
-              </button>
+              </Button>
             )}
-            <button
-              className="btn-ghost py-1 text-xs"
+            <Button
+              variant="ghost"
+              className="py-1 text-xs"
               disabled={shareDeck.isPending}
               title="Copy an lh-share/v1 string for this deck — import it on another device via Online → Import"
               onClick={() => shareDeck.mutate(selectedDeckObj.id)}
             >
               <Upload className="h-3.5 w-3.5" /> Share…
-            </button>
+            </Button>
             {deckFsrsNote && <span className="text-tertiary">{deckFsrsNote}</span>}
             {shareNote && <span className="text-indigo-400">{shareNote}</span>}
           </div>
@@ -461,8 +504,9 @@ export default function DecksPage() {
             value={filterTags}
             onChange={(e) => setFilterTags(e.target.value)}
           />
-          <select
-            className="input max-w-[140px]"
+          <SelectField
+            label="State"
+            className="max-w-[180px]"
             value={filterState}
             onChange={(e) => setFilterState(e.target.value)}
           >
@@ -471,7 +515,7 @@ export default function DecksPage() {
             <option value="1">learning</option>
             <option value="2">review</option>
             <option value="3">relearning</option>
-          </select>
+          </SelectField>
           <span className="ml-auto text-xs text-tertiary">
             {selectedBox
               ? `${displayedCards.length} of ${cards.data?.cards.length ?? 0} cards (Box ${selectedBox})`
@@ -501,15 +545,16 @@ export default function DecksPage() {
               >
                 {card.suspended ? 'suspended' : card.due.slice(0, 10)}
               </span>
-              <button className="btn-ghost px-2 py-1" onClick={() => setEditing(card)}>
+              <Button variant="ghost" className="px-2 py-1" onClick={() => setEditing(card)}>
                 <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button
-                className="btn-ghost px-2 py-1 hover:text-danger-text"
+              </Button>
+              <Button
+                variant="ghost"
+                className="px-2 py-1 hover:text-danger-text"
                 onClick={() => deleteCard.mutate(card.id)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
           ))}
           {cards.data && cards.data.cards.length === 0 && (
@@ -638,9 +683,9 @@ function CardEditorModal({
           <h2 className="text-lg font-bold">
             {existing ? `Edit card #${existing.id}` : 'New card'}
           </h2>
-          <button className="btn-ghost px-2" onClick={onClose}>
+          <Button variant="ghost" className="px-2" onClick={onClose}>
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -690,16 +735,16 @@ function CardEditorModal({
         {lint && <LintPanel lint={lint} />}
 
         <div className="flex justify-end gap-2">
-          <button className="btn-ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             Close
-          </button>
-          <button
-            className="btn"
+          </Button>
+          <Button
+            variant="primary"
             disabled={!clientValidation.ok || save.isPending}
             onClick={() => save.mutate()}
           >
             {existing ? 'Save changes' : 'Create card'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -855,8 +900,9 @@ function FormatEditor({
               }}
             />
             {v.options.length > 2 && (
-              <button
-                className="btn-ghost px-2"
+              <Button
+                variant="ghost"
+                className="px-2"
                 onClick={() =>
                   patch('mcq', {
                     ...v,
@@ -866,16 +912,13 @@ function FormatEditor({
                 }
               >
                 <X className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             )}
           </div>
         ))}
-        <button
-          className="btn-ghost"
-          onClick={() => patch('mcq', { ...v, options: [...v.options, ''] })}
-        >
+        <Button variant="ghost" onClick={() => patch('mcq', { ...v, options: [...v.options, ''] })}>
           <Plus className="h-3.5 w-3.5" /> option
-        </button>
+        </Button>
         <input
           className="input"
           placeholder="rationale (optional)"
@@ -1103,10 +1146,10 @@ function OcclusionEditor({
           className="hidden"
           onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
         />
-        <button className="btn-ghost" onClick={() => fileRef.current?.click()} disabled={uploading}>
+        <Button variant="ghost" onClick={() => fileRef.current?.click()} disabled={uploading}>
           <Upload className="h-4 w-4" />{' '}
           {uploading ? 'uploading…' : occ ? 'replace image' : 'upload image'}
-        </button>
+        </Button>
         {occ && (
           <span className="text-xs text-tertiary">
             image #{occ.imageId} — drag on the image to draw an occlusion rect
@@ -1180,8 +1223,9 @@ function OcclusionEditor({
               <span className="text-neutral-600">
                 x{rect.x.toFixed(2)} y{rect.y.toFixed(2)} w{rect.w.toFixed(2)} h{rect.h.toFixed(2)}
               </span>
-              <button
-                className="btn-ghost px-1 hover:text-danger-text"
+              <Button
+                variant="ghost"
+                className="px-1 hover:text-danger-text"
                 onClick={() =>
                   setDraft({
                     occlusion: {
@@ -1192,7 +1236,7 @@ function OcclusionEditor({
                 }
               >
                 <Trash2 className="h-3 w-3" />
-              </button>
+              </Button>
             </div>
           ))}
         </>
@@ -1251,22 +1295,22 @@ function BasicImageAttach({
             e.target.value = ''
           }}
         />
-        <button
-          type="button"
-          className="btn-ghost text-xs"
+        <Button
+          variant="ghost"
+          className="text-xs"
           disabled={uploading}
           onClick={() => fileRef.current?.click()}
         >
           <Upload className="h-3.5 w-3.5" /> {imageId ? 'Replace image' : 'Attach image'}
-        </button>
+        </Button>
         {imageId != null && (
-          <button
-            type="button"
-            className="btn-ghost text-xs text-danger-text"
+          <Button
+            variant="ghost"
+            className="text-xs text-danger-text"
             onClick={() => onChange(undefined)}
           >
             <X className="h-3.5 w-3.5" /> Remove
-          </button>
+          </Button>
         )}
         <span className="text-xs text-tertiary">
           {uploading ? 'uploading…' : 'dual coding — picture + words'}
@@ -1362,9 +1406,9 @@ function BulkImportModal({
       <div className="panel w-full max-w-2xl space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Bulk create from pasted text</h2>
-          <button className="btn-ghost px-2" onClick={onClose}>
+          <Button variant="ghost" className="px-2" onClick={onClose}>
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         <p className="text-xs text-tertiary">
           One card per line. Supported: <code>front :: back</code>, <code>front | back</code>, cloze
@@ -1378,16 +1422,16 @@ function BulkImportModal({
         <div className="flex items-center justify-between">
           <span className="text-xs text-tertiary">{parsed.length} cards detected</span>
           <div className="flex gap-2">
-            <button className="btn-ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={onClose}>
               Close
-            </button>
-            <button
-              className="btn"
+            </Button>
+            <Button
+              variant="primary"
               disabled={parsed.length === 0 || importMutation.isPending}
               onClick={() => importMutation.mutate()}
             >
               Import
-            </button>
+            </Button>
           </div>
         </div>
         {result && (
@@ -1478,9 +1522,9 @@ function AiGenerateModal({
           <h2 className="flex items-center gap-2 text-lg font-bold">
             <Sparkles className="h-4 w-4 text-status-warning-text" /> Generate cloze cards
           </h2>
-          <button className="btn-ghost px-2" onClick={onClose}>
+          <Button variant="ghost" className="px-2" onClick={onClose}>
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         <p className="text-xs text-tertiary">
           Paste study material; the key facts become cloze deletions in this deck.
@@ -1530,16 +1574,16 @@ function AiGenerateModal({
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <button className="btn-ghost" onClick={onClose}>
+              <Button variant="ghost" onClick={onClose}>
                 Close
-              </button>
-              <button
-                className="btn"
+              </Button>
+              <Button
+                variant="primary"
                 disabled={!text.trim() || generate.isPending}
                 onClick={() => generate.mutate()}
               >
                 {generate.isPending ? 'generating…' : 'Generate'}
-              </button>
+              </Button>
             </div>
           </>
         )}
@@ -1550,9 +1594,9 @@ function AiGenerateModal({
         )}
         {manual && (
           <div className="flex justify-end gap-2">
-            <button className="btn-ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={onClose}>
               Close
-            </button>
+            </Button>
           </div>
         )}
       </div>
