@@ -171,6 +171,7 @@ import * as skills from '../server/handlers/skills/route'
 import * as practiceSuccessiveRelearning from '../server/handlers/practice/successive-relearning/route'
 import * as epistemic from '../server/handlers/epistemic/route'
 import * as causal from '../server/handlers/causal/route'
+import * as threshold from '../server/handlers/threshold/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -362,6 +363,7 @@ add('skills', skills)
 add('practice/successive-relearning', practiceSuccessiveRelearning)
 add('epistemic', epistemic)
 add('causal', causal)
+add('threshold', threshold)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

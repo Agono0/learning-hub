@@ -76,6 +76,7 @@ export {
 } from './RepresentationalFluencyHUD'
 export { EpistemicNetworkHUD, type EpistemicNetworkHUDProps } from './EpistemicNetworkHUD'
 export { CounterfactualHUD, type CounterfactualHUDProps } from './CounterfactualHUD'
+export { ThresholdLiminalHUD, type ThresholdLiminalHUDProps } from './ThresholdLiminalHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
