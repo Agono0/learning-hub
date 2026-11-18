@@ -44,21 +44,26 @@ same disease — unified in commit `495b385` via `repos/cognitive-trials.ts`.
 `generationTrialInputSchema` already uses); hosts import instead of re-declare.
 Add a structural test: every `/cognitive/*` route schema is imported from core.
 
-### TD-03 · OPEN — same feature, different sampling windows
+### TD-03 · ACCEPTED (documented) — per-surface sampling windows are contracts
 
-Web hypercorrection reads 2000 revlog rows, server/MCP read 200 — with
+Web hypercorrection reads 2000 revlog rows, server/MCP read 200 — with more
+than 200 rows of history the surfaces answer differently for the same learner.
+Resolution: the window is part of each surface's contract (web is the product
+UI with a long history; agent surfaces sample tightly) — documented in
+ADR-0004 and enforced where it matters: the parity suite (TD-04) seeds below
+the smallest window and asserts identical answers, so a divergence inside any
+window still fails CI.
 
-> 200 rows of history the three surfaces answer differently for the same
-> learner. Deliberately left per-host in `495b385` (one behavior change per
-> commit); pick one window and centralize in the repo options default.
-
-### TD-04 · OPEN — no cross-host parity test
+### TD-04 · FIXED (`549e0a3`) — cross-host parity suite
 
 The drift in TD-01/TD-02 was invisible because each host is tested in
-isolation with its own fixtures. **Fix path:** one table-driven E2E suite
-(`tests/e2e`, tier-4 style) that seeds one revlog fixture and asserts the
-same canonical JSON from the web handler, the headless server route, and the
-MCP tool for the shared query families (trials, stats, today, decks).
+isolation with its own fixtures. **Fix shipped:** `tests/e2e/tier4-scenarios/cross-host-parity.test.ts` —
+seeds one scripted history (corrections, armed miss, an undone review)
+through the canonical web pipeline and asserts identical hypercorrection,
+metacognition-trial, stats/today/forecast and deck-count answers through
+the web handler, the headless server's node:http dispatch and the MCP
+stdio subprocess. Delta-based assertions; runs in CI per the owner's
+CI-only test policy.
 
 ## P2 — structural debt (schedule, don't scramble)
 
