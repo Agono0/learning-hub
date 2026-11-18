@@ -169,6 +169,7 @@ import * as workload from '../server/handlers/workload/route'
 import * as readingExposure from '../server/handlers/reading/exposure/route'
 import * as skills from '../server/handlers/skills/route'
 import * as practiceSuccessiveRelearning from '../server/handlers/practice/successive-relearning/route'
+import * as epistemic from '../server/handlers/epistemic/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -358,6 +359,7 @@ add('workload', workload)
 add('reading/exposure', readingExposure)
 add('skills', skills)
 add('practice/successive-relearning', practiceSuccessiveRelearning)
+add('epistemic', epistemic)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
