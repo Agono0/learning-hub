@@ -74,6 +74,11 @@ import {
   evaluateContrastingAttempt,
   generateContrastingFSRSDeck,
   type InventedMetricSubmission,
+  CANONICAL_COLLABORATIVE_SCENARIOS,
+  evaluateCollaborativeDiscourse,
+  generateCollaborativePeerTurn,
+  generateCollaborativeFSRSDeck,
+  type DiscourseSubmission,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1562,6 +1567,138 @@ export const advancedLearningTools: RegisteredTool[] = [
         setId: caseSet.id,
         setTitle: caseSet.title,
         cdtsBaseline: deck.cdtsBaseline,
+        cardsCount: deck.cards.length,
+        cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 15. Collaborative Scripts & Transactive Discourse (King 1997, 1999; Weinberger & Fischer 2006) ──
+  tool(
+    'collaborative_list_scenarios',
+    'Lists all canonical CSCL collaborative scenarios, dilemmas, competing perspectives, and simulated peer profiles.',
+    {},
+    async () => {
+      const scenarios = CANONICAL_COLLABORATIVE_SCENARIOS.map((s) => ({
+        id: s.id,
+        title: s.title,
+        domain: s.domain,
+        difficulty: s.difficulty,
+        centralDilemma: s.centralDilemma,
+        perspectivesCount: s.competingPerspectives.length,
+        invariantsCount: s.invariantsForSynthesis.length,
+        peerName: s.simulatedPeer.name,
+        peerRole: s.simulatedPeer.role,
+      }))
+      return json({
+        count: scenarios.length,
+        scenarios,
+      })
+    },
+  ),
+
+  tool(
+    'collaborative_generate_partner_turn',
+    'Generates an automated Socratic peer response turn based on Alison King prompts and simulated peer profile.',
+    {
+      scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
+      learnerTurnText: z.string(),
+      turnIndex: z.number().int().min(0).default(0),
+    },
+    async ({ scenarioId, learnerTurnText, turnIndex }) => {
+      const scenario =
+        CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === scenarioId) ??
+        CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+      const peerTurn = generateCollaborativePeerTurn(scenario, learnerTurnText, turnIndex)
+      return json({
+        scenarioId: scenario.id,
+        peerTurn,
+      })
+    },
+  ),
+
+  tool(
+    'collaborative_evaluate_discourse',
+    'Evaluates collaborative dialogue against Transactive Discourse Index (TDI), Epistemic Elaboration Depth (EED), and Script Compliance (SCR).',
+    {
+      scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
+      learnerInitialPosition: z.string(),
+      dialogueTurns: z.array(
+        z.object({
+          id: z.string(),
+          speaker: z.enum(['learner', 'peer_partner', 'synthesizer_agent']),
+          role: z.enum(['proposer', 'questioner', 'synthesizer', 'challenger']),
+          text: z.string(),
+          speechAct: z.enum([
+            'transactive_critique',
+            'transactive_extension',
+            'transactive_synthesis',
+            'transactive_justification',
+            'non_transactive',
+          ]),
+          targetTurnId: z.string().optional(),
+          epistemicKeywords: z.array(z.string()).default([]),
+        }),
+      ),
+      jointSynthesis: z.string(),
+      individualTransferAnswer: z.string(),
+    },
+    async (submission) => {
+      const scenario =
+        CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === submission.scenarioId) ??
+        CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+      const evaluation = evaluateCollaborativeDiscourse(scenario, submission as DiscourseSubmission)
+      return json({
+        scenarioTitle: scenario.title,
+        cei: evaluation.cei,
+        tdi: evaluation.tdi,
+        eed: evaluation.eed,
+        scr: evaluation.scr,
+        maturityBand: evaluation.maturityBand,
+        transactiveCounts: evaluation.transactiveCounts,
+        synthesizedInvariantsIdentified: evaluation.synthesizedInvariantsIdentified,
+        strengths: evaluation.strengths,
+        vulnerabilities: evaluation.vulnerabilities,
+        pedagogicalFeedback: evaluation.pedagogicalFeedback,
+      })
+    },
+  ),
+
+  tool(
+    'collaborative_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards derived from collaborative discourse insights, scaled by CEI.',
+    {
+      scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
+      ceiScore: z.number().min(0).max(100).optional(),
+      ceiBaseline: z.number().min(0).max(100).optional(),
+    },
+    async ({ scenarioId, ceiScore, ceiBaseline }) => {
+      const scenario =
+        CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === scenarioId) ??
+        CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+      const dummySubmission: DiscourseSubmission = {
+        scenarioId: scenario.id,
+        learnerInitialPosition: 'Optimal initial positioning.',
+        dialogueTurns: [
+          {
+            id: 'turn-dummy',
+            speaker: 'learner',
+            role: 'synthesizer',
+            text: 'Because we coordinate both mechanisms, homeostatic plasticity prevents catastrophic saturation.',
+            speechAct: 'transactive_synthesis',
+            epistemicKeywords: [],
+          },
+        ],
+        jointSynthesis: 'Integrated model coordinating both perspectives.',
+        individualTransferAnswer: 'Applied to parallel domain.',
+      }
+      const evaluation = evaluateCollaborativeDiscourse(scenario, dummySubmission)
+      evaluation.cei = ceiScore ?? ceiBaseline ?? 88
+      const deck = generateCollaborativeFSRSDeck(scenario, evaluation)
+      return json({
+        scenarioId: scenario.id,
+        scenarioTitle: scenario.title,
+        ceiBaseline: deck.ceiBaseline,
         cardsCount: deck.cards.length,
         cards: deck.cards,
       })

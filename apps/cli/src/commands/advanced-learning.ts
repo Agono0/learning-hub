@@ -75,6 +75,11 @@ import {
   evaluateContrastingAttempt,
   generateContrastingFSRSDeck,
   type InventedMetricSubmission,
+  CANONICAL_COLLABORATIVE_SCENARIOS,
+  evaluateCollaborativeDiscourse,
+  generateCollaborativePeerTurn,
+  generateCollaborativeFSRSDeck,
+  type DiscourseSubmission,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1259,6 +1264,133 @@ export function contrastingCommand(args: string[]): void {
   console.log(`Preparation Transfer:${evalResult.pfri}/100 PFRI (Preparation for Future Learning)`)
   console.log(`Ranking Accuracy:    ${evalResult.rankingAccuracy}%`)
   console.log(`Productive Impasse:  ${evalResult.impasseProductive ? 'YES' : 'NO'}`)
+  console.log('─'.repeat(65))
+  console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
+  console.log(`Feedback:     ${evalResult.pedagogicalFeedback.join(' ')}`)
+}
+
+// ── 15. Collaborative Scripts Command (King 1997, 1999; Weinberger & Fischer 2006) ──
+
+export function collaborativeCommand(args: string[]): void {
+  const sub = args[0] || 'scenarios'
+  const scenarioId = parseFlag(args, '--id') || 'collab-neuro-synaptic-plasticity'
+  const scenario =
+    CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === scenarioId) ||
+    CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+
+  if (sub === 'scenarios' || sub === 'list') {
+    console.log(
+      `\n🤝 Canonical CSCL Collaborative Dilemmas & Scripts (${CANONICAL_COLLABORATIVE_SCENARIOS.length} available)`,
+    )
+    console.log('═'.repeat(65))
+    CANONICAL_COLLABORATIVE_SCENARIOS.forEach((s) => {
+      console.log(`• [${s.domain.toUpperCase()}] ${s.title} (${s.id})`)
+      console.log(`  Difficulty:      ${s.difficulty}`)
+      console.log(`  Perspectives:    ${s.competingPerspectives.map((p) => p.label).join(' vs ')}`)
+      console.log(`  Invariants:      ${s.invariantsForSynthesis.map((i) => i.name).join('; ')}`)
+      console.log(`  Simulated Peer:  ${s.simulatedPeer.name} (${s.simulatedPeer.role})`)
+      console.log(`  Dilemma:         ${s.centralDilemma}`)
+      console.log()
+    })
+    return
+  }
+
+  if (sub === 'partner') {
+    const learnerTurn =
+      parseFlag(args, '--text') ||
+      'Because you argued late-LTP is sufficient, how do you prevent catastrophic saturation?'
+    const peerTurn = generateCollaborativePeerTurn(scenario, learnerTurn, 0)
+    console.log(`\n💬 Simulated Socratic Peer Response (${scenario.simulatedPeer.name})`)
+    console.log('═'.repeat(65))
+    console.log(`Speaker:    ${peerTurn.speaker} (${peerTurn.role})`)
+    console.log(`Speech Act: ${peerTurn.speechAct}`)
+    console.log(`Reply:      ${peerTurn.text}`)
+    return
+  }
+
+  if (sub === 'deck') {
+    const dummySubmission: DiscourseSubmission = {
+      scenarioId: scenario.id,
+      learnerInitialPosition: 'Initial position statement.',
+      dialogueTurns: [
+        {
+          id: 'turn-dummy',
+          speaker: 'learner',
+          role: 'synthesizer',
+          text: 'Because we integrate Frey-Morris synaptic tagging with homeostatic scaling, local tags capture global PRPs while homeostatic depression maintains contrast.',
+          speechAct: 'transactive_synthesis',
+          epistemicKeywords: [],
+        },
+      ],
+      jointSynthesis: 'Integrated invariant model coordinating both perspectives.',
+      individualTransferAnswer: 'Transferred to artificial neural networks.',
+    }
+    const evaluation = evaluateCollaborativeDiscourse(scenario, dummySubmission)
+    evaluation.cei = 90
+    const deck = generateCollaborativeFSRSDeck(scenario, evaluation)
+
+    console.log('\n📦 Calibrated FSRS-6 Collaborative Dialectic Deck')
+    console.log(`Scenario:        ${deck.scenarioTitle}`)
+    console.log(`CEI Baseline:    ${deck.ceiBaseline}/100 CEI`)
+    console.log(`Cards Generated: ${deck.cards.length}`)
+    console.log('═'.repeat(65))
+    deck.cards.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Type: ${c.cardType.toUpperCase()} (S: ${c.fsrsParameters.stability}d, D: ${c.fsrsParameters.difficulty})`,
+      )
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval
+  const sampleSubmission: DiscourseSubmission = {
+    scenarioId: scenario.id,
+    learnerInitialPosition:
+      'Late-LTP provides the primary protein synthesis substrate for synaptic efficacy, but requires spatial regulation to prevent saturation.',
+    dialogueTurns: [
+      {
+        id: 'turn-1',
+        speaker: 'learner',
+        role: 'proposer',
+        text: 'Because you stated that local protein synthesis at dendritic spines is the sole determinant of retention, how does your proposal account for the BCM paradox where untagged neighboring synapses drift into runaway excitability?',
+        speechAct: 'transactive_critique',
+        epistemicKeywords: ['bcm_paradox'],
+      },
+      {
+        id: 'turn-2',
+        speaker: 'learner',
+        role: 'synthesizer',
+        text: 'Building upon your argument, if we integrate Frey-Morris synaptic tagging with homeostatic synaptic scaling, weak stimulation sets a local tag whereas strong stimulation triggers cell-wide PRPs, therefore reconciling local specificity with global dynamic range.',
+        speechAct: 'transactive_synthesis',
+        epistemicKeywords: ['tag_and_capture'],
+      },
+    ],
+    jointSynthesis:
+      'We conclude that memory persistence depends on Frey-Morris Synaptic Tagging & Capture Coordination combined with a BCM sliding threshold: local tags capture global PRPs while homeostatic LTD depotentiates untagged inputs to maintain contrast.',
+    individualTransferAnswer:
+      'When applying this to artificial neural networks, local gradient updates serve as synaptic tags while global weight decay acts as homeostatic LTD, preventing catastrophic gradient explosion.',
+  }
+
+  const evalResult = evaluateCollaborativeDiscourse(scenario, sampleSubmission)
+
+  console.log(
+    '\n🤝 CSCL Transactive Discourse Telemetry (King 1997, 1999; Weinberger & Fischer 2006)',
+  )
+  console.log('═'.repeat(65))
+  console.log(`Scenario:            ${scenario.title}`)
+  console.log(
+    `CEI Score:           ${evalResult.cei}/100 (Composite Collaborative Epistemic Index)`,
+  )
+  console.log(`Maturity Band:       ${evalResult.maturityBand.toUpperCase()}`)
+  console.log(`Transactivity:       ${evalResult.tdi}/100 TDI (Transactive Discourse Index)`)
+  console.log(`Epistemic Depth:     ${evalResult.eed}/100 EED (Epistemic Elaboration Depth)`)
+  console.log(`Script Compliance:   ${evalResult.scr}/100 SCR (Script Compliance Rigor)`)
+  console.log(
+    `Invariants Found:    ${evalResult.synthesizedInvariantsIdentified.join('; ') || 'None'}`,
+  )
   console.log('─'.repeat(65))
   console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
   console.log(`Feedback:     ${evalResult.pedagogicalFeedback.join(' ')}`)

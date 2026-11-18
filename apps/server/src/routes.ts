@@ -125,6 +125,11 @@ import {
   evaluateContrastingAttempt,
   generateContrastingFSRSDeck,
   type InventedMetricSubmission,
+  CANONICAL_COLLABORATIVE_SCENARIOS,
+  evaluateCollaborativeDiscourse,
+  generateCollaborativePeerTurn,
+  generateCollaborativeFSRSDeck,
+  type DiscourseSubmission,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -430,6 +435,43 @@ const contrastingEvaluateBodySchema = z.object({
 const contrastingDeckBodySchema = z.object({
   setId: z.string().default('set-density-buoyancy'),
   cdtsBaseline: z.number().min(0).max(100).default(85),
+})
+
+const collaborativePartnerBodySchema = z.object({
+  scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
+  learnerTurnText: z.string().default('Initial question regarding stability.'),
+  turnIndex: z.number().int().min(0).default(0),
+})
+
+const collaborativeEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
+  learnerInitialPosition: z.string().default('Initial framing position.'),
+  dialogueTurns: z
+    .array(
+      z.object({
+        id: z.string(),
+        speaker: z.enum(['learner', 'peer_partner', 'synthesizer_agent']),
+        role: z.enum(['proposer', 'questioner', 'synthesizer', 'challenger']),
+        text: z.string(),
+        speechAct: z.enum([
+          'transactive_critique',
+          'transactive_extension',
+          'transactive_synthesis',
+          'transactive_justification',
+          'non_transactive',
+        ]),
+        targetTurnId: z.string().optional(),
+        epistemicKeywords: z.array(z.string()).default([]),
+      }),
+    )
+    .default([]),
+  jointSynthesis: z.string().default('Joint invariant reconciliation statement.'),
+  individualTransferAnswer: z.string().default('Transfer generalization application.'),
+})
+
+const collaborativeDeckBodySchema = z.object({
+  scenarioId: z.string().default('collab-neuro-synaptic-plasticity'),
+  ceiBaseline: z.number().min(0).max(100).default(85),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2087,6 +2129,91 @@ async function postContrastingDeck(req: IncomingMessage, res: ServerResponse): P
   })
 }
 
+/** GET /cognitive/collaborative/scenarios — list canonical CSCL scenarios */
+async function getCollaborativeScenarios(
+  _req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const scenarios = CANONICAL_COLLABORATIVE_SCENARIOS
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: scenarios.map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      difficulty: s.difficulty,
+      centralDilemma: s.centralDilemma,
+      perspectivesCount: s.competingPerspectives.length,
+      invariantsCount: s.invariantsForSynthesis.length,
+      peerName: s.simulatedPeer.name,
+      peerRole: s.simulatedPeer.role,
+    })),
+  })
+}
+
+/** POST /cognitive/collaborative/partner — generate automated Socratic peer response turn */
+async function postCollaborativePartner(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, collaborativePartnerBodySchema)
+  const scenario =
+    CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === body.scenarioId) ??
+    CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+  const peerTurn = generateCollaborativePeerTurn(scenario, body.learnerTurnText, body.turnIndex)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: scenario.id,
+    peerTurn,
+  })
+}
+
+/** POST /cognitive/collaborative/evaluate — evaluate collaborative discourse (TDI, EED, SCR, CEI) */
+async function postCollaborativeEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, collaborativeEvaluateBodySchema)
+  const scenario =
+    CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === body.scenarioId) ??
+    CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+  const evaluation = evaluateCollaborativeDiscourse(scenario, body as DiscourseSubmission)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioTitle: scenario.title,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/collaborative/deck — generate calibrated FSRS-6 review deck */
+async function postCollaborativeDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, collaborativeDeckBodySchema)
+  const scenario =
+    CANONICAL_COLLABORATIVE_SCENARIOS.find((s) => s.id === body.scenarioId) ??
+    CANONICAL_COLLABORATIVE_SCENARIOS[0]!
+  const dummySubmission: DiscourseSubmission = {
+    scenarioId: scenario.id,
+    learnerInitialPosition: 'Optimal initial positioning.',
+    dialogueTurns: [
+      {
+        id: 'turn-dummy',
+        speaker: 'learner',
+        role: 'synthesizer',
+        text: 'Because we coordinate both mechanisms, homeostatic plasticity prevents catastrophic saturation.',
+        speechAct: 'transactive_synthesis',
+        epistemicKeywords: [],
+      },
+    ],
+    jointSynthesis: 'Integrated model coordinating both perspectives.',
+    individualTransferAnswer: 'Applied to parallel domain.',
+  }
+  const evaluation = evaluateCollaborativeDiscourse(scenario, dummySubmission)
+  evaluation.cei = body.ceiBaseline
+  const deck = generateCollaborativeFSRSDeck(scenario, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: scenario.id,
+    scenarioTitle: scenario.title,
+    ceiBaseline: deck.ceiBaseline,
+    cardsCount: deck.cards.length,
+    cards: deck.cards,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2452,6 +2579,31 @@ export const routes: Route[] = [
     path: '/cognitive/contrasting/deck',
     summary: 'generate calibrated FSRS-6 review deck for contrasting cases',
     handler: postContrastingDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/collaborative/scenarios',
+    summary:
+      'list canonical CSCL collaborative dilemmas and scripts (King 1997, 1999; Weinberger & Fischer 2006)',
+    handler: getCollaborativeScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/collaborative/partner',
+    summary: 'generate automated Socratic peer response turn',
+    handler: postCollaborativePartner,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/collaborative/evaluate',
+    summary: 'evaluate collaborative discourse (TDI, EED, SCR, CEI)',
+    handler: postCollaborativeEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/collaborative/deck',
+    summary: 'generate calibrated FSRS-6 review deck for collaborative dialectics',
+    handler: postCollaborativeDeck,
   },
 ]
 

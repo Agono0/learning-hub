@@ -51,6 +51,7 @@ import {
   cerCommand,
   anchoredCommand,
   contrastingCommand,
+  collaborativeCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -871,6 +872,13 @@ const builtinCommands: RegisteredCommand[] = [
       'Schwartz & Bransford (1998, 2004) Contrasting Cases & Inventing with Examples Studio',
     usage: '[sets|eval|deck] [--id <id>]',
     run: (runArgs) => contrastingCommand(runArgs),
+  },
+  {
+    name: 'collaborative',
+    description:
+      'King (1997, 1999) & Weinberger & Fischer (2006) Collaborative Scripts & Transactive Studio',
+    usage: '[scenarios|partner|eval|deck] [--id <id>]',
+    run: (runArgs) => collaborativeCommand(runArgs),
   },
 ]
 
