@@ -85,6 +85,13 @@ import {
   generateSystemDynamicsFSRSDeck,
   runEulerSimulation,
   type LearnerModelHypothesis,
+  listGedankenScenarios,
+  getGedankenScenario,
+  perturbExtremeCase,
+  simulateMentalAnimation,
+  evaluateInquirySession,
+  generateModelInquiryFsrsDeck,
+  type InquirySessionInput,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1526,4 +1533,111 @@ export function systemDynamicsCommand(args: string[]): void {
   console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
   console.log(`Feedback:     ${evalResult.systemicFeedback.join(' ') || 'None'}`)
   console.log(`Leverage:     ${evalResult.leveragePointAnalysis}`)
+}
+
+export function modelInquiryCommand(args: string[]): void {
+  const sub = args[0] || 'scenarios'
+  const scenarioId = parseFlag(args, '--id') || 'galileo_falling_bodies'
+  const scenarios = listGedankenScenarios()
+  const scenario = getGedankenScenario(scenarioId) || scenarios[0]!
+
+  if (sub === 'scenarios' || sub === 'list') {
+    console.log(`\n🔭 Canonical Gedankenexperiment Scenarios (${scenarios.length} available)`)
+    console.log('═'.repeat(65))
+    scenarios.forEach((s) => {
+      console.log(`• [${s.domain.toUpperCase()}] ${s.title} (${s.id})`)
+      console.log(`  Origin:          ${s.historicalOrigin}`)
+      console.log(`  Target:          ${s.targetPhenomenon}`)
+      console.log(`  Folk Barrier:    ${s.folkConception}`)
+      console.log(`  Extreme Cases:   ${s.extremeCases.map((e) => e.name).join(', ')}`)
+      console.log(`  Resolution:      ${s.canonicalResolution.title}`)
+      console.log()
+    })
+    return
+  }
+
+  if (sub === 'perturb') {
+    const caseId = parseFlag(args, '--case') || scenario.extremeCases[0]?.id || ''
+    const result = perturbExtremeCase(scenario.id, caseId)
+
+    console.log(`\n⚡ Extreme Case Perturbation (${scenario.title})`)
+    console.log('═'.repeat(65))
+    if (!result.valid) {
+      console.log(`Error: ${result.consequence}`)
+      return
+    }
+    console.log(`Variable:        ${result.extremeCase?.name}`)
+    console.log(`Asymptotic Run:  ${result.asymptoticBehavior}`)
+    console.log(`Paradox Outcome: ${result.consequence}`)
+    console.log(`Explanation:     ${result.extremeCase?.scientificExplanation}`)
+    return
+  }
+
+  if (sub === 'simulate') {
+    const stepIds = scenario.simulativeSteps.map((s) => s.id)
+    const result = simulateMentalAnimation(scenario.id, stepIds)
+
+    console.log(`\n🧠 Simulative Mental Animation (${scenario.title})`)
+    console.log('═'.repeat(65))
+    console.log(`Fidelity Score:  ${result.fidelityScore}%`)
+    console.log(`Contradictions:  ${result.contradictionsExposed.length} identified`)
+    console.log('─'.repeat(65))
+    result.observations.forEach((obs) => console.log(`• ${obs}`))
+    if (result.contradictionsExposed.length > 0) {
+      console.log('─'.repeat(65))
+      console.log('⚠️ Contradiction Crucibles:')
+      result.contradictionsExposed.forEach((c) => console.log(`  ! ${c}`))
+    }
+    return
+  }
+
+  if (sub === 'deck') {
+    const deck = generateModelInquiryFsrsDeck(scenario.id)
+
+    console.log('\n📦 Calibrated FSRS-6 Model Inquiry Deck')
+    console.log(`Scenario:        ${scenario.title}`)
+    console.log(`Cards Generated: ${deck.length}`)
+    console.log('─'.repeat(65))
+    deck.forEach((c, i) => {
+      console.log(`[Card ${i + 1}] ${c.front.split('\n')[0]}`)
+      console.log(`Back: ${c.back.slice(0, 100)}...`)
+      console.log()
+    })
+    return
+  }
+
+  // Default: evaluate
+  const sampleInput: InquirySessionInput = {
+    scenarioId: scenario.id,
+    selectedExtremeCaseIds: scenario.extremeCases.map((e) => e.id),
+    extremeCasePredictions: {
+      [scenario.extremeCases[0]?.id || '']: 'Symmetrical invariance eliminates boundary disparity.',
+    },
+    simulativeStepOrder: scenario.simulativeSteps.map((s) => s.id),
+    identifiedContradictions: ['Simultaneous incompatible deduction branches in folk model'],
+    selectedBridgingId: scenario.bridgingAnalogies[0]?.id,
+    bridgingExplanation:
+      'Intermediate symmetrical analogy demonstrates that physical connection cannot alter acceleration.',
+    revisedModelHypothesis:
+      'Inertial mass cancels gravitational mass; gravitational acceleration is invariant with respect to falling mass.',
+  }
+
+  const evalResult = evaluateInquirySession(sampleInput)
+
+  console.log(
+    '\n🔭 Model-Based Inquiry Telemetry (Clement 2008, Nersessian 2002, Johnson-Laird 1983)',
+  )
+  console.log('═'.repeat(65))
+  console.log(`Scenario:            ${scenario.title}`)
+  console.log(`MBRI Score:          ${evalResult.compositeIndex}/100 (Model-Based Reasoning Index)`)
+  console.log(`Maturity Tier:       ${evalResult.tier.toUpperCase()}`)
+  console.log(`Extreme Case (ECDI): ${evalResult.extremeCaseScore}/100`)
+  console.log(`Animation (SAF):     ${evalResult.animationFidelityScore}/100`)
+  console.log(`Bridging (BAS):      ${evalResult.bridgingAnalogyScore}/100`)
+  console.log(`Modification (MMS):  ${evalResult.modelModificationScore}/100`)
+  console.log('─'.repeat(65))
+  console.log(`Strengths:           ${evalResult.feedback.strengths.join('; ')}`)
+  if (evalResult.feedback.recommendations.length > 0) {
+    console.log(`Recommendations:     ${evalResult.feedback.recommendations.join('; ')}`)
+  }
 }

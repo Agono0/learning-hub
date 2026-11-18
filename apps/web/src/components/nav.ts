@@ -58,6 +58,7 @@ import {
   Split,
   Swords,
   Target,
+  Telescope,
   Timer,
   Users,
   Zap,
@@ -131,6 +132,7 @@ export const NAV: NavGroup[] = [
       { href: '/contrasting', label: 'Contrasting Cases', icon: GitFork },
       { href: '/collaborative', label: 'Collaborative Scripts', icon: GitMerge },
       { href: '/system-dynamics', label: 'System Dynamics', icon: Activity },
+      { href: '/model-inquiry', label: 'Model Inquiry', icon: Telescope },
     ],
   },
   {

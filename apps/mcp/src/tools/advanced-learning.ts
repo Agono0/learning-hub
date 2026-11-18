@@ -84,6 +84,11 @@ import {
   generateSystemDynamicsFSRSDeck,
   runEulerSimulation,
   type LearnerModelHypothesis,
+  listGedankenScenarios,
+  perturbExtremeCase,
+  simulateMentalAnimation,
+  evaluateInquirySession,
+  generateModelInquiryFsrsDeck,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1851,6 +1856,109 @@ export const advancedLearningTools: RegisteredTool[] = [
         sdi: deck.sdi,
         cardsCount: deck.cards.length,
         cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 17. Model-Based Inquiry & Gedankenexperiment Simulation (Clement 2008, Nersessian 2002) ──
+  tool(
+    'model_inquiry_list_scenarios',
+    'Lists all canonical Gedankenexperiment scenarios, extreme case variables, simulative steps, bridging analogies, and canonical principles.',
+    {},
+    async () => {
+      const scenarios = listGedankenScenarios().map((s) => ({
+        id: s.id,
+        title: s.title,
+        domain: s.domain,
+        historicalOrigin: s.historicalOrigin,
+        targetPhenomenon: s.targetPhenomenon,
+        folkConception: s.folkConception,
+        extremeCasesCount: s.extremeCases.length,
+        simulativeStepsCount: s.simulativeSteps.length,
+        bridgingCount: s.bridgingAnalogies.length,
+        canonicalResolution: s.canonicalResolution.title,
+      }))
+      return json({
+        count: scenarios.length,
+        scenarios,
+      })
+    },
+  ),
+
+  tool(
+    'model_inquiry_perturb_extreme_case',
+    'Simulates pushing an extreme case variable to its asymptotic boundary limit to reveal contradictions.',
+    {
+      scenarioId: z.string().default('galileo_falling_bodies'),
+      extremeCaseId: z.string().default('ec_feather_cannonball'),
+      parameterLimit: z.string().optional(),
+    },
+    async ({ scenarioId, extremeCaseId, parameterLimit }) => {
+      const result = perturbExtremeCase(scenarioId, extremeCaseId, parameterLimit)
+      return json(result)
+    },
+  ),
+
+  tool(
+    'model_inquiry_simulate_mental_run',
+    'Executes a step-by-step kinetic mental animation sequence and reveals contradictory deduction branches.',
+    {
+      scenarioId: z.string().default('galileo_falling_bodies'),
+      stepIds: z
+        .array(z.string())
+        .default([
+          'step_drop_isolated',
+          'step_connect_cord',
+          'step_deduction_drag',
+          'step_deduction_combined_mass',
+          'step_contradiction_crucible',
+        ]),
+    },
+    async ({ scenarioId, stepIds }) => {
+      const result = simulateMentalAnimation(scenarioId, stepIds)
+      return json(result)
+    },
+  ),
+
+  tool(
+    'model_inquiry_evaluate_session',
+    'Evaluates a complete model inquiry session across ECDI, SAF, BAS, MMS, and assigns a cognitive maturity tier.',
+    {
+      session: z.object({
+        scenarioId: z.string().default('galileo_falling_bodies'),
+        initialModelNotes: z.string().optional(),
+        selectedExtremeCaseIds: z.array(z.string()).default([]),
+        extremeCasePredictions: z.record(z.string(), z.string()).default({}),
+        simulativeStepOrder: z.array(z.string()).default([]),
+        identifiedContradictions: z.array(z.string()).default([]),
+        selectedBridgingId: z.string().optional(),
+        bridgingExplanation: z.string().optional(),
+        revisedModelHypothesis: z.string().optional(),
+      }),
+    },
+    async ({ session }) => {
+      const evaluation = evaluateInquirySession(session)
+      const deck = generateModelInquiryFsrsDeck(session.scenarioId, evaluation)
+      return json({
+        evaluation,
+        cardsCount: deck.length,
+        cards: deck,
+      })
+    },
+  ),
+
+  tool(
+    'model_inquiry_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards anchored to thought experiments, limiting cases, and bridging anchors.',
+    {
+      scenarioId: z.string().default('galileo_falling_bodies'),
+    },
+    async ({ scenarioId }) => {
+      const deck = generateModelInquiryFsrsDeck(scenarioId)
+      return json({
+        scenarioId,
+        cardsCount: deck.length,
+        cards: deck,
       })
     },
   ),

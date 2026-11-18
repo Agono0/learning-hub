@@ -53,6 +53,7 @@
 | **T-P2-36** | **P2**   | Contrasting Cases        | **Completed** | Contrasting Cases & Inventing with Examples Studio: Schwartz & Bransford (1998, 2004) "A Time for Telling", Schwartz & Martin (2004) inventing index, CDTS/FDRS/IMI/PFRI, and multi-host parity.             |
 | **T-P2-37** | **P2**   | Collaborative Scripts    | **Completed** | Collaborative Scripts & Transactive Discourse Studio: King (1997, 1999) "ASK to THINK - TEL WHY", Weinberger & Fischer (2006) CSCL scripts, Berkowitz & Gibbs (1983) TDI/EED/SCR/CEI, and multi-host parity. |
 | **T-P2-38** | **P2**   | System Dynamics          | **Completed** | System Dynamics & Feedback Loop Modeling Studio: Forrester (1968), Sterman (2000) Business Dynamics, Meadows (2008) Bathtub Dynamics, SDI/SFDR/FLIA/DAM/ARS, and multi-host parity.                          |
+| **T-P2-39** | **P2**   | Model-Based Inquiry      | **Completed** | Model-Based Inquiry & Gedankenexperiment Studio: Clement (2008), Nersessian (2002) mental simulation, extreme cases, bridging analogies, MBRI/ECDI/SAF/BAS/MMS, and multi-host parity.                       |
 
 ---
 
@@ -687,4 +688,26 @@
      - Phase 4: Systems Archetype, Donella Meadows Leverage Points & FSRS-6 Deck Synthesis
   6. Deliver multi-host parity across MCP (`apps/mcp`), CLI (`apps/cli`), Server (`apps/server`), and Web runtime-neutral API handlers registered in `handlers-registry.ts` and `nav.ts` (`/system-dynamics` under `Learn` with `Activity` icon).
 - **Files Affected:** `packages/core/src/system-dynamics/*`, `apps/web/src/ui/SystemDynamicsHUD.tsx`, `apps/web/src/components/SystemDynamicsStudio.tsx`, `apps/web/app/system-dynamics/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/system-dynamics/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/cli/src/index.ts`, `apps/server/src/routes.ts`, `apps/web/tests/system-dynamics-studio-integration.test.ts`, `packages/core/tests/system-dynamics-engine.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed & Verified**.
+
+### T-P2-39: Model-Based Scientific Inquiry & Gedankenexperiment Simulation Studio (Clement 2008; Nersessian 2002; Johnson-Laird 1983; Chi & Wylie 2014 ICAP)
+
+- **Problem:** Learners consistently rely on naive experiential folk heuristics that conflate perceptual surface features with causal invariants (e.g., assuming heavier objects fall faster, microscopic demons violate thermodynamic entropy for free, or chasing light reveals frozen static waves). Traditional rote textbook instruction provides equations without developing internal simulative mental models ($d < 0.25$).
+- **Root Cause:** Without systematic thought experimentation (Gedankenexperimente), extreme boundary case perturbations ($m \to 0$, $v \to c$, $\mu \to 0$, $T \to 0$), and intermediate bridging analogies, learners cannot expose the internal contradictions embedded within their mental representations.
+- **Proposed Solution:**
+  1. Build `packages/core/src/model-inquiry/model-inquiry-engine.ts` grounded in John Clement's model construction cycles ($M_0 \to EC \to SAF \to BA \to M_{k+1}$), Nancy Nersessian's model-based reasoning, Philip Johnson-Laird's mental simulations, and Chi & Wylie's ICAP interactive engagement. Includes 5 canonical multidisciplinary scenarios:
+     - Galileo's Leaning Tower & Tied Masses: Gravity Independence (Classical Mechanics)
+     - Maxwell's Demon & Information Erasure: Landauer's Principle (Thermodynamics)
+     - Einstein's Light Beam Chasing & Equivalence Principle (Relativity & Modern Physics)
+     - Darwin's Artificial to Natural Selection: Generational Sieve (Evolutionary Biology)
+     - Turing's Halting Oracle & Diagonal Contradiction (Computational Logic)
+  2. Implement quantitative telemetry: Extreme Case Diagnostic Index ($ECDI \in [0, 100]$), Simulative Animation Fidelity ($SAF \in [0, 100]$), Bridging Analogy Score ($BAS \in [0, 100]$), Model Modification Score ($MMS \in [0, 100]$), and Composite Model-Based Reasoning Index ($MBRI \in [0, 100]$) across 4 cognitive maturity tiers (`folk_intuition`, `qualitative_mechanist`, `perturbation_analyst`, `gedanken_theorist`).
+  3. Build `apps/web/src/ui/ModelInquiryHUD.tsx` strictly adhering to UI Signature tokens (zero ghost classes, mode-aware tokens) visualizing MBRI gauge, component dimensions, and Clement's 4-phase cycle.
+  4. Build `apps/web/src/components/ModelInquiryStudio.tsx` implementing a 4-phase interactive macro-script:
+     - Phase 1: Initial Mental Model & Folk Assumption Mapping ($M_0$)
+     - Phase 2: Extreme Case Boundary Perturbation Workbench ($EC$)
+     - Phase 3: Dynamic Mental Animation & Contradiction Crucible ($SAF$)
+     - Phase 4: Bridging Analogy, Canonical Resolution & FSRS-6 Deck Synthesis ($M_{k+1}$)
+  5. Deliver multi-host parity across MCP (`apps/mcp`), CLI (`apps/cli`), Server (`apps/server`), and Web runtime-neutral API handlers registered in `handlers-registry.ts` and `nav.ts` (`/model-inquiry` under `Learn` with `Telescope` icon).
+- **Files Affected:** `packages/core/src/model-inquiry/*`, `apps/web/src/ui/ModelInquiryHUD.tsx`, `apps/web/src/components/ModelInquiryStudio.tsx`, `apps/web/app/model-inquiry/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/model-inquiry/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/cli/src/index.ts`, `apps/server/src/routes.ts`, `apps/web/tests/model-inquiry-studio-integration.test.ts`, `packages/core/tests/model-inquiry-engine.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed & Verified**.
