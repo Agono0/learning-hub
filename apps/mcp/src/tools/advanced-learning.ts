@@ -49,6 +49,11 @@ import {
   getConcepTestSuiteById,
   calculatePIMetrics,
   generatePIFSRSCards,
+  getCanonicalInquiryLabs,
+  getInquiryLabById,
+  runInquiryTrial,
+  calculateInquiryMetrics,
+  generateInquiryFSRSCards,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -826,6 +831,161 @@ export const advancedLearningTools: RegisteredTool[] = [
 
       return json({
         suiteTitle: suite.title,
+        cardsCount: cards.length,
+        initialStabilityDays: cards[0]?.initialStabilityDays,
+        initialDifficulty: cards[0]?.initialDifficulty,
+        cards,
+      })
+    },
+  ),
+
+  // ── 10. Scientific Discovery & Inquiry Simulation (Klahr & Dunbar 1988) ──
+  tool(
+    'inquiry_list_labs',
+    'Lists all canonical scientific discovery inquiry laboratories across mechanics, biochemistry, plant physiology, electrodynamics, and macroeconomics.',
+    {},
+    async () => {
+      const labs = getCanonicalInquiryLabs()
+      return json({
+        count: labs.length,
+        labs: labs.map((l) => ({
+          id: l.id,
+          title: l.title,
+          domain: l.domain,
+          subtitle: l.subtitle,
+          researchQuestion: l.researchQuestion,
+          canonicalInvariantLaw: l.canonicalInvariantLaw,
+          independentVariablesCount: l.independentVariables.length,
+          dependentOutputsCount: l.dependentOutputs.length,
+          anomalousScenariosCount: l.anomalousScenarios.length,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'inquiry_run_trial',
+    'Executes a deterministic laboratory simulation trial given parameter settings, returning observed outputs and VOTAT variable control compliance.',
+    {
+      labId: z.string().default('lab-pendulum-period').describe('Inquiry laboratory identifier.'),
+      trialIndex: z.number().int().nonnegative().default(0),
+      variableSettings: z.record(z.string(), z.number()).default({}),
+      previousSettings: z.record(z.string(), z.number()).optional(),
+    },
+    async ({ labId, trialIndex, variableSettings, previousSettings }) => {
+      const id = labId ?? 'lab-pendulum-period'
+      const lab = getInquiryLabById(id) ?? getCanonicalInquiryLabs()[0]!
+      const trial = runInquiryTrial(lab, trialIndex ?? 0, variableSettings ?? {}, previousSettings)
+      return json({
+        labId: lab.id,
+        labTitle: lab.title,
+        trial,
+      })
+    },
+  ),
+
+  tool(
+    'inquiry_evaluate_sdds',
+    'Computes quantitative scientific discovery metrics: VOTAT Rigor Index (Chen & Klahr 1999), Confirmation Bias Index (Wason 1960), and Chinn & Brewer (1993) Anomalous Data Epistemic Resolution.',
+    {
+      labId: z.string().default('lab-pendulum-period').describe('Inquiry laboratory identifier.'),
+      votatCompliantFraction: z.number().min(0).max(1).default(1.0),
+      anomalousReaction: z
+        .enum([
+          'ignore',
+          'reject',
+          'exclude',
+          'hold_in_abeyance',
+          'reinterpretation',
+          'peripheral_change',
+          'theory_revision',
+        ])
+        .default('theory_revision'),
+      falsificationTrialCount: z.number().int().min(0).default(1),
+      finalHypothesisCapturesInvariant: z.boolean().default(true),
+    },
+    async ({
+      labId,
+      votatCompliantFraction,
+      anomalousReaction,
+      falsificationTrialCount,
+      finalHypothesisCapturesInvariant,
+    }) => {
+      const id = labId ?? 'lab-pendulum-period'
+      const lab = getInquiryLabById(id) ?? getCanonicalInquiryLabs()[0]!
+
+      // Generate representative trial history based on votat fraction
+      const t1 = runInquiryTrial(lab, 0, { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 })
+      const isCompliant = (votatCompliantFraction ?? 1.0) >= 0.5
+      const t2Settings = isCompliant
+        ? { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 } // 1 var changed
+        : { length: 1.5, mass: 0.8, angle: 45, gravity: 9.81 } // 3 vars changed
+      const t2 = runInquiryTrial(lab, 1, t2Settings, t1.variableSettings)
+
+      const metrics = calculateInquiryMetrics({
+        lab,
+        trials: [t1, t2],
+        anomalousSubmissions: [
+          {
+            anomalyId: lab.anomalousScenarios[0]?.id ?? 'anomaly-1',
+            reaction: anomalousReaction ?? 'theory_revision',
+            articulatedExplanation: 'Accommodated invariant schema',
+          },
+        ],
+        falsificationTrialCount: falsificationTrialCount ?? 1,
+        finalHypothesisCapturesInvariant: finalHypothesisCapturesInvariant ?? true,
+      })
+
+      return json({
+        labTitle: lab.title,
+        votatRigorIndex: metrics.votatRigorIndex,
+        confirmationBiasIndex: metrics.confirmationBiasIndex,
+        anomalousDataResolutionIndex: metrics.anomalousDataResolutionIndex,
+        hypothesisEvidenceAlignmentScore: metrics.hypothesisEvidenceAlignmentScore,
+        scientificDiscoveryIndex: metrics.scientificDiscoveryIndex,
+        inquiryMasteryBand: metrics.inquiryMasteryBand,
+        sddsSearchEfficiencyRatio: metrics.sddsSearchEfficiencyRatio,
+        qualitativeDiagnostic: metrics.qualitativeDiagnostic,
+        pedagogicalAdvice: metrics.pedagogicalAdvice,
+      })
+    },
+  ),
+
+  tool(
+    'inquiry_generate_deck',
+    'Generates calibrated FSRS-6 review flashcards for an inquiry lab with stability and difficulty scaled by the Scientific Discovery Index.',
+    {
+      labId: z.string().default('lab-pendulum-period').describe('Inquiry laboratory identifier.'),
+      sdiScore: z.number().min(0).max(100).default(85),
+    },
+    async ({ labId, sdiScore }) => {
+      const id = labId ?? 'lab-pendulum-period'
+      const lab = getInquiryLabById(id) ?? getCanonicalInquiryLabs()[0]!
+      const dummyMetrics = calculateInquiryMetrics({
+        lab,
+        trials: [
+          runInquiryTrial(lab, 0, { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 }),
+          runInquiryTrial(
+            lab,
+            1,
+            { length: 1.5, mass: 0.2, angle: 15, gravity: 9.81 },
+            { length: 1.0, mass: 0.2, angle: 15, gravity: 9.81 },
+          ),
+        ],
+        anomalousSubmissions: [
+          {
+            anomalyId: lab.anomalousScenarios[0]?.id ?? 'anomaly-1',
+            reaction: (sdiScore ?? 85) >= 70 ? 'theory_revision' : 'ignore',
+            articulatedExplanation: 'Calibrated model',
+          },
+        ],
+        falsificationTrialCount: 1,
+        finalHypothesisCapturesInvariant: (sdiScore ?? 85) >= 60,
+      })
+      const cards = generateInquiryFSRSCards(lab, dummyMetrics)
+
+      return json({
+        labTitle: lab.title,
         cardsCount: cards.length,
         initialStabilityDays: cards[0]?.initialStabilityDays,
         initialDifficulty: cards[0]?.initialDifficulty,

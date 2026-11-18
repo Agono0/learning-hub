@@ -82,6 +82,7 @@ export { SpatialCognitionHUD, type SpatialCognitionHUDProps } from './SpatialCog
 export { DynamicAssessmentHUD, type DynamicAssessmentHUDProps } from './DynamicAssessmentHUD'
 export { ProductiveFailureHUD, type ProductiveFailureHUDProps } from './ProductiveFailureHUD'
 export { PeerInstructionHUD, type PeerInstructionHUDProps } from './PeerInstructionHUD'
+export { InquiryHUD, type InquiryHUDProps } from './InquiryHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
