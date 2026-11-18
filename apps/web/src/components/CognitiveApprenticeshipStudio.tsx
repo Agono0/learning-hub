@@ -419,7 +419,9 @@ export function CognitiveApprenticeshipStudio() {
                 >
                   <span className="font-bold">Step {trace.stepNumber}</span>
                   <span className="line-clamp-1">{trace.phase}</span>
-                  {isObserved && <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />}
+                  {isObserved && (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />
+                  )}
                 </button>
               )
             })}

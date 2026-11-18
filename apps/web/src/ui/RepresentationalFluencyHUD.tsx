@@ -185,7 +185,9 @@ export function RepresentationalFluencyHUD({
             <span className="text-xs font-medium text-secondary flex items-center gap-1.5">
               <Layers
                 className={`w-3.5 h-3.5 ${
-                  isCoordinationGapHigh ? 'text-danger-text dark:text-danger-text' : 'text-status-success-text'
+                  isCoordinationGapHigh
+                    ? 'text-danger-text dark:text-danger-text'
+                    : 'text-status-success-text'
                 }`}
               />
               Coordination Gap

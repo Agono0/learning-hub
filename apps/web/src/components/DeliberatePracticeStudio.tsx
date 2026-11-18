@@ -493,7 +493,9 @@ export function DeliberatePracticeStudio() {
                       <span className="font-semibold text-danger-text block pt-1">
                         Failure Trigger:
                       </span>
-                      <p className="text-danger-text leading-relaxed">{checkpoint.failureTrigger}</p>
+                      <p className="text-danger-text leading-relaxed">
+                        {checkpoint.failureTrigger}
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -593,7 +595,9 @@ export function DeliberatePracticeStudio() {
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                <span className="font-semibold text-status-info-text">Attentional Slips (Severity 1):</span>
+                <span className="font-semibold text-status-info-text">
+                  Attentional Slips (Severity 1):
+                </span>
                 <span className="font-bold text-strong">
                   {errorTaxonomy.attentionalSlipCount} errors
                 </span>

@@ -399,8 +399,7 @@ export function OnboardingWizard() {
             {/* Bring-your-own content — works fully offline, no AI setup needed. */}
             <div className="rounded-xl border border-dashed border-neutral-300 p-3 dark:border-(--hub-border)">
               <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-secondary">
-                <FileUp className="h-3.5 w-3.5 text-ac-text" /> Already have content? Bring it
-                in.
+                <FileUp className="h-3.5 w-3.5 text-ac-text" /> Already have content? Bring it in.
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button

@@ -175,9 +175,7 @@ export function SkillsHUD({
       {/* Phase Progression Stepper */}
       {phases.length > 0 && (
         <div className="space-y-1.5 pt-1">
-          <span className="text-[10px] font-semibold uppercase text-tertiary">
-            Phase Continuum
-          </span>
+          <span className="text-[10px] font-semibold uppercase text-tertiary">Phase Continuum</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {phases.map((p, idx) => {
               const isPast = idx < currentPhaseIndex

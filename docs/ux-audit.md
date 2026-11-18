@@ -28,28 +28,28 @@
 
 ### P0-1 · Light mode still fails AA in ~460 spots outside the core pages
 
-The token sprint taught the *semantic* layer AA compliance, but the raw Tailwind
+The token sprint taught the _semantic_ layer AA compliance, but the raw Tailwind
 **status hues** were never aliased, so every unconditioned `text-emerald-500`,
 `text-amber-500`, `text-rose-500`, `text-sky-500`, `text-violet-500`, `text-cyan-500`,
 `text-teal-500`, `text-purple-500` — and `text-indigo-500` (aliased to `--ac-mid`,
 which is a fill step, not a text step) — still resolves to a color that fails 4.5:1
 on white. Measured against the calm palette, light mode:
 
-| Utility (unconditioned uses) | Resolves to | On white | Verdict |
-| --- | --- | --- | --- |
-| `text-amber-500` (63) | #f59e0b | ≈2.2:1 | fail |
-| `text-emerald-500` (53) | #10b981 | ≈2.5:1 | fail |
-| `text-indigo-500` (88) | `--ac-mid` #6d8f79 | ≈3.2:1 | fail (normal text) |
-| `text-rose-500` (23) | #f43f5e | ≈3.3:1 | fail |
-| `text-sky/violet/purple/teal/cyan-500` (43) | raw steps | 2.4–3.4:1 | fail |
-| `text-{emerald,amber,rose,sky,…}-300/400` (~130) | raw steps | 1.5–2.8:1 | fail |
-| `text-neutral-400/500`, `text-slate-400/500` (58) | `--n-400/500` | 1.5–1.8:1 | fail |
+| Utility (unconditioned uses)                      | Resolves to        | On white  | Verdict            |
+| ------------------------------------------------- | ------------------ | --------- | ------------------ |
+| `text-amber-500` (63)                             | #f59e0b            | ≈2.2:1    | fail               |
+| `text-emerald-500` (53)                           | #10b981            | ≈2.5:1    | fail               |
+| `text-indigo-500` (88)                            | `--ac-mid` #6d8f79 | ≈3.2:1    | fail (normal text) |
+| `text-rose-500` (23)                              | #f43f5e            | ≈3.3:1    | fail               |
+| `text-sky/violet/purple/teal/cyan-500` (43)       | raw steps          | 2.4–3.4:1 | fail               |
+| `text-{emerald,amber,rose,sky,…}-300/400` (~130)  | raw steps          | 1.5–2.8:1 | fail               |
+| `text-neutral-400/500`, `text-slate-400/500` (58) | `--n-400/500`      | 1.5–1.8:1 | fail               |
 
 Dark mode passes for the same utilities (raw 300–500 steps were designed for dark
 surfaces), which is why the default-dark app hides the bug. The fix is the same
 mechanical alias the first pass used for indigo: map the text-critical steps of each
 status hue onto the mode-aware `--status-*`/`--danger-*` tokens in `@theme`, and move
-neutral/slate/indigo-500 *text* usages to the `--text-*` tokens.
+neutral/slate/indigo-500 _text_ usages to the `--text-*` tokens.
 
 ### P0-2 · No focus-visible standard
 
@@ -128,16 +128,16 @@ stat tiles jump. All tokens/utilities needed are already defined — this is ado
 
 ## Fix plan (this branch)
 
-| # | Fix | Severity |
-| --- | --- | --- |
-| 1 | Alias status-hue text steps to mode-aware tokens + migrate neutral/slate/indigo-500 text usages; extend the contrast lock test | P0-1 |
-| 2 | Global `focus-visible` ring rule in `globals.css` | P0-2 |
-| 3 | `IconButton` kit component; 44px sweep on shell/bell/confidence/reorder + always-visible reorder affordance | P1-4 |
-| 4 | Decks header: one primary action + tools menu (new `Menu` kit primitive); kills the 360px overflow | P1-1, P1-3 |
-| 5 | Nav IA: split "Practice studios" out of Learn (collapsed by default) | P1-2 |
-| 6 | Skeleton loading states for the blank-screen pages | P1-5 |
-| 7 | Motion pass: toast enter/exit + 44px dismiss, Tabs sliding indicator, card-reveal fade-rise, Sheet desktop scale-in + focus trap | P1-7, P2-1 |
-| 8 | e-ink status/danger tokens to black; danger hover token fix | P2-2 |
+| #   | Fix                                                                                                                              | Severity   |
+| --- | -------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Alias status-hue text steps to mode-aware tokens + migrate neutral/slate/indigo-500 text usages; extend the contrast lock test   | P0-1       |
+| 2   | Global `focus-visible` ring rule in `globals.css`                                                                                | P0-2       |
+| 3   | `IconButton` kit component; 44px sweep on shell/bell/confidence/reorder + always-visible reorder affordance                      | P1-4       |
+| 4   | Decks header: one primary action + tools menu (new `Menu` kit primitive); kills the 360px overflow                               | P1-1, P1-3 |
+| 5   | Nav IA: split "Practice studios" out of Learn (collapsed by default)                                                             | P1-2       |
+| 6   | Skeleton loading states for the blank-screen pages                                                                               | P1-5       |
+| 7   | Motion pass: toast enter/exit + 44px dismiss, Tabs sliding indicator, card-reveal fade-rise, Sheet desktop scale-in + focus trap | P1-7, P2-1 |
+| 8   | e-ink status/danger tokens to black; danger hover token fix                                                                      | P2-2       |
 
 Deferred (need cross-agent coordination or product decisions): merging duplicate
 destinations (`/tutor` vs `/voice-tutor`, `/palace` vs `/palace-3d`, `/courses/exam`

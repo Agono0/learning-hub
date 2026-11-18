@@ -250,7 +250,9 @@ export function DynamicAssessmentStudio() {
                   1
                 </span>
                 <span>Pre-Test (ADL Baseline)</span>
-                {preTestSubmitted && <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-status-success-text" />}
+                {preTestSubmitted && (
+                  <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-status-success-text" />
+                )}
               </button>
 
               <ChevronRight className="w-4 h-4 text-tertiary shrink-0" />

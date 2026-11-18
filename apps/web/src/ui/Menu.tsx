@@ -32,7 +32,14 @@ export interface MenuProps {
  * outside click and item selection all close it and return focus to the
  * trigger; ArrowUp/Down move between items.
  */
-export function Menu({ label, items, children, className, variant = 'ghost', disabled }: MenuProps) {
+export function Menu({
+  label,
+  items,
+  children,
+  className,
+  variant = 'ghost',
+  disabled,
+}: MenuProps) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement | null>(null)
   const trigger = useRef<HTMLButtonElement | null>(null)
@@ -74,7 +81,10 @@ export function Menu({ label, items, children, className, variant = 'ghost', dis
         )}
       >
         {children}
-        <ChevronDown className={cx('h-3.5 w-3.5 opacity-60 transition-transform', open && 'rotate-180')} aria-hidden />
+        <ChevronDown
+          className={cx('h-3.5 w-3.5 opacity-60 transition-transform', open && 'rotate-180')}
+          aria-hidden
+        />
       </button>
       {open && (
         <div

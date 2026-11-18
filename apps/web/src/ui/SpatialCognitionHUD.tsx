@@ -196,7 +196,8 @@ export function SpatialCognitionHUD({
               </span>
             ) : (
               <span className="text-secondary flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 text-status-warning-text" /> Piecemeal latency overhead (+
+                <AlertCircle className="w-3.5 h-3.5 text-status-warning-text" /> Piecemeal latency
+                overhead (+
                 {measuredReactionTimeMs - expectedReactionTimeMs} ms)
               </span>
             )}
