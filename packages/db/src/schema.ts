@@ -1782,3 +1782,37 @@ export const exposureEvents = table(
     index('exposure_events_created_idx').on(t.createdAt),
   ],
 )
+
+/**
+ * Append-only ledger of completed Prototype & Exemplar categorization
+ * sessions (one row per finished evaluate round-trip). A session is a
+ * COMPLETED event — there is no resume and no update path: "start new" is the
+ * only forward action, so the history feed stays an honest record of what the
+ * learner actually did (AGENTS.md rule 8, like `revlog`/`xp_events`).
+ *
+ * - `trials_json`: the raw submission (typicality ratings + classifications).
+ * - `metrics_json`: the engine's evaluation telemetry (TSC/CTS/MCD/CRI, model
+ *   comparison, maturity band) — re-readable without re-running the fit.
+ * - `accuracy`: overall classification accuracy (0-100), hoisted as a real
+ *   column so day-bucket stats need no JSON parsing.
+ */
+export const prototypeExemplarSessions = table(
+  'prototype_exemplar_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** Canonical category set id (e.g. 'proto-bird-typicality'). */
+    setId: text('set_id').notNull(),
+    /** Lifecycle phase — always 'complete' today; future phases extend, never mutate. */
+    phase: text('phase').notNull().default('complete'),
+    /** The submitted ratings/classifications, JSON-encoded. */
+    trialsJson: text('trials_json').notNull().default('[]'),
+    /** The evaluation telemetry (CategorizationEvaluation), JSON-encoded. */
+    metricsJson: text('metrics_json').notNull().default('{}'),
+    /** Overall classification accuracy 0-100 (denormalized from metrics). */
+    accuracy: real('accuracy').notNull().default(0),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('prototype_exemplar_sessions_created_idx').on(t.createdAt)],
+)
