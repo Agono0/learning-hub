@@ -86,12 +86,17 @@ const SPECS: KindSpec[] = [
   },
   {
     kind: 'card',
+    // Title coalesce mirrors the migration-003 FTS corpus (front → cloze →
+    // mcq → typein → grammar) so a hit on an answer/question surfaces the text
+    // that matched instead of a bare fallback.
     fts: 'fts_cards',
     like: (like) =>
-      sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'), coalesce(json_extract(content, '$.mcq.question'), coalesce(json_extract(content, '$.cloze.text'), '?'))), 1, 80) AS title FROM cards WHERE content LIKE ${like} OR coalesce(tags, '') LIKE ${like}`,
+      sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'), coalesce(json_extract(content, '$.cloze.text'), coalesce(json_extract(content, '$.mcq.question'), coalesce(json_extract(content, '$.typein.question'), coalesce(json_extract(content, '$.grammar.sentence'), 'Card'))))), 1, 80) AS title FROM cards WHERE content LIKE ${like} OR coalesce(tags, '') LIKE ${like}`,
     title: sql`SELECT id, substr(coalesce(json_extract(content, '$.basic.front'),
+          coalesce(json_extract(content, '$.cloze.text'),
           coalesce(json_extract(content, '$.mcq.question'),
-          coalesce(json_extract(content, '$.cloze.text'), 'card'))), 1, 80) AS title FROM cards`,
+          coalesce(json_extract(content, '$.typein.question'),
+          coalesce(json_extract(content, '$.grammar.sentence'), 'Card'))))), 1, 80) AS title FROM cards`,
     href: () => '/decks',
   },
   {
