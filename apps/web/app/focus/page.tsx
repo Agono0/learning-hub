@@ -31,7 +31,7 @@ import {
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
-import { PageHeader, useToast } from '@/ui'
+import { Button, PageHeader, SelectField, Toggle, useToast } from '@/ui'
 import { SoundscapeBar } from '@/components/SoundscapeBar'
 import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
@@ -162,13 +162,14 @@ function DistractionAppsPanel() {
           }}
           aria-label="Add a distraction app or domain"
         />
-        <button
-          className="btn text-xs"
+        <Button
+          variant="primary"
+          className="text-xs"
           disabled={newName.trim().length < 2 || add.isPending}
           onClick={() => add.mutate(newName.trim())}
         >
           <Plus className="h-3.5 w-3.5" /> Add
-        </button>
+        </Button>
       </div>
       {rows.length === 0 ? (
         <p className="text-xs text-tertiary">Nothing logged yet.</p>
@@ -182,13 +183,14 @@ function DistractionAppsPanel() {
                   {r.kind}
                 </span>
               </span>
-              <button
-                className="btn-ghost px-2 py-1 text-tertiary hover:text-danger-text"
+              <Button
+                variant="ghost"
+                className="px-2 py-1 text-tertiary hover:text-danger-text"
                 title={`Remove ${r.name}`}
                 onClick={() => remove.mutate(r.id)}
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -633,17 +635,13 @@ export default function FocusPage() {
             <div className="panel space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 {POMODORO_PRESETS.map((p) => (
-                  <button
+                  <Button
                     key={p.id}
-                    className={`btn-ghost border ${
-                      minutes === p.focus
-                        ? 'border-indigo-500 text-indigo-400'
-                        : 'border-neutral-200 dark:border-(--hub-border)'
-                    }`}
+                    variant={minutes === p.focus ? 'secondary' : 'ghost'}
                     onClick={() => setMinutes(p.focus)}
                   >
                     {p.label} {p.focus}/{p.breakMinutes}
-                  </button>
+                  </Button>
                 ))}
                 <label className="ml-auto flex items-center gap-2 text-sm text-tertiary">
                   custom
@@ -672,35 +670,27 @@ export default function FocusPage() {
                 <p className="text-sm font-medium text-status-success-text" aria-live="polite">
                   {finishLine}
                 </p>
-                <button
-                  className="btn"
+                <Button
+                  variant="primary"
                   onClick={() => startSession.mutate()}
                   disabled={startSession.isPending}
                 >
                   <Timer className="h-4 w-4" /> Start session
-                </button>
+                </Button>
               </div>
 
               <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <p className="label mb-2 flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" /> Pre-session phone protocol
                 </p>
-                <div className="grid gap-1.5 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {phoneProtocolChecklist.map((item) => (
-                    <label
+                    <Toggle
                       key={item.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-neutral-600 dark:text-secondary"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={protocol[item.id] === true}
-                        onChange={(e) =>
-                          setProtocol((p) => ({ ...p, [item.id]: e.target.checked }))
-                        }
-                        className="h-4 w-4 accent-indigo-500"
-                      />
-                      {item.label}
-                    </label>
+                      label={item.label}
+                      checked={protocol[item.id] === true}
+                      onChange={(checked) => setProtocol((p) => ({ ...p, [item.id]: checked }))}
+                    />
                   ))}
                 </div>
               </div>
@@ -712,17 +702,17 @@ export default function FocusPage() {
               <div className="flex items-center justify-between">
                 <p className="label">{session?.task ?? 'Focus session'}</p>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="btn-ghost border border-emerald-500/30 text-status-success-text text-xs py-1 px-2.5 flex items-center"
+                  <Button
+                    variant="ghost"
+                    className="border border-emerald-500/30 text-status-success-text text-xs py-1 px-2.5 flex items-center"
                     onClick={() => setShow3DMode(!show3DMode)}
                   >
                     <TreePine className="h-3.5 w-3.5 mr-1" />
                     {show3DMode ? '2D Calm' : '3D Forest'}
-                  </button>
+                  </Button>
                   <Link
                     href="/world"
-                    className="btn-ghost border border-neutral-200 dark:border-(--hub-border) text-faint text-xs py-1 px-2.5"
+                    className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-faint transition-colors hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
                   >
                     3D Sanctuary →
                   </Link>
@@ -757,18 +747,20 @@ export default function FocusPage() {
               </div>
 
               <div className="flex items-center justify-center gap-2">
-                <button
-                  className="btn-ghost border border-neutral-200 dark:border-(--hub-border)"
+                <Button
+                  variant="ghost"
+                  className="border border-neutral-200 dark:border-(--hub-border)"
                   onClick={() => armGate('break_focus')}
                 >
                   End early → friction gate
-                </button>
-                <button
-                  className="btn-ghost border border-amber-500/40 text-status-warning-text"
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="border border-amber-500/40 text-status-warning-text"
                   onClick={() => armGate('relapse')}
                 >
                   Log relapse → friction gate
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -810,16 +802,20 @@ export default function FocusPage() {
                     autoFocus
                   />
                   <div className="flex items-center justify-center gap-3">
-                    <button
-                      className="btn"
+                    <Button
+                      variant="primary"
                       disabled={reflectionText.trim() === ''}
                       onClick={() => void finishGate(true)}
                     >
                       <CheckCircle2 className="h-4 w-4" /> I will do that instead — proceed
-                    </button>
-                    <button className="btn-ghost text-faint" onClick={() => void finishGate(false)}>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-faint"
+                      onClick={() => void finishGate(false)}
+                    >
                       <XCircle className="h-4 w-4" /> Abort the session
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-xs text-neutral-600">
                     Proceeding requires a written reflection — that is the whole point.
@@ -896,14 +892,14 @@ export default function FocusPage() {
               {/* Early Exit Gate State Machine */}
               {activeLock.exitState === 'locked' && (
                 <div className="pt-2">
-                  <button
-                    type="button"
-                    className="btn-ghost border border-rose-500/30 text-danger-text hover:bg-rose-950/20 text-xs"
+                  <Button
+                    variant="ghost"
+                    className="border border-rose-500/30 text-danger-text hover:bg-rose-950/20 text-xs"
                     onClick={() => requestEarlyExitMutation.mutate()}
                     disabled={requestEarlyExitMutation.isPending}
                   >
                     Request Early Exit (Initiates 60s reflection delay)
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -925,13 +921,13 @@ export default function FocusPage() {
                       }}
                     />
                   </div>
-                  <button
-                    type="button"
-                    className="btn w-full text-xs font-semibold"
+                  <Button
+                    variant="primary"
+                    className="w-full text-xs font-semibold"
                     onClick={() => cancelEarlyExitMutation.mutate()}
                   >
                     Resist Impulse & Return to Flow
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -962,13 +958,13 @@ export default function FocusPage() {
                     >
                       Confirm Early Exit
                     </button>
-                    <button
-                      type="button"
-                      className="btn-ghost text-xs"
+                    <Button
+                      variant="ghost"
+                      className="text-xs"
                       onClick={() => cancelEarlyExitMutation.mutate()}
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -1025,23 +1021,20 @@ export default function FocusPage() {
                 </div>
 
                 {/* Allowlist Preset Picker */}
-                <div>
-                  <label className="label mb-1.5 block">Allowlist Preset</label>
-                  <select
-                    className="input text-xs"
-                    value={selectedPresetId ?? ''}
-                    onChange={(e) =>
-                      setSelectedPresetId(e.target.value ? Number(e.target.value) : undefined)
-                    }
-                  >
-                    {allowlists.data?.allowlists.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.domains.length} domains, {p.apps.length} apps)
-                        {p.isDefault ? ' — Default' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SelectField
+                  label="Allowlist preset"
+                  value={selectedPresetId ?? ''}
+                  onChange={(e) =>
+                    setSelectedPresetId(e.target.value ? Number(e.target.value) : undefined)
+                  }
+                >
+                  {allowlists.data?.allowlists.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.domains.length} domains, {p.apps.length} apps)
+                      {p.isDefault ? ' — Default' : ''}
+                    </option>
+                  ))}
+                </SelectField>
 
                 {/* Extra Domains */}
                 <div>
@@ -1054,9 +1047,9 @@ export default function FocusPage() {
                       onChange={(e) => setNewDomain(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDomain())}
                     />
-                    <button type="button" className="btn-ghost text-xs" onClick={addDomain}>
+                    <Button variant="ghost" className="text-xs" onClick={addDomain}>
                       <Plus className="h-3.5 w-3.5" /> Add
-                    </button>
+                    </Button>
                   </div>
                   {extraDomains.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1091,9 +1084,9 @@ export default function FocusPage() {
                       onChange={(e) => setNewApp(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addApp())}
                     />
-                    <button type="button" className="btn-ghost text-xs" onClick={addApp}>
+                    <Button variant="ghost" className="text-xs" onClick={addApp}>
                       <Plus className="h-3.5 w-3.5" /> Add
-                    </button>
+                    </Button>
                   </div>
                   {extraApps.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1116,15 +1109,15 @@ export default function FocusPage() {
                 </div>
 
                 {/* Start Button */}
-                <button
-                  type="button"
-                  className="btn w-full py-2.5 text-sm font-bold shadow-lg"
+                <Button
+                  variant="primary"
+                  className="w-full py-2.5 text-sm font-bold shadow-lg"
                   disabled={startMaxSessionMutation.isPending}
                   onClick={() => startMaxSessionMutation.mutate()}
                 >
                   <Shield className="h-4 w-4 mr-1.5" />
                   Engage Max Focus ({maxMinutes} min)
-                </button>
+                </Button>
               </div>
 
               {/* Companion Chrome Extension Bridge Card */}
@@ -1157,10 +1150,10 @@ export default function FocusPage() {
                     className="input text-xs font-mono"
                     value={bridge.data?.pairingToken ?? 'Loading token…'}
                   />
-                  <button type="button" className="btn-ghost shrink-0 text-xs" onClick={copyToken}>
+                  <Button variant="ghost" className="shrink-0 text-xs" onClick={copyToken}>
                     <Copy className="h-3.5 w-3.5 mr-1" />
                     {copiedToken ? 'Copied' : 'Copy'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1237,9 +1230,13 @@ export default function FocusPage() {
                   {done ? (
                     <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                   ) : (
-                    <button className="btn-ghost text-xs" onClick={() => detoxStep.mutate(s.id)}>
+                    <Button
+                      variant="ghost"
+                      className="text-xs"
+                      onClick={() => detoxStep.mutate(s.id)}
+                    >
                       Mark done
-                    </button>
+                    </Button>
                   )}
                 </li>
               )
