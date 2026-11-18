@@ -86,9 +86,7 @@ export interface RevlogTrialRow {
  * main engine's gamma/Murphy functions can consume real review telemetry.
  * (Confidence mapping: confident → 0.9, uncertain → 0.35 — same as parity.)
  */
-export function toTrialMetacognitiveRecords(
-  rows: RevlogTrialRow[],
-): TrialMetacognitiveRecord[] {
+export function toTrialMetacognitiveRecords(rows: RevlogTrialRow[]): TrialMetacognitiveRecord[] {
   return rows.map((r) => {
     const confidence = confidenceToForecast(r.confidence)
     const isCorrect = r.rating >= 3

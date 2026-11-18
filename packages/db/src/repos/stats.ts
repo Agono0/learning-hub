@@ -97,7 +97,9 @@ export function getTrueRetention(options: StatsQueryOptions = {}): TrueRetention
 }
 
 /** The 30-day due forecast (`forecastNext30Days` over unsuspended card due dates). */
-export function getDueForecast(options: StatsQueryOptions = {}): ReturnType<typeof forecastNext30Days> {
+export function getDueForecast(
+  options: StatsQueryOptions = {},
+): ReturnType<typeof forecastNext30Days> {
   const db = options.database ?? getDb()
   const dueRows = db
     .select({ due: cards.due, suspended: cards.suspended })
@@ -108,9 +110,7 @@ export function getDueForecast(options: StatsQueryOptions = {}): ReturnType<type
 }
 
 /** The single streak row, or null before the first review. */
-export function getStreakRow(options: StatsQueryOptions = {}):
-  | typeof streaks.$inferSelect
-  | null {
+export function getStreakRow(options: StatsQueryOptions = {}): typeof streaks.$inferSelect | null {
   const db = options.database ?? getDb()
   return db.select().from(streaks).limit(1).all()[0] ?? null
 }

@@ -139,7 +139,11 @@ function findCycle(edges: Map<string, Set<string>>): string[] | null {
         // Reconstruct the cycle path via the parent chain back to `next`.
         const cycle = [next, node]
         let cur = node
-        while (parent.get(cur) !== null && parent.get(cur) !== undefined && parent.get(cur) !== next) {
+        while (
+          parent.get(cur) !== null &&
+          parent.get(cur) !== undefined &&
+          parent.get(cur) !== next
+        ) {
           cur = parent.get(cur)!
           cycle.unshift(cur)
         }
@@ -181,9 +185,9 @@ describe('Core architecture guard', () => {
     const forbidden = [/^@learning-hub\//, /^ai$/, /^ai\//, /^@ai-sdk\//]
     const violations: string[] = []
     for (const f of walkFiles(srcDir)) {
-      const specs = [...readFileSync(f, 'utf8').matchAll(/(?:from|import)\s*['"]([^'"]+)['"]/g)].map(
-        (m) => m[1]!,
-      )
+      const specs = [
+        ...readFileSync(f, 'utf8').matchAll(/(?:from|import)\s*['"]([^'"]+)['"]/g),
+      ].map((m) => m[1]!)
       for (const spec of specs) {
         if (forbidden.some((re) => re.test(spec))) {
           violations.push(`${relative(srcDir, f)}: ${spec}`)
