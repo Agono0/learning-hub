@@ -32,6 +32,7 @@ import { useAiStatus } from '@/components/TransportPanel'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import { Badge, Button, Markdown, PageHeader, Sheet, Slider, Tabs } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface Source {
   id: number
@@ -447,7 +448,7 @@ export default function ReadingPage() {
       ),
     onSuccess: (res) => {
       invalidate()
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       setFeedback({
         kind: 'ok',
         text:

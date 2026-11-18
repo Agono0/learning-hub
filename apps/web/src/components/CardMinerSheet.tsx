@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Pickaxe, Sparkles } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Sheet } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface Draft {
   sentence: string
@@ -45,7 +46,7 @@ export function CardMinerSheet({
   }, [open, initialText])
 
   const { data: decksData } = useQuery<{ decks: DeckInfo[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
     enabled: open,
   })
@@ -74,7 +75,7 @@ export function CardMinerSheet({
       return saved
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       void qc.invalidateQueries({ queryKey: ['cards'] })
       onClose()
     },

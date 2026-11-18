@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiGet } from '@/lib/transport'
 import { setHapticsEnabled } from '@/platform/haptics'
+import { queryKeys } from '@/lib/query-keys'
 
 export type ThemePreference = 'dark' | 'light' | 'system' | 'e-ink'
 
@@ -102,7 +103,7 @@ export function setPalette(palette: PaletteId): void {
  */
 export function ThemeSync() {
   const { data } = useQuery<{ settings?: { theme?: string; hapticsEnabled?: boolean } }>({
-    queryKey: ['settings'],
+    queryKey: queryKeys.settings,
     queryFn: () => apiGet('/api/settings'),
     staleTime: 30_000,
   })

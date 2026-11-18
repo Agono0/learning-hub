@@ -38,6 +38,7 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { OnlineSocket } from '@/lib/online-socket'
 import { Badge, Button, PageHeader, Panel, ProgressBar, SelectField, Tabs, TextField } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 type OnlineTab = 'rooms' | 'raids' | 'guilds' | 'library' | 'buddies'
 
@@ -693,7 +694,7 @@ function CommunityLibrarySection() {
     onSuccess: (_data, item) => {
       setImportedId(item.id)
       setTimeout(() => setImportedId(null), 3000)
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       void qc.invalidateQueries({ queryKey: ['curriculum-courses'] })
     },
   })

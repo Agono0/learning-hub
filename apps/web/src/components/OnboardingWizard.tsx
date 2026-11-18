@@ -18,6 +18,7 @@ import {
 import { applyThemePreference, normalizeThemePreference, type ThemePreference } from './ThemeSync'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Sheet, useToast } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 const DISMISSED_KEY = 'lh-onboarding-dismissed'
 
@@ -82,7 +83,7 @@ export function OnboardingWizard() {
   }, [])
 
   const { data } = useQuery<{ settings: OnboardingSettings }>({
-    queryKey: ['settings'],
+    queryKey: queryKeys.settings,
     queryFn: () => apiGet('/api/settings'),
     staleTime: 30_000,
   })
@@ -123,7 +124,7 @@ export function OnboardingWizard() {
       return res
     },
     onSuccess: (res) => {
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       toast({
         title: `Imported ${res.imported ?? 0} card${(res.imported ?? 0) === 1 ? '' : 's'}`,
         description: res.rejectedCards
@@ -173,7 +174,7 @@ export function OnboardingWizard() {
       markDismissedLocally()
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['settings'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.settings })
     },
   })
 
@@ -193,10 +194,10 @@ export function OnboardingWizard() {
     },
     onSuccess: () => {
       markDismissedLocally()
-      void qc.invalidateQueries({ queryKey: ['settings'] })
-      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.settings })
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
       void qc.invalidateQueries({ queryKey: ['courses'] })
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       void qc.invalidateQueries({ queryKey: ['starter-catalog'] })
       toast({
         title: 'Workspace ready!',

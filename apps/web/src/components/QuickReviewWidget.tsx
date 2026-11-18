@@ -12,6 +12,7 @@ import { useState } from 'react'
 import type { Grade } from '@learning-hub/core/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { cx } from '@/ui/cx'
+import { queryKeys } from '@/lib/query-keys'
 
 export interface QuickReviewWidgetProps {
   className?: string
@@ -78,7 +79,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
       setRevealed(false)
       setIdx((i) => i + 1)
       void qc.invalidateQueries({ queryKey: ['hud-quick-review'] })
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
     },
   })
 

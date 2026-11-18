@@ -16,6 +16,7 @@ import {
 import { isFreshStartMoment } from '@learning-hub/core/src/motivation'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface StreakResponse {
   streak: {
@@ -110,7 +111,7 @@ export default function MotivationPage() {
     queryFn: () => apiGet<StreakResponse>('/api/streaks'),
   })
   const quests = useQuery({
-    queryKey: ['quests'],
+    queryKey: queryKeys.quests,
     queryFn: () => apiGet<QuestResponse>(`/api/quests?tzOffset=${tz}`),
   })
   const goals = useQuery({
@@ -130,7 +131,7 @@ export default function MotivationPage() {
     mutationFn: () => apiSend('/api/streaks', 'POST'),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['streaks'] })
-      void qc.invalidateQueries({ queryKey: ['quests'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.quests })
     },
   })
 
@@ -138,7 +139,7 @@ export default function MotivationPage() {
     mutationFn: (index: number) =>
       apiSend('/api/quests', 'POST', { index, tzOffset: new Date().getTimezoneOffset() }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['quests'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.quests })
       void qc.invalidateQueries({ queryKey: ['streaks'] })
     },
   })

@@ -13,6 +13,7 @@ import { parseMarkdownOutline, type MindmapData, type MindmapNode } from '@learn
 import { apiGet, apiSend } from '@/lib/transport'
 import { InteractiveMindmapStudio } from '@/components/InteractiveMindmapStudio'
 import { Button, Callout, PageHeader, Panel, Skeleton } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 interface MindmapRow {
   id: number
@@ -65,7 +66,7 @@ export default function MindmapPage() {
 
   // Fetch decks for export target
   const { data: decksData } = useQuery<{ decks: DeckRow[] }>({
-    queryKey: ['decks'],
+    queryKey: queryKeys.decks,
     queryFn: () => apiGet('/api/decks'),
   })
 
@@ -159,7 +160,7 @@ export default function MindmapPage() {
       )
     },
     onSuccess: (res) => {
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       const skipped = res.skippedCount
         ? ` (${res.skippedCount} already in this deck were kept as-is)`
         : ''

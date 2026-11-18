@@ -14,6 +14,7 @@ import type { SupertagKey } from '@learning-hub/core/notes'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader, RelatedPanel } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
+import { queryKeys } from '@/lib/query-keys'
 
 interface Note {
   id: number
@@ -41,7 +42,7 @@ interface Backlink {
 export default function NotesPage() {
   const qc = useQueryClient()
   const { data: list } = useQuery<{ notes: Note[] }>({
-    queryKey: ['notes'],
+    queryKey: queryKeys.notes,
     queryFn: () => apiGet<{ notes: Note[] }>('/api/notes'),
   })
   const [activeId, setActiveId] = useState<number | null>(null)
@@ -72,7 +73,7 @@ export default function NotesPage() {
   const createNote = useMutation({
     mutationFn: () => apiSend<{ note: Note }>('/api/notes', 'POST', { title: 'Untitled note' }),
     onSuccess: (r) => {
-      void qc.invalidateQueries({ queryKey: ['notes'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.notes })
       setActiveId(r.note.id)
     },
   })
@@ -86,7 +87,7 @@ export default function NotesPage() {
         fields,
       }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['notes'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.notes })
       void qc.invalidateQueries({ queryKey: ['note', activeId] })
     },
   })
@@ -95,7 +96,7 @@ export default function NotesPage() {
     mutationFn: (id: number) => apiSend(`/api/notes/${id}`, 'DELETE'),
     onSuccess: () => {
       setActiveId(null)
-      void qc.invalidateQueries({ queryKey: ['notes'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.notes })
     },
   })
 

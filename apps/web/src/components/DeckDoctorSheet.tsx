@@ -19,6 +19,7 @@ import type { DeckDiagnosis, DoctorAction } from '@learning-hub/core/doctor'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Sheet } from '@/ui'
 import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
+import { queryKeys } from '@/lib/query-keys'
 
 export interface DeckDoctorSheetProps {
   deckId: number | null
@@ -61,7 +62,7 @@ export function DeckDoctorSheet({
       setConfirmDeleteId(null)
       void qc.invalidateQueries({ queryKey: ['deck-doctor', deckId] })
       void qc.invalidateQueries({ queryKey: ['cards'] })
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       onApplied?.()
     },
   })

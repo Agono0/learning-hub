@@ -40,6 +40,7 @@ import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
 import { DetoxWizard } from '@/components/DetoxWizard'
+import { queryKeys } from '@/lib/query-keys'
 
 /** One-line live summary of device permission status (linked center holds the detail). */
 function PermissionSummaryLine() {
@@ -167,7 +168,7 @@ interface FsrsStatusResponse {
 export default function SettingsPage() {
   const qc = useQueryClient()
   const { data } = useQuery<{ settings: SettingsRow }>({
-    queryKey: ['settings'],
+    queryKey: queryKeys.settings,
     queryFn: () => apiGet<{ settings: SettingsRow }>('/api/settings'),
   })
   const fsrsQuery = useQuery<FsrsStatusResponse>({
@@ -241,9 +242,9 @@ export default function SettingsPage() {
         }
       }>('/api/fsrs/optimize', 'POST', payload),
     onSuccess: (res) => {
-      void qc.invalidateQueries({ queryKey: ['settings'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.settings })
       void qc.invalidateQueries({ queryKey: ['fsrs-status'] })
-      void qc.invalidateQueries({ queryKey: ['decks'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.decks })
       if (res.mode === 'reset') {
         setFsrsMessage({
           ok: true,
@@ -300,7 +301,7 @@ export default function SettingsPage() {
     onSuccess: () => {
       setApiKey('')
       setHeaders('')
-      void qc.invalidateQueries({ queryKey: ['settings'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.settings })
       void qc.invalidateQueries({ queryKey: ['ai-status'] })
     },
   })
