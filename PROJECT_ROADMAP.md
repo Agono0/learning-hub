@@ -41,7 +41,8 @@
 | **T-P2-24** | **P2**   | Dual-Process Diagnostic  | **Completed** | Dual-Process Diagnostic & Cognitive Forcing Studio: Kahneman System 1/2 dynamics, Croskerry cognitive forcing functions, and Stanovich mind architecture (PR #50).                          |
 | **T-P2-25** | **P2**   | Multi-Representational   | **Completed** | Multi-Representational Fluency & Translation Studio: Ainsworth DeFT framework, Lesh 5-mode translation model, and Goldstone concreteness fading (PR #51).                                   |
 | **T-P2-26** | **P2**   | Epistemic Network        | **Completed** | Epistemic Network Analysis & Knowledge Building Studio: Shaffer ENA moving window network, 2D centroid projection, and Scardamalia Rise Above (PR #52).                                     |
-| **T-P2-27** | **P2**   | Conceptual Change        | **Completed** | Conceptual Change & Ontological Category Shift Studio: Chi 6 process attributes, Vosniadou synthetic model risk, and Posner accommodation engine.                                           |
+| **T-P2-27** | **P2**   | Conceptual Change        | **Completed** | Conceptual Change & Ontological Category Shift Studio: Chi 6 process attributes, Vosniadou synthetic model risk, and Posner accommodation engine (PR #55).                                  |
+| **T-P2-28** | **P2**   | Spatial Cognition        | **Completed** | Spatial Cognition & Mental Rotation Model-Checking Studio: Shepard-Metzler linear RT disparity model, Hegarty kinematic gear simulation, and STEM spatial lab.                              |
 
 ---
 
@@ -491,4 +492,18 @@
   3. Implement `OntologicalShiftStudio.tsx` with attribute diagnostic crucible, ontological tree category re-mapping, Posner refutation anomaly inspector, decentralized emergence micro-simulation, and FSRS-6 contrast flashcards.
   4. Build `apps/web/app/conceptual-change/page.tsx` and wire into global navigation.
 - **Files Affected:** `packages/core/src/conceptual-change/*`, `apps/web/src/ui/OntologicalShiftHUD.tsx`, `apps/web/src/components/OntologicalShiftStudio.tsx`, `apps/web/app/conceptual-change/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed (Merged in PR #55)**.
+
+---
+
+### T-P2-28: Spatial Cognition & Mental Rotation Model-Checking Studio (Shepard & Metzler 1971; Hegarty 2004, 2010; Tversky 1993, 2005; Uttal 2013)
+
+- **Problem:** Spatial reasoning and 3D mental rotation are critical prerequisites for high-performance STEM achievement (stereochemistry, structural geology, neuroanatomy, robotics kinematics), yet standard flashcards and practice engines remain constrained to static 2D planar representations without diagnostic model-checking, leading to high cognitive load and spatial alignment biases.
+- **Root Cause:** Absence of real-time 3D rotation engines that compute angular disparity metrics, evaluate linear Shepard-Metzler reaction time curves ($RT = \alpha + \beta \cdot \theta$), simulate Hegarty kinematic causal animations, and check SO(3) rotational invariance versus chiral enantiomer reflection.
+- **Proposed Solution:**
+  1. Build `packages/core/src/spatial/spatial-rotation-engine.ts` modeling 3D polycubes, SO(3) 24 cube rotations group, Shepard-Metzler reaction time regression ($RT = \alpha + \beta \theta$), Hegarty kinematic mechanical chain simulation (direction reversals, gear ratios, causal propagation), 5 multidisciplinary STEM scenarios (Stereochemistry CIP, Epicyclic gears, Fault blocks, MRI cross-sections, Robotics gimbal lock), and FSRS-6 spatial flashcard deck.
+  2. Implement `SpatialCognitionHUD.tsx` tracking SVI index, mental rotation speed (°/s), kinematic step coherence, chirality discrimination precision, and reaction time latency comparison.
+  3. Implement `SpatialCognitionStudio.tsx` with 4 interactive tabs (Shepard-Metzler Crucible with SVG polycubes and disparity controls, Hegarty Kinematics Simulator, STEM Spatial Lab, and FSRS Spatial Flashcards).
+  4. Build `apps/web/app/spatial/page.tsx` and register route `/spatial` in global navigation (`nav.ts`).
+- **Files Affected:** `packages/core/src/spatial/spatial-rotation-engine.ts`, `packages/core/src/spatial/index.ts`, `packages/core/tests/spatial-rotation-engine.test.ts`, `apps/web/src/ui/SpatialCognitionHUD.tsx`, `apps/web/src/ui/index.ts`, `apps/web/src/components/SpatialCognitionStudio.tsx`, `apps/web/app/spatial/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/tests/nav.test.ts`, `apps/web/tests/spatial-cognition-integration.test.ts`.
 - **Status:** **Completed**.

@@ -115,6 +115,7 @@ export const NAV: NavGroup[] = [
       { href: '/causal', label: 'Causal & Counterfactual', icon: GitFork },
       { href: '/threshold', label: 'Threshold Concepts', icon: KeyRound },
       { href: '/conceptual-change', label: 'Conceptual Change', icon: GitBranch },
+      { href: '/spatial', label: 'Spatial Cognition', icon: Compass },
     ],
   },
   {

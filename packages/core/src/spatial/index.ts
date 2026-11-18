@@ -292,3 +292,4 @@ export function generateArchetypeLoci(
 }
 
 export * from './palace-engine'
+export * from './spatial-rotation-engine'
