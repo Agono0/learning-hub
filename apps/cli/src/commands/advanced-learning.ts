@@ -6,6 +6,14 @@
  * 4. epistemic: Shaffer (2016) epistemic network analysis & quantitative ethnography
  * 5. causal: Judea Pearl (2000, 2009) structural causal modeling & counterfactuals
  * 6. threshold: Meyer & Land (2003, 2005) threshold concepts & liminal space navigation
+ * 7. zpd: Vygotsky (1978) Zone of Proximal Development & graduated dynamic scaffolding
+ * 8. pf: Kapur (2008, 2016) Productive Failure & canonical representation assembly
+ * 9. pi: Eric Mazur (1997) Peer Instruction & ConcepTest voting analytics
+ * 10. inquiry: de Jong & van Joolingen (1998) Inquiry-Based Learning & virtual experimentation
+ * 11. reciprocal: Palincsar & Brown (1984) Reciprocal Teaching & dialogic comprehension
+ * 12. cer: McNeill & Krajcik (2012) Claim-Evidence-Reasoning & epistemic argumentation
+ * 13. anchored: CTGV (1990, 1992) Anchored Instruction & Situated Macrocontext Studio
+ * 14. contrasting: Schwartz & Bransford (1998, 2004) Contrasting Cases & Inventing with Examples
  */
 
 import {
@@ -63,6 +71,10 @@ import {
   simulateAnchoredSensitivity,
   generateAnchoredFSRSDeck,
   type LearnerSolutionSubmission,
+  CANONICAL_CONTRASTING_SETS,
+  evaluateContrastingAttempt,
+  generateContrastingFSRSDeck,
+  type InventedMetricSubmission,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1152,6 +1164,101 @@ export async function anchoredCommand(args: string[]): Promise<void> {
   console.log(`Data Extraction:     ${evalResult.eier}/100 EIER (Signal vs Distractor)`)
   console.log(`Constraint Rigor:    ${evalResult.cpr}/100 CPR`)
   console.log(`Decision Approved:   ${evalResult.decisionApproved ? 'YES' : 'NO'}`)
+  console.log('─'.repeat(65))
+  console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
+  console.log(`Feedback:     ${evalResult.pedagogicalFeedback.join(' ')}`)
+}
+
+// ── 14. Contrasting Cases Command (Schwartz & Bransford 1998, 2004) ─────────
+
+export function contrastingCommand(args: string[]): void {
+  const sub = args[0] || 'sets'
+  const setId = parseFlag(args, '--id') || 'set-density-buoyancy'
+  const caseSet =
+    CANONICAL_CONTRASTING_SETS.find((s) => s.id === setId) || CANONICAL_CONTRASTING_SETS[0]
+
+  if (sub === 'sets' || sub === 'list') {
+    console.log(
+      `\n🔍 Canonical Contrasting Cases & Invention Sets (${CANONICAL_CONTRASTING_SETS.length} available)`,
+    )
+    console.log('═'.repeat(65))
+    CANONICAL_CONTRASTING_SETS.forEach((s) => {
+      console.log(`• [${s.domain.toUpperCase()}] ${s.title} (${s.id})`)
+      console.log(`  Difficulty:      ${s.difficulty}`)
+      console.log(`  Variants:        ${s.variants.length} contrasting cases`)
+      console.log(`  Dimensions:      ${s.dimensions.length} perceptual dimensions`)
+      console.log(`  Canonical Goal:  ${s.canonicalTelling.formalLawName}`)
+      console.log(`  Equation:        ${s.canonicalTelling.formalEquation}`)
+      console.log()
+    })
+    return
+  }
+
+  if (sub === 'deck') {
+    const dummySubmission: InventedMetricSubmission = {
+      setId: caseSet.id,
+      inventedMetricName: 'Crowding Ratio Index',
+      formulaDescription:
+        'Computes the ratio of structural mass or items per unit dimensional volume or area across all contrasting cases.',
+      selectedDimensionIds: caseSet.dimensions.filter((d) => d.isDeepDimension).map((d) => d.id),
+      variantRankings: [...caseSet.variants]
+        .sort((a, b) => a.outcomeValue - b.outcomeValue)
+        .map((v) => v.id),
+      impasseEncountered: true,
+      reflectionNotes:
+        'Encountered impasse when trying to use single dimension; coordinated two dimensions.',
+    }
+    const evaluation = evaluateContrastingAttempt(caseSet, dummySubmission)
+    evaluation.cdts = 88
+    const deck = generateContrastingFSRSDeck(caseSet, evaluation)
+
+    console.log('\n📦 Calibrated FSRS-6 Contrasting Cases Deck')
+    console.log(`Set:             ${deck.setTitle}`)
+    console.log(`CDTS Baseline:   ${deck.cdtsBaseline}/100 CDTS`)
+    console.log(`Cards Generated: ${deck.cards.length}`)
+    console.log('═'.repeat(65))
+    deck.cards.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Type: ${c.cardType.toUpperCase()} (S: ${c.fsrsParameters.stability}d, D: ${c.fsrsParameters.difficulty})`,
+      )
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval
+  const sampleSubmission: InventedMetricSubmission = {
+    setId: caseSet.id,
+    inventedMetricName: 'Density Buoyancy Ratio',
+    formulaDescription:
+      'Calculates ratio of mass to volume across all variants to predict flotation displacement invariant.',
+    selectedDimensionIds: caseSet.dimensions.filter((d) => d.isDeepDimension).map((d) => d.id),
+    variantRankings: [...caseSet.variants]
+      .sort((a, b) => a.outcomeValue - b.outcomeValue)
+      .map((v) => v.id),
+    impasseEncountered: true,
+    reflectionNotes:
+      'Discovered that volume alone or mass alone fails; ratio of mass to volume yields invariant order.',
+  }
+
+  const evalResult = evaluateContrastingAttempt(caseSet, sampleSubmission)
+
+  console.log('\n🔍 Contrasting Cases Invention Telemetry (Schwartz & Bransford 1998, 2004)')
+  console.log('═'.repeat(65))
+  console.log(`Set:                 ${caseSet.title}`)
+  console.log(
+    `CDTS Score:          ${evalResult.cdts}/100 (Contrasting Differentiation & Transfer Score)`,
+  )
+  console.log(`Maturity Band:       ${evalResult.maturityBand.toUpperCase()}`)
+  console.log(
+    `Discrimination:      ${evalResult.fdrs}/100 FDRS (Feature Discrimination Rigor Score)`,
+  )
+  console.log(`Metric Invariance:   ${evalResult.imi}/100 IMI (Invented Metric Invariance)`)
+  console.log(`Preparation Transfer:${evalResult.pfri}/100 PFRI (Preparation for Future Learning)`)
+  console.log(`Ranking Accuracy:    ${evalResult.rankingAccuracy}%`)
+  console.log(`Productive Impasse:  ${evalResult.impasseProductive ? 'YES' : 'NO'}`)
   console.log('─'.repeat(65))
   console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
   console.log(`Feedback:     ${evalResult.pedagogicalFeedback.join(' ')}`)

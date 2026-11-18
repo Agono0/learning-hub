@@ -86,6 +86,7 @@ export { InquiryHUD, type InquiryHUDProps } from './InquiryHUD'
 export { ReciprocalTeachingHUD, type ReciprocalTeachingHUDProps } from './ReciprocalTeachingHUD'
 export { ArgumentationHUD, type ArgumentationHUDProps } from './ArgumentationHUD'
 export { AnchoredInstructionHUD, type AnchoredInstructionHUDProps } from './AnchoredInstructionHUD'
+export { ContrastingCasesHUD, type ContrastingCasesHUDProps } from './ContrastingCasesHUD'
 
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'

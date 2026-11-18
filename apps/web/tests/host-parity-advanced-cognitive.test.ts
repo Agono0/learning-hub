@@ -33,6 +33,7 @@ import {
   reciprocalTeachingCommand,
   cerCommand,
   anchoredCommand,
+  contrastingCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -574,6 +575,75 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.eier).toBeGreaterThanOrEqual(80)
       expect(data.decisionApproved).toBe(true)
     })
+
+    it('contrasting_list_sets lists canonical contrasting case sets via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'contrasting_list_sets')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        count: number
+        sets: Array<{ id: string; title: string }>
+      }
+      expect(data.count).toBe(5)
+      expect(data.sets[0]!.title).toContain('Buoyancy')
+    })
+
+    it('contrasting_evaluate_invention computes FDRS, IMI, PFRI, and CDTS via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'contrasting_evaluate_invention')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        setId: 'set-density-buoyancy',
+        inventedMetricName: 'Density Buoyancy Ratio',
+        formulaDescription:
+          'Computes the invariant ratio of object mass divided by volume to predict flotation displacement.',
+        selectedDimensionIds: ['dim-mass-vol-ratio', 'dim-displacement-equilibrium'],
+        variantRankings: [
+          'cyl-balsa-disc',
+          'cyl-hollow-steel',
+          'cyl-oak-block',
+          'cyl-neutral-gel',
+          'cyl-aluminum-rod',
+          'cyl-lead-bullet',
+        ],
+        impasseEncountered: true,
+        reflectionNotes:
+          'Encountered impasse when trying to use single dimension; discovered mass-to-volume ratio produces invariant ordering.',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        cdts: number
+        fdrs: number
+        imi: number
+        pfri: number
+        rankingAccuracy: number
+        impasseProductive: boolean
+      }
+      expect(data.cdts).toBeGreaterThanOrEqual(70)
+      expect(data.fdrs).toBe(100)
+      expect(data.rankingAccuracy).toBe(100)
+      expect(data.impasseProductive).toBe(true)
+    })
+
+    it('contrasting_generate_deck produces calibrated FSRS-6 deck via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'contrasting_generate_deck')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        setId: 'set-density-buoyancy',
+        cdtsBaseline: 88,
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        setId: string
+        setTitle: string
+        cdtsBaseline: number
+        cardsCount: number
+        cards: Array<{
+          cardType: string
+          fsrsParameters: { stability: number; difficulty: number }
+        }>
+      }
+      expect(data.setId).toBe('set-density-buoyancy')
+      expect(data.cardsCount).toBe(4)
+      expect(data.cards[0]!.fsrsParameters.stability).toBeGreaterThanOrEqual(6.0)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -768,6 +838,20 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('contrastingCommand executes sets, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        contrastingCommand(['sets'])
+        expect(consoleSpy).toHaveBeenCalled()
+        contrastingCommand(['deck', '--id', 'set-density-buoyancy'])
+        expect(consoleSpy).toHaveBeenCalled()
+        contrastingCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -810,6 +894,9 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/anchored/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/anchored/sensitivity')
       expect(registeredPaths).toContain('POST /cognitive/anchored/deck')
+      expect(registeredPaths).toContain('GET /cognitive/contrasting/sets')
+      expect(registeredPaths).toContain('POST /cognitive/contrasting/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/contrasting/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1247,6 +1334,54 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       const mock = createMockHttp('POST', '/cognitive/anchored/deck', {
         caseId: 'case-jasper-flight',
         ikrsBaseline: 90,
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cards.length).toBe(4)
+      expect(result.data.cards[0].fsrsParameters).toBeDefined()
+    })
+
+    it('GET /cognitive/contrasting/sets returns canonical contrasting sets via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/contrasting/sets')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.sets.length).toBe(5)
+      expect(result.data.sets[0].title).toContain('Buoyancy')
+    })
+
+    it('POST /cognitive/contrasting/evaluate evaluates invention attempts via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/contrasting/evaluate', {
+        setId: 'set-density-buoyancy',
+        inventedMetricName: 'Density Buoyancy Ratio',
+        formulaDescription:
+          'Computes the invariant ratio of object mass divided by volume to predict flotation displacement.',
+        selectedDimensionIds: ['dim-mass-vol-ratio', 'dim-displacement-equilibrium'],
+        variantRankings: [
+          'cyl-balsa-disc',
+          'cyl-hollow-steel',
+          'cyl-oak-block',
+          'cyl-neutral-gel',
+          'cyl-aluminum-rod',
+          'cyl-lead-bullet',
+        ],
+        impasseEncountered: true,
+        reflectionNotes:
+          'Encountered impasse when trying to use single dimension; discovered mass-to-volume ratio produces invariant ordering.',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.cdts).toBeGreaterThanOrEqual(70)
+      expect(result.data.evaluation.fdrs).toBe(100)
+      expect(result.data.evaluation.rankingAccuracy).toBe(100)
+    })
+
+    it('POST /cognitive/contrasting/deck generates calibrated FSRS-6 review deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/contrasting/deck', {
+        setId: 'set-density-buoyancy',
+        cdtsBaseline: 88,
       })
       const result = await mock.execute()
       expect(result.statusCode).toBe(200)

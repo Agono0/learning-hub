@@ -70,6 +70,10 @@ import {
   simulateAnchoredSensitivity,
   generateAnchoredFSRSDeck,
   type LearnerSolutionSubmission,
+  CANONICAL_CONTRASTING_SETS,
+  evaluateContrastingAttempt,
+  generateContrastingFSRSDeck,
+  type InventedMetricSubmission,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1434,6 +1438,130 @@ export const advancedLearningTools: RegisteredTool[] = [
       return json({
         caseTitle: macroCase.title,
         ikrsBaseline: deck.ikrsBaseline,
+        cardsCount: deck.cards.length,
+        cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 13. Contrasting Cases & Inventing with Examples (Schwartz & Bransford 1998, 2004) ──
+  tool(
+    'contrasting_list_sets',
+    'Lists all canonical Contrasting Case sets (Schwartz & Bransford 1998 "A Time for Telling") across fluid mechanics, statistics, machine learning, thermodynamics, and computer architecture.',
+    {},
+    async () => {
+      return json({
+        count: CANONICAL_CONTRASTING_SETS.length,
+        sets: CANONICAL_CONTRASTING_SETS.map((s) => ({
+          id: s.id,
+          domain: s.domain,
+          title: s.title,
+          difficulty: s.difficulty,
+          problemOverview: s.problemOverview,
+          variantsCount: s.variants.length,
+          dimensionsCount: s.dimensions.length,
+          formalLawName: s.canonicalTelling.formalLawName,
+          formalEquation: s.canonicalTelling.formalEquation,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'contrasting_evaluate_invention',
+    'Evaluates a learner invented metric or general rule across contrasting cases, calculating FDRS, IMI, PFRI, and CDTS.',
+    {
+      setId: z.string().default('set-density-buoyancy'),
+      inventedMetricName: z.string().default('Packing Density Ratio'),
+      formulaDescription: z
+        .string()
+        .default(
+          'Dividing mass by volume yields density; values below 1.0 float, while values above 1.0 sink to bottom.',
+        ),
+      selectedDimensionIds: z
+        .array(z.string())
+        .default(['dim-mass-vol-ratio', 'dim-displacement-equilibrium']),
+      variantRankings: z
+        .array(z.string())
+        .default([
+          'cyl-balsa-disc',
+          'cyl-hollow-steel',
+          'cyl-oak-block',
+          'cyl-neutral-gel',
+          'cyl-aluminum-rod',
+          'cyl-lead-bullet',
+        ]),
+      impasseEncountered: z.boolean().default(true),
+      reflectionNotes: z
+        .string()
+        .default('Heavy oak floats while light lead sinks because of displaced water volume.'),
+    },
+    async ({
+      setId,
+      inventedMetricName,
+      formulaDescription,
+      selectedDimensionIds,
+      variantRankings,
+      impasseEncountered,
+      reflectionNotes,
+    }) => {
+      const caseSet =
+        CANONICAL_CONTRASTING_SETS.find((s) => s.id === setId) ?? CANONICAL_CONTRASTING_SETS[0]!
+      const submission: InventedMetricSubmission = {
+        setId: caseSet.id,
+        inventedMetricName,
+        formulaDescription,
+        selectedDimensionIds,
+        variantRankings,
+        impasseEncountered,
+        reflectionNotes,
+      }
+      const evaluation = evaluateContrastingAttempt(caseSet, submission)
+      return json({
+        setTitle: caseSet.title,
+        cdts: evaluation.cdts,
+        fdrs: evaluation.fdrs,
+        imi: evaluation.imi,
+        pfri: evaluation.pfri,
+        rankingAccuracy: evaluation.rankingAccuracy,
+        impasseProductive: evaluation.impasseProductive,
+        maturityBand: evaluation.maturityBand,
+        identifiedDeepDimensions: evaluation.identifiedDeepDimensions,
+        superficialDistractorsChosen: evaluation.superficialDistractorsChosen,
+        pedagogicalFeedback: evaluation.pedagogicalFeedback,
+        strengths: evaluation.strengths,
+        vulnerabilities: evaluation.vulnerabilities,
+      })
+    },
+  ),
+
+  tool(
+    'contrasting_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards from a contrasting case set, scaled by Contrasting Differentiation & Transfer Score (CDTS).',
+    {
+      setId: z.string().default('set-density-buoyancy'),
+      cdtsScore: z.number().min(0).max(100).optional(),
+      cdtsBaseline: z.number().min(0).max(100).optional(),
+    },
+    async ({ setId, cdtsScore, cdtsBaseline }) => {
+      const caseSet =
+        CANONICAL_CONTRASTING_SETS.find((s) => s.id === setId) ?? CANONICAL_CONTRASTING_SETS[0]!
+      const dummySubmission: InventedMetricSubmission = {
+        setId: caseSet.id,
+        inventedMetricName: 'Optimal Model',
+        formulaDescription: 'Dimensional ratio coordinating all cases.',
+        selectedDimensionIds: caseSet.dimensions.filter((d) => d.isDeepDimension).map((d) => d.id),
+        variantRankings: caseSet.variants.map((v) => v.id),
+        impasseEncountered: true,
+        reflectionNotes: 'Optimal reflection on invariant ratios.',
+      }
+      const evaluation = evaluateContrastingAttempt(caseSet, dummySubmission)
+      evaluation.cdts = cdtsScore ?? cdtsBaseline ?? 90
+      const deck = generateContrastingFSRSDeck(caseSet, evaluation)
+      return json({
+        setId: caseSet.id,
+        setTitle: caseSet.title,
+        cdtsBaseline: deck.cdtsBaseline,
         cardsCount: deck.cards.length,
         cards: deck.cards,
       })
