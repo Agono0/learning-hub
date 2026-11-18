@@ -43,7 +43,7 @@ describe('design laws (ui-design-signature §3.4-3.6)', () => {
     // The shadcn-style names that have no --color-* in this @theme, so the
     // generated utilities resolve to nothing (they were silently invisible).
     const banned =
-      /\b(?:[\w-]+:)*(?:bg|text|border|ring|divide|fill|stroke)-(?:card|popover|background|muted|accent|destructive|ring)(?:-\w+)?(?:\/\d+)?(?=[\s"'`)}])|\b(?:[\w-]+:)*text-(?:primary|foreground|muted-foreground|accent-foreground)(?:\/\d+)?(?=[\s"'`)}])|\b(?:[\w-]+:)*(?:bg|border|ring)-(?:primary|secondary)(?:\/\d+)?(?=[\s"'`)}])/
+      /\b(?:[\w-]+:)*(?:bg|text|border|ring|divide|fill|stroke)-(?:card|popover|background|muted|accent|destructive|ring)(?:-\w+)?(?:\/\d+)?(?=[\s"'`)}])|\b(?:[\w-]+:)*(?:text|fill|stroke)-(?:primary|foreground|muted-foreground|accent-foreground)(?:\/\d+)?(?=[\s"'`)}])|\b(?:[\w-]+:)*(?:bg|border|ring)-(?:primary|secondary)(?:\/\d+)?(?=[\s"'`)}])/
     const offenders: string[] = []
     for (const [file, src] of sourceOf) {
       const lines = src.split('\n')

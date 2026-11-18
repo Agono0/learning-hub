@@ -1121,7 +1121,7 @@ function ReviewPageInner() {
             </Button>
             <a
               href="/"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-secondary dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
             >
               <Home className="h-4 w-4" /> Dashboard
             </a>
