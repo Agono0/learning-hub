@@ -91,6 +91,7 @@ export {
   CollaborativeScriptsHUD,
   type CollaborativeScriptsHUDProps,
 } from './CollaborativeScriptsHUD'
+export { SystemDynamicsHUD, type SystemDynamicsHUDProps } from './SystemDynamicsHUD'
 
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'

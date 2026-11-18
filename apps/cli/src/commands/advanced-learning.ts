@@ -80,6 +80,11 @@ import {
   generateCollaborativePeerTurn,
   generateCollaborativeFSRSDeck,
   type DiscourseSubmission,
+  CANONICAL_SYSTEM_DYNAMICS_SCENARIOS,
+  evaluateLearnerModel,
+  generateSystemDynamicsFSRSDeck,
+  runEulerSimulation,
+  type LearnerModelHypothesis,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1394,4 +1399,131 @@ export function collaborativeCommand(args: string[]): void {
   console.log('─'.repeat(65))
   console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
   console.log(`Feedback:     ${evalResult.pedagogicalFeedback.join(' ')}`)
+}
+
+// ── 16. System Dynamics & Feedback Loop Modeling (Forrester 1968, Sterman 2000, Meadows 2008) ──
+
+export function systemDynamicsCommand(args: string[]): void {
+  const sub = args[0] || 'scenarios'
+  const scenarioId = parseFlag(args, '--id') || 'climate-permafrost-methane'
+  const scenario =
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === scenarioId) ||
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+
+  if (sub === 'scenarios' || sub === 'list') {
+    console.log(
+      `\n🔄 Canonical System Dynamics Scenarios (${CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.length} available)`,
+    )
+    console.log('═'.repeat(65))
+    CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.forEach((s) => {
+      console.log(`• [${s.domain.toUpperCase()}] ${s.title} (${s.id})`)
+      console.log(`  Difficulty:      ${s.difficulty}`)
+      console.log(`  Stocks:          ${s.stocks.map((st) => st.name).join(', ')}`)
+      console.log(`  Flows:           ${s.flows.map((f) => f.name).join(', ')}`)
+      console.log(`  Archetype:       ${s.canonicalArchetype.toUpperCase()}`)
+      console.log(`  Leverage Points: ${s.leveragePoints.length} Meadows leverage interventions`)
+      console.log(`  Context:         ${s.contextDescription}`)
+      console.log()
+    })
+    return
+  }
+
+  if (sub === 'simulate') {
+    const steps = parseInt(parseFlag(args, '--steps') || '40', 10)
+    const multiplier = parseFloat(parseFlag(args, '--multiplier') || '1.0')
+    const primaryFlow = scenario.flows[0]?.id
+    const flowMultipliers: Record<string, number> = {}
+    if (primaryFlow) {
+      flowMultipliers[primaryFlow] = multiplier
+    }
+
+    const sim = runEulerSimulation(scenario, steps, scenario.defaultDt, {
+      flowRateMultipliers: flowMultipliers,
+    })
+
+    console.log(`\n📈 Euler Numerical Integration Trajectory (${scenario.title})`)
+    console.log('═'.repeat(65))
+    console.log(`Steps:           ${sim.durationSteps} (dt = ${sim.dt})`)
+    console.log(`Overshoot:       ${sim.hasOvershoot ? 'YES (Tipping Threshold)' : 'No'}`)
+    console.log(`Oscillation:     ${sim.hasOscillation ? 'YES (Delay Resonance)' : 'No'}`)
+    console.log(`Final State:     ${sim.summary}`)
+    console.log('─'.repeat(65))
+    const sampleSteps = sim.steps.filter((_, idx) => idx % Math.ceil(steps / 8) === 0)
+    sampleSteps.forEach((st) => {
+      const stockSummary = Object.entries(st.stocks)
+        .map(([k, v]) => `${k}=${Math.round(v * 10) / 10}`)
+        .join(', ')
+      console.log(`Step ${st.step} (t=${st.time}): ${stockSummary}`)
+    })
+    return
+  }
+
+  if (sub === 'deck') {
+    const sdi = parseInt(parseFlag(args, '--sdi') || '85', 10)
+    const mockEvaluation = {
+      sfdr: sdi,
+      flia: sdi,
+      dam: sdi,
+      ars: sdi,
+      sdi,
+      maturityTier: sdi >= 85 ? ('leverage_strategist' as const) : ('dynamic_simulator' as const),
+      strengths: ['CLI synthesized evaluation baseline.'],
+      systemicFeedback: [],
+      archetypeDiscrepancies: [],
+      leveragePointAnalysis: 'High leverage rule intervention.',
+    }
+    const deck = generateSystemDynamicsFSRSDeck(scenario, mockEvaluation)
+
+    console.log('\n📦 Calibrated FSRS-6 System Dynamics Deck')
+    console.log(`Scenario:        ${deck.scenarioTitle}`)
+    console.log(`SDI Baseline:    ${deck.sdi}/100 SDI`)
+    console.log(`Cards Generated: ${deck.cards.length}`)
+    console.log('═'.repeat(65))
+    deck.cards.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Type: ${c.cardType.toUpperCase()} (S: ${c.fsrsParameters.stability}d, D: ${c.fsrsParameters.difficulty})`,
+      )
+      console.log(`Q: ${c.front}`)
+      console.log(`A: ${c.back}`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: eval
+  const sampleHypothesis: LearnerModelHypothesis = {
+    scenarioId: scenario.id,
+    classifiedVariables: [
+      ...scenario.stocks.map((st) => ({ id: st.id, nature: 'stock' as const })),
+      ...scenario.flows.map((f) => ({ id: f.id, nature: 'flow' as const })),
+    ],
+    identifiedLoops: scenario.canonicalLoops.map((cl) => ({
+      id: cl.id,
+      polarity: cl.polarity,
+      elementIds: cl.elementIds,
+      delayIdentified: (cl.delaySteps ?? 0) > 0,
+    })),
+    identifiedArchetype: scenario.canonicalArchetype,
+    proposedHighLeverageIntervention:
+      'Rewire systemic rules and information channels to alter loop dominance.',
+    predictedBehavior: 'overshoot_and_collapse',
+  }
+
+  const evalResult = evaluateLearnerModel(scenario, sampleHypothesis)
+
+  console.log(
+    '\n🔄 System Dynamics Evaluation Telemetry (Forrester 1968, Sterman 2000, Meadows 2008)',
+  )
+  console.log('═'.repeat(65))
+  console.log(`Scenario:            ${scenario.title}`)
+  console.log(`SDI Score:           ${evalResult.sdi}/100 (Composite System Dynamics Index)`)
+  console.log(`Maturity Tier:       ${evalResult.maturityTier.toUpperCase()}`)
+  console.log(`Stock-Flow (SFDR):   ${evalResult.sfdr}/100 (Bathtub Discrimination)`)
+  console.log(`Loop Polarity(FLIA): ${evalResult.flia}/100 (Polarity Accuracy)`)
+  console.log(`Delay Metric (DAM):  ${evalResult.dam}/100 (Lag Awareness)`)
+  console.log(`Archetype (ARS):     ${evalResult.ars}/100 (Archetype Alignment)`)
+  console.log('─'.repeat(65))
+  console.log(`Strengths:    ${evalResult.strengths.join('; ')}`)
+  console.log(`Feedback:     ${evalResult.systemicFeedback.join(' ') || 'None'}`)
+  console.log(`Leverage:     ${evalResult.leveragePointAnalysis}`)
 }

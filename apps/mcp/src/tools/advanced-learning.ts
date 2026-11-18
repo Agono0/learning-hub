@@ -79,6 +79,11 @@ import {
   generateCollaborativePeerTurn,
   generateCollaborativeFSRSDeck,
   type DiscourseSubmission,
+  CANONICAL_SYSTEM_DYNAMICS_SCENARIOS,
+  evaluateLearnerModel,
+  generateSystemDynamicsFSRSDeck,
+  runEulerSimulation,
+  type LearnerModelHypothesis,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1699,6 +1704,151 @@ export const advancedLearningTools: RegisteredTool[] = [
         scenarioId: scenario.id,
         scenarioTitle: scenario.title,
         ceiBaseline: deck.ceiBaseline,
+        cardsCount: deck.cards.length,
+        cards: deck.cards,
+      })
+    },
+  ),
+
+  // ── 16. System Dynamics & Feedback Loop Modeling (Forrester 1968, Sterman 2000, Meadows 2008) ──
+  tool(
+    'system_dynamics_list_scenarios',
+    'Lists all canonical system dynamics scenarios, stocks, flows, causal loops, archetypes, and leverage points.',
+    {},
+    async () => {
+      const scenarios = CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.map((s) => ({
+        id: s.id,
+        title: s.title,
+        domain: s.domain,
+        difficulty: s.difficulty,
+        stocksCount: s.stocks.length,
+        flowsCount: s.flows.length,
+        loopsCount: s.canonicalLoops.length,
+        archetype: s.canonicalArchetype,
+        leveragePointsCount: s.leveragePoints.length,
+      }))
+      return json({
+        count: scenarios.length,
+        scenarios,
+      })
+    },
+  ),
+
+  tool(
+    'system_dynamics_simulate_trajectory',
+    'Runs deterministic Euler numerical integration for a system dynamics scenario with policy multipliers.',
+    {
+      scenarioId: z.string().default('climate-permafrost-methane'),
+      stepsCount: z.number().int().min(5).max(300).default(50),
+      dt: z.number().min(0.01).max(10).default(1.0),
+      policyMultipliers: z.record(z.string(), z.number()).optional(),
+    },
+    async ({ scenarioId, stepsCount, dt, policyMultipliers }) => {
+      const scenario =
+        CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === scenarioId) ??
+        CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+      const simulationRun = runEulerSimulation(scenario, stepsCount, dt, {
+        flowRateMultipliers: policyMultipliers,
+      })
+      return json({
+        scenarioId: scenario.id,
+        scenarioTitle: scenario.title,
+        stepsCount: simulationRun.steps.length,
+        hasOvershoot: simulationRun.hasOvershoot,
+        hasOscillation: simulationRun.hasOscillation,
+        finalEquilibrium: simulationRun.finalEquilibrium,
+        summary: simulationRun.summary,
+        finalStocks: simulationRun.steps[simulationRun.steps.length - 1]?.stocks ?? {},
+      })
+    },
+  ),
+
+  tool(
+    'system_dynamics_evaluate_model',
+    'Evaluates a learner systems thinking model for Stock-Flow Discrimination (SFDR), Loop Polarity (FLIA), Delay Awareness (DAM), and Archetype Recognition (ARS).',
+    {
+      scenarioId: z.string().default('climate-permafrost-methane'),
+      classifiedVariables: z.array(
+        z.object({
+          id: z.string(),
+          nature: z.enum(['stock', 'flow', 'auxiliary', 'parameter']),
+        }),
+      ),
+      identifiedLoops: z.array(
+        z.object({
+          id: z.string(),
+          polarity: z.enum(['reinforcing', 'balancing']),
+          elementIds: z.array(z.string()),
+          delayIdentified: z.boolean(),
+        }),
+      ),
+      identifiedArchetype: z.enum([
+        'limits_to_growth',
+        'shifting_the_burden',
+        'tragedy_of_the_commons',
+        'fixes_that_fail',
+        'eroding_goals',
+        'escalation',
+      ]),
+      proposedHighLeverageIntervention: z.string(),
+      predictedBehavior: z.enum([
+        'exponential_growth',
+        's_shaped_growth',
+        'overshoot_and_collapse',
+        'damped_oscillation',
+        'asymptotic_stability',
+      ]),
+    },
+    async (hypothesis) => {
+      const scenario =
+        CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === hypothesis.scenarioId) ??
+        CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+      const evaluation = evaluateLearnerModel(scenario, hypothesis as LearnerModelHypothesis)
+      return json({
+        scenarioTitle: scenario.title,
+        sdi: evaluation.sdi,
+        sfdr: evaluation.sfdr,
+        flia: evaluation.flia,
+        dam: evaluation.dam,
+        ars: evaluation.ars,
+        maturityTier: evaluation.maturityTier,
+        strengths: evaluation.strengths,
+        systemicFeedback: evaluation.systemicFeedback,
+        archetypeDiscrepancies: evaluation.archetypeDiscrepancies,
+        leveragePointAnalysis: evaluation.leveragePointAnalysis,
+      })
+    },
+  ),
+
+  tool(
+    'system_dynamics_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards anchored to stock-flow distinctions, loop polarities, and high-leverage points.',
+    {
+      scenarioId: z.string().default('climate-permafrost-methane'),
+      sdiBaseline: z.number().min(0).max(100).default(85),
+    },
+    async ({ scenarioId, sdiBaseline }) => {
+      const scenario =
+        CANONICAL_SYSTEM_DYNAMICS_SCENARIOS.find((s) => s.id === scenarioId) ??
+        CANONICAL_SYSTEM_DYNAMICS_SCENARIOS[0]!
+      const mockEvaluation = {
+        sfdr: sdiBaseline,
+        flia: sdiBaseline,
+        dam: sdiBaseline,
+        ars: sdiBaseline,
+        sdi: sdiBaseline,
+        maturityTier:
+          sdiBaseline >= 85 ? ('leverage_strategist' as const) : ('dynamic_simulator' as const),
+        strengths: ['Evaluated via MCP tool invocation.'],
+        systemicFeedback: [],
+        archetypeDiscrepancies: [],
+        leveragePointAnalysis: 'Direct MCP deck synthesis.',
+      }
+      const deck = generateSystemDynamicsFSRSDeck(scenario, mockEvaluation)
+      return json({
+        scenarioId: scenario.id,
+        scenarioTitle: scenario.title,
+        sdi: deck.sdi,
         cardsCount: deck.cards.length,
         cards: deck.cards,
       })

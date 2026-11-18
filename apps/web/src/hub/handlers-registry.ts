@@ -181,6 +181,7 @@ import * as argumentation from '../server/handlers/argumentation/route'
 import * as anchored from '../server/handlers/anchored/route'
 import * as contrasting from '../server/handlers/contrasting/route'
 import * as collaborative from '../server/handlers/collaborative/route'
+import * as systemDynamics from '../server/handlers/system-dynamics/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -382,6 +383,7 @@ add('argumentation', argumentation)
 add('anchored', anchored)
 add('contrasting', contrasting)
 add('collaborative', collaborative)
+add('system-dynamics', systemDynamics)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

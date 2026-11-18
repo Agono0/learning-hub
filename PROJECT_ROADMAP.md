@@ -52,6 +52,7 @@
 | **T-P2-35** | **P2**   | Anchored Instruction     | **Completed** | Anchored Instruction & Situated Macrocontext Studio: CTGV (1990, 1992) Jasper Woodbury problem solving, Catrambone (1998) sub-goal hierarchy, what-if sensitivity, and multi-host parity.                    |
 | **T-P2-36** | **P2**   | Contrasting Cases        | **Completed** | Contrasting Cases & Inventing with Examples Studio: Schwartz & Bransford (1998, 2004) "A Time for Telling", Schwartz & Martin (2004) inventing index, CDTS/FDRS/IMI/PFRI, and multi-host parity.             |
 | **T-P2-37** | **P2**   | Collaborative Scripts    | **Completed** | Collaborative Scripts & Transactive Discourse Studio: King (1997, 1999) "ASK to THINK - TEL WHY", Weinberger & Fischer (2006) CSCL scripts, Berkowitz & Gibbs (1983) TDI/EED/SCR/CEI, and multi-host parity. |
+| **T-P2-38** | **P2**   | System Dynamics          | **Completed** | System Dynamics & Feedback Loop Modeling Studio: Forrester (1968), Sterman (2000) Business Dynamics, Meadows (2008) Bathtub Dynamics, SDI/SFDR/FLIA/DAM/ARS, and multi-host parity.                          |
 
 ---
 
@@ -663,4 +664,27 @@
      - Phase 4: Far Transfer Application & FSRS Review Deck Generation
   6. Deliver multi-host parity across MCP (`apps/mcp`), CLI (`apps/cli`), Server (`apps/server`), and Web runtime-neutral API handlers registered in `handlers-registry.ts` and `nav.ts` (`/collaborative` under `Learn` with `GitMerge` icon).
 - **Files Affected:** `packages/core/src/collaborative/*`, `apps/web/src/ui/CollaborativeScriptsHUD.tsx`, `apps/web/src/components/CollaborativeScriptsStudio.tsx`, `apps/web/app/collaborative/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/collaborative/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/server/src/routes.ts`, `apps/web/tests/collaborative-studio-integration.test.ts`, `packages/core/tests/collaborative-engine.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
+- **Status:** **Completed & Verified**.
+
+### T-P2-38: System Dynamics & Feedback Loop Modeling Studio (Forrester 1968; Sterman 2000; Meadows 2008; Booth Sweeney & Sterman 2000; Senge 1990)
+
+- **Problem:** Human intuition systematically fails in dynamic non-linear systems: learners suffer from correlation heuristics (assuming output trajectories mirror input rates), conflate accumulations (stocks) with differential rates (flows) in "bathtub dynamics", ignore material/informational delays, and treat systemic collapse as exogenous shocks rather than internal feedback loops ($d < 0.20$).
+- **Root Cause:** Without explicit system dynamics modeling and numerical integration engines, learners conceptualize causality as static, one-way linear chains ($A \to B \to C$), ignoring reinforcing feedback ($R$), goal-seeking balancing feedback ($B$), stock inertia, and tipping-point bifurcations.
+- **Proposed Solution:**
+  1. Build `packages/core/src/system-dynamics/system-dynamics-engine.ts` grounded in Jay Forrester's principles of systems, John Sterman's business dynamics, Donella Meadows' thinking in systems, and Peter Senge's systems archetypes. Includes 5 canonical multidisciplinary scenarios:
+     - Atmospheric Carbon Bathtub & Arctic Permafrost Runaway Tipping Point (Climate Science)
+     - Insulin-Glucagon Homeostasis & Pancreatic $\beta$-Cell Decompensation (Endocrine Physiology)
+     - Fractional Reserve Banking, Fire-Sale Liquidity Run & Lender of Last Resort (Macroeconomics)
+     - SIRD Transmission Dynamics, Hospital ICU Saturation & Intervention Delays (Epidemiology)
+     - Distributed Retry Storms, Queue Backpressure & Thread Pool Starvation (Systems Engineering)
+  2. Implement quantitative telemetry: Stock-Flow Discrimination Ratio ($SFDR \in [0, 100]$), Feedback Loop Identification Accuracy ($FLIA \in [0, 100]$), Delay Awareness Metric ($DAM \in [0, 100]$), Archetype Recognition Score ($ARS \in [0, 100]$), and Composite System Dynamics Index ($SDI \in [0, 100]$) across 4 systems thinking maturity tiers (`linear_reductionist`, `feedback_aware`, `dynamic_simulator`, `leverage_strategist`).
+  3. Implement a deterministic Euler numerical integration engine ($dt = 0.25 - 1.0$) with non-linear feedback and delay buffers simulating overshoot, oscillation, and tipping dynamics.
+  4. Build `apps/web/src/ui/SystemDynamicsHUD.tsx` adhering to UI Signature (zero ghost classes, mode-aware tokens) visualizing SDI, SFDR, FLIA, DAM, ARS progress metrics, archetype diagnosis, and Donella Meadows' 12 leverage points hierarchy.
+  5. Build `apps/web/src/components/SystemDynamicsStudio.tsx` implementing a 4-phase macro-script:
+     - Phase 1: Stock & Flow Mapping (categorizing accumulation vs rate variables)
+     - Phase 2: Causal Loop Diagramming & Polarity Assignment (R vs B loops, delays)
+     - Phase 3: Euler Dynamic Simulation & What-If Policy Intervention (real-time trajectory)
+     - Phase 4: Systems Archetype, Donella Meadows Leverage Points & FSRS-6 Deck Synthesis
+  6. Deliver multi-host parity across MCP (`apps/mcp`), CLI (`apps/cli`), Server (`apps/server`), and Web runtime-neutral API handlers registered in `handlers-registry.ts` and `nav.ts` (`/system-dynamics` under `Learn` with `Activity` icon).
+- **Files Affected:** `packages/core/src/system-dynamics/*`, `apps/web/src/ui/SystemDynamicsHUD.tsx`, `apps/web/src/components/SystemDynamicsStudio.tsx`, `apps/web/app/system-dynamics/page.tsx`, `apps/web/src/components/nav.ts`, `apps/web/src/server/handlers/system-dynamics/route.ts`, `apps/web/src/hub/handlers-registry.ts`, `apps/mcp/src/tools/advanced-learning.ts`, `apps/cli/src/commands/advanced-learning.ts`, `apps/cli/src/index.ts`, `apps/server/src/routes.ts`, `apps/web/tests/system-dynamics-studio-integration.test.ts`, `packages/core/tests/system-dynamics-engine.test.ts`, `apps/web/tests/host-parity-advanced-cognitive.test.ts`.
 - **Status:** **Completed & Verified**.

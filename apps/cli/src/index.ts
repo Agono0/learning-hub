@@ -52,6 +52,7 @@ import {
   anchoredCommand,
   contrastingCommand,
   collaborativeCommand,
+  systemDynamicsCommand,
 } from './commands/advanced-learning'
 import {
   db,
@@ -879,6 +880,13 @@ const builtinCommands: RegisteredCommand[] = [
       'King (1997, 1999) & Weinberger & Fischer (2006) Collaborative Scripts & Transactive Studio',
     usage: '[scenarios|partner|eval|deck] [--id <id>]',
     run: (runArgs) => collaborativeCommand(runArgs),
+  },
+  {
+    name: 'system-dynamics',
+    description:
+      'Forrester (1968), Sterman (2000) & Meadows (2008) System Dynamics & Feedback Studio',
+    usage: '[scenarios|simulate|eval|deck] [--id <id>] [--steps <n>]',
+    run: (runArgs) => systemDynamicsCommand(runArgs),
   },
 ]
 
