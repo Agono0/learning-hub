@@ -66,7 +66,7 @@ export function WorkloadStudio() {
 
   // Fetch live workload forecast
   const workloadQ = useQuery<WorkloadResponse>({
-    queryKey: ['workload', forecastDays, selectedDeckId],
+    queryKey: queryKeys.workload.forecast(forecastDays, selectedDeckId),
     queryFn: () => {
       const qs = new URLSearchParams({ days: String(forecastDays) })
       if (selectedDeckId !== 'all') qs.set('deckId', String(selectedDeckId))
@@ -93,7 +93,7 @@ export function WorkloadStudio() {
           : 'Workload is already well-balanced. No spikes detected.',
       )
       setTimeout(() => setFeedback(null), 4000)
-      void qc.invalidateQueries({ queryKey: ['workload'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.workload.all })
     },
   })
 
@@ -115,7 +115,7 @@ export function WorkloadStudio() {
           : 'No overdue cards to reschedule.',
       )
       setTimeout(() => setFeedback(null), 4000)
-      void qc.invalidateQueries({ queryKey: ['workload'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.workload.all })
     },
   })
 

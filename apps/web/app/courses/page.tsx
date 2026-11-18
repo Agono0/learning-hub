@@ -132,7 +132,7 @@ export default function CoursesPage() {
       void qc.invalidateQueries({ queryKey: curriculumKeys.courses() })
       void qc.invalidateQueries({ queryKey: ['starter-catalog'] })
       void qc.invalidateQueries({ queryKey: queryKeys.decks })
-      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
     },
   })
 

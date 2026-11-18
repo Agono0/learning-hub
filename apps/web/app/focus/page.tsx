@@ -36,6 +36,7 @@ import { SoundscapeBar } from '@/components/SoundscapeBar'
 import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { queryKeys } from '@/lib/query-keys'
 
 // The 3D presentation canvas is optional during focus sessions — keep three.js
 // out of the focus route's critical path (same pattern as /world and the graph).
@@ -322,7 +323,7 @@ export default function FocusPage() {
         endTimeRef.current = null
         setGate(null)
         setReflectionText('')
-        void qc.invalidateQueries({ queryKey: ['focus'] })
+        void qc.invalidateQueries({ queryKey: queryKeys.focus })
         void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
       }
     },
@@ -409,7 +410,7 @@ export default function FocusPage() {
         tone: 'success',
       })
       void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-      void qc.invalidateQueries({ queryKey: ['focus'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.focus })
     },
     onError: (err: Error) => {
       toast({ title: err.message, tone: 'danger' })
@@ -458,7 +459,7 @@ export default function FocusPage() {
       })
       setEarlyExitReflection('')
       void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-      void qc.invalidateQueries({ queryKey: ['focus'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.focus })
     },
     onError: (err: Error) => {
       toast({ title: err.message, tone: 'danger' })
@@ -525,7 +526,7 @@ export default function FocusPage() {
   }
 
   const history = useQuery({
-    queryKey: ['focus'],
+    queryKey: queryKeys.focus,
     queryFn: () => apiGet<{ sessions: FocusSession[]; running: FocusSession | null }>('/api/focus'),
   })
   const detox = useQuery({

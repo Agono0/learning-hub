@@ -15,6 +15,7 @@ import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
+import { queryKeys } from '@/lib/query-keys'
 
 const ORDER_KEY_HINT = 'Order is saved on this device. Reset restores the default layout.'
 
@@ -24,7 +25,7 @@ export default function DashboardPage() {
     isError,
     refetch,
   } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
+    queryKey: queryKeys.dashboard,
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
   })
 

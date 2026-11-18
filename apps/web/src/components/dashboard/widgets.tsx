@@ -33,6 +33,7 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, StatCard, useToast } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
+import { queryKeys } from '@/lib/query-keys'
 
 export interface WidgetProps {
   data: DashboardData
@@ -187,7 +188,7 @@ function QuoteWidget({ data: d }: WidgetProps) {
   const seed = useMutation({
     mutationFn: () => apiSend('/api/starter', 'POST', { seedCore: true }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['dashboard'] })
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
       toast({ title: 'Curated quotes & Major/PAO mnemonics loaded', tone: 'success' })
     },
     onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),

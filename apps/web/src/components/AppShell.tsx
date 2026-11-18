@@ -37,6 +37,7 @@ import { OnboardingWizard } from './OnboardingWizard'
 import { apiGet, apiSend, hubStoragePersistent, onHubStoragePersistence } from '@/lib/transport'
 import { initReminderScheduler } from '@/platform/reminders'
 import { IconButton, useToast } from '@/ui'
+import { queryKeys } from '@/lib/query-keys'
 
 // v2: the 'Practice studios' group was added to the defaults in the IA
 // restructure (docs/ux-audit.md P1-2); existing saved arrays predate it, so a
@@ -122,7 +123,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
   const { data: settingsData } = useQuery<{
     settings?: { sidebarCollapsedGroups?: string[] | null }
   }>({
-    queryKey: ['settings'],
+    queryKey: queryKeys.settings,
     queryFn: () => apiGet('/api/settings'),
     staleTime: 30_000,
   })

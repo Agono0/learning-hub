@@ -15,6 +15,7 @@ import { apiGet } from '@/lib/transport'
 import { deliverLocalNotification, requestPermission } from '@/platform/permissions'
 import { IconButton } from '@/ui'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
+import { queryKeys } from '@/lib/query-keys'
 
 const REMINDERS_KEY = 'lh-reminders-enabled'
 const LAST_FIRE_KEY = 'lh-reminders-last-fire'
@@ -30,7 +31,7 @@ export function NotificationBell() {
   const wrapRef = useRef<HTMLDivElement | null>(null)
 
   const { data } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
+    queryKey: queryKeys.dashboard,
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
   })
   const items = data?.notifications ?? []
