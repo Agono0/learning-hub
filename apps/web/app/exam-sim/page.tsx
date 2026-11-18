@@ -18,7 +18,7 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { hapticHeavy, hapticLight } from '@/platform/haptics'
 import { AdaptiveExamStudio } from '@/components/AdaptiveExamStudio'
-import { Button, Callout, PageHeader, Panel, Skeleton, useToast } from '@/ui'
+import { Button, Callout, PageHeader, Panel, Sheet, Skeleton, useToast } from '@/ui'
 
 interface ExamQuestion {
   cardId: number
@@ -58,6 +58,8 @@ interface ExamGradedResult {
 export default function ExamSimulatorPage() {
   const { toast } = useToast()
   const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
+  // unanswered-warning confirm (replaces the old window.confirm) — null = hidden
+  const [confirmUnanswered, setConfirmUnanswered] = useState<number | null>(null)
 
   // Setup state
   const [selectedDeckId, setSelectedDeckId] = useState<string>('all')
@@ -81,7 +83,12 @@ export default function ExamSimulatorPage() {
   answersRef.current = answers
 
   // Fetch initial decks list
-  const { data: initialData, isLoading: initialLoading } = useQuery<ExamAssembly>({
+  const {
+    data: initialData,
+    isLoading: initialLoading,
+    isError: initialError,
+    refetch: retryInitial,
+  } = useQuery<ExamAssembly>({
     queryKey: ['exam-sim-initial'],
     queryFn: () => apiGet('/api/curriculum/exam/simulator?count=1&durationMinutes=15'),
   })
@@ -224,9 +231,32 @@ export default function ExamSimulatorPage() {
     })
   }
 
-  if (initialLoading) {
+  if (initialError) {
     return (
       <div className="container max-w-4xl space-y-6 py-6">
+        <PageHeader
+          title="Mock Exam Simulator"
+          subtitle="Timed mock exams with delayed blind grading."
+        />
+        <Callout tone="danger" title="Couldn't load the exam simulator">
+          <div className="mt-1 flex items-center gap-3">
+            <span>The request failed. Check your connection and retry.</span>
+            <Button variant="secondary" onClick={() => void retryInitial()}>
+              Try again
+            </Button>
+          </div>
+        </Callout>
+      </div>
+    )
+  }
+
+  if (initialLoading) {
+    return (
+      <div
+        className="container max-w-4xl space-y-6 py-6"
+        aria-busy="true"
+        aria-label="Loading exam simulator"
+      >
         <PageHeader
           title="Mock Exam Simulator"
           subtitle="Timed mock exams with delayed blind grading."
@@ -399,13 +429,8 @@ export default function ExamSimulatorPage() {
               variant="ghost"
               onClick={() => {
                 const unanswered = examData.totalQuestions - answeredCount
-                if (unanswered > 0) {
-                  if (confirm(`You still have ${unanswered} unanswered question(s). Submit now?`)) {
-                    gradeExamMutation.mutate()
-                  }
-                } else {
-                  gradeExamMutation.mutate()
-                }
+                if (unanswered > 0) setConfirmUnanswered(unanswered)
+                else gradeExamMutation.mutate()
               }}
               disabled={gradeExamMutation.isPending}
             >
@@ -444,6 +469,34 @@ export default function ExamSimulatorPage() {
             })}
           </div>
         </Panel>
+
+        <Sheet
+          open={confirmUnanswered !== null}
+          onClose={() => setConfirmUnanswered(null)}
+          title="Submit with unanswered questions?"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setConfirmUnanswered(null)}>
+                Keep working
+              </Button>
+              <Button
+                variant="primary"
+                loading={gradeExamMutation.isPending}
+                onClick={() => {
+                  setConfirmUnanswered(null)
+                  gradeExamMutation.mutate()
+                }}
+              >
+                Submit exam
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-secondary">
+            You still have {confirmUnanswered} unanswered question
+            {confirmUnanswered === 1 ? '' : 's'}. Unanswered questions are graded as incorrect.
+          </p>
+        </Sheet>
 
         {/* Current Question Body */}
         <Panel className="p-6 space-y-4">

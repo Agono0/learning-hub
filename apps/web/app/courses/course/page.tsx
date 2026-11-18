@@ -41,6 +41,7 @@ import {
   ProgressBar,
   ProgressRing,
   Sheet,
+  Skeleton,
   TextArea,
 } from '@/ui'
 
@@ -155,6 +156,7 @@ function Course() {
   const router = useRouter()
   const qc = useQueryClient()
   const [improveOpen, setImproveOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const { data, isLoading, error } = useQuery({
     queryKey: curriculumKeys.course(id ?? 0),
     queryFn: () => curriculumApi.course(id!),
@@ -185,7 +187,15 @@ function Course() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
+  if (isLoading)
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading course">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-4 w-80" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    )
   if (error || !data) return <Callout tone="danger">{error?.message ?? 'Course not found'}</Callout>
 
   const { course, modules, projects, exam, certificate } = data
@@ -453,23 +463,42 @@ function Course() {
           )}
           <Button
             variant="ghost"
-            className="text-rose-600"
+            className="text-danger-text"
             icon={<Trash2 className="h-4 w-4" />}
-            loading={remove.isPending}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `Delete “${course.title}”? Lessons, progress and its exercise cards are removed; your review history is kept.`,
-                )
-              )
-                remove.mutate()
-            }}
+            onClick={() => setConfirmDelete(true)}
           >
             Delete course
           </Button>
         </div>
       </Panel>
 
+      <Sheet
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Delete course?"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={remove.isPending}
+              onClick={() => {
+                setConfirmDelete(false)
+                remove.mutate()
+              }}
+            >
+              Delete course
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-secondary">
+          Deleting “{course.title}” removes its lessons, progress and exercise cards. Your review
+          history is kept.
+        </p>
+      </Sheet>
       <ImproveSheet courseId={course.id} open={improveOpen} onClose={() => setImproveOpen(false)} />
     </div>
   )

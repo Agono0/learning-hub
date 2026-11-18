@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { usePalette } from '@/components/ThemeSync'
-import { Badge, EmptyState, PageHeader, Panel, Tabs } from '@/ui'
+import { Badge, EmptyState, PageHeader, Panel, Tabs, useToast } from '@/ui'
 import type { WorldCanvasHandle } from '@/ui/WorldCanvas'
 import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
 
@@ -200,6 +200,8 @@ export default function WorldPage() {
     }
   }, [progress])
 
+  const { toast } = useToast()
+
   const unlockedDecor = useMemo(
     () => worldState?.avatar.unlockedItems.filter((id) => id.startsWith('decor_')) ?? [],
     [worldState?.avatar.unlockedItems],
@@ -233,9 +235,11 @@ export default function WorldPage() {
         setWorldState(stateRes)
       }
 
-      alert(
-        `🌲 Focus Block Complete!\nYou earned +${res.coinsAwarded} Study Coins and planted a new tree in the Forest!`,
-      )
+      toast({
+        title: 'Focus block complete',
+        description: `You earned +${res.coinsAwarded} Study Coins and planted a new tree in the Forest.`,
+        tone: 'success',
+      })
     } catch (err) {
       console.error('Session complete error:', err)
     }
@@ -279,7 +283,11 @@ export default function WorldPage() {
         })
       }
     } catch (err) {
-      alert((err as Error).message || 'Failed to purchase item')
+      toast({
+        title: 'Purchase failed',
+        description: (err as Error).message || 'Try again in a moment.',
+        tone: 'danger',
+      })
     }
   }
 
