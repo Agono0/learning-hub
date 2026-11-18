@@ -157,7 +157,7 @@ describe('Tier 4: Cross-Host Parity (web handler == headless server == MCP)', ()
           due: new Date(Date.now() - 60_000).toISOString(), // due in the past
         },
       })
-      expect(res.status).toBe(200)
+      expect(res.ok, `card ${i} creation must succeed`).toBe(true)
       cardIds.push(res.data.card.id)
     }
 
@@ -184,7 +184,7 @@ describe('Tier 4: Cross-Host Parity (web handler == headless server == MCP)', ()
           timeMs: 1500,
         },
       })
-      expect(res.status).toBe(200)
+      expect(res.ok, 'review commit must succeed').toBe(true)
       if (step.undo) {
         const undo = await callRoute<{ ok: boolean; revlogUndone: boolean }>(reviewUndoRoute.POST, {
           method: 'POST',
