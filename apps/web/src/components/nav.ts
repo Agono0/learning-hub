@@ -27,6 +27,7 @@ import {
   Headphones,
   Images,
   Import,
+  KeyRound,
   Layers,
   LayoutDashboard,
   Lightbulb,
@@ -111,6 +112,7 @@ export const NAV: NavGroup[] = [
       { href: '/representations', label: 'Multi-Representational', icon: Boxes },
       { href: '/epistemic', label: 'Epistemic Network', icon: GitGraph },
       { href: '/causal', label: 'Causal & Counterfactual', icon: GitFork },
+      { href: '/threshold', label: 'Threshold Concepts', icon: KeyRound },
     ],
   },
   {
