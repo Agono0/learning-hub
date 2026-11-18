@@ -46,6 +46,7 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/dual-process')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/representations')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/epistemic')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/causal')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual(['Explore', 'Discipline', 'Create & Analyze'])
   })
