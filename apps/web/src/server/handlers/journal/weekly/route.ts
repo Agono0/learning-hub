@@ -2,7 +2,7 @@ import { and, gte, lte, sql } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { focusSessions, habitLogs, journalEntries } from '@learning-hub/db'
 import { dayKey, aggregateWeek, type DailyReviewsRow, type XpDailyRow } from '@learning-hub/core'
-import { tzOffsetFromQuery } from '@/lib/api'
+import { tzOffsetFromQuery, withRoute } from '@/lib/api'
 
 function mondayOf(date: Date, tzOffsetMinutes = 0): string {
   const key = dayKey(date, tzOffsetMinutes)
@@ -12,7 +12,7 @@ function mondayOf(date: Date, tzOffsetMinutes = 0): string {
 }
 
 /** GET /api/journal/weekly?weekStart=YYYY-MM-DD&tzOffset=N — the honest weekly review from real data. */
-export async function GET(req: Request) {
+export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
   const tz = tzOffsetFromQuery(req)
   const weekStartParam = url.searchParams.get('weekStart')
@@ -62,4 +62,4 @@ export async function GET(req: Request) {
   })
 
   return Response.json({ ...week, weekEnd, isCurrentWeek: weekStart === mondayOf(new Date(), tz) })
-}
+})
