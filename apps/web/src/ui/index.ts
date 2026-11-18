@@ -55,6 +55,7 @@ export {
   type ElementInteractivityHUDProps,
 } from './ElementInteractivityHUD'
 export { DeliberatePracticeHUD, type DeliberatePracticeHUDProps } from './DeliberatePracticeHUD'
+export { SkillsHUD, type SkillsHUDProps } from './SkillsHUD'
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'
 export { InkPad, type InkPadProps } from './InkPad'
