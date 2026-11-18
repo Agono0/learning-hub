@@ -350,7 +350,7 @@ function ImportPanel({ step }: { step?: number }) {
           </details>
           {checked.warnings.length > 0 && (
             <details className="text-sm">
-              <summary className="flex cursor-pointer items-center gap-1 text-amber-700 dark:text-status-warning-text">
+              <summary className="flex cursor-pointer items-center gap-1 text-status-warning-text dark:text-status-warning-text">
                 <AlertTriangle className="h-4 w-4" /> {checked.warnings.length} suggestion(s) to
                 make it a better course
               </summary>

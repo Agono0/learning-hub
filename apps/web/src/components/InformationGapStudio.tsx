@@ -346,7 +346,7 @@ export function InformationGapStudio() {
             {/* Paradox statement */}
             <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-4 space-y-2 text-xs">
               <span className="font-semibold text-strong flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-amber-500" />
+                <Sparkles className="h-4 w-4 text-status-warning-text" />
                 The Paradox Hook:
               </span>
               <p className="text-secondary leading-relaxed italic">{mystery.paradoxHook}</p>
@@ -354,7 +354,7 @@ export function InformationGapStudio() {
 
             {/* Initial Folk Intuition Trap */}
             <div className="rounded-xl border border-rose-500/20 bg-rose-50 dark:bg-rose-950/20 p-4 space-y-1.5 text-xs">
-              <span className="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+              <span className="font-semibold text-danger-text dark:text-danger-text flex items-center gap-1.5">
                 <AlertCircle className="h-4 w-4" />
                 Initial Folk Intuition Trap (The Cognitive Bias):
               </span>
@@ -444,7 +444,7 @@ export function InformationGapStudio() {
 
                         {/* Cognitive Dissonance Prompt */}
                         <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 space-y-1">
-                          <span className="font-semibold text-amber-500 flex items-center gap-1">
+                          <span className="font-semibold text-status-warning-text flex items-center gap-1">
                             <Zap className="h-3.5 w-3.5" />
                             Cognitive Dissonance Spike:
                           </span>
@@ -473,7 +473,7 @@ export function InformationGapStudio() {
           <Panel className="p-5 space-y-4">
             <div className="border-b border-neutral-200/80 dark:border-(--hub-border)/80 pb-3">
               <h3 className="text-base font-bold text-strong flex items-center gap-2">
-                <Flame className="h-5 w-5 text-amber-500" />
+                <Flame className="h-5 w-5 text-status-warning-text" />
                 Epistemic Incongruity Resolution Crucible
               </h3>
               <p className="text-xs text-secondary mt-0.5">
@@ -515,10 +515,10 @@ export function InformationGapStudio() {
                     <div className="flex items-center justify-between pb-1.5">
                       <span className="font-bold text-strong flex items-center gap-1.5">
                         {isSelected && opt.isAccurateResolution && (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0" />
                         )}
                         {isSelected && !opt.isAccurateResolution && (
-                          <AlertCircle className="h-4 w-4 text-rose-500 shrink-0" />
+                          <AlertCircle className="h-4 w-4 text-danger-text shrink-0" />
                         )}
                         Hypothesis Option
                       </span>
@@ -548,8 +548,8 @@ export function InformationGapStudio() {
                     <span
                       className={`font-bold ${
                         resolutionResult.isAccurate
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
+                          ? 'text-status-success-text dark:text-status-success-text'
+                          : 'text-danger-text dark:text-danger-text'
                       }`}
                     >
                       {resolutionResult.isAccurate
@@ -796,7 +796,7 @@ export function InformationGapStudio() {
                 </div>
 
                 <div className="space-y-1">
-                  <span className="font-semibold text-rose-600 dark:text-rose-400">
+                  <span className="font-semibold text-danger-text dark:text-danger-text">
                     Initial Folk Intuition Trap:
                   </span>
                   <p className="text-secondary text-[11px]">{card.counterIntuitiveTwist}</p>

@@ -218,21 +218,21 @@ export function ReciprocalTeachingStudio() {
       mission:
         'Identify friction points, ambiguous terms, and actively resolve misconceptions against empirical evidence (Palincsar & Brown 1984).',
       icon: <Wrench className="h-4 w-4" />,
-      color: 'text-emerald-500',
+      color: 'text-status-success-text',
     },
     summarizer: {
       title: 'Summarizer (Synthesizer)',
       mission:
         'Condense the passage and ongoing dialogue into its core causal thesis and necessary conditions.',
       icon: <BookOpen className="h-4 w-4" />,
-      color: 'text-purple-500',
+      color: 'text-ac-text',
     },
     predictor: {
       title: 'Predictor (Oracle)',
       mission:
         'Forecast downstream implications, experimental falsification criteria, or cross-domain transfers (Chi 2014).',
       icon: <Lightbulb className="h-4 w-4" />,
-      color: 'text-amber-500',
+      color: 'text-status-warning-text',
     },
   }
 
@@ -345,7 +345,7 @@ export function ReciprocalTeachingStudio() {
                       key={`mech-${i}`}
                       className="flex items-start gap-2 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-2.5 text-xs text-secondary"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text mt-0.5 shrink-0" />
                       <span>{mech}</span>
                     </div>
                   ))}
@@ -460,7 +460,7 @@ export function ReciprocalTeachingStudio() {
           <Panel className="space-y-4">
             <div className="border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <h4 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-                <Wrench className="h-4 w-4 text-emerald-500" />
+                <Wrench className="h-4 w-4 text-status-success-text" />
                 Target Misconceptions (Metacognitive Repair)
               </h4>
               <p className="text-xs text-secondary mt-1">
@@ -474,14 +474,14 @@ export function ReciprocalTeachingStudio() {
                   key={m.id}
                   className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-2"
                 >
-                  <div className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                  <div className="text-xs font-semibold text-danger-text dark:text-danger-text">
                     Misconception: "{m.misconception}"
                   </div>
                   <div className="text-xs text-secondary">
                     <span className="font-medium text-strong">Clarification: </span>
                     {m.clarification}
                   </div>
-                  <div className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                  <div className="text-[11px] text-status-success-text dark:text-status-success-text">
                     <span className="font-medium">Evidence: </span>
                     {m.evidence}
                   </div>
@@ -547,7 +547,7 @@ export function ReciprocalTeachingStudio() {
                         {isUser ? (
                           <User className="h-3.5 w-3.5 text-(--hub-primary,#2563eb)" />
                         ) : (
-                          <Users className="h-3.5 w-3.5 text-emerald-500" />
+                          <Users className="h-3.5 w-3.5 text-status-success-text" />
                         )}
                         <span>{isUser ? 'You' : 'Socratic Peer Agent'}</span>
                         <Badge tone="neutral" className="capitalize">
@@ -579,7 +579,7 @@ export function ReciprocalTeachingStudio() {
                     </p>
 
                     {turn.resolvedMisconceptionId && (
-                      <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <div className="text-[11px] text-status-success-text dark:text-status-success-text flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" /> Resolved Domain Misconception
                       </div>
                     )}

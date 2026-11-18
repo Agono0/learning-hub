@@ -249,7 +249,7 @@ export function DifficultyAuditStudio({
                   'inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors',
                   totalLogged > 0 && !submitting
                     ? 'bg-indigo-600 text-white hover:bg-indigo-500'
-                    : 'cursor-not-allowed bg-slate-800 text-slate-500',
+                    : 'cursor-not-allowed bg-slate-800 text-tertiary',
                 )}
               >
                 <ListChecks className="h-4 w-4" />

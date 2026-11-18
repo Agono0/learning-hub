@@ -720,7 +720,7 @@ export function MetacognitionStudio({
 
                         <div className="text-tertiary italic">"{item.stem}"</div>
 
-                        <div className="rounded border border-neutral-200/40 dark:border-(--hub-border)/40 bg-white/50 dark:bg-(--hub-panel)/50 p-2 text-rose-600 dark:text-danger-text">
+                        <div className="rounded border border-neutral-200/40 dark:border-(--hub-border)/40 bg-white/50 dark:bg-(--hub-panel)/50 p-2 text-danger-text dark:text-danger-text">
                           <span className="font-semibold">Intuitive Error Chosen: </span>
                           {selectedOpt?.text}
                         </div>

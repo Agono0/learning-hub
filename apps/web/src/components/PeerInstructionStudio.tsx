@@ -196,7 +196,7 @@ export function PeerInstructionStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-sky-600 dark:text-sky-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-info-text dark:text-status-info-text">
                   Step 1: Silent Individual Poll (Mazur 1997)
                 </span>
                 <h2 className="text-base font-bold text-strong">{suite.title}</h2>
@@ -210,7 +210,7 @@ export function PeerInstructionStudio() {
             {/* Premise Context */}
             <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1">
               <span className="font-semibold text-strong flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-sky-500" />
+                <Compass className="w-3.5 h-3.5 text-status-info-text" />
                 Underlying Physical Premise:
               </span>
               <p className="text-secondary leading-relaxed">{suite.priorKnowledgePremise}</p>
@@ -218,7 +218,7 @@ export function PeerInstructionStudio() {
 
             {/* Q1 Qualitative Problem Prompt */}
             <div className="p-4 rounded-xl bg-sky-50/30 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 space-y-2">
-              <span className="text-xs font-bold text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
+              <span className="text-xs font-bold text-sky-800 dark:text-status-info-text flex items-center gap-1.5">
                 <HelpCircle className="w-3.5 h-3.5" />
                 Qualitative ConcepTest Challenge (Q1):
               </span>
@@ -328,7 +328,7 @@ export function PeerInstructionStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-sky-600 dark:text-sky-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-info-text dark:text-status-info-text">
                   Step 2: The Mazur Decision Window
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -363,7 +363,7 @@ export function PeerInstructionStudio() {
                             Option {opt.label}
                           </span>
                           {isYourChoice && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-semibold">
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-100 dark:bg-sky-950 text-status-info-text dark:text-status-info-text font-semibold">
                               Your Vote
                             </span>
                           )}
@@ -381,7 +381,7 @@ export function PeerInstructionStudio() {
 
             <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-secondary space-y-1">
               <strong className="text-strong flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
+                <Flame className="w-3.5 h-3.5 text-status-warning-text" />
                 Mazur Pedagogical Protocol:
               </strong>
               <p>
@@ -398,7 +398,7 @@ export function PeerInstructionStudio() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-sky-500" />
+                  <Users className="w-4 h-4 text-status-info-text" />
                   Your Discussion Partner
                 </h3>
                 <span className="text-xs text-tertiary">Switch discussion partner</span>
@@ -442,7 +442,7 @@ export function PeerInstructionStudio() {
 
                     <div className="p-3 rounded-lg bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border) space-y-2">
                       <span className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5 text-sky-500" />
+                        <MessageSquare className="w-3.5 h-3.5 text-status-info-text" />
                         Peer Argument:
                       </span>
                       <p className="text-xs text-secondary italic leading-relaxed">
@@ -456,7 +456,7 @@ export function PeerInstructionStudio() {
                     </div>
 
                     <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-strong space-y-1">
-                      <strong className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                      <strong className="flex items-center gap-1.5 text-status-warning-text dark:text-status-warning-text">
                         <Sparkles className="w-3.5 h-3.5" />
                         Socratic Counter-Challenge to Ask Peer:
                       </strong>
@@ -471,7 +471,7 @@ export function PeerInstructionStudio() {
             <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
               <div className="border-b border-neutral-200 dark:border-(--hub-border) pb-2">
                 <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                  <Lightbulb className="w-4 h-4 text-amber-500" />
+                  <Lightbulb className="w-4 h-4 text-status-warning-text" />
                   Cognitive Deliberation Synthesis
                 </h3>
                 <p className="text-xs text-secondary">
@@ -496,7 +496,7 @@ export function PeerInstructionStudio() {
                     type="checkbox"
                     checked={discussionAcknowledged}
                     onChange={(e) => setDiscussionAcknowledged(e.target.checked)}
-                    className="mt-0.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500"
+                    className="mt-0.5 rounded border-neutral-300 text-status-info-text focus:ring-sky-500"
                   />
                   <span>
                     I have deliberated with my peer, critically evaluated their heuristic, and am
@@ -527,7 +527,7 @@ export function PeerInstructionStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-emerald-600 dark:text-emerald-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-success-text dark:text-status-success-text">
                   Step 3: Individual Revote (Q1&apos;)
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -585,9 +585,9 @@ export function PeerInstructionStudio() {
                       {q1RevoteSubmitted && (
                         <div>
                           {opt.isCorrect ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 text-status-success-text shrink-0" />
                           ) : (
-                            isSelected && <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                            isSelected && <XCircle className="w-4 h-4 text-danger-text shrink-0" />
                           )}
                         </div>
                       )}
@@ -634,7 +634,7 @@ export function PeerInstructionStudio() {
               <div className="space-y-4 pt-2">
                 {/* Canonical Invariant Box */}
                 <div className="p-4 rounded-xl bg-neutral-900 text-neutral-100 dark:bg-black border border-neutral-800 space-y-2">
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-status-warning-text flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
                     Deep Invariant Principle
                   </span>
@@ -645,7 +645,7 @@ export function PeerInstructionStudio() {
 
                 {/* Instructor Explanation */}
                 <div className="p-4 rounded-xl bg-emerald-50/30 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 text-xs space-y-1.5">
-                  <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                  <span className="font-bold text-emerald-800 dark:text-status-success-text flex items-center gap-1.5">
                     <GraduationCap className="w-4 h-4" />
                     Instructor Canonical Synthesis:
                   </span>
@@ -675,7 +675,7 @@ export function PeerInstructionStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-sky-600 dark:text-sky-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-info-text dark:text-status-info-text">
                   Step 4: Michelle Smith Isomorphic Verification
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -692,7 +692,7 @@ export function PeerInstructionStudio() {
 
             {/* Q2 Prompt */}
             <div className="p-4 rounded-xl bg-sky-50/30 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/40 space-y-2">
-              <span className="text-xs font-bold text-sky-800 dark:text-sky-300 flex items-center gap-1.5">
+              <span className="text-xs font-bold text-sky-800 dark:text-status-info-text flex items-center gap-1.5">
                 <Target className="w-3.5 h-3.5" />
                 Transfer Problem Statement (Q2):
               </span>
@@ -735,9 +735,9 @@ export function PeerInstructionStudio() {
                       {q2TransferSubmitted && (
                         <div>
                           {opt.isCorrect ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 text-status-success-text shrink-0" />
                           ) : (
-                            isSelected && <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                            isSelected && <XCircle className="w-4 h-4 text-danger-text shrink-0" />
                           )}
                         </div>
                       )}
@@ -777,11 +777,11 @@ export function PeerInstructionStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-amber-600 dark:text-amber-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-warning-text dark:text-status-warning-text">
                   Long-Term Consolidation
                 </span>
                 <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-amber-500" />
+                  <BookOpen className="w-4 h-4 text-status-warning-text" />
                   Calibrated FSRS-6 Flashcards ({fsrsCards.length})
                 </h3>
                 <p className="text-xs text-secondary">

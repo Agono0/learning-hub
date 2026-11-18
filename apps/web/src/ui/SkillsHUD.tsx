@@ -89,7 +89,7 @@ export function SkillsHUD({
                 </span>
               </Badge>
             </div>
-            <p className="text-[11px] text-neutral-400">
+            <p className="text-[11px] text-tertiary">
               v{skill.meta.version} · Author: {skill.meta.author}
             </p>
           </div>
@@ -100,7 +100,7 @@ export function SkillsHUD({
           {skill.meta.tags.slice(0, 4).map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-mono text-neutral-400 border border-white/5"
+              className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-mono text-tertiary border border-white/5"
             >
               #{tag}
             </span>
@@ -112,27 +112,27 @@ export function SkillsHUD({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {/* Clarity Index */}
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
-            <Sparkles className="h-3 w-3 text-amber-400" /> Socratic Clarity
+          <span className="text-[10px] font-semibold uppercase text-tertiary flex items-center gap-1">
+            <Sparkles className="h-3 w-3 text-status-warning-text" /> Socratic Clarity
           </span>
-          <div className="text-xl font-bold font-mono text-amber-300">{clarity}%</div>
+          <div className="text-xl font-bold font-mono text-status-warning-text">{clarity}%</div>
           <ProgressBar value={clarity / 100} label="Socratic clarity index" />
-          <p className="text-[9px] text-neutral-500">Ambiguity reduction index</p>
+          <p className="text-[9px] text-tertiary">Ambiguity reduction index</p>
         </div>
 
         {/* Rigor Score */}
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
-            <ShieldCheck className="h-3 w-3 text-emerald-400" /> Invariant Rigor
+          <span className="text-[10px] font-semibold uppercase text-tertiary flex items-center gap-1">
+            <ShieldCheck className="h-3 w-3 text-status-success-text" /> Invariant Rigor
           </span>
-          <div className="text-xl font-bold font-mono text-emerald-300">{rigor}%</div>
+          <div className="text-xl font-bold font-mono text-status-success-text">{rigor}%</div>
           <ProgressBar value={rigor / 100} label="Invariant rigor score" />
-          <p className="text-[9px] text-neutral-500">Rules & edge-case coverage</p>
+          <p className="text-[9px] text-tertiary">Rules & edge-case coverage</p>
         </div>
 
         {/* Phases Completed */}
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
+          <span className="text-[10px] font-semibold uppercase text-tertiary flex items-center gap-1">
             <Layers className="h-3 w-3 text-indigo-400" /> Pipeline Stage
           </span>
           <div className="text-xl font-bold font-mono text-white">
@@ -142,17 +142,17 @@ export function SkillsHUD({
             value={phases.length > 0 ? (currentPhaseIndex + 1) / phases.length : 1}
             label="Pipeline stage progression"
           />
-          <p className="text-[9px] text-neutral-500">
+          <p className="text-[9px] text-tertiary">
             {phases[currentPhaseIndex]?.name ?? 'Complete'}
           </p>
         </div>
 
         {/* Required Tools */}
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400 flex items-center gap-1">
-            <Wrench className="h-3 w-3 text-sky-400" /> Active Capabilities
+          <span className="text-[10px] font-semibold uppercase text-tertiary flex items-center gap-1">
+            <Wrench className="h-3 w-3 text-status-info-text" /> Active Capabilities
           </span>
-          <div className="text-xl font-bold font-mono text-sky-300">
+          <div className="text-xl font-bold font-mono text-status-info-text">
             {skill.meta.requiredTools.length > 0 ? skill.meta.requiredTools.length : 'Zero I/O'}
           </div>
           <div className="flex flex-wrap gap-1 pt-0.5">
@@ -160,13 +160,13 @@ export function SkillsHUD({
               skill.meta.requiredTools.map((t) => (
                 <span
                   key={t}
-                  className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-mono text-sky-300"
+                  className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-mono text-status-info-text"
                 >
                   {t}
                 </span>
               ))
             ) : (
-              <span className="text-[10px] text-neutral-500">Pure cognitive logic</span>
+              <span className="text-[10px] text-tertiary">Pure cognitive logic</span>
             )}
           </div>
         </div>
@@ -175,9 +175,7 @@ export function SkillsHUD({
       {/* Phase Progression Stepper */}
       {phases.length > 0 && (
         <div className="space-y-1.5 pt-1">
-          <span className="text-[10px] font-semibold uppercase text-neutral-400">
-            Phase Continuum
-          </span>
+          <span className="text-[10px] font-semibold uppercase text-tertiary">Phase Continuum</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {phases.map((p, idx) => {
               const isPast = idx < currentPhaseIndex
@@ -190,12 +188,12 @@ export function SkillsHUD({
                       ? 'border-indigo-500/50 bg-indigo-500/10 text-white'
                       : isPast
                         ? 'border-emerald-500/30 bg-emerald-500/5 text-neutral-300'
-                        : 'border-white/5 bg-black/10 text-neutral-500'
+                        : 'border-white/5 bg-black/10 text-tertiary'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-semibold text-[11px]">
                     {isPast ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text shrink-0" />
                     ) : (
                       <Activity
                         className={`h-3.5 w-3.5 ${isCurrent ? 'text-indigo-400' : 'text-neutral-600'} shrink-0`}
@@ -203,7 +201,7 @@ export function SkillsHUD({
                     )}
                     <span className="truncate">{p.name}</span>
                   </div>
-                  <p className="mt-1 text-[9px] text-neutral-400 line-clamp-1">{p.description}</p>
+                  <p className="mt-1 text-[9px] text-tertiary line-clamp-1">{p.description}</p>
                 </div>
               )
             })}

@@ -272,7 +272,7 @@ export function CollaborativeScriptsStudio() {
               : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
-          <Users className="h-3.5 w-3.5 text-indigo-500" />
+          <Users className="h-3.5 w-3.5 text-ac-text" />
           Phase 1: Individual Framing
         </button>
 
@@ -284,7 +284,7 @@ export function CollaborativeScriptsStudio() {
               : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
-          <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+          <MessageSquare className="h-3.5 w-3.5 text-ac-text" />
           Phase 2: Transactive Dialogue
         </button>
 
@@ -296,7 +296,7 @@ export function CollaborativeScriptsStudio() {
               : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
-          <GitMerge className="h-3.5 w-3.5 text-indigo-500" />
+          <GitMerge className="h-3.5 w-3.5 text-ac-text" />
           Phase 3: Joint Invariant Synthesis
         </button>
 
@@ -308,7 +308,7 @@ export function CollaborativeScriptsStudio() {
               : 'border-transparent text-secondary hover:text-strong'
           }`}
         >
-          <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+          <Sparkles className="h-3.5 w-3.5 text-ac-text" />
           Phase 4: Far Transfer &amp; FSRS Deck
         </button>
       </div>
@@ -318,7 +318,7 @@ export function CollaborativeScriptsStudio() {
         <div className="space-y-4">
           <Panel className="space-y-3">
             <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-              <Users className="h-4 w-4 text-indigo-500" />
+              <Users className="h-4 w-4 text-ac-text" />
               Central Collaborative Dilemma
             </h3>
             <p className="text-xs text-secondary leading-relaxed">
@@ -337,10 +337,10 @@ export function CollaborativeScriptsStudio() {
                   </div>
                   <p className="text-xs text-secondary">{persp.corePremise}</p>
                   <div className="text-[11px] space-y-1 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">
-                    <div className="text-emerald-700 dark:text-emerald-400">
+                    <div className="text-status-success-text dark:text-status-success-text">
                       <strong>Key Evidence:</strong> {persp.primaryEvidence}
                     </div>
-                    <div className="text-amber-700 dark:text-amber-400">
+                    <div className="text-status-warning-text dark:text-status-warning-text">
                       <strong>Vulnerability:</strong> {persp.vulnerability}
                     </div>
                   </div>
@@ -383,7 +383,7 @@ export function CollaborativeScriptsStudio() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-                  <MessageSquare className="h-4 w-4 text-indigo-500" />
+                  <MessageSquare className="h-4 w-4 text-ac-text" />
                   Peer Discussion: Partner {activeScenario.simulatedPeer.name}
                 </h3>
                 <span className="text-xs text-tertiary">
@@ -396,7 +396,7 @@ export function CollaborativeScriptsStudio() {
             {/* King Stems Toolbar */}
             <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-2.5 space-y-2">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-tertiary flex items-center gap-1">
-                <HelpCircle className="h-3 w-3 text-indigo-500" />
+                <HelpCircle className="h-3 w-3 text-ac-text" />
                 Alison King (1997) &quot;ASK to THINK - TEL WHY&quot; Question Stems
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -499,7 +499,7 @@ export function CollaborativeScriptsStudio() {
         <div className="space-y-4">
           <Panel className="space-y-3">
             <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-              <GitMerge className="h-4 w-4 text-indigo-500" />
+              <GitMerge className="h-4 w-4 text-ac-text" />
               Dialectical Invariant Reconciliation
             </h3>
             <p className="text-xs text-secondary leading-relaxed">
@@ -515,7 +515,7 @@ export function CollaborativeScriptsStudio() {
                   className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 text-xs space-y-1"
                 >
                   <span className="font-semibold text-strong flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-indigo-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-ac-text" />
                     Target Invariant: {inv.name}
                   </span>
                   <p className="text-secondary leading-relaxed">{inv.reconciliation}</p>
@@ -551,7 +551,7 @@ export function CollaborativeScriptsStudio() {
         <div className="space-y-4">
           <Panel className="space-y-3">
             <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-500" />
+              <Sparkles className="h-4 w-4 text-ac-text" />
               Individual Far Transfer &amp; Internalization
             </h3>
             <p className="text-xs text-secondary leading-relaxed">
@@ -591,7 +591,7 @@ export function CollaborativeScriptsStudio() {
                 </div>
               ) : (
                 <div className="rounded border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-status-success-text flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0" />
                   <span>Transfer solution submitted. Ready for FSRS card synthesis.</span>
                 </div>
               )}
@@ -603,7 +603,7 @@ export function CollaborativeScriptsStudio() {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                  <FileCheck className="h-4 w-4 text-indigo-500" />
+                  <FileCheck className="h-4 w-4 text-ac-text" />
                   Calibrated FSRS-6 Collaborative Dialectic Deck
                 </h4>
                 <p className="text-xs text-secondary">
@@ -631,7 +631,7 @@ export function CollaborativeScriptsStudio() {
                       className="rounded border border-neutral-200 dark:border-(--hub-border) bg-surface p-2.5 text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between text-[11px] font-medium text-tertiary">
-                        <span className="uppercase text-indigo-500">
+                        <span className="uppercase text-ac-text">
                           {card.cardType.replace('_', ' ')}
                         </span>
                         <span>

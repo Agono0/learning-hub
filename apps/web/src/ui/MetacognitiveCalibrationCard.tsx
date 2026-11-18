@@ -478,7 +478,7 @@ export function MetacognitiveCalibrationCard({
           <div className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700/70 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-faint flex items-center gap-1.5">
-                <Play className="h-3.5 w-3.5 text-indigo-500 fill-indigo-500" />
+                <Play className="h-3.5 w-3.5 text-ac-text fill-indigo-500" />
                 Live Calibration Check
               </span>
               <span className="text-[11px] text-faint font-mono">Card #{currentPromptIdx + 1}</span>
@@ -543,7 +543,7 @@ export function MetacognitiveCalibrationCard({
                     <button
                       type="button"
                       onClick={() => handleGradeDrill(0)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-danger-text border border-rose-200 dark:border-rose-900/50 flex items-center gap-1 transition"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-danger-text dark:bg-rose-950/40 dark:text-danger-text border border-rose-200 dark:border-rose-900/50 flex items-center gap-1 transition"
                     >
                       <XCircle className="h-3.5 w-3.5" />
                       <span>Missed (0)</span>
@@ -551,7 +551,7 @@ export function MetacognitiveCalibrationCard({
                     <button
                       type="button"
                       onClick={() => handleGradeDrill(1)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-status-success-text border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1 transition"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-status-success-text dark:bg-emerald-950/40 dark:text-status-success-text border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-1 transition"
                     >
                       <CheckCircle className="h-3.5 w-3.5" />
                       <span>Recalled (1)</span>

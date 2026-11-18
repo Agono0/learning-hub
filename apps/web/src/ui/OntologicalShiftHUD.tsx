@@ -81,7 +81,7 @@ export function OntologicalShiftHUD({
       {/* Header telemetry summary */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 text-ac-text dark:text-ac-text flex items-center justify-center shrink-0">
             <GitBranch className="w-4 h-4" />
           </div>
           <div>
@@ -110,7 +110,7 @@ export function OntologicalShiftHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-secondary flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-violet-500" />
+              <Sparkles className="w-3.5 h-3.5 text-ac-text" />
               Shift Readiness
             </span>
             <span className="text-xs font-bold text-strong">
@@ -125,7 +125,7 @@ export function OntologicalShiftHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-secondary flex items-center gap-1">
-              <Activity className="w-3.5 h-3.5 text-indigo-500" />
+              <Activity className="w-3.5 h-3.5 text-ac-text" />
               Posner Accommodation
             </span>
             <span className="text-xs font-bold text-strong">
@@ -142,7 +142,7 @@ export function OntologicalShiftHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-secondary flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5 text-amber-500" />
+              <Layers className="w-3.5 h-3.5 text-status-warning-text" />
               Discrepancy Gap
             </span>
             <span className="text-xs font-bold text-strong">
@@ -157,7 +157,7 @@ export function OntologicalShiftHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-secondary flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              <AlertTriangle className="w-3.5 h-3.5 text-danger-text" />
               Synthetic Model Risk
             </span>
             <span className="text-xs font-bold text-strong">
@@ -175,7 +175,7 @@ export function OntologicalShiftHUD({
         <div className="p-3 rounded-xl bg-neutral-50/70 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-strong flex items-center gap-1.5">
-              <Brain className="w-3.5 h-3.5 text-amber-500" />
+              <Brain className="w-3.5 h-3.5 text-status-warning-text" />
               Active Phenomenological Primitive (diSessa)
             </span>
             <Badge tone="warning">Intuitive Heuristic</Badge>
@@ -188,7 +188,7 @@ export function OntologicalShiftHUD({
         <div className="p-3 rounded-xl bg-neutral-50/70 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-strong flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-status-success-text" />
               Posner Accommodation Sub-Scores
             </span>
             <span className="text-[10px] text-tertiary">D · I · P · F</span>

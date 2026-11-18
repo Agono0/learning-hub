@@ -178,7 +178,7 @@ export default function SleepTmrPage() {
 
   if (nightMode) {
     return (
-      <div className="fixed inset-0 z-50 flex select-none flex-col items-center justify-between bg-black p-8 text-neutral-400">
+      <div className="fixed inset-0 z-50 flex select-none flex-col items-center justify-between bg-black p-8 text-tertiary">
         <div className="space-y-2 pt-8 text-center">
           <Moon className="mx-auto h-12 w-12 animate-pulse text-indigo-400/80" />
           <h1 className="text-xl font-medium text-neutral-200">Sleep replay running</h1>
@@ -273,7 +273,7 @@ export default function SleepTmrPage() {
           </p>
         ) : null}
         {mintRecent.isError ? (
-          <p className="text-xs text-rose-600">Could not queue reviews — try again.</p>
+          <p className="text-xs text-danger-text">Could not queue reviews — try again.</p>
         ) : null}
 
         {isLoading ? (

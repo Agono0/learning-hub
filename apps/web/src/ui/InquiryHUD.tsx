@@ -72,7 +72,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400">
+          <div className="p-2 rounded-lg bg-teal-500/10 text-status-success-text dark:text-status-success-text">
             <Microscope className="w-5 h-5" />
           </div>
           <div>
@@ -104,7 +104,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>VOTAT Rigor (VRI)</span>
-            <Target className="w-3.5 h-3.5 text-teal-500" />
+            <Target className="w-3.5 h-3.5 text-status-success-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-strong">
@@ -120,7 +120,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Confirmation Bias</span>
             {metrics.confirmationBiasIndex > 0.75 ? (
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <AlertTriangle className="w-3.5 h-3.5 text-status-warning-text" />
             ) : (
               <CheckCircle2 className="w-3.5 h-3.5 text-status-success-text" />
             )}
@@ -138,7 +138,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Anomaly Resolution</span>
-            <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
+            <RotateCcw className="w-3.5 h-3.5 text-ac-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-strong">
@@ -153,10 +153,10 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Discovery Index</span>
-            <FlaskConical className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <FlaskConical className="w-3.5 h-3.5 text-status-success-text dark:text-status-success-text" />
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="text-xl font-bold font-mono text-teal-600 dark:text-teal-400">
+            <span className="text-xl font-bold font-mono text-status-success-text dark:text-status-success-text">
               {metrics.scientificDiscoveryIndex}
             </span>
             <span className="text-[11px] text-secondary">/ 100 SDI</span>
@@ -169,7 +169,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
       <div className="space-y-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border)">
         <div className="flex items-center justify-between text-xs">
           <span className="text-secondary font-medium flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Sparkles className="w-3.5 h-3.5 text-status-warning-text" />
             SDDS Dual-Space Search Efficiency
           </span>
           <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export function InquiryHUD({ metrics, activeLabTitle, className = '' }: InquiryH
       {/* Qualitative Diagnostic & Pedagogical Advice */}
       <div className="p-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/50 border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1">
         <div className="flex items-center gap-1.5 font-semibold text-strong">
-          <GraduationCap className="w-3.5 h-3.5 text-teal-500" />
+          <GraduationCap className="w-3.5 h-3.5 text-status-success-text" />
           <span>Scientific Discovery Diagnostic</span>
         </div>
         <p className="text-secondary leading-relaxed">{metrics.qualitativeDiagnostic}</p>

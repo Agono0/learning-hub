@@ -208,7 +208,7 @@ export default function CoursesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        icon={<GraduationCap className="h-6 w-6 text-indigo-500" />}
+        icon={<GraduationCap className="h-6 w-6 text-ac-text" />}
         title="Courses"
         subtitle="Structured courses with theory, practice that sticks, projects and certificates."
         actions={actions}

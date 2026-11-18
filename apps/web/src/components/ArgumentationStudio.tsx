@@ -400,8 +400,8 @@ export function ArgumentationStudio() {
                       <span
                         className={
                           ev.isGenuine
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-500 font-medium'
+                            ? 'text-status-success-text dark:text-status-success-text'
+                            : 'text-danger-text font-medium'
                         }
                       >
                         {ev.isGenuine
@@ -539,7 +539,7 @@ export function ArgumentationStudio() {
             {/* Socratic Counter-Argument Crucible (TAP Level 4/5) */}
             <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/30 dark:bg-amber-950/20 p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <Swords className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <Swords className="h-4 w-4 text-status-warning-text dark:text-status-warning-text" />
                 <h4 className="text-xs sm:text-sm font-semibold text-strong">
                   Adversarial Rebuttal Crucible (Level 4/5 TAP Requirement)
                 </h4>

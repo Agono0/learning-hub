@@ -86,7 +86,7 @@ export function InformationGapHUD({
             <Badge tone={driveInfo.tone}>{driveInfo.label}</Badge>
           </div>
           <h3 className="text-sm font-bold text-strong flex items-center gap-1.5">
-            <Sparkles className="h-4 w-4 text-amber-500" />
+            <Sparkles className="h-4 w-4 text-status-warning-text" />
             Mystery: {currentMysteryTitle}
           </h3>
         </div>
@@ -104,7 +104,7 @@ export function InformationGapHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5 text-amber-500" />
+              <Flame className="h-3.5 w-3.5 text-status-warning-text" />
               Epistemic Tension
             </span>
             <span className="font-mono text-strong">
@@ -121,7 +121,7 @@ export function InformationGapHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5 text-indigo-500" />
+              <Zap className="h-3.5 w-3.5 text-ac-text" />
               Memory Multiplier
             </span>
             <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
@@ -138,7 +138,7 @@ export function InformationGapHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Compass className="h-3.5 w-3.5 text-emerald-500" />
+              <Compass className="h-3.5 w-3.5 text-status-success-text" />
               Gap Narrowing
             </span>
             <span className="font-mono text-strong">
@@ -155,7 +155,7 @@ export function InformationGapHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Brain className="h-3.5 w-3.5 text-cyan-500" />
+              <Brain className="h-3.5 w-3.5 text-status-info-text" />
               Perceived Knowledge (k)
             </span>
             <span className="font-mono text-strong">
@@ -191,7 +191,7 @@ export function InformationGapHUD({
             <button
               type="button"
               onClick={() => onKnowledgeAdjust(0.5)}
-              className="px-2 py-0.5 rounded border border-neutral-200 dark:border-(--hub-border) hover:bg-neutral-100 dark:hover:bg-(--hub-panel) text-secondary font-medium text-amber-500"
+              className="px-2 py-0.5 rounded border border-neutral-200 dark:border-(--hub-border) hover:bg-neutral-100 dark:hover:bg-(--hub-panel) text-secondary font-medium text-status-warning-text"
             >
               50% (Peak)
             </button>

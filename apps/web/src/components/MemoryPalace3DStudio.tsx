@@ -825,7 +825,7 @@ export function MemoryPalace3DStudio({
       </div>
 
       {/* Footer Info & Insights Bar */}
-      <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-slate-950/80 px-6 py-3 text-xs text-slate-400">
+      <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-slate-950/80 px-6 py-3 text-xs text-tertiary">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />

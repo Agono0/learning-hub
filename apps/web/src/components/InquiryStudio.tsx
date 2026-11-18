@@ -149,7 +149,7 @@ export function InquiryStudio() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-200 dark:border-(--hub-border) pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400">
+            <span className="p-1.5 rounded-lg bg-teal-500/10 text-status-success-text dark:text-status-success-text">
               <FlaskConical className="w-5 h-5" />
             </span>
             <h1 className="text-xl font-bold text-strong">
@@ -222,7 +222,7 @@ export function InquiryStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-teal-600 dark:text-teal-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-success-text dark:text-status-success-text">
                   Step 1: Hypothesis Space Search (Klahr &amp; Dunbar 1988)
                 </span>
                 <h2 className="text-base font-bold text-strong">{currentLab.title}</h2>
@@ -235,7 +235,7 @@ export function InquiryStudio() {
 
             {/* Research Question Banner */}
             <div className="p-3.5 rounded-lg bg-teal-50/40 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/40 text-xs space-y-1">
-              <span className="font-semibold text-teal-800 dark:text-teal-300 flex items-center gap-1.5">
+              <span className="font-semibold text-teal-800 dark:text-status-success-text flex items-center gap-1.5">
                 <HelpCircle className="w-3.5 h-3.5" />
                 Guiding Empirical Research Question:
               </span>
@@ -247,7 +247,7 @@ export function InquiryStudio() {
             {/* Theoretical Premise */}
             <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) text-xs space-y-1">
               <span className="font-semibold text-strong flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-teal-500" />
+                <Compass className="w-3.5 h-3.5 text-status-success-text" />
                 Theoretical Background &amp; Prior Model:
               </span>
               <p className="text-secondary leading-relaxed">{currentLab.theoreticalPremise}</p>
@@ -257,7 +257,7 @@ export function InquiryStudio() {
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-strong flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-teal-500" />
+                  <Target className="w-3.5 h-3.5 text-status-success-text" />
                   Independent Variables Calibration (VOTAT Parameter Control):
                 </span>
                 <span className="text-[11px] text-tertiary">
@@ -277,7 +277,7 @@ export function InquiryStudio() {
                         <span className="font-semibold text-strong">
                           {v.name} ({v.symbol})
                         </span>
-                        <span className="font-mono font-bold text-teal-600 dark:text-teal-400">
+                        <span className="font-mono font-bold text-status-success-text dark:text-status-success-text">
                           {val} {v.unit}
                         </span>
                       </div>
@@ -300,7 +300,7 @@ export function InquiryStudio() {
             {/* Learner Hypothesis Input */}
             <div className="space-y-2 pt-2 border-t border-neutral-200 dark:border-(--hub-border)">
               <label className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                <Lightbulb className="w-3.5 h-3.5 text-status-warning-text" />
                 Articulate Your Causal Hypothesis (Before Executing Trial):
               </label>
               <textarea
@@ -349,7 +349,7 @@ export function InquiryStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-teal-600 dark:text-teal-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-success-text dark:text-status-success-text">
                   Step 2: Experiment Space Search (Chen &amp; Klahr 1999)
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -397,7 +397,7 @@ export function InquiryStudio() {
                             className={`flex items-center gap-1 font-semibold ${
                               trial.votatCompliantWithPrevious
                                 ? 'text-status-success-text'
-                                : 'text-amber-600 dark:text-amber-400'
+                                : 'text-status-warning-text dark:text-status-warning-text'
                             }`}
                           >
                             {trial.votatCompliantWithPrevious ? (
@@ -419,7 +419,7 @@ export function InquiryStudio() {
                         {Object.entries(trial.observedOutputs).map(([k, val]) => (
                           <div key={k} className="flex items-center gap-1">
                             <span className="text-secondary font-medium">{k}:</span>
-                            <span className="font-mono font-bold text-teal-600 dark:text-teal-400">
+                            <span className="font-mono font-bold text-status-success-text dark:text-status-success-text">
                               {val}
                             </span>
                           </div>
@@ -436,7 +436,7 @@ export function InquiryStudio() {
                             key={vId}
                             className={`px-2 py-0.5 rounded text-[11px] font-mono ${
                               isVaried
-                                ? 'bg-teal-500/20 text-teal-700 dark:text-teal-300 font-bold border border-teal-500/30'
+                                ? 'bg-teal-500/20 text-status-success-text dark:text-status-success-text font-bold border border-teal-500/30'
                                 : 'bg-neutral-100 dark:bg-(--hub-panel-2) text-secondary'
                             }`}
                           >
@@ -477,7 +477,7 @@ export function InquiryStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-amber-600 dark:text-amber-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-warning-text dark:text-status-warning-text">
                   Step 3: Anomalous Evidence Crucible (Chinn &amp; Brewer 1993)
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -491,8 +491,8 @@ export function InquiryStudio() {
 
             {/* Anomaly Discovery Box */}
             <div className="p-4 rounded-xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-2">
-              <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className="text-xs font-bold text-amber-800 dark:text-status-warning-text flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-status-warning-text" />
                 Unanticipated Empirical Observation:
               </span>
               <p className="text-xs sm:text-sm font-medium text-strong leading-relaxed">
@@ -509,7 +509,7 @@ export function InquiryStudio() {
             {/* Chinn & Brewer 7-Reaction Selector */}
             <div className="space-y-3 pt-2">
               <label className="text-xs font-bold text-strong flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <Sparkles className="w-3.5 h-3.5 text-ac-text" />
                 Classify Your Epistemic Response (Chinn &amp; Brewer 1993 Taxonomy):
               </label>
 
@@ -596,7 +596,7 @@ export function InquiryStudio() {
           <Panel className="p-5 rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-teal-600 dark:text-teal-400">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-status-success-text dark:text-status-success-text">
                   Step 4: Canonical Consolidation &amp; FSRS Scheduling
                 </span>
                 <h2 className="text-base font-bold text-strong">
@@ -611,7 +611,7 @@ export function InquiryStudio() {
             {/* Canonical Invariant Box */}
             <div className="p-4 rounded-xl bg-teal-50/30 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/40 space-y-2">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <CheckCircle2 className="w-4 h-4 text-status-success-text dark:text-status-success-text" />
                 <span className="text-xs font-bold text-teal-900 dark:text-teal-200">
                   Universal Structural Invariant:
                 </span>
@@ -629,7 +629,7 @@ export function InquiryStudio() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold text-strong flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-teal-500" />
+                    <BookOpen className="w-3.5 h-3.5 text-status-success-text" />
                     Calibrated FSRS-6 Review Cards ({calibratedCards.length})
                   </h3>
                   <p className="text-[11px] text-secondary">

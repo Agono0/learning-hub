@@ -26,11 +26,11 @@ export function EmptyState({
 const BADGE_TONE = {
   neutral: 'bg-neutral-100 text-neutral-700 dark:bg-(--hub-panel-2) dark:text-secondary',
   accent: 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300',
-  success: 'bg-emerald-600/15 text-emerald-700 dark:text-status-success-text',
-  warning: 'bg-amber-500/15 text-amber-700 dark:text-status-warning-text',
-  danger: 'bg-rose-600/15 text-rose-700 dark:text-danger-text',
+  success: 'bg-emerald-600/15 text-status-success-text dark:text-status-success-text',
+  warning: 'bg-amber-500/15 text-status-warning-text dark:text-status-warning-text',
+  danger: 'bg-rose-600/15 text-danger-text dark:text-danger-text',
   violet: 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300',
-  cyan: 'bg-sky-600/15 text-sky-700 dark:text-status-info-text',
+  cyan: 'bg-sky-600/15 text-status-info-text dark:text-status-info-text',
 } as const
 
 const BADGE_DOT = {

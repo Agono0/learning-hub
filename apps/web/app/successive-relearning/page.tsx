@@ -29,11 +29,11 @@ export default function SuccessiveRelearningPage() {
               <Repeat className="h-3.5 w-3.5" />
               <span>Rawson &amp; Dunlosky (2012)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text dark:text-status-success-text">
               <Award className="h-3.5 w-3.5" />
               <span>d &gt; 1.5 Utility</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text dark:text-status-warning-text">
               <Flame className="h-3.5 w-3.5" />
               <span>Ebbinghaus Savings Method</span>
             </span>
@@ -65,7 +65,7 @@ export default function SuccessiveRelearningPage() {
           </div>
           <div className="space-y-1">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Repeat className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <Repeat className="h-4 w-4 text-status-success-text dark:text-status-success-text" />
               2. Forgetting Rate Deceleration:
             </span>
             <p>
@@ -75,7 +75,7 @@ export default function SuccessiveRelearningPage() {
           </div>
           <div className="space-y-1">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <BookOpen className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <BookOpen className="h-4 w-4 text-status-warning-text dark:text-status-warning-text" />
               3. Empirical Savings Method:
             </span>
             <p>

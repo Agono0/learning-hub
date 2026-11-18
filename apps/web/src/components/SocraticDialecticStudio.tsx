@@ -357,7 +357,7 @@ export function SocraticDialecticStudio({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-white/10 bg-slate-900/40 px-6 text-xs font-semibold text-slate-400">
+      <div className="flex border-b border-white/10 bg-slate-900/40 px-6 text-xs font-semibold text-tertiary">
         <button
           type="button"
           onClick={() => setActiveTab('arena')}
@@ -698,7 +698,7 @@ export function SocraticDialecticStudio({
                           'rounded-xl border p-2.5 text-left transition-all',
                           isSelected
                             ? 'border-indigo-500 bg-indigo-500/20 text-white shadow-md'
-                            : 'border-white/5 bg-slate-950 text-slate-400 hover:text-slate-200',
+                            : 'border-white/5 bg-slate-950 text-tertiary hover:text-slate-200',
                         )}
                       >
                         <span className="text-[10px] font-bold uppercase tracking-wider block mb-1">
@@ -776,7 +776,7 @@ export function SocraticDialecticStudio({
               <span className="text-[11px] font-bold uppercase tracking-wider text-faint block">
                 Alex's Inquiry:
               </span>
-              <div className="rounded-xl border border-white/5 bg-slate-950 p-4 text-xs font-semibold text-sky-300 leading-relaxed">
+              <div className="rounded-xl border border-white/5 bg-slate-950 p-4 text-xs font-semibold text-status-info-text leading-relaxed">
                 "Hey! I'm trying to prepare for our dialectics exam on '{activeCase.title}'. Can you
                 explain the core mechanism and why the opposing side pushes back?"
               </div>

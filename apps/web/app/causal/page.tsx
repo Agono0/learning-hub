@@ -24,7 +24,7 @@ export default function CausalCounterfactualPage() {
         subtitle="Traverse Judea Pearl’s 3-level Ladder of Causation: Seeing (Association), Doing (Intervention via graph surgery), and Imagining (Counterfactuals via Abduction-Action-Prediction)."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text dark:text-status-success-text">
               <GitFork className="h-3.5 w-3.5" />
               <span>Pearl (2000, 2009) Causality</span>
             </span>
@@ -32,7 +32,7 @@ export default function CausalCounterfactualPage() {
               <Layers className="h-3.5 w-3.5" />
               <span>Graph Surgery do(X)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text dark:text-status-warning-text">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Level 3 Counterfactuals</span>
             </span>
@@ -46,7 +46,7 @@ export default function CausalCounterfactualPage() {
       {/* Learning Science Foundations Card */}
       <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-6">
         <div className="flex items-center gap-2.5 mb-3">
-          <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <Sparkles className="h-5 w-5 text-status-success-text dark:text-status-success-text" />
           <h2 className="text-base font-bold text-strong">
             Causal Inference &amp; Counterfactual Reasoning Foundations
           </h2>
@@ -65,7 +65,7 @@ export default function CausalCounterfactualPage() {
           </div>
           <div className="space-y-1.5">
             <div className="font-semibold text-strong flex items-center gap-1.5">
-              <Layers className="h-3.5 w-3.5 text-emerald-500" />
+              <Layers className="h-3.5 w-3.5 text-status-success-text" />
               Level 2: Intervention (Doing)
             </div>
             <p>
@@ -76,7 +76,7 @@ export default function CausalCounterfactualPage() {
           </div>
           <div className="space-y-1.5">
             <div className="font-semibold text-strong flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
               Level 3: Counterfactuals (Imagining)
             </div>
             <p>

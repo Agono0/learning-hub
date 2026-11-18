@@ -59,7 +59,7 @@ export function DualProcessHUD({
       {/* Top Banner: Scenario Context & Reflective Tier */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-(--hub-border) pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-950/40 text-ac-text dark:text-ac-text flex items-center justify-center font-bold">
             <Brain className="w-5 h-5" />
           </div>
           <div>
@@ -129,7 +129,7 @@ export function DualProcessHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-secondary flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-violet-500" />
+              <Compass className="w-3.5 h-3.5 text-ac-text" />
               Reflective Mind Index
             </span>
             <span className="text-xs font-bold text-strong">
@@ -146,7 +146,7 @@ export function DualProcessHUD({
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-secondary flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5 text-sky-500" />
+              <Eye className="w-3.5 h-3.5 text-status-info-text" />
               Cognitive Decoupling
             </span>
             <span className="text-xs font-bold text-strong">
@@ -166,8 +166,8 @@ export function DualProcessHUD({
               <ShieldAlert
                 className={`w-3.5 h-3.5 ${
                   metrics.biasVulnerabilityScore > 0.4
-                    ? 'text-rose-600 dark:text-rose-400'
-                    : 'text-emerald-500'
+                    ? 'text-danger-text dark:text-danger-text'
+                    : 'text-status-success-text'
                 }`}
               />
               Bias Vulnerability
@@ -175,8 +175,8 @@ export function DualProcessHUD({
             <span
               className={`text-xs font-bold ${
                 metrics.biasVulnerabilityScore > 0.4
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
+                  ? 'text-danger-text dark:text-danger-text'
+                  : 'text-status-success-text dark:text-status-success-text'
               }`}
             >
               {(metrics.biasVulnerabilityScore * 100).toFixed(0)}%
@@ -204,7 +204,7 @@ export function DualProcessHUD({
 
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <Activity className="w-3.5 h-3.5 text-violet-500" />
+            <Activity className="w-3.5 h-3.5 text-ac-text" />
             Forcing Steps Completed:{' '}
             <strong className="text-strong">{metrics.completedForcingStepIds.length}</strong>
           </span>

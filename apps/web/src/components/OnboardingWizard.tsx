@@ -399,8 +399,7 @@ export function OnboardingWizard() {
             {/* Bring-your-own content — works fully offline, no AI setup needed. */}
             <div className="rounded-xl border border-dashed border-neutral-300 p-3 dark:border-(--hub-border)">
               <div className="flex items-center gap-2 text-xs font-medium text-neutral-600 dark:text-secondary">
-                <FileUp className="h-3.5 w-3.5 text-indigo-500" /> Already have content? Bring it
-                in.
+                <FileUp className="h-3.5 w-3.5 text-ac-text" /> Already have content? Bring it in.
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
@@ -454,7 +453,7 @@ export function OnboardingWizard() {
             <div className="space-y-2.5">
               <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <GraduationCap className="h-4 w-4 text-indigo-500" />
+                  <GraduationCap className="h-4 w-4 text-ac-text" />
                   AI is optional (Manual Mode + Free Tiers built in)
                 </div>
                 <p className="mt-1 text-xs text-tertiary">
@@ -463,7 +462,7 @@ export function OnboardingWizard() {
                   <Link
                     href="/settings"
                     onClick={() => skipMutation.mutate()}
-                    className="text-indigo-500 underline"
+                    className="text-ac-text underline"
                   >
                     Settings
                   </Link>
@@ -472,7 +471,7 @@ export function OnboardingWizard() {
               </div>
               <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <Cloud className="h-4 w-4 text-indigo-500" />
+                  <Cloud className="h-4 w-4 text-ac-text" />
                   Free E2EE Multi-Device Sync
                 </div>
                 <p className="mt-1 text-xs text-tertiary">
@@ -481,7 +480,7 @@ export function OnboardingWizard() {
                   <Link
                     href="/backup"
                     onClick={() => skipMutation.mutate()}
-                    className="text-indigo-500 underline"
+                    className="text-ac-text underline"
                   >
                     Backup &amp; Sync
                   </Link>
@@ -490,7 +489,7 @@ export function OnboardingWizard() {
               </div>
               <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <BookOpen className="h-4 w-4 text-indigo-500" />
+                  <BookOpen className="h-4 w-4 text-ac-text" />
                   Tip: Press{' '}
                   <kbd className="rounded bg-neutral-200 px-1.5 py-0.5 text-[11px] dark:bg-(--hub-border)">
                     ⌘K
@@ -503,7 +502,7 @@ export function OnboardingWizard() {
               </div>
               <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <Sparkles className="h-4 w-4 text-indigo-500" />
+                  <Sparkles className="h-4 w-4 text-ac-text" />
                   Your first review is waiting
                 </div>
                 <p className="mt-1 text-xs text-tertiary">
@@ -511,7 +510,7 @@ export function OnboardingWizard() {
                   <Link
                     href="/review"
                     onClick={() => skipMutation.mutate()}
-                    className="text-indigo-500 underline"
+                    className="text-ac-text underline"
                   >
                     flashcard review
                   </Link>{' '}

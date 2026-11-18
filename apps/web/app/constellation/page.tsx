@@ -499,7 +499,7 @@ export default function ConstellationPage() {
             </Button>
           </div>
           {evaluate.isError ? (
-            <p className="text-xs text-rose-600">{errorText(evaluate.error)}</p>
+            <p className="text-xs text-danger-text">{errorText(evaluate.error)}</p>
           ) : null}
           {alert ? (
             <Callout tone="warning" title="Review a prerequisite first">
@@ -536,12 +536,12 @@ export default function ConstellationPage() {
                 >
                   <div className="flex items-center justify-between gap-2 font-semibold">
                     <span className="truncate">{node.title}</span>
-                    <span className={b === 'weak' ? 'text-rose-600' : 'text-status-info-text'}>
+                    <span className={b === 'weak' ? 'text-danger-text' : 'text-status-info-text'}>
                       {Math.round(node.masteryProb * 100)}%
                     </span>
                   </div>
                   {b === 'weak' ? (
-                    <div className="mt-1 flex items-center gap-1 text-rose-600">
+                    <div className="mt-1 flex items-center gap-1 text-danger-text">
                       <AlertTriangle className="h-3 w-3" /> Weak
                     </div>
                   ) : null}
@@ -624,7 +624,7 @@ export default function ConstellationPage() {
             </Button>
           </form>
         ) : null}
-        {formError ? <p className="text-xs text-rose-600">{formError}</p> : null}
+        {formError ? <p className="text-xs text-danger-text">{formError}</p> : null}
       </Panel>
     </div>
   )

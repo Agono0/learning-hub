@@ -32,7 +32,7 @@ export interface LeitnerProgressionProps {
 const TIER_ACCENTS: Record<number, { bg: string; text: string; ring: string; border: string }> = {
   1: {
     bg: 'bg-rose-500/10 dark:bg-rose-500/15',
-    text: 'text-rose-600 dark:text-danger-text',
+    text: 'text-danger-text dark:text-danger-text',
     ring: 'focus-visible:ring-rose-500',
     border: 'border-rose-500/20 hover:border-rose-500/40',
   },
@@ -82,7 +82,7 @@ export function LeitnerProgression({
       {/* Header bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-ac-text dark:text-indigo-400 border border-indigo-500/20">
             <Layers className="h-5 w-5" />
           </div>
           <div>

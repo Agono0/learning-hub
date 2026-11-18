@@ -405,7 +405,7 @@ export default function ExamSimulatorPage() {
               aria-label="Remaining time"
               className={`flex items-center gap-1.5 font-mono text-base font-bold tabular-nums px-2.5 py-1 rounded-md ${
                 isUrgent
-                  ? 'bg-rose-100 text-rose-600 animate-pulse dark:bg-rose-950/60 dark:text-danger-text'
+                  ? 'bg-rose-100 text-danger-text animate-pulse dark:bg-rose-950/60 dark:text-danger-text'
                   : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'
               }`}
             >
@@ -643,7 +643,7 @@ export default function ExamSimulatorPage() {
                 <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
                   Turn Misses into Spaced Repetition Cards
                 </h3>
-                <p className="text-xs text-amber-700 dark:text-status-warning-text">
+                <p className="text-xs text-status-warning-text dark:text-status-warning-text">
                   {gradedReport.missedCards.length} missed question(s) identified. Reinforce them in
                   your daily review.
                 </p>
@@ -694,7 +694,7 @@ export default function ExamSimulatorPage() {
                     <CheckCircle2 className="h-3.5 w-3.5" /> Correct
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-danger-text">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-danger-text dark:text-danger-text">
                     <XCircle className="h-3.5 w-3.5" /> Missed
                   </span>
                 )}
@@ -709,7 +709,7 @@ export default function ExamSimulatorPage() {
                     className={
                       res.correct
                         ? 'text-status-success-text dark:text-status-success-text'
-                        : 'text-rose-600 dark:text-danger-text'
+                        : 'text-danger-text dark:text-danger-text'
                     }
                   >
                     {res.userAnswer || '(blank)'}

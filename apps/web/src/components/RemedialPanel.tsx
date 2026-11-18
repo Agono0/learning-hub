@@ -43,7 +43,7 @@ export function RemedialPanel({ concepts = [], className }: RemedialPanelProps) 
   return (
     <div className={cx('panel space-y-3', className)} data-testid="remedial-panel">
       <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-        <ShieldCheck className="h-4 w-4 text-indigo-500" />
+        <ShieldCheck className="h-4 w-4 text-ac-text" />
         Prerequisite check
       </h3>
       <p className="text-xs text-tertiary dark:text-faint">
@@ -74,15 +74,15 @@ export function RemedialPanel({ concepts = [], className }: RemedialPanelProps) 
         <div className="h-12 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       )}
       {q.isError && (
-        <p className="text-xs text-rose-600 dark:text-danger-text">Check failed — retry.</p>
+        <p className="text-xs text-danger-text dark:text-danger-text">Check failed — retry.</p>
       )}
       {q.data?.result && (
         <div
           className={cx(
             'flex items-start gap-2.5 rounded-xl border p-3 text-xs',
             q.data.result.blocked
-              ? 'border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-status-warning-text'
-              : 'border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-status-success-text',
+              ? 'border-amber-500/30 bg-amber-500/5 text-status-warning-text dark:text-status-warning-text'
+              : 'border-emerald-500/30 bg-emerald-500/5 text-status-success-text dark:text-status-success-text',
           )}
         >
           {q.data.result.blocked ? (

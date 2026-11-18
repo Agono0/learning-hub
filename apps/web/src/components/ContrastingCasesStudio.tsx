@@ -229,7 +229,7 @@ export function ContrastingCasesStudio() {
         <div className="space-y-4">
           <Panel className="space-y-2">
             <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-              <Eye className="h-4 w-4 text-indigo-500" />
+              <Eye className="h-4 w-4 text-ac-text" />
               Perceptual Feature Discrimination: Juxtaposed Case Variants
             </h3>
             <p className="text-xs text-secondary leading-relaxed">{activeSet.problemOverview}</p>
@@ -277,7 +277,7 @@ export function ContrastingCasesStudio() {
           {/* Feature Dimensions Discrimination Checklist */}
           <Panel className="space-y-3">
             <h4 className="text-xs font-semibold text-strong flex items-center gap-1.5">
-              <Layers className="h-3.5 w-3.5 text-indigo-500" />
+              <Layers className="h-3.5 w-3.5 text-ac-text" />
               Hypothesized Dimensions: Discriminate Deep Invariants from Surface Distractors
             </h4>
             <p className="text-xs text-secondary">
@@ -323,7 +323,7 @@ export function ContrastingCasesStudio() {
         <div className="space-y-4">
           <Panel className="space-y-3">
             <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-              <Sliders className="h-4 w-4 text-indigo-500" />
+              <Sliders className="h-4 w-4 text-ac-text" />
               Invent Your Invariant Metric / Scoring Rule
             </h3>
             <p className="text-xs text-secondary leading-relaxed">
@@ -457,7 +457,7 @@ export function ContrastingCasesStudio() {
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-3">
               <div>
                 <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-                  <BookOpen className="h-4 w-4 text-emerald-500" />A Time for Telling:{' '}
+                  <BookOpen className="h-4 w-4 text-status-success-text" />A Time for Telling:{' '}
                   {activeSet.canonicalTelling.lectureTitle}
                 </h3>
                 <p className="text-xs text-secondary">
@@ -474,7 +474,7 @@ export function ContrastingCasesStudio() {
                 <span className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
                   {activeSet.canonicalTelling.formalLawName}
                 </span>
-                <span className="font-mono text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                <span className="font-mono text-xs font-bold text-emerald-800 dark:text-status-success-text">
                   {activeSet.canonicalTelling.formalEquation}
                 </span>
               </div>
@@ -520,7 +520,7 @@ export function ContrastingCasesStudio() {
         <div className="space-y-4">
           <Panel className="space-y-3">
             <h3 className="text-sm font-semibold text-strong flex items-center gap-1.5">
-              <Sparkles className="h-4 w-4 text-indigo-500" />
+              <Sparkles className="h-4 w-4 text-ac-text" />
               Far Transfer Challenge: {activeSet.transferChallenge.scenarioTitle}
             </h3>
             <p className="text-xs text-secondary leading-relaxed">
@@ -568,7 +568,7 @@ export function ContrastingCasesStudio() {
               ) : (
                 <div className="rounded border border-indigo-200 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 text-xs space-y-1">
                   <span className="font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-1">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                     Target Principle: {activeSet.transferChallenge.targetConcept}
                   </span>
                   <p className="text-secondary leading-relaxed">
@@ -584,7 +584,7 @@ export function ContrastingCasesStudio() {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                  <FileCheck className="h-4 w-4 text-indigo-500" />
+                  <FileCheck className="h-4 w-4 text-ac-text" />
                   Calibrated FSRS-6 Review Deck (CDTS Scaled)
                 </h4>
                 <p className="text-xs text-secondary">

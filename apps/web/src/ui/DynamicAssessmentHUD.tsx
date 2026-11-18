@@ -123,7 +123,7 @@ export function DynamicAssessmentHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>ZPD Bandwidth</span>
-            <Layers className="w-3.5 h-3.5 text-indigo-500" />
+            <Layers className="w-3.5 h-3.5 text-ac-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-indigo-600 dark:text-indigo-400">
@@ -138,7 +138,7 @@ export function DynamicAssessmentHUD({
         <div className="p-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel-2)/40 space-y-1">
           <div className="flex items-center justify-between text-xs text-secondary">
             <span>Learning Potential</span>
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <Zap className="w-3.5 h-3.5 text-status-warning-text" />
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold font-mono text-strong">
@@ -189,7 +189,7 @@ export function DynamicAssessmentHUD({
       {/* Typology description callout */}
       <div className="text-xs text-secondary p-2.5 rounded-lg bg-neutral-100/70 dark:bg-(--hub-panel-2)/60 border border-neutral-200 dark:border-(--hub-border) flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+          <Sparkles className="w-3.5 h-3.5 text-ac-text shrink-0" />
           <span>{currentTypology.desc}</span>
         </div>
         <div className="text-[11px] font-mono text-tertiary shrink-0">

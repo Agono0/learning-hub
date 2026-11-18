@@ -179,7 +179,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
                 placeholder="Guess — wrong answers make the study episode stick"
                 rows={2}
                 aria-label="Your pretest guess"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white placeholder:text-slate-500"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white placeholder:text-tertiary"
               />
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-faint">Confidence in this guess:</span>
@@ -259,7 +259,7 @@ export function PretestingLab({ candidates, className }: PretestingLabProps) {
                 onChange={(e) => setRetestInput(e.target.value)}
                 placeholder="Type the answer from memory…"
                 aria-label="Retest answer"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white placeholder:text-slate-500"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white placeholder:text-tertiary"
               />
               <div className="grid grid-cols-2 gap-3">
                 <button

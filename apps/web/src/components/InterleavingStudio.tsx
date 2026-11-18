@@ -259,7 +259,7 @@ export function InterleavingStudio({
       key: 'deck' as const,
       label: (
         <>
-          <Download className="mr-1.5 h-4 w-4 text-indigo-500" /> FSRS Deck ({deckCards.length})
+          <Download className="mr-1.5 h-4 w-4 text-ac-text" /> FSRS Deck ({deckCards.length})
         </>
       ),
     },

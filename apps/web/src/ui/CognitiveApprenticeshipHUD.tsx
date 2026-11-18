@@ -48,12 +48,12 @@ const PARTICIPATION_TITLES: Record<
   },
   autonomous_practitioner: {
     title: 'Autonomous Practitioner',
-    color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30',
+    color: 'bg-emerald-500/10 text-status-success-text border-emerald-500/30',
     desc: 'Operating independently with faded cognitive scaffolds',
   },
   master_modeler: {
     title: 'Master Modeler',
-    color: 'bg-purple-500/10 text-purple-500 border-purple-500/30',
+    color: 'bg-purple-500/10 text-ac-text border-purple-500/30',
     desc: 'Modeling tacit heuristics and coaching future apprentices',
   },
 }
@@ -113,7 +113,7 @@ export function CognitiveApprenticeshipHUD({
           </div>
 
           <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-2.5 py-1.5 shadow-sm">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
             <span className="text-tertiary">Principles:</span>
             <span className="font-bold text-strong">
               {metrics.extractedPrincipleCount}/{metrics.totalAvailablePrinciples}
@@ -162,7 +162,7 @@ export function CognitiveApprenticeshipHUD({
                   >
                     {info.name}
                   </span>
-                  {isUnlocked && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                  {isUnlocked && <CheckCircle2 className="h-3 w-3 text-status-success-text" />}
                 </div>
                 <span className="text-[10px] text-tertiary mt-1 line-clamp-1">{info.desc}</span>
               </button>

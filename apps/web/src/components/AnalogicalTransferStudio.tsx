@@ -273,7 +273,7 @@ export function AnalogicalTransferStudio({
                     className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
                       sessionState.selectedBaseAnalogIndex === idx
                         ? 'bg-sky-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-800 text-tertiary hover:bg-slate-700'
                     }`}
                   >
                     Analog {idx + 1}: {base.domainName}
@@ -325,8 +325,8 @@ export function AnalogicalTransferStudio({
                     let cardBorder = 'border-slate-800 bg-slate-950/40'
                     if (isEvaluated) {
                       cardBorder = isMatch
-                        ? 'border-emerald-500 bg-emerald-950/20 text-emerald-300'
-                        : 'border-rose-500 bg-rose-950/20 text-rose-300'
+                        ? 'border-emerald-500 bg-emerald-950/20 text-status-success-text'
+                        : 'border-rose-500 bg-rose-950/20 text-danger-text'
                     }
 
                     return (
@@ -353,7 +353,7 @@ export function AnalogicalTransferStudio({
                           {baseEnt.surfaceAttributes.map((attr) => (
                             <span
                               key={attr}
-                              className="rounded bg-slate-800/60 px-1.5 py-0.5 text-[10px] text-slate-400"
+                              className="rounded bg-slate-800/60 px-1.5 py-0.5 text-[10px] text-tertiary"
                             >
                               {attr}
                             </span>
@@ -426,7 +426,7 @@ export function AnalogicalTransferStudio({
                         {targetEnt.surfaceAttributes.map((attr) => (
                           <span
                             key={attr}
-                            className="rounded bg-slate-800/60 px-1.5 py-0.5 text-[10px] text-slate-400"
+                            className="rounded bg-slate-800/60 px-1.5 py-0.5 text-[10px] text-tertiary"
                           >
                             {attr}
                           </span>
@@ -654,7 +654,7 @@ export function AnalogicalTransferStudio({
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg bg-slate-950/70 p-3 border border-slate-800 font-mono text-xs text-emerald-400">
+            <div className="mt-4 rounded-lg bg-slate-950/70 p-3 border border-slate-800 font-mono text-xs text-status-success-text">
               <strong>Mathematical Invariant:</strong>{' '}
               {currentSuite.convergenceSchema.mathematicalOrAlgorithmicInvariant}
             </div>
@@ -702,7 +702,7 @@ export function AnalogicalTransferStudio({
                 {currentSuite.falseAnalogyDecoy.surfaceMatchingEntities.map((kw) => (
                   <span
                     key={kw}
-                    className="rounded bg-rose-950/40 border border-rose-800/40 px-2 py-0.5 text-xs text-rose-300"
+                    className="rounded bg-rose-950/40 border border-rose-800/40 px-2 py-0.5 text-xs text-danger-text"
                   >
                     {kw}
                   </span>
@@ -761,7 +761,7 @@ export function AnalogicalTransferStudio({
           </div>
 
           {copyStatus && (
-            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-3 text-xs text-emerald-300">
+            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-950/30 p-3 text-xs text-status-success-text">
               {copyStatus}
             </div>
           )}

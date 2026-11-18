@@ -503,7 +503,7 @@ function FreeTextInput({ exercise, value, onChange, disabled }: InputProps<'free
                     onClick={() => void askRubricCoach()}
                     className="btn-ghost py-1 text-xs"
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                    <Sparkles className="h-3.5 w-3.5 text-ac-text" />
                     {coachBusy ? 'Evaluating…' : 'Ask AI Rubric Coach'}
                   </button>
                 )}

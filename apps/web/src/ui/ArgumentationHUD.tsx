@@ -188,7 +188,7 @@ export function ArgumentationHUD({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
           {evaluation.epistemicStrengths.length > 0 && (
             <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-950/20 p-3 space-y-1">
-              <div className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+              <div className="font-medium text-status-success-text dark:text-status-success-text flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Epistemic Strengths
               </div>
               <ul className="list-disc pl-4 space-y-0.5 text-secondary">
@@ -201,7 +201,7 @@ export function ArgumentationHUD({
 
           {evaluation.vulnerabilities.length > 0 && (
             <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-1">
-              <div className="font-medium text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+              <div className="font-medium text-status-warning-text dark:text-status-warning-text flex items-center gap-1.5">
                 <ShieldAlert className="h-3.5 w-3.5" /> Epistemic Vulnerabilities
               </div>
               <ul className="list-disc pl-4 space-y-0.5 text-secondary">

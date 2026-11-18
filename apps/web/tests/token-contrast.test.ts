@@ -117,6 +117,7 @@ const blocks = parseBlocks(CSS)
 
 const palettes: Record<string, Record<string, string>> = {}
 let rootVars: Record<string, string> = {}
+let themeVars: Record<string, string> = {}
 let darkVars: Record<string, string> = {}
 let einkVars: Record<string, string> = {}
 for (const b of blocks) {
@@ -129,6 +130,10 @@ for (const b of blocks) {
     if (sel === ':root') rootVars = { ...rootVars, ...decls(b.body) }
     else if (sel === '.dark') darkVars = { ...darkVars, ...decls(b.body) }
     else if (sel === 'html.theme-e-ink') einkVars = { ...einkVars, ...decls(b.body) }
+    // Plain '@theme' test (not startsWith): the @custom-variant line's
+    // parenthetical contains a comma, so the naive ','-split glues it to the
+    // next selector. And no leading \b — '@' is not a word character.
+    else if (/@theme\b/.test(sel)) themeVars = { ...themeVars, ...decls(b.body) }
   }
 }
 
@@ -192,6 +197,9 @@ const STATUS_TOKENS = [
   '--status-success-text',
   '--status-warning-text',
   '--status-info-text',
+  '--status-success-strong',
+  '--status-warning-strong',
+  '--status-info-strong',
   '--danger-text',
 ]
 
@@ -266,6 +274,29 @@ describe('token contrast (WCAG AA, both modes — ui-design-signature §3.1)', (
     for (const token of [...TEXT_TOKENS, ...STATUS_TOKENS]) {
       const ratio = contrast(resolveColor(`var(${token})`, ctx), [1, 1, 1])
       expect(ratio, `e-ink: ${token} = ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA)
+    }
+  })
+
+  it('aliases the status-hue 300-500 steps onto mode-aware tokens (ux-audit P0-1)', () => {
+    // The raw Tailwind status steps were designed for dark surfaces; the @theme
+    // must keep routing them through the mode-aware tokens so unconditioned
+    // `text-emerald-400`-style call sites pass AA in BOTH modes.
+    const expected = [
+      ['--color-emerald-300', 'var(--status-success-text)'],
+      ['--color-emerald-400', 'var(--status-success-text)'],
+      ['--color-emerald-500', 'var(--status-success-strong)'],
+      ['--color-amber-300', 'var(--status-warning-text)'],
+      ['--color-amber-400', 'var(--status-warning-text)'],
+      ['--color-amber-500', 'var(--status-warning-strong)'],
+      ['--color-rose-300', 'var(--danger-text)'],
+      ['--color-rose-400', 'var(--danger-text)'],
+      ['--color-rose-500', 'var(--danger-strong)'],
+      ['--color-sky-300', 'var(--status-info-text)'],
+      ['--color-sky-400', 'var(--status-info-text)'],
+      ['--color-sky-500', 'var(--status-info-strong)'],
+    ] as const
+    for (const [name, value] of expected) {
+      expect(themeVars[name], `${name} must alias to ${value}`).toBe(value)
     }
   })
 })

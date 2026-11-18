@@ -25,7 +25,7 @@ export interface FlowStatePanelProps {
 const ZONE_TONE: Record<string, string> = {
   flow: 'text-status-success-text dark:text-status-success-text',
   boredom: 'text-status-info-text dark:text-status-info-text',
-  anxiety: 'text-rose-600 dark:text-danger-text',
+  anxiety: 'text-danger-text dark:text-danger-text',
   fatigue: 'text-status-warning-text dark:text-status-warning-text',
 }
 
@@ -69,7 +69,7 @@ export function FlowStatePanel({
     <div className={cx('panel space-y-3', className)} data-testid="flow-state-panel">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-          <Waves className="h-4 w-4 text-indigo-500" />
+          <Waves className="h-4 w-4 text-ac-text" />
           Flow readiness
         </h3>
         {flow && (
@@ -165,7 +165,7 @@ export function FlowStatePanel({
           </div>
         </>
       ) : current.isError ? (
-        <p className="text-xs text-rose-600 dark:text-danger-text">
+        <p className="text-xs text-danger-text dark:text-danger-text">
           Flow assessment failed to load — check the connection and retry.
         </p>
       ) : null}

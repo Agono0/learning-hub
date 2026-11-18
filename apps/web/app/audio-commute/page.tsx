@@ -411,7 +411,7 @@ export default function AudioCommutePage() {
                 <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-indigo-500/30">
                   {phase === 'pause' ? (
                     <div>
-                      <div className="font-mono text-2xl font-bold text-indigo-500">
+                      <div className="font-mono text-2xl font-bold text-ac-text">
                         {(pauseRemainingMs / 1000).toFixed(1)}s
                       </div>
                       <div className="text-[10px] uppercase tracking-wider text-tertiary">
@@ -419,7 +419,7 @@ export default function AudioCommutePage() {
                       </div>
                     </div>
                   ) : phase === 'prompt' ? (
-                    <Volume2 className="h-9 w-9 animate-pulse text-indigo-500" />
+                    <Volume2 className="h-9 w-9 animate-pulse text-ac-text" />
                   ) : phase === 'answer' || phase === 'grading' ? (
                     <CheckCircle2 className="h-9 w-9 text-status-success-text" />
                   ) : (
@@ -428,7 +428,7 @@ export default function AudioCommutePage() {
                 </div>
                 <p className="max-w-md text-sm font-medium">{current?.promptText}</p>
                 {phase === 'answer' || phase === 'grading' ? (
-                  <p className="max-w-md rounded-lg bg-emerald-600/10 px-3 py-1.5 text-sm text-emerald-700 dark:text-status-success-text">
+                  <p className="max-w-md rounded-lg bg-emerald-600/10 px-3 py-1.5 text-sm text-status-success-text dark:text-status-success-text">
                     {current?.answerText}
                   </p>
                 ) : null}

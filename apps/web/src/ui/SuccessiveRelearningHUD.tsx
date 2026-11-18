@@ -79,7 +79,7 @@ export function SuccessiveRelearningHUD({
           <ProgressBar value={sessionCriterionPercent / 100} />
           <div className="flex justify-between text-[11px] text-secondary">
             <span>{activeQueueCount} in active rotation</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+            <span className="text-status-success-text dark:text-status-success-text font-medium">
               {completedCount} to criterion
             </span>
           </div>
@@ -106,14 +106,14 @@ export function SuccessiveRelearningHUD({
         <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-4 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-strong">Decay Constant (λ)</span>
-            <span className="font-bold text-amber-600 dark:text-amber-400">
+            <span className="font-bold text-status-warning-text dark:text-status-warning-text">
               {retentionDecayLambda.toFixed(4)}
             </span>
           </div>
           <ProgressBar value={Math.max(0.1, 1 - retentionDecayLambda / 0.12)} />
           <div className="flex justify-between text-[11px] text-secondary">
             <span>Baseline: 0.1200</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+            <span className="text-status-success-text dark:text-status-success-text font-medium">
               Decelerating Rate
             </span>
           </div>
@@ -123,7 +123,7 @@ export function SuccessiveRelearningHUD({
         <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-4 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-strong">Retention Probability</span>
-            <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+            <span className="font-bold text-status-success-text dark:text-status-success-text text-sm">
               {Math.round(estimatedRetention * 100)}%
             </span>
           </div>

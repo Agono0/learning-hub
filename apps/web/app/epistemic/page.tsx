@@ -28,11 +28,11 @@ export default function EpistemicNetworkPage() {
               <Network className="h-3.5 w-3.5" />
               <span>Shaffer (2016) Quantitative Ethnography</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text dark:text-status-success-text">
               <GitGraph className="h-3.5 w-3.5" />
               <span>Moving Stanza Co-occurrence</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-violet-600 dark:text-violet-400">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-ac-text dark:text-ac-text">
               <Compass className="h-3.5 w-3.5" />
               <span>SVD 2D Epistemic Space</span>
             </span>
@@ -72,7 +72,7 @@ export default function EpistemicNetworkPage() {
 
           <div className="rounded-lg bg-white dark:bg-(--hub-panel) p-3 border border-neutral-200 dark:border-(--hub-border)">
             <div className="font-semibold text-strong mb-1 flex items-center gap-1.5">
-              <Network className="h-4 w-4 text-emerald-500" />
+              <Network className="h-4 w-4 text-status-success-text" />
               Sphere Normalization
             </div>
             <p className="text-secondary leading-relaxed">
@@ -84,7 +84,7 @@ export default function EpistemicNetworkPage() {
 
           <div className="rounded-lg bg-white dark:bg-(--hub-panel) p-3 border border-neutral-200 dark:border-(--hub-border)">
             <div className="font-semibold text-strong mb-1 flex items-center gap-1.5">
-              <Compass className="h-4 w-4 text-violet-500" />
+              <Compass className="h-4 w-4 text-ac-text" />
               SVD Dimensional Reduction
             </div>
             <p className="text-secondary leading-relaxed">

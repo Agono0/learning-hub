@@ -87,7 +87,7 @@ export function EpistemicNetworkHUD({
         <div className="rounded-lg p-3 border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken)">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
-              <Compass className="h-3.5 w-3.5 text-emerald-500" />
+              <Compass className="h-3.5 w-3.5 text-status-success-text" />
               SVD 2D Centroid
             </span>
             <span className="text-xs font-semibold text-strong">
@@ -109,10 +109,10 @@ export function EpistemicNetworkHUD({
         <div className="rounded-lg p-3 border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken)">
           <div className="flex items-center justify-between mb-1.5">
             <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
-              <Layers className="h-3.5 w-3.5 text-violet-500" />
+              <Layers className="h-3.5 w-3.5 text-ac-text" />
               Central Epistemic Hub
             </span>
-            <span className="text-xs font-semibold text-violet-600 dark:text-violet-400 truncate max-w-[120px]">
+            <span className="text-xs font-semibold text-ac-text dark:text-ac-text truncate max-w-[120px]">
               {centralHubCode}
             </span>
           </div>
@@ -129,7 +129,7 @@ export function EpistemicNetworkHUD({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
         <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-2.5 border border-neutral-200 dark:border-(--hub-border)">
           <div className="flex items-center gap-2 truncate">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0" />
             <div className="truncate">
               <div className="font-medium text-strong truncate">Dominant Stanza Link</div>
               <div className="text-[11px] text-secondary truncate">{dominantConnection}</div>
@@ -139,7 +139,7 @@ export function EpistemicNetworkHUD({
 
         <div className="flex items-center justify-between rounded-lg bg-neutral-50 dark:bg-(--hub-sunken) p-2.5 border border-neutral-200 dark:border-(--hub-border)">
           <div className="flex items-center gap-2 truncate">
-            <Activity className="h-4 w-4 text-indigo-500 shrink-0" />
+            <Activity className="h-4 w-4 text-ac-text shrink-0" />
             <div className="truncate">
               <div className="font-medium text-strong truncate">Epistemic Stance</div>
               <div className="text-[11px] text-secondary truncate">{interpretation}</div>

@@ -439,7 +439,7 @@ export function QuickHudModal() {
         </div>
 
         {/* Footer info */}
-        <div className="border-t border-neutral-800 bg-neutral-900/30 px-4 py-2 text-[11px] text-neutral-500 flex justify-between items-center">
+        <div className="border-t border-neutral-800 bg-neutral-900/30 px-4 py-2 text-[11px] text-tertiary flex justify-between items-center">
           <div className="flex items-center gap-1.5">
             <Command className="h-3 w-3" />
             <span>Shortcut: Ctrl+Shift+Space</span>

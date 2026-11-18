@@ -24,16 +24,16 @@ export default function DeliberatePracticePage() {
         subtitle="Harness K. Anders Ericsson's Deliberate Practice (1993) and Kurt VanLehn's Impasse-Driven Schema Repair (1990): isolate targeted micro-skill deficits on the outer perimeter of competence, dissect cognitive impasses, and build adaptive transfer through positive error climate training."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-300">
-              <Crosshair className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
+              <Crosshair className="h-3.5 w-3.5 text-status-info-text" />
               <span>Ericsson (1993)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-violet-300">
-              <Target className="h-3.5 w-3.5 text-violet-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-ac-text">
+              <Target className="h-3.5 w-3.5 text-ac-text" />
               <span>VanLehn Impasse (1990)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-              <ShieldAlert className="h-3.5 w-3.5 text-emerald-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+              <ShieldAlert className="h-3.5 w-3.5 text-status-success-text" />
               <span>Keith-Frese EMT (2008)</span>
             </span>
           </div>
@@ -43,7 +43,7 @@ export default function DeliberatePracticePage() {
       {/* Scientific Foundation Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 font-bold text-xs text-cyan-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 font-bold text-xs text-status-info-text uppercase tracking-wider">
             <Crosshair className="h-4 w-4" />
             <span>Targeted Deficit Drills</span>
           </div>
@@ -55,7 +55,7 @@ export default function DeliberatePracticePage() {
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 font-bold text-xs text-violet-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 font-bold text-xs text-ac-text uppercase tracking-wider">
             <Brain className="h-4 w-4" />
             <span>Impasse-Driven Repair</span>
           </div>
@@ -67,7 +67,7 @@ export default function DeliberatePracticePage() {
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 font-bold text-xs text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 font-bold text-xs text-status-success-text uppercase tracking-wider">
             <ShieldAlert className="h-4 w-4" />
             <span>Error Management Training</span>
           </div>

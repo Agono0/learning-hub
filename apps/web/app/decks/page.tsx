@@ -10,7 +10,7 @@
  * drags ai.ts/better-sqlite3 into the client bundle).
  */
 import { useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FilePlus2,
@@ -38,6 +38,7 @@ import {
   Button,
   Callout,
   LeitnerProgression,
+  Menu,
   PageHeader,
   SelectField,
   Skeleton,
@@ -94,9 +95,9 @@ const FORMATS: CardFormat[] = [
 const BOX_LABEL = ['new/learning', 'young', 'young', 'mature', 'mature'] as const
 const BOX_TONE = [
   'bg-neutral-300 text-neutral-700 dark:bg-(--hub-border) dark:text-faint',
-  'bg-amber-500/20 text-amber-700 dark:text-status-warning-text',
-  'bg-amber-500/30 text-amber-700 dark:text-status-warning-text',
-  'bg-emerald-500/20 text-emerald-700 dark:text-status-success-text',
+  'bg-amber-500/20 text-status-warning-text dark:text-status-warning-text',
+  'bg-amber-500/30 text-status-warning-text dark:text-status-warning-text',
+  'bg-emerald-500/20 text-status-success-text dark:text-status-success-text',
   'bg-emerald-500/40 text-emerald-800 dark:text-emerald-200',
 ] as const
 
@@ -114,6 +115,7 @@ function BoxChip({ box }: { box: 1 | 2 | 3 | 4 | 5 }) {
 
 export default function DecksPage() {
   const qc = useQueryClient()
+  const router = useRouter()
   const [activeDeck, setActiveDeck] = useState<number | null>(null)
   const [newDeckName, setNewDeckName] = useState('')
   const [filterTags, setFilterTags] = useState('')
@@ -302,40 +304,41 @@ export default function DecksPage() {
       <PageHeader
         title="Decks & Cards"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="primary" onClick={() => setEditing('new')} disabled={!activeDeck}>
               <Plus className="h-4 w-4" /> New card
-            </Button>
-            <Button variant="ghost" onClick={() => setBulkOpen(true)} disabled={!activeDeck}>
-              <FilePlus2 className="h-4 w-4" /> Bulk paste
             </Button>
             <Button variant="ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
               <Wand2 className="h-4 w-4" /> AI generate
             </Button>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-1.5"
-              onClick={() => setDoctorDeckId(activeDeck)}
+            <Menu
+              label="More deck tools"
               disabled={!activeDeck}
-              title="Run Deck Doctor health inspection and one-click fixes"
+              items={[
+                {
+                  label: 'Bulk paste cards',
+                  icon: <FilePlus2 className="h-4 w-4" />,
+                  onSelect: () => setBulkOpen(true),
+                },
+                {
+                  label: 'Deck Doctor',
+                  icon: <Stethoscope className="h-4 w-4 text-ac-text" />,
+                  onSelect: () => setDoctorDeckId(activeDeck),
+                },
+                {
+                  label: 'Interleave decks',
+                  icon: <Shuffle className="h-4 w-4 text-status-success-text" />,
+                  onSelect: () => setInterleaveOpen(true),
+                },
+                {
+                  label: 'Workload balancer',
+                  icon: <Gauge className="h-4 w-4 text-status-info-text" />,
+                  onSelect: () => router.push('/workload'),
+                },
+              ]}
             >
-              <Stethoscope className="h-4 w-4 text-indigo-400" /> Doctor
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex items-center gap-1.5"
-              onClick={() => setInterleaveOpen(true)}
-              title="Interleave multiple decks with Rohrer-Taylor category scheduling"
-            >
-              <Shuffle className="h-4 w-4 text-status-success-text" /> Interleave
-            </Button>
-            <Link
-              href="/workload"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-100 dark:text-secondary dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
-              title="Open Workload Balancer & 90-Day Forecaster"
-            >
-              <Gauge className="h-4 w-4 text-status-info-text" /> Workload
-            </Link>
+              Tools
+            </Menu>
           </div>
         }
       />

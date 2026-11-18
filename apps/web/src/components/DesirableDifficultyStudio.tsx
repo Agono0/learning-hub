@@ -280,7 +280,7 @@ export function DesirableDifficultyStudio({
               setActiveTab('fsrs_cards')
             }}
           >
-            <Sparkles className="mr-1.5 h-4 w-4 text-indigo-500" /> FSRS Deck ({fsrsCards.length})
+            <Sparkles className="mr-1.5 h-4 w-4 text-ac-text" /> FSRS Deck ({fsrsCards.length})
           </Button>
         </div>
 

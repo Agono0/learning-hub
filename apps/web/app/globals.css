@@ -80,6 +80,28 @@
   --color-status-success-text: var(--status-success-text);
   --color-status-warning-text: var(--status-warning-text);
   --color-status-info-text: var(--status-info-text);
+  --color-status-success-strong: var(--status-success-strong);
+  --color-status-warning-strong: var(--status-warning-strong);
+  --color-status-info-strong: var(--status-info-strong);
+
+  /* The 300/400/500 steps of the status hues are aliased onto the mode-aware
+     tokens (docs/ux-audit.md P0-1): the raw Tailwind steps were designed for
+     dark surfaces and fail AA as text on light backgrounds. Dark-mode values
+     equal the previous raw steps, so dark renders pixel-identical. 500-level
+     fills keep a -strong token (700-level in light, the raw 500 in dark) so
+     existing fills only get darker — never lighter — in either mode. */
+  --color-emerald-300: var(--status-success-text);
+  --color-emerald-400: var(--status-success-text);
+  --color-emerald-500: var(--status-success-strong);
+  --color-amber-300: var(--status-warning-text);
+  --color-amber-400: var(--status-warning-text);
+  --color-amber-500: var(--status-warning-strong);
+  --color-rose-300: var(--danger-text);
+  --color-rose-400: var(--danger-text);
+  --color-rose-500: var(--danger-strong);
+  --color-sky-300: var(--status-info-text);
+  --color-sky-400: var(--status-info-text);
+  --color-sky-500: var(--status-info-strong);
 
   /* Motion tokens (values on :root below). Use the arbitrary-var syntax —
      `duration-(--duration-base)` / `ease-(--ease-enter)` — or the named
@@ -209,6 +231,11 @@
   --status-success-text: #047857; /* emerald-700 */
   --status-warning-text: #92400e; /* amber-800 */
   --status-info-text: #0369a1; /* sky-700 */
+  /* 500-level equivalents: darker in light (AA as text + 3:1 as fills), the
+     raw 500 steps in dark (no dark-mode visual change). */
+  --status-success-strong: #047857; /* emerald-700 */
+  --status-warning-strong: #b45309; /* amber-700 */
+  --status-info-strong: #0369a1; /* sky-700 */
 
   /* Danger = rose, one hue for both modes. Fills use rose-600 (white on it
      passes AA); text uses rose-700 in light so it clears 4.5:1 on the tinted
@@ -238,6 +265,9 @@
   --status-success-text: #34d399; /* emerald-400 */
   --status-warning-text: #fbbf24; /* amber-400 */
   --status-info-text: #38bdf8; /* sky-400 */
+  --status-success-strong: #10b981; /* emerald-500 (raw step, unchanged) */
+  --status-warning-strong: #f59e0b; /* amber-500 */
+  --status-info-strong: #0ea5e9; /* sky-500 */
   --danger-text: #fb7185; /* rose-400 */
 }
 
@@ -288,6 +318,17 @@ body {
 
 .label {
   @apply text-xs font-medium uppercase tracking-wide text-tertiary;
+}
+
+/* Focus-visible standard (ui-design-signature §4): one rule for every
+   interactive element. The ring color is the mode-aware accent *text* step, so
+   it clears 3:1 against both the light and the dark page surface; the 2px
+   offset shows the page background as a gap, keeping the ring visible even on
+   accent-filled controls. `outline` (not box-shadow) so it can't collide with
+   existing ring/shadow utilities and never affects layout. */
+:where(a, button, [role='button'], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ac-text);
+  outline-offset: 2px;
 }
 
 /* celebration animation (tiny habits / streak milestones) */
@@ -411,6 +452,15 @@ body {
 .sheet-panel {
   animation: sheet-up var(--duration-base) var(--ease-drawer) both;
 }
+
+/* Centered desktop dialogs scale from 0.96 + fade (ui-design-signature §5.4);
+   the bottom-sheet slide stays a phone pattern. */
+@media (min-width: 768px) {
+  .sheet-panel {
+    animation-name: scale-in;
+    animation-timing-function: var(--ease-enter);
+  }
+}
 .sheet-backdrop {
   animation: fade-in var(--duration-fast) ease-out both;
 }
@@ -527,6 +577,16 @@ html.theme-e-ink {
   --ac-soft: #f0f0f0;
   --ac-mid: #000000;
   --ac-deep: #000000;
+  /* Status hues go B&W too — e-ink is monochrome by definition. */
+  --status-success-text: #000000;
+  --status-warning-text: #000000;
+  --status-info-text: #000000;
+  --status-success-strong: #000000;
+  --status-warning-strong: #000000;
+  --status-info-strong: #000000;
+  --danger-text: #000000;
+  --danger-strong: #000000;
+  --danger-soft: color-mix(in oklab, #000000 8%, transparent);
   --n-50: #ffffff;
   --n-100: #f4f4f4;
   --n-200: #e5e5e5;

@@ -176,9 +176,9 @@ export function AnchoredInstructionHUD({
                 className="flex items-start gap-2 rounded border border-neutral-200 dark:border-(--hub-border) p-2 text-xs bg-surface-elevated"
               >
                 {fb.status === 'optimal' ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-4 w-4 text-status-success-text shrink-0 mt-0.5" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                  <AlertTriangle className="h-4 w-4 text-status-warning-text shrink-0 mt-0.5" />
                 )}
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -207,7 +207,7 @@ export function AnchoredInstructionHUD({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {evaluation.strengths.length > 0 && (
           <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-1.5">
-            <h4 className="text-xs font-semibold text-emerald-700 dark:text-status-success-text flex items-center gap-1">
+            <h4 className="text-xs font-semibold text-status-success-text dark:text-status-success-text flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Situated Strengths
             </h4>
@@ -223,7 +223,7 @@ export function AnchoredInstructionHUD({
 
         {evaluation.vulnerabilities.length > 0 && (
           <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-surface p-3 space-y-1.5">
-            <h4 className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+            <h4 className="text-xs font-semibold text-status-warning-text dark:text-status-warning-text flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5" />
               Inert Knowledge Vulnerabilities
             </h4>

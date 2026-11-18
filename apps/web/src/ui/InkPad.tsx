@@ -185,7 +185,7 @@ export function InkPad({
         />
 
         {!hasContent && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-neutral-400">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-tertiary">
             <span className="flex items-center gap-1.5 opacity-60">
               <PenTool className="h-3.5 w-3.5" />
               {placeholder}
@@ -224,7 +224,7 @@ export function InkPad({
                 className={`rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                   lineWidth === w.value
                     ? 'bg-indigo-600 text-white'
-                    : 'text-neutral-400 hover:text-neutral-200'
+                    : 'text-tertiary hover:text-neutral-200'
                 }`}
               >
                 {w.label}
@@ -238,7 +238,7 @@ export function InkPad({
               type="button"
               onClick={handleUndo}
               disabled={history.length <= 1}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-tertiary hover:bg-neutral-800 hover:text-neutral-200 disabled:opacity-40"
               title="Undo stroke"
             >
               <RotateCcw className="h-3 w-3" />
@@ -248,7 +248,7 @@ export function InkPad({
               type="button"
               onClick={handleClear}
               disabled={!hasContent}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-neutral-400 hover:bg-neutral-800 hover:text-rose-400 disabled:opacity-40"
+              className="flex items-center gap-1 rounded px-2 py-1 text-[11px] text-tertiary hover:bg-neutral-800 hover:text-danger-text disabled:opacity-40"
               title="Clear canvas"
             >
               <Eraser className="h-3 w-3" />

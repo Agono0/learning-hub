@@ -142,7 +142,7 @@ export function SelfRegulatedLearningHUD({
               <div className="flex items-center justify-between pb-1">
                 <span className="font-bold text-strong flex items-center gap-1.5">
                   {isCompleted ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <CheckCircle2 className="h-4 w-4 text-status-success-text" />
                   ) : (
                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-neutral-200 dark:bg-neutral-700 text-[10px] font-mono">
                       {idx + 1}
@@ -164,7 +164,7 @@ export function SelfRegulatedLearningHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Gauge className="h-3.5 w-3.5 text-indigo-500" />
+              <Gauge className="h-3.5 w-3.5 text-ac-text" />
               SRL Maturity Index
             </span>
             <span className="font-mono text-strong">
@@ -181,7 +181,7 @@ export function SelfRegulatedLearningHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Compass className="h-3.5 w-3.5 text-cyan-500" />
+              <Compass className="h-3.5 w-3.5 text-status-info-text" />
               Forethought Quality
             </span>
             <span className="font-mono text-strong">
@@ -198,7 +198,7 @@ export function SelfRegulatedLearningHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5 text-amber-500" />
+              <Flame className="h-3.5 w-3.5 text-status-warning-text" />
               Volitional Control
             </span>
             <span className="font-mono text-strong">
@@ -215,7 +215,7 @@ export function SelfRegulatedLearningHUD({
         <div className="rounded-xl border border-neutral-200/80 dark:border-(--hub-border)/80 bg-neutral-50 dark:bg-(--hub-panel-2) p-3.5 space-y-2">
           <div className="flex items-center justify-between text-secondary">
             <span className="font-semibold text-strong flex items-center gap-1.5">
-              <Shield className="h-3.5 w-3.5 text-emerald-500" />
+              <Shield className="h-3.5 w-3.5 text-status-success-text" />
               Attribution Resilience
             </span>
             <span className="font-mono text-strong">

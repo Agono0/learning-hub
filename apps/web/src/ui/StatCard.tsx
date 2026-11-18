@@ -41,7 +41,7 @@ const ACCENT_STYLES = {
     'bg-emerald-500/10 text-status-success-text dark:text-status-success-text border-emerald-500/20',
   amber:
     'bg-amber-500/10 text-status-warning-text dark:text-status-warning-text border-amber-500/20',
-  rose: 'bg-rose-500/10 text-rose-600 dark:text-danger-text border-rose-500/20',
+  rose: 'bg-rose-500/10 text-danger-text dark:text-danger-text border-rose-500/20',
   neutral: 'bg-neutral-500/10 text-neutral-600 dark:text-faint border-neutral-500/20',
 } as const
 
@@ -111,7 +111,7 @@ export function StatCard({
               trend.direction === 'up'
                 ? 'bg-emerald-500/10 text-status-success-text dark:text-status-success-text'
                 : trend.direction === 'down'
-                  ? 'bg-rose-500/10 text-rose-600 dark:text-danger-text'
+                  ? 'bg-rose-500/10 text-danger-text dark:text-danger-text'
                   : 'bg-neutral-500/10 text-neutral-600 dark:text-faint',
             )}
           >

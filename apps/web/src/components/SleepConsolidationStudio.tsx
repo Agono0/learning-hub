@@ -223,7 +223,7 @@ export function SleepConsolidationStudio({
             className={cx(
               'flex h-10 w-10 items-center justify-center rounded-xl border transition-colors',
               isNightActive
-                ? 'bg-amber-950/60 border-amber-800 text-amber-400'
+                ? 'bg-amber-950/60 border-amber-800 text-status-warning-text'
                 : 'bg-indigo-950/60 border-indigo-700 text-indigo-400',
             )}
           >

@@ -532,7 +532,7 @@ export default function MindmapPage() {
                     })}
                   </svg>
 
-                  <div className="absolute bottom-3 right-3 rounded bg-neutral-900/90 px-2.5 py-1 text-[11px] text-neutral-400 border border-neutral-800">
+                  <div className="absolute bottom-3 right-3 rounded bg-neutral-900/90 px-2.5 py-1 text-[11px] text-tertiary border border-neutral-800">
                     {mindmap.nodes.length} nodes · Radial layout
                   </div>
                 </div>
@@ -577,8 +577,8 @@ export default function MindmapPage() {
               <p
                 className={`text-xs p-2 rounded-lg ${
                   exportResult.includes('Success')
-                    ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'
-                    : 'bg-rose-950/60 text-rose-300 border border-rose-800/60'
+                    ? 'bg-emerald-950/60 text-status-success-text border border-emerald-800/60'
+                    : 'bg-rose-950/60 text-danger-text border border-rose-800/60'
                 }`}
               >
                 {exportResult}

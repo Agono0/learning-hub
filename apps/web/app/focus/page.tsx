@@ -881,7 +881,7 @@ export default function FocusPage() {
                   {activeLock.allowlist.apps.map((a) => (
                     <span
                       key={a}
-                      className="rounded bg-emerald-950 px-2 py-0.5 text-emerald-300 border border-emerald-800"
+                      className="rounded bg-emerald-950 px-2 py-0.5 text-status-success-text border border-emerald-800"
                     >
                       app: {a}
                     </span>
@@ -1128,7 +1128,7 @@ export default function FocusPage() {
                     Chrome Extension Companion Status
                   </div>
                   {bridge.data?.lastHeartbeatAt ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950 px-2 py-0.5 text-[11px] text-emerald-400 border border-emerald-800">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950 px-2 py-0.5 text-[11px] text-status-success-text border border-emerald-800">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       Extension Connected
                     </span>

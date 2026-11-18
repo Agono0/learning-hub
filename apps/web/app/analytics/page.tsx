@@ -290,9 +290,9 @@ export default function AnalyticsPage() {
               <span
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
                   d.calibrationMetrics.status === 'well-calibrated'
-                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                    ? 'bg-emerald-950 text-status-success-text border border-emerald-800/50'
                     : d.calibrationMetrics.status === 'overconfident'
-                      ? 'bg-rose-950 text-rose-300 border border-rose-800/50'
+                      ? 'bg-rose-950 text-danger-text border border-rose-800/50'
                       : 'bg-indigo-950 text-indigo-300 border border-indigo-800/50'
                 }`}
               >

@@ -185,7 +185,7 @@ export function SpatialCognitionStudio() {
             key: 'kinematics',
             label: (
               <span className="flex items-center gap-2">
-                <Cog className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                <Cog className="w-4 h-4 text-status-info-text dark:text-status-info-text" />
                 Hegarty Kinematics
               </span>
             ),
@@ -194,7 +194,7 @@ export function SpatialCognitionStudio() {
             key: 'scenarios',
             label: (
               <span className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <Layers className="w-4 h-4 text-status-success-text dark:text-status-success-text" />
                 STEM Spatial Lab
               </span>
             ),
@@ -203,7 +203,7 @@ export function SpatialCognitionStudio() {
             key: 'flashcards',
             label: (
               <span className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <Zap className="w-4 h-4 text-status-warning-text dark:text-status-warning-text" />
                 FSRS Spatial Deck
               </span>
             ),
@@ -314,7 +314,7 @@ export function SpatialCognitionStudio() {
             <Panel className="p-5 border border-neutral-200 dark:border-(--hub-border) rounded-xl space-y-3 bg-white dark:bg-(--hub-panel)">
               <div className="flex items-center justify-between border-b border-neutral-200 dark:border-(--hub-border) pb-2">
                 <span className="text-xs font-semibold text-strong flex items-center gap-1.5">
-                  <RotateCw className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                  <RotateCw className="w-3.5 h-3.5 text-status-info-text dark:text-status-info-text" />
                   Comparison Figure (B)
                 </span>
                 <span className="text-[11px] font-mono text-secondary">
@@ -372,7 +372,7 @@ export function SpatialCognitionStudio() {
                   className="flex items-center gap-2 px-4 py-2"
                   onClick={() => handleAnswerTrial(true)}
                 >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-status-success-text dark:text-status-success-text" />
                   Congruent (SO3 Rotated)
                 </Button>
                 <Button
@@ -380,7 +380,7 @@ export function SpatialCognitionStudio() {
                   className="flex items-center gap-2 px-4 py-2"
                   onClick={() => handleAnswerTrial(false)}
                 >
-                  <RotateCw className="w-4 h-4 text-amber-500" />
+                  <RotateCw className="w-4 h-4 text-status-warning-text" />
                   Mirror Enantiomer (Chiral)
                 </Button>
               </div>
@@ -391,8 +391,8 @@ export function SpatialCognitionStudio() {
               <div
                 className={`p-3 rounded-lg border flex items-center justify-between text-xs ${
                   lastAttempt.isCorrect
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-500 dark:text-rose-400'
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-status-success-text dark:text-status-success-text'
+                    : 'bg-rose-500/10 border-rose-500/30 text-danger-text dark:text-danger-text'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -428,7 +428,7 @@ export function SpatialCognitionStudio() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <Cog className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                  <Cog className="w-4 h-4 text-status-info-text dark:text-status-info-text" />
                   Mary Hegarty Kinematic Simulation Engine
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
@@ -502,7 +502,7 @@ export function SpatialCognitionStudio() {
                     }
                   }}
                 >
-                  <RotateCw className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 -scale-x-100" />{' '}
+                  <RotateCw className="w-3.5 h-3.5 text-status-info-text dark:text-status-info-text -scale-x-100" />{' '}
                   Predict Counter-Clockwise
                 </Button>
 
@@ -561,8 +561,8 @@ export function SpatialCognitionStudio() {
                               <span
                                 className={`flex items-center gap-1 ${
                                   isCorrect
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-rose-500 dark:text-rose-400'
+                                    ? 'text-status-success-text dark:text-status-success-text'
+                                    : 'text-danger-text dark:text-danger-text'
                                 }`}
                               >
                                 {isCorrect ? (
@@ -594,7 +594,7 @@ export function SpatialCognitionStudio() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <Layers className="w-4 h-4 text-status-success-text dark:text-status-success-text" />
                   Multidisciplinary STEM Spatial Reasoning Lab
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
@@ -718,9 +718,9 @@ export function SpatialCognitionStudio() {
                             <span className="flex-1">{opt}</span>
                             {isSelected &&
                               (isCorrect ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <CheckCircle2 className="w-4 h-4 text-status-success-text dark:text-status-success-text shrink-0" />
                               ) : (
-                                <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
+                                <XCircle className="w-4 h-4 text-danger-text dark:text-danger-text shrink-0" />
                               ))}
                           </button>
                         )
@@ -731,8 +731,8 @@ export function SpatialCognitionStudio() {
                       <div
                         className={`p-2.5 rounded-md text-[11px] leading-relaxed border ${
                           isCorrect
-                            ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-rose-500/5 border-rose-500/20 text-rose-500 dark:text-rose-400'
+                            ? 'bg-emerald-500/5 border-emerald-500/20 text-status-success-text dark:text-status-success-text'
+                            : 'bg-rose-500/5 border-rose-500/20 text-danger-text dark:text-danger-text'
                         }`}
                       >
                         <strong>Rationale:</strong> {q.rationale}
@@ -753,7 +753,7 @@ export function SpatialCognitionStudio() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-semibold text-strong flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <Zap className="w-4 h-4 text-status-warning-text dark:text-status-warning-text" />
                   Spatial Spaced Repetition (FSRS-6) Retention Deck
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
@@ -818,9 +818,9 @@ export function SpatialCognitionStudio() {
                         <span>{opt}</span>
                         {cardRevealed &&
                           (isCorrectAnswer ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            <CheckCircle2 className="w-4 h-4 text-status-success-text dark:text-status-success-text" />
                           ) : isSelected ? (
-                            <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
+                            <XCircle className="w-4 h-4 text-danger-text dark:text-danger-text" />
                           ) : null)}
                       </button>
                     )

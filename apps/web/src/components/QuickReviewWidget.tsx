@@ -89,7 +89,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
     <div className={cx('panel space-y-3', className)} data-testid="quick-review-widget">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-          <Timer className="h-4 w-4 text-indigo-500" />
+          <Timer className="h-4 w-4 text-ac-text" />
           60-second review
         </h3>
         {done > 0 && (
@@ -102,7 +102,7 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
       {q.isLoading ? (
         <div className="h-20 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
       ) : q.isError ? (
-        <p className="text-xs text-rose-600 dark:text-danger-text">Could not load due cards.</p>
+        <p className="text-xs text-danger-text dark:text-danger-text">Could not load due cards.</p>
       ) : cards.length === 0 ? (
         <p className="text-xs text-tertiary dark:text-faint">
           Nothing due — the queue is clear. Check back after your next session.
