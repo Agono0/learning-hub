@@ -56,7 +56,8 @@ function webNotificationStatus(): PermissionStatus {
 async function webPushStatus(): Promise<PermissionStatus> {
   if (isTauri) return 'unsupported' // native delivers via the OS, not web push
   if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
-  if (Notification.permission !== 'granted') return Notification.permission === 'default' ? 'undetermined' : 'denied'
+  if (Notification.permission !== 'granted')
+    return Notification.permission === 'default' ? 'undetermined' : 'denied'
   try {
     const reg = await navigator.serviceWorker?.getRegistration()
     const sub = await reg?.pushManager.getSubscription()
@@ -165,7 +166,11 @@ export async function deliverLocalNotification(title: string, body: string): Pro
       return false
     }
   }
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+  if (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    Notification.permission === 'granted'
+  ) {
     try {
       new Notification(title, { body, icon: '/icons/icon-192.png' })
       return true
@@ -195,7 +200,11 @@ export async function sendTestNotification(): Promise<boolean> {
       return false
     }
   }
-  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+  if (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    Notification.permission === 'granted'
+  ) {
     try {
       const notif = new Notification('Learning HUB — notifications work', {
         body: 'This is how review reminders and timer alerts will reach you.',
@@ -235,7 +244,10 @@ export function savePermissionPrefs(prefs: PermissionPromptPrefs): void {
 }
 
 /** Record one user decision ('ask_now' | 'later' | 'never') and persist it. */
-export function recordPermissionDecision(id: PermissionId, decision: PermissionDecision): PermissionPromptPrefs {
+export function recordPermissionDecision(
+  id: PermissionId,
+  decision: PermissionDecision,
+): PermissionPromptPrefs {
   const next = withDecision(getPermissionPrefs(), id, decision)
   savePermissionPrefs(next)
   return next

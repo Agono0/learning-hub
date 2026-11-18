@@ -65,7 +65,10 @@ export function PushSettingsPanel() {
         )}
       </div>
       {supported && configured && (
-        <PermissionGate permission="notifications" reason="push rides on the browser notification permission" />
+        <PermissionGate
+          permission="notifications"
+          reason="push rides on the browser notification permission"
+        />
       )}
       {enable.isError && (
         <p className="text-xs text-danger-text">{(enable.error as Error).message}</p>

@@ -13,11 +13,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { ShieldOff } from 'lucide-react'
-import {
-  PERMISSION_CATALOG,
-  isSettled,
-  type PermissionId,
-} from '@learning-hub/core/permissions'
+import { PERMISSION_CATALOG, isSettled, type PermissionId } from '@learning-hub/core/permissions'
 import { Button } from '@/ui/Button'
 import { usePermissionSnapshot, useRequestPermission } from '@/lib/use-permissions'
 
@@ -38,7 +34,12 @@ export function PermissionGate({
   const [grantedLocally, setGrantedLocally] = useState(false)
 
   const status = snapshot.data?.[permission]
-  if (grantedLocally || isSettled(status ?? 'undetermined') || snapshot.isLoading || snapshot.isError) {
+  if (
+    grantedLocally ||
+    isSettled(status ?? 'undetermined') ||
+    snapshot.isLoading ||
+    snapshot.isError
+  ) {
     return <>{children}</>
   }
 
@@ -61,7 +62,9 @@ export function PermissionGate({
     >
       <ShieldOff className="h-4 w-4 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{def.title} needed for this to work{reason ? ` — ${reason}` : ''}.</p>
+        <p className="font-medium">
+          {def.title} needed for this to work{reason ? ` — ${reason}` : ''}.
+        </p>
         <p className="mt-0.5 text-xs text-tertiary">
           {def.deniedImpact[0]} Manage this in{' '}
           <Link href="/permissions" className="underline underline-offset-2">
@@ -71,7 +74,12 @@ export function PermissionGate({
         </p>
       </div>
       {status !== 'denied' && def.canRequest && (
-        <Button variant="secondary" loading={busy} onClick={() => void grant()} className="shrink-0">
+        <Button
+          variant="secondary"
+          loading={busy}
+          onClick={() => void grant()}
+          className="shrink-0"
+        >
           Grant access
         </Button>
       )}

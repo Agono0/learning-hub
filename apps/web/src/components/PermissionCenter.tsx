@@ -35,7 +35,11 @@ import {
   type PermissionStatus,
 } from '@learning-hub/core/permissions'
 import { Badge, Button, Callout, ProgressBar, Sheet } from '@/ui'
-import { useRequestPermission, usePermissionPrefs, usePermissionSnapshot } from '@/lib/use-permissions'
+import {
+  useRequestPermission,
+  usePermissionPrefs,
+  usePermissionSnapshot,
+} from '@/lib/use-permissions'
 import { currentPlatform, sendTestNotification } from '@/platform/permissions'
 
 /** Status → badge tone, icon and text (icon+text so color is never the only signal). Exported for the wiring-contract test. */
@@ -115,8 +119,8 @@ export function PermissionCenter() {
   if (snapshot.isError) {
     return (
       <Callout tone="danger" title="Couldn't read device permissions">
-        Your browser or webview blocked the permission query. Reload the page to try again —
-        your data is unaffected.
+        Your browser or webview blocked the permission query. Reload the page to try again — your
+        data is unaffected.
       </Callout>
     )
   }
@@ -145,7 +149,11 @@ export function PermissionCenter() {
               />
             </div>
             <ProgressBar
-              value={readiness.applicableCount > 0 ? readiness.grantedCount / readiness.applicableCount : 1}
+              value={
+                readiness.applicableCount > 0
+                  ? readiness.grantedCount / readiness.applicableCount
+                  : 1
+              }
               className="mt-3"
               label={`${readiness.grantedCount} of ${readiness.applicableCount} permissions granted`}
             />
@@ -175,7 +183,10 @@ export function PermissionCenter() {
           <section key={id} className="panel" aria-labelledby={`perm-${id}-title`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <h3 id={`perm-${id}-title`} className="flex items-center gap-2 text-sm font-semibold">
+                <h3
+                  id={`perm-${id}-title`}
+                  className="flex items-center gap-2 text-sm font-semibold"
+                >
                   {def.title}
                   <Badge
                     tone={presentation.tone}
@@ -199,22 +210,38 @@ export function PermissionCenter() {
                 </Button>
               )}
               {status === 'granted' && id === 'notifications' && (
-                <Button variant="secondary" loading={testing} onClick={() => void runTestNotification()}>
+                <Button
+                  variant="secondary"
+                  loading={testing}
+                  onClick={() => void runTestNotification()}
+                >
                   Send test notification
                 </Button>
               )}
               {isActionable(id, status) && (
-                <Button variant="secondary" onClick={() => setStepsFor(id)} icon={<ExternalLink aria-hidden />}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setStepsFor(id)}
+                  icon={<ExternalLink aria-hidden />}
+                >
                   How to allow
                 </Button>
               )}
               {status === 'undetermined' && def.canRequest && !decision && (
-                <Button variant="ghost" onClick={() => decide(id, 'later')} icon={<Clock aria-hidden />}>
+                <Button
+                  variant="ghost"
+                  onClick={() => decide(id, 'later')}
+                  icon={<Clock aria-hidden />}
+                >
                   Ask me later
                 </Button>
               )}
               {status === 'undetermined' && !def.canRequest && (
-                <Button variant="secondary" onClick={() => setStepsFor(id)} icon={<ExternalLink aria-hidden />}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setStepsFor(id)}
+                  icon={<ExternalLink aria-hidden />}
+                >
                   Open OS settings
                 </Button>
               )}
@@ -227,7 +254,8 @@ export function PermissionCenter() {
 
             {decision === 'never' && isActionable(id, status) && (
               <p className="mt-2 text-xs text-tertiary">
-                You asked not to be prompted for this. Nothing will nag you — grant it anytime from here.
+                You asked not to be prompted for this. Nothing will nag you — grant it anytime from
+                here.
               </p>
             )}
           </section>
@@ -255,13 +283,18 @@ export function PermissionCenter() {
         {stepsFor && (
           <div className="space-y-3">
             <Callout tone="accent">
-              This permission can&apos;t be requested from inside the app — it lives in your
-              device settings. {isSettled(snapshot.data?.[stepsFor] ?? 'undetermined') ? '' : 'Status refreshes automatically when you return.'}
+              This permission can&apos;t be requested from inside the app — it lives in your device
+              settings.{' '}
+              {isSettled(snapshot.data?.[stepsFor] ?? 'undetermined')
+                ? ''
+                : 'Status refreshes automatically when you return.'}
             </Callout>
             <ol className="space-y-2">
-              {(PERMISSION_CATALOG[stepsFor].grantSteps[platform] ??
+              {(
+                PERMISSION_CATALOG[stepsFor].grantSteps[platform] ??
                 PERMISSION_CATALOG[stepsFor].grantSteps.web ??
-                []).map((step, i) => (
+                []
+              ).map((step, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm">
                   <span
                     aria-hidden

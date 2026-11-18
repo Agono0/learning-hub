@@ -91,7 +91,9 @@ describe('catalog ↔ UI wiring contract', () => {
 
   it('the nudge uses the same one-ask decision function as the center', () => {
     // Contract: both import nextPermissionToAsk from core — pin the identity.
-    expect(nextPermissionToAsk(emptySnapshot(), { decisions: {}, lastAskedAt: {} })).toBe('notifications')
+    expect(nextPermissionToAsk(emptySnapshot(), { decisions: {}, lastAskedAt: {} })).toBe(
+      'notifications',
+    )
     expect(PERMISSION_CATALOG.notifications.impact).toBe(1)
   })
 })

@@ -118,7 +118,8 @@ export const PERMISSION_CATALOG: Readonly<Record<PermissionId, PermissionDef>> =
   notifications: {
     id: 'notifications',
     title: 'Notifications',
-    summary: 'Lets Learning HUB show review reminders, focus-timer completion and streak alerts outside the app.',
+    summary:
+      'Lets Learning HUB show review reminders, focus-timer completion and streak alerts outside the app.',
     deniedImpact: [
       'Review reminders never appear while you are away from the app',
       'No alert when a focus timer finishes in the background',
@@ -155,7 +156,8 @@ export const PERMISSION_CATALOG: Readonly<Record<PermissionId, PermissionDef>> =
   push: {
     id: 'push',
     title: 'Web push (browser, app closed)',
-    summary: 'Delivers review reminders through the browser even when Learning HUB is not open (web installs only).',
+    summary:
+      'Delivers review reminders through the browser even when Learning HUB is not open (web installs only).',
     deniedImpact: [
       'Browser reminders stop when the tab is closed',
       'The in-app scheduler still works whenever you open Learning HUB',
@@ -176,7 +178,8 @@ export const PERMISSION_CATALOG: Readonly<Record<PermissionId, PermissionDef>> =
   exact_alarms: {
     id: 'exact_alarms',
     title: 'Exact alarms (Android)',
-    summary: 'Schedules break nudges and timer-completion alerts at the exact second, even in Doze mode.',
+    summary:
+      'Schedules break nudges and timer-completion alerts at the exact second, even in Doze mode.',
     deniedImpact: [
       'Timer alerts may arrive minutes late on stock Android',
       'Break nudges fire in approximate windows instead of exact times',
@@ -197,7 +200,8 @@ export const PERMISSION_CATALOG: Readonly<Record<PermissionId, PermissionDef>> =
   battery_optimization: {
     id: 'battery_optimization',
     title: 'Unrestricted battery (Android)',
-    summary: 'Exempts Learning HUB from battery optimization so long focus sessions keep running in the background.',
+    summary:
+      'Exempts Learning HUB from battery optimization so long focus sessions keep running in the background.',
     deniedImpact: [
       'Android may freeze long focus timers when the screen is off',
       'Background reminders can be delayed by up to 15 minutes',
@@ -258,14 +262,8 @@ export interface PermissionPromptPrefs {
 }
 
 export const permissionPromptPrefsSchema = z.object({
-  decisions: z
-    .record(z.string(), permissionDecisionSchema)
-    .transform(pickKnown)
-    .default({}),
-  lastAskedAt: z
-    .record(z.string(), z.string())
-    .transform(pickKnown)
-    .default({}),
+  decisions: z.record(z.string(), permissionDecisionSchema).transform(pickKnown).default({}),
+  lastAskedAt: z.record(z.string(), z.string()).transform(pickKnown).default({}),
 }) satisfies z.ZodType<PermissionPromptPrefs>
 
 /* ------------------------------------------------------------------ */
@@ -327,9 +325,14 @@ export function nextPermissionToAsk(
   prefs: PermissionPromptPrefs,
   now: string | Date = new Date(),
 ): PermissionId | null {
-  const candidates = PERMISSION_IDS.filter((id) => shouldOfferPrompt(id, snapshot[id] ?? 'undetermined', prefs, now))
+  const candidates = PERMISSION_IDS.filter((id) =>
+    shouldOfferPrompt(id, snapshot[id] ?? 'undetermined', prefs, now),
+  )
   if (candidates.length === 0) return null
-  return candidates.sort((a, b) => PERMISSION_CATALOG[a].impact - PERMISSION_CATALOG[b].impact)[0] ?? null
+  return (
+    candidates.sort((a, b) => PERMISSION_CATALOG[a].impact - PERMISSION_CATALOG[b].impact)[0] ??
+    null
+  )
 }
 
 /** Overall readiness summary for the Permission Center header. */
@@ -410,7 +413,10 @@ export function withDecision(
  * present in `next` are updated; unknown ids are dropped so the snapshot
  * always matches the catalog (forward-compat when ids get added later).
  */
-export function mergeSnapshot(current: PermissionSnapshot, next: Partial<PermissionSnapshot>): PermissionSnapshot {
+export function mergeSnapshot(
+  current: PermissionSnapshot,
+  next: Partial<PermissionSnapshot>,
+): PermissionSnapshot {
   const merged: PermissionSnapshot = { ...current }
   for (const id of PERMISSION_IDS) {
     const value = next[id]

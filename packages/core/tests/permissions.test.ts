@@ -94,8 +94,22 @@ describe('shouldOfferPrompt (3-day throttle + decision record)', () => {
   })
 
   it('respects "later" and "never" decisions', () => {
-    expect(shouldOfferPrompt('notifications', 'undetermined', withDecision(FRESH, 'notifications', 'later'), NOW)).toBe(false)
-    expect(shouldOfferPrompt('notifications', 'undetermined', withDecision(FRESH, 'notifications', 'never'), NOW)).toBe(false)
+    expect(
+      shouldOfferPrompt(
+        'notifications',
+        'undetermined',
+        withDecision(FRESH, 'notifications', 'later'),
+        NOW,
+      ),
+    ).toBe(false)
+    expect(
+      shouldOfferPrompt(
+        'notifications',
+        'undetermined',
+        withDecision(FRESH, 'notifications', 'never'),
+        NOW,
+      ),
+    ).toBe(false)
   })
 
   it('re-offers "ask_now" only after the 3-day throttle', () => {
@@ -112,7 +126,9 @@ describe('shouldOfferPrompt (3-day throttle + decision record)', () => {
 
 describe('nextPermissionToAsk — one ask at a time, impact order', () => {
   it('picks the highest-impact promptable permission first (notifications)', () => {
-    expect(nextPermissionToAsk(emptySnapshot(), FRESH, new Date('2026-01-10T12:00:00Z'))).toBe('notifications')
+    expect(nextPermissionToAsk(emptySnapshot(), FRESH, new Date('2026-01-10T12:00:00Z'))).toBe(
+      'notifications',
+    )
   })
 
   it('returns null when everything is granted', () => {
@@ -205,7 +221,9 @@ describe('snapshot merge & prefs parsing hardening', () => {
   it('parsePermissionPrefs survives corrupt storage', () => {
     expect(parsePermissionPrefs(null)).toEqual({ decisions: {}, lastAskedAt: {} })
     expect(parsePermissionPrefs('garbage')).toEqual({ decisions: {}, lastAskedAt: {} })
-    expect(parsePermissionPrefs({ decisions: { notifications: 'never' } }).decisions.notifications).toBe('never')
+    expect(
+      parsePermissionPrefs({ decisions: { notifications: 'never' } }).decisions.notifications,
+    ).toBe('never')
     // Unknown ids / bad values are rejected wholesale (zod), not partially applied
     expect(parsePermissionPrefs({ decisions: { weird_id: 'never' } }).decisions).toEqual({})
   })

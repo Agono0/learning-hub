@@ -54,7 +54,9 @@ export function NotificationBell() {
     void (async () => {
       const ok = await deliverLocalNotification(
         'Learning HUB',
-        exam ? `${exam.title} — ${exam.detail}` : `${due} card${due === 1 ? '' : 's'} due for review`,
+        exam
+          ? `${exam.title} — ${exam.detail}`
+          : `${due} card${due === 1 ? '' : 's'} due for review`,
       )
       if (ok) localStorage.setItem(LAST_FIRE_KEY, today)
     })()
@@ -86,7 +88,8 @@ export function NotificationBell() {
     }
     localStorage.setItem(REMINDERS_KEY, granted ? '1' : '0')
     setReminders(granted)
-    if (granted) void deliverLocalNotification('Learning HUB', 'Reminders are on — see you at review time.')
+    if (granted)
+      void deliverLocalNotification('Learning HUB', 'Reminders are on — see you at review time.')
   }
 
   return (

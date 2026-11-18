@@ -66,7 +66,9 @@ export function PermissionNudge() {
     >
       <BellRing className="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-medium">{def.title} — {def.summary}</p>
+        <p className="font-medium">
+          {def.title} — {def.summary}
+        </p>
         <p className="mt-0.5 text-xs text-tertiary">
           Without it: {def.deniedImpact[0]} You can change this anytime in{' '}
           <Link href="/permissions" className="underline underline-offset-2">

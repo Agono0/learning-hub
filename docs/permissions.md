@@ -24,7 +24,7 @@ Rule: **status detection and prompting never leak out of
 `PERMISSION_CATALOG` (core) is the single source of truth for:
 
 - `title` / `summary` — copy shown on every surface (center, nudge, settings).
-- `deniedImpact` — what *concretely* stops working without it (honest, no
+- `deniedImpact` — what _concretely_ stops working without it (honest, no
   scare copy).
 - `enables` — feature names surfaced in the readiness matrix.
 - `platforms` — where the capability exists (`web | android | ios | desktop`).

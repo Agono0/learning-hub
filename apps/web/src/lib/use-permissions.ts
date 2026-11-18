@@ -79,7 +79,9 @@ export function usePermissionPrefs(): {
  * catalog's impact order + the 3-day throttle + the user's decisions decide;
  * there is never more than one ask on screen at a time.
  */
-export function useNextPermissionToAsk(snapshot: PermissionSnapshot | undefined): PermissionId | null {
+export function useNextPermissionToAsk(
+  snapshot: PermissionSnapshot | undefined,
+): PermissionId | null {
   const { prefs } = usePermissionPrefs()
   if (!snapshot) return null
   return nextPermissionToAsk(snapshot, prefs)
@@ -96,7 +98,9 @@ export function useRequestPermission(): (
   return useCallback(
     async (id: PermissionId) => {
       const status = await requestPermission(id)
-      const next = { ...(queryClient.getQueryData<PermissionSnapshot>(PERMISSION_SNAPSHOT_KEY) ?? {}) }
+      const next = {
+        ...(queryClient.getQueryData<PermissionSnapshot>(PERMISSION_SNAPSHOT_KEY) ?? {}),
+      }
       for (const key of PERMISSION_IDS) if (next[key] === undefined) next[key] = 'undetermined'
       next[id] = status
       queryClient.setQueryData(PERMISSION_SNAPSHOT_KEY, next)
