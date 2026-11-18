@@ -5,6 +5,7 @@
  */
 import {
   BookOpen,
+  Bot,
   Box,
   Brain,
   CalendarCheck,
@@ -95,6 +96,7 @@ export const NAV: NavGroup[] = [
       { href: '/equilibrium', label: 'Reflective Equilibrium', icon: Scale },
       { href: '/interactivity', label: 'Element Interactivity', icon: Cpu },
       { href: '/deliberate', label: 'Deliberate Practice', icon: Target },
+      { href: '/skills', label: 'Agent Skills', icon: Bot },
     ],
   },
   {
