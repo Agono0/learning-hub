@@ -33,8 +33,9 @@
 | **T-P2-16** | **P2**   | Analogical Transfer    | **Completed** | Analogical Transfer & Schema Induction Studio: Gick-Holyoak convergence schema, Gentner structure-mapping engine, and cross-domain isomorphic problem transfer (PR #35).                    |
 | **T-P2-17** | **P2**   | Cognitive Flexibility  | **Completed** | Cognitive Flexibility & Perspective Shifting Studio: Spiro CFT multidimensional landscape criss-crossing, multi-perspective re-representation, and de Bono schema lateralization (PR #37).  |
 | **T-P2-18** | **P2**   | Epistemic Calibration  | **Completed** | Reflective Equilibrium & Epistemic Calibration Studio: Rawls wide reflective equilibrium, Goodman coherence justification, and Tetlock Brier-score calibration for learner models (PR #38). |
-| **T-P2-19** | **P2**   | Element Interactivity  | **Completed** | Cognitive Load & Element Interactivity Studio: Sweller intrinsic/extraneous/germane load isolation, Pollock isolated-elements scaffold, and Paas efficiency diagnostic.                     |
-| **T-P2-20** | **P2**   | Deliberate Practice    | **Planned**   | Deliberate Practice & Progressive Error Recovery Studio: Ericsson informative feedback loop, VanLehn impasse resolution, and Keith-Frese error management training.                         |
+| **T-P2-19** | **P2**   | Element Interactivity  | **Completed** | Cognitive Load & Element Interactivity Studio: Sweller intrinsic/extraneous/germane load isolation, Pollock isolated-elements scaffold, and Paas efficiency diagnostic (PR #40).            |
+| **T-P2-20** | **P2**   | Deliberate Practice    | **Completed** | Deliberate Practice & Progressive Error Recovery Studio: Ericsson informative feedback loop, VanLehn impasse resolution, and Keith-Frese error management training.                         |
+| **T-P2-21** | **P2**   | Expert Modeling        | **Planned**   | Cognitive Apprenticeship & Expert Modeling Studio: Collins-Brown-Newman 6 methods (modeling, coaching, scaffolding, articulation, reflection, exploration) and situated heuristics.         |
 
 ---
 
@@ -372,7 +373,7 @@
   3. Implement `ElementInteractivityStudio.tsx` with interactive topological graph canvas, perturbation cascade injection simulator, 3-phase scaffold crucible, and FSRS decomposed cards exporter.
   4. Build `apps/web/app/interactivity/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/interactivity/*`, `apps/web/src/ui/ElementInteractivityHUD.tsx`, `apps/web/src/components/ElementInteractivityStudio.tsx`, `apps/web/app/interactivity/page.tsx`, `apps/web/src/components/nav.ts`.
-- **Status:** **Completed**.
+- **Status:** **Completed (Merged in PR #40)**.
 
 ---
 
@@ -386,4 +387,18 @@
   3. Implement `DeliberatePracticeStudio.tsx` with micro-skill repetition drills, impasse recovery crucible, error taxonomy auditor, and FSRS micro-repair card generator.
   4. Build `apps/web/app/deliberate/page.tsx` and wire into navigation.
 - **Files Affected:** `packages/core/src/deliberate/*`, `apps/web/src/ui/DeliberatePracticeHUD.tsx`, `apps/web/src/components/DeliberatePracticeStudio.tsx`, `apps/web/app/deliberate/page.tsx`, `apps/web/src/components/nav.ts`.
+- **Status:** **Completed**.
+
+---
+
+### T-P2-21: Cognitive Apprenticeship & Expert Modeling Studio (Collins, Brown & Newman 1989; Lave & Wenger 1991)
+
+- **Problem:** Tacit expert decision-making and cognitive problem-solving heuristics remain invisible to learners, preventing them from developing adaptive metacognitive executive control.
+- **Root Cause:** Absence of cognitive apprenticeship frameworks that externalize expert internal monologues across the 6 canonical dimensions: Modeling, Coaching, Scaffolding, Articulation, Reflection, and Exploration.
+- **Proposed Solution:**
+  1. Build `packages/core/src/apprenticeship/cognitive-apprenticeship-engine.ts` modeling Collins-Brown-Newman cognitive apprenticeship methods, expert think-aloud protocol parsing, and situated learning heuristics.
+  2. Implement `CognitiveApprenticeshipHUD.tsx` tracking scaffolding fade ratio, articulation depth, and metacognitive reflection alignment.
+  3. Implement `CognitiveApprenticeshipStudio.tsx` with expert think-aloud modeling player, coaching intervention simulator, and FSRS situated heuristic deck generator.
+  4. Build `apps/web/app/apprenticeship/page.tsx` and wire into navigation.
+- **Files Affected:** `packages/core/src/apprenticeship/*`, `apps/web/src/ui/CognitiveApprenticeshipHUD.tsx`, `apps/web/src/components/CognitiveApprenticeshipStudio.tsx`, `apps/web/app/apprenticeship/page.tsx`, `apps/web/src/components/nav.ts`.
 - **Status:** **Planned (Next Cycle)**.

@@ -94,6 +94,7 @@ export const NAV: NavGroup[] = [
       { href: '/flexibility', label: 'Cognitive Flexibility', icon: Compass },
       { href: '/equilibrium', label: 'Reflective Equilibrium', icon: Scale },
       { href: '/interactivity', label: 'Element Interactivity', icon: Cpu },
+      { href: '/deliberate', label: 'Deliberate Practice', icon: Target },
     ],
   },
   {
