@@ -65,6 +65,27 @@ import {
   computeSequenceMetrics,
   exportFSRSInterleavingDeck,
   generateContrastSchedule,
+  CANONICAL_SKILLS,
+  auditCodeAgainstAgentsRules,
+  executeSkillSimulation,
+  calculateEbbinghausSavings,
+  predictRetentionAtDays,
+  calibrateFSRSStability,
+  calibrateFSRSDifficulty,
+  calculateSRLMaturityIndex,
+  evaluateSRLMaturityTier,
+  calculateGoalAttainmentScale,
+  CALIBRATED_SRL_CHALLENGES,
+  buildEpistemicDiscourseModel,
+  bridgeEpistemicToCurriculum,
+  createStandardEducationSCM,
+  evaluateCounterfactual,
+  checkDSeparation,
+  evaluateBackdoorAdmissibility,
+  getStandardThresholdConcepts,
+  evaluateLiminalTrajectory,
+  bridgeThresholdToCurriculum,
+  computeThresholdSignificanceIndex,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -114,6 +135,52 @@ const invarianceAttemptSchema = z.object({
 const invarianceQuerySchema = z.object({
   mode: z.enum(['interleaved', 'blocked']).default('interleaved'),
   attemptsJson: z.string().max(100_000).optional(),
+})
+
+const skillsCatalogQuerySchema = z.object({
+  category: z.string().optional(),
+})
+
+const skillsAuditBodySchema = z.object({
+  code: z.string().min(1),
+  file: z.string().min(1),
+})
+
+const skillsRunBodySchema = z.object({
+  skillName: z.string().min(1),
+  topic: z.string().min(1).default('Autonomous Drill'),
+  context: z.string().optional(),
+})
+
+const relearningSavingsBodySchema = z.object({
+  initialLearningSeconds: z.number().positive(),
+  relearningSeconds: z.number().positive(),
+  daysElapsed: z.number().positive().default(7),
+  initialTrialsCount: z.number().int().min(1).default(3),
+})
+
+const srlEvaluateBodySchema = z.object({
+  forethoughtScore: z.number().min(0).max(10),
+  performanceScore: z.number().min(0).max(10),
+  reflectionScore: z.number().min(0).max(10),
+  challengeId: z.string().optional(),
+})
+
+const epistemicAnalyzeBodySchema = z.object({
+  discourseTexts: z.array(z.string()).min(1),
+  baseMastery: z.number().min(0).max(1).default(0.75),
+})
+
+const causalCounterfactualBodySchema = z.object({
+  evidence: z.record(z.string(), z.number()),
+  interventions: z.record(z.string(), z.number()),
+  targetVariableId: z.string().default('ExamScore'),
+})
+
+const thresholdLiminalBodySchema = z.object({
+  conceptId: z.string().default('tc_pointers_memory'),
+  probeResponses: z.record(z.string(), z.string()),
+  baseMastery: z.number().min(0).max(1).default(0.75),
 })
 
 const metacognitionBodySchema = z.object({
@@ -850,6 +917,218 @@ async function getHypercorrection(
   })
 }
 
+/** GET /cognitive/skills/catalog — lists canonical agent skills */
+async function getSkillsCatalog(
+  _req: IncomingMessage,
+  res: ServerResponse,
+  url: URL,
+): Promise<void> {
+  const q = readQuery(url, skillsCatalogQuerySchema)
+  const skills = Object.values(CANONICAL_SKILLS)
+  const filtered = q.category
+    ? skills.filter((s) => s.meta.category.toLowerCase() === q.category!.toLowerCase())
+    : skills
+  sendJson(res, 200, {
+    ok: true,
+    count: filtered.length,
+    skills: filtered.map((s) => ({
+      name: s.meta.name,
+      title: s.meta.title,
+      category: s.meta.category,
+      description: s.meta.description,
+      parameters: s.parameters,
+      phases: s.phases.map((p) => ({ id: p.id, name: p.name, description: p.description })),
+    })),
+  })
+}
+
+/** POST /cognitive/skills/audit — audits code against AGENTS.md rules */
+async function postSkillsAudit(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, skillsAuditBodySchema)
+  const violations = auditCodeAgainstAgentsRules(body.code, body.file)
+  sendJson(res, 200, {
+    ok: true,
+    file: body.file,
+    violationsCount: violations.length,
+    violations,
+  })
+}
+
+/** POST /cognitive/skills/run — simulates execution of an autonomous skill drill */
+async function postSkillsRun(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, skillsRunBodySchema)
+  const skill = CANONICAL_SKILLS[body.skillName] ?? Object.values(CANONICAL_SKILLS)[0]!
+  const simulation = executeSkillSimulation(skill.meta.name, {
+    topic: body.topic,
+    context: body.context ?? '',
+  })
+  sendJson(res, 200, {
+    ok: true,
+    skill: skill.meta.name,
+    clarityIndex: simulation.clarityIndex,
+    rigorScore: simulation.rigorScore,
+    rawOutput: simulation.rawOutput,
+    ambiguitiesResolved: simulation.ambiguitiesResolved,
+    assumptionsSurfaced: simulation.assumptionsSurfaced,
+  })
+}
+
+/** POST /cognitive/relearning/savings — calculates Rawson & Dunlosky Ebbinghaus savings */
+async function postRelearningSavings(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, relearningSavingsBodySchema)
+  const savings = calculateEbbinghausSavings(body.initialLearningSeconds, body.relearningSeconds)
+  const retention = predictRetentionAtDays(0.1, body.daysElapsed)
+  const stability = calibrateFSRSStability(0.08)
+  const difficulty = calibrateFSRSDifficulty(body.initialTrialsCount, 1)
+  sendJson(res, 200, {
+    ok: true,
+    savingsPercentage: savings,
+    predictedRetention: Math.round(retention * 100),
+    calibratedFSRS: {
+      stabilityDays: stability,
+      difficultyScale: difficulty,
+    },
+    recommendation:
+      savings >= 50
+        ? 'Robust Ebbinghaus memory savings achieved. Safe to expand review interval by 2.5x.'
+        : 'Sub-threshold memory savings. Additional successive retrieval trial recommended.',
+  })
+}
+
+/** POST /cognitive/srl/evaluate — Zimmerman 3-phase cyclical SRL matrix */
+async function postSrlEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, srlEvaluateBodySchema)
+  const index = calculateSRLMaturityIndex(
+    body.forethoughtScore,
+    body.performanceScore,
+    body.reflectionScore,
+  )
+  const tier = evaluateSRLMaturityTier(index)
+  const gas = calculateGoalAttainmentScale(
+    body.performanceScore / 10,
+    body.reflectionScore >= 6,
+    body.forethoughtScore / 10,
+  )
+  const challenge = body.challengeId ? CALIBRATED_SRL_CHALLENGES[body.challengeId] : null
+  sendJson(res, 200, {
+    ok: true,
+    maturityIndex: index,
+    maturityTier: tier,
+    goalAttainmentScale: gas,
+    challenge: challenge
+      ? {
+          id: challenge.id,
+          title: challenge.title,
+          domain: challenge.domain,
+          complexityLevel: challenge.complexityLevel,
+          taskDescription: challenge.taskDescription,
+          forethoughtHeuristic: challenge.expertForethoughtHeuristic,
+          selfReflectionPrompt: challenge.expertSelfReflectionPrompt,
+        }
+      : null,
+  })
+}
+
+/** POST /cognitive/epistemic/analyze — Shaffer Epistemic Network Analysis */
+async function postEpistemicAnalyze(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, epistemicAnalyzeBodySchema)
+  const utterances = body.discourseTexts.map((text, idx) => ({
+    id: `server_utt_${idx}`,
+    unitId: 'server_unit',
+    conversationId: 'server_conv',
+    lineIndex: idx,
+    timestamp: new Date().toISOString(),
+    speaker: 'Learner',
+    text,
+    appliedCodes: [
+      idx % 2 === 0 ? 'code_domain_principle' : 'code_empirical_evidence',
+      'code_causal_reasoning',
+    ],
+  }))
+  const model = buildEpistemicDiscourseModel(
+    'server_ena_model',
+    'REST Discourse Analysis',
+    'Cognitive Systems',
+    utterances,
+  )
+  const bridge = bridgeEpistemicToCurriculum(model, body.baseMastery)
+  sendJson(res, 200, {
+    ok: true,
+    networkDensity: model.network.networkDensity,
+    overallMaturityScore: model.overallMaturityScore,
+    dimension1Coord: model.projection.dimension1Coord,
+    dimension2Coord: model.projection.dimension2Coord,
+    epistemicInterpretation: model.projection.epistemicInterpretation,
+    curriculumTransferMultiplier: bridge.transferMultiplier,
+    modulatedMastery: bridge.modulatedMastery,
+    subtractiveGapsCount: model.subtractiveGaps.length,
+  })
+}
+
+/** POST /cognitive/causal/counterfactual — Pearl SCM & counterfactual evaluation */
+async function postCausalCounterfactual(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, causalCounterfactualBodySchema)
+  const model = createStandardEducationSCM()
+  const result = evaluateCounterfactual(model, {
+    modelId: model.id,
+    evidence: body.evidence,
+    interventions: body.interventions,
+    targetVariableId: body.targetVariableId,
+  })
+  const interventionKey = Object.keys(body.interventions)[0] ?? 'StudyHours'
+  const backdoor = evaluateBackdoorAdmissibility(model, interventionKey, body.targetVariableId, [
+    'Aptitude',
+  ])
+  const dsep = checkDSeparation(model, interventionKey, body.targetVariableId, ['Aptitude'])
+  sendJson(res, 200, {
+    ok: true,
+    factualValue: result.factualValue,
+    counterfactualValue: result.counterfactualValue,
+    causalLift: result.causalLift,
+    exogenousStates: result.exogenousStates,
+    narrativeExplanation: result.narrativeExplanation,
+    isBackdoorAdmissible: backdoor.isAdmissible,
+    dSeparationPathsCount: dsep.paths.length,
+  })
+}
+
+/** POST /cognitive/threshold/liminal — Meyer & Land threshold concepts liminal evaluation */
+async function postThresholdLiminal(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, thresholdLiminalBodySchema)
+  const concepts = getStandardThresholdConcepts()
+  const concept = concepts.find((c) => c.id === body.conceptId) ?? concepts[0]!
+  const diagnostic = evaluateLiminalTrajectory(concept.id, body.probeResponses)
+  const bridge = bridgeThresholdToCurriculum(
+    body.baseMastery,
+    diagnostic.overallFluencyScore,
+    diagnostic.phase,
+    concept.id,
+  )
+  const tsi = computeThresholdSignificanceIndex(concept.criteriaScores)
+  sendJson(res, 200, {
+    ok: true,
+    concept: {
+      id: concept.id,
+      title: concept.title,
+      discipline: concept.discipline,
+      tsiScore: tsi,
+      unlockedDownstreamConcepts: concept.unlockedDownstreamConcepts,
+    },
+    diagnostic: {
+      phase: diagnostic.phase,
+      canCrossPortal: diagnostic.canCrossPortal,
+      overallFluencyScore: diagnostic.overallFluencyScore,
+      mimicryRiskScore: diagnostic.mimicryRiskScore,
+      oscillationStability: diagnostic.oscillationStability,
+      prescribedRemediation: diagnostic.prescribedRemediation,
+    },
+    bridge: {
+      gatewayMultiplier: bridge.gatewayMultiplier,
+      modulatedMastery: bridge.modulatedMastery,
+    },
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -980,6 +1259,54 @@ export const routes: Route[] = [
     summary:
       'Sweller element-interactivity analysis + Paas efficiency (?suiteKey=&extraneousLoadFactor=&mentalEffort=&performance=)',
     handler: postInteractivity,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/skills/catalog',
+    summary: 'canonical agent skills catalog (?category=)',
+    handler: getSkillsCatalog,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/skills/audit',
+    summary: 'audit code against AGENTS.md rules',
+    handler: postSkillsAudit,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/skills/run',
+    summary: 'simulate execution of an autonomous skill drill',
+    handler: postSkillsRun,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/relearning/savings',
+    summary: 'calculate Rawson & Dunlosky successive relearning & Ebbinghaus savings',
+    handler: postRelearningSavings,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/srl/evaluate',
+    summary: 'evaluate Zimmerman cyclical self-regulated learning (SRL) matrix',
+    handler: postSrlEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/epistemic/analyze',
+    summary: 'Shaffer epistemic network analysis (ENA) & quantitative ethnography',
+    handler: postEpistemicAnalyze,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/causal/counterfactual',
+    summary: 'Judea Pearl structural causal models & counterfactual evaluation',
+    handler: postCausalCounterfactual,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/threshold/liminal',
+    summary: 'Meyer & Land threshold concepts & liminal navigation evaluation',
+    handler: postThresholdLiminal,
   },
 ]
 

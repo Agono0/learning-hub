@@ -22,6 +22,7 @@ import { lifestyleTools } from './tools/lifestyle'
 import { learningPathTools } from './tools/learning-path'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
+import { advancedLearningTools } from './tools/advanced-learning'
 import {
   CardNotFoundError,
   cards,
@@ -544,6 +545,7 @@ async function main() {
     ...learningPathTools,
     ...communityTools,
     ...telemetryAudioTools,
+    ...advancedLearningTools,
   ]) {
     server.registerTool(
       registered.name,
