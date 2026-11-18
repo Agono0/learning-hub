@@ -94,6 +94,11 @@ export function ModelInquiryStudio() {
     setSimResults(null)
     setEvaluation(null)
     setGeneratedDeck(null)
+    // Scenario switch must clear per-scenario evaluation inputs — the stale
+    // Galileo predictions/bridging text otherwise leak into the new
+    // scenario's ECDI and bridging-analogy scores.
+    setCasePredictions({})
+    setBridgingExplanation('')
 
     // Reset default text based on scenario
     if (scenario.id === 'galileo_falling_bodies') {

@@ -130,7 +130,7 @@ describe('Epistemic Argumentation & CER Web Integration', () => {
         body: JSON.stringify({
           action: 'counter_argue',
           debateId: 'debate-amoc-tipping',
-          claimId: 'claim-amoc-tipping-near',
+          selectedClaimId: 'claim-amoc-tipping-near',
         }),
       }),
     )
