@@ -169,6 +169,82 @@ describe('Headless REST Server Cognitive Routes', () => {
     }
   })
 
+  it('POST /cognitive/analogy evaluates a structure-mapping attempt', async () => {
+    const list = await fetch(`${baseUrl}/cognitive/analogy`, { method: 'POST', body: '{}' })
+    expect(list.status).toBe(200)
+    const listing = await list.json()
+    expect(listing.ok).toBe(true)
+    expect(listing.suites.length).toBeGreaterThanOrEqual(3)
+
+    const evalRes = await fetch(`${baseUrl}/cognitive/analogy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suiteKey: 'convergence_radiation_oncology',
+        attempt: {
+          suiteId: 'convergence_radiation_oncology',
+          selectedBaseAnalogId: 'military_raids',
+          entityMappings: [],
+          predicateMappings: [],
+          articulatedConvergenceSchema: 'Multiple weak rays converge on a hard target.',
+          confidenceScore: 3,
+          timeSpentMs: 60000,
+        },
+      }),
+    })
+    expect(evalRes.status).toBe(200)
+    const data = await evalRes.json()
+    expect(data.ok).toBe(true)
+    expect(typeof data.telemetry.entityAlignmentAccuracy).toBe('number')
+    expect(typeof data.telemetry.systematicityScore).toBe('number')
+    expect(typeof data.telemetry.spontaneousTransferProbability).toBe('number')
+    expect(typeof data.telemetry.feedbackMessage).toBe('string')
+  })
+
+  it('POST /cognitive/flexibility evaluates criss-cross attempts', async () => {
+    const suitesRes = await fetch(`${baseUrl}/cognitive/flexibility`, {
+      method: 'POST',
+      body: '{}',
+    })
+    expect(suitesRes.status).toBe(200)
+    const suites = await suitesRes.json()
+    expect(suites.ok).toBe(true)
+    expect(suites.suites.length).toBeGreaterThanOrEqual(2)
+
+    const evalRes = await fetch(`${baseUrl}/cognitive/flexibility`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suiteKey: 'distributed_chaos_cascade',
+        attempts: [
+          {
+            caseId: 'primary',
+            selectedHat: 'white_hat',
+            activeLens: 'mechanistic_technical',
+            studentObservations: 'Traced the failure propagation chain.',
+            identifiedThematicNodeIds: [],
+            diagnosedReductiveTrapIds: [],
+          },
+          {
+            caseId: 'primary',
+            selectedHat: 'green_hat',
+            activeLens: 'ecological_systemic',
+            studentObservations: 'Reframed as ecosystem feedback.',
+            identifiedThematicNodeIds: [],
+            diagnosedReductiveTrapIds: [],
+          },
+        ],
+      }),
+    })
+    expect(evalRes.status).toBe(200)
+    const data = await evalRes.json()
+    expect(data.ok).toBe(true)
+    expect(typeof data.evaluation.perspectiveDispersionIndex).toBe('number')
+    expect(data.evaluation.hatCoverageCount).toBe(2)
+    expect(typeof data.evaluation.cognitiveFlexibilityScore).toBe('number')
+    expect(typeof data.evaluation.feedbackSummary).toBe('string')
+  })
+
   it('GET /cognitive/metacognition evaluates calibration from revlog', async () => {
     const res = await fetch(`${baseUrl}/cognitive/metacognition?limit=50`)
     expect(res.status).toBe(200)

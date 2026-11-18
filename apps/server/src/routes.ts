@@ -45,6 +45,11 @@ import {
   fragilityScore,
   type CorrectionTrial,
   buildPretestQuestion,
+  CALIBRATED_ANALOGICAL_SUITES,
+  CALIBRATED_FLEXIBILITY_SUITES,
+  evaluateStructureMappingAttempt,
+  evaluateCognitiveFlexibility,
+  exportFlexibilityToFSRSCards,
   judgmentOfLearningSchema,
   pretestRelatedness,
   selectPretestCandidates,
@@ -494,6 +499,115 @@ async function postDifficultyAudit(req: IncomingMessage, res: ServerResponse): P
   sendJson(res, 200, { ok: true, report, measured })
 }
 
+/** POST /cognitive/analogy — Gentner structure-mapping evaluation over the calibrated suites. */
+async function postAnalogy(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(
+    req,
+    z.object({
+      suiteKey: z.string().optional(),
+      attempt: z
+        .object({
+          suiteId: z.string(),
+          selectedBaseAnalogId: z.string(),
+          entityMappings: z.array(
+            z.object({ baseEntityId: z.string(), targetEntityId: z.string() }),
+          ),
+          predicateMappings: z.array(
+            z.object({ basePredicateId: z.string(), targetPredicateId: z.string() }),
+          ),
+          articulatedConvergenceSchema: z.string(),
+          decoyRejectionRationale: z.string().optional(),
+          confidenceScore: z.number().min(1).max(5),
+          timeSpentMs: z.number().nonnegative(),
+        })
+        .optional(),
+    }),
+  )
+
+  // Suite listing mode.
+  if (!body.attempt) {
+    const keys = body.suiteKey ? [body.suiteKey] : Object.keys(CALIBRATED_ANALOGICAL_SUITES)
+    const suites = keys.map((k) => {
+      const suite = CALIBRATED_ANALOGICAL_SUITES[k]
+      if (!suite) return { suiteId: k, error: `unknown suite "${k}"` }
+      return {
+        suiteId: suite.suiteId,
+        title: suite.title,
+        targetProblem: suite.targetProblem.scenarioTitle,
+        baseAnalogs: suite.baseAnalogs.map((b) => ({ id: b.id, title: b.scenarioTitle })),
+      }
+    })
+    sendJson(res, 200, { ok: true, suites })
+    return
+  }
+
+  const suite = CALIBRATED_ANALOGICAL_SUITES[body.attempt.suiteId]
+  if (!suite) {
+    jsonError(res, 404, `Unknown suite "${body.attempt.suiteId}"`)
+    return
+  }
+  const telemetry = evaluateStructureMappingAttempt(suite, body.attempt)
+  sendJson(res, 200, { ok: true, telemetry })
+}
+
+/** POST /cognitive/flexibility — Spiro criss-crossing evaluation over the calibrated suites. */
+async function postFlexibility(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(
+    req,
+    z.object({
+      suiteKey: z.string().optional(),
+      attempts: z
+        .array(
+          z.object({
+            caseId: z.string(),
+            selectedHat: z.enum([
+              'white_hat',
+              'red_hat',
+              'black_hat',
+              'yellow_hat',
+              'green_hat',
+              'blue_hat',
+            ]),
+            activeLens: z.enum([
+              'mechanistic_technical',
+              'socio_economic',
+              'ecological_systemic',
+              'teleological_ethical',
+            ]),
+            studentObservations: z.string(),
+            identifiedThematicNodeIds: z.array(z.string()),
+            diagnosedReductiveTrapIds: z.array(z.string()),
+          }),
+        )
+        .max(100)
+        .optional(),
+      exportCards: z.boolean().default(false),
+    }),
+  )
+
+  if (!body.attempts) {
+    const suites = Object.entries(CALIBRATED_FLEXIBILITY_SUITES).map(([key, suite]) => ({
+      suiteId: key,
+      name: suite.name,
+      domainFamily: suite.domainFamily,
+      caseTitle: suite.primaryCase.title,
+      thematicNodes: suite.primaryCase.thematicNodes.length,
+      reductiveTraps: suite.primaryCase.reductiveTraps.length,
+    }))
+    sendJson(res, 200, { ok: true, suites })
+    return
+  }
+
+  const suite = CALIBRATED_FLEXIBILITY_SUITES[body.suiteKey ?? '']
+  if (!suite) {
+    jsonError(res, 404, `Unknown suite "${body.suiteKey ?? ''}"`)
+    return
+  }
+  const evaluation = evaluateCognitiveFlexibility(suite, body.attempts)
+  const cards = body.exportCards ? exportFlexibilityToFSRSCards(suite, evaluation) : undefined
+  sendJson(res, 200, { ok: true, evaluation, cards })
+}
+
 /** GET /cognitive/pretesting — pretest questions for young, fragile cards. */
 async function getPretesting(_req: IncomingMessage, res: ServerResponse): Promise<void> {
   const rows = await db
@@ -808,6 +922,18 @@ export const routes: Route[] = [
     path: '/cognitive/pretesting',
     summary: 'pretest questions for young, fragile cards (Kornell et al. 2009)',
     handler: getPretesting,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/analogy',
+    summary: 'Gentner structure-mapping evaluation over the calibrated analogy suites',
+    handler: postAnalogy,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/flexibility',
+    summary: 'Spiro criss-crossing evaluation over the calibrated flexibility suites',
+    handler: postFlexibility,
   },
 ]
 

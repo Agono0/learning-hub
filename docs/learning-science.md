@@ -629,6 +629,42 @@ Measuring the exact alignment between predicted memory retention and empirical r
 - **In Learning HUB:** `computeBrierScore` and `computeCalibrationMetrics` in `packages/core/src/analytics.ts`, reliability diagram in `apps/web/app/analytics/page.tsx`.
 - **Status:** ✅
 
+### Analogical Transfer & Schema Induction — Gick & Holyoak (1980/1983); Gentner (1983)
+
+Structure-mapping: transfer happens through relational similarity, not
+surface similarity — learners must map the base analog's causal skeleton
+onto the target and induce the convergence schema.
+
+- **Evidence:** Gick & Holyoak (1980): ~30% spontaneous transfer from one
+  base analog; comparing two diverse base analogs roughly doubles it.
+  Gentner (1983): systematicity — preserving higher-order causal relations
+  is what makes an analogy work.
+- **In Learning HUB:** `packages/core/src/analogy/structure-mapping-engine.ts`
+  (entity alignment, predicate preservation, systematicity scoring,
+  spontaneous-transfer forecast); `CALIBRATED_ANALOGICAL_SUITES` (3 suites);
+  the `analogical_transfer` MCP tool, `learning-hub analogy plan` CLI
+  command, and `POST /cognitive/analogy` headless route; rendered in the
+  analogy studio.
+- **Status:** ✅
+
+### Cognitive Flexibility Theory & Criss-Crossing — Spiro et al. (1988); De Bono (1985)
+
+Ill-structured domains resist single-schema mastery: the same case must be
+revisited under multiple perspectives (criss-crossing) to assemble flexible
+knowledge, and reductive biases must be surfaced explicitly.
+
+- **Evidence:** Spiro et al. (1988) — criss-crossing the thematic landscape
+  prevents oversimplification; perspective dispersion (normalized Shannon
+  entropy over de Bono's hats) measures whether the learner actually
+  re-represented the case.
+- **In Learning HUB:** `packages/core/src/flexibility/cognitive-flexibility-engine.ts`
+  (PDI entropy, criss-cross density, reductive-bias mastery, rigidity
+  warning, FSRS multi-perspective exporter); `CALIBRATED_FLEXIBILITY_SUITES`
+  (2 suites); the `cognitive_flexibility` MCP tool, `learning-hub
+flexibility plan` CLI command, and `POST /cognitive/flexibility` headless
+  route; rendered in the /flexibility studio.
+- **Status:** ✅
+
 ### Nelson–Narens Monitoring vs Control & Goodman–Kruskal γ — Nelson & Narens (1990); Nelson (1984)
 
 Metamemory as a two-stream loop: **monitoring** (how accurately Judgments of

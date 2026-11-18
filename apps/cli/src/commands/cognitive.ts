@@ -8,6 +8,8 @@
 import {
   auditDesirableDifficulty,
   buildPretestQuestion,
+  CALIBRATED_ANALOGICAL_SUITES,
+  CALIBRATED_FLEXIBILITY_SUITES,
   CALIBRATED_INVARIANCE_CATEGORIES,
   CALIBRATED_INVARIANCE_PROBLEMS,
   computeCategoryContrastMatrix,
@@ -475,4 +477,96 @@ export function invarianceCommand(args: string[]): void {
     CALIBRATED_INVARIANCE_CATEGORIES,
   )
   console.log(`\nFSRS deck: ${deck.length} identify-the-invariant cards available.`)
+}
+
+/**
+ * `analogy plan` — prints the Gick & Holyoak analogical-transfer suite
+ * (target problem, base analogs, convergence schema) so a learner can run
+ * the structure-mapping protocol from the terminal; `--suite` picks among
+ * the three calibrated suites.
+ */
+export function analogyCommand(args: string[]): void {
+  const sub = args[0] || 'plan'
+  if (sub !== 'plan') {
+    console.error(`Unknown subcommand: ${sub}. Usage: learning-hub analogy plan [--suite <key>]`)
+    return
+  }
+  const suiteKey = parseFlag(args, '--suite')
+  const keys = suiteKey ? [suiteKey] : Object.keys(CALIBRATED_ANALOGICAL_SUITES)
+  for (const key of keys) {
+    const suite = CALIBRATED_ANALOGICAL_SUITES[key]
+    if (!suite) {
+      console.error(
+        `Unknown suite "${key}". Available: ${Object.keys(CALIBRATED_ANALOGICAL_SUITES).join(', ')}`,
+      )
+      continue
+    }
+    console.log(`
+🗺️  Analogical Transfer Suite: ${suite.title}`)
+    console.log(
+      `   Target problem: ${suite.targetProblem.scenarioTitle} (${suite.targetProblem.domainName})`,
+    )
+    console.log(`   Narrative: ${suite.targetProblem.narrativeDescription.slice(0, 140)}…`)
+    for (const base of suite.baseAnalogs) {
+      console.log(`   Base analog: ${base.scenarioTitle} (${base.domainName})`)
+    }
+    console.log('   Map the base-analog relations onto the target — surface features differ,')
+    console.log('   the convergence schema must not (Gentner 1983 systematicity).')
+  }
+}
+
+/**
+ * `flexibility plan` — prints a Spiro (1988) criss-crossing schedule over a
+ * calibrated ill-structured case: which Six-Thinking-Hats x lens crossings
+ * to visit, plus the reductive traps to watch for.
+ */
+export function flexibilityCommand(args: string[]): void {
+  const sub = args[0] || 'plan'
+  if (sub !== 'plan') {
+    console.error(
+      `Unknown subcommand: ${sub}. Usage: learning-hub flexibility plan [--suite <key>]`,
+    )
+    return
+  }
+  const suiteKey = parseFlag(args, '--suite') || 'distributed_chaos_cascade'
+  const suite = CALIBRATED_FLEXIBILITY_SUITES[suiteKey]
+  if (!suite) {
+    console.error(
+      `Unknown suite "${suiteKey}". Available: ${Object.keys(CALIBRATED_FLEXIBILITY_SUITES).join(', ')}`,
+    )
+    return
+  }
+  const hats = ['white_hat', 'red_hat', 'black_hat', 'yellow_hat', 'green_hat', 'blue_hat']
+  console.log(`
+🧩 Cognitive Flexibility Criss-Cross: ${suite.name} (${suite.domainFamily})`)
+  console.log(`   Case: ${suite.primaryCase.title}`)
+  console.log(`   Dilemma: ${suite.primaryCase.coreDilemma}`)
+  console.log(`
+   Thematic nodes (${suite.primaryCase.thematicNodes.length}):`)
+  for (const node of suite.primaryCase.thematicNodes) {
+    console.log(`     - ${node.theme}`)
+  }
+  console.log(`
+   Criss-cross schedule (visit each hat x lens crossing):`)
+  let step = 1
+  for (const hat of hats.slice(0, 4)) {
+    for (const lens of [
+      'mechanistic_technical',
+      'socio_economic',
+      'ecological_systemic',
+      'teleological_ethical',
+    ]) {
+      console.log(
+        `     ${String(step).padStart(2, '0')}. [${hat.replace('_hat', '')} hat / ${lens.replace(/_/g, ' ')}]`,
+      )
+      step++
+    }
+  }
+  console.log(`
+   Reductive traps to avoid (${suite.primaryCase.reductiveTraps.length}):`)
+  for (const trap of suite.primaryCase.reductiveTraps) {
+    console.log(`     - [${trap.type}] ${trap.superficialModel}`)
+  }
+  console.log('\nSpiro et al. (1988): revisit the same case under different lenses —')
+  console.log('ill-structured domains resist single-schema mastery.')
 }
