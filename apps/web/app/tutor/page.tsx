@@ -17,7 +17,7 @@ import { History, Lightbulb, Save, Send, Settings2, Sparkles } from 'lucide-reac
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import type { ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { IconButton, PageHeader } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 
 interface Msg {
@@ -406,9 +406,14 @@ export default function TutorPage() {
               placeholder="Your attempt, question, or confusion…"
               disabled={streaming}
             />
-            <button className="btn" type="submit" disabled={streaming || !input.trim()}>
+            <IconButton
+              label="Send message"
+              type="submit"
+              variant="primary"
+              disabled={streaming || !input.trim()}
+            >
               <Send className="h-4 w-4" />
-            </button>
+            </IconButton>
           </form>
         </div>
       )}

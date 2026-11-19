@@ -12,7 +12,7 @@ import { Bold, Heading, Link2, List, Pickaxe, Save } from 'lucide-react'
 import { SUPERTAG_TEMPLATES, cornellLayout } from '@learning-hub/core/notes'
 import type { SupertagKey } from '@learning-hub/core/notes'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader, RelatedPanel } from '@/ui'
+import { IconButton, PageHeader, RelatedPanel } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -167,44 +167,24 @@ export default function NotesPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
                 <div className="flex flex-wrap items-center gap-1">
-                  <button className="btn-ghost" title="Bold" onClick={() => wrapSelection('**')}>
+                  <IconButton label="Bold" onClick={() => wrapSelection('**')}>
                     <Bold className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Heading"
-                    onClick={() => setContent((c) => `${c}\n## `)}
-                  >
+                  </IconButton>
+                  <IconButton label="Heading" onClick={() => setContent((c) => `${c}\n## `)}>
                     <Heading className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Wikilink"
-                    onClick={() => setContent((c) => `${c}[[title]]`)}
-                  >
+                  </IconButton>
+                  <IconButton label="Wikilink" onClick={() => setContent((c) => `${c}[[title]]`)}>
                     <Link2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Bullet"
-                    onClick={() => setContent((c) => `${c}\n- `)}
-                  >
+                  </IconButton>
+                  <IconButton label="Bullet" onClick={() => setContent((c) => `${c}\n- `)}>
                     <List className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Mine cards from this note"
-                    onClick={() => setMineText(content)}
-                  >
+                  </IconButton>
+                  <IconButton label="Mine cards from this note" onClick={() => setMineText(content)}>
                     <Pickaxe className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Paste text and mine cards"
-                    onClick={() => setMineText('')}
-                  >
+                  </IconButton>
+                  <IconButton label="Paste text and mine cards" onClick={() => setMineText('')}>
                     <Pickaxe className="h-4 w-4 opacity-50" />
-                  </button>
+                  </IconButton>
                   <select
                     className="input ml-auto w-40 text-xs"
                     value={supertag}

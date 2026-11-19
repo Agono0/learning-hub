@@ -39,7 +39,7 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { useReducedMotion } from '@/lib/useReducedMotion'
 import { MemoryPalace3DStudio } from '@/components/MemoryPalace3DStudio'
-import { Button, Callout, EmptyState, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
+import { Button, Callout, EmptyState, IconButton, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
 
 interface PalaceListResponse {
   palaces: Array<{ palace: { id: number; name: string }; items: unknown[] }>
@@ -447,54 +447,24 @@ export default function Palace3dPage() {
                   className="absolute bottom-2 right-2 grid grid-cols-3 gap-1 rounded-xl bg-black/50 p-1.5"
                   aria-label="Movement controls"
                 >
-                  <button
-                    type="button"
-                    className={padBtn}
-                    onClick={() => turn(1)}
-                    aria-label="Turn left (Q)"
-                  >
+                  <IconButton label="Turn left (Q)" onClick={() => turn(1)} className={padBtn}>
                     <RotateCcw className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className={padBtn}
-                    onClick={() => walk(1, 0)}
-                    aria-label="Step forward (W)"
-                  >
+                  </IconButton>
+                  <IconButton label="Step forward (W)" onClick={() => walk(1, 0)} className={padBtn}>
                     <ArrowUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className={padBtn}
-                    onClick={() => turn(-1)}
-                    aria-label="Turn right (E)"
-                  >
+                  </IconButton>
+                  <IconButton label="Turn right (E)" onClick={() => turn(-1)} className={padBtn}>
                     <RotateCw className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className={padBtn}
-                    onClick={() => walk(0, -1)}
-                    aria-label="Step left (A)"
-                  >
+                  </IconButton>
+                  <IconButton label="Step left (A)" onClick={() => walk(0, -1)} className={padBtn}>
                     <ArrowLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className={padBtn}
-                    onClick={() => walk(-1, 0)}
-                    aria-label="Step back (S)"
-                  >
+                  </IconButton>
+                  <IconButton label="Step back (S)" onClick={() => walk(-1, 0)} className={padBtn}>
                     <ArrowDown className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className={padBtn}
-                    onClick={() => walk(0, 1)}
-                    aria-label="Step right (D)"
-                  >
+                  </IconButton>
+                  <IconButton label="Step right (D)" onClick={() => walk(0, 1)} className={padBtn}>
                     <ArrowRight className="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 </div>
               </div>
 

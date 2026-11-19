@@ -11,12 +11,13 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
    */
   label: string
   /**
-   * ghost: kit-standard muted glyph on the page surface. secondary: bordered
-   * fill for chrome that sits on white/panel tiles. bare: no colors of its
-   * own — the caller supplies the full palette via className (cinematic
-   * studio surfaces, branded tiles); layout, focus law and touch law stay.
+   * ghost: kit-standard muted glyph on the page surface. primary: accent
+   * fill (chat send, submit glyphs). secondary: bordered fill for chrome
+   * that sits on white/panel tiles. bare: no colors of its own — the caller
+   * supplies the full palette via className (cinematic studio surfaces,
+   * branded tiles); layout, focus law and touch law stay.
    */
-  variant?: 'ghost' | 'secondary' | 'bare'
+  variant?: 'ghost' | 'primary' | 'secondary' | 'bare'
   /** Visual size on fine pointers; sm/md grow to 44px on coarse ones. */
   size?: 'sm' | 'md' | 'lg'
   /** Shows a spinner (replacing the glyph) and disables the button while an action runs. */
@@ -57,9 +58,11 @@ export function IconButton({
         'inline-grid place-items-center rounded-lg transition-colors active:scale-[0.98] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none',
         variant === 'ghost'
           ? 'text-tertiary hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200'
-          : variant === 'secondary'
-            ? 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:bg-(--hub-border)'
-            : '',
+          : variant === 'primary'
+            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+            : variant === 'secondary'
+              ? 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:bg-(--hub-border)'
+              : '',
         SIZE[size],
         size !== 'lg' && '[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11',
         className,

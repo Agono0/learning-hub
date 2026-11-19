@@ -31,7 +31,7 @@ import {
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
-import { Button, PageHeader, SelectField, Toggle, useToast } from '@/ui'
+import { Button, IconButton, PageHeader, SelectField, Toggle, useToast } from '@/ui'
 import { SoundscapeBar } from '@/components/SoundscapeBar'
 import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
@@ -1060,12 +1060,13 @@ export default function FocusPage() {
                           className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
                         >
                           {d}
-                          <button
-                            type="button"
+                          <IconButton
+                            label={`Remove allowed domain ${d}`}
                             onClick={() => setExtraDomains(extraDomains.filter((x) => x !== d))}
+                            className="hover:text-danger-text"
                           >
-                            <X className="h-3 w-3 hover:text-danger-text" />
-                          </button>
+                            <X className="h-3 w-3" />
+                          </IconButton>
                         </span>
                       ))}
                     </div>
@@ -1097,12 +1098,13 @@ export default function FocusPage() {
                           className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
                         >
                           {a}
-                          <button
-                            type="button"
+                          <IconButton
+                            label={`Remove allowed app ${a}`}
                             onClick={() => setExtraApps(extraApps.filter((x) => x !== a))}
+                            className="hover:text-danger-text"
                           >
-                            <X className="h-3 w-3 hover:text-danger-text" />
-                          </button>
+                            <X className="h-3 w-3" />
+                          </IconButton>
                         </span>
                       ))}
                     </div>

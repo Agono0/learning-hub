@@ -37,6 +37,7 @@ import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import {
   Button,
   Callout,
+  IconButton,
   LeitnerProgression,
   Menu,
   PageHeader,
@@ -413,13 +414,13 @@ export default function DecksPage() {
                   </span>
                 )}
               </button>
-              <button
-                className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger-text"
+              <IconButton
+                label="Delete deck"
                 onClick={() => deleteDeck.mutate(d.id)}
-                title="delete deck"
+                className="hover:text-danger-text"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </IconButton>
             </span>
           ))}
         </div>
