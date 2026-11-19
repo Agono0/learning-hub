@@ -470,6 +470,11 @@ body {
 .animate-fade-in {
   animation: fade-in var(--duration-base) var(--ease-enter) both;
 }
+/* Fast variant for ephemeral UI (InfoHint bubbles) — enters instantly per the
+   motion law ("ephemeral UI enters instantly"), still token-driven. */
+.animate-fade-in-fast {
+  animation: fade-in var(--duration-fast) var(--ease-enter) both;
+}
 @keyframes fade-in-up {
   from {
     opacity: 0;

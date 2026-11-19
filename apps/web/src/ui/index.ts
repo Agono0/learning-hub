@@ -7,6 +7,7 @@
  */
 export { Button, type ButtonProps } from './Button'
 export { IconButton, type IconButtonProps } from './IconButton'
+export { InfoHint, type InfoHintProps } from './InfoHint'
 export { Menu, type MenuItem, type MenuProps } from './Menu'
 export { Panel, type PanelProps } from './Panel'
 export { PageHeader, type PageHeaderProps } from './PageHeader'

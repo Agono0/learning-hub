@@ -22,6 +22,9 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
   size?: 'sm' | 'md' | 'lg'
   /** Shows a spinner (replacing the glyph) and disables the button while an action runs. */
   loading?: boolean
+  /** Ref to the underlying <button> (React 19 ref-as-prop; InfoHint uses it
+   * to return focus on Esc). */
+  ref?: React.Ref<HTMLButtonElement>
 }
 
 /** Per-size fine-pointer footprint; sm/md grow to 44px on coarse pointers. */
@@ -45,10 +48,12 @@ export function IconButton({
   type,
   children,
   disabled,
+  ref,
   ...rest
 }: IconButtonProps) {
   return (
     <button
+      ref={ref}
       type={type ?? 'button'}
       aria-label={label}
       title={label}
