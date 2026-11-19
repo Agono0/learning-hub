@@ -15,6 +15,7 @@ import {
   VolumeX,
   XCircle,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   CALIBRATED_CONCEPT_SCHEMAS,
   SchemaDistillationSession,
@@ -292,14 +293,14 @@ export function SchemaDistillationStudio({
 
         {/* Audio Mute & Reset */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAudioMuted(!audioMuted)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
+          <IconButton
+            label={audioMuted ? 'Unmute audio feedback' : 'Mute audio feedback'}
             title={audioMuted ? 'Unmute Earcons' : 'Mute Earcons'}
-            aria-label={audioMuted ? 'Unmute audio feedback' : 'Mute audio feedback'}
+            onClick={() => setAudioMuted(!audioMuted)}
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white"
           >
             {audioMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
+          </IconButton>
           <button
             onClick={handleResetSchema}
             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all"
@@ -537,13 +538,14 @@ export function SchemaDistillationStudio({
                               </p>
                             </div>
 
-                            <button
+                            <IconButton
+                              label="Delete Proposition"
+                              size="sm"
                               onClick={() => handleRemoveProposition(l.id)}
-                              className="rounded-lg p-1 text-tertiary hover:bg-white/10 hover:text-danger-text transition-all"
-                              title="Delete Proposition"
+                              className="rounded-lg hover:bg-white/10 hover:text-danger-text"
                             >
                               <Trash2 className="h-3 w-3" />
-                            </button>
+                            </IconButton>
                           </div>
                         )
                       })}

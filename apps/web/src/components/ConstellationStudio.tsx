@@ -13,6 +13,7 @@ import {
   VolumeX,
   Zap,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   computeOptimalLearningPath,
   detectConceptClusters,
@@ -699,14 +700,14 @@ export function ConstellationStudio({
           </button>
 
           {/* Fullscreen Button */}
-          <button
-            type="button"
+          <IconButton
+            label="Toggle Fullscreen"
+            size="sm"
             onClick={toggleFullscreen}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
-            title="Toggle Fullscreen"
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
+          </IconButton>
         </div>
       </div>
 

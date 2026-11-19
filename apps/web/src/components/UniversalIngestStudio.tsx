@@ -19,7 +19,7 @@ import {
   Video,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, Callout, Panel, SelectField, Tabs, TextArea, TextField } from '@/ui'
+import { Badge, Button, Callout, IconButton, Panel, SelectField, Tabs, TextArea, TextField } from '@/ui'
 
 export type IngestMediaType = 'youtube' | 'pdf' | 'code' | 'notes'
 
@@ -475,22 +475,24 @@ export function UniversalIngestStudio() {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
+                        <IconButton
+                          label="Edit Card"
+                          size="sm"
+                          variant="bare"
                           onClick={() => setEditingCardId(isEditing ? null : card.id)}
-                          className="p-1 text-tertiary hover:text-indigo-600 dark:hover:text-indigo-400 rounded"
-                          title="Edit Card"
+                          className="rounded hover:text-indigo-600 dark:hover:text-indigo-400"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
+                        </IconButton>
+                        <IconButton
+                          label="Remove Card"
+                          size="sm"
+                          variant="bare"
                           onClick={() => removeCard(card.id)}
-                          className="p-1 text-faint hover:text-danger-text dark:hover:text-danger-text rounded"
-                          title="Remove Card"
+                          className="rounded hover:text-danger-text dark:hover:text-danger-text"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </IconButton>
                       </div>
                     </div>
 

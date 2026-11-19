@@ -11,6 +11,7 @@
 import React, { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Calendar, CheckCircle2, Flame, Sliders, Sparkles, X } from 'lucide-react'
+import { IconButton } from '@/ui'
 import { apiGet, apiSend } from '@/lib/transport'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -105,14 +106,13 @@ export function WorkloadBalancerModal({ isOpen, onClose, deckId }: WorkloadBalan
             <Sliders className="h-5 w-5 text-indigo-400" />
             <h2 className="text-lg font-bold text-neutral-100">Spaced Review Workload Balancer</h2>
           </div>
-          <button
+          <IconButton
+            label="Close dialog"
             onClick={onClose}
-            type="button"
-            className="rounded-lg p-1.5 text-faint hover:bg-neutral-800 hover:text-neutral-100"
-            aria-label="Close dialog"
+            className="rounded-lg text-faint hover:bg-neutral-800 hover:text-neutral-100"
           >
             <X className="h-5 w-5" />
-          </button>
+          </IconButton>
         </div>
 
         {feedback && (

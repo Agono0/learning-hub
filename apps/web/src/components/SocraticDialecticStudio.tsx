@@ -20,6 +20,7 @@ import {
   VolumeX,
   XCircle,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   COMPREHENSIVE_FALLACY_CATALOG,
   DEEP_DIALECTIC_CASES,
@@ -341,18 +342,18 @@ export function SocraticDialecticStudio({
           </div>
 
           {/* Sound Toggle */}
-          <button
-            type="button"
+          <IconButton
+            label="Toggle Audio Cues"
+            size="sm"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
-            title="Toggle Audio Cues"
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white"
           >
             {soundEnabled ? (
               <Volume2 className="h-4 w-4 text-indigo-400" />
             ) : (
               <VolumeX className="h-4 w-4" />
             )}
-          </button>
+          </IconButton>
         </div>
       </div>
 

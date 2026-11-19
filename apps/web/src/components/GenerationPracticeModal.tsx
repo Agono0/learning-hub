@@ -37,6 +37,7 @@ import { apiSend } from '@/lib/transport'
 import { playChime } from '@/lib/audio-engine'
 import { hapticMedium, hapticLight, hapticWarning } from '@/platform/haptics'
 import { Badge } from '@/ui/Feedback'
+import { IconButton } from '@/ui'
 
 export interface GenerationPracticeModalProps {
   isOpen: boolean
@@ -352,23 +353,21 @@ export function GenerationPracticeModal({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800 transition"
-              aria-label={soundEnabled ? 'Disable audio cues' : 'Enable audio cues'}
+            <IconButton
+              label={soundEnabled ? 'Disable audio cues' : 'Enable audio cues'}
               title={soundEnabled ? 'Mute sound' : 'Unmute sound'}
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="rounded-lg hover:bg-neutral-200/50 hover:text-neutral-700 dark:text-faint dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             >
               {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
+            </IconButton>
+            <IconButton
+              label="Close dialog"
               onClick={onClose}
-              className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800 transition"
-              aria-label="Close dialog"
+              className="rounded-lg hover:bg-neutral-200/50 hover:text-neutral-700 dark:text-faint dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             >
               <X className="h-5 w-5" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
