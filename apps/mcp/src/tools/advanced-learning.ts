@@ -96,6 +96,11 @@ import {
   evaluateInquirySession,
   generateModelInquiryFsrsDeck,
   InquirySessionInputSchema,
+  listMicroWorldScenarios,
+  simulateMicroWorldStep,
+  evaluateCPSSession,
+  generateCPSFSRSDeck,
+  MicroWorldStateSchema,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1894,6 +1899,83 @@ export const advancedLearningTools: RegisteredTool[] = [
     },
     async ({ scenarioId }) => {
       const deck = generateModelInquiryFsrsDeck(scenarioId)
+      return json({
+        scenarioId,
+        cardsCount: deck.length,
+        cards: deck,
+      })
+    },
+  ),
+
+  // ── 18. Complex Problem Solving (CPS) & Micro-World Simulation (Dörner 1996, Rasmussen 1983) ──
+  tool(
+    'cps_list_scenarios',
+    'Lists all canonical Dietrich Dörner Micro-World scenarios with safety envelopes, system variables, policies, and failure modes.',
+    {},
+    async () => {
+      const scenarios = listMicroWorldScenarios().map((s) => ({
+        id: s.id,
+        title: s.title,
+        domain: s.domain,
+        historicalContext: s.historicalContext,
+        coreDilemma: s.coreDilemma,
+        variablesCount: s.variables.length,
+        policiesCount: s.availablePolicies.length,
+        canonicalFailureMode: s.canonicalFailureMode,
+      }))
+      return json({
+        total: scenarios.length,
+        scenarios,
+      })
+    },
+  ),
+
+  tool(
+    'cps_simulate_step',
+    'Simulates a discrete decision cycle in a Micro-World, executing selected policies and advancing delayed side-effect cascades.',
+    {
+      scenarioId: z.string().default('tanaland_desert_ecosystem'),
+      currentState: MicroWorldStateSchema,
+      selectedPolicyIds: z.array(z.string()).default([]),
+      inspectedVariableIds: z.array(z.string()).default([]),
+    },
+    async ({ scenarioId, currentState, selectedPolicyIds, inspectedVariableIds }) => {
+      const result = simulateMicroWorldStep(
+        scenarioId,
+        currentState,
+        selectedPolicyIds,
+        inspectedVariableIds,
+      )
+      return json(result)
+    },
+  ),
+
+  tool(
+    'cps_evaluate_session',
+    'Computes quantitative Dörner telemetry (DCE, SEAI, TFS, FMR, CPSI), assigns cognitive control tiers, and diagnoses failure pathologies.',
+    {
+      scenarioId: z.string().default('tanaland_desert_ecosystem'),
+      finalState: MicroWorldStateSchema,
+    },
+    async ({ scenarioId, finalState }) => {
+      const evaluation = evaluateCPSSession(scenarioId, finalState)
+      const deck = generateCPSFSRSDeck(scenarioId, evaluation)
+      return json({
+        evaluation,
+        cardsCount: deck.length,
+        deck,
+      })
+    },
+  ),
+
+  tool(
+    'cps_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards anchored to micro-world dynamics, delayed feedback loops, and failure pathologies.',
+    {
+      scenarioId: z.string().default('tanaland_desert_ecosystem'),
+    },
+    async ({ scenarioId }) => {
+      const deck = generateCPSFSRSDeck(scenarioId)
       return json({
         scenarioId,
         cardsCount: deck.length,

@@ -96,6 +96,10 @@ export {
 export { SystemDynamicsHUD, type SystemDynamicsHUDProps } from './SystemDynamicsHUD'
 export { ModelInquiryHUD, type ModelInquiryHUDProps } from './ModelInquiryHUD'
 export { PrototypeExemplarHud, type PrototypeExemplarHudProps } from './PrototypeExemplarHud'
+export {
+  ComplexProblemSolvingHUD,
+  type ComplexProblemSolvingHUDProps,
+} from './ComplexProblemSolvingHUD'
 
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'

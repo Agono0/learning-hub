@@ -95,6 +95,12 @@ import {
   evaluateInquirySession,
   generateModelInquiryFsrsDeck,
   type InquirySessionInput,
+  listMicroWorldScenarios,
+  getMicroWorldScenario,
+  simulateMicroWorldStep,
+  evaluateCPSSession,
+  generateCPSFSRSDeck,
+  type MicroWorldState,
 } from '@learning-hub/core'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -1813,5 +1819,127 @@ export const modelInquiryCommands: RegisteredCommand[] = [
       'Clement (2008), Nersessian (2002) & Johnson-Laird (1983) Model-Based Inquiry & Gedankenexperiment',
     usage: '[scenarios|perturb|simulate|eval|deck] [--id <id>] [--case <caseId>]',
     run: (runArgs) => modelInquiryCommand(runArgs),
+  },
+]
+
+export function cpsCommand(args: string[]): void {
+  const sub = args[0] || 'scenarios'
+  const scenarioId = parseFlag(args, '--id') || 'tanaland_desert_ecosystem'
+  const scenarios = listMicroWorldScenarios()
+  const scenario = getMicroWorldScenario(scenarioId) || scenarios[0]!
+
+  if (sub === 'scenarios' || sub === 'list') {
+    console.log(`\n🎛️ Dietrich Dörner Micro-World Scenarios (${scenarios.length} available)`)
+    console.log('═'.repeat(65))
+    scenarios.forEach((s) => {
+      console.log(`• [${s.domain.toUpperCase()}] ${s.title} (${s.id})`)
+      console.log(
+        `  Variables:    ${s.variables.map((v) => `${v.name} [${v.minSafe}-${v.maxSafe} ${v.unit}]`).join(', ')}`,
+      )
+      console.log(`  Policies:     ${s.availablePolicies.map((p) => p.name).join(', ')}`)
+      console.log(`  Failure Trap: ${s.canonicalFailureMode.trapDescription}`)
+      console.log()
+    })
+    return
+  }
+
+  if (sub === 'step') {
+    const policyId = parseFlag(args, '--policy') || scenario.availablePolicies[0]?.id || ''
+    const initialVals: Record<string, number> = {}
+    scenario.variables.forEach((v) => {
+      initialVals[v.id] = v.initialValue
+    })
+    const initialState: MicroWorldState = {
+      currentCycle: 1,
+      variableValues: initialVals,
+      activeDelays: [],
+      inspectedVariables: scenario.variables.filter((v) => v.isObservable).map((v) => v.id),
+      executedPolicyIds: [],
+      systemCollapsed: false,
+    }
+
+    const result = simulateMicroWorldStep(
+      scenario.id,
+      initialState,
+      [policyId],
+      initialState.inspectedVariables,
+    )
+
+    console.log(`\n🔄 Simulated Micro-World Decision Cycle (${scenario.title})`)
+    console.log('═'.repeat(65))
+    console.log(`Next Cycle:       #${result.nextState.currentCycle}`)
+    console.log(
+      `System Status:    ${result.nextState.systemCollapsed ? '💥 CRITICAL COLLAPSE' : '✅ Operational'}`,
+    )
+    if (result.collapseWarning) {
+      console.log(`Collapse Reason:  ${result.collapseWarning}`)
+    }
+    console.log(`Active Delays:    ${result.nextState.activeDelays.length} queued`)
+    console.log('─'.repeat(65))
+    result.stepFeedback.forEach((f) => console.log(`• ${f}`))
+    return
+  }
+
+  if (sub === 'deck') {
+    const deck = generateCPSFSRSDeck(scenario.id)
+
+    console.log('\n📦 Calibrated FSRS-6 Micro-World CPS Deck')
+    console.log(`Scenario:        ${scenario.title}`)
+    console.log(`Cards Generated: ${deck.length}`)
+    console.log('─'.repeat(65))
+    deck.forEach((c, i) => {
+      console.log(`[Card ${i + 1}] ${c.front.split('\n')[0]}`)
+      console.log(`Back: ${c.back.slice(0, 100)}...`)
+      console.log()
+    })
+    return
+  }
+
+  // Default: evaluate sample session
+  const initialVals: Record<string, number> = {}
+  scenario.variables.forEach((v) => {
+    initialVals[v.id] = v.initialValue
+  })
+  const sampleState: MicroWorldState = {
+    currentCycle: 3,
+    variableValues: initialVals,
+    activeDelays: [],
+    inspectedVariables: scenario.variables.map((v) => v.id),
+    executedPolicyIds: scenario.availablePolicies.slice(0, 2).map((p) => p.id),
+    systemCollapsed: false,
+  }
+
+  const evalResult = evaluateCPSSession(scenario.id, sampleState)
+
+  console.log('\n🎛️ Dietrich Dörner CPS Telemetry (Dörner 1996, Rasmussen 1983)')
+  console.log('═'.repeat(65))
+  console.log(`Scenario:                ${scenario.title}`)
+  console.log(
+    `CPSI Score:              ${evalResult.compositeCPSIndex}/100 (Complex Problem Solving Index)`,
+  )
+  console.log(`Control Tier:            ${evalResult.tier.toUpperCase()}`)
+  console.log(`Dynamic Control (DCE):   ${evalResult.controlEfficiency}/100`)
+  console.log(`Side-Effect Ant. (SEAI): ${evalResult.sideEffectAnticipation}/100`)
+  console.log(`Thematic Focus (TFS):    ${evalResult.thematicFocus}/100`)
+  console.log(`Feedback Monitor (FMR):  ${evalResult.feedbackMonitoring}/100`)
+  console.log('─'.repeat(65))
+  console.log(`Profile:                 ${evalResult.tierDescription}`)
+  if (evalResult.detectedPathologies.length > 0) {
+    console.log('─'.repeat(65))
+    console.log('⚠️ Diagnosed Dörner Pathologies:')
+    evalResult.detectedPathologies.forEach((p) => {
+      console.log(`  ! [${p.title}] Evidence: ${p.evidence}`)
+      console.log(`    Remedy: ${p.mitigation}`)
+    })
+  }
+}
+
+export const cpsCommands: RegisteredCommand[] = [
+  {
+    name: 'cps',
+    description:
+      'Dietrich Dörner (1996) The Logic of Failure Complex Problem Solving & Micro-World Simulation',
+    usage: '[scenarios|step|eval|deck] [--id <id>] [--policy <policyId>]',
+    run: (runArgs) => cpsCommand(runArgs),
   },
 ]

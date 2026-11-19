@@ -187,6 +187,7 @@ import * as collaborative from '../server/handlers/collaborative/route'
 import * as systemDynamics from '../server/handlers/system-dynamics/route'
 import * as modelInquiry from '../server/handlers/model-inquiry/route'
 import * as prototypeExemplar from '../server/handlers/prototype-exemplar/route'
+import * as complexProblemSolving from '../server/handlers/complex-problem-solving/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -395,6 +396,7 @@ add('system-dynamics', systemDynamics)
 add('model-inquiry', modelInquiry)
 add('prototype-exemplar', prototypeExemplar)
 add('categorization', prototypeExemplar)
+add('complex-problem-solving', complexProblemSolving)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
