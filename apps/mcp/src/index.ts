@@ -118,12 +118,16 @@ async function main() {
       const ideaId = Number(id)
       const detail = getIdeaDetail(ideaId)
       if (!detail) return { contents: [{ uri: uri.href, text: `Idea ${ideaId} not found` }] }
+      // Original resource contract: `links` holds BOTH directions. The repo
+      // splits outgoing (`links`) / incoming — compose them back for the
+      // payload and keep the newer incoming/decayScore extras (superset).
+      const payload = { ...detail, links: [...detail.links, ...detail.incoming] }
       return {
         contents: [
           {
             uri: uri.href,
             mimeType: 'application/json',
-            text: JSON.stringify(detail, null, 2),
+            text: JSON.stringify(payload, null, 2),
           },
         ],
       }
