@@ -13,6 +13,8 @@ import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshS
 import { apiGet } from '@/lib/transport'
 import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
+import { ErrorBoundary } from '@/ui'
+import { classifyRequestError } from '@/lib/use-api-error'
 import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
@@ -24,6 +26,7 @@ export default function DashboardPage() {
     data: d,
     isError,
     refetch,
+    error: queryError,
   } = useQuery<DashboardData>({
     queryKey: queryKeys.dashboard,
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
@@ -41,13 +44,20 @@ export default function DashboardPage() {
   }
 
   if (isError) {
+    // One voice for every failure: the shared taxonomy decides the copy and
+    // whether "Try again" can plausibly work.
+    const err = classifyRequestError(queryError)
     return (
       <Callout tone="danger" title="Couldn't load today's dashboard">
-        <div className="mt-1 flex items-center gap-3">
-          <span>The request failed. Check your connection and retry.</span>
-          <Button variant="secondary" onClick={() => void refetch()}>
-            Try again
-          </Button>
+        <div className="mt-1 space-y-2">
+          <p>
+            <span className="font-medium">{err.title}.</span> {err.recovery}
+          </p>
+          {err.canRetry && (
+            <Button variant="secondary" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          )}
         </div>
       </Callout>
     )
@@ -94,7 +104,16 @@ export default function DashboardPage() {
   let pendingHalf: Array<{ id: string; node: React.ReactNode; chrome: boolean; title: string }> = []
   for (const w of widgets) {
     const Widget = w.component
-    const entry = { id: w.id, node: <Widget data={d} />, chrome: Boolean(w.chrome), title: w.title }
+    const entry = {
+      id: w.id,
+      node: (
+        <ErrorBoundary key={w.id} label={w.title}>
+          <Widget data={d} />
+        </ErrorBoundary>
+      ),
+      chrome: Boolean(w.chrome),
+      title: w.title,
+    }
     if (w.span === 'full') {
       if (pendingHalf.length > 0) {
         rows.push(pendingHalf)
