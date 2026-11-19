@@ -9,6 +9,7 @@
 import { and, asc, desc, eq, lte, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { Readable } from 'node:stream'
 import {
   db,
   cards,
@@ -2954,6 +2955,47 @@ export const routes: Route[] = [
     handler: postPrototypeExemplarDeck,
   },
 ]
+
+/**
+ * Test seam for the host-parity suite: run one prototype-exemplar route and
+ * get its JSON envelope without raw-stream mocking. Exercises the SAME
+ * handlers + zod schemas + sendJson envelope as `dispatch`; only the route-
+ * table lookup hop moves to the registration test (which pins it separately).
+ */
+export async function prototypeExemplarRouteJson(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: unknown,
+): Promise<{ status: number; data: Record<string, unknown> }> {
+  const stream = Readable.from(body !== undefined ? [Buffer.from(JSON.stringify(body))] : [])
+  const req = stream as unknown as IncomingMessage
+  req.method = method
+  req.url = path
+  req.headers = { 'content-type': 'application/json' }
+  let status = 200
+  let responseData = ''
+  const res = {
+    statusCode: 200,
+    setHeader: () => {},
+    writeHead: (code: number) => {
+      status = code
+      return res
+    },
+    end: (chunk?: string | Buffer) => {
+      if (chunk) responseData += chunk.toString()
+    },
+  } as unknown as ServerResponse
+  const route = routes.find((r) => r.method === method && r.path === path)
+  if (!route) {
+    jsonError(res, 404, `Not found: ${method} ${path}`)
+  } else {
+    await route.handler(req, res, new URL(path, 'http://localhost'))
+  }
+  return {
+    status: (res as unknown as { statusCode: number }).statusCode ?? status,
+    data: responseData ? (JSON.parse(responseData) as Record<string, unknown>) : {},
+  }
+}
 
 /**
  * Match the incoming request against the route table and run the handler with

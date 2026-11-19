@@ -20,12 +20,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { IncomingMessage, ServerResponse } from 'node:http'
-import { Readable } from 'node:stream'
 import { POST, GET } from '../src/server/handlers/prototype-exemplar/route'
 import { prototypeExemplarTools } from '../../mcp/src/tools/prototype-exemplar'
 import { prototypeExemplarCommand } from '../../cli/src/commands/prototype-exemplar'
-import { routes, dispatch } from '../../server/src/routes'
+import { prototypeExemplarRouteJson, routes } from '../../server/src/routes'
 import {
   BIRD_TYPICALITY_SET,
   evaluateCategorizationSession,
@@ -89,36 +87,6 @@ const post = (body: unknown): Request =>
 
 // Mock HTTP request/response for the headless REST server (same helper shape
 // as host-parity-advanced-cognitive.test.ts).
-function createMockHttp(method: string, path: string, body?: unknown) {
-  const stream = Readable.from(body !== undefined ? [Buffer.from(JSON.stringify(body))] : [])
-  const req = stream as unknown as IncomingMessage
-  req.method = method
-  req.url = path
-  req.headers = { 'content-type': 'application/json' }
-
-  let statusCode = 200
-  let responseData = ''
-  const res = {
-    statusCode: 200,
-    setHeader: vi.fn(),
-    writeHead: (code: number) => {
-      statusCode = code
-      return res
-    },
-    end: (chunk?: string | Buffer) => {
-      if (chunk) responseData += chunk.toString()
-    },
-  } as unknown as ServerResponse
-
-  const execute = async () => {
-    await dispatch(req, res)
-    return {
-      statusCode: (res as unknown as { statusCode: number }).statusCode ?? statusCode,
-      data: responseData ? (JSON.parse(responseData) as Record<string, unknown>) : {},
-    }
-  }
-  return { req, res, execute }
-}
 
 /** Run the CLI with captured stdout and parse the single --json line. */
 function runCliJson(args: string[]): Record<string, unknown> {
@@ -165,11 +133,12 @@ describe('Host Parity Suite — Prototype & Exemplar Categorization', () => {
     })
 
     it('headless REST server evaluate equals the pure engine', async () => {
-      const { execute } = createMockHttp('/cognitive/prototype-exemplar/evaluate', 'POST', {
-        ...CANONICAL_SUBMISSION,
-      })
-      const { statusCode, data } = await execute()
-      expect(statusCode).toBe(200)
+      const { status, data } = await prototypeExemplarRouteJson(
+        'POST',
+        '/cognitive/prototype-exemplar/evaluate',
+        { ...CANONICAL_SUBMISSION },
+      )
+      expect(status).toBe(200)
       expect((data as { ok: boolean }).ok).toBe(true)
       expect(JSON.stringify((data as { evaluation: unknown }).evaluation)).toBe(
         JSON.stringify(engine),
@@ -199,8 +168,9 @@ describe('Host Parity Suite — Prototype & Exemplar Categorization', () => {
       )) as unknown as McpResultEnvelope
       const mcpData = JSON.parse(mcpResult.content[0]!.text) as { scenarios: unknown }
 
-      const serverCall = createMockHttp('/cognitive/prototype-exemplar/scenarios', 'GET')
-      const serverData = (await serverCall.execute()).data as { scenarios: unknown }
+      const serverData = (
+        await prototypeExemplarRouteJson('GET', '/cognitive/prototype-exemplar/scenarios')
+      ).data as { scenarios: unknown }
 
       // The full set list is identical across hosts (same canonical array).
       const webJson = JSON.stringify(webData.scenarios)
@@ -233,14 +203,15 @@ describe('Host Parity Suite — Prototype & Exemplar Categorization', () => {
       expect(webData.ok).toBe(true)
       expect(webData.schedule).not.toBeNull()
 
-      const { execute } = createMockHttp('/cognitive/prototype-exemplar/plan', 'POST', {
-        setId: planBody.setId,
-        maxTrials: planBody.maxTrials,
-        sessions: planBody.sessions,
-        scheduleOptions: planBody.scheduleOptions,
-        now: planBody.now,
-      })
-      const serverData = (await execute()).data as { plan: unknown; schedule: unknown }
+      const serverData = (
+        await prototypeExemplarRouteJson('POST', '/cognitive/prototype-exemplar/plan', {
+          setId: planBody.setId,
+          maxTrials: planBody.maxTrials,
+          sessions: planBody.sessions,
+          scheduleOptions: planBody.scheduleOptions,
+          now: planBody.now,
+        })
+      ).data as { plan: unknown; schedule: unknown }
 
       expect(JSON.stringify(webData.plan)).toBe(JSON.stringify(serverData.plan))
       expect(JSON.stringify(webData.schedule)).toBe(JSON.stringify(serverData.schedule))
@@ -318,11 +289,12 @@ describe('Host Parity Suite — Prototype & Exemplar Categorization', () => {
       })) as unknown as McpResultEnvelope
       const mcpData = JSON.parse(mcpResult.content[0]!.text) as { ok: boolean; deck: unknown }
 
-      const { execute } = createMockHttp('/cognitive/prototype-exemplar/deck', 'POST', {
-        setId: BIRD_TYPICALITY_SET.id,
-        criBaseline,
-      })
-      const serverData = (await execute()).data as { ok: boolean; deck: unknown }
+      const serverData = (
+        await prototypeExemplarRouteJson('POST', '/cognitive/prototype-exemplar/deck', {
+          setId: BIRD_TYPICALITY_SET.id,
+          criBaseline,
+        })
+      ).data as { ok: boolean; deck: unknown }
 
       const cliData = runCliJson([
         'deck',

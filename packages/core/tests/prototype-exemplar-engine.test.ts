@@ -116,13 +116,16 @@ describe('distance & similarity math', () => {
 
 describe('representation models', () => {
   it('computes the category prototype as the per-dimension mean', () => {
-    expect(
-      computePrototypeVector([
-        [0, 1, 0.4],
-        [1, 1, 0.6],
-        [1, 1, 0.2],
-      ]),
-    ).toEqual([2 / 3, 1, 0.4])
+    const proto = computePrototypeVector([
+      [0, 1, 0.4],
+      [1, 1, 0.6],
+      [1, 1, 0.2],
+    ])
+    // Per-dimension mean; float accumulation means exact equality is wrong
+    // (1.2/3 === 0.39999999999999997), so compare with a tolerance.
+    expect(proto[0]).toBeCloseTo(2 / 3, 12)
+    expect(proto[1]).toBeCloseTo(1, 12)
+    expect(proto[2]).toBeCloseTo(0.4, 12)
     expect(computePrototypeVector([])).toEqual([])
   })
 
@@ -141,8 +144,10 @@ describe('representation models', () => {
 
   it('responds to attention weights (Nosofsky 1986)', () => {
     // Conflict probe [0.3, 0.7]: attending to size → A; brightness → B.
-    const sizeWeights = { c: 3, r: 1 as const, weights: [1, 0.0001], gamma: 1 }
-    const brightWeights = { c: 3, r: 1 as const, weights: [0.0001, 1], gamma: 1 }
+    // Sensitivity c=10 gives the sharp gradient the attention shift needs:
+    // with c=3 the far category still earns ~0.30 similarity at distance 0.4.
+    const sizeWeights = { c: 10, r: 1 as const, weights: [1, 0.0001], gamma: 1 }
+    const brightWeights = { c: 10, r: 1 as const, weights: [0.0001, 1], gamma: 1 }
     const gcmPASize = gcmProbabilityA([0.3, 0.7], [[0.2, 0.2]], [[0.7, 0.7]], sizeWeights)
     const gcmPABright = gcmProbabilityA([0.3, 0.7], [[0.2, 0.2]], [[0.7, 0.7]], brightWeights)
     expect(gcmPASize).toBeGreaterThan(0.9)
@@ -155,8 +160,10 @@ describe('representation models', () => {
     expect(ruleProbabilityA([0.4, 0.2], rule)).toBe(0)
     expect(ruleProbabilityA([0.5, 0.9], rule)).toBe(1) // ≥ threshold routes to A
     const belowRule = { ...rule, direction: 'below' as const, categoryIfTrue: 'B' as const }
-    expect(ruleProbabilityA([0.3, 0], belowRule)).toBe(1) // < threshold routes to B
-    expect(ruleProbabilityA([0.7, 0], belowRule)).toBe(0)
+    // P(A) semantics: [0.3, 0] is < threshold → routes to B → P(A)=0;
+    // [0.7, 0] is ≥ threshold → the below-rule routes it to A → P(A)=1.
+    expect(ruleProbabilityA([0.3, 0], belowRule)).toBe(0)
+    expect(ruleProbabilityA([0.7, 0], belowRule)).toBe(1)
   })
 })
 
