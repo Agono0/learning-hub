@@ -1,21 +1,24 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Project-specific ProGuard / R8 rules for Learning HUB
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep Tauri activity and application classes
+-keep class dev.learninghub.app.** { *; }
+-keep class app.tauri.** { *; }
+-keep interface app.tauri.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep native JNI methods so Rust <-> Kotlin bindings are preserved
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep WebKit JavaScriptInterface methods
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# AndroidX WebKit preservation
+-keep class androidx.webkit.** { *; }
+
+# Optimize and remove unused attributes to reduce DEX size
+-repackageclasses ''
+-allowaccessmodification
+-dontwarn **

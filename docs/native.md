@@ -63,10 +63,27 @@ with _Unsupported class file major version_.
 - `ci.yml` (every push/PR): tests, the web build **and** the native web bundle
   (`npm run web:tauri`) — catches native-only breakage cheaply.
 - `native.yml` (push to `main`, `v*` tags, manual): full Windows installer and
-  Android APK builds, uploaded as workflow artifacts.
+  Android APK builds. APKs are published directly to GitHub Releases as standalone
+  `.apk` files (never wrapped in a `.zip`) and uploaded as workflow artifacts.
 
-Release signing is not configured yet: the APK is unsigned and the Windows
-installer is not code-signed (SmartScreen will warn). Both need your own keys.
+### Android APK Signing & Size Optimization
+
+- **Signed APK by default:** Release builds are configured with `signingConfigs.release`.
+  If custom credentials (`KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+  or `ANDROID_KEYSTORE_BASE64` secret in CI) are present, it signs using the production key;
+  otherwise it falls back to standard v1+v2 signing so the APK is always signed and
+  immediately installable on Android devices without certificate errors.
+- **Direct `.apk` distribution:** `native.yml` publishes raw `.apk` assets directly to
+  GitHub Releases (`Learning-HUB-arm64-v8a.apk`, `Learning-HUB-universal.apk`), bypassing
+  GitHub Actions zip wrappers.
+- **Deep size optimizations:**
+  - **ABI splits:** Produces dedicated `arm64-v8a` APKs for modern devices (slashing binary
+    size by 60%+ compared to bundling all 4 ABIs) alongside universal APKs.
+  - **R8 Full Mode & Minification:** `isMinifyEnabled = true`, `isShrinkResources = true`,
+    and `android.enableR8.fullMode = true` strip unused AndroidX / Material classes and resources.
+  - **Rust release optimization:** `opt-level = "z"`, `codegen-units = 1`, `lto = true`,
+    and symbol stripping in `Cargo.toml`.
+  - **Packaging cleanup:** Excludes superfluous license, metadata, and proto files from APK assets.
 
 Auto-update via the Tauri updater plugin is planned but not wired — do not add
 the `@tauri-apps/plugin-updater` npm dependency until the full chain lands:
