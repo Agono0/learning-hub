@@ -1,3 +1,4 @@
+import java.io.File
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -12,6 +13,32 @@ val tauriProperties = Properties().apply {
     if (propFile.exists()) {
         propFile.inputStream().use { load(it) }
     }
+}
+
+val defaultKeystore = file("release.keystore")
+if (!defaultKeystore.exists() && System.getenv("KEYSTORE_FILE") == null) {
+    try {
+        val javaHome = System.getProperty("java.home") ?: System.getenv("JAVA_HOME")
+        val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+        val keytoolExe = if (isWindows) "keytool.exe" else "keytool"
+        val keytoolBin = if (javaHome != null && File(javaHome, "bin/$keytoolExe").exists()) {
+            File(javaHome, "bin/$keytoolExe").absolutePath
+        } else {
+            keytoolExe
+        }
+        ProcessBuilder(
+            keytoolBin,
+            "-genkeypair", "-v",
+            "-keystore", defaultKeystore.absolutePath,
+            "-alias", "learninghub",
+            "-keyalg", "RSA",
+            "-keysize", "2048",
+            "-validity", "10000",
+            "-storepass", "learninghub123",
+            "-keypass", "learninghub123",
+            "-dname", "CN=LearningHUB, OU=Mobile, O=LearningHUB, C=US"
+        ).inheritIO().start().waitFor()
+    } catch (_: Exception) {}
 }
 
 android {
@@ -30,19 +57,18 @@ android {
         create("release") {
             val keystoreFile = System.getenv("KEYSTORE_FILE")
                 ?: (if (project.hasProperty("KEYSTORE_FILE")) project.property("KEYSTORE_FILE")?.toString() else null)
+                ?: defaultKeystore.takeIf { it.exists() }?.absolutePath
             if (keystoreFile != null && file(keystoreFile).exists()) {
                 storeFile = file(keystoreFile)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
-                    ?: (if (project.hasProperty("KEYSTORE_PASSWORD")) project.property("KEYSTORE_PASSWORD")?.toString() else null) ?: ""
+                    ?: (if (project.hasProperty("KEYSTORE_PASSWORD")) project.property("KEYSTORE_PASSWORD")?.toString() else null) ?: "learninghub123"
                 keyAlias = System.getenv("KEY_ALIAS")
-                    ?: (if (project.hasProperty("KEY_ALIAS")) project.property("KEY_ALIAS")?.toString() else null) ?: ""
+                    ?: (if (project.hasProperty("KEY_ALIAS")) project.property("KEY_ALIAS")?.toString() else null) ?: "learninghub"
                 keyPassword = System.getenv("KEY_PASSWORD")
-                    ?: (if (project.hasProperty("KEY_PASSWORD")) project.property("KEY_PASSWORD")?.toString() else null) ?: ""
-            } else {
-                initWith(getByName("debug"))
+                    ?: (if (project.hasProperty("KEY_PASSWORD")) project.property("KEY_PASSWORD")?.toString() else null) ?: "learninghub123"
+                enableV1Signing = true
+                enableV2Signing = true
             }
-            enableV1Signing = true
-            enableV2Signing = true
         }
     }
 
@@ -60,7 +86,12 @@ android {
             }
         }
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+            val resolvedKeystore = System.getenv("KEYSTORE_FILE")
+                ?: (if (project.hasProperty("KEYSTORE_FILE")) project.property("KEYSTORE_FILE")?.toString() else null)
+                ?: defaultKeystore.takeIf { it.exists() }?.absolutePath
+            if (resolvedKeystore != null && file(resolvedKeystore).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

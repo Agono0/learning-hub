@@ -8,7 +8,7 @@
  *   ANDROID_JAVA_HOME if set, else Android Studio's bundled JBR, else the
  *   current JAVA_HOME.
  * - NDK_HOME: the newest NDK under $ANDROID_HOME/ndk when not set.
- * - KEYSTORE: decodes ANDROID_KEYSTORE_BASE64 if provided.
+ * - KEYSTORE: decodes ANDROID_KEYSTORE_BASE64 or generates release.keystore.
  * - POST-BUILD: ensures release APKs are signed, creates clean canonical APKs
  *   (e.g. Learning-HUB-arm64-v8a.apk, Learning-HUB-universal.apk), and on CI
  *   uploads standalone .apk assets directly to GitHub Releases (never zipped).
@@ -50,19 +50,63 @@ const jbr = jbrCandidates.find((p) =>
 )
 if (jbr) env.JAVA_HOME = jbr
 
-if (env.ANDROID_KEYSTORE_BASE64 && !env.KEYSTORE_FILE) {
-  try {
-    const keystorePath = join(root, 'release.keystore')
-    writeFileSync(keystorePath, Buffer.from(env.ANDROID_KEYSTORE_BASE64, 'base64'))
-    env.KEYSTORE_FILE = keystorePath
-    console.log(`[tauri-android] decoded release keystore to ${keystorePath}`)
-  } catch (err) {
-    console.warn('[tauri-android] failed to decode ANDROID_KEYSTORE_BASE64:', err)
+const androidAppDir = join(root, 'apps/native/src-tauri/gen/android/app')
+const defaultKeystore = join(androidAppDir, 'release.keystore')
+
+if (!env.KEYSTORE_FILE || !existsSync(env.KEYSTORE_FILE)) {
+  if (env.ANDROID_KEYSTORE_BASE64) {
+    try {
+      writeFileSync(defaultKeystore, Buffer.from(env.ANDROID_KEYSTORE_BASE64, 'base64'))
+      env.KEYSTORE_FILE = defaultKeystore
+      console.log(`[tauri-android] decoded release keystore to ${defaultKeystore}`)
+    } catch (err) {
+      console.warn('[tauri-android] failed to decode ANDROID_KEYSTORE_BASE64:', err)
+    }
+  } else if (!existsSync(defaultKeystore)) {
+    const keytoolBin = env.JAVA_HOME
+      ? join(env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'keytool.exe' : 'keytool')
+      : 'keytool'
+    try {
+      execFileSync(
+        keytoolBin,
+        [
+          '-genkeypair',
+          '-v',
+          '-keystore',
+          defaultKeystore,
+          '-alias',
+          'learninghub',
+          '-keyalg',
+          'RSA',
+          '-keysize',
+          '2048',
+          '-validity',
+          '10000',
+          '-storepass',
+          'learninghub123',
+          '-keypass',
+          'learninghub123',
+          '-dname',
+          'CN=LearningHUB, OU=Mobile, O=LearningHUB, C=US',
+        ],
+        { stdio: 'inherit' },
+      )
+      console.log(`[tauri-android] generated release keystore at ${defaultKeystore}`)
+    } catch (err) {
+      console.warn('[tauri-android] could not generate release.keystore via keytool:', err?.message)
+    }
+  }
+
+  if (existsSync(defaultKeystore)) {
+    env.KEYSTORE_FILE = defaultKeystore
+    env.KEYSTORE_PASSWORD = env.KEYSTORE_PASSWORD || 'learninghub123'
+    env.KEY_ALIAS = env.KEY_ALIAS || 'learninghub'
+    env.KEY_PASSWORD = env.KEY_PASSWORD || 'learninghub123'
   }
 }
 
 console.log(
-  `[tauri-android] ANDROID_HOME=${env.ANDROID_HOME ?? '?'} NDK_HOME=${env.NDK_HOME ?? '?'} JAVA_HOME=${env.JAVA_HOME ?? '?'}`,
+  `[tauri-android] ANDROID_HOME=${env.ANDROID_HOME ?? '?'} NDK_HOME=${env.NDK_HOME ?? '?'} JAVA_HOME=${env.JAVA_HOME ?? '?'} KEYSTORE_FILE=${env.KEYSTORE_FILE ?? 'none'}`,
 )
 
 const child = spawn('npx', ['tauri', 'android', ...process.argv.slice(2)], {
