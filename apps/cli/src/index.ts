@@ -58,6 +58,8 @@ import {
 import { captureCommands } from './commands/capture'
 import { focusCommands } from './commands/focus-pomodoro'
 import { exposureCommands } from './commands/exposure'
+import { goalsCommands } from './commands/goals'
+import { notesCommands } from './commands/notes'
 import { reviewCommands } from './commands/review'
 import { systemCommands } from './commands/system'
 import { todayStatsCommands } from './commands/today-stats'
@@ -339,6 +341,9 @@ const builtinCommands: RegisteredCommand[] = [
     usage: '[scenarios|perturb|simulate|eval|deck] [--id <id>] [--case <caseId>]',
     run: (runArgs) => modelInquiryCommand(runArgs),
   },
+  // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
+  ...goalsCommands,
+  ...notesCommands,
 ]
 
 async function main() {
