@@ -8,22 +8,23 @@
  *   learning-hub focus 25              # start a focus session
  *   learning-hub quote                 # random quote
  *
- * Commands live in a registry (not a switch): built-ins below, plus every
- * `cliCommands` entry contributed by plugins loaded from `plugins/` — so
+ * This file is ONLY the argv parser, the plugin merge, and dispatch. Every
+ * built-in command implementation lives in ./commands/*.ts domain modules
+ * (each exporting a RegisteredCommand[] group concatenated below in the
+ * historical help order) — e.g. commands/{capture,today-stats,review,
+ * focus-pomodoro,workload,exposure,system,goals,notes}.ts — alongside the
+ * domain command modules contributed by the repo (curriculum, lifestyle,
+ * learning-path, community, telemetry-audio, cognitive, advanced-learning),
+ * whose registry entries are wired below. Plugins loaded from `plugins/`
+ * contribute additional `cliCommands` entries at dispatch time, so
  * `learning-hub <plugin-command>` works without touching this file.
  */
-import { createInterface } from 'node:readline/promises'
-import { stdin, stdout, exit } from 'node:process'
+import { exit } from 'node:process'
 import { curriculumCommand } from './commands/curriculum'
 import { habitsCommand, journalCommand, physioCommand } from './commands/lifestyle'
 import { gktCommand, planCommand, readingCommand } from './commands/learning-path'
 import { debateCommand, guildCommand, palaceCommand, worldCommand } from './commands/community'
-import {
-  audioCommand,
-  focusLoadCmd,
-  gamesCommand,
-  tmrPlanCommand,
-} from './commands/telemetry-audio'
+import { audioCommand, gamesCommand, tmrPlanCommand } from './commands/telemetry-audio'
 import {
   analogyCommand,
   difficultyCommand,
@@ -54,45 +55,16 @@ import {
   systemDynamicsCommand,
   modelInquiryCommand,
 } from './commands/advanced-learning'
-import {
-  abandonFocusSession,
-  applyWorkloadShifts,
-  createIdea,
-  createPomodoroSession,
-  dailyReviewsSeries,
-  db,
-  dueQueue,
-  executeCloudSync,
-  executeReview,
-  finishFocusSession,
-  getDailyQuest,
-  getDueCardCount,
-  getFsrsStatus,
-  getRandomQuote,
-  getStarterCatalogStatus,
-  getStreakRow,
-  getSyncConfig,
-  getTrueRetention,
-  getWordExposureSummaries,
-  getXpTotals,
-  installStarterPack,
-  optimizeAndPersistFsrs,
-  searchAll,
-  sumFocusMinutes,
-  workloadCards,
-} from '@learning-hub/db'
-import { balanceWorkload, catchUpBacklog, forecastWorkload } from '@learning-hub/core/workload'
-import {
-  clozeSegments,
-  dayKey,
-  getPluginContributions,
-  levelFromXp,
-  levelProgress,
-  loadPlugins,
-  type CardContent,
-  type CliCommandContribution,
-  type Grade,
-} from '@learning-hub/core'
+import { captureCommands } from './commands/capture'
+import { focusCommands } from './commands/focus-pomodoro'
+import { exposureCommands } from './commands/exposure'
+import { reviewCommands } from './commands/review'
+import { systemCommands } from './commands/system'
+import { todayStatsCommands } from './commands/today-stats'
+import { workloadCommands } from './commands/workload'
+import { helpLine, type RegisteredCommand } from './commands/registry'
+import { panel } from './commands/ui'
+import { getPluginContributions, loadPlugins } from '@learning-hub/core'
 
 const rawArgs = process.argv.slice(2)
 const scriptArgs =
@@ -102,482 +74,20 @@ const scriptArgs =
     : rawArgs
 const [cmd, ...args] = scriptArgs
 
-// ─── Card rendering ─────────────────────────────────────────────────────────
-
-function renderCard(type: string, content: CardContent): { prompt: string; reveal: string } {
-  switch (type) {
-    case 'basic':
-      if (content.basic) return { prompt: content.basic.front, reveal: content.basic.back }
-      break
-    case 'cloze':
-      if (content.cloze) {
-        // mirror the web review page: split the text into text/blank segments and
-        // render every blank as an answer-length placeholder (capped at 8 chars)
-        const hidden = clozeSegments(content.cloze.text)
-          .map((seg) =>
-            seg.kind === 'text' ? seg.text : '␣'.repeat(Math.min(seg.answer.length, 8)),
-          )
-          .join('')
-        return { prompt: hidden, reveal: content.cloze.answers.join(' · ') }
-      }
-      break
-    case 'typein':
-      if (content.typein)
-        return {
-          prompt: `${content.typein.question}\n  (type your answer, then compare)`,
-          reveal: content.typein.acceptedAnswers.join(' · '),
-        }
-      break
-    case 'mcq':
-      if (content.mcq) {
-        const opts = content.mcq.options
-          .map((o, i) => `   ${String.fromCharCode(97 + i)}) ${o}`)
-          .join('\n')
-        return {
-          prompt: `${content.mcq.question}\n${opts}`,
-          reveal: `${String.fromCharCode(97 + content.mcq.correctIndex)}) ${content.mcq.options[content.mcq.correctIndex] ?? ''}${content.mcq.rationale ? `\n  why: ${content.mcq.rationale}` : ''}`,
-        }
-      }
-      break
-    default:
-      return { prompt: JSON.stringify(content).slice(0, 300), reveal: '(see card in app)' }
-  }
-  return { prompt: JSON.stringify(content).slice(0, 300), reveal: '(see card in app)' }
-}
-
-// ─── ASCII helpers ──────────────────────────────────────────────────────────
-
-function bar(value: number, max: number, width = 20): string {
-  const filled = Math.max(0, Math.min(width, Math.round((value / Math.max(1, max)) * width)))
-  return '█'.repeat(filled) + '░'.repeat(width - filled)
-}
-
-function panel(title: string, lines: string[]): string {
-  const content = [` ${title}`, ''.padEnd(title.length + 2, '─'), ...lines]
-  const width = Math.max(...content.map((l) => l.length)) + 2
-  const top = '╭' + '─'.repeat(width) + '╮'
-  const bottom = '╰' + '─'.repeat(width) + '╯'
-  const body = content.map((l) => `│ ${l.padEnd(width - 2)} │`).join('\n')
-  return `${top}\n${body}\n${bottom}`
-}
-
-// ─── Commands ───────────────────────────────────────────────────────────────
-
-async function capture(text: string) {
-  if (!text.trim()) {
-    console.error('Usage: learning-hub capture "idea text"')
-    exit(1)
-  }
-  // Shared ideas repo (repos/ideas) — the canonical inbox capture path.
-  const idea = createIdea({ title: text.trim().slice(0, 120), content: text })
-  console.log(`💡 Captured idea #${idea.id} → inbox (stage: seed)\n   ${idea.title}`)
-}
-
-async function today() {
-  const now = new Date()
-  const dueCount = getDueCardCount({ now })
-  const quest = getDailyQuest(dayKey(now))
-  const quote = getRandomQuote()
-  const streakRow = getStreakRow({ now })
-  const lines = [
-    `Due cards:   ${dueCount}`,
-    `Streak:      ${streakRow?.current ?? 0} days (best ${streakRow?.best ?? 0})`,
-    `Quest:       ${quest ? (quest.completed ? 'complete ✓' : 'in progress') : 'not generated yet'}`,
-  ]
-  if (quote) lines.push(`Quote:       "${quote.text}" — ${quote.author}`)
-  console.log(panel(`TODAY · ${dayKey(now)}`, lines))
-  console.log('\nRun `learning-hub review` to start your session.')
-}
-
-async function stats() {
-  const now = new Date()
-  // Shared stats repo — one definition for web, MCP and the headless server.
-  const retention = getTrueRetention({ now })
-  const dueCount = getDueCardCount({ now })
-  const streakRow = getStreakRow({ now })
-  const { total: xpTotal, today: xpToday } = getXpTotals({ now })
-  // v_daily_reviews already excludes undone reviews; ascending (oldest first).
-  const week = dailyReviewsSeries({ days: 7, now })
-  // Web weekly-report parity: completed sessions only (repos/focus-lock).
-  const focusMinutes = sumFocusMinutes({ days: 7, now })
-
-  const level = levelFromXp(xpTotal)
-  const lines = [
-    `True retention: ${retention.retention_pct ?? '—'}%  (${retention.total} real reviews)`,
-    `Due now:        ${dueCount} cards`,
-    `Streak:         ${streakRow?.current ?? 0} days (best ${streakRow?.best ?? 0}, ❄️ ${streakRow?.freezes ?? 2} freezes)`,
-    `XP:             ${xpTotal} total · ${xpToday} today · level ${level} ${bar(levelProgress(xpTotal) * 100, 100)}`,
-    `Focus (7d):     ${Math.round(focusMinutes)} minutes`,
-    '',
-    'Reviews last 7 days:',
-    ...week.map(
-      (d) =>
-        `  ${d.day}  ${bar(d.reviews, Math.max(...week.map((w) => w.reviews), 1))} ${d.reviews}`,
-    ),
-  ]
-  console.log(panel('LEARNING STATS', lines))
-}
-
-const GRADE_ALIASES: Record<string, Grade> = {
-  '1': 1,
-  '2': 2,
-  '3': 3,
-  '4': 4,
-  a: 1,
-  h: 2,
-  g: 3,
-  e: 4,
-}
-
-async function review(limitArg?: string) {
-  const limit = Math.max(1, Math.min(100, Number(limitArg ?? 20) || 20))
-  // THE shared due queue (repos/fsrs.dueQueue) — same candidate fetch, ordering
-  // and undo-exclusion (NOT EXISTS revlog_undos) as the web review session
-  // builder. The previous inline copy had none of that, so erased reviews
-  // leaked back into the terminal queue's semantics.
-  const dueCards = dueQueue({ limit, now: new Date() })
-  if (dueCards.length === 0) {
-    console.log('Nothing due — check back later. 🌱 (or run `learning-hub stats`)')
-    return
-  }
-  const rl = createInterface({ input: stdin, output: stdout })
-  console.log(
-    `Review session: ${dueCards.length} cards. Grade with 1=Again 2=Hard 3=Good 4=Easy (q quits).\n`,
-  )
-  let done = 0
-  let correct = 0
-  let xpEarned = 0
-  let lastStreak: { current: number; best: number } | null = null
-  const intervals: number[] = []
-  const startedAt = Date.now()
-  for (const card of dueCards) {
-    const { prompt, reveal } = renderCard(card.type, card.content)
-    console.log(`┌─ card #${card.id} · ${card.type}${card.source ? ` · ${card.source}` : ''}`)
-    console.log(`│ ${prompt.replace(/\n/g, '\n│ ')}`)
-    await rl.question('└─ [enter to reveal]')
-    console.log(`   → ${reveal.replace(/\n/g, '\n   ')}\n`)
-    let grade: Grade | null = null
-    while (grade === null) {
-      const answer = (await rl.question('grade [1-4]: ')).trim().toLowerCase()
-      if (answer === 'q') break
-      if (answer in GRADE_ALIASES) grade = GRADE_ALIASES[answer]!
-      else console.log('  1=Again 2=Hard 3=Good 4=Easy (or q to quit)')
-    }
-    if (grade === null) break
-    const reviewedAt = new Date()
-    // canonical engine: cards + revlog + XP + streak + Elo/BKT in one transaction
-    const result = await executeReview({
-      cardId: card.id,
-      grade,
-      confidence: 1,
-      timeMs: Date.now() - startedAt,
-    })
-    const intervalDays = Math.max(
-      0,
-      Math.round((Date.parse(result.card.due) - reviewedAt.getTime()) / 86_400_000),
-    )
-    if (grade >= 2) correct++
-    intervals.push(intervalDays)
-    xpEarned += result.xpEarned
-    lastStreak = { current: result.streak.current, best: result.streak.best }
-    done++
-    console.log(`   next in ${intervalDays}d\n`)
-  }
-  rl.close()
-  const accuracy = done ? Math.round((correct / done) * 100) : 0
-  console.log(
-    panel('SESSION COMPLETE', [
-      `Reviewed:  ${done} cards`,
-      `Recalled:  ${correct}/${done} (${accuracy}%) ${bar(accuracy, 100)}`,
-      `Next up:   ${intervals.length ? `${Math.min(...intervals)}–${Math.max(...intervals)} days out` : '—'}`,
-      `XP earned: ${xpEarned}`,
-      ...(lastStreak ? [`Streak:    ${lastStreak.current} days (best ${lastStreak.best})`] : []),
-      `Time:      ${Math.round((Date.now() - startedAt) / 1000)}s`,
-    ]),
-  )
-}
-
-async function focus(minutesArg?: string) {
-  const planned = Math.max(1, Math.min(180, Number(minutesArg ?? 25) || 25))
-  // Shared session lifecycle (repos/focus-lock) — the web /api/focus routes
-  // and this command now start/end sessions identically.
-  const session = createPomodoroSession(planned)
-  console.log(
-    `⏳ Focus session #${session.id} started — ${planned} minutes. Ctrl+C to bail (it counts as a leak).`,
-  )
-  const startedAt = Date.now()
-  const timer = setInterval(() => {
-    const elapsedMin = Math.floor((Date.now() - startedAt) / 60_000)
-    const left = planned - elapsedMin
-    process.stdout.write(
-      `\r${' '.repeat(40)}\r${left > 0 ? `${left} min left ${bar(elapsedMin, planned)}` : ''}`,
-    )
-    if (left <= 0) finish()
-  }, 10_000)
-  const finish = async () => {
-    clearInterval(timer)
-    clearTimeout(hardStop)
-    stdin.setRawMode?.(false) // restore cooked terminal before exiting
-    const actualMinutes = Math.round(((Date.now() - startedAt) / 60_000) * 10) / 10
-    // Completing pays canonical focus XP + streak activity in one transaction.
-    const { xpAwarded } = finishFocusSession(session.id, { actualMinutes })
-    console.log(`\n✅ Focus complete: ${actualMinutes} min. +${xpAwarded} XP`)
-    exit(0)
-  }
-  const hardStop = setTimeout(finish, planned * 60_000 + 5_000)
-  // Ctrl+C = abandoned session (leak)
-  stdin.setRawMode?.(true)
-  stdin.on('data', (key: Buffer) => {
-    if (key[0] === 3) {
-      clearInterval(timer)
-      clearTimeout(hardStop)
-      stdin.setRawMode?.(false) // restore cooked terminal before exiting
-      const actualMinutes = Math.round(((Date.now() - startedAt) / 60_000) * 10) / 10
-      void Promise.resolve()
-        .then(() => abandonFocusSession(session.id, { actualMinutes }))
-        .then(() => {
-          console.log(`\nSession ended early at ${actualMinutes} min (leak logged).`)
-          exit(0)
-        })
-        .catch((err) => {
-          console.error('Failed to log the abandoned focus session:', err)
-          exit(1)
-        })
-    }
-  })
-}
-
-async function quote() {
-  const q = getRandomQuote()
-  if (!q) {
-    console.log('No quotes in the database — run `learning-hub starter install` first.')
-    return
-  }
-  console.log(`\n  "${q.text}"\n      — ${q.author}${q.context ? ` (${q.context})` : ''}\n`)
-}
-
-async function searchCmd(queryArgs: string[]) {
-  const query = queryArgs.join(' ').trim()
-  if (!query) {
-    console.error('Usage: learning-hub search <query>')
-    process.exitCode = 1
-    return
-  }
-  const res = searchAll(db, query, 24)
-  if (res.hits.length === 0) {
-    console.log(`No matches for "${query}" (${res.mode}).`)
-    return
-  }
-  console.log(
-    panel(
-      `SEARCH · ${res.hits.length} hits (${res.mode})`,
-      res.hits.map((h) => `[${h.kind.padEnd(9)}] #${h.id} ${h.title}`),
-    ),
-  )
-}
-
-async function fsrsCmd(runArgs: string[]) {
-  const sub = (runArgs[0] ?? 'status').toLowerCase()
-  const reschedule = runArgs.includes('--reschedule')
-  if (sub === 'status') {
-    const status = getFsrsStatus()
-    console.log(
-      panel('FSRS-6 STATUS', [
-        `Desired retention: ${Math.round(status.desiredRetention * 100)}%`,
-        `Weights:           ${status.customWeights ? 'Personalized (21w)' : 'Default FSRS-6'}`,
-        `Spaced samples:    ${status.active.sampleCount} (${status.active.cardCount} cards)`,
-        `Active Log-Loss:   ${status.active.logLoss !== null ? status.active.logLoss.toFixed(4) : '—'}`,
-        `Calibration RMSE:  ${status.active.rmse !== null ? status.active.rmse.toFixed(4) : '—'}`,
-      ]),
-    )
-    return
-  }
-  if (sub === 'optimize' || sub === 'reset') {
-    const res = await optimizeAndPersistFsrs({
-      mode: sub,
-      reschedule,
-    })
-    console.log(
-      `✅ FSRS-6 ${sub} complete${res.optimization ? ` (${res.optimization.status})` : ''} · rescheduled ${res.rescheduledCards} cards.`,
-    )
-    return
-  }
-  console.error('Usage: learning-hub fsrs [status|optimize|reset] [--reschedule]')
-  process.exitCode = 1
-}
-
-async function starterCmd(runArgs: string[]) {
-  const sub = (runArgs[0] ?? 'list').toLowerCase()
-  if (sub === 'list') {
-    const status = getStarterCatalogStatus()
-    console.log(
-      panel('STARTER LIBRARY', [
-        `Quotes in DB: ${status.seededQuotes} · Mnemonics: ${status.seededMnemonics}`,
-        '',
-        ...status.courses.map(
-          (c) =>
-            `${c.installed ? '[installed]' : '[available]'} ${c.slug} — ${c.title} (${c.lessonsCount} lessons)`,
-        ),
-      ]),
-    )
-    return
-  }
-  if (sub === 'install') {
-    const target = runArgs[1]
-    const status = getStarterCatalogStatus()
-    const courseSlugs = !target || target === 'all' ? status.courses.map((c) => c.slug) : [target]
-    const res = installStarterPack({ courseSlugs, seedCore: true })
-    console.log(
-      `✅ Installed ${res.importedCourses.length} course(s); seeded +${res.seedReport?.quotesAdded ?? 0} quotes (${res.seedReport?.mnemonicsTotal ?? 0} mnemonics total).`,
-    )
-    return
-  }
-  console.error('Usage: learning-hub starter [list|install] [slug|all]')
-  process.exitCode = 1
-}
-
-async function syncCmd(runArgs: string[]) {
-  const sub = (runArgs[0] ?? 'status').toLowerCase()
-  if (sub === 'status') {
-    const cfg = getSyncConfig({ maskSecrets: true })
-    console.log(
-      panel('CLOUD SYNC', [
-        `Provider:     ${cfg.provider}`,
-        `E2EE:         ${cfg.encryptionEnabled ? 'AES-256-GCM enabled' : 'off'}`,
-        `Last synced:  ${cfg.lastSyncedAt ?? 'never'}`,
-        `Revision:     ${cfg.lastSyncRevision ?? '—'}`,
-      ]),
-    )
-    return
-  }
-  if (sub === 'sync' || sub === 'pull' || sub === 'push' || sub === 'test') {
-    const res = await executeCloudSync({ action: sub })
-    console.log(`✅ Cloud sync (${res.action}) via ${res.provider} succeeded.`)
-    return
-  }
-  console.error('Usage: learning-hub sync [status|sync|pull|push|test]')
-  process.exitCode = 1
-}
-
-async function workloadCmd(runArgs: string[]) {
-  const sub = runArgs[0] || 'forecast'
-  // Shared workload projection + transactional due shifts (repos/workload) —
-  // previously duplicated verbatim here and in the MCP workload_balance tool.
-  const cardItems = workloadCards()
-
-  const now = new Date()
-
-  if (sub === 'forecast') {
-    const forecast = forecastWorkload(cardItems, 14, now)
-    const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0).length
-    console.log(
-      panel('14-Day Workload Forecast', [
-        `Total active cards: ${cardItems.length}`,
-        `Overdue right now:  ${overdue}`,
-        '',
-        ...forecast.map((f) => `  ${f.day}: ${'#'.repeat(Math.min(f.count, 30))} (${f.count})`),
-      ]),
-    )
-    return
-  }
-
-  if (sub === 'balance') {
-    const { shifts } = balanceWorkload(cardItems, { days: 14, easyDays: [0, 6], asOf: now })
-    applyWorkloadShifts(shifts)
-    console.log(`✔ Smoothed ${shifts.length} review due dates without compromising retention.`)
-    return
-  }
-
-  if (sub === 'catchup') {
-    const overdue = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0)
-    const shifts = catchUpBacklog(overdue, 30, now)
-    applyWorkloadShifts(shifts)
-    console.log(
-      `✔ Rescheduled ${shifts.length} overdue cards (lowest stability prioritized first).`,
-    )
-    return
-  }
-
-  console.log('Usage: learning-hub workload [forecast|balance|catchup]')
-}
-
-function exposureCmd() {
-  const words = getWordExposureSummaries(20)
-  if (words.length === 0) {
-    console.log('No ambient vocabulary encounters recorded yet.')
-    return
-  }
-  const lines = words.map((w) => {
-    const tag = w.eligibleForPromotion ? '[Ready for SRS]' : ''
-    return `${w.normalized.padEnd(20)} ${String(w.encounterCount).padStart(3)}x (${w.distinctDays} days) ${tag}`
-  })
-  console.log(panel('Ambient Vocabulary Ledger (Krashen i+1)', lines))
-}
-
 // ─── Command registry ───────────────────────────────────────────────────────
 //
 // Built-ins as data + plugin contributions merged at dispatch time. With zero
 // plugins the registry is exactly the historical switch: same commands, same
-// order, same help panel.
-
-/** One dispatchable command: a built-in or a plugin's CliCommandContribution. */
-interface RegisteredCommand extends CliCommandContribution {
-  /** Extra usage fragment rendered after the name (e.g. `[n]` → `review [n]`). */
-  usage?: string
-}
-
-/** Help line: `capture "text"  quick-capture an idea` — name+usage at col 16. */
-function helpLine(command: RegisteredCommand): string {
-  const label = command.usage ? `${command.name} ${command.usage}` : command.name
-  return `${label.padEnd(20)}${command.description}`
-}
+// order, same help panel (the group concatenation below preserves it 1:1).
 
 const builtinCommands: RegisteredCommand[] = [
-  {
-    name: 'capture',
-    description: 'quick-capture an idea',
-    usage: '"text"',
-    run: (runArgs) => capture(runArgs.join(' ')),
-  },
-  { name: 'today', description: 'due cards, quests, quote', run: () => today() },
-  { name: 'stats', description: 'retention, streak, XP, focus', run: () => stats() },
-  {
-    name: 'review',
-    description: 'terminal review session',
-    usage: '[n]',
-    run: (runArgs) => review(runArgs[0]),
-  },
-  {
-    name: 'focus',
-    description: 'start a focus session or report cognitive load',
-    usage: '[min|load]',
-    run: (runArgs) => (runArgs[0] === 'load' ? focusLoadCmd(runArgs.slice(1)) : focus(runArgs[0])),
-  },
-  { name: 'quote', description: 'random quote', run: () => quote() },
-  {
-    name: 'search',
-    description: 'full-text search notes, cards, lessons, ideas',
-    usage: '<query>',
-    run: (runArgs) => searchCmd(runArgs),
-  },
-  {
-    name: 'fsrs',
-    description: 'FSRS-6 status, weight optimizer, or reset',
-    usage: '[status|optimize]',
-    run: (runArgs) => fsrsCmd(runArgs),
-  },
-  {
-    name: 'starter',
-    description: 'list or install built-in starter courses',
-    usage: '[list|install]',
-    run: (runArgs) => starterCmd(runArgs),
-  },
-  {
-    name: 'sync',
-    description: 'non-destructive cloud sync (Dropbox/GitHub/GDrive/WebDAV)',
-    usage: '[status|sync]',
-    run: (runArgs) => syncCmd(runArgs),
-  },
+  // capture / daily snapshot / review / focus (commands/*.ts groups)
+  ...captureCommands,
+  ...todayStatsCommands,
+  ...reviewCommands,
+  ...focusCommands,
+  ...systemCommands, // quote, search, fsrs, starter, sync
+  // domain command modules (implementations in commands/*.ts, wired here)
   {
     name: 'curriculum',
     description: 'import/list courses, print AI prompt',
@@ -586,18 +96,8 @@ const builtinCommands: RegisteredCommand[] = [
       process.exitCode = curriculumCommand(runArgs)
     },
   },
-  {
-    name: 'workload',
-    description: 'forecast, smooth, or catch up review backlog',
-    usage: '[forecast|balance|catchup]',
-    run: (runArgs) => workloadCmd(runArgs),
-  },
-  {
-    name: 'exposure',
-    description: 'ambient vocabulary ledger and Krashen i+1 tracking',
-    usage: '[list]',
-    run: () => exposureCmd(),
-  },
+  ...workloadCommands,
+  ...exposureCommands,
   {
     name: 'habits',
     description: 'habit loops, streaks, and check-ins',
@@ -857,7 +357,12 @@ async function main() {
     await selected.run(args)
     return
   }
-  console.log(panel('learning-hub', commands.map(helpLine)))
+  console.log(
+    panel(
+      'learning-hub',
+      commands.map((p) => helpLine(p)),
+    ),
+  )
 }
 
 main()
