@@ -52,10 +52,16 @@ describe('IconButton kit component', () => {
     expect(source).not.toContain('transition-all')
   })
 
-  it('keeps a ≥44px touch target on coarse pointers in BOTH sizes', () => {
+  it('keeps a ≥44px touch target on coarse pointers in EVERY size', () => {
     const source = src('src/ui/IconButton.tsx')
-    expect(source).toContain("md: 'h-11 w-11'")
+    // Pin the merged size map (#83 review: the earlier draft pinned
+    // "md: 'h-11 w-11'", an API that never shipped — main's md is h-9 w-9
+    // behind a mouse and grows to 44px on coarse pointers via the shared law).
+    expect(source).toContain("sm: 'h-8 w-8'")
+    expect(source).toContain("md: 'h-9 w-9'")
+    expect(source).toContain("lg: 'h-11 w-11'")
     expect(source).toContain('[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11')
+    expect(source).toContain("size !== 'lg' && '[@media(pointer:coarse)]:h-11")
   })
 
   it('exposes the loading state (spinner replaces the glyph, aria-busy set)', () => {

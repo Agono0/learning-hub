@@ -10,12 +10,25 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
    * invisible to screen readers and unexplained on touch without one.
    */
   label: string
-  variant?: 'ghost' | 'secondary'
-  /** Visual size on fine pointers; every size grows to 44px on coarse ones. */
-  size?: 'sm' | 'md'
+  /**
+   * ghost: kit-standard muted glyph on the page surface. secondary: bordered
+   * fill for chrome that sits on white/panel tiles. bare: no colors of its
+   * own — the caller supplies the full palette via className (cinematic
+   * studio surfaces, branded tiles); layout, focus law and touch law stay.
+   */
+  variant?: 'ghost' | 'secondary' | 'bare'
+  /** Visual size on fine pointers; sm/md grow to 44px on coarse ones. */
+  size?: 'sm' | 'md' | 'lg'
   /** Shows a spinner (replacing the glyph) and disables the button while an action runs. */
   loading?: boolean
 }
+
+/** Per-size fine-pointer footprint; sm/md grow to 44px on coarse pointers. */
+const SIZE = {
+  sm: 'h-8 w-8',
+  md: 'h-9 w-9',
+  lg: 'h-11 w-11',
+} as const
 
 /**
  * Icon-only button (ui-design-signature §4 kit list). Enforces the 44px
@@ -44,9 +57,11 @@ export function IconButton({
         'inline-grid place-items-center rounded-lg transition-colors active:scale-[0.98] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none',
         variant === 'ghost'
           ? 'text-tertiary hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200'
-          : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:bg-(--hub-border)',
-        size === 'sm' ? 'h-8 w-8' : 'h-9 w-9',
-        '[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11',
+          : variant === 'secondary'
+            ? 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:bg-(--hub-border)'
+            : '',
+        SIZE[size],
+        size !== 'lg' && '[@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11',
         className,
       )}
       {...rest}
