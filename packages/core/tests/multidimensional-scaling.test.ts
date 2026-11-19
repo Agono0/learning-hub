@@ -134,7 +134,7 @@ describe('full multidimensional scaling & psychological space recovery', () => {
       labels: ['StimulusA', 'StimulusB', 'StimulusC'],
       probabilities: [
         [0.85, 0.12, 0.03],
-        [0.10, 0.82, 0.08],
+        [0.1, 0.82, 0.08],
         [0.02, 0.07, 0.91],
       ],
     }

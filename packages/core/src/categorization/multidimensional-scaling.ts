@@ -201,7 +201,9 @@ export function classicalMds(
   const totalVarianceExplained = varianceExplained.reduce((sum, val) => sum + val, 0)
 
   // X = E * sqrt(Lambda)
-  const coordinates: number[][] = Array.from({ length: n }, () => new Array(targetDimensions).fill(0))
+  const coordinates: number[][] = Array.from({ length: n }, () =>
+    new Array(targetDimensions).fill(0),
+  )
   for (let dim = 0; dim < targetDimensions; dim++) {
     const scale = Math.sqrt(Math.max(0, eigenvalues[dim] ?? 0))
     const vec = eigenvectors[dim]
@@ -291,10 +293,7 @@ export function vectorDistance(a: number[], b: number[]): number {
  * Kruskal's Stress Formula 1:
  * Stress-1 = sqrt( sum( (d_ij - d̂_ij)^2 ) / sum( d_ij^2 ) )
  */
-export function calculateKruskalStress(
-  distances: number[],
-  disparities: number[],
-): number {
+export function calculateKruskalStress(distances: number[], disparities: number[]): number {
   if (distances.length === 0) return 0
   let numerator = 0
   let denominator = 0
@@ -493,9 +492,10 @@ export function performMultidimensionalScaling(
  * S_ij = sqrt( (p_ij * p_ji) / (p_ii * p_jj) )
  * D_ij = -ln( S_ij )
  */
-export function confusionMatrixToDissimilarity(
-  confusion: StimulusConfusionMatrix,
-): { labels: string[]; dissimilarityMatrix: number[][] } {
+export function confusionMatrixToDissimilarity(confusion: StimulusConfusionMatrix): {
+  labels: string[]
+  dissimilarityMatrix: number[][]
+} {
   const n = confusion.labels.length
   const matrix: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0))
 
@@ -528,10 +528,7 @@ export function confusionMatrixToDissimilarity(
  * Compute pairwise Euclidean distance matrix from arbitrary N-dimensional
  * stimulus feature vectors.
  */
-export function featureVectorsToDissimilarity(
-  vectors: number[][],
-  weights?: number[],
-): number[][] {
+export function featureVectorsToDissimilarity(vectors: number[][], weights?: number[]): number[][] {
   const n = vectors.length
   const matrix: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0))
   const dims = vectors[0]?.length ?? 0

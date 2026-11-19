@@ -138,7 +138,7 @@ export function classifyWithGcm(
 
   for (const cat of categories) {
     const raw = rawCategoryEvidence[cat] ?? 0
-    const beta = parameters.categoryBiases[cat] ?? (1 / categories.length)
+    const beta = parameters.categoryBiases[cat] ?? 1 / categories.length
     const scaled = beta * Math.pow(raw, parameters.responseScaling)
     scaledEvidence[cat] = scaled
     totalScaled += scaled
@@ -240,9 +240,7 @@ export function fitGcmAttentionWeights(
     }
   } else {
     // Multidimensional: test uniform + single-dimension spotlight candidates
-    const candidates: number[][] = [
-      new Array(dimensionCount).fill(1 / dimensionCount),
-    ]
+    const candidates: number[][] = [new Array(dimensionCount).fill(1 / dimensionCount)]
 
     for (let d = 0; d < dimensionCount; d++) {
       const spot = new Array(dimensionCount).fill((1 - 0.7) / (dimensionCount - 1))
@@ -288,7 +286,7 @@ export function fitGcmAttentionWeights(
     }))
     .sort((a, b) => b.weight - a.weight)
 
-  const topWeight = ranking[0]?.weight ?? (1 / dimensionCount)
+  const topWeight = ranking[0]?.weight ?? 1 / dimensionCount
   const selectiveAttentionShiftDetected = topWeight > 0.65
   const attendedDimension = selectiveAttentionShiftDetected ? ranking[0]?.dimensionIndex : undefined
 

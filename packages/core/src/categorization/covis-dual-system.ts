@@ -103,14 +103,22 @@ export function evaluateVerbalRule(
 
   let matches = pass1
 
-  if (rule.ruleType === 'conjunctive_boundary' && rule.secondaryDimensionIndex !== undefined && rule.secondaryThreshold !== undefined) {
+  if (
+    rule.ruleType === 'conjunctive_boundary' &&
+    rule.secondaryDimensionIndex !== undefined &&
+    rule.secondaryThreshold !== undefined
+  ) {
     const d2 = features[rule.secondaryDimensionIndex] ?? 0
     const pass2 =
       rule.secondaryDirection === 'greater_than_or_equal'
         ? d2 >= rule.secondaryThreshold
         : d2 < rule.secondaryThreshold
     matches = pass1 && pass2
-  } else if (rule.ruleType === 'disjunctive_boundary' && rule.secondaryDimensionIndex !== undefined && rule.secondaryThreshold !== undefined) {
+  } else if (
+    rule.ruleType === 'disjunctive_boundary' &&
+    rule.secondaryDimensionIndex !== undefined &&
+    rule.secondaryThreshold !== undefined
+  ) {
     const d2 = features[rule.secondaryDimensionIndex] ?? 0
     const pass2 =
       rule.secondaryDirection === 'greater_than_or_equal'
@@ -306,7 +314,9 @@ export function updateProceduralState(
   }
 
   const reward = wasCorrect ? 1.0 : 0.0
-  const centroid = [...(newState.categoryCentroids[correctCategory] ?? new Array(features.length).fill(0.5))]
+  const centroid = [
+    ...(newState.categoryCentroids[correctCategory] ?? new Array(features.length).fill(0.5)),
+  ]
 
   // Prediction error delta
   const delta = reward - (chosenCategory === correctCategory ? 0.7 : 0.3)
@@ -318,7 +328,8 @@ export function updateProceduralState(
 
   // Reinforce prototype weight
   if (wasCorrect) {
-    newState.prototypeWeights[correctCategory] = (newState.prototypeWeights[correctCategory] ?? 1) + 0.02
+    newState.prototypeWeights[correctCategory] =
+      (newState.prototypeWeights[correctCategory] ?? 1) + 0.02
   }
 
   return newState
@@ -408,7 +419,8 @@ export function evaluateCovisSession(
 
     // 4. Arbitrate Gating
     const { verbalGateProb, winningSystem } = calculateArbitrationGate(verbalTrust, proceduralTrust)
-    const arbitratedChoice = winningSystem === 'verbal' ? verbalResult.choice : proceduralResult.choice
+    const arbitratedChoice =
+      winningSystem === 'verbal' ? verbalResult.choice : proceduralResult.choice
 
     const verbalWasCorrect = verbalResult.choice === stim.correctCategory
     const proceduralWasCorrect = proceduralResult.choice === stim.correctCategory
@@ -424,8 +436,14 @@ export function evaluateCovisSession(
       if (stim.participantChoice === proceduralResult.choice) participantProceduralAgreements++
 
       // Log likelihoods
-      const pVerbal = stim.participantChoice === verbalResult.choice ? verbalResult.confidence : 1 - verbalResult.confidence
-      const pProcedural = stim.participantChoice === proceduralResult.choice ? proceduralResult.confidence : 1 - proceduralResult.confidence
+      const pVerbal =
+        stim.participantChoice === verbalResult.choice
+          ? verbalResult.confidence
+          : 1 - verbalResult.confidence
+      const pProcedural =
+        stim.participantChoice === proceduralResult.choice
+          ? proceduralResult.confidence
+          : 1 - proceduralResult.confidence
       const pDual = verbalGateProb * pVerbal + (1 - verbalGateProb) * pProcedural
 
       llVerbal += Math.log(Math.max(1e-6, pVerbal))
@@ -499,9 +517,15 @@ export function evaluateCovisSession(
 
   // Automaticity transition index: ratio of procedural dominance in final third vs first third
   const third = Math.max(1, Math.floor(totalTrials / 3))
-  const firstThirdProcedural = trials.slice(0, third).filter((t) => t.arbitratedSystem === 'procedural').length / third
-  const finalThirdProcedural = trials.slice(totalTrials - third).filter((t) => t.arbitratedSystem === 'procedural').length / third
-  const automaticityTransitionIndex = Math.min(1.0, Math.max(0, finalThirdProcedural - firstThirdProcedural + 0.5))
+  const firstThirdProcedural =
+    trials.slice(0, third).filter((t) => t.arbitratedSystem === 'procedural').length / third
+  const finalThirdProcedural =
+    trials.slice(totalTrials - third).filter((t) => t.arbitratedSystem === 'procedural').length /
+    third
+  const automaticityTransitionIndex = Math.min(
+    1.0,
+    Math.max(0, finalThirdProcedural - firstThirdProcedural + 0.5),
+  )
 
   let conflictResolutionBias: CovisSessionEvaluation['conflictResolutionBias']
   if (participantAgreementWithVerbal > participantAgreementWithProcedural + 0.15) {
@@ -546,7 +570,8 @@ export function evaluateCovisSession(
     proceduralAccuracy: Math.round(proceduralAccuracy * 1000) / 1000,
     overallSystemAccuracy: Math.round(overallSystemAccuracy * 1000) / 1000,
     participantAgreementWithVerbal: Math.round(participantAgreementWithVerbal * 1000) / 1000,
-    participantAgreementWithProcedural: Math.round(participantAgreementWithProcedural * 1000) / 1000,
+    participantAgreementWithProcedural:
+      Math.round(participantAgreementWithProcedural * 1000) / 1000,
     conflictTrialCount,
     conflictResolutionBias,
     automaticityTransitionIndex: Math.round(automaticityTransitionIndex * 1000) / 1000,

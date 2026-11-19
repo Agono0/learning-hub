@@ -37,7 +37,7 @@ describe('boundary entropy & fuzziness quantification (Zadeh 1965, Rosch 1975)',
   it('maps fuzziness indices into semantic bands', () => {
     expect(classifyFuzzinessBand(0.05)).toBe('crisp')
     expect(classifyFuzzinessBand(0.25)).toBe('low_fuzziness')
-    expect(classifyFuzzinessBand(0.50)).toBe('moderate_fuzziness')
+    expect(classifyFuzzinessBand(0.5)).toBe('moderate_fuzziness')
     expect(classifyFuzzinessBand(0.75)).toBe('high_fuzziness')
     expect(classifyFuzzinessBand(0.95)).toBe('maximally_ambiguous')
   })
@@ -59,7 +59,7 @@ describe('category overlap & boundary sharpness (Mervis & Rosch 1981)', () => {
       evaluateStimulusMembership('item-1', { A: 0.95, B: 0.05 }),
       evaluateStimulusMembership('item-2', { A: 0.85, B: 0.15 }),
       evaluateStimulusMembership('item-3', { A: 0.55, B: 0.45 }), // boundary
-      evaluateStimulusMembership('item-4', { A: 0.10, B: 0.90 }),
+      evaluateStimulusMembership('item-4', { A: 0.1, B: 0.9 }),
       evaluateStimulusMembership('item-5', { A: 0.02, B: 0.98 }),
     ]
 
@@ -86,9 +86,17 @@ describe('category overlap & boundary sharpness (Mervis & Rosch 1981)', () => {
 describe('holistic category system analysis', () => {
   it('evaluates entire category set identifying core and borderline stimuli', () => {
     const stimuli = [
-      { id: 'robin', categoryProbabilities: { Bird: 0.98, Mammal: 0.02 }, empiricalTypicality: 6.8 },
-      { id: 'eagle', categoryProbabilities: { Bird: 0.90, Mammal: 0.10 }, empiricalTypicality: 6.1 },
-      { id: 'penguin', categoryProbabilities: { Bird: 0.72, Mammal: 0.28 }, empiricalTypicality: 4.2 },
+      {
+        id: 'robin',
+        categoryProbabilities: { Bird: 0.98, Mammal: 0.02 },
+        empiricalTypicality: 6.8,
+      },
+      { id: 'eagle', categoryProbabilities: { Bird: 0.9, Mammal: 0.1 }, empiricalTypicality: 6.1 },
+      {
+        id: 'penguin',
+        categoryProbabilities: { Bird: 0.72, Mammal: 0.28 },
+        empiricalTypicality: 4.2,
+      },
       { id: 'bat', categoryProbabilities: { Bird: 0.48, Mammal: 0.52 }, empiricalTypicality: 2.1 }, // borderline
       { id: 'dog', categoryProbabilities: { Bird: 0.01, Mammal: 0.99 }, empiricalTypicality: 6.9 },
     ]

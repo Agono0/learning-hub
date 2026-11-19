@@ -29,7 +29,13 @@ export const categoryMembershipSchema = z.object({
   classificationMargin: z.number().min(0).max(1),
   typicalityScore: z.number().min(1).max(7),
   isBorderline: z.boolean(),
-  fuzzinessBand: z.enum(['crisp', 'low_fuzziness', 'moderate_fuzziness', 'high_fuzziness', 'maximally_ambiguous']),
+  fuzzinessBand: z.enum([
+    'crisp',
+    'low_fuzziness',
+    'moderate_fuzziness',
+    'high_fuzziness',
+    'maximally_ambiguous',
+  ]),
 })
 export type CategoryMembership = z.infer<typeof categoryMembershipSchema>
 
@@ -171,9 +177,10 @@ export function evaluateStimulusMembership(
   const threshold = options?.borderlineThreshold ?? 0.6
   const isBorderline = normalizedFuzziness >= threshold || classificationMargin < 0.25
 
-  const typicalityScore = options?.empiricalTypicality !== undefined
-    ? Math.min(7.0, Math.max(1.0, options.empiricalTypicality))
-    : predictTypicalityFromProbabilities(categoryProbabilities, normalizedFuzziness)
+  const typicalityScore =
+    options?.empiricalTypicality !== undefined
+      ? Math.min(7.0, Math.max(1.0, options.empiricalTypicality))
+      : predictTypicalityFromProbabilities(categoryProbabilities, normalizedFuzziness)
 
   return {
     stimulusId,
@@ -356,9 +363,7 @@ export function analyzeCategorySetFuzziness(
   const categoryOverlaps: CategoryOverlapPair[] = []
   for (let i = 0; i < labelsArr.length; i++) {
     for (let j = i + 1; j < labelsArr.length; j++) {
-      categoryOverlaps.push(
-        calculateCategoryOverlap(labelsArr[i]!, labelsArr[j]!, memberships),
-      )
+      categoryOverlaps.push(calculateCategoryOverlap(labelsArr[i]!, labelsArr[j]!, memberships))
     }
   }
 

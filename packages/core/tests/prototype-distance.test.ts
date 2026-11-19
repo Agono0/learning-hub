@@ -85,8 +85,18 @@ describe('Rosch-Mervis family resemblance & typicality gradient', () => {
 
   it('evaluates stimulus prototype distance and assigns 1-7 typicality score', () => {
     const prototypes = {
-      A: { category: 'A', featureMeans: [1.0, 1.0], featureVariances: [0.01, 0.01], exemplarCount: 5 },
-      B: { category: 'B', featureMeans: [0.0, 0.0], featureVariances: [0.01, 0.01], exemplarCount: 5 },
+      A: {
+        category: 'A',
+        featureMeans: [1.0, 1.0],
+        featureVariances: [0.01, 0.01],
+        exemplarCount: 5,
+      },
+      B: {
+        category: 'B',
+        featureMeans: [0.0, 0.0],
+        featureVariances: [0.01, 0.01],
+        exemplarCount: 5,
+      },
     }
 
     const evalCore = evaluateStimulusPrototypeDistance('core-item', [0.98, 0.98], prototypes)
@@ -94,7 +104,11 @@ describe('Rosch-Mervis family resemblance & typicality gradient', () => {
     expect(evalCore.typicalityScore).toBeGreaterThanOrEqual(6.0)
     expect(evalCore.isPrototypeCore).toBe(true)
 
-    const evalPerimeter = evaluateStimulusPrototypeDistance('perimeter-item', [0.55, 0.55], prototypes)
+    const evalPerimeter = evaluateStimulusPrototypeDistance(
+      'perimeter-item',
+      [0.55, 0.55],
+      prototypes,
+    )
     expect(evalPerimeter.typicalityScore).toBeLessThan(4.5)
   })
 })
@@ -102,8 +116,18 @@ describe('Rosch-Mervis family resemblance & typicality gradient', () => {
 describe('prototype vs exemplar arbitration (Smith & Minda 2000 AIC/BIC)', () => {
   it('arbitrates model preference via AIC and evidence ratio', () => {
     const prototypes = {
-      A: { category: 'A', featureMeans: [0.8, 0.8], featureVariances: [0.01, 0.01], exemplarCount: 2 },
-      B: { category: 'B', featureMeans: [0.2, 0.2], featureVariances: [0.01, 0.01], exemplarCount: 2 },
+      A: {
+        category: 'A',
+        featureMeans: [0.8, 0.8],
+        featureVariances: [0.01, 0.01],
+        exemplarCount: 2,
+      },
+      B: {
+        category: 'B',
+        featureMeans: [0.2, 0.2],
+        featureVariances: [0.01, 0.01],
+        exemplarCount: 2,
+      },
     }
     const exemplars = [
       { id: 'exA1', category: 'A', features: [0.8, 0.8] },

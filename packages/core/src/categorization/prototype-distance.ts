@@ -117,7 +117,7 @@ export function calculatePrototypeEuclideanDistance(
 
   for (let d = 0; d < dims; d++) {
     const diff = (stimulus[d] ?? 0) - (prototype.featureMeans[d] ?? 0)
-    const w = dimensionWeights ? dimensionWeights[d] ?? 1 : 1
+    const w = dimensionWeights ? (dimensionWeights[d] ?? 1) : 1
     sum += w * diff * diff
   }
 
@@ -132,7 +132,11 @@ export function classifyWithPrototypeModel(
   stimulus: number[],
   prototypes: Record<string, PrototypeCentroid>,
   gamma = 3.0,
-): { predictedCategory: string; probabilities: Record<string, number>; distances: Record<string, number> } {
+): {
+  predictedCategory: string
+  probabilities: Record<string, number>
+  distances: Record<string, number>
+} {
   const distances: Record<string, number> = {}
   const similarities: Record<string, number> = {}
   let totalSim = 0

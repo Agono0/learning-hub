@@ -237,5 +237,3 @@ export const prototypeExemplarCommands: RegisteredCommand[] = [
     run: (runArgs) => prototypeExemplarCommand(runArgs),
   },
 ]
-
-
