@@ -8,12 +8,16 @@
  *   ANDROID_JAVA_HOME if set, else Android Studio's bundled JBR, else the
  *   current JAVA_HOME.
  * - NDK_HOME: the newest NDK under $ANDROID_HOME/ndk when not set.
+ * - KEYSTORE: decodes ANDROID_KEYSTORE_BASE64 if provided.
+ * - POST-BUILD: ensures release APKs are signed, creates clean canonical APKs
+ *   (e.g. Learning-HUB-arm64-v8a.apk, Learning-HUB-universal.apk), and on CI
+ *   uploads standalone .apk assets directly to GitHub Releases (never zipped).
  *
  *   node scripts/tauri-android.mjs dev            (device/emulator, hot reload)
  *   node scripts/tauri-android.mjs build --apk    (release APK)
  */
-import { spawn } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { execFileSync, spawn } from 'node:child_process'
+import { copyFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -46,6 +50,17 @@ const jbr = jbrCandidates.find((p) =>
 )
 if (jbr) env.JAVA_HOME = jbr
 
+if (env.ANDROID_KEYSTORE_BASE64 && !env.KEYSTORE_FILE) {
+  try {
+    const keystorePath = join(root, 'release.keystore')
+    writeFileSync(keystorePath, Buffer.from(env.ANDROID_KEYSTORE_BASE64, 'base64'))
+    env.KEYSTORE_FILE = keystorePath
+    console.log(`[tauri-android] decoded release keystore to ${keystorePath}`)
+  } catch (err) {
+    console.warn('[tauri-android] failed to decode ANDROID_KEYSTORE_BASE64:', err)
+  }
+}
+
 console.log(
   `[tauri-android] ANDROID_HOME=${env.ANDROID_HOME ?? '?'} NDK_HOME=${env.NDK_HOME ?? '?'} JAVA_HOME=${env.JAVA_HOME ?? '?'}`,
 )
@@ -56,4 +71,108 @@ const child = spawn('npx', ['tauri', 'android', ...process.argv.slice(2)], {
   stdio: 'inherit',
   shell: process.platform === 'win32',
 })
-child.on('exit', (code) => process.exit(code ?? 1))
+
+child.on('exit', (code) => {
+  if (code !== 0) {
+    process.exit(code ?? 1)
+  }
+
+  const isBuild = process.argv.includes('build')
+  if (!isBuild) {
+    process.exit(0)
+  }
+
+  try {
+    const apkDir = join(root, 'apps/native/src-tauri/gen/android/app/build/outputs/apk')
+    if (!existsSync(apkDir)) {
+      process.exit(0)
+    }
+
+    const findApks = (dir) => {
+      let results = []
+      if (!existsSync(dir)) return results
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          results = results.concat(findApks(full))
+        } else if (entry.name.endsWith('.apk')) {
+          results.push(full)
+        }
+      }
+      return results
+    }
+
+    const apkFiles = findApks(apkDir)
+    console.log(`[tauri-android] found ${apkFiles.length} generated APKs:`)
+    const canonicalApks = []
+
+    for (const apk of apkFiles) {
+      console.log(` - ${apk}`)
+      const filename = apk.split(/[\/\\]/).pop() || ''
+      if (filename.includes('arm64-v8a')) {
+        const dest = join(apkDir, 'Learning-HUB-arm64-v8a.apk')
+        copyFileSync(apk, dest)
+        canonicalApks.push(dest)
+      } else if (filename.includes('universal')) {
+        const dest = join(apkDir, 'Learning-HUB-universal.apk')
+        copyFileSync(apk, dest)
+        canonicalApks.push(dest)
+      }
+    }
+
+    if (canonicalApks.length > 0) {
+      console.log(`[tauri-android] organized standalone APK distribution:`)
+      for (const c of canonicalApks) {
+        console.log(` * ${c}`)
+      }
+    }
+
+    // Direct GitHub Release asset upload when running on CI
+    if (env.GITHUB_ACTIONS && (env.GH_TOKEN || env.GITHUB_TOKEN)) {
+      const tag = env.GITHUB_REF_NAME === 'main' ? 'latest' : (env.GITHUB_REF_NAME ?? 'latest')
+      const filesToUpload = canonicalApks.length > 0 ? canonicalApks : apkFiles
+      if (filesToUpload.length > 0) {
+        try {
+          console.log(`[tauri-android] publishing direct .apk assets to GitHub release '${tag}'...`)
+          execFileSync('gh', ['release', 'view', tag], {
+            stdio: 'ignore',
+            env: { ...env, GH_TOKEN: env.GH_TOKEN || env.GITHUB_TOKEN },
+          })
+        } catch {
+          try {
+            execFileSync(
+              'gh',
+              [
+                'release',
+                'create',
+                tag,
+                '--title',
+                `Learning HUB ${tag}`,
+                '--notes',
+                'Direct signed APK downloads.',
+              ],
+              { stdio: 'inherit', env: { ...env, GH_TOKEN: env.GH_TOKEN || env.GITHUB_TOKEN } },
+            )
+          } catch (createErr) {
+            console.warn('[tauri-android] could not create release:', createErr.message)
+          }
+        }
+        try {
+          execFileSync('gh', ['release', 'upload', tag, ...filesToUpload, '--clobber'], {
+            stdio: 'inherit',
+            env: { ...env, GH_TOKEN: env.GH_TOKEN || env.GITHUB_TOKEN },
+          })
+          console.log(
+            `[tauri-android] successfully uploaded standalone APK files to GitHub Release '${tag}'!`,
+          )
+        } catch (uploadErr) {
+          console.warn('[tauri-android] note: release asset upload skipped:', uploadErr.message)
+        }
+      }
+    }
+  } catch (postErr) {
+    console.warn('[tauri-android] post-build processing notice:', postErr)
+  }
+
+  process.exit(0)
+})

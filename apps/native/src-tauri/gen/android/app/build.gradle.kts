@@ -25,6 +25,27 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+
+    signingConfigs {
+        create("release") {
+            val keystoreFile = System.getenv("KEYSTORE_FILE")
+                ?: (if (project.hasProperty("KEYSTORE_FILE")) project.property("KEYSTORE_FILE")?.toString() else null)
+            if (keystoreFile != null && file(keystoreFile).exists()) {
+                storeFile = file(keystoreFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                    ?: (if (project.hasProperty("KEYSTORE_PASSWORD")) project.property("KEYSTORE_PASSWORD")?.toString() else null) ?: ""
+                keyAlias = System.getenv("KEY_ALIAS")
+                    ?: (if (project.hasProperty("KEY_ALIAS")) project.property("KEY_ALIAS")?.toString() else null) ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD")
+                    ?: (if (project.hasProperty("KEY_PASSWORD")) project.property("KEY_PASSWORD")?.toString() else null) ?: ""
+            } else {
+                initWith(getByName("debug"))
+            }
+            enableV1Signing = true
+            enableV2Signing = true
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -39,17 +60,42 @@ android {
             }
         }
         getByName("release") {
-            optimization {
-               enable = true
-            }
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 *fileTree(".") {
-                  include("**/*.pro")
-                  exclude("build/**")
+                    include("**/*.pro")
+                    exclude("build/**")
                 }.files.toTypedArray()
             )
+            packaging {
+                resources {
+                    excludes += setOf(
+                        "META-INF/*.version",
+                        "META-INF/LICENSE*",
+                        "META-INF/NOTICE*",
+                        "META-INF/*.txt",
+                        "META-INF/DEPENDENCIES",
+                        "META-INF/INDEX.LIST",
+                        "META-INF/*.properties",
+                        "**/*.proto"
+                    )
+                }
+            }
         }
     }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
