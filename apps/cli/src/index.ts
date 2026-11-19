@@ -63,6 +63,7 @@ import {
   thresholdCommands,
   zpdCommands,
 } from './commands/advanced-learning'
+import { prototypeExemplarCommands } from './commands/prototype-exemplar'
 
 const rawArgs = process.argv.slice(2)
 const scriptArgs =
@@ -125,6 +126,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...collaborativeCommands,
   ...systemDynamicsCommands,
   ...modelInquiryCommands,
+  ...prototypeExemplarCommands,
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
   ...notesCommands,

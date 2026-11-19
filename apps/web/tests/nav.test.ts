@@ -71,6 +71,7 @@ describe('navigation model & theme helpers', () => {
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/collaborative')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/system-dynamics')).toBe(true)
     expect(ALL_NAV_ITEMS.some((i) => i.href === '/model-inquiry')).toBe(true)
+    expect(ALL_NAV_ITEMS.some((i) => i.href === '/prototype-exemplar')).toBe(true)
     expect(PRIMARY_NAV_ITEMS.map((i) => i.href)).toEqual(['/', '/review', '/courses', '/focus'])
     expect(DEFAULT_COLLAPSED_GROUPS).toEqual([
       'Practice studios',

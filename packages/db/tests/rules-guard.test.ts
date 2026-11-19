@@ -73,6 +73,7 @@ describe('Rules Guard: Structural Invariant Enforcement', () => {
       'elo_events',
       'study_coin_ledger',
       'notification_log',
+      'prototype_exemplar_sessions',
     ]
 
     const violations: Array<{ file: string; line: string }> = []

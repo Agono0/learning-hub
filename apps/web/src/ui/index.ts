@@ -95,6 +95,7 @@ export {
 } from './CollaborativeScriptsHUD'
 export { SystemDynamicsHUD, type SystemDynamicsHUDProps } from './SystemDynamicsHUD'
 export { ModelInquiryHUD, type ModelInquiryHUDProps } from './ModelInquiryHUD'
+export { PrototypeExemplarHud, type PrototypeExemplarHudProps } from './PrototypeExemplarHud'
 
 export { ToastProvider, useToast, type ToastInput, type ToastTone } from './Toast'
 export { ProgressBar, ProgressRing } from './Progress'

@@ -9,6 +9,7 @@
 import { and, asc, desc, eq, lte, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { Readable } from 'node:stream'
 import {
   db,
   cards,
@@ -154,6 +155,16 @@ import {
   generateModelInquiryFsrsDeck,
   type InquirySessionInput,
   InquirySessionInputSchema,
+  CANONICAL_CATEGORIZATION_SETS,
+  categorizationSubmissionSchema,
+  evaluateCategorizationSession,
+  findCategorySet,
+  generateCategorizationDeck,
+  planCategorizationStudy,
+  planDiscriminatingBlock,
+  studyPlanOptionsSchema,
+  studyPlanSessionSchema,
+  type StudyPlan,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -558,6 +569,20 @@ const modelInquiryEvaluateBodySchema = InquirySessionInputSchema.extend({
 
 const modelInquiryDeckBodySchema = z.object({
   scenarioId: z.string().default('galileo_falling_bodies'),
+})
+
+// Payload shapes owned by core; the route only layers its schedule defaults.
+const prototypeExemplarPlanBodySchema = z.object({
+  setId: z.string().default('proto-bird-typicality'),
+  maxTrials: z.number().int().min(1).max(24).default(6),
+  sessions: studyPlanSessionSchema.array().max(500).default([]),
+  scheduleOptions: studyPlanOptionsSchema.omit({ now: true }).partial().default({}),
+  now: z.string().optional(),
+})
+
+const prototypeExemplarDeckBodySchema = z.object({
+  setId: z.string().default('proto-bird-typicality'),
+  criBaseline: z.number().min(0).max(100).default(50),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2388,6 +2413,68 @@ async function postModelInquiryDeck(req: IncomingMessage, res: ServerResponse): 
   })
 }
 
+// ── Prototype & Exemplar Categorization (Rosch 1975; Reed 1972; Nosofsky 1986;
+//    Ashby & Gott 1988; Landauer & Bjork 1978; Kang 2016) — same engine calls
+//    and response shapes as the web handler (host-parity contract) ──────────
+
+/** GET /cognitive/prototype-exemplar/scenarios — canonical category sets */
+function getPrototypeExemplarScenarios(_req: IncomingMessage, res: ServerResponse): void {
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: CANONICAL_CATEGORIZATION_SETS,
+  })
+}
+
+/** POST /cognitive/prototype-exemplar/evaluate — full session telemetry */
+async function postPrototypeExemplarEvaluate(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const submission = await readJson(req, categorizationSubmissionSchema)
+  const set = findCategorySet(submission.setId)
+  const evaluation = evaluateCategorizationSession(set, submission)
+  sendJson(res, 200, {
+    ok: true,
+    evaluation,
+  })
+}
+
+/** POST /cognitive/prototype-exemplar/plan — discriminating trials + optional schedule */
+async function postPrototypeExemplarPlan(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, prototypeExemplarPlanBodySchema)
+  const set = findCategorySet(body.setId)
+  const plan = planDiscriminatingBlock(set, body.maxTrials)
+  let schedule: StudyPlan | null = null
+  if (body.sessions.length > 0) {
+    try {
+      schedule = planCategorizationStudy(body.sessions, {
+        ...body.scheduleOptions,
+        now: body.now ?? new Date().toISOString(),
+      })
+    } catch {
+      schedule = null // malformed history: the trial plan still returns
+    }
+  }
+  sendJson(res, 200, {
+    ok: true,
+    plan,
+    schedule,
+  })
+}
+
+/** POST /cognitive/prototype-exemplar/deck — FSRS cards scaled by the CRI */
+async function postPrototypeExemplarDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, prototypeExemplarDeckBodySchema)
+  const set = findCategorySet(body.setId)
+  const neutralEvaluation = evaluateCategorizationSession(set, { setId: set.id })
+  neutralEvaluation.cri = body.criBaseline
+  const deck = generateCategorizationDeck(set, neutralEvaluation)
+  sendJson(res, 200, {
+    ok: true,
+    deck,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2840,7 +2927,75 @@ export const routes: Route[] = [
     summary: 'generate calibrated FSRS-6 review deck for model-based inquiry',
     handler: postModelInquiryDeck,
   },
+  {
+    method: 'GET',
+    path: '/cognitive/prototype-exemplar/scenarios',
+    summary:
+      'list canonical categorization category sets (Rosch 1975; Medin & Schaffer 1978; Nosofsky 1986; Ashby & Gott 1988)',
+    handler: getPrototypeExemplarScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/prototype-exemplar/evaluate',
+    summary:
+      'evaluate a categorization session (TSC, CTS, MCD, CRI, maturity band, model comparison)',
+    handler: postPrototypeExemplarEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/prototype-exemplar/plan',
+    summary:
+      'plan model-diagnostic trials + optional multi-day study schedule (expanding retrieval, interleaving)',
+    handler: postPrototypeExemplarPlan,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/prototype-exemplar/deck',
+    summary: 'generate calibrated FSRS-6 review deck for categorization',
+    handler: postPrototypeExemplarDeck,
+  },
 ]
+
+/**
+ * Test seam for the host-parity suite: run one prototype-exemplar route and
+ * get its JSON envelope without raw-stream mocking. Exercises the SAME
+ * handlers + zod schemas + sendJson envelope as `dispatch`; only the route-
+ * table lookup hop moves to the registration test (which pins it separately).
+ */
+export async function prototypeExemplarRouteJson(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: unknown,
+): Promise<{ status: number; data: Record<string, unknown> }> {
+  const stream = Readable.from(body !== undefined ? [Buffer.from(JSON.stringify(body))] : [])
+  const req = stream as unknown as IncomingMessage
+  req.method = method
+  req.url = path
+  req.headers = { 'content-type': 'application/json' }
+  let status = 200
+  let responseData = ''
+  const res = {
+    statusCode: 200,
+    setHeader: () => {},
+    writeHead: (code: number) => {
+      status = code
+      return res
+    },
+    end: (chunk?: string | Buffer) => {
+      if (chunk) responseData += chunk.toString()
+    },
+  } as unknown as ServerResponse
+  const route = routes.find((r) => r.method === method && r.path === path)
+  if (!route) {
+    jsonError(res, 404, `Not found: ${method} ${path}`)
+  } else {
+    await route.handler(req, res, new URL(path, 'http://localhost'))
+  }
+  return {
+    status: (res as unknown as { statusCode: number }).statusCode ?? status,
+    data: responseData ? (JSON.parse(responseData) as Record<string, unknown>) : {},
+  }
+}
 
 /**
  * Match the incoming request against the route table and run the handler with
