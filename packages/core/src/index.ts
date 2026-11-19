@@ -138,3 +138,6 @@ export * from './categorization'
 
 // ── Design system (ui-signature §3.1 contrast lock) ──
 export * from './design-tokens'
+
+// ── Accessibility & WCAG 2.2 AAA Engine ──
+export * from './a11y'

@@ -78,6 +78,7 @@ describe('design laws (ui-design-signature §3.4-3.6)', () => {
       'animate-bounce',
       'animate-glow-pulse',
       'animate-fade-in',
+      'animate-fade-in-fast',
       'animate-fade-in-up',
       'animate-scale-in',
     ])

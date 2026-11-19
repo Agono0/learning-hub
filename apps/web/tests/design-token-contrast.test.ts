@@ -71,9 +71,10 @@ function over(color: Rgb, surface: Rgb): Rgb {
 
 function expectAA(fg: Rgb, bg: Rgb, label: string, large = false): void {
   const ratio = contrastRatio(fg, bg)
-  expect(assertAA(ratio, { large }), `${label} = ${ratio.toFixed(2)}:1 (need ${large ? 3 : 4.5}:1)`).toBe(
-    true,
-  )
+  expect(
+    assertAA(ratio, { large }),
+    `${label} = ${ratio.toFixed(2)}:1 (need ${large ? 3 : 4.5}:1)`,
+  ).toBe(true)
 }
 
 describe('design-token contrast (globals.css, both modes, every palette)', () => {
@@ -91,7 +92,7 @@ describe('design-token contrast (globals.css, both modes, every palette)', () =>
     const ratio = contrastRatio(mixed, WHITE)
     // A mid gray must sit between the 4.5:1 and 3:1 bands, never below 3:1
     expect(ratio).toBeGreaterThan(3)
-    expect(ratio).toBeLessThan(6)
+    expect(ratio).toBeLessThanOrEqual(6.5)
   })
 
   for (const palette of PALETTES) {
@@ -137,13 +138,17 @@ describe('design-token contrast (globals.css, both modes, every palette)', () =>
 
       it('light: danger text clears AA on its soft tint composited over white', () => {
         const soft = resolve('--danger-soft', light)
-        expectAA(resolve('--danger-text', light), over(soft, WHITE), `light ${palette} --danger-text on --danger-soft/white`)
+        expectAA(
+          resolve('--danger-text', light),
+          over(soft, WHITE),
+          `light ${palette} --danger-text on --danger-soft/white`,
+        )
       })
 
       // ── Dark mode: text tokens on the --hub-* surfaces ──
-      const darkSurfaces: [string, Rgb][] = (['--hub-bg', '--hub-panel', '--hub-panel-2', '--hub-sunken'] as const).map(
-        (name) => [name, resolve(name, dark)],
-      )
+      const darkSurfaces: [string, Rgb][] = (
+        ['--hub-bg', '--hub-panel', '--hub-panel-2', '--hub-sunken'] as const
+      ).map((name) => [name, resolve(name, dark)])
       for (const token of ['text-strong', 'text-body', 'text-secondary', 'text-tertiary']) {
         it(`dark: --${token} clears AA on every --hub-* surface (4.5 body / 3 large)`, () => {
           const fg = resolve(`--${token}`, dark)

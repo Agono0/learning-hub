@@ -179,7 +179,10 @@ export default function NotesPage() {
                   <IconButton label="Bullet" onClick={() => setContent((c) => `${c}\n- `)}>
                     <List className="h-4 w-4" />
                   </IconButton>
-                  <IconButton label="Mine cards from this note" onClick={() => setMineText(content)}>
+                  <IconButton
+                    label="Mine cards from this note"
+                    onClick={() => setMineText(content)}
+                  >
                     <Pickaxe className="h-4 w-4" />
                   </IconButton>
                   <IconButton label="Paste text and mine cards" onClick={() => setMineText('')}>

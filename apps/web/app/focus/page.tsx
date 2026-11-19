@@ -592,7 +592,7 @@ export default function FocusPage() {
           <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-(--hub-border) dark:bg-(--hub-panel)">
             <button
               type="button"
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center ${
                 activeTab === 'standard'
                   ? 'bg-white shadow text-neutral-900 dark:bg-(--hub-panel-2) dark:text-white'
                   : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -603,7 +603,7 @@ export default function FocusPage() {
             </button>
             <button
               type="button"
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                 activeTab === 'max'
                   ? 'bg-indigo-600 text-white shadow'
                   : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -997,7 +997,7 @@ export default function FocusPage() {
                       <button
                         key={m}
                         type="button"
-                        className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition ${
+                        className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition inline-flex items-center focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                           maxMinutes === m
                             ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
                             : 'border-neutral-200 text-faint hover:border-neutral-300 dark:border-(--hub-border)'

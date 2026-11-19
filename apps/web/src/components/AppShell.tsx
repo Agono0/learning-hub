@@ -36,7 +36,7 @@ import { QuickHudModal } from './QuickHudModal'
 import { OnboardingWizard } from './OnboardingWizard'
 import { apiGet, apiSend, hubStoragePersistent, onHubStoragePersistence } from '@/lib/transport'
 import { initReminderScheduler } from '@/platform/reminders'
-import { IconButton, OfflineBanner, useToast } from '@/ui'
+import { IconButton, LiveAnnouncerProvider, OfflineBanner, useToast } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 
 // v2: the 'Practice studios' group was added to the defaults in the IA
@@ -552,33 +552,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
-      {/* First focusable element: keyboard users jump straight past the
-          navigation chrome to the page content (docs/accessibility.md). */}
-      <a
-        href="#main-content"
-        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-lg focus-visible:bg-indigo-600 focus-visible:px-3 focus-visible:py-2.5 focus-visible:text-sm focus-visible:font-medium focus-visible:text-white focus-visible:shadow-lg focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg)"
-      >
-        Skip to content
-      </a>
-      <Sidebar pathname={pathname} />
-      <Rail pathname={pathname} />
-      <PhoneChrome pathname={pathname} />
-      <CommandPalette />
-      <QuickHudModal />
-      <OnboardingWizard />
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0"
-      >
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
-          <OfflineBanner />
-          <StorageWarning />
-          <PermissionNudge />
-          {children}
-        </div>
-      </main>
-    </div>
+    <LiveAnnouncerProvider>
+      <div className="flex min-h-dvh flex-col md:flex-row">
+        {/* First focusable element: keyboard users jump straight past the
+            navigation chrome to the page content (docs/accessibility.md). */}
+        <a
+          href="#main-content"
+          className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-lg focus-visible:bg-indigo-600 focus-visible:px-3 focus-visible:py-2.5 focus-visible:text-sm focus-visible:font-medium focus-visible:text-white focus-visible:shadow-lg focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg)"
+        >
+          Skip to content
+        </a>
+        <Sidebar pathname={pathname} />
+        <Rail pathname={pathname} />
+        <PhoneChrome pathname={pathname} />
+        <CommandPalette />
+        <QuickHudModal />
+        <OnboardingWizard />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 md:pl-16 lg:pl-56 print:p-0"
+        >
+          <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+            <OfflineBanner />
+            <StorageWarning />
+            <PermissionNudge />
+            {children}
+          </div>
+        </main>
+      </div>
+    </LiveAnnouncerProvider>
   )
 }

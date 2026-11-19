@@ -1,115 +1,166 @@
-# Accessibility standards
+# Accessibility standards & WCAG 2.2 AAA Compliance
 
-The rules every UI change in `apps/web` must satisfy. Sources of law:
+The accessibility architecture for Learning HUB. Sources of law:
 [`AGENTS.md`](../AGENTS.md) §5, the ui-signature skill
-(`.claude/skills/ui-signature/SKILL.md`) §2/§4/§6, and this file. The
-mechanical half is pinned by `apps/web/tests/a11y-contract.test.ts` (runs in
-CI).
+(`.claude/skills/ui-signature/SKILL.md`) §2/§4/§6, and this specification.
+Enforced continuously by unit and contract suites:
 
-## The 44px touch law
+- `apps/web/tests/a11y-contract.test.ts` (wiring, skip links, reduced-motion, focus ring)
+- `apps/web/tests/a11y-compliance.test.ts` (WCAG 2.2 AAA math, dialog primitives, live regions, roving tabindex, touch targets)
+- `apps/web/tests/design-token-contrast.test.ts` (mathematical contrast lock across every palette)
+- `packages/core/tests/a11y-wcag.test.ts` (core domain algorithms and state machines)
+
+---
+
+## 1. The 44px Touch Law
 
 Every interactive element has a **≥44px touch target wherever the primary
 pointer is coarse** (`@media (pointer: coarse)`), and nothing shrinks below
-44px there — not icon buttons, not toggles, not inline rows. On fine pointers
-(mouse) compact sizes (36–40px) are allowed for dense surfaces.
+44px there — not icon buttons, not toggles, not sliders, not tabs, not inline controls:
 
-- Text buttons: the global `.btn` / `.btn-ghost` / `.btn-secondary` classes
+- **Text buttons:** The global `.btn` / `.btn-ghost` / `.btn-secondary` classes
   grow to `min-height: 44px` on coarse pointers automatically.
-- Icon-only buttons: use the kit **`<IconButton>`** — `size="md"` is 44px
-  everywhere, `size="sm"` is 36px on fine pointers and 44px on coarse pointers.
-- Never hand-roll `grid h-9 w-9 place-items-center` buttons; that pattern is
-  how the law got broken (see "retiring hand-rolled buttons" below).
+- **Icon buttons:** Use kit **`<IconButton>`** — `size="lg"` is 44px
+  everywhere, `size="md"` is 36px on fine pointers and 44px on coarse pointers,
+  and `size="sm"` is 32px on fine pointers and 44px on coarse pointers.
+- **Toggles & Switches:** Kit **`<Toggle>`** enforces a 44x44px touch bounding box
+  surrounding the visual pill track.
+- **Sliders:** Kit **`<Slider>`** enforces `[@media(pointer:coarse)]:h-11` on range tracks.
+- **Tabs:** Kit **`<Tabs>`** enforces `[@media(pointer:coarse)]:min-h-11` on every tab button.
+- **Form Controls:** `TextField`, `TextArea`, and `SelectField` provide standard touch clearance.
 
-## Focus-visible standard
+---
 
-Every interactive element shows the same focus ring when keyboard-focused —
-never `outline-none` without this replacement (LeitnerBox was the first
-implementation; every kit component carries it):
+## 2. Focus-Visible Standard (WCAG 2.2 SC 2.4.7)
 
-```
+Every interactive element displays the identical, mode-aware focus ring when keyboard-focused —
+never bare `outline-none` without this replacement (enforced across all kit components):
+
+```css
 focus-visible:ring-2 focus-visible:ring-(--ac-strong)
 focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg)
 ```
 
-Transitions stay on `transition-colors` — `transition-all` is banned
+Transitions stay strictly on `transition-colors` — `transition-all` is banned
 (ui-signature §3.6). Press feedback is `active:scale-[0.98]`.
 
-## Skip link
+---
 
-`AppShell` renders a **"Skip to content"** link as the first focusable element
-(`apps/web/src/components/AppShell.tsx`). It is `sr-only` until focused, then
-appears top-left in the primary-button style with the focus-visible ring, and
-points at `<main id="main-content" tabIndex={-1}>` — the `tabIndex={-1}` lets
-the programmatic focus land so the next Tab continues inside the content, not
-back through the sidebar. Keep it first; do not wrap navigation before it.
+## 3. WCAG 2.2 AAA Contrast Invariant (SC 1.4.3 & SC 1.4.6)
 
-## Screen-reader discipline
+All UI elements adhere to strict contrast floors evaluated via OKLab mathematical mixing
+(`@learning-hub/core/design-tokens`):
 
-- **Icon-only buttons need an accessible name.** With `<IconButton>` the
-  required `label` prop becomes the `aria-label`; the glyph is rendered
-  `aria-hidden`. Never ship an unlabeled icon button.
-- **State goes in attributes, not pixels:** `aria-expanded` on disclosure
-  triggers, `aria-busy` while loading, `aria-current` on nav items.
-- **`aria-live` is for meaningful async changes only** — toasts
-  (`role="status"`/`role="alert"` via the kit `Toast`), honest warnings like the
-  `StorageWarning`. Never announce a value that updates every second.
-- **The timer clock is deliberately NOT live.** A 1Hz-updating clock read
-  aloud every second is unusable, not helpful; the countdown text is there for
-  glancing, and the timer's state changes (start/finish) surface through other
-  channels. Do not add `aria-live` to it.
-- Decorative glyphs and duplicated visual badges (`aria-hidden`) must not be
-  announced — the accessible name carries the information once (the
-  notification bell's count lives in its label, not in the badge).
+| Category                  | Level AA Minimum | Level AAA Minimum | Implementation                                           |
+| ------------------------- | ---------------- | ----------------- | -------------------------------------------------------- |
+| **Normal Body Text**      | 4.5:1            | **7.0:1**         | Mode-scoped tokens `--text-strong`, `--text-body`        |
+| **Large / Heading Text**  | 3.0:1            | **4.5:1**         | Mode-scoped tokens `--text-secondary`, `--text-tertiary` |
+| **Status Text**           | 4.5:1            | **7.0:1**         | `--danger-text`, `--status-*-text`                       |
+| **UI Components & Icons** | 3.0:1            | **3.0:1**         | `--hub-border`, `--ac-strong`, active indicators         |
 
-## Icon + text pairing (color is never the only signal)
+The contrast lock unit test (`apps/web/tests/design-token-contrast.test.ts`) verifies every mode
+and every palette (calm, forest, ocean, sunset, blossom, midnight) to eliminate silent regression.
 
-Color alone never carries meaning (WCAG 1.4.1): pairs like the notification
-bell's badge + count-in-label, tone colors + distinct copy, status dots +
-text. When you add a status color, add the non-color channel (icon, label, or
-text) in the same change.
+---
 
-## Reduced-motion policy
+## 4. Skip Link & Landmarks (WCAG 2.2 SC 2.4.1)
 
-Two layers, both mandatory to keep:
+`AppShell` renders a **"Skip to content"** link (`<SkipLink>`) as the very first focusable element
+(`apps/web/src/components/AppShell.tsx`). It is `sr-only` until focused, then appears
+top-left with the focus-visible ring and points directly at `<main id="main-content" tabIndex={-1}>`:
 
-1. **CSS kill-switch** (`apps/web/app/globals.css`): under
-   `@media (prefers-reduced-motion: reduce)` every animation and transition is
-   forced to ~0 duration. This covers all CSS motion automatically.
-2. **JS motion must not rely on the kill-switch alone** (ui-signature §5.7):
-   any JavaScript-driven animation gates on the `useReducedMotion` hook
-   (`apps/web/src/lib/useReducedMotion.ts` — SSR-safe, live-updates with the
-   OS setting) and skips or shortens itself when the user prefers reduced
-   motion.
+- Programmatic focus lands smoothly on `<main>`.
+- The next Tab keystroke immediately enters page content, bypassing all sidebar and navigation chrome.
+- Navigation landmarks must never precede the skip link in DOM order.
 
-**Audit result (PR feat/a11y-overhaul):** the `setInterval` sweep found no
-purely decorative JS motion to guard. Every interval in `apps/web/src` drives
-state or feedback, not decoration: exam/countdown timers
-(`AdaptiveExamStudio`, `DualProcessStudio`), the 60s relative-time tick
-(`NotificationCenter`), reminder scheduling (`platform/reminders.ts`), socket
-heartbeats (`online-socket.ts`), audio cue replay
-(`SleepConsolidationStudio`), simulated HRV data (`BreathingCoherenceStudio`),
-the pedagogical emergence-simulation ticker (`OntologicalShiftStudio`), and
-ambience audio (`three/SceneManager.ts`). The 3D canvas surfaces gate motion
-per ui-signature §5.8. If you add decorative JS motion (count-ups, canvas
-effects, choreography), gate it with `useReducedMotion` and note it here.
+---
 
-## Retiring hand-rolled icon buttons with IconButton
+## 5. Radix UI Primitive Compliance & Dialog Semantics (WCAG 2.2 SC 2.1.2)
 
-`<IconButton label="…" icon={<X className="h-5 w-5" />} />` replaces the
-hand-rolled `grid h-N w-N place-items-center` pattern and adds, in one place:
-the accessible name, the focus-visible ring, the ≥44px coarse-pointer target,
-the loading state, and the press scale. Migrated so far:
+Modal dialogs use the kit **`<Modal>`** component, which provides:
 
-| Call site                             | Button                      | Label kept                         |
-| ------------------------------------- | --------------------------- | ---------------------------------- |
-| `src/components/NotificationBell.tsx` | bell dropdown trigger (9x9) | `Notifications (N need attention)` |
-| `src/components/PermissionNudge.tsx`  | dismiss X                   | `Stop suggesting {title}`          |
-| `src/ui/Sheet.tsx`                    | sheet close X               | `Close`                            |
-| `src/ui/exercises/inputs.tsx`         | reorder Move up / Move down | `Move up` / `Move down`            |
+1. **Semantic Roles:** `role="dialog"` or `role="alertdialog"` with `aria-modal="true"`.
+2. **Label Binding:** `aria-labelledby` linked to `<h2>` title; `aria-describedby` linked to subtitle.
+3. **Focus Containment:** `<FocusTrap>` captures Tab / Shift+Tab within the modal boundary.
+4. **Focus Restoration:** Restores focus to the trigger element when the dialog closes.
+5. **Escape Dismissal:** Escape key dismisses the dialog and returns focus immediately.
+6. **Scroll Lock:** Locks `document.body` scroll while open, preventing background scroll bleed.
+7. **Accessible Dismissal:** Integrated 44px `<IconButton>` close button.
 
-To migrate more: replace the raw `<button>` with `<IconButton>` carrying the
-existing `aria-label` as `label`, move the glyph into `icon`, keep any
-`onClick`/`disabled`/`aria-*` props, pick `size="sm"` only when the old button
-was ≤36px, and delete the hand-rolled `className`. The remaining ~50 raw icon
-buttons (mostly in AppShell chrome and studio HUDs) are follow-up work; the
-a11y contract test fails if a migrated call site regresses to the raw pattern.
+---
+
+## 6. Screen-Reader Friendly Flashcard Flip Transitions
+
+Spaced repetition flashcards use **`<AccessibleFlashcard>`** to provide seamless access:
+
+1. **Accessible Region:** `role="region"`, `aria-roledescription="flashcard"`, and dynamic `aria-label`
+   (e.g., `"Card 1 of 10: Question side"`).
+2. **Synchronized ARIA Live:** Flips broadcast polite announcements via `useAnnounce`:
+   - _"Showing question: [Prompt]"_
+   - _"Card flipped to answer: [Answer]"_
+3. **Inert Face Protection:** The hidden face is marked `aria-hidden="true"`, preventing screen
+   readers from reading the answer before the learner has retrieved it.
+4. **Reduced Motion Adaptation:** Under `prefers-reduced-motion: reduce`, the 3D flip animation
+   is bypassed in favor of an instantaneous opacity/visibility swap.
+5. **Keyboard Hotkeys:** Space or Enter toggles the card; 1-4 records FSRS grades.
+
+---
+
+## 7. Roving Tabindex Composite Widgets (WCAG 2.2 SC 2.1.1)
+
+Composite interactive widgets (tablists, toolbars, radio groups) use **`<KeyboardNavGroup>`**:
+
+- Only the currently active element is reachable via Tab (`tabIndex={0}`).
+- Peer elements carry `tabIndex={-1}` and are reached via Arrow keys.
+- Disabled items are automatically skipped during directional navigation.
+- Home jumps to the first enabled item; End jumps to the last enabled item.
+- Orientation (`horizontal`, `vertical`, or `both`) constrains arrow handling cleanly.
+
+---
+
+## 8. Global ARIA Live Announcer (WCAG 2.2 SC 4.1.3)
+
+`AppShell` provides `<LiveAnnouncerProvider>` with dual dedicated live regions:
+
+- `id="a11y-live-polite"`: `role="status"`, `aria-live="polite"`, `aria-atomic="true"`
+- `id="a11y-live-assertive"`: `role="alert"`, `aria-live="assertive"`, `aria-atomic="true"`
+
+Components trigger announcements via `useAnnounce()`:
+
+```tsx
+const announce = useAnnounce()
+announce('Review batch completed. 25 cards mastered.', 'polite')
+```
+
+- Deduplication suppresses identical messages within a 1.5s window.
+- Urgent notices (`priority="assertive"`) take precedence in the queue.
+- Live announcements are reserved for meaningful state transitions (never rapid 1Hz timer ticks).
+
+---
+
+## 9. Reduced-Motion Policy
+
+Two mandatory layers:
+
+1. **CSS Kill-Switch** (`apps/web/app/globals.css`): under `@media (prefers-reduced-motion: reduce)`,
+   all animations and transitions are forced to `0.01ms`.
+2. **JS Motion Hook** (`apps/web/src/lib/useReducedMotion.ts`): JavaScript animations, GSAP
+   sequences, and 3D camera dollies check `useReducedMotion()` and drive durations to 0.
+
+---
+
+## 10. Checklist for PR Authors
+
+Before submitting UI changes:
+
+- [ ] Contrast: text tokens pass AA (4.5:1) and AAA (7:1) in both light and dark modes.
+- [ ] Hit footprint: every interactive element is ≥44px on coarse pointers (`[@media(pointer:coarse)]`).
+- [ ] Focus ring: interactive elements carry standard `focus-visible:ring-2` on `--ac-strong`.
+- [ ] No bare `outline-none`.
+- [ ] Modals and sheets use `<Modal>` or `<Sheet>` with focus containment.
+- [ ] Screen-reader names on all icon buttons (`<IconButton label="...">`).
+- [ ] Forms pair labels with inputs (`<TextField>`, `<TextArea>`, `<SelectField>`).
+- [ ] Vitest accessibility suites pass:
+  - `npm run test -- --run tests/a11y-contract.test.ts`
+  - `npm run test -- --run tests/a11y-compliance.test.ts`
+  - `npm run test -- --run tests/design-token-contrast.test.ts`

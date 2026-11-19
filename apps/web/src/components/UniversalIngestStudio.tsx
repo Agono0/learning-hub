@@ -19,7 +19,17 @@ import {
   Video,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, Callout, IconButton, Panel, SelectField, Tabs, TextArea, TextField } from '@/ui'
+import {
+  Badge,
+  Button,
+  Callout,
+  IconButton,
+  Panel,
+  SelectField,
+  Tabs,
+  TextArea,
+  TextField,
+} from '@/ui'
 
 export type IngestMediaType = 'youtube' | 'pdf' | 'code' | 'notes'
 

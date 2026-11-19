@@ -39,7 +39,16 @@ import {
 import { apiGet, apiSend } from '@/lib/transport'
 import { useReducedMotion } from '@/lib/useReducedMotion'
 import { MemoryPalace3DStudio } from '@/components/MemoryPalace3DStudio'
-import { Button, Callout, EmptyState, IconButton, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
+import {
+  Button,
+  Callout,
+  EmptyState,
+  IconButton,
+  PageHeader,
+  Panel,
+  SelectField,
+  Skeleton,
+} from '@/ui'
 
 interface PalaceListResponse {
   palaces: Array<{ palace: { id: number; name: string }; items: unknown[] }>
@@ -450,7 +459,11 @@ export default function Palace3dPage() {
                   <IconButton label="Turn left (Q)" onClick={() => turn(1)} className={padBtn}>
                     <RotateCcw className="h-4 w-4" />
                   </IconButton>
-                  <IconButton label="Step forward (W)" onClick={() => walk(1, 0)} className={padBtn}>
+                  <IconButton
+                    label="Step forward (W)"
+                    onClick={() => walk(1, 0)}
+                    className={padBtn}
+                  >
                     <ArrowUp className="h-4 w-4" />
                   </IconButton>
                   <IconButton label="Turn right (E)" onClick={() => turn(-1)} className={padBtn}>

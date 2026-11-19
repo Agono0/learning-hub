@@ -96,6 +96,7 @@ export function Tabs<K extends string>({ items, value, onChange, label }: TabsPr
             onKeyDown={(e) => onKey(e, i)}
             className={cx(
               'relative z-10 flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors [@media(pointer:coarse)]:min-h-11',
+              'focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none',
               active
                 ? 'font-medium text-neutral-900 dark:text-neutral-100'
                 : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200',
