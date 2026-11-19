@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * @file packages/core/src/contrasting/contrasting-engine.ts
  * @description Contrasting Cases & Inventing with Examples Problem-Solving Engine.
@@ -21,8 +22,6 @@
  *   - CDTS: Contrasting Differentiation & Transfer Score (0–100 composite index)
  *   - FSRS-6 review deck generation calibrated by differentiated perceptual stability.
  */
-
-import { z } from 'zod'
 
 // ── Enums & Schemas ──────────────────────────────────────────────────────────
 
@@ -1111,3 +1110,11 @@ export function generateContrastingFSRSDeck(
     cards,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const contrastingDeckInputSchema = z.object({
+  setId: z.string(),
+  cdtsBaseline: z.number().min(0).max(100).optional(),
+})
+export type ContrastingDeckInput = z.infer<typeof contrastingDeckInputSchema>

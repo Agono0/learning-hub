@@ -835,3 +835,18 @@ export function generateCollaborativeFSRSDeck(
     cards,
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const collaborativePartnerInputSchema = z.object({
+  scenarioId: z.string(),
+  learnerTurnText: z.string().min(1).default(''),
+  turnIndex: z.number().int().nonnegative().default(0),
+})
+export type CollaborativePartnerInput = z.infer<typeof collaborativePartnerInputSchema>
+
+export const collaborativeDeckInputSchema = z.object({
+  scenarioId: z.string(),
+  ceiBaseline: z.number().min(0).max(100).optional(),
+})
+export type CollaborativeDeckInput = z.infer<typeof collaborativeDeckInputSchema>

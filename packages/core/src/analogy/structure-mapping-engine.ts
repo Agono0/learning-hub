@@ -887,3 +887,25 @@ export function exportAnalogicalToFSRSCards(
 
   return cards
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const structureMappingAttemptSchema = z.object({
+  suiteId: z.string(),
+  selectedBaseAnalogId: z.string(),
+  entityMappings: z.array(z.object({ baseEntityId: z.string(), targetEntityId: z.string() })),
+  predicateMappings: z.array(
+    z.object({ basePredicateId: z.string(), targetPredicateId: z.string() }),
+  ),
+  articulatedConvergenceSchema: z.string(),
+  decoyRejectionRationale: z.string().optional(),
+  confidenceScore: z.number().min(1).max(5),
+  timeSpentMs: z.number().nonnegative(),
+})
+export type StructureMappingAttemptInput = z.infer<typeof structureMappingAttemptSchema>
+
+export const analogyEvaluateInputSchema = z.object({
+  suiteKey: z.string().optional(),
+  attempt: structureMappingAttemptSchema.optional(),
+})
+export type AnalogyEvaluateInput = z.infer<typeof analogyEvaluateInputSchema>

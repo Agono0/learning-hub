@@ -1,3 +1,4 @@
+import { z } from 'zod'
 /**
  * Learning HUB — Cognitive Load & Element Interactivity Engine
  *
@@ -30,8 +31,6 @@
  *    initial stability receives a chunking multiplier:
  *    S_0 = S_base * (1 + 0.35 * ChunkingScore * max(0, Efficiency + 0.5))
  */
-
-import { z } from 'zod'
 
 // ============================================================================
 // 1. Zod Schemas & Domain Types
@@ -960,3 +959,13 @@ export class ElementInteractivitySession {
     return cards
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const interactivityAnalysisInputSchema = z.object({
+  suiteKey: z.string().optional(),
+  extraneousLoadFactor: z.number().min(0).max(3).default(1),
+  mentalEffort: z.number().min(1).max(9).optional(),
+  performance: z.number().min(0).max(100).optional(),
+})
+export type InteractivityAnalysisInput = z.infer<typeof interactivityAnalysisInputSchema>

@@ -173,6 +173,34 @@ export const LearnerModelHypothesisSchema = z.object({
 })
 export type LearnerModelHypothesis = z.infer<typeof LearnerModelHypothesisSchema>
 
+/** POST /cognitive/system-dynamics/simulate body — shared across server, MCP and CLI. */
+export const systemDynamicsSimulateInputSchema = z.object({
+  scenarioId: z.string(),
+  stepsCount: z.number().int().min(5).max(300).default(120),
+  dt: z.number().min(0.01).max(10).default(1),
+  policyMultipliers: z.record(z.string(), z.number()).optional(),
+})
+export type SystemDynamicsSimulateInput = z.infer<typeof systemDynamicsSimulateInputSchema>
+
+/** POST /cognitive/system-dynamics/evaluate body — scenarioId + full learner model. */
+export const systemDynamicsEvaluateInputSchema = z.object({
+  scenarioId: z.string(),
+  classifiedVariables: LearnerModelHypothesisSchema.shape.classifiedVariables,
+  identifiedLoops: LearnerModelHypothesisSchema.shape.identifiedLoops,
+  identifiedArchetype: LearnerModelHypothesisSchema.shape.identifiedArchetype,
+  proposedHighLeverageIntervention:
+    LearnerModelHypothesisSchema.shape.proposedHighLeverageIntervention,
+  predictedBehavior: LearnerModelHypothesisSchema.shape.predictedBehavior,
+})
+export type SystemDynamicsEvaluateInput = z.infer<typeof systemDynamicsEvaluateInputSchema>
+
+/** POST /cognitive/system-dynamics/deck body. */
+export const systemDynamicsDeckInputSchema = z.object({
+  scenarioId: z.string(),
+  sdiBaseline: z.number().min(0).max(100).optional(),
+})
+export type SystemDynamicsDeckInput = z.infer<typeof systemDynamicsDeckInputSchema>
+
 export const SystemsDynamicsEvaluationSchema = z.object({
   sfdr: z.number().min(0).max(100), // Stock-Flow Discrimination Ratio
   flia: z.number().min(0).max(100), // Feedback Loop Identification Accuracy

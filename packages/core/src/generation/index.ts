@@ -226,3 +226,13 @@ export function evaluateGenerationTrial(input: GenerationTrialInput): Generation
 }
 
 export * from './desirable-difficulty-engine'
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────────
+
+export const generationChallengeInputSchema = z.object({
+  concept: z.string().min(1),
+  explanation: z.string().optional(),
+  text: z.string().optional(),
+  tier: generationTierEnum,
+})
+export type GenerationChallengeInput = z.infer<typeof generationChallengeInputSchema>

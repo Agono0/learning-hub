@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 /**
  * @file packages/core/src/equilibrium/reflective-equilibrium-engine.ts
  * @description Reflective Equilibrium & Epistemic Calibration Engine.
@@ -63,6 +65,14 @@ export interface DissonantTriad {
   }[]
 }
 
+export const calibratedProbabilityPredictionSchema = z.object({
+  propositionId: z.string(),
+  propositionText: z.string(),
+  subjectiveConfidence: z.number().min(0.5).max(1),
+  actualOutcome: z.boolean(),
+  domainContext: z.string(),
+})
+
 export interface CalibratedProbabilityPrediction {
   readonly propositionId: string
   readonly propositionText: string
@@ -97,6 +107,22 @@ export interface ReflectiveEquilibriumSuite {
   readonly dissonantTriads: readonly DissonantTriad[]
   readonly predictionBank: readonly CalibratedProbabilityPrediction[]
 }
+
+export const equilibriumSessionStateSchema = z.object({
+  suiteId: z.string(),
+  activeAdjustments: z.record(
+    z.string(),
+    z.object({
+      adjustedConfidence: z.number().min(0.5).max(1),
+      revisedStatement: z.string().optional(),
+    }),
+  ),
+  resolvedTriadStrategies: z.record(
+    z.string(),
+    z.enum(['revise_principle', 'override_judgment', 'reformulate_theory']),
+  ),
+  recordedPredictions: z.array(calibratedProbabilityPredictionSchema).default([]),
+})
 
 export interface EquilibriumSessionState {
   readonly suiteId: string
@@ -908,3 +934,12 @@ export class ReflectiveEquilibriumSession {
     }
   }
 }
+
+// ── Route-level input schemas (TD-02) ──────────────────────────────────
+
+export const equilibriumEvaluateInputSchema = z.object({
+  suiteKey: z.string().optional(),
+  sessionState: equilibriumSessionStateSchema.optional(),
+  exportCards: z.boolean().default(false),
+})
+export type EquilibriumEvaluateInput = z.infer<typeof equilibriumEvaluateInputSchema>
