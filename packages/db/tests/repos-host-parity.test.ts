@@ -132,8 +132,11 @@ describe('repos/cards — decks, basic card generation, cognitive projections', 
     const first = findOrCreateDeck('Inbox', { db })
     const second = findOrCreateDeck('Inbox', { db })
     expect(second.id).toBe(first.id)
+    // A DIFFERENT name with the same emoji still creates its own deck row.
     const named = findOrCreateDeck('Emoji deck', { emoji: '🧠', db })
     expect(named.emoji).toBe('🧠')
+    expect(named.id).not.toBe(first.id)
+    expect(findOrCreateDeck('Emoji deck', { db }).id).toBe(named.id)
   })
 
   it('parseBasicCards handles Q:/A: pairs, "::" and " | " separators and continuations', () => {
@@ -175,6 +178,14 @@ describe('repos/cards — decks, basic card generation, cognitive projections', 
       db.select().from(schema.cards).where(eq(schema.cards.id, withSource.cardIds[0]!)).get()!
         .source,
     ).toBe('mcp')
+  })
+
+  it('createBasicCards propagates write failures and leaves no partial rows', () => {
+    // cards.deck_id references decks (FK enforced by the fixture) — a
+    // nonexistent deck fails the inserts and the empty transaction commits
+    // nothing (withTransaction rollback semantics, mirroring transaction.test.ts).
+    expect(() => createBasicCards(99999, 'a :: b\nc :: d', { db })).toThrow()
+    expect(db.select().from(schema.cards).all()).toHaveLength(0)
   })
 
   it('listCardsByStability orders weakest-first, filters suspended, honors deckId and limit', () => {
@@ -319,6 +330,19 @@ describe('repos/focus-lock — standard session lifecycle, friction, focus minut
     expect(repeat.leaks).toBe(1)
   })
 
+  it('computes actualMinutes from startedAt when not passed and trims empty tasks', () => {
+    const blank = startFocusSession({ plannedMinutes: 25, task: '   ', now: T0 }, { db })
+    expect(blank.task).toBeNull()
+    const session = createPomodoroSession(25, { now: T0, db })
+    const finished = finishFocusSession(session.id, {
+      now: new Date(T0.getTime() + 25 * 60_000),
+      db,
+    })
+    expect(finished.session.actualMinutes).toBe(25)
+    expect(finished.session.completed).toBe(true)
+    expect(finished.xpAwarded).toBe(40)
+  })
+
   it('lists recent sessions newest-first and aggregates friction by trigger', () => {
     createPomodoroSession(5, { now: new Date(daysAgoIso(2)), db })
     createPomodoroSession(15, { now: T0, db })
@@ -450,6 +474,24 @@ describe('repos/fsrs dueQueue — the shared review session queue', () => {
     expect(dueQueue({ now: T0, db })).toHaveLength(3)
     expect(dueQueue({ now: T0, limit: 2, db })).toHaveLength(2)
     expect(dueQueue({ now: T0, deckId: other.id, db })).toHaveLength(1)
+  })
+
+  it('excludes cards buried into the future but returns cards whose bury expired', () => {
+    const deck = findOrCreateDeck('D', { db })
+    db.insert(schema.cards)
+      .values([
+        // sibling-burying: not available until buryUntil passes (core buildSession)
+        reviewableCard({
+          deckId: deck.id,
+          due: daysAgoIso(1),
+          buryUntil: new Date(T0.getTime() + 86_400_000).toISOString(),
+        }),
+        reviewableCard({ deckId: deck.id, due: daysAgoIso(2), buryUntil: daysAgoIso(1) }),
+        reviewableCard({ deckId: deck.id, due: daysAgoIso(3) }),
+      ])
+      .run()
+    const queue = dueQueue({ now: T0, db })
+    expect(queue.map((c) => c.due)).toEqual([daysAgoIso(3), daysAgoIso(2)])
   })
 })
 
@@ -639,6 +681,48 @@ describe('repos/workload — projection and transactional due shifts', () => {
     expect(db.select().from(schema.cards).where(eq(schema.cards.id, a.id)).get()!.due).toBe(targetA)
     expect(db.select().from(schema.cards).where(eq(schema.cards.id, b.id)).get()!.due).toBe(targetB)
     expect(applyWorkloadShifts([], { db })).toBe(0)
+  })
+
+  it('rolls back the whole shift batch when one write violates a constraint', () => {
+    const deck = findOrCreateDeck('D', { db })
+    const a = db
+      .insert(schema.cards)
+      .values({
+        deckId: deck.id,
+        type: 'basic',
+        content: { basic: { front: 'a', back: '' } },
+        due: daysAgoIso(1),
+      })
+      .returning()
+      .all()[0]!
+    const b = db
+      .insert(schema.cards)
+      .values({
+        deckId: deck.id,
+        type: 'basic',
+        content: { basic: { front: 'b', back: '' } },
+        due: daysAgoIso(2),
+      })
+      .returning()
+      .all()[0]!
+
+    // cards.due is NOT NULL: the second write fails and the first write must
+    // roll back with it (withTransaction BEGIN IMMEDIATE semantics).
+    expect(() =>
+      applyWorkloadShifts(
+        [
+          { cardId: a.id, newDue: daysAgoIso(0) },
+          { cardId: b.id, newDue: null as unknown as string },
+        ],
+        { db },
+      ),
+    ).toThrow()
+    expect(db.select().from(schema.cards).where(eq(schema.cards.id, a.id)).get()!.due).toBe(
+      daysAgoIso(1),
+    )
+    expect(db.select().from(schema.cards).where(eq(schema.cards.id, b.id)).get()!.due).toBe(
+      daysAgoIso(2),
+    )
   })
 
   it('shiftCardsDue moves dues relative by deltaDays, preserving time-of-day', () => {
