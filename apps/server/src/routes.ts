@@ -2954,6 +2954,33 @@ export const routes: Route[] = [
     summary: 'generate calibrated FSRS-6 review deck for categorization',
     handler: postPrototypeExemplarDeck,
   },
+  {
+    method: 'GET',
+    path: '/cognitive/categorization/scenarios',
+    summary:
+      'list canonical categorization category sets (Rosch 1975; Medin & Schaffer 1978; Nosofsky 1986; Ashby & Gott 1988)',
+    handler: getPrototypeExemplarScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/categorization/evaluate',
+    summary:
+      'evaluate a categorization session (TSC, CTS, MCD, CRI, maturity band, model comparison)',
+    handler: postPrototypeExemplarEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/categorization/plan',
+    summary:
+      'plan model-diagnostic trials + optional multi-day study schedule (expanding retrieval, interleaving)',
+    handler: postPrototypeExemplarPlan,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/categorization/deck',
+    summary: 'generate calibrated FSRS-6 review deck for categorization',
+    handler: postPrototypeExemplarDeck,
+  },
 ]
 
 /**

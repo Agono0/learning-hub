@@ -130,4 +130,76 @@ export const prototypeExemplarTools: RegisteredTool[] = [
       })
     },
   ),
+
+  // ── 5-8. Categorization aliases ──
+  tool(
+    'categorization_list_scenarios',
+    'Lists the canonical categorization category sets (Rosch 1975, Medin & Schaffer 1978, Nosofsky 1986, Ashby & Gott 1988).',
+    {},
+    async () => {
+      return json({
+        count: CANONICAL_CATEGORIZATION_SETS.length,
+        scenarios: CANONICAL_CATEGORIZATION_SETS,
+      })
+    },
+  ),
+
+  tool(
+    'categorization_evaluate',
+    'Evaluates a completed categorization session: fits prototype (Reed 1972) and exemplar GCM (Nosofsky 1986) models.',
+    {
+      setId: categorizationSubmissionSchema.shape.setId.default('proto-bird-typicality'),
+      typicalityRatings: categorizationSubmissionSchema.shape.typicalityRatings,
+      classifications: categorizationSubmissionSchema.shape.classifications,
+    },
+    async ({ setId, typicalityRatings, classifications }) => {
+      const set = findCategorySet(setId)
+      const evaluation = evaluateCategorizationSession(set, {
+        setId: set.id,
+        typicalityRatings,
+        classifications,
+      })
+      return json({ ok: true, evaluation })
+    },
+  ),
+
+  tool(
+    'categorization_plan',
+    'Plans model-diagnostic trials + multi-day study schedule for categorization.',
+    {
+      setId: z.string().default('proto-bird-typicality'),
+      maxTrials: z.number().int().min(1).max(24).default(6),
+      sessions: z.array(studyPlanSessionSchema).max(500).default([]),
+      horizonDays: z.number().int().min(1).max(30).default(10),
+      now: z.string().optional(),
+    },
+    async ({ setId, maxTrials, sessions, horizonDays, now }) => {
+      const set = findCategorySet(setId)
+      const plan = planDiscriminatingBlock(set, maxTrials)
+      let schedule: StudyPlan | null = null
+      if (sessions.length > 0) {
+        schedule = planCategorizationStudy(sessions, {
+          now: now ?? new Date().toISOString(),
+          horizonDays,
+        })
+      }
+      return json({ ok: true, plan, schedule })
+    },
+  ),
+
+  tool(
+    'categorization_deck',
+    'Synthesizes calibrated FSRS review cards scaled by the Category Retention Index (CRI).',
+    {
+      setId: z.string().default('proto-bird-typicality'),
+      criBaseline: z.number().min(0).max(100).default(50),
+    },
+    async ({ setId, criBaseline }) => {
+      const set = findCategorySet(setId)
+      const neutralEvaluation = evaluateCategorizationSession(set, { setId: set.id })
+      neutralEvaluation.cri = criBaseline
+      const deck = generateCategorizationDeck(set, neutralEvaluation)
+      return json({ ok: true, deck })
+    },
+  ),
 ]

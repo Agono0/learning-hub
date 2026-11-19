@@ -230,5 +230,12 @@ export const prototypeExemplarCommands: RegisteredCommand[] = [
     usage: '[scenarios|evaluate|plan|deck]',
     run: (runArgs) => prototypeExemplarCommand(runArgs),
   },
+  {
+    name: 'categorization',
+    description: 'Rosch (1975), Nosofsky (1986) & Ashby (1998) Categorization Study Platform',
+    usage: '[scenarios|evaluate|plan|deck]',
+    run: (runArgs) => prototypeExemplarCommand(runArgs),
+  },
 ]
+
 

@@ -394,6 +394,7 @@ add('collaborative', collaborative)
 add('system-dynamics', systemDynamics)
 add('model-inquiry', modelInquiry)
 add('prototype-exemplar', prototypeExemplar)
+add('categorization', prototypeExemplar)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
