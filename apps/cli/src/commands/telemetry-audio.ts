@@ -1,18 +1,17 @@
 /**
  * Audio schedule, Cognitive Load telemetry, and Solo RPG Games CLI commands.
  */
+import { type RegisteredCommand } from './registry'
 import { BOSS_ROSTER, buildTonightPlan, sleepProfileSchema } from '@learning-hub/core'
 import {
-  cards,
-  db,
   getActiveBossBattle,
   getDueCardsForAudio,
   getRecentCognitiveTelemetry,
   getTmrCuesForSleepReplay,
+  listCardsByStability,
   mintTmrCuesForRecentReviews,
   syncBossBattleProgress,
 } from '@learning-hub/db'
-import { asc, eq } from 'drizzle-orm'
 import { fragilityScore, toConsolidationCandidates } from '@learning-hub/core/tmr'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -38,20 +37,9 @@ export function tmrPlanCommand(args: string[]): void {
     maxAcousticDba: Number(parseFlag(args, '--dba') ?? '35'),
   })
 
-  const rows = db
-    .select({
-      id: cards.id,
-      stability: cards.stability,
-      difficulty: cards.difficulty,
-      due: cards.due,
-      state: cards.state,
-      suspended: cards.suspended,
-    })
-    .from(cards)
-    .where(eq(cards.suspended, false))
-    .orderBy(asc(cards.stability))
-    .limit(300)
-    .all()
+  // Shared repo projection — identical candidate fetch to the MCP
+  // `sleep_consolidation_plan` tool (repos/cards.listCardsByStability).
+  const rows = listCardsByStability({ limit: 300 })
 
   const candidates = toConsolidationCandidates(
     rows
@@ -215,3 +203,25 @@ export function gamesCommand(args: string[]): void {
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub games status`)
 }
+
+export const audioCommands: RegisteredCommand[] = [
+  {
+    name: 'audio',
+    description: 'speakable commute review and sleep TMR earcons',
+    usage: '[schedule|tmr-plan]',
+    run: (runArgs) => {
+      const sub = runArgs[0]
+      if (sub === 'tmr-plan') return tmrPlanCommand(runArgs.slice(1))
+      return audioCommand(runArgs)
+    },
+  },
+]
+
+export const gamesCommands: RegisteredCommand[] = [
+  {
+    name: 'games',
+    description: 'solo RPG boss battles and mythical boss roster',
+    usage: '[status]',
+    run: (runArgs) => gamesCommand(runArgs),
+  },
+]

@@ -3,11 +3,19 @@
  * - Curriculum Concept Dependencies (Prerequisite Graph)
  * - Anki Note & Card Synchronization Mappings
  */
-import { and, desc, eq, or } from 'drizzle-orm'
+import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { AnkiSyncMode } from '@learning-hub/core/anki-connect'
 import { willCreateCycle } from '@learning-hub/core/knowledge-graph'
-import { getDb } from '../index'
-import { ankiSyncMappings, conceptDependencies } from '../schema'
+import { getDb, type LearningHubDB } from '../index'
+import {
+  ankiSyncMappings,
+  cards,
+  conceptDependencies,
+  ideaLinks,
+  ideas,
+  noteLinks,
+  notes,
+} from '../schema'
 import { withTransaction } from '../transaction'
 
 /** Thrown when an edge would make the prerequisite graph cyclic (incl. A → A). */
@@ -138,4 +146,80 @@ export function listAnkiMappings(limit = 100) {
     .orderBy(desc(ankiSyncMappings.lastSyncAt))
     .limit(limit)
     .all()
+}
+
+// ─── Graph overview resource ────────────────────────────────────────────────
+
+/** Node counts and the most-connected notes/ideas of the knowledge graph. */
+export interface GraphOverview {
+  counts: {
+    notes: number
+    ideas: number
+    cards: number
+    noteLinks: number
+    ideaLinks: number
+  }
+  topNotes: { id: number; title: string; links: number }[]
+  topIdeas: { id: number; title: string; links: number }[]
+}
+
+/**
+ * The `graph://overview` payload — per-node-type counts plus the five most
+ * connected notes and ideas (link degree counts both directions). One
+ * definition, every host: the MCP server previously carried this five-count +
+ * top-list aggregate inline in its resource handler.
+ */
+export function graphOverview(opts: { db?: LearningHubDB } = {}): GraphOverview {
+  const db = opts.db ?? getDb()
+
+  const [noteCount] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(notes)
+    .all()
+  const [ideaCount] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(ideas)
+    .all()
+  const [cardCount] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(cards)
+    .all()
+  const [noteLinkCount] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(noteLinks)
+    .all()
+  const [ideaLinkCount] = db
+    .select({ n: sql<number>`count(*)` })
+    .from(ideaLinks)
+    .all()
+
+  const topNotes = db
+    .select({ id: notes.id, title: notes.title, links: sql<number>`count(note_links.id)` })
+    .from(notes)
+    .leftJoin(noteLinks, or(eq(noteLinks.fromNoteId, notes.id), eq(noteLinks.toNoteId, notes.id)))
+    .groupBy(notes.id, notes.title)
+    .orderBy(desc(sql`count(note_links.id)`))
+    .limit(5)
+    .all()
+
+  const topIdeas = db
+    .select({ id: ideas.id, title: ideas.title, links: sql<number>`count(idea_links.id)` })
+    .from(ideas)
+    .leftJoin(ideaLinks, or(eq(ideaLinks.fromIdeaId, ideas.id), eq(ideaLinks.toIdeaId, ideas.id)))
+    .groupBy(ideas.id, ideas.title)
+    .orderBy(desc(sql`count(idea_links.id)`))
+    .limit(5)
+    .all()
+
+  return {
+    counts: {
+      notes: Number(noteCount?.n ?? 0),
+      ideas: Number(ideaCount?.n ?? 0),
+      cards: Number(cardCount?.n ?? 0),
+      noteLinks: Number(noteLinkCount?.n ?? 0),
+      ideaLinks: Number(ideaLinkCount?.n ?? 0),
+    },
+    topNotes: topNotes.map((r) => ({ id: r.id, title: r.title, links: Number(r.links) })),
+    topIdeas: topIdeas.map((r) => ({ id: r.id, title: r.title, links: Number(r.links) })),
+  }
 }

@@ -3,19 +3,22 @@
  * 1. weakness_radar: Interference/confusion pairs (Underwood 1957) and leech decomposition.
  * 2. workload_balance: Forecast, fuzz-smoothed review scheduling, and backlog recovery.
  * 3. exposure_ledger: Krashen i+1 natural lexical exposure tracking and spaced SRS promotion.
+ *
+ * All card/revlog reads and due-date writes go through the shared repos
+ * (repos/cards, repos/workload, repos/cognitive-trials) — the same queries the
+ * CLI commands and web handlers run.
  */
-import { and, asc, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import {
-  cards,
-  db,
+  applyWorkloadShifts,
   deriveMeasuredBehavior,
   getRevlogTrialRows,
   getWordExposureSummaries,
+  listCardsByStability,
+  recentReviewEvents,
   recordExposureBatch,
   reconstructCorrectionTrials,
-  revlog,
-  withTransaction,
+  workloadCards,
 } from '@learning-hub/db'
 import {
   auditDesirableDifficulty,
@@ -43,7 +46,6 @@ import {
   toConsolidationCandidates,
   generationTierEnum,
   pretestRelatedness,
-  type WorkloadCardItem,
   CALIBRATED_INVARIANCE_CATEGORIES,
   CALIBRATED_INVARIANCE_PROBLEMS,
   computeCategoryContrastMatrix,
@@ -74,14 +76,12 @@ export const cognitiveTools: RegisteredTool[] = [
       minLapses: z.number().int().min(1).default(2),
     },
     async ({ deckId, minLapses }) => {
-      const conditions = [eq(cards.suspended, false)]
-      if (deckId) conditions.push(eq(cards.deckId, deckId))
-
-      const cardRows = await db
-        .select()
-        .from(cards)
-        .where(and(...conditions))
-        .limit(200)
+      // Shared repo projection (weakest-first); the previous inline select had
+      // no ORDER BY, i.e. an arbitrary rowid sample.
+      const cardRows = listCardsByStability({
+        ...(deckId !== undefined ? { deckId } : {}),
+        limit: 200,
+      })
       const previews = new Map<number, string>()
       const mapped = cardRows.map((c) => {
         const content = (c.content ?? {}) as Record<string, unknown>
@@ -101,15 +101,8 @@ export const cognitiveTools: RegisteredTool[] = [
         }
       })
 
-      const revlogRows = await db
-        .select({
-          cardId: revlog.cardId,
-          grade: revlog.rating,
-          createdAt: revlog.reviewedAt,
-        })
-        .from(revlog)
-        .orderBy(desc(revlog.id))
-        .limit(1000)
+      // Shared repo read — undone (erased) reviews excluded.
+      const revlogRows = recentReviewEvents({ limit: 1000 })
 
       const confusionPairs = detectConfusionPairs(revlogRows, previews)
       const leeches = mapped
@@ -145,29 +138,9 @@ export const cognitiveTools: RegisteredTool[] = [
       deckId: z.number().int().positive().optional(),
     },
     async ({ action, days, easyDays, dailyCap, deckId }) => {
-      const conditions = [eq(cards.suspended, false)]
-      if (deckId) conditions.push(eq(cards.deckId, deckId))
-
-      const rows = await db
-        .select({
-          id: cards.id,
-          due: cards.due,
-          stability: cards.stability,
-          scheduledDays: cards.scheduledDays,
-          state: cards.state,
-          lapses: cards.lapses,
-        })
-        .from(cards)
-        .where(and(...conditions))
-
-      const cardItems: WorkloadCardItem[] = rows.map((r) => ({
-        id: r.id,
-        due: r.due,
-        stability: r.stability ?? 0,
-        intervalDays: r.scheduledDays ?? 0,
-        state: r.state ?? 0,
-        lapses: r.lapses ?? 0,
-      }))
+      // Shared workload projection (repos/workload) — previously duplicated
+      // inline here and in the CLI workload command.
+      const cardItems = workloadCards(deckId !== undefined ? { deckId } : {})
 
       const now = new Date()
 
@@ -191,13 +164,7 @@ export const cognitiveTools: RegisteredTool[] = [
           easyDays: easyDays ?? [],
           asOf: now,
         })
-        if (shifts.length > 0) {
-          withTransaction((tx) => {
-            for (const shift of shifts) {
-              tx.update(cards).set({ due: shift.newDue }).where(eq(cards.id, shift.cardId)).run()
-            }
-          })
-        }
+        applyWorkloadShifts(shifts)
         return json({
           ok: true,
           action: 'balance',
@@ -209,13 +176,7 @@ export const cognitiveTools: RegisteredTool[] = [
       if (action === 'catch_up') {
         const overdueCards = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0)
         const shifts = catchUpBacklog(overdueCards, dailyCap, now)
-        if (shifts.length > 0) {
-          withTransaction((tx) => {
-            for (const shift of shifts) {
-              tx.update(cards).set({ due: shift.newDue }).where(eq(cards.id, shift.cardId)).run()
-            }
-          })
-        }
+        applyWorkloadShifts(shifts)
         return json({ ok: true, action: 'catch_up', shiftedCount: shifts.length })
       }
 
@@ -394,19 +355,9 @@ export const cognitiveTools: RegisteredTool[] = [
         maxAcousticDba,
       })
 
-      const rows = await db
-        .select({
-          id: cards.id,
-          stability: cards.stability,
-          difficulty: cards.difficulty,
-          due: cards.due,
-          state: cards.state,
-          suspended: cards.suspended,
-        })
-        .from(cards)
-        .where(eq(cards.suspended, false))
-        .orderBy(asc(cards.stability))
-        .limit(300)
+      // Shared repo projection — identical candidate fetch to the CLI
+      // `audio tmr-plan` command (repos/cards.listCardsByStability).
+      const rows = listCardsByStability({ limit: 300 })
 
       const candidates = toConsolidationCandidates(
         rows
@@ -465,17 +416,9 @@ export const cognitiveTools: RegisteredTool[] = [
       limit: z.number().int().min(1).max(20).default(8),
     },
     async ({ limit }) => {
-      const rows = await db
-        .select({
-          id: cards.id,
-          content: cards.content,
-          stability: cards.stability,
-          difficulty: cards.difficulty,
-        })
-        .from(cards)
-        .where(eq(cards.suspended, false))
-        .orderBy(asc(cards.stability))
-        .limit(120)
+      // Shared repo projection — identical candidate fetch to the CLI
+      // `pretest questions` command (repos/cards.listCardsByStability).
+      const rows = listCardsByStability({ limit: 120 })
 
       const frontBack = (content: unknown): { front: string; back: string } | null => {
         if (!content || typeof content !== 'object') return null

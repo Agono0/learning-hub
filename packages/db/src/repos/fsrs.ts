@@ -2,15 +2,18 @@
  * FSRS-6 optimization, evaluation, rescheduling, and append-only Undo
  * repository — shared across Web handlers, MCP tools, CLI, and headless server.
  */
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import {
+  buildSession,
   evaluateFsrsWeights,
   optimizeFsrsWeights,
   parseFsrsWeights,
   rescheduleCardHistory,
+  type Confidence,
   type FsrsEvaluation,
   type FsrsOptimizationResult,
   type FsrsOptimizerRevlog,
+  type SessionMode,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import { CardNotFoundError } from '../review-service'
@@ -316,4 +319,101 @@ export function undoCardReview(
     const restored = tx.select().from(cards).where(eq(cards.id, payload.cardId)).limit(1).get()
     return { card: restored!, revlogUndone, revlogId: targetRevlogId }
   }, database)
+}
+
+const DAY_MS = 86_400_000
+
+/** Options for the shared review due queue. */
+export interface DueQueueOptions {
+  /** Max cards returned (default 20, capped at 100 by the callers' clamps). */
+  limit?: number
+  /** 'normal' (default) | 'pretest' | 'cram' — core `buildSession` modes. */
+  mode?: SessionMode
+  /** Restrict the queue to one deck. */
+  deckId?: number
+  /** Instant the due-window and ordering evaluate at. */
+  now?: Date
+  /** Override the database handle (tests). */
+  db?: LearningHubDB
+}
+
+/**
+ * THE review queue — the web session builder's candidate fetch + ordering as
+ * one shared repo function (apps/web/src/server/handlers/review/route.ts is
+ * canonical): unsuspended cards due within 7 days, each card's most recent
+ * ACTIVE revlog entry joined with `NOT EXISTS revlog_undos` (undone reviews
+ * are erased history and never drive hypercorrection), then core
+ * `buildSession` ordering — confident-wrong cards first (Butler et al.
+ * hypercorrection), then most-overdue first (tie: lowest id), decks
+ * interleaved. Returns full card rows in session order.
+ *
+ * Hosts (CLI review session, MCP, web) previously re-implemented slices of
+ * this; the CLI copy had no undo exclusion, so erased reviews leaked back into
+ * its queue semantics.
+ */
+export function dueQueue(opts: DueQueueOptions = {}): (typeof cards.$inferSelect)[] {
+  const database = opts.db ?? getDb()
+  const now = opts.now ?? new Date()
+  const limit = Math.max(1, opts.limit ?? 20)
+
+  // Candidates: everything due or newer — buildSession filters precisely per
+  // mode ('normal' keeps only cards due at `now`).
+  const filters = [
+    eq(cards.suspended, false),
+    lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString()),
+  ]
+  if (opts.deckId !== undefined) filters.push(eq(cards.deckId, opts.deckId))
+  const candidateRows = database
+    .select()
+    .from(cards)
+    .where(and(...filters))
+    .limit(1000)
+    .all()
+
+  // Most recent ACTIVE revlog entry per card — hypercorrection signal that
+  // excludes undone reviews (append-only tombstones, ADR 0004).
+  const recent = database.all<{
+    card_id: number
+    rating: number
+    confidence: Confidence
+    reviewed_at: string
+  }>(sql`
+    SELECT r.card_id, r.rating, r.confidence, r.reviewed_at
+    FROM revlog r
+    JOIN (
+      SELECT max(id) AS id
+      FROM revlog
+      WHERE NOT EXISTS (SELECT 1 FROM revlog_undos u WHERE u.revlog_id = revlog.id)
+      GROUP BY card_id
+    ) latest ON latest.id = r.id
+  `)
+  const recentByCard = new Map(recent.map((r) => [r.card_id, r]))
+
+  const session = buildSession({
+    rows: candidateRows.map((row) => ({
+      id: row.id,
+      deckId: row.deckId,
+      due: row.due,
+      state: row.state,
+      reps: row.reps,
+      stability: row.stability,
+      suspended: row.suspended,
+      buryUntil: row.buryUntil,
+      recentRevlog: recentByCard.has(row.id)
+        ? {
+            rating: recentByCard.get(row.id)!.rating,
+            confidence: recentByCard.get(row.id)!.confidence,
+            reviewedAt: recentByCard.get(row.id)!.reviewed_at,
+          }
+        : null,
+    })),
+    limit,
+    mode: opts.mode ?? 'normal',
+    asOf: now,
+  })
+
+  const byId = new Map(candidateRows.map((c) => [c.id, c]))
+  return session
+    .map((r) => byId.get(r.id))
+    .filter((c): c is typeof cards.$inferSelect => c !== undefined)
 }

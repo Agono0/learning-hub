@@ -5,6 +5,7 @@
  * 3. metacognition: Koriat & Bjork (2005) Calibration & Glenn Brier score.
  * 4. invariance: Rohrer & Taylor (2007) interleaved structural invariance planning.
  */
+import { type RegisteredCommand } from './registry'
 import {
   auditDesirableDifficulty,
   buildPretestQuestion,
@@ -23,19 +24,21 @@ import {
   generateContrastSchedule,
   createGenerationLadder,
   evaluateFeynmanExplanation,
+  judgmentOfLearningFromRevlogRows,
   pretestRelatedness,
   evaluateGenerationTrial,
   evaluateHypercorrection,
   evaluateMetacognitiveProfile,
   generationTierEnum,
   prioritizeRelearningQueue,
-  type CorrectionTrial,
   type GenerationTier,
-  type JudgmentOfLearning,
-  type RelearnCandidate,
 } from '@learning-hub/core'
-import { cards, db, deriveMeasuredBehavior, revlog } from '@learning-hub/db'
-import { asc, desc, eq } from 'drizzle-orm'
+import {
+  deriveMeasuredBehavior,
+  getRevlogTrialRows,
+  listCardsByStability,
+  reconstructCorrectionTrials,
+} from '@learning-hub/db'
 
 function parseFlag(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag)
@@ -162,23 +165,11 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
 
   if (sub === 'stats') {
     const limit = Number(parseFlag(args, '--limit') || '50')
-    const rows = await db
-      .select({
-        cardId: revlog.cardId,
-        rating: revlog.rating,
-        confidence: revlog.confidence,
-        timeMs: revlog.timeMs,
-      })
-      .from(revlog)
-      .orderBy(desc(revlog.id))
-      .limit(limit)
-
-    const trials: JudgmentOfLearning[] = rows.map((r) => ({
-      cardId: r.cardId,
-      confidence: r.confidence === 1 ? 0.9 : 0.35,
-      outcome: r.rating >= 3 ? 1 : 0,
-      latencyMs: r.timeMs,
-    }))
+    // Shared trial query (repos/cognitive-trials) + core's canonical row→JOL
+    // mapping — identical trials to the web API and MCP tool, undone reviews
+    // excluded.
+    const rows = getRevlogTrialRows({ limit })
+    const trials = judgmentOfLearningFromRevlogRows(rows)
 
     const report = evaluateMetacognitiveProfile(trials)
 
@@ -199,48 +190,12 @@ export async function metacognitionCommand(args: string[]): Promise<void> {
 
   if (sub === 'hypercorrection') {
     const limit = Number(parseFlag(args, '--limit') || '200')
-    const rows = await db
-      .select({
-        cardId: revlog.cardId,
-        rating: revlog.rating,
-        confidence: revlog.confidence,
-        stability: cards.stability,
-        difficulty: cards.difficulty,
-      })
-      .from(revlog)
-      .innerJoin(cards, eq(revlog.cardId, cards.id))
-      .orderBy(desc(revlog.id))
-      .limit(limit)
-
-    // Same reconstruction as the web API / MCP tool: a miss arms its card,
-    // the card's next success counts as the correction.
-    const chronological = [...rows].reverse()
-    const corrections: CorrectionTrial[] = []
-    const armed = new Map<number, 0 | 1>()
-    for (const r of chronological) {
-      const correct = r.rating >= 3
-      const pending = armed.get(r.cardId)
-      if (pending !== undefined && correct) {
-        corrections.push({
-          cardId: r.cardId,
-          initialConfidence: pending === 1 ? 0.9 : 0.35,
-          wasCorrected: true,
-        })
-        armed.delete(r.cardId)
-      }
-      if (!correct) armed.set(r.cardId, r.confidence)
-    }
-
-    const candidates: RelearnCandidate[] = [...armed.entries()].map(([cardId, confidence]) => {
-      const card = rows.find((r) => r.cardId === cardId)
-      return {
-        cardId,
-        errorConfidence: confidence === 1 ? 0.9 : 0.35,
-        stability: card && card.stability > 0 ? card.stability : 1,
-        difficulty: card && card.difficulty > 0 ? card.difficulty : 6,
-        wasAlreadyCorrected: false,
-      }
-    })
+    // Shared trial query + canonical crucible reconstruction (repos/
+    // cognitive-trials): a miss arms its card, the card's next success counts
+    // as the correction — identical to the web API / MCP tool, undone reviews
+    // excluded.
+    const rows = getRevlogTrialRows({ limit })
+    const { corrections, candidates } = reconstructCorrectionTrials(rows)
 
     const crucible = evaluateHypercorrection(corrections)
     const queue = prioritizeRelearningQueue(candidates, corrections)
@@ -341,17 +296,9 @@ export async function pretestCommand(args: string[]): Promise<void> {
     return
   }
   const limit = Number(parseFlag(args, '--limit') || '8')
-  const rows = await db
-    .select({
-      id: cards.id,
-      content: cards.content,
-      stability: cards.stability,
-      difficulty: cards.difficulty,
-    })
-    .from(cards)
-    .where(eq(cards.suspended, false))
-    .orderBy(asc(cards.stability))
-    .limit(120)
+  // Shared repo projection — identical candidate fetch to the MCP
+  // `pretesting_protocol` tool (repos/cards.listCardsByStability).
+  const rows = listCardsByStability({ limit: 120 })
 
   const frontBack = (content: unknown): { front: string; back: string } | null => {
     if (!content || typeof content !== 'object') return null
@@ -721,3 +668,84 @@ export function equilibriumCommand(args: string[]): void {
     console.log('   revising a principle, overriding the judgment, or reformulating the theory.')
   }
 }
+
+export const generationCommands: RegisteredCommand[] = [
+  {
+    name: 'generation',
+    description: 'Slamecka-Graf generation effect challenges and evaluation',
+    usage: '[challenge|eval]',
+    run: (runArgs) => generationCommand(runArgs),
+  },
+]
+
+export const feynmanCommands: RegisteredCommand[] = [
+  {
+    name: 'feynman',
+    description: 'Feynman teach-back and IOED diagnostic evaluation',
+    usage: '[eval]',
+    run: (runArgs) => feynmanCommand(runArgs),
+  },
+]
+
+export const metacognitionCommands: RegisteredCommand[] = [
+  {
+    name: 'metacognition',
+    description: 'Koriat-Bjork calibration, Brier score, and hypercorrection crucible',
+    usage: '[stats|hypercorrection]',
+    run: (runArgs) => metacognitionCommand(runArgs),
+  },
+]
+
+export const difficultyCommands: RegisteredCommand[] = [
+  {
+    name: 'difficulty',
+    description: 'Dunlosky (2013) desirable-difficulty audit of your technique mix',
+    usage: 'audit [--testing 90 --reread 120 …]',
+    run: (runArgs) => difficultyCommand(runArgs),
+  },
+]
+
+export const pretestCommands: RegisteredCommand[] = [
+  {
+    name: 'pretest',
+    description: 'Pretesting-effect questions for young, fragile cards',
+    usage: 'questions [--limit 8]',
+    run: (runArgs) => pretestCommand(runArgs),
+  },
+]
+
+export const invarianceCommands: RegisteredCommand[] = [
+  {
+    name: 'invariance',
+    description: 'Rohrer-Taylor interleaved structural invariance practice plan',
+    usage: '[--mode interleaved|blocked] [--contrast 0..1] [--spacing 0..1]',
+    run: (runArgs) => invarianceCommand(runArgs),
+  },
+]
+
+export const analogyCommands: RegisteredCommand[] = [
+  {
+    name: 'analogy',
+    description: 'Gick & Holyoak analogical-transfer suite (structure mapping)',
+    usage: 'plan [--suite <key>]',
+    run: (runArgs) => analogyCommand(runArgs),
+  },
+]
+
+export const flexibilityCommands: RegisteredCommand[] = [
+  {
+    name: 'flexibility',
+    description: 'Spiro criss-crossing schedule for ill-structured cases',
+    usage: 'plan [--suite <key>]',
+    run: (runArgs) => flexibilityCommand(runArgs),
+  },
+]
+
+export const interactivityCommands: RegisteredCommand[] = [
+  {
+    name: 'interactivity',
+    description: 'Sweller element-interactivity analysis + Paas efficiency',
+    usage: 'analyze [--suite <key>] [--extraneous 1] [--effort 5 --performance 70]',
+    run: (runArgs) => interactivityCommand(runArgs),
+  },
+]

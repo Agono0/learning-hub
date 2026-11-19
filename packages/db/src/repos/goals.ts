@@ -57,24 +57,21 @@ export interface PatchIfThenPlanInput {
 }
 
 /**
- * List goals ordered newest first, with optional status filter.
+ * List goals ordered newest first, with optional status filter and limit.
  */
 export function listGoals(
   opts: {
     status?: string
+    limit?: number
     db?: LearningHubDB
   } = {},
 ): GoalRow[] {
   const db = opts.db ?? getDb()
-  if (opts.status) {
-    return db
-      .select()
-      .from(goals)
-      .where(eq(goals.status, opts.status))
-      .orderBy(desc(goals.createdAt))
-      .all()
-  }
-  return db.select().from(goals).orderBy(desc(goals.createdAt)).all()
+  const base = opts.status
+    ? db.select().from(goals).where(eq(goals.status, opts.status))
+    : db.select().from(goals)
+  const query = base.orderBy(desc(goals.createdAt))
+  return (opts.limit !== undefined ? query.limit(opts.limit) : query).all()
 }
 
 /**
