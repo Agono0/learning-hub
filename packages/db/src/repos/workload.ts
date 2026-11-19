@@ -8,7 +8,7 @@
  * transactions (`balanceWorkload` / `catchUpBacklog` outputs written row by
  * row). All shifting is `withTransaction` (Hard Rule #6).
  */
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { WorkloadCardItem } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import { cards } from '../schema'
@@ -73,33 +73,5 @@ export function applyWorkloadShifts(
       applied += 1
     }
     return applied
-  }, db)
-}
-
-const DAY_MS = 86_400_000
-
-/**
- * Shift the due dates of `cardIds` by `deltaDays` (positive = later) relative
- * to each card's CURRENT due date, preserving time-of-day, in one
- * transaction. Returns the number of cards updated. Unknown ids are skipped.
- */
-export function shiftCardsDue(
-  cardIds: number[],
-  deltaDays: number,
-  opts: { db?: LearningHubDB } = {},
-): number {
-  if (cardIds.length === 0 || deltaDays === 0) return 0
-  const db = opts.db ?? getDb()
-  return withTransaction((tx) => {
-    const rows = tx
-      .select({ id: cards.id, due: cards.due })
-      .from(cards)
-      .where(inArray(cards.id, cardIds))
-      .all()
-    for (const row of rows) {
-      const next = new Date(Date.parse(row.due) + deltaDays * DAY_MS).toISOString()
-      tx.update(cards).set({ due: next }).where(eq(cards.id, row.id)).run()
-    }
-    return rows.length
   }, db)
 }
