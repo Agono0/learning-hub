@@ -38,6 +38,7 @@ import { cognitiveUpsertKeys } from './025-cognitive-upsert-keys'
 import { exposureEventsMigration } from './026-exposure-events'
 import { hapticsSetting } from './027-haptics-setting'
 import { notificationCenter } from './028-notification-center'
+import { prototypeExemplarSessionsMigration } from './029-prototype-exemplar'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -69,6 +70,7 @@ export const MIGRATIONS: readonly Migration[] = [
   exposureEventsMigration,
   hapticsSetting,
   notificationCenter,
+  prototypeExemplarSessionsMigration,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

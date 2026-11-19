@@ -15,7 +15,7 @@
  *        (./tools/cards) · search, fsrs_optimize, starter_install,
  *        cloud_sync, quote_random (./tools/system) · curriculum_*, cognitive,
  *        lifestyle, learning-path, community, telemetry-audio and
- *        advanced-learning groups (./tools/*)
+ *        advanced-learning groups (./tools/*) · prototype_exemplar_*
  * Resources: idea://{id}, note://{id}, graph://overview
  *
  * Windows client config (claude_desktop_config.json / .mcp.json):
@@ -39,6 +39,7 @@ import { learningPathTools } from './tools/learning-path'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
+import { prototypeExemplarTools } from './tools/prototype-exemplar'
 import type { RegisteredTool } from './tool-kit'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
@@ -73,6 +74,7 @@ async function main() {
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,
+    ...prototypeExemplarTools,
   ] as RegisteredTool[]) {
     server.registerTool(
       registered.name,

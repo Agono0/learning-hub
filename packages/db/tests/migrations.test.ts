@@ -14,6 +14,7 @@ import { cognitiveUpsertKeys } from '../src/migrations/025-cognitive-upsert-keys
 import { exposureEventsMigration } from '../src/migrations/026-exposure-events'
 import { hapticsSetting } from '../src/migrations/027-haptics-setting'
 import { notificationCenter } from '../src/migrations/028-notification-center'
+import { prototypeExemplarSessionsMigration } from '../src/migrations/029-prototype-exemplar'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -101,13 +102,14 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 028 notification-center last, after 027, 026, 025, 024 and 023', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(notificationCenter)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(hapticsSetting)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(exposureEventsMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(cognitiveUpsertKeys)
-    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(ultimateCognitiveExpansion)
-    expect(MIGRATIONS[MIGRATIONS.length - 6]).toBe(deckDelayedFeedback)
+  it('registers 029 prototype-exemplar last, after 028, 027, 026, 025, 024 and 023', () => {
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(prototypeExemplarSessionsMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(notificationCenter)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(hapticsSetting)
+    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(exposureEventsMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(cognitiveUpsertKeys)
+    expect(MIGRATIONS[MIGRATIONS.length - 6]).toBe(ultimateCognitiveExpansion)
+    expect(MIGRATIONS[MIGRATIONS.length - 7]).toBe(deckDelayedFeedback)
   })
 })
 
@@ -173,6 +175,38 @@ describe('026 exposure-events', () => {
 
     // Idempotent re-run
     expect(() => exposureEventsMigration.up(ctx)).not.toThrow()
+  })
+})
+
+describe('029 prototype-exemplar', () => {
+  it('creates the append-only sessions table and created_at index idempotently', () => {
+    const raw = open()
+    const ctx = createMigrationContext(raw)
+    prototypeExemplarSessionsMigration.up(ctx)
+
+    expect(ctx.hasTable('prototype_exemplar_sessions')).toBe(true)
+    const cols = columns(raw, 'prototype_exemplar_sessions')
+    expect(cols).toContain('set_id')
+    expect(cols).toContain('phase')
+    expect(cols).toContain('trials_json')
+    expect(cols).toContain('metrics_json')
+    expect(cols).toContain('accuracy')
+    expect(cols).toContain('created_at')
+
+    // Idempotent re-run (fresh DBs get the same shape from schema.ts)
+    expect(() => prototypeExemplarSessionsMigration.up(ctx)).not.toThrow()
+
+    // The append-only ledger accepts inserts and answers day-bucket queries.
+    raw.exec(`
+      INSERT INTO prototype_exemplar_sessions (set_id, accuracy, created_at)
+        VALUES ('proto-bird-typicality', 90.0, '2026-01-15T09:00:00.000Z');
+    `)
+    const row = raw
+      .prepare(
+        "SELECT set_id, phase, substr(created_at, 1, 10) AS day FROM prototype_exemplar_sessions WHERE substr(created_at, 1, 10) = '2026-01-15'",
+      )
+      .get()
+    expect(row).toEqual({ set_id: 'proto-bird-typicality', phase: 'complete', day: '2026-01-15' })
   })
 })
 
