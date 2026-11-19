@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react'
 import { Coins, Hand, RotateCcw, X } from 'lucide-react'
 import { ItemPreviewStage } from '@/lib/three/ItemPreview'
 import { Badge } from './Feedback'
+import { IconButton } from './IconButton'
 import { cx } from './cx'
 
 export interface PreviewableItem {
@@ -105,13 +106,13 @@ export function ItemPreviewModal({
               <Hand className="w-3 h-3" /> Drag to spin
             </span>
           </div>
-          <button
+          <IconButton
+            label="Close preview"
             onClick={onClose}
-            aria-label="Close preview"
-            className="absolute top-3 right-3 p-2 rounded-lg bg-slate-950/70 backdrop-blur border border-slate-700/50 text-slate-300 hover:text-white transition-colors"
+            className="absolute top-3 right-3 border border-slate-700/50 bg-slate-950/70 text-slate-300 backdrop-blur hover:text-white"
           >
             <X className="w-4 h-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Details */}

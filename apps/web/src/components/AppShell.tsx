@@ -300,32 +300,26 @@ function Rail({ pathname }: { pathname: string | null }) {
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-16 print:hidden flex-col items-center border-r border-neutral-200 bg-white/80 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:flex lg:hidden dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <Brand compact />
       <div className="mt-2 flex flex-col items-center gap-1">
-        <button
-          type="button"
-          onClick={openCommandPalette}
+        <IconButton
+          label="Search"
           title="Search (⌘K)"
-          aria-label="Search"
-          className="grid h-10 w-10 place-items-center rounded-xl text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+          onClick={openCommandPalette}
+          className="rounded-xl"
         >
           <Search className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          onClick={sync.trigger}
-          disabled={sync.isPending}
+        </IconButton>
+        <IconButton
+          label="Cloud sync"
           title={sync.configured ? `Sync (${sync.provider})` : 'Cloud Sync'}
-          aria-label="Cloud sync"
-          className="relative grid h-10 w-10 place-items-center rounded-xl text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+          onClick={sync.trigger}
+          loading={sync.isPending}
+          className="relative rounded-xl"
         >
-          {sync.isPending ? (
-            <RefreshCw className="h-5 w-5 animate-spin text-ac-text" />
-          ) : (
-            <Cloud className="h-5 w-5" />
-          )}
+          <Cloud className="h-5 w-5" />
           {sync.configured && (
             <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
           )}
-        </button>
+        </IconButton>
       </div>
       <nav
         aria-label="Main"
@@ -392,13 +386,14 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
             className="mx-auto h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700"
             aria-hidden
           />
-          <button
+          <IconButton
+            label="Close"
+            size="lg"
             onClick={onClose}
-            aria-label="Close"
-            className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-tertiary"
+            className="absolute right-2 top-2 rounded-full"
           >
             <X className="h-5 w-5" />
-          </button>
+          </IconButton>
         </div>
         <div className="px-4 pb-3">
           <button
@@ -467,22 +462,18 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
           <IconButton label="Search" onClick={openCommandPalette} className="rounded-lg">
             <Search className="h-4 w-4" />
           </IconButton>
-          <button
-            type="button"
+          <IconButton
+            label="Cloud sync"
+            title={sync.configured ? `Sync (${sync.provider})` : 'Cloud Sync'}
             onClick={sync.trigger}
-            disabled={sync.isPending}
-            aria-label="Cloud sync"
-            className="relative grid h-9 w-9 place-items-center rounded-lg text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+            loading={sync.isPending}
+            className="relative rounded-lg"
           >
-            {sync.isPending ? (
-              <RefreshCw className="h-4 w-4 animate-spin text-ac-text" />
-            ) : (
-              <Cloud className="h-4 w-4" />
-            )}
+            <Cloud className="h-4 w-4" />
             {sync.configured && (
               <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
             )}
-          </button>
+          </IconButton>
           <TimerChip />
           <NotificationBell />
         </span>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Coins, Compass, Maximize2, X } from 'lucide-react'
+import { IconButton } from './IconButton'
 
 // Keep three.js out of the modal's critical path — it loads after first paint.
 const WorldCanvas = dynamic(() => import('./WorldCanvas').then((m) => m.WorldCanvas), {
@@ -55,12 +56,13 @@ export function WorldModal({
               {viewMode === 'diorama' ? 'Walk (WASD)' : 'Diorama'}
             </button>
 
-            <button
+            <IconButton
+              label="Close 3D world"
               onClick={onClose}
-              className="p-1.5 text-faint hover:text-slate-100 rounded-lg hover:bg-slate-800"
+              className="p-1.5 text-faint hover:text-slate-100 hover:bg-slate-800"
             >
               <X className="w-5 h-5" />
-            </button>
+            </IconButton>
           </div>
         </div>
 
