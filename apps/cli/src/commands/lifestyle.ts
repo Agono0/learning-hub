@@ -1,6 +1,7 @@
 /**
  * Habits, Journal, and Physio CLI commands.
  */
+import { type RegisteredCommand } from './registry'
 import { dayKey } from '@learning-hub/core'
 import {
   checkinHabit,
@@ -200,8 +201,6 @@ export function physioCommand(args: string[]): void {
     console.log(`Exercise nudge: ${insights.exercise.nudge}`)
   }
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const habitsCommands: RegisteredCommand[] = [
   {

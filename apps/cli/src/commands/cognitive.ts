@@ -5,6 +5,7 @@
  * 3. metacognition: Koriat & Bjork (2005) Calibration & Glenn Brier score.
  * 4. invariance: Rohrer & Taylor (2007) interleaved structural invariance planning.
  */
+import { type RegisteredCommand } from './registry'
 import {
   auditDesirableDifficulty,
   buildPretestQuestion,
@@ -667,8 +668,6 @@ export function equilibriumCommand(args: string[]): void {
     console.log('   revising a principle, overriding the judgment, or reformulating the theory.')
   }
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const generationCommands: RegisteredCommand[] = [
   {

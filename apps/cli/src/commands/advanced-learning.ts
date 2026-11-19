@@ -16,6 +16,7 @@
  * 14. contrasting: Schwartz & Bransford (1998, 2004) Contrasting Cases & Inventing with Examples
  */
 
+import { type RegisteredCommand } from './registry'
 import {
   CANONICAL_SKILLS,
   executeSkillSimulation,
@@ -1652,8 +1653,6 @@ export function modelInquiryCommand(args: string[]): void {
     console.log(`Recommendations:     ${evalResult.feedback.recommendations.join('; ')}`)
   }
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const skillsCommands: RegisteredCommand[] = [
   {

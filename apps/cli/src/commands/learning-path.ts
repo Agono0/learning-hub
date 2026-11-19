@@ -1,6 +1,7 @@
 /**
  * Reading, Study Plan, and GKT CLI commands.
  */
+import { type RegisteredCommand } from './registry'
 import { readFileSync, writeFileSync } from 'node:fs'
 import {
   propagateGktBelief,
@@ -239,8 +240,6 @@ export function gktCommand(args: string[]): void {
 
   console.log('Usage: learning-hub gkt [drill [--course <id>] [--answer true|false]]')
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const readingCommands: RegisteredCommand[] = [
   {

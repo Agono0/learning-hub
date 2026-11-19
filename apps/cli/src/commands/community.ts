@@ -1,6 +1,7 @@
 /**
  * Dialectic Debate, Spatial Memory Palace, 3D Virtual World, and Study Guilds CLI commands.
  */
+import { type RegisteredCommand } from './registry'
 import type { DebateTurn } from '@learning-hub/core'
 import {
   addPalaceLocus,
@@ -294,8 +295,6 @@ export function guildCommand(args: string[]): void {
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub guild [list|join|leave]`)
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const debateCommands: RegisteredCommand[] = [
   {

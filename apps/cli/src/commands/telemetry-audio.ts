@@ -1,6 +1,7 @@
 /**
  * Audio schedule, Cognitive Load telemetry, and Solo RPG Games CLI commands.
  */
+import { type RegisteredCommand } from './registry'
 import { BOSS_ROSTER, buildTonightPlan, sleepProfileSchema } from '@learning-hub/core'
 import {
   getActiveBossBattle,
@@ -202,8 +203,6 @@ export function gamesCommand(args: string[]): void {
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub games status`)
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const audioCommands: RegisteredCommand[] = [
   {

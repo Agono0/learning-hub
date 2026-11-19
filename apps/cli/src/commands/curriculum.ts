@@ -5,6 +5,7 @@
  *   curriculum list                        courses with progress
  *   curriculum prompt "<topic>"            print the any-AI course prompt
  */
+import { type RegisteredCommand } from './registry'
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { buildCurriculumPrompt, lhcfStats, parseCurriculum } from '@learning-hub/core/curriculum'
@@ -82,8 +83,6 @@ export function curriculumCommand(args: string[]): number {
   console.log(USAGE)
   return sub ? 2 : 0
 }
-
-import { type RegisteredCommand } from './registry'
 
 export const curriculumCommands: RegisteredCommand[] = [
   {
