@@ -135,3 +135,6 @@ export * from './focus-timer'
 export * from './errors'
 export * from './prototype-exemplar'
 export * from './categorization'
+
+// ── Design system (ui-signature §3.1 contrast lock) ──
+export * from './design-tokens'
