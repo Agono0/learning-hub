@@ -21,7 +21,6 @@ import {
   FileCheck,
   Flame,
   Gauge,
-  Workflow,
   GitBranch,
   GitCompare,
   GitFork,
