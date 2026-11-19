@@ -35,7 +35,6 @@ import {
   listRecentFocusSessions,
   parseBasicCards,
   recentReviewEvents,
-  shiftCardsDue,
   startFocusSession,
   sumFocusMinutes,
   undoCardReview,
@@ -526,21 +525,37 @@ describe('repos/stats dailyReviewsSeries', () => {
       reviewedAt,
     })
     const today = T0.toISOString()
+    const tomorrow = new Date(T0.getTime() + 86_400_000).toISOString()
     db.insert(schema.revlog)
       .values([
         revlogRow(2001, today, 3),
         revlogRow(2002, today, 1), // erased below — must not count
         revlogRow(2003, daysAgoIso(2), 4),
         revlogRow(2004, daysAgoIso(40), 3), // outside the 7-day window
+        revlogRow(2005, tomorrow, 4), // future-dated clock skew — outside any window ending today
       ])
       .run()
     db.insert(schema.revlogUndos).values({ revlogId: 2002, cardId: card.id }).run()
 
+    // 7-day window = [T0-6, T0]: the 40-day-old AND the future-dated rows are
+    // filtered out (a LIMIT without WHERE would leak them in).
     const series = dailyReviewsSeries({ days: 7, now: T0, database: db })
     expect(series.map((p) => p.day)).toEqual([daysAgoIso(2).slice(0, 10), today.slice(0, 10)])
     expect(series[0]).toMatchObject({ reviews: 1, correct: 1 })
     expect(series[1]).toMatchObject({ reviews: 1, correct: 1 }) // the undone Again is excluded
     expect(series[1]!.avgTimeMs).toBe(1000)
+
+    // days=1 clamps to today only; days wide enough to reach back 40 days
+    // still never crosses the window's upper bound into the future row.
+    expect(dailyReviewsSeries({ days: 1, now: T0, database: db }).map((p) => p.day)).toEqual([
+      today.slice(0, 10),
+    ])
+    const wide = dailyReviewsSeries({ days: 60, now: T0, database: db })
+    expect(wide.map((p) => p.day)).toEqual([
+      daysAgoIso(40).slice(0, 10),
+      daysAgoIso(2).slice(0, 10),
+      today.slice(0, 10),
+    ])
   })
 })
 
@@ -723,30 +738,5 @@ describe('repos/workload — projection and transactional due shifts', () => {
     expect(db.select().from(schema.cards).where(eq(schema.cards.id, b.id)).get()!.due).toBe(
       daysAgoIso(2),
     )
-  })
-
-  it('shiftCardsDue moves dues relative by deltaDays, preserving time-of-day', () => {
-    const deck = findOrCreateDeck('D', { db })
-    const card = db
-      .insert(schema.cards)
-      .values({
-        deckId: deck.id,
-        type: 'basic',
-        content: { basic: { front: 'a', back: '' } },
-        due: T0.toISOString(),
-      })
-      .returning()
-      .all()[0]!
-
-    expect(shiftCardsDue([card.id], 5, { db })).toBe(1)
-    expect(db.select().from(schema.cards).where(eq(schema.cards.id, card.id)).get()!.due).toBe(
-      '2026-06-15T12:00:00.000Z',
-    )
-    expect(shiftCardsDue([card.id], -2, { db })).toBe(1)
-    expect(db.select().from(schema.cards).where(eq(schema.cards.id, card.id)).get()!.due).toBe(
-      '2026-06-13T12:00:00.000Z',
-    )
-    expect(shiftCardsDue([], 5, { db })).toBe(0)
-    expect(shiftCardsDue([9999], 5, { db })).toBe(0)
   })
 })

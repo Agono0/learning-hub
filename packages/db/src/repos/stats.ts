@@ -124,26 +124,37 @@ export interface DailyReviewsPoint {
   avgTimeMs: number | null
 }
 
+const DAY_MS = 86_400_000
+
 /**
- * The last `days` days of the `v_daily_reviews` series, ascending (oldest
- * first). The view already excludes undone reviews (`revlog_undos`), so an
- * erased review never counts. One definition, every host: the CLI stats panel
- * previously queried the view inline.
+ * The review series over the last `days` UTC days ENDING at `now`
+ * (`day BETWEEN today-(days-1) AND today`, ascending oldest-first) — a real
+ * day window, not just a LIMIT, so older rows can never leak into a short
+ * series (same day-key window the commitments weekly metrics use over this
+ * view, repos/commitments.weeklyMetricValue). The view already excludes
+ * undone reviews (`revlog_undos`), so an erased review never counts. One
+ * definition, every host: the CLI stats panel previously queried the view
+ * inline.
  */
 export function dailyReviewsSeries(
   options: StatsQueryOptions & { days?: number } = {},
 ): DailyReviewsPoint[] {
   const db = options.database ?? getDb()
+  const now = options.now ?? new Date()
   const days = Math.max(1, options.days ?? 7)
+  const endDay = dayKey(now)
+  const startDay = dayKey(new Date(Date.parse(endDay + 'T00:00:00Z') - (days - 1) * DAY_MS))
   const rows = db.all<{
     day: string
     reviews: number
     correct: number
     avg_time_ms: number | null
   }>(
-    sql`SELECT day, reviews, correct, avg_time_ms FROM v_daily_reviews ORDER BY day DESC LIMIT ${days}`,
+    sql`SELECT day, reviews, correct, avg_time_ms FROM v_daily_reviews
+        WHERE day BETWEEN ${startDay} AND ${endDay}
+        ORDER BY day ASC LIMIT ${days}`,
   )
-  return rows.reverse().map((r) => ({
+  return rows.map((r) => ({
     day: r.day,
     reviews: Number(r.reviews),
     correct: Number(r.correct),
