@@ -101,7 +101,7 @@ describe('repos/ideas ideaSearch', () => {
 
   it('matches LIKE on title and content, newest-updated first, honoring limit', () => {
     const a = createIdea({ title: 'Spaced repetition in VR' }, { db })
-    createIdea({ title: 'Guild economics', content: 'about spaced practice' }, { db })
+    createIdea({ title: 'Guild economics', content: 'about market trade' }, { db })
     const c = createIdea({ title: 'Circadian naps' }, { db })
     updateIdea(c.id, { content: 'updated body mentions spaced too' }, { db })
 
@@ -470,7 +470,8 @@ describe('repos/fsrs dueQueue — the shared review session queue', () => {
     db.insert(schema.cards)
       .values(reviewableCard({ deckId: other.id, due: daysAgoIso(1) }))
       .run()
-    expect(dueQueue({ now: T0, db })).toHaveLength(3)
+    expect(dueQueue({ now: T0, db })).toHaveLength(4)
+    expect(dueQueue({ now: T0, deckId: deck.id, db })).toHaveLength(3)
     expect(dueQueue({ now: T0, limit: 2, db })).toHaveLength(2)
     expect(dueQueue({ now: T0, deckId: other.id, db })).toHaveLength(1)
   })
