@@ -667,3 +667,86 @@ export function equilibriumCommand(args: string[]): void {
     console.log('   revising a principle, overriding the judgment, or reformulating the theory.')
   }
 }
+
+import { type RegisteredCommand } from './registry'
+
+export const generationCommands: RegisteredCommand[] = [
+  {
+    name: 'generation',
+    description: 'Slamecka-Graf generation effect challenges and evaluation',
+    usage: '[challenge|eval]',
+    run: (runArgs) => generationCommand(runArgs),
+  },
+]
+
+export const feynmanCommands: RegisteredCommand[] = [
+  {
+    name: 'feynman',
+    description: 'Feynman teach-back and IOED diagnostic evaluation',
+    usage: '[eval]',
+    run: (runArgs) => feynmanCommand(runArgs),
+  },
+]
+
+export const metacognitionCommands: RegisteredCommand[] = [
+  {
+    name: 'metacognition',
+    description: 'Koriat-Bjork calibration, Brier score, and hypercorrection crucible',
+    usage: '[stats|hypercorrection]',
+    run: (runArgs) => metacognitionCommand(runArgs),
+  },
+]
+
+export const difficultyCommands: RegisteredCommand[] = [
+  {
+    name: 'difficulty',
+    description: 'Dunlosky (2013) desirable-difficulty audit of your technique mix',
+    usage: 'audit [--testing 90 --reread 120 …]',
+    run: (runArgs) => difficultyCommand(runArgs),
+  },
+]
+
+export const pretestCommands: RegisteredCommand[] = [
+  {
+    name: 'pretest',
+    description: 'Pretesting-effect questions for young, fragile cards',
+    usage: 'questions [--limit 8]',
+    run: (runArgs) => pretestCommand(runArgs),
+  },
+]
+
+export const invarianceCommands: RegisteredCommand[] = [
+  {
+    name: 'invariance',
+    description: 'Rohrer-Taylor interleaved structural invariance practice plan',
+    usage: '[--mode interleaved|blocked] [--contrast 0..1] [--spacing 0..1]',
+    run: (runArgs) => invarianceCommand(runArgs),
+  },
+]
+
+export const analogyCommands: RegisteredCommand[] = [
+  {
+    name: 'analogy',
+    description: 'Gick & Holyoak analogical-transfer suite (structure mapping)',
+    usage: 'plan [--suite <key>]',
+    run: (runArgs) => analogyCommand(runArgs),
+  },
+]
+
+export const flexibilityCommands: RegisteredCommand[] = [
+  {
+    name: 'flexibility',
+    description: 'Spiro criss-crossing schedule for ill-structured cases',
+    usage: 'plan [--suite <key>]',
+    run: (runArgs) => flexibilityCommand(runArgs),
+  },
+]
+
+export const interactivityCommands: RegisteredCommand[] = [
+  {
+    name: 'interactivity',
+    description: 'Sweller element-interactivity analysis + Paas efficiency',
+    usage: 'analyze [--suite <key>] [--extraneous 1] [--effort 5 --performance 70]',
+    run: (runArgs) => interactivityCommand(runArgs),
+  },
+]

@@ -200,3 +200,32 @@ export function physioCommand(args: string[]): void {
     console.log(`Exercise nudge: ${insights.exercise.nudge}`)
   }
 }
+
+import { type RegisteredCommand } from './registry'
+
+export const habitsCommands: RegisteredCommand[] = [
+  {
+    name: 'habits',
+    description: 'habit loops, streaks, and check-ins',
+    usage: '[list|checkin|history]',
+    run: (runArgs) => habitsCommand(runArgs),
+  },
+]
+
+export const journalCommands: RegisteredCommand[] = [
+  {
+    name: 'journal',
+    description: 'daily reflection journal and mood tracking',
+    usage: '[write|show]',
+    run: (runArgs) => journalCommand(runArgs),
+  },
+]
+
+export const physioCommands: RegisteredCommand[] = [
+  {
+    name: 'physio',
+    description: 'physiology metrics and learning advice',
+    usage: '[--sleep N --exercise N ...]',
+    run: (runArgs) => physioCommand(runArgs),
+  },
+]

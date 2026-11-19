@@ -239,3 +239,32 @@ export function gktCommand(args: string[]): void {
 
   console.log('Usage: learning-hub gkt [drill [--course <id>] [--answer true|false]]')
 }
+
+import { type RegisteredCommand } from './registry'
+
+export const readingCommands: RegisteredCommand[] = [
+  {
+    name: 'reading',
+    description: 'incremental reading queue and ingestion',
+    usage: '[list|add|finish]',
+    run: (runArgs) => readingCommand(runArgs),
+  },
+]
+
+export const planCommands: RegisteredCommand[] = [
+  {
+    name: 'plan',
+    description: 'study plan agenda and weekly template',
+    usage: '[today|week|set]',
+    run: (runArgs) => planCommand(runArgs),
+  },
+]
+
+export const gktCommands: RegisteredCommand[] = [
+  {
+    name: 'gkt',
+    description: 'Bayesian prerequisite DAG knowledge tracing',
+    usage: '[drill]',
+    run: (runArgs) => gktCommand(runArgs),
+  },
+]

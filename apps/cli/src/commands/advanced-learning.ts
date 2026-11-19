@@ -1652,3 +1652,167 @@ export function modelInquiryCommand(args: string[]): void {
     console.log(`Recommendations:     ${evalResult.feedback.recommendations.join('; ')}`)
   }
 }
+
+import { type RegisteredCommand } from './registry'
+
+export const skillsCommands: RegisteredCommand[] = [
+  {
+    name: 'skills',
+    description: 'Matt Pocock agent skills catalog, execution, and AGENTS.md rule audit',
+    usage: 'catalog | audit | run',
+    run: (runArgs) => skillsCommand(runArgs),
+  },
+]
+
+export const relearningCommands: RegisteredCommand[] = [
+  {
+    name: 'relearning',
+    description: 'Rawson & Dunlosky successive relearning & Ebbinghaus savings diagnostic',
+    usage: 'calc [--initial 600 --relearn 210 --days 7]',
+    run: (runArgs) => relearningCommand(runArgs),
+  },
+]
+
+export const srlCommands: RegisteredCommand[] = [
+  {
+    name: 'srl',
+    description: 'Zimmerman 3-phase cyclical self-regulated learning (SRL) matrix',
+    usage: 'eval [--forethought 8 --performance 7 --reflection 9]',
+    run: (runArgs) => srlCommand(runArgs),
+  },
+]
+
+export const epistemicCommands: RegisteredCommand[] = [
+  {
+    name: 'epistemic',
+    description: 'Shaffer epistemic network analysis (ENA) & quantitative ethnography',
+    usage: 'analyze [--window 4 --mastery 0.75]',
+    run: (runArgs) => epistemicCommand(runArgs),
+  },
+]
+
+export const causalCommands: RegisteredCommand[] = [
+  {
+    name: 'causal',
+    description: 'Judea Pearl structural causal models & counterfactual simulation',
+    usage: 'counterfactual [--study 16 --target ExamScore]',
+    run: (runArgs) => causalCommand(runArgs),
+  },
+]
+
+export const thresholdCommands: RegisteredCommand[] = [
+  {
+    name: 'threshold',
+    description: 'Meyer & Land threshold concepts & liminal space navigation',
+    usage: 'eval [--concept tc_pointers_memory]',
+    run: (runArgs) => thresholdCommand(runArgs),
+  },
+]
+
+export const zpdCommands: RegisteredCommand[] = [
+  {
+    name: 'zpd',
+    description:
+      'Vygotsky & Feuerstein dynamic assessment & zone of proximal development diagnostic',
+    usage: '[eval|scenarios|prompt|deck] [--scenario algo_dynamic_programming --pre 30 --post 80]',
+    run: (runArgs) => zpdCommand(runArgs),
+  },
+]
+
+export const pfCommands: RegisteredCommand[] = [
+  {
+    name: 'pf',
+    description: 'Manu Kapur & Tanmay Sinha productive failure & canonical consolidation studio',
+    usage:
+      '[metrics|scenarios|eval|deck] [--scenario pf-variance-dispersion --reps 3 --affective 4]',
+    run: (runArgs) => pfCommand(runArgs),
+  },
+]
+
+export const piCommands: RegisteredCommand[] = [
+  {
+    name: 'pi',
+    description: 'Eric Mazur & Michelle Smith peer instruction & interactive conceptest studio',
+    usage: '[eval|suites|dialogue|deck] [--suite ct-thermal-expansion-plate --pre 38 --post 82]',
+    run: (runArgs) => piCommand(runArgs),
+  },
+]
+
+export const inquiryCommands: RegisteredCommand[] = [
+  {
+    name: 'inquiry',
+    description: 'Klahr & Dunbar dual-space scientific discovery & VOTAT inquiry simulation studio',
+    usage: '[eval|labs|trial|deck] [--lab lab-pendulum-period --vri 1.0 --sdi 85]',
+    run: (runArgs) => inquiryCommand(runArgs),
+  },
+]
+
+export const rtCommands: RegisteredCommand[] = [
+  {
+    name: 'rt',
+    description:
+      'Palincsar & Brown reciprocal teaching, Chi ICAP framework & King guided questioning studio',
+    usage: '[eval|passages|peer|deck] [--passage passage-endosymbiosis --role questioner]',
+    run: (runArgs) => reciprocalTeachingCommand(runArgs),
+  },
+]
+
+export const cerCommands: RegisteredCommand[] = [
+  {
+    name: 'cer',
+    description:
+      'McNeill & Krajcik CER, Toulmin TAP & Osborne epistemic scientific argumentation studio',
+    usage: '[debates|counter|eval|deck] [--debate <id>]',
+    run: (runArgs) => cerCommand(runArgs),
+  },
+]
+
+export const anchoredCommands: RegisteredCommand[] = [
+  {
+    name: 'anchored',
+    description:
+      'CTGV (1990, 1992) Anchored Instruction & Situated Macrocontext Problem-Solving Studio',
+    usage: '[cases|sensitivity|eval|deck] [--case <id>]',
+    run: (runArgs) => anchoredCommand(runArgs),
+  },
+]
+
+export const contrastingCommands: RegisteredCommand[] = [
+  {
+    name: 'contrasting',
+    description:
+      'Schwartz & Bransford (1998, 2004) Contrasting Cases & Inventing with Examples Studio',
+    usage: '[sets|eval|deck] [--id <id>]',
+    run: (runArgs) => contrastingCommand(runArgs),
+  },
+]
+
+export const collaborativeCommands: RegisteredCommand[] = [
+  {
+    name: 'collaborative',
+    description:
+      'King (1997, 1999) & Weinberger & Fischer (2006) Collaborative Scripts & Transactive Studio',
+    usage: '[scenarios|partner|eval|deck] [--id <id>]',
+    run: (runArgs) => collaborativeCommand(runArgs),
+  },
+]
+
+export const systemDynamicsCommands: RegisteredCommand[] = [
+  {
+    name: 'system-dynamics',
+    description:
+      'Forrester (1968), Sterman (2000) & Meadows (2008) System Dynamics & Feedback Studio',
+    usage: '[scenarios|simulate|eval|deck] [--id <id>] [--steps <n>]',
+    run: (runArgs) => systemDynamicsCommand(runArgs),
+  },
+]
+
+export const modelInquiryCommands: RegisteredCommand[] = [
+  {
+    name: 'model-inquiry',
+    description:
+      'Clement (2008), Nersessian (2002) & Johnson-Laird (1983) Model-Based Inquiry & Gedankenexperiment',
+    usage: '[scenarios|perturb|simulate|eval|deck] [--id <id>] [--case <caseId>]',
+    run: (runArgs) => modelInquiryCommand(runArgs),
+  },
+]

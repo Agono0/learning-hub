@@ -202,3 +202,27 @@ export function gamesCommand(args: string[]): void {
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub games status`)
 }
+
+import { type RegisteredCommand } from './registry'
+
+export const audioCommands: RegisteredCommand[] = [
+  {
+    name: 'audio',
+    description: 'speakable commute review and sleep TMR earcons',
+    usage: '[schedule|tmr-plan]',
+    run: (runArgs) => {
+      const sub = runArgs[0]
+      if (sub === 'tmr-plan') return tmrPlanCommand(runArgs.slice(1))
+      return audioCommand(runArgs)
+    },
+  },
+]
+
+export const gamesCommands: RegisteredCommand[] = [
+  {
+    name: 'games',
+    description: 'solo RPG boss battles and mythical boss roster',
+    usage: '[status]',
+    run: (runArgs) => gamesCommand(runArgs),
+  },
+]

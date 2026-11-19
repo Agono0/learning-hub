@@ -82,3 +82,16 @@ export function curriculumCommand(args: string[]): number {
   console.log(USAGE)
   return sub ? 2 : 0
 }
+
+import { type RegisteredCommand } from './registry'
+
+export const curriculumCommands: RegisteredCommand[] = [
+  {
+    name: 'curriculum',
+    description: 'import/list courses, print AI prompt',
+    usage: 'import|list|prompt',
+    run: (runArgs) => {
+      process.exitCode = curriculumCommand(runArgs)
+    },
+  },
+]
