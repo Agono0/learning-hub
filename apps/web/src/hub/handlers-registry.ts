@@ -158,6 +158,7 @@ import * as cognitiveFeynmanEval from '../server/handlers/cognitive/feynman-eval
 import * as cognitiveGeneration from '../server/handlers/cognitive/generation/route'
 import * as cognitiveGkt from '../server/handlers/cognitive/gkt/route'
 import * as cognitiveLoad from '../server/handlers/cognitive/load/route'
+import * as cognitiveLoadStudio from '../server/handlers/cognitive-load/route'
 import * as cognitiveHypercorrection from '../server/handlers/cognitive/hypercorrection/route'
 import * as cognitiveDifficultyAudit from '../server/handlers/cognitive/difficulty-audit/route'
 import * as cognitivePretesting from '../server/handlers/cognitive/pretesting/route'
@@ -364,6 +365,7 @@ add('cognitive/feynman-eval', cognitiveFeynmanEval)
 add('cognitive/generation', cognitiveGeneration)
 add('cognitive/gkt', cognitiveGkt)
 add('cognitive/load', cognitiveLoad)
+add('cognitive-load', cognitiveLoadStudio)
 add('cognitive/difficulty-audit', cognitiveDifficultyAudit)
 add('cognitive/pretesting', cognitivePretesting)
 add('spatial/palace-3d', spatialPalace3d)
