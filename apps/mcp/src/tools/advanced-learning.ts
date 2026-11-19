@@ -96,6 +96,14 @@ import {
   evaluateInquirySession,
   generateModelInquiryFsrsDeck,
   InquirySessionInputSchema,
+  getCanonicalKnowledgeSpaces,
+  initializeMarkovianSession,
+  updateBeliefPosterior,
+  diagnoseLearner,
+  computeFringes,
+  generateKSTCalibratedDeck,
+  auditCurriculumStructure,
+  AdaptiveAssessmentSessionSchema,
 } from '@learning-hub/core'
 
 export const advancedLearningTools: RegisteredTool[] = [
@@ -1898,6 +1906,157 @@ export const advancedLearningTools: RegisteredTool[] = [
         scenarioId,
         cardsCount: deck.length,
         cards: deck,
+      })
+    },
+  ),
+
+  // ── Knowledge Space Theory (Doignon & Falmagne 1985, 1999) ──
+  tool(
+    'kst_list_spaces',
+    'Lists all canonical Knowledge Space Theory structures with domain items, states count, and well-graded status.',
+    {},
+    async () => {
+      const spaces = getCanonicalKnowledgeSpaces()
+      return json({
+        count: spaces.length,
+        spaces: spaces.map((s) => ({
+          domainId: s.domainId,
+          title: s.title,
+          description: s.description,
+          itemsCount: s.domainItems.length,
+          statesCount: s.states.length,
+          isWellGraded: s.isWellGraded,
+          domainItems: s.domainItems,
+        })),
+      })
+    },
+  ),
+
+  tool(
+    'kst_start_session',
+    'Initializes a new Markovian adaptive assessment session with uniform or difficulty-weighted prior distribution.',
+    {
+      domainId: z.string().default('elementary-algebra'),
+      priorType: z.enum(['uniform', 'difficulty_weighted']).default('uniform'),
+    },
+    async ({ domainId, priorType }) => {
+      const spaces = getCanonicalKnowledgeSpaces()
+      const structure = spaces.find((s) => s.domainId === domainId) || spaces[0]!
+      const session = initializeMarkovianSession(structure, priorType)
+      const diagnosis = diagnoseLearner(session, structure)
+
+      return json({
+        domainId: structure.domainId,
+        domainTitle: structure.title,
+        session,
+        diagnosis,
+      })
+    },
+  ),
+
+  tool(
+    'kst_submit_response',
+    'Submits a learner response to a probe item, updates the Bayesian posterior distribution, and selects the next optimal probe.',
+    {
+      domainId: z.string().default('elementary-algebra'),
+      session: AdaptiveAssessmentSessionSchema,
+      itemId: z.string(),
+      isCorrect: z.boolean(),
+      responseTimeMs: z.number().int().nonnegative().default(3000),
+    },
+    async ({ domainId, session, itemId, isCorrect, responseTimeMs }) => {
+      const spaces = getCanonicalKnowledgeSpaces()
+      const structure = spaces.find((s) => s.domainId === domainId) || spaces[0]!
+      const updatedSession = updateBeliefPosterior(session, structure, {
+        itemId,
+        isCorrect,
+        responseTimeMs,
+      })
+      const diagnosis = diagnoseLearner(updatedSession, structure)
+
+      return json({
+        session: updatedSession,
+        diagnosis,
+      })
+    },
+  ),
+
+  tool(
+    'kst_compute_fringes',
+    'Computes the inner fringe K⁻ (frontier retention) and outer fringe K⁺ (proximal ZPD readiness) for a knowledge state.',
+    {
+      domainId: z.string().default('elementary-algebra'),
+      stateItems: z.array(z.string()).default([]),
+    },
+    async ({ domainId, stateItems }) => {
+      const spaces = getCanonicalKnowledgeSpaces()
+      const structure = spaces.find((s) => s.domainId === domainId) || spaces[0]!
+      const fringes = computeFringes(stateItems, structure)
+
+      return json({
+        domainId: structure.domainId,
+        stateId: fringes.stateId,
+        innerFringe: fringes.innerFringe,
+        outerFringe: fringes.outerFringe,
+        readyToLearnCount: fringes.outerFringe.length,
+      })
+    },
+  ),
+
+  tool(
+    'kst_generate_deck',
+    'Generates calibrated FSRS-6 spaced repetition cards derived from inner and outer fringes in a knowledge space.',
+    {
+      domainId: z.string().default('elementary-algebra'),
+      stateId: z.string().optional(),
+      maxCards: z.number().int().positive().default(12),
+    },
+    async ({ domainId, stateId, maxCards }) => {
+      const spaces = getCanonicalKnowledgeSpaces()
+      const structure = spaces.find((s) => s.domainId === domainId) || spaces[0]!
+      const targetState = stateId
+        ? structure.states.find((s) => s.stateId === stateId) ||
+          structure.states[1] ||
+          structure.states[0]!
+        : structure.states[1] || structure.states[0]!
+
+      const cards = generateKSTCalibratedDeck(structure, targetState, { maxCards })
+      return json({
+        domainId: structure.domainId,
+        stateId: targetState.stateId,
+        cardsCount: cards.length,
+        cards,
+      })
+    },
+  ),
+
+  tool(
+    'kst_audit_curriculum',
+    'Ingests a curriculum structure and performs a Knowledge Space Theory audit for well-gradedness and bottlenecks.',
+    {
+      curriculum: z.object({
+        id: z.string(),
+        title: z.string(),
+        modules: z.array(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            lessons: z.array(
+              z.object({
+                id: z.string(),
+                title: z.string(),
+                prerequisites: z.array(z.string()).optional(),
+                difficulty: z.number().optional(),
+              }),
+            ),
+          }),
+        ),
+      }),
+    },
+    async ({ curriculum }) => {
+      const report = auditCurriculumStructure(curriculum)
+      return json({
+        report,
       })
     },
   ),

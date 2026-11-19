@@ -52,6 +52,7 @@ import {
   contrastingCommands,
   epistemicCommands,
   inquiryCommands,
+  knowledgeSpaceCommands,
   modelInquiryCommands,
   pfCommands,
   piCommands,
@@ -127,6 +128,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...systemDynamicsCommands,
   ...modelInquiryCommands,
   ...prototypeExemplarCommands,
+  ...knowledgeSpaceCommands,
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
   ...notesCommands,

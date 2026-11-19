@@ -184,6 +184,7 @@ import * as argumentation from '../server/handlers/argumentation/route'
 import * as anchored from '../server/handlers/anchored/route'
 import * as contrasting from '../server/handlers/contrasting/route'
 import * as collaborative from '../server/handlers/collaborative/route'
+import * as knowledgeSpace from '../server/handlers/knowledge-space/route'
 import * as systemDynamics from '../server/handlers/system-dynamics/route'
 import * as modelInquiry from '../server/handlers/model-inquiry/route'
 import * as prototypeExemplar from '../server/handlers/prototype-exemplar/route'
@@ -391,6 +392,7 @@ add('argumentation', argumentation)
 add('anchored', anchored)
 add('contrasting', contrasting)
 add('collaborative', collaborative)
+add('knowledge-space', knowledgeSpace)
 add('system-dynamics', systemDynamics)
 add('model-inquiry', modelInquiry)
 add('prototype-exemplar', prototypeExemplar)
