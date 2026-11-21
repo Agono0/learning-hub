@@ -336,10 +336,12 @@ export function deriveProfile(answers: ProfileAnswers): LearnerProfile {
 export function pickArchetype(traits: LearnerTraits): LearnerArchetype {
   if (traits.chronotype === 'owl') return 'owl'
   if (traits.chronotype === 'lark') return 'lark'
-  if (traits.attentionStyle === 'sprints' && traits.noveltySeeking >= 0.4) return 'sprinter'
-  if (traits.attentionStyle === 'sustained' && traits.structureNeed >= 0.4) return 'marathoner'
-  if (traits.noveltySeeking >= 0.55 && traits.structureNeed <= 0.45) return 'explorer'
-  if (traits.structureNeed >= 0.55 && traits.goalHorizon === 'exam') return 'architect'
+  // Exam + structure is the strongest non-chronotype signal (checked before
+  // marathoner so an exam-driven planner reads as Architect, not Marathoner).
+  if (traits.goalHorizon === 'exam' && traits.structureNeed >= 0.3) return 'architect'
+  if (traits.attentionStyle === 'sprints' && traits.noveltySeeking >= 0.3) return 'sprinter'
+  if (traits.attentionStyle === 'sustained' && traits.structureNeed >= 0.3) return 'marathoner'
+  if (traits.noveltySeeking >= 0.5 && traits.structureNeed <= 0.45) return 'explorer'
   return 'steady'
 }
 
