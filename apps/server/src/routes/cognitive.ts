@@ -10,14 +10,8 @@ import {
   db,
   cards,
   deriveMeasuredBehavior,
-  getKnownTokensSet,
   getRevlogTrialRows,
-  getWordExposureSummaries,
-  listCardsByStability,
-  recentReviewEvents,
-  recordExposureBatch,
   reconstructCorrectionTrials,
-  workloadCards,
 } from '@learning-hub/db'
 import {
   createGenerationLadder,
@@ -55,13 +49,6 @@ import {
   judgmentOfLearningSchema,
   pretestRelatedness,
   selectPretestCandidates,
-  cardPreviewText,
-  computeLexicalCoverage,
-  decomposeLeechCard,
-  detectConfusionPairs,
-  exposureBatchSchema,
-  forecastWorkload,
-  tokenizeText,
 } from '@learning-hub/core'
 import { sendJson, jsonError, readJson, readQuery } from '../http'
 import type { Route } from './shared'
@@ -600,134 +587,6 @@ async function getHypercorrection(
 
 /** GET /cognitive/skills/catalog — lists canonical agent skills */
 
-// ── Exposure / weakness / workload (TD-11 parity with MCP + CLI) ────────────
-
-/** Cap analysed text so a pasted book can't stall the request (same cap as the web handler). */
-const MAX_ANALYZE_CHARS = 200_000
-
-const exposurePlanQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(50),
-})
-
-const exposureEvaluateBodySchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('analyze'), text: z.string().min(1).max(MAX_ANALYZE_CHARS) }),
-  exposureBatchSchema.extend({ action: z.literal('record') }),
-])
-
-const workloadQuerySchema = z.object({
-  days: z.coerce.number().int().min(1).max(90).default(30),
-  deckId: z.coerce.number().int().positive().optional(),
-})
-
-const weaknessQuerySchema = z.object({
-  deckId: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().min(1).max(500).optional(),
-  minLapses: z.coerce.number().int().min(1).max(100).optional(),
-})
-
-/** GET /cognitive/exposure/plan?limit= — ambient exposure ledger (Krashen i+1): tracked words plus the spaced-encounter SRS promotion queue. */
-async function getExposurePlan(
-  _req: IncomingMessage,
-  res: ServerResponse,
-  url: URL,
-): Promise<void> {
-  const q = readQuery(url, exposurePlanQuerySchema)
-  // Shared exposure repo — the same rollup the MCP exposure_ledger list action
-  // and the CLI exposure command show; promotion eligibility is core's
-  // meetsPromotionThreshold (Waring & Nation 2004 / Webb 2007).
-  const words = getWordExposureSummaries(q.limit)
-  const promotionQueue = words.filter((w) => w.eligibleForPromotion && !w.isAlreadyCard)
-  sendJson(res, 200, {
-    ok: true,
-    trackedCount: words.length,
-    readyForSrsCount: promotionQueue.length,
-    promotionQueue,
-    words,
-  })
-}
-
-/** POST /cognitive/exposure/evaluate — {action:'analyze', text} → Krashen i+1 lexical coverage of a text; {action:'record', tokens} → append-only encounter ingest. */
-async function postExposureEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await readJson(req, exposureEvaluateBodySchema)
-  if (body.action === 'record') {
-    // exposure_events is append-only (Hard Rule #8); blank-after-normalization
-    // tokens are skipped by the shared repo batch insert.
-    const insertedCount = recordExposureBatch(body.tokens, {
-      sourceType: body.sourceType,
-      sourceId: body.sourceId,
-      contextSnippet: body.contextSnippet,
-    })
-    sendJson(res, 200, { ok: true, action: 'record', insertedCount })
-    return
-  }
-  // Known lexicon = frequently encountered words + graduated basic-card fronts
-  // (repos/exposure getKnownTokensSet); the zone decision is core's.
-  const coverageAnalysis = computeLexicalCoverage(tokenizeText(body.text), getKnownTokensSet())
-  sendJson(res, 200, { ok: true, action: 'analyze', coverageAnalysis })
-}
-
-/** GET /cognitive/workload?days=&deckId= — day-by-day due forecast over the coming days (read-only; no due dates are moved). */
-async function getWorkload(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
-  const q = readQuery(url, workloadQuerySchema)
-  // Shared workload projection (repos/workload) — the same card rows the MCP
-  // workload_balance tool and the CLI workload command feed core's engines.
-  const cardItems = workloadCards(q.deckId !== undefined ? { deckId: q.deckId } : {})
-  const now = new Date()
-  const forecast = forecastWorkload(cardItems, q.days, now)
-  const overdueCount = cardItems.filter((c) => c.due < now.toISOString() && c.state !== 0).length
-  sendJson(res, 200, {
-    ok: true,
-    totalCards: cardItems.length,
-    overdueCount,
-    forecast,
-  })
-}
-
-/** GET /cognitive/weakness?deckId=&limit=&minLapses= — confusion pairs (Underwood 1957) and leech atomic decompositions (Wozniak) over shared repo rows. */
-async function getWeakness(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
-  const q = readQuery(url, weaknessQuerySchema)
-  // Shared repo projection (weakest-stability-first) — the same rows the MCP
-  // weakness_radar tool reads; undone reviews are excluded from the revlog read.
-  const cardRows = listCardsByStability({
-    ...(q.deckId !== undefined ? { deckId: q.deckId } : {}),
-    limit: q.limit ?? 200,
-  })
-  const previews = new Map<number, string>()
-  const leechCandidates = cardRows.map((c) => {
-    const content = (c.content ?? {}) as Record<string, unknown>
-    const preview = cardPreviewText(c.type, c.content) ?? `Card #${c.id}`
-    previews.set(c.id, preview)
-    const unwrapped = (content[c.type] ?? content) as Record<string, unknown>
-    const front = String(unwrapped.front ?? content.front ?? preview)
-    const back = String(unwrapped.back ?? content.back ?? '')
-    return { id: c.id, lapses: c.lapses ?? 0, front, back }
-  })
-
-  const confusionPairs = detectConfusionPairs(recentReviewEvents({ limit: 1000 }), previews)
-  const minLapses = q.minLapses ?? 2
-  const leeches = leechCandidates
-    .filter((c) => c.lapses >= minLapses)
-    .map((c) => ({
-      cardId: c.id,
-      lapses: c.lapses,
-      preview: previews.get(c.id) ?? null,
-      decomposition: decomposeLeechCard({
-        id: c.id,
-        lapses: c.lapses,
-        front: c.front,
-        back: c.back,
-      }),
-    }))
-
-  sendJson(res, 200, {
-    ok: true,
-    confusionPairsCount: confusionPairs.length,
-    confusionPairs: confusionPairs.slice(0, 10),
-    leechCount: leeches.length,
-    leeches: leeches.slice(0, 5),
-  })
-}
-
 /** Route table for this area — concatenated in ./index.ts in the original routes.ts order. */
 export const cognitiveRoutes: Route[] = [
   {
@@ -827,29 +686,5 @@ export const cognitiveRoutes: Route[] = [
     summary:
       'Sweller element-interactivity analysis + Paas efficiency (?suiteKey=&extraneousLoadFactor=&mentalEffort=&performance=)',
     handler: postInteractivity,
-  },
-  {
-    method: 'GET',
-    path: '/cognitive/exposure/plan',
-    summary: 'ambient exposure ledger + SRS promotion queue (?limit=)',
-    handler: getExposurePlan,
-  },
-  {
-    method: 'POST',
-    path: '/cognitive/exposure/evaluate',
-    summary: 'Krashen i+1 lexical coverage of a text or record token encounters',
-    handler: postExposureEvaluate,
-  },
-  {
-    method: 'GET',
-    path: '/cognitive/workload',
-    summary: 'day-by-day due forecast over the coming days (?days=&deckId=)',
-    handler: getWorkload,
-  },
-  {
-    method: 'GET',
-    path: '/cognitive/weakness',
-    summary: 'confusion pairs + leech decompositions (?deckId=&limit=&minLapses=)',
-    handler: getWeakness,
   },
 ]
