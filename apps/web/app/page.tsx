@@ -30,6 +30,12 @@ export default function DashboardPage() {
   } = useQuery<DashboardData>({
     queryKey: queryKeys.dashboard,
     queryFn: () => apiGet<DashboardData>('/api/dashboard'),
+    // Live dashboard: poll every 30s while the tab is visible (the callback
+    // only runs client-side), pause in background tabs, and refresh when the
+    // learner comes back. Per-key override — the global default stays off.
+    refetchInterval: () =>
+      typeof document !== 'undefined' && document.visibilityState === 'visible' ? 30_000 : false,
+    refetchOnWindowFocus: true,
   })
 
   const { widgets, order, setOrder } = useDashboardWidgets()
