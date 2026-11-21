@@ -157,6 +157,13 @@ interface SessionPayload {
   corrections?: CorrectionCard[]
 }
 
+/** GET /api/settings response — only the learner profile's applied knobs are read here. */
+interface SettingsProfilePayload {
+  settings: {
+    learnerProfile?: { appliedKnobs?: Record<string, number | string> } | null
+  }
+}
+
 const GRADES: { grade: Grade; label: string; color: string }[] = [
   { grade: 1, label: 'Again', color: 'bg-rose-600 hover:bg-rose-500' },
   { grade: 2, label: 'Hard', color: 'bg-amber-600 hover:bg-amber-500' },
@@ -218,6 +225,12 @@ function ReviewPageInner() {
     queryKey: queryKeys.decks,
     queryFn: () => apiGet<{ decks: DeckInfo[] }>('/api/decks'),
   })
+  // Learner profile (appliedKnobs.reviewDefaultLimit) sets the default session
+  // size — see the override effect below.
+  const { data: settingsData } = useQuery<SettingsProfilePayload>({
+    queryKey: queryKeys.settings,
+    queryFn: () => apiGet<SettingsProfilePayload>('/api/settings'),
+  })
   const session = useQuery<SessionPayload, Error, SessionPayload>({
     queryKey: ['review-session', deckId, selectedDeckIds, multiDeckMode, courseId, limit, mode],
     queryFn: () => {
@@ -235,6 +248,21 @@ function ReviewPageInner() {
   useEffect(() => {
     if (courseId !== null && !Number.isNaN(courseId)) setStarted(true)
   }, [courseId])
+
+  // Profile default session size: the first render stays the synchronous 20
+  // (SSR/tests never wait on settings); once settings load client-side, the
+  // profile value overrides it exactly once — manual edits to the session-size
+  // input afterwards always win.
+  const profileLimitAppliedRef = useRef(false)
+  useEffect(() => {
+    if (profileLimitAppliedRef.current) return
+    const raw = settingsData?.settings.learnerProfile?.appliedKnobs?.reviewDefaultLimit
+    if (raw === undefined) return
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 1) return
+    profileLimitAppliedRef.current = true
+    setLimit(Math.round(n))
+  }, [settingsData])
 
   const [queue, setQueue] = useState<CardRow[]>([])
   const [idx, setIdx] = useState(0)

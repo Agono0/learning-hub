@@ -17,11 +17,23 @@ import {
   Sparkles,
   Sun,
   TreePine,
+  User,
   Vibrate,
   Wand2,
 } from 'lucide-react'
 import type { AIProvider } from '@learning-hub/core/types'
 import { FSRS6_DEFAULT_WEIGHTS } from '@learning-hub/core/fsrs-optimizer'
+import {
+  applyProfile,
+  knobsToRecord,
+  LEARNER_PRESETS,
+  profileFromPreset,
+  type AttentionStyle,
+  type GoalHorizon,
+  type LearnerProfile,
+  type ProfileChronotype,
+  type ProfileKnobChange,
+} from '@learning-hub/core/learner-profile'
 import {
   PALETTES,
   applyThemePreference,
@@ -38,7 +50,7 @@ import Link from 'next/link'
 import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { Badge, Button, EmptyState, PageHeader, ProgressBar, Sheet } from '@/ui'
 import { DetoxWizard } from '@/components/DetoxWizard'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -148,6 +160,8 @@ interface SettingsRow {
   remindersQuietEnd?: string
   remindersDailyCap?: number
   remindersKinds?: string[]
+  /** Learner profile (migration 030) — null when the learner never set one up. */
+  learnerProfile?: LearnerProfile | null
 }
 
 interface FsrsEval {
@@ -506,6 +520,9 @@ export default function SettingsPage() {
       <SemanticIndexPanel />
 
       <PushSettingsPanel />
+
+      {/* ── Learner profile (onboarding engine; tunes the knobs below) ── */}
+      <LearnerProfileSection />
 
       <section className="panel space-y-4">
         <div>
@@ -956,6 +973,241 @@ export default function SettingsPage() {
 }
 
 type IdentityMode = 'device_key' | 'magic_link' | 'offline'
+
+// ── Learner profile (packages/core/src/learner-profile) ─────────────────────
+
+/**
+ * localStorage record for the dashboard's undo banner (ProfileTunedBanner).
+ * Same shape the onboarding wizard writes — keep both writers in sync.
+ */
+interface ProfileAppliedRecord {
+  changes: ProfileKnobChange[]
+  archetypeLabel: string
+  previous: { sessionMinutes: number; desiredRetention: number }
+}
+
+const PROFILE_APPLIED_KEY = 'lh-profile-applied'
+
+/** Human words for the profile enums (display only — the engine owns the values). */
+const CHRONO_WORDS: Record<ProfileChronotype, string> = {
+  lark: 'Mornings',
+  intermediate: 'No strong peak',
+  owl: 'Evenings',
+}
+const ATTENTION_WORDS: Record<AttentionStyle, string> = {
+  sustained: 'Long deep dives',
+  sprints: 'Short sprints',
+  variable: 'Depends on the day',
+}
+const GOAL_WORDS: Record<GoalHorizon, string> = {
+  exam: 'A dated exam',
+  skill: 'A specific skill',
+  lifelong: 'Lifelong learning',
+}
+
+const TRAIT_BARS = [
+  { key: 'challengeAppetite', label: 'Challenge appetite' },
+  { key: 'structureNeed', label: 'Structure need' },
+  { key: 'noveltySeeking', label: 'Novelty seeking' },
+] as const
+
+/**
+ * "Learner profile" section: shows the applied archetype + traits when one
+ * exists (EmptyState + preset picker otherwise), with a preset Sheet that
+ * applies exactly like the onboarding wizard (profileFromPreset + applyProfile
+ * against the current settings values, PUT learnerProfile + sessionMinutes +
+ * desiredRetention) and refreshes the dashboard undo record.
+ */
+function LearnerProfileSection() {
+  const qc = useQueryClient()
+  const { data } = useQuery<{ settings: SettingsRow }>({
+    queryKey: queryKeys.settings,
+    queryFn: () => apiGet<{ settings: SettingsRow }>('/api/settings'),
+  })
+  const s = data?.settings
+  const profile = s?.learnerProfile ?? null
+  const [presetOpen, setPresetOpen] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+
+  const applyPreset = useMutation({
+    mutationFn: async (presetId: string) => {
+      if (!s) throw new Error('Settings not loaded yet — try again in a moment.')
+      const next = profileFromPreset(presetId)
+      if (!next) throw new Error('Unknown preset.')
+      const changes = applyProfile(next, {
+        sessionMinutes: s.sessionMinutes,
+        desiredRetention: s.desiredRetention,
+      })
+      const applied: LearnerProfile = {
+        ...next,
+        appliedKnobs: knobsToRecord(changes),
+        createdAt: new Date().toISOString(),
+      }
+      const sessionChange = changes.find((c) => c.key === 'sessionMinutes')
+      const retentionChange = changes.find((c) => c.key === 'desiredRetention')
+      await apiSend('/api/settings', 'PUT', {
+        learnerProfile: applied,
+        ...(sessionChange ? { sessionMinutes: Number(sessionChange.to) } : {}),
+        ...(retentionChange ? { desiredRetention: Number(retentionChange.to) } : {}),
+      })
+      // Refresh the dashboard undo banner record (ProfileTunedBanner reads it).
+      const bannerRecord: ProfileAppliedRecord = {
+        changes,
+        archetypeLabel: applied.archetypeLabel,
+        previous: { sessionMinutes: s.sessionMinutes, desiredRetention: s.desiredRetention },
+      }
+      try {
+        window.localStorage.setItem(PROFILE_APPLIED_KEY, JSON.stringify(bannerRecord))
+      } catch {
+        // The banner is cosmetic — the profile itself is persisted server-side.
+      }
+    },
+    onSuccess: () => {
+      setPresetOpen(false)
+      setMessage(null)
+      void qc.invalidateQueries({ queryKey: queryKeys.settings })
+    },
+    onError: (e: Error) => setMessage(e.message),
+  })
+
+  const removeProfile = useMutation({
+    mutationFn: () => apiSend('/api/settings', 'PUT', { learnerProfile: null }),
+    onSuccess: () => {
+      setMessage(null)
+      void qc.invalidateQueries({ queryKey: queryKeys.settings })
+    },
+    onError: (e: Error) => setMessage(e.message),
+  })
+
+  const presetSheet = (
+    <Sheet
+      open={presetOpen}
+      onClose={() => setPresetOpen(false)}
+      title="Pick a learner preset"
+      footer={
+        <Button
+          variant="ghost"
+          onClick={() => setPresetOpen(false)}
+          disabled={applyPreset.isPending}
+        >
+          Cancel
+        </Button>
+      }
+    >
+      <div className="grid gap-2 sm:grid-cols-2">
+        {LEARNER_PRESETS.map((preset) => {
+          const active = profile?.presetId === preset.id
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => applyPreset.mutate(preset.id)}
+              aria-pressed={active}
+              disabled={applyPreset.isPending}
+              className={`min-h-[44px] rounded-xl border p-3 text-left transition-colors ${
+                active
+                  ? 'border-indigo-500 bg-indigo-600/10'
+                  : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
+              }`}
+            >
+              <div className="text-sm font-medium">{preset.label}</div>
+              <div className="mt-0.5 text-xs text-tertiary">{preset.blurb}</div>
+            </button>
+          )
+        })}
+      </div>
+    </Sheet>
+  )
+
+  return (
+    <section className="panel space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <div className="label flex items-center gap-2">
+            <User className="h-4 w-4 text-indigo-400" />
+            Learner profile
+          </div>
+          <p className="mt-0.5 text-xs text-tertiary">
+            Tunes session length, retention and daily doses around how you learn. The knobs it
+            changed stay editable below — the profile recommends, you decide.
+          </p>
+        </div>
+        {profile && <Badge tone="accent">{profile.archetypeLabel}</Badge>}
+      </div>
+
+      {profile ? (
+        <div className="space-y-4">
+          {profile.presetId && (
+            <p className="text-xs text-tertiary">
+              From preset:{' '}
+              {LEARNER_PRESETS.find((p) => p.id === profile.presetId)?.label ?? profile.presetId}
+            </p>
+          )}
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
+              <div className="text-xs text-tertiary">Focus window</div>
+              <div className="mt-0.5 text-sm font-medium">
+                {CHRONO_WORDS[profile.traits.chronotype]}
+              </div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
+              <div className="text-xs text-tertiary">Attention style</div>
+              <div className="mt-0.5 text-sm font-medium">
+                {ATTENTION_WORDS[profile.traits.attentionStyle]}
+              </div>
+            </div>
+            <div className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
+              <div className="text-xs text-tertiary">Goal</div>
+              <div className="mt-0.5 text-sm font-medium">
+                {GOAL_WORDS[profile.traits.goalHorizon]}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {TRAIT_BARS.map((t) => (
+              <div key={t.key}>
+                <div className="mb-1 flex items-center justify-between text-xs">
+                  <span className="text-secondary">{t.label}</span>
+                  <span className="tabular-nums text-tertiary">
+                    {Math.round(profile.traits[t.key] * 100)}%
+                  </span>
+                </div>
+                <ProgressBar value={profile.traits[t.key]} label={t.label} />
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={() => setPresetOpen(true)}>
+              Switch preset
+            </Button>
+            <Button
+              variant="ghost"
+              loading={removeProfile.isPending}
+              onClick={() => removeProfile.mutate()}
+            >
+              Remove profile
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <EmptyState
+          icon={<User className="h-6 w-6" />}
+          title="No learner profile yet"
+          action={
+            <Button variant="secondary" onClick={() => setPresetOpen(true)}>
+              Pick a preset
+            </Button>
+          }
+        >
+          Set up in onboarding or pick a preset — the scheduler tunes itself around how you learn.
+        </EmptyState>
+      )}
+
+      {message && <p className="text-xs text-danger-text">{message}</p>}
+      {presetSheet}
+    </section>
+  )
+}
 
 const IDENTITY_MODES: ReadonlyArray<{ id: IdentityMode; title: string; desc: string }> = [
   {

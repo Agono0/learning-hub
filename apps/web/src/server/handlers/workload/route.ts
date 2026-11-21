@@ -7,7 +7,7 @@
  */
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { cards, db, withTransaction } from '@learning-hub/db'
+import { cards, db, userSettings, withTransaction } from '@learning-hub/db'
 import {
   balanceWorkload,
   catchUpBacklog,
@@ -97,10 +97,29 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   if (body.action === 'balance') {
+    // Learner profile (migration 030) supplies planner defaults when the
+    // request omits them: attention style → daily cap, goal horizon → easy days.
+    const [profileRow] = await db
+      .select({ profile: userSettings.learnerProfile })
+      .from(userSettings)
+      .limit(1)
+    const profile = profileRow?.profile
+    const attention = profile?.traits.attentionStyle
+    const profileMaxPerDay =
+      body.maxPerDay ??
+      (attention === 'sustained'
+        ? 30
+        : attention === 'sprints'
+          ? 15
+          : attention === 'variable'
+            ? 20
+            : undefined)
+    const profileEasyDays =
+      body.easyDays.length > 0 ? body.easyDays : profile?.traits.goalHorizon === 'exam' ? [] : [0]
     const { shifts, newForecast } = balanceWorkload(cardItems, {
       days: body.days,
-      maxPerDay: body.maxPerDay,
-      easyDays: body.easyDays,
+      maxPerDay: profileMaxPerDay,
+      easyDays: profileEasyDays,
       asOf: now,
     })
 

@@ -1,3 +1,4 @@
+import type { LearnerProfile } from '@learning-hub/core'
 /**
  * Learning HUB — complete SQLite schema (Drizzle ORM).
  * Dates are ISO-8601 strings; JSON payloads use text({ mode: 'json' }).
@@ -984,6 +985,8 @@ export const userSettings = table('user_settings', {
     .$type<Record<string, boolean>>()
     .notNull()
     .default({}),
+  /** Learner profile from onboarding (traits + archetype + applied-knob snapshot); migration 030. */
+  learnerProfile: text('learner_profile', { mode: 'json' }).$type<LearnerProfile>(),
   valuesAffirmation: text('values_affirmation'), // Cohen & Sherman onboarding exercise
   dailyLoopState: text('daily_loop_state', { mode: 'json' })
     .$type<Record<string, boolean>>()

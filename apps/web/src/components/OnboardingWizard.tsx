@@ -15,12 +15,36 @@ import {
   Sun,
   Timer,
 } from 'lucide-react'
+import {
+  applyProfile,
+  deriveProfile,
+  knobsToRecord,
+  LEARNER_PRESETS,
+  PROFILE_QUESTIONS,
+  profileFromPreset,
+  type LearnerProfile,
+  type ProfileKnobChange,
+} from '@learning-hub/core/learner-profile'
 import { applyThemePreference, normalizeThemePreference, type ThemePreference } from './ThemeSync'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Sheet, useToast } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 
 const DISMISSED_KEY = 'lh-onboarding-dismissed'
+
+/**
+ * localStorage record for the dashboard's undo banner (ProfileTunedBanner):
+ * what the applied profile changed, the named archetype, and the knob values
+ * to restore on Undo. Written here (onboarding finish) and by the Settings
+ * "Switch preset" flow; the shape must stay in sync across both writers.
+ */
+interface ProfileAppliedRecord {
+  changes: ProfileKnobChange[]
+  archetypeLabel: string
+  previous: { sessionMinutes: number; desiredRetention: number }
+}
+
+const PROFILE_APPLIED_KEY = 'lh-profile-applied'
 
 /** Reads a File as base64 (chunked to avoid call-stack limits on big .apkg). */
 async function fileToBase64(file: File): Promise<string> {
@@ -64,6 +88,7 @@ const STARTER_OPTIONS: StarterOption[] = [
 interface OnboardingSettings {
   theme?: string
   sessionMinutes?: number
+  desiredRetention?: number
   onboardingCompleted?: boolean
   isEmptyWorkspace?: boolean
 }
@@ -95,13 +120,35 @@ export function OnboardingWizard() {
     s?.onboardingCompleted === false &&
     s?.isEmptyWorkspace === true
 
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [theme, setTheme] = useState<ThemePreference>(() =>
     normalizeThemePreference(s?.theme ?? 'dark'),
   )
   const [sessionMinutes, setSessionMinutes] = useState<number>(s?.sessionMinutes ?? 25)
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>(['learning-how-to-learn'])
   const [seedCore, setSeedCore] = useState(true)
+
+  // Step 2 — "Make it yours": either pick a preset or answer the 8-question
+  // quiz. Both are skippable ("I'll decide later" clears both selections).
+  const [profileMode, setProfileMode] = useState<'presets' | 'quiz'>('presets')
+  const [presetId, setPresetId] = useState<string | null>(null)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [quizIndex, setQuizIndex] = useState(0)
+
+  // Current persisted values: the `from` side of every profile knob change and
+  // the undo payload — the profile overrides the step-1 selection where it
+  // touches the same knob, so Undo must restore what was stored, not the draft.
+  const currentSessionMinutes = s?.sessionMinutes ?? 25
+  const currentRetention = s?.desiredRetention ?? 0.9
+
+  /** Profile computed from the step-2 selections; null = step skipped. */
+  const computeProfile = (): LearnerProfile | null => {
+    if (profileMode === 'presets' && presetId) return profileFromPreset(presetId) ?? null
+    // deriveProfile ignores unanswered questions — a partial quiz still yields
+    // an honest profile; zero answers yields nothing (skip instead).
+    if (profileMode === 'quiz' && Object.keys(answers).length > 0) return deriveProfile(answers)
+    return null
+  }
 
   // "Bring your own content" — existing users can move in during first-run.
   const ankiFileRef = useRef<HTMLInputElement | null>(null)
@@ -180,11 +227,51 @@ export function OnboardingWizard() {
 
   const finishMutation = useMutation({
     mutationFn: async () => {
+      // Profile → knob changes (paired with current values for undo), snapshot
+      // into the profile, then persist both in the same settings PUT. The PUT
+      // also carries the two PUT-writable knob deltas (sessionMinutes,
+      // desiredRetention); the other knobs live in appliedKnobs and are read
+      // from the profile at their consumer sites (review default, quests,
+      // workload, circadian studio).
+      const profile = computeProfile()
+      const changes = profile
+        ? applyProfile(profile, {
+            sessionMinutes: currentSessionMinutes,
+            desiredRetention: currentRetention,
+          })
+        : []
+      const learnerProfile = profile
+        ? {
+            ...profile,
+            appliedKnobs: knobsToRecord(changes),
+            createdAt: new Date().toISOString(),
+          }
+        : null
+      const sessionChange = changes.find((c) => c.key === 'sessionMinutes')
+      const retentionChange = changes.find((c) => c.key === 'desiredRetention')
+
       await apiSend('/api/settings', 'PUT', {
         theme,
-        sessionMinutes,
+        sessionMinutes: sessionChange ? Number(sessionChange.to) : sessionMinutes,
+        ...(retentionChange ? { desiredRetention: Number(retentionChange.to) } : {}),
         onboardingCompleted: true,
+        ...(learnerProfile ? { learnerProfile } : {}),
       })
+
+      // Dashboard undo banner (ProfileTunedBanner reads this key on mount).
+      if (learnerProfile) {
+        const bannerRecord: ProfileAppliedRecord = {
+          changes,
+          archetypeLabel: learnerProfile.archetypeLabel,
+          previous: { sessionMinutes: currentSessionMinutes, desiredRetention: currentRetention },
+        }
+        try {
+          window.localStorage.setItem(PROFILE_APPLIED_KEY, JSON.stringify(bannerRecord))
+        } catch {
+          // The banner is cosmetic — the profile itself is persisted server-side.
+        }
+      }
+
       if (selectedSlugs.length > 0 || seedCore) {
         await apiSend('/api/starter', 'POST', {
           courseSlugs: selectedSlugs,
@@ -221,6 +308,9 @@ export function OnboardingWizard() {
     )
   }
 
+  // Current quiz question (step 2); PROFILE_QUESTIONS is a fixed 8-item array.
+  const question = PROFILE_QUESTIONS[quizIndex]
+
   return (
     <Sheet
       open={shouldOpen}
@@ -239,14 +329,16 @@ export function OnboardingWizard() {
             {step > 1 && (
               <Button
                 variant="ghost"
-                onClick={() => setStep((prev) => (prev === 3 ? 2 : 1))}
+                onClick={() => setStep((prev) => (prev === 4 ? 3 : prev === 3 ? 2 : 1))}
                 disabled={finishMutation.isPending}
               >
                 Back
               </Button>
             )}
-            {step < 3 ? (
-              <Button onClick={() => setStep((prev) => (prev === 1 ? 2 : 3))}>Continue</Button>
+            {step < 4 ? (
+              <Button onClick={() => setStep((prev) => (prev === 1 ? 2 : prev === 2 ? 3 : 4))}>
+                Continue
+              </Button>
             ) : (
               <Button onClick={() => finishMutation.mutate()} disabled={finishMutation.isPending}>
                 <Sparkles className="h-4 w-4" />
@@ -259,7 +351,7 @@ export function OnboardingWizard() {
     >
       <div className="space-y-4">
         <div className="flex items-center gap-1.5 text-xs text-tertiary">
-          {[1, 2, 3].map((n) => (
+          {[1, 2, 3, 4].map((n) => (
             <span
               key={n}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
@@ -267,7 +359,7 @@ export function OnboardingWizard() {
               }`}
             />
           ))}
-          <span className="ml-2 tabular-nums">Step {step}/3</span>
+          <span className="ml-2 tabular-nums">Step {step}/4</span>
         </div>
 
         {step === 1 && (
@@ -344,6 +436,153 @@ export function OnboardingWizard() {
         )}
 
         {step === 2 && (
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-600 dark:text-secondary">
+              Tell the app how you learn — the scheduler, daily quests, and focus blocks tune
+              themselves around your answer. Everything stays editable in Settings.
+            </p>
+
+            {/* Preset grid vs. questionnaire — one tap toggles the mode. */}
+            <div
+              role="group"
+              aria-label="How to set your profile"
+              className="inline-flex w-full rounded-xl border border-neutral-200 bg-neutral-100/70 p-1 dark:border-(--hub-border) dark:bg-(--hub-sunken)"
+            >
+              {(
+                [
+                  { key: 'presets', label: 'Pick a preset' },
+                  { key: 'quiz', label: 'Answer 8 questions' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setProfileMode(opt.key)}
+                  aria-pressed={profileMode === opt.key}
+                  className={`min-h-[44px] flex-1 rounded-lg px-2.5 text-xs font-medium transition-colors ${
+                    profileMode === opt.key
+                      ? 'bg-white text-indigo-600 shadow-xs dark:bg-(--hub-panel-2) dark:text-indigo-300'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {profileMode === 'presets' && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {LEARNER_PRESETS.map((preset) => {
+                  const active = presetId === preset.id
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setPresetId(preset.id)}
+                      aria-pressed={active}
+                      className={`min-h-[44px] rounded-xl border p-3 text-left transition-colors ${
+                        active
+                          ? 'border-indigo-500 bg-indigo-600/10'
+                          : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
+                      }`}
+                    >
+                      <div className="text-sm font-medium">{preset.label}</div>
+                      <div className="mt-0.5 text-xs text-tertiary">{preset.blurb}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {profileMode === 'quiz' && question && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-1 gap-1.5">
+                    {PROFILE_QUESTIONS.map((q, i) => (
+                      <span
+                        key={q.id}
+                        aria-hidden
+                        className={`h-2 flex-1 rounded-full transition-colors ${
+                          answers[q.id]
+                            ? 'bg-indigo-600'
+                            : i === quizIndex
+                              ? 'bg-indigo-600/40'
+                              : 'bg-neutral-200 dark:bg-(--hub-border)'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs tabular-nums text-tertiary">
+                    {quizIndex + 1}/{PROFILE_QUESTIONS.length}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">{question.question}</div>
+                  {question.helper && (
+                    <div className="text-xs text-tertiary">{question.helper}</div>
+                  )}
+                  <div className="space-y-2">
+                    {question.options.map((opt) => {
+                      const active = answers[question.id] === opt.id
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setAnswers((prev) => ({ ...prev, [question.id]: opt.id }))}
+                          aria-pressed={active}
+                          className={`flex min-h-[44px] w-full items-center rounded-xl border p-3 text-left text-sm transition-colors ${
+                            active
+                              ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
+                              : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setQuizIndex((i) => Math.max(0, i - 1))}
+                    disabled={quizIndex === 0}
+                  >
+                    Back
+                  </Button>
+                  {quizIndex < PROFILE_QUESTIONS.length - 1 && (
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        setQuizIndex((i) => Math.min(PROFILE_QUESTIONS.length - 1, i + 1))
+                      }
+                      disabled={!answers[question.id]}
+                    >
+                      Next
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                // Skip without writing a profile — clear both selections.
+                setPresetId(null)
+                setAnswers({})
+                setStep(3)
+              }}
+              className="btn-ghost text-xs text-tertiary"
+            >
+              I&apos;ll decide later
+            </button>
+          </div>
+        )}
+
+        {step === 3 && (
           <div className="space-y-3">
             <p className="text-sm text-neutral-600 dark:text-secondary">
               Pick optional starter courses so you can try lessons, exercises, and FSRS flashcards
@@ -446,7 +685,7 @@ export function OnboardingWizard() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-3">
             <p className="text-sm text-neutral-600 dark:text-secondary">
               You&apos;re all set! Learning HUB never requires a subscription or server account:
