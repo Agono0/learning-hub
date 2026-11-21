@@ -102,6 +102,16 @@ export function getOrCreateDailyQuests(
 
   const [settings] = db.select().from(userSettings).limit(1).all()
   const focusMinutesTarget = settings?.sessionMinutes ?? 25
+  // Learner profile (migration 030): attention style scales the daily dose.
+  const attentionStyle = settings?.learnerProfile?.traits.attentionStyle
+  const maxReviews =
+    attentionStyle === 'sustained'
+      ? 25
+      : attentionStyle === 'sprints'
+        ? 12
+        : attentionStyle === 'variable'
+          ? 18
+          : undefined
 
   db.insert(quests)
     .values({
@@ -111,6 +121,7 @@ export function getOrCreateDailyQuests(
         dueCount: dueRow?.n ?? 0,
         habitsCount: habitsRow?.n ?? 0,
         focusMinutesTarget,
+        maxReviews,
       }),
     })
     .onConflictDoNothing()

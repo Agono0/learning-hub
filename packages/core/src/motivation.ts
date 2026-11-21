@@ -54,6 +54,12 @@ export interface GenerateDailyQuestsInput {
   habitsCount?: number
   /** target minutes for the focus block (user_settings.sessionMinutes) */
   focusMinutesTarget?: number
+  /**
+   * Review-quest dose ceiling, scaled by the learner profile's attention
+   * style (learner-profile.applyProfile): sprints → 12, sustained → 25,
+   * variable → 18. Default MAX_QUEST_REVIEWS (20) when no profile exists.
+   */
+  maxReviews?: number
 }
 
 /** Cap on the review quest target so a huge backlog stays achievable. */
@@ -72,7 +78,8 @@ export function generateDailyQuests(input: GenerateDailyQuestsInput): QuestItem[
   const habitsCount = Math.max(0, input.habitsCount ?? 0)
   const focusTarget = Math.max(5, input.focusMinutesTarget ?? 25)
 
-  const reviewTarget = dueCount > 0 ? Math.min(dueCount, MAX_QUEST_REVIEWS) : 10
+  const dose = Math.max(5, input.maxReviews ?? MAX_QUEST_REVIEWS)
+  const reviewTarget = dueCount > 0 ? Math.min(dueCount, dose) : Math.max(5, Math.round(dose / 2))
   const reviewLabel = REVIEW_LABELS[h % REVIEW_LABELS.length]
 
   // Alternate lesson vs focus block by date — variety without randomness.

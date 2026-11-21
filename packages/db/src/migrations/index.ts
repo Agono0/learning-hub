@@ -39,6 +39,7 @@ import { exposureEventsMigration } from './026-exposure-events'
 import { hapticsSetting } from './027-haptics-setting'
 import { notificationCenter } from './028-notification-center'
 import { prototypeExemplarSessionsMigration } from './029-prototype-exemplar'
+import { learnerProfileMigration } from './030-learner-profile'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -71,6 +72,7 @@ export const MIGRATIONS: readonly Migration[] = [
   hapticsSetting,
   notificationCenter,
   prototypeExemplarSessionsMigration,
+  learnerProfileMigration,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

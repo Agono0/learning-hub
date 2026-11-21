@@ -7,6 +7,7 @@
  */
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { learnerProfileSchema } from '@learning-hub/core'
 import { cards, courses, db, userSettings } from '@learning-hub/db'
 import { fsrsWeightsSchema, getAIClient, type AIProvider } from '@learning-hub/core'
 import '@/lib/ai'
@@ -49,6 +50,8 @@ const putSettingsSchema = z.object({
     .optional(),
   remindersDailyCap: z.number().int().min(1).max(10).optional(),
   remindersKinds: z.array(z.string()).optional(),
+  /** Learner profile from onboarding (packages/core/src/learner-profile); null clears it. */
+  learnerProfile: learnerProfileSchema.nullable().optional(),
 })
 
 const testSettingsSchema = z.object({
@@ -151,6 +154,7 @@ export const PUT = withRoute(async (req: Request) => {
   if (body.remindersQuietEnd !== undefined) patch.remindersQuietEnd = body.remindersQuietEnd
   if (body.remindersDailyCap !== undefined) patch.remindersDailyCap = body.remindersDailyCap
   if (body.remindersKinds !== undefined) patch.remindersKinds = body.remindersKinds
+  if (body.learnerProfile !== undefined) patch.learnerProfile = body.learnerProfile
   await db.update(userSettings).set(patch).where(eq(userSettings.id, row.id))
   const [updated, empty] = await Promise.all([getRow(), isWorkspaceEmpty()])
   return Response.json({
