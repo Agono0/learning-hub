@@ -5,6 +5,15 @@
  * - Daniel Kahneman (2011): "Thinking, Fast and Slow"
  * - Keith E. Stanovich (2009, 2011): "Rationality and the Reflective Mind"
  * - Pat Croskerry (2002, 2003): "Cognitive Forcing Functions in Clinical Decision Making"
+ *
+ * All engine evaluation runs through the hub transport (`@/lib/transport` →
+ * `/api/dual-process`, registered in the hub worker for native builds): the
+ * scenario/bias catalog via GET, the live session telemetry via POST
+ * `action:evaluate` and the FSRS deck via POST `action:deck`. The pure core
+ * engine is mirrored in-browser as the instant optimistic value and as the
+ * fallback when the API is unreachable (manual-mode guarantee, AGENTS.md
+ * rule 9); both compute identical deterministic values, so rendering never
+ * changes.
  */
 
 'use client'
@@ -13,15 +22,20 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   CALIBRATED_DIAGNOSTIC_SCENARIOS,
   CANONICAL_COGNITIVE_BIAS_CATALOG,
+  type BiasCatalogEntry,
+  type CognitiveBiasType,
   type DiagnosticScenario,
   type DualProcessSessionMetrics,
+  type FSRSDebiasingCard,
   type MindSystem,
+  type ReflectiveMindTier,
   calculateBiasVulnerabilityScore,
   calculateCognitiveDecouplingScore,
   calculateReflectiveMindIndex,
   evaluateReflectiveMindTier,
   generateFSRSDebiasingDeck,
 } from '@learning-hub/core/dualprocess'
+import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Button, DualProcessHUD, Panel } from '@/ui'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight, hapticMedium } from '../platform/haptics'
@@ -39,19 +53,63 @@ import {
 
 type StudioStage = 'stage_1_system1' | 'stage_2_forcing' | 'stage_3_reflective' | 'stage_4_deck'
 
+/** GET /api/dual-process — calibrated scenario corpus + cognitive-bias catalog. */
+interface DualProcessCatalogResponse {
+  ok: boolean
+  scenarios: DiagnosticScenario[]
+  biasCatalog: Record<CognitiveBiasType, BiasCatalogEntry>
+}
+
+/** POST /api/dual-process `action:evaluate` — authoritative session telemetry. */
+interface DualProcessEvaluateResponse {
+  ok: boolean
+  metrics: DualProcessSessionMetrics
+  tier: ReflectiveMindTier
+}
+
+/** POST /api/dual-process `action:deck` — FSRS-6 debiasing cards. */
+interface DualProcessDeckResponse {
+  ok: boolean
+  cards: FSRSDebiasingCard[]
+}
+
 export function DualProcessStudio() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     'emergency_medicine_chest_pain',
   )
   const [stage, setStage] = useState<StudioStage>('stage_1_system1')
 
+  // Scenario corpus + bias catalog — served by the runtime-neutral handler
+  // (GET /api/dual-process). The shipped content is both the initial data and
+  // the unreachable-API fallback, so rendering never waits on the transport
+  // and the studio works with the API down (manual mode, AGENTS.md rule 9).
+  // API-first effect fetch: the bundled corpus paints synchronously (SSR
+  // included); the handler's catalog replaces it once the response lands.
+  const [catalog, setCatalog] = useState<DualProcessCatalogResponse>({
+    ok: true,
+    scenarios: CALIBRATED_DIAGNOSTIC_SCENARIOS,
+    biasCatalog: CANONICAL_COGNITIVE_BIAS_CATALOG,
+  })
+  useEffect(() => {
+    let stale = false
+    apiGet<DualProcessCatalogResponse>('/api/dual-process')
+      .then((res) => {
+        if (!stale && res?.scenarios?.length && res.biasCatalog) setCatalog(res)
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated corpus remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
+  const scenarios = catalog.scenarios
+  const biasCatalog = catalog.biasCatalog
+
   // Scenario state
   const scenario: DiagnosticScenario = useMemo(() => {
-    return (
-      CALIBRATED_DIAGNOSTIC_SCENARIOS.find((s) => s.id === selectedScenarioId) ??
-      CALIBRATED_DIAGNOSTIC_SCENARIOS[0]
-    )
-  }, [selectedScenarioId])
+    return scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0]
+  }, [scenarios, selectedScenarioId])
 
   // System 1 Fast Triage state
   const [system1ChoiceId, setSystem1ChoiceId] = useState<string>('')
@@ -126,8 +184,10 @@ export function DualProcessStudio() {
     return () => clearInterval(interval)
   }, [isPausing, pauseCountdown])
 
-  // Compute live metrics
-  const metrics: DualProcessSessionMetrics = useMemo(() => {
+  // Live HUD telemetry — the in-browser engine mirror: instant (the HUD must
+  // never wait on the transport) and the manual-mode fallback when the API is
+  // unreachable. Deterministic and identical to the handler's computation.
+  const localMetrics: DualProcessSessionMetrics = useMemo(() => {
     const decoupling = calculateCognitiveDecouplingScore({
       hypothesesConsideredCount: completedForcingStepIds.length >= 2 ? 3 : 1,
       anomaliesDiscoveredCount: discoveredAnomalies.length,
@@ -184,10 +244,99 @@ export function DualProcessStudio() {
     system2Confidence,
   ])
 
-  // Generated FSRS Debiasing Cards
-  const debiasingCards = useMemo(() => {
+  // Authoritative evaluation through the hub transport (POST /api/dual-process
+  // `action:evaluate`): the handler derives override/accuracy against the
+  // scenario corpus and runs the same scoring functions server-side. The query
+  // is keyed on the full session input so each interaction reconciles; until
+  // it lands (or forever, if the API is unreachable) the identical local
+  // mirror above shows — the HUD never flickers.
+  const sessionInput = useMemo(
+    () => ({
+      scenarioId: scenario.id,
+      system1ChoiceId,
+      system1LatencyMs,
+      system1Confidence,
+      completedForcingStepIds,
+      discoveredAnomalies,
+      system2ChoiceId,
+      system2Confidence,
+    }),
+    [
+      scenario,
+      system1ChoiceId,
+      system1LatencyMs,
+      system1Confidence,
+      completedForcingStepIds,
+      discoveredAnomalies,
+      system2ChoiceId,
+      system2Confidence,
+    ],
+  )
+  // Authoritative evaluation through the hub transport (POST /api/dual-process
+  // `action:evaluate`): the handler derives override/accuracy against the
+  // scenario corpus and runs the same scoring functions server-side. The
+  // request is keyed on the full session input so each interaction reconciles;
+  // until it lands (or forever, if the API is unreachable) the identical local
+  // mirror above shows — the HUD never flickers. The key-match means a stale
+  // in-flight response can never render for newer inputs.
+  const [apiEvaluation, setApiEvaluation] = useState<{
+    key: string
+    metrics: DualProcessSessionMetrics
+    tier: ReflectiveMindTier
+  } | null>(null)
+  const evaluationKey = JSON.stringify(sessionInput)
+  useEffect(() => {
+    let stale = false
+    apiSend<DualProcessEvaluateResponse>('/api/dual-process', 'POST', {
+      action: 'evaluate',
+      session: sessionInput,
+    })
+      .then((res) => {
+        if (!stale && res?.metrics) {
+          setApiEvaluation({ key: evaluationKey, metrics: res.metrics, tier: res.tier })
+        }
+      })
+      .catch(() => {
+        // Manual mode: the in-browser mirror already rendered this evaluation.
+      })
+    return () => {
+      stale = true
+    }
+  }, [evaluationKey, sessionInput])
+  const metrics: DualProcessSessionMetrics =
+    apiEvaluation?.key === evaluationKey ? apiEvaluation.metrics : localMetrics
+  // Stanovich reflective tier — server-derived when the evaluation landed,
+  // locally classified otherwise (same thresholds, same value).
+  const reflectiveTier: ReflectiveMindTier =
+    apiEvaluation?.key === evaluationKey
+      ? apiEvaluation.tier
+      : evaluateReflectiveMindTier(metrics.reflectiveMindIndex)
+
+  // Generated FSRS Debiasing Cards — synthesized by the handler (POST
+  // /api/dual-process `action:deck`) with the local generation as the instant
+  // fallback (identical output, manual-mode guarantee, rule 9).
+  const localDeck: FSRSDebiasingCard[] = useMemo(() => {
     return generateFSRSDebiasingDeck(scenario)
   }, [scenario])
+  const [apiDeck, setApiDeck] = useState<{ key: string; cards: FSRSDebiasingCard[] } | null>(null)
+  const deckKey = scenario.id
+  useEffect(() => {
+    let stale = false
+    apiSend<DualProcessDeckResponse>('/api/dual-process', 'POST', {
+      action: 'deck',
+      scenarioId: scenario.id,
+    })
+      .then((res) => {
+        if (!stale && Array.isArray(res.cards)) setApiDeck({ key: deckKey, cards: res.cards })
+      })
+      .catch(() => {
+        // Manual mode: the in-browser generation already rendered this deck.
+      })
+    return () => {
+      stale = true
+    }
+  }, [deckKey, scenario])
+  const debiasingCards: FSRSDebiasingCard[] = apiDeck?.key === deckKey ? apiDeck.cards : localDeck
 
   // Handler: Submit System 1 Fast Gut Choice
   const handleSystem1Submit = (choiceId: string) => {
@@ -305,7 +454,7 @@ export function DualProcessStudio() {
 
         {/* Scenario Switcher Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-          {CALIBRATED_DIAGNOSTIC_SCENARIOS.map((sc) => (
+          {scenarios.map((sc) => (
             <button
               key={sc.id}
               type="button"
@@ -603,7 +752,7 @@ export function DualProcessStudio() {
             <div className="space-y-3">
               {scenario.cognitiveForcingSteps.map((step) => {
                 const isCompleted = completedForcingStepIds.includes(step.id)
-                const bias = CANONICAL_COGNITIVE_BIAS_CATALOG[step.targetBiasMitigated]
+                const bias = biasCatalog[step.targetBiasMitigated]
                 return (
                   <div
                     key={step.id}
@@ -824,7 +973,7 @@ export function DualProcessStudio() {
                 <div className="p-3 rounded-xl bg-white dark:bg-(--hub-panel) border border-neutral-200 dark:border-(--hub-border)">
                   <div className="text-[11px] text-secondary">Stanovich Reflective Tier</div>
                   <div className="text-xs font-bold text-ac-text dark:text-ac-text mt-0.5 uppercase">
-                    {evaluateReflectiveMindTier(metrics.reflectiveMindIndex).replace(/_/g, ' ')}
+                    {reflectiveTier.replace(/_/g, ' ')}
                   </div>
                 </div>
               </div>

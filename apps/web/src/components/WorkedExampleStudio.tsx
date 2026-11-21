@@ -1,6 +1,31 @@
+/**
+ * Worked-Example Fading & Cognitive Load Scaffolding Studio.
+ *
+ * API-backed studio: the stateful engine (`WorkedExampleSession`) executes
+ * SERVER-side through the runtime-neutral handler's stateless snapshot
+ * protocol (`/api/scaffolding`): every transition carries the session snapshot
+ * and returns the engine's evaluation result plus the next snapshot. The
+ * in-browser engine mirror executes the identical transitions only when the
+ * API is unreachable (manual-mode guarantee, AGENTS.md rule 9) and paints the
+ * synchronous first render. All transport goes through `@/lib/transport` only.
+ *
+ * Implements:
+ * - Renkl & Atkinson (2003, 2004) 4-stage example-problem scaffolding continuum:
+ *   Stage 1: Expert Model (Full Worked Example)
+ *   Stage 2: Backward Faded (Atkinson et al. 2000 chaining)
+ *   Stage 3: Forward Faded (Connective intermediate lemmas)
+ *   Stage 4: Independent Problem Solving with Metacognitive Prompting
+ * - Sweller (1988, 2010) Cognitive Load Theory:
+ *   Intrinsic Load (IL) + Extraneous Load (EL) + Germane Load (GL) <= Cowan (2001) 4 chunks
+ * - Chi et al. (1989) Principle-Based Self-Explanation Prompts
+ * - Große & Renkl (2007) Erroneous Example Diagnostic Crucible
+ * - Kalyuga et al. (2003) Expertise Reversal Effect Detection
+ * - Direct FSRS v5 spaced repetition flashcard export bridge
+ */
+
 'use client'
 
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
@@ -17,21 +42,24 @@ import {
   VolumeX,
   XCircle,
 } from 'lucide-react'
-import { IconButton } from '@/ui'
+import { Callout, IconButton } from '@/ui'
 import {
   CALIBRATED_SCAFFOLDING_PROBLEMS,
-  WorkedExampleSession,
   evaluateErroneousAttempt,
   evaluateSelfExplanation,
   exportStepToFSRS,
   getStepFadingStatus,
+  WorkedExampleSession,
   type ErroneousEvaluationResult,
   type FadingStrategy,
   type MisconceptionCategory,
+  type ScaffoldingSessionState,
   type ScaffoldingStage,
   type SelfExplanationEvaluation,
+  type StepEvaluationResult,
   type WorkedExampleProblem,
 } from '@learning-hub/core/scaffolding'
+import { apiGet, apiSend } from '@/lib/transport'
 import { FadedScaffoldingHUD } from '../ui/FadedScaffoldingHUD'
 import { getSharedAudioContext } from '../lib/audio-graph'
 import { hapticHeavy, hapticLight, hapticMedium, hapticWarning } from '../platform/haptics'
@@ -45,6 +73,74 @@ export interface WorkedExampleStudioProps {
   className?: string
 }
 
+/** One step's fading status — the engine `getStepFadingStatus` output shape. */
+type StepFadingStatus = ReturnType<typeof getStepFadingStatus>
+
+interface ProblemsResponse {
+  ok: boolean
+  problems: Record<string, WorkedExampleProblem>
+}
+interface NewSessionResponse {
+  ok: boolean
+  state: ScaffoldingSessionState
+}
+interface EvaluateStepResponse {
+  ok: boolean
+  result: StepEvaluationResult
+  state: ScaffoldingSessionState
+}
+interface HintResponse {
+  ok: boolean
+  hint: string
+  state: ScaffoldingSessionState
+}
+interface SessionStateResponse {
+  ok: boolean
+  state: ScaffoldingSessionState
+}
+interface SelfExplanationResponse {
+  ok: boolean
+  result: SelfExplanationEvaluation
+}
+interface ErroneousResponse {
+  ok: boolean
+  result: ErroneousEvaluationResult
+}
+interface FadingStatusesResponse {
+  ok: boolean
+  statuses: Record<string, StepFadingStatus>
+}
+interface ExportCardResponse {
+  ok: boolean
+  card: ReturnType<typeof exportStepToFSRS>
+}
+interface ExportDeckResponse {
+  ok: boolean
+  cards: ReturnType<typeof exportStepToFSRS>[]
+}
+
+/**
+ * Rebuild an engine session from a state snapshot — the in-browser mirror of
+ * the handler's snapshot protocol. Used ONLY for the synchronous first paint
+ * and when the API is unreachable (manual-mode fallback, AGENTS.md rule 9) so
+ * the studio keeps working offline. Array/object fields are copied so engine
+ * mutations can never alias React state.
+ */
+function hydrateSession(snapshot: ScaffoldingSessionState): WorkedExampleSession {
+  const session = new WorkedExampleSession(
+    snapshot.problemId,
+    snapshot.stage,
+    snapshot.learnerExpertise,
+  )
+  const mutable = session as unknown as { state: ScaffoldingSessionState }
+  mutable.state = {
+    ...snapshot,
+    completedStepIds: [...snapshot.completedStepIds],
+    selfExplanationScores: { ...snapshot.selfExplanationScores },
+  }
+  return session
+}
+
 export function WorkedExampleStudio({
   initialProblemId = 'raft_leader_election',
   initialStage = 2,
@@ -56,18 +152,48 @@ export function WorkedExampleStudio({
   const [activeTab, setActiveTab] = useState<StudioTab>('derivation')
   const [audioMuted, setAudioMuted] = useState(false)
 
-  // Session state machine reference
-  const sessionRef = useRef<WorkedExampleSession>(
-    new WorkedExampleSession(selectedProblemId, initialStage, 0.0),
+  // Problem catalog: the bundled calibrated bank paints synchronously; the
+  // handler's catalog replaces it once fetched (identical content, server-side
+  // authority; manual mode keeps the bundled bank).
+  const [problems, setProblems] = useState<Record<string, WorkedExampleProblem>>(
+    CALIBRATED_SCAFFOLDING_PROBLEMS,
   )
 
-  // Local mirror state for reactive re-renders
-  const [sessionState, setSessionState] = useState(() => sessionRef.current.getState())
+  // Session state machine snapshot. The INITIAL session is constructed by the
+  // in-browser engine mirror so the first paint (and SSR) is synchronous; every
+  // transition afterwards is executed by the runtime-neutral handler via the
+  // snapshot protocol, with this same mirror as the manual-mode fallback.
+  const [sessionState, setSessionState] = useState<ScaffoldingSessionState>(() =>
+    new WorkedExampleSession(initialProblemId, initialStage, 0.0).getState(),
+  )
+  // Latest snapshot readable inside the serialized transition queue.
+  const sessionStateRef = useRef(sessionState)
+
+  // Handler-computed pure derivations (key-matched so a stale in-flight
+  // response can never render for newer inputs; the engine mirror covers the
+  // in-flight window and manual mode).
+  const [apiFading, setApiFading] = useState<{
+    key: string
+    statuses: Record<string, StepFadingStatus>
+  } | null>(null)
+  const [apiDeck, setApiDeck] = useState<{
+    key: string
+    cards: Record<number, ReturnType<typeof exportStepToFSRS>>
+  } | null>(null)
+
+  // Transition transport states (loading / error surfaces).
+  const [stepPending, setStepPending] = useState(false)
+  const [hintPending, setHintPending] = useState(false)
+  const [explanationPending, setExplanationPending] = useState(false)
+  const [erroneousPending, setErroneousPending] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+
   const currentProblem = useMemo<WorkedExampleProblem>(
     () =>
-      CALIBRATED_SCAFFOLDING_PROBLEMS[selectedProblemId] ||
+      problems[selectedProblemId] ??
+      problems.raft_leader_election ??
       CALIBRATED_SCAFFOLDING_PROBLEMS.raft_leader_election!,
-    [selectedProblemId],
+    [problems, selectedProblemId],
   )
 
   // Step interaction state
@@ -90,6 +216,68 @@ export function WorkedExampleStudio({
     useState<MisconceptionCategory>('invariant_violation')
   const [learnerRepairText, setLearnerRepairText] = useState('')
   const [erroneousResult, setErroneousResult] = useState<ErroneousEvaluationResult | null>(null)
+
+  // Problem catalog from the handler (mount; the bundled bank remains on failure).
+  useEffect(() => {
+    let stale = false
+    apiGet<ProblemsResponse>('/api/scaffolding')
+      .then((res) => {
+        if (!stale && res.problems && Object.keys(res.problems).length > 0) {
+          setProblems(res.problems)
+        }
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated problem bank remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
+
+  // Fading statuses for the whole active problem — handler-computed (the
+  // engine mirror below renders synchronously until the response lands).
+  const fadingKey = `${selectedProblemId}|${sessionState.stage}|${sessionState.strategy}`
+  useEffect(() => {
+    let stale = false
+    apiSend<FadingStatusesResponse>('/api/scaffolding', 'POST', {
+      action: 'fadingStatuses',
+      problemId: selectedProblemId,
+      stage: sessionState.stage,
+      strategy: sessionState.strategy,
+    })
+      .then((res) => {
+        if (!stale && res.statuses) setApiFading({ key: fadingKey, statuses: res.statuses })
+      })
+      .catch(() => {
+        // Manual mode: the per-step engine mirror already rendered.
+      })
+    return () => {
+      stale = true
+    }
+  }, [fadingKey, selectedProblemId, sessionState.stage, sessionState.strategy])
+
+  // FSRS export deck for the active problem+stage — handler-computed.
+  const deckKey = `${selectedProblemId}|${sessionState.stage}`
+  useEffect(() => {
+    let stale = false
+    apiSend<ExportDeckResponse>('/api/scaffolding', 'POST', {
+      action: 'exportDeck',
+      problemId: selectedProblemId,
+      stage: sessionState.stage,
+    })
+      .then((res) => {
+        if (stale || !Array.isArray(res.cards)) return
+        const byStep: Record<number, ReturnType<typeof exportStepToFSRS>> = {}
+        for (const card of res.cards) byStep[card.metadata.stepIndex] = card
+        setApiDeck({ key: deckKey, cards: byStep })
+      })
+      .catch(() => {
+        // Manual mode: the per-step engine mirror already rendered.
+      })
+    return () => {
+      stale = true
+    }
+  }, [deckKey, selectedProblemId, sessionState.stage])
 
   // Synthesize Web Audio Earcons
   const playAudioEarcon = useCallback(
@@ -149,15 +337,57 @@ export function WorkedExampleStudio({
     [audioMuted],
   )
 
+  // ── Serialized session-transition queue ────────────────────────────────────
+  // The API is stateless (snapshot protocol): transitions are queued so each
+  // request carries ALL prior applied effects and responses apply strictly in
+  // order. `sessionGen` invalidates transitions queued for a session that has
+  // since been replaced (problem switch / reset).
+  const sessionQueue = useRef<Promise<void>>(Promise.resolve())
+  const sessionGen = useRef(0)
+
+  /** The one way session state changes: keeps the snapshot ref in lockstep. */
+  const setSession = (next: ScaffoldingSessionState) => {
+    sessionStateRef.current = next
+    setSessionState(next)
+  }
+
+  /**
+   * Queue one session transition. Uncaught failures (both the handler and the
+   * in-browser mirror errored) are logged and surfaced via `sessionError`;
+   * handler failures alone are silent — the mirror already applied the result.
+   */
+  const enqueueSessionAction = (action: () => Promise<void>) => {
+    setSessionError(null)
+    sessionQueue.current = sessionQueue.current.then(action).catch((err: unknown) => {
+      console.error('[scaffolding] session action failed:', err)
+      setSessionError(err instanceof Error ? err.message : String(err))
+    })
+  }
+
+  /** Fresh engine session (problem switch / reset): mirror applied instantly,
+   * the handler's `newSession` result confirms it (identical values). */
+  const applyNewSession = (problemId: string, stage: ScaffoldingStage, expertise: number) => {
+    const gen = ++sessionGen.current
+    setSession(new WorkedExampleSession(problemId, stage, expertise).getState())
+    enqueueSessionAction(async () => {
+      try {
+        const res = await apiSend<NewSessionResponse>('/api/scaffolding', 'POST', {
+          action: 'newSession',
+          problemId,
+          stage,
+          learnerExpertise: expertise,
+        })
+        if (res?.state && gen === sessionGen.current) setSession(res.state)
+      } catch {
+        // Manual mode (rule 9): the in-browser mirror already holds this state.
+      }
+    })
+  }
+
   // Problem switcher
   const handleProblemChange = (problemId: string) => {
     setSelectedProblemId(problemId)
-    sessionRef.current = new WorkedExampleSession(
-      problemId,
-      sessionState.stage,
-      sessionState.learnerExpertise,
-    )
-    setSessionState(sessionRef.current.getState())
+    applyNewSession(problemId, sessionState.stage, sessionState.learnerExpertise)
     setSelectedChoiceIndex(null)
     setClozeInput('')
     setStepFeedback(null)
@@ -171,8 +401,26 @@ export function WorkedExampleStudio({
 
   // Stage switcher
   const handleStageChange = (newStage: ScaffoldingStage) => {
-    sessionRef.current.setStage(newStage)
-    setSessionState(sessionRef.current.getState())
+    const gen = sessionGen.current
+    enqueueSessionAction(async () => {
+      try {
+        const res = await apiSend<SessionStateResponse>('/api/scaffolding', 'POST', {
+          action: 'setStage',
+          state: sessionStateRef.current,
+          stage: newStage,
+        })
+        if (gen !== sessionGen.current) return
+        if (!res?.state) throw new Error('malformed setStage response')
+        setSession(res.state)
+      } catch {
+        if (gen !== sessionGen.current) return
+        // Manual mode (rule 9): the in-browser engine mirror executes the same
+        // transition locally.
+        const session = hydrateSession(sessionStateRef.current)
+        session.setStage(newStage)
+        setSession(session.getState())
+      }
+    })
     setStepFeedback(null)
     setActiveHint(null)
     hapticMedium()
@@ -181,14 +429,56 @@ export function WorkedExampleStudio({
 
   // Strategy switcher
   const handleStrategyChange = (newStrategy: FadingStrategy) => {
-    sessionRef.current.setStrategy(newStrategy)
-    setSessionState(sessionRef.current.getState())
+    const gen = sessionGen.current
+    enqueueSessionAction(async () => {
+      try {
+        const res = await apiSend<SessionStateResponse>('/api/scaffolding', 'POST', {
+          action: 'setStrategy',
+          state: sessionStateRef.current,
+          strategy: newStrategy,
+        })
+        if (gen !== sessionGen.current) return
+        if (!res?.state) throw new Error('malformed setStrategy response')
+        setSession(res.state)
+      } catch {
+        if (gen !== sessionGen.current) return
+        const session = hydrateSession(sessionStateRef.current)
+        session.setStrategy(newStrategy)
+        setSession(session.getState())
+      }
+    })
     hapticLight()
+  }
+
+  // Step submission — shared applier for the handler result and the mirror.
+  const applyStepResult = (result: StepEvaluationResult, nextState: ScaffoldingSessionState) => {
+    setStepFeedback(result.feedback)
+    setStepFeedbackIsCorrect(result.isCorrect)
+
+    if (result.isCorrect) {
+      playAudioEarcon('success')
+      hapticLight()
+      setSelectedChoiceIndex(null)
+      setClozeInput('')
+      setActiveHint(null)
+      if (nextState.isCompleted) {
+        playAudioEarcon('milestone')
+        hapticHeavy()
+      }
+    } else {
+      playAudioEarcon('error')
+      hapticWarning()
+    }
+
+    setSession(nextState)
   }
 
   // Step submission
   const handleStepSubmit = () => {
-    const activeStep = sessionRef.current.getCurrentStep()
+    // Synchronous gate over the latest snapshot (the Verify button's disabled
+    // state already reflects these conditions for the rendered step).
+    const latest = sessionStateRef.current
+    const activeStep = currentProblem.steps.find((s) => s.stepIndex === latest.currentStepIndex)
     if (!activeStep) return
 
     let answer = ''
@@ -202,45 +492,62 @@ export function WorkedExampleStudio({
       answer = clozeInput.trim()
     }
 
-    const result = sessionRef.current.evaluateCurrentStepAnswer(answer)
-    setStepFeedback(result.feedback)
-    setStepFeedbackIsCorrect(result.isCorrect)
-
-    if (result.isCorrect) {
-      playAudioEarcon('success')
-      hapticLight()
-      setSelectedChoiceIndex(null)
-      setClozeInput('')
-      setActiveHint(null)
-      if (sessionRef.current.getState().isCompleted) {
-        playAudioEarcon('milestone')
-        hapticHeavy()
+    const gen = sessionGen.current
+    setStepPending(true)
+    enqueueSessionAction(async () => {
+      try {
+        const res = await apiSend<EvaluateStepResponse>('/api/scaffolding', 'POST', {
+          action: 'evaluateStep',
+          state: sessionStateRef.current,
+          answer,
+        })
+        if (gen !== sessionGen.current) return
+        if (!res?.result || !res.state) throw new Error('malformed evaluateStep response')
+        applyStepResult(res.result, res.state)
+      } catch {
+        if (gen !== sessionGen.current) return
+        // Manual mode (rule 9): the in-browser engine mirror grades + advances.
+        const session = hydrateSession(sessionStateRef.current)
+        applyStepResult(session.evaluateCurrentStepAnswer(answer), session.getState())
+      } finally {
+        setStepPending(false)
       }
-    } else {
-      playAudioEarcon('error')
-      hapticWarning()
-    }
-
-    setSessionState(sessionRef.current.getState())
+    })
   }
 
   // Hint button
   const handleRequestHint = () => {
-    const hint = sessionRef.current.useHint()
-    setActiveHint(hint)
-    playAudioEarcon('hint')
-    hapticLight()
-    setSessionState(sessionRef.current.getState())
+    const gen = sessionGen.current
+    setHintPending(true)
+    enqueueSessionAction(async () => {
+      const applyHint = (hint: string, nextState: ScaffoldingSessionState) => {
+        setActiveHint(hint)
+        playAudioEarcon('hint')
+        hapticLight()
+        setSession(nextState)
+      }
+      try {
+        const res = await apiSend<HintResponse>('/api/scaffolding', 'POST', {
+          action: 'hint',
+          state: sessionStateRef.current,
+        })
+        if (gen !== sessionGen.current) return
+        if (!res?.hint || !res.state) throw new Error('malformed hint response')
+        applyHint(res.hint, res.state)
+      } catch {
+        if (gen !== sessionGen.current) return
+        // Manual mode (rule 9): the in-browser engine mirror consumes the hint.
+        const session = hydrateSession(sessionStateRef.current)
+        applyHint(session.useHint(), session.getState())
+      } finally {
+        setHintPending(false)
+      }
+    })
   }
 
   // Reset problem session
   const handleResetSession = () => {
-    sessionRef.current = new WorkedExampleSession(
-      selectedProblemId,
-      sessionState.stage,
-      sessionState.learnerExpertise,
-    )
-    setSessionState(sessionRef.current.getState())
+    applyNewSession(selectedProblemId, sessionState.stage, sessionState.learnerExpertise)
     setSelectedChoiceIndex(null)
     setClozeInput('')
     setStepFeedback(null)
@@ -253,69 +560,145 @@ export function WorkedExampleStudio({
     const prompt = currentProblem.selfExplanationPrompts[activePromptIndex]
     if (!prompt || !userExplanationText.trim()) return
 
-    const result = evaluateSelfExplanation({
-      userExplanation: userExplanationText,
-      prompt,
+    const problemId = currentProblem.id
+    const explanation = userExplanationText
+    const gen = sessionGen.current
+    setExplanationPending(true)
+    enqueueSessionAction(async () => {
+      try {
+        // 1. Score the explanation (pure engine evaluation via the handler).
+        let result: SelfExplanationEvaluation
+        try {
+          const res = await apiSend<SelfExplanationResponse>('/api/scaffolding', 'POST', {
+            action: 'evaluateSelfExplanation',
+            problemId,
+            promptId: prompt.id,
+            userExplanation: explanation,
+          })
+          if (gen !== sessionGen.current) return
+          if (!res?.result) throw new Error('malformed self-explanation response')
+          result = res.result
+        } catch {
+          if (gen !== sessionGen.current) return
+          // Manual mode (rule 9): the in-browser engine mirror scores identically.
+          result = evaluateSelfExplanation({ userExplanation: explanation, prompt })
+        }
+
+        // 2. Fold the score into the session (engine transition, snapshot protocol).
+        let nextState: ScaffoldingSessionState
+        try {
+          const res = await apiSend<SessionStateResponse>('/api/scaffolding', 'POST', {
+            action: 'recordSelfExplanation',
+            state: sessionStateRef.current,
+            promptId: prompt.id,
+            score: result.score,
+          })
+          if (gen !== sessionGen.current) return
+          if (!res?.state) throw new Error('malformed session response')
+          nextState = res.state
+        } catch {
+          if (gen !== sessionGen.current) return
+          const session = hydrateSession(sessionStateRef.current)
+          session.recordSelfExplanationScore(prompt.id, result.score)
+          nextState = session.getState()
+        }
+
+        setSelfExplanationResult(result)
+        setSession(nextState)
+
+        if (result.score >= 0.75) {
+          playAudioEarcon('success')
+          hapticMedium()
+        } else {
+          playAudioEarcon('hint')
+          hapticLight()
+        }
+      } finally {
+        setExplanationPending(false)
+      }
     })
-
-    setSelfExplanationResult(result)
-    sessionRef.current.recordSelfExplanationScore(prompt.id, result.score)
-    setSessionState(sessionRef.current.getState())
-
-    if (result.score >= 0.75) {
-      playAudioEarcon('success')
-      hapticMedium()
-    } else {
-      playAudioEarcon('hint')
-      hapticLight()
-    }
   }
 
-  // Erroneous crucible submission
+  // Erroneous crucible submission (pure evaluation — no session state).
   const handleEvaluateErroneous = () => {
     const variant = currentProblem.erroneousVariants[activeErroneousIndex]
     if (!variant || !learnerRepairText.trim()) return
 
-    const result = evaluateErroneousAttempt({
-      selectedStepIndex: selectedFlawedStep,
-      selectedMisconception,
-      learnerRepairText,
-      erroneousVariant: variant,
-    })
+    const problemId = currentProblem.id
+    const stepIndex = selectedFlawedStep
+    const misconception = selectedMisconception
+    const repairText = learnerRepairText
+    setErroneousPending(true)
+    void (async () => {
+      let result: ErroneousEvaluationResult
+      try {
+        const res = await apiSend<ErroneousResponse>('/api/scaffolding', 'POST', {
+          action: 'evaluateErroneous',
+          problemId,
+          variantId: variant.id,
+          selectedStepIndex: stepIndex,
+          selectedMisconception: misconception,
+          learnerRepairText: repairText,
+        })
+        if (!res?.result) throw new Error('malformed erroneous-evaluation response')
+        result = res.result
+      } catch {
+        // Manual mode (rule 9): the in-browser engine mirror diagnoses identically.
+        result = evaluateErroneousAttempt({
+          selectedStepIndex: stepIndex,
+          selectedMisconception: misconception,
+          learnerRepairText: repairText,
+          erroneousVariant: variant,
+        })
+      }
 
-    setErroneousResult(result)
-    if (result.compositeScore >= 0.7) {
-      playAudioEarcon('success')
-      hapticHeavy()
-    } else {
-      playAudioEarcon('error')
-      hapticWarning()
-    }
+      setErroneousResult(result)
+      if (result.compositeScore >= 0.7) {
+        playAudioEarcon('success')
+        hapticHeavy()
+      } else {
+        playAudioEarcon('error')
+        hapticWarning()
+      }
+    })().finally(() => setErroneousPending(false))
   }
 
-  // Flashcard export
+  // Flashcard export — handler-computed card, engine-mirror fallback.
   const handleExportFlashcard = (stepIndex: number) => {
-    const card = exportStepToFSRS({
-      problem: currentProblem,
-      stepIndex,
-      stage: sessionState.stage,
-    })
+    const problemId = currentProblem.id
+    const stage = sessionStateRef.current.stage
+    void (async () => {
+      let card: ReturnType<typeof exportStepToFSRS>
+      try {
+        const res = await apiSend<ExportCardResponse>('/api/scaffolding', 'POST', {
+          action: 'exportCard',
+          problemId,
+          stepIndex,
+          stage,
+        })
+        if (!res?.card) throw new Error('malformed exportCard response')
+        card = res.card
+      } catch {
+        // Manual mode (rule 9): the in-browser engine mirror exports the card.
+        card = exportStepToFSRS({ problem: currentProblem, stepIndex, stage })
+      }
 
-    if (onExportCard) {
-      onExportCard(card)
-    }
+      if (onExportCard) {
+        onExportCard(card)
+      }
 
-    // Trigger synthetic download of JSON card
-    const blob = new Blob([JSON.stringify(card, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `fsrs-scaffold-${currentProblem.id}-step-${stepIndex}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+      // Trigger synthetic download of JSON card
+      const blob = new Blob([JSON.stringify(card, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `fsrs-scaffold-${problemId}-step-${stepIndex}.json`
+      a.click()
+      URL.revokeObjectURL(url)
 
-    playAudioEarcon('milestone')
-    hapticLight()
+      playAudioEarcon('milestone')
+      hapticLight()
+    })()
   }
 
   return (
@@ -327,7 +710,7 @@ export function WorkedExampleStudio({
             Calibrated Problem:
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {Object.values(CALIBRATED_SCAFFOLDING_PROBLEMS).map((p) => {
+            {Object.values(problems).map((p) => {
               const isSelected = p.id === selectedProblemId
               return (
                 <button
@@ -380,6 +763,15 @@ export function WorkedExampleStudio({
         onStageChange={handleStageChange}
         onStrategyChange={handleStrategyChange}
       />
+
+      {/* Session transport error — shown only when BOTH the handler and the
+          in-browser engine mirror failed (manual mode keeps API failures
+          silent); cleared by the next queued action. */}
+      {sessionError && (
+        <Callout tone="danger">
+          Session action failed — {sessionError}. Your local progress is kept; try again.
+        </Callout>
+      )}
 
       {/* Tab Navigation */}
       <div className="flex border-b border-white/10 text-xs font-bold">
@@ -476,12 +868,14 @@ export function WorkedExampleStudio({
           {/* Derivation Steps List */}
           <div className="flex flex-col gap-4">
             {currentProblem.steps.map((step) => {
-              const status = getStepFadingStatus({
-                step,
-                totalSteps: currentProblem.steps.length,
-                stage: sessionState.stage,
-                strategy: sessionState.strategy,
-              })
+              const status =
+                (apiFading?.key === fadingKey ? apiFading.statuses[step.id] : undefined) ??
+                getStepFadingStatus({
+                  step,
+                  totalSteps: currentProblem.steps.length,
+                  stage: sessionState.stage,
+                  strategy: sessionState.strategy,
+                })
 
               const isCompleted = sessionState.completedStepIds.includes(step.id)
               const isCurrent = step.stepIndex === sessionState.currentStepIndex
@@ -647,6 +1041,7 @@ export function WorkedExampleStudio({
                         <div className="flex items-center justify-between gap-3 pt-2">
                           <button
                             onClick={handleRequestHint}
+                            disabled={hintPending}
                             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all"
                           >
                             <Lightbulb className="h-3.5 w-3.5 text-status-warning-text" />
@@ -656,13 +1051,14 @@ export function WorkedExampleStudio({
                           <button
                             onClick={handleStepSubmit}
                             disabled={
-                              step.scaffoldOptions
+                              stepPending ||
+                              (step.scaffoldOptions
                                 ? selectedChoiceIndex === null
-                                : !clozeInput.trim()
+                                : !clozeInput.trim())
                             }
                             className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                           >
-                            <span>Verify Step</span>
+                            <span>{stepPending ? 'Verifying…' : 'Verify Step'}</span>
                             <ArrowRight className="h-3.5 w-3.5" />
                           </button>
                         </div>
@@ -788,11 +1184,11 @@ export function WorkedExampleStudio({
               <div className="flex justify-end">
                 <button
                   onClick={handleEvaluateExplanation}
-                  disabled={!userExplanationText.trim()}
+                  disabled={explanationPending || !userExplanationText.trim()}
                   className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 disabled:opacity-50 transition-all"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  <span>Evaluate Self-Explanation</span>
+                  <span>{explanationPending ? 'Evaluating…' : 'Evaluate Self-Explanation'}</span>
                 </button>
               </div>
 
@@ -942,11 +1338,11 @@ export function WorkedExampleStudio({
               <div className="flex justify-end">
                 <button
                   onClick={handleEvaluateErroneous}
-                  disabled={!learnerRepairText.trim()}
+                  disabled={erroneousPending || !learnerRepairText.trim()}
                   className="flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-amber-600/30 hover:bg-amber-500 disabled:opacity-50 transition-all"
                 >
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  <span>Diagnose Misconception</span>
+                  <span>{erroneousPending ? 'Diagnosing…' : 'Diagnose Misconception'}</span>
                 </button>
               </div>
 
@@ -994,11 +1390,13 @@ export function WorkedExampleStudio({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {currentProblem.steps.map((step) => {
-              const card = exportStepToFSRS({
-                problem: currentProblem,
-                stepIndex: step.stepIndex,
-                stage: sessionState.stage,
-              })
+              const card =
+                (apiDeck?.key === deckKey ? apiDeck.cards[step.stepIndex] : undefined) ??
+                exportStepToFSRS({
+                  problem: currentProblem,
+                  stepIndex: step.stepIndex,
+                  stage: sessionState.stage,
+                })
 
               return (
                 <div

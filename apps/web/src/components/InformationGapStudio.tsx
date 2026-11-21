@@ -11,11 +11,22 @@
  * - Min Jeong Kang et al. (2009, Neuron):
  *   "The Wick in the Candle of Learning: Epistemic Curiosity Activates the Reward Circuit and Enhances Memory"
  *   fMRI: Anticipatory curiosity sensitizes striatal dopamine, yielding up to 85% higher long-term retention.
+ *
+ * All engine evaluation runs through the hub transport (`@/lib/transport` →
+ * `/api/curiosity`, registered in the hub worker for native builds): the
+ * mystery catalog via GET and the live Loewenstein/Kang telemetry via POST
+ * `action:metrics`. The pure core engine is mirrored in-browser as the instant
+ * optimistic value and the fallback when the API is unreachable (manual-mode
+ * guarantee, AGENTS.md rule 9); both compute identical deterministic values,
+ * so rendering never changes. The resolution crucible composes its result from
+ * resolver-option content (no engine math — historical behavior kept); the
+ * engine's own stateful resolution is exposed headless via POST
+ * `action:resolve`.
  */
 
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CALIBRATED_CURIOSITY_MYSTERIES,
   calculateLoewensteinEpistemicTension,
@@ -26,6 +37,7 @@ import {
   type FSRSCuriosityCard,
   type MysteryResolutionResult,
 } from '@learning-hub/core/curiosity'
+import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Button, InformationGapHUD, Panel } from '@/ui'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight, hapticMedium } from '../platform/haptics'
@@ -46,6 +58,18 @@ import {
 
 type StudioTab = 'clues' | 'crucible' | 'audit' | 'deck'
 
+/** GET /api/curiosity — the calibrated mystery catalog. */
+interface CuriosityCatalogResponse {
+  ok: boolean
+  mysteries: CuriosityGapMystery[]
+}
+
+/** POST /api/curiosity `action:metrics` — authoritative Loewenstein/Kang telemetry. */
+interface CuriosityMetricsResponse {
+  ok: boolean
+  metrics: CuriosityMetrics
+}
+
 export function InformationGapStudio() {
   const [selectedMysteryId, setSelectedMysteryId] = useState<string>(
     'quantum_delayed_choice_eraser',
@@ -59,20 +83,48 @@ export function InformationGapStudio() {
   const [simulatedKnowledge, setSimulatedKnowledge] = useState<number | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
+  // Mystery catalog — served by the runtime-neutral handler (GET
+  // /api/curiosity). The shipped corpus is both the initial data and the
+  // unreachable-API fallback, so rendering never waits on the transport
+  // (manual mode, AGENTS.md rule 9). API-first effect fetch: the bundled
+  // corpus paints synchronously (SSR included); the handler's catalog
+  // replaces it once the response lands.
+  const [mysteries, setMysteries] = useState<CuriosityGapMystery[]>(() =>
+    Object.values(CALIBRATED_CURIOSITY_MYSTERIES),
+  )
+  useEffect(() => {
+    let stale = false
+    apiGet<CuriosityCatalogResponse>('/api/curiosity')
+      .then((res) => {
+        if (!stale && res?.mysteries?.length) setMysteries(res.mysteries)
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated corpus remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
+
   const mystery: CuriosityGapMystery =
-    CALIBRATED_CURIOSITY_MYSTERIES[selectedMysteryId] ??
+    mysteries.find((m) => m.id === selectedMysteryId) ??
     CALIBRATED_CURIOSITY_MYSTERIES.quantum_delayed_choice_eraser
 
-  // Dynamic session metrics
-  const metrics: CuriosityMetrics = useMemo(() => {
-    const isResolved = resolutionResult?.isAccurate === true
-    const baseK =
-      simulatedKnowledge !== null
-        ? simulatedKnowledge
-        : isResolved
-          ? 0.95
-          : 0.25 + (revealedClueIds.size / Math.max(1, mystery.clues.length)) * 0.45
+  // Perceived-knowledge model — the studio's own INPUT to the engine's tension
+  // curve: baseline 0.25 + 0.45 × clue coverage, the HUD's simulated level, or
+  // the 0.95 post-resolution epistemic closure. Sent to the handler unrounded
+  // so the server computes the identical tension value.
+  const isResolved = resolutionResult?.isAccurate === true
+  const baseK = useMemo(() => {
+    if (simulatedKnowledge !== null) return simulatedKnowledge
+    if (isResolved) return 0.95
+    return 0.25 + (revealedClueIds.size / Math.max(1, mystery.clues.length)) * 0.45
+  }, [simulatedKnowledge, isResolved, revealedClueIds, mystery])
 
+  // Live HUD telemetry — the in-browser engine mirror: instant (the HUD must
+  // never wait on the transport) and the manual-mode fallback when the API is
+  // unreachable. Deterministic and identical to the handler's computation.
+  const localMetrics: CuriosityMetrics = useMemo(() => {
     const tension = calculateLoewensteinEpistemicTension(baseK, mystery.collativeVariable)
     const mult = calculateMemoryFacilitationMultiplier(
       tension,
@@ -93,7 +145,51 @@ export function InformationGapStudio() {
       isResolved,
       epistemicDriveStatus: driveStatus,
     }
-  }, [mystery, revealedClueIds, resolutionResult, simulatedKnowledge])
+  }, [baseK, mystery, revealedClueIds, isResolved])
+
+  // Authoritative evaluation through the hub transport (POST /api/curiosity
+  // `action:metrics`): the handler runs Loewenstein's inverted-U, the Kang
+  // memory facilitation multiplier and the drive-status classifier. The query
+  // is keyed on the full input so each clue reveal / knowledge simulation
+  // reconciles; until it lands (or forever, if the API is unreachable) the
+  // identical local mirror above shows — the HUD never flickers.
+  const metricsInput = useMemo(
+    () => ({
+      mysteryId: mystery.id,
+      priorKnowledgeLevel: baseK,
+      cluesRevealedCount: revealedClueIds.size,
+      isResolved,
+    }),
+    [mystery, baseK, revealedClueIds, isResolved],
+  )
+  // The metrics request is keyed on its serialized inputs ({mysteryId,
+  // priorKnowledgeLevel, cluesRevealedCount, isResolved}); a response is
+  // applied only while its key still matches the current inputs, so a stale
+  // in-flight response can never render for newer inputs — the identical
+  // local mirror covers the in-flight window (values are deterministic, so
+  // the substitution is never visible).
+  const [apiMetrics, setApiMetrics] = useState<{ key: string; metrics: CuriosityMetrics } | null>(
+    null,
+  )
+  const metricsKey = JSON.stringify(metricsInput)
+  useEffect(() => {
+    let stale = false
+    apiSend<CuriosityMetricsResponse>('/api/curiosity', 'POST', {
+      action: 'metrics',
+      ...metricsInput,
+    })
+      .then((res) => {
+        if (!stale && res?.metrics) setApiMetrics({ key: metricsKey, metrics: res.metrics })
+      })
+      .catch(() => {
+        // Manual mode: the in-browser mirror already rendered these metrics.
+      })
+    return () => {
+      stale = true
+    }
+  }, [metricsKey, metricsInput])
+  const metrics: CuriosityMetrics =
+    apiMetrics?.key === metricsKey ? apiMetrics.metrics : localMetrics
 
   // Play audio soundscapes
   const playAudioChime = (tone: 'clue' | 'success' | 'trap') => {
@@ -154,7 +250,11 @@ export function InformationGapStudio() {
     triggerToast('Progressive clue revealed! Epistemic gap narrowed.')
   }
 
-  // Handle resolution hypothesis check
+  // Handle resolution hypothesis check — stays client-side deliberately: the
+  // result is a lookup into the resolver-option content (no engine math), and
+  // the multiplier mirrors the studio's historical pre-resolution peak. The
+  // engine's own stateful resolution (post-closure knowledge bump and
+  // re-derived multiplier) is exposed headless via POST action:resolve.
   const handleSelectResolver = (optionId: string) => {
     const opt = mystery.resolverOptions.find((o) => o.id === optionId)
     if (!opt) return
@@ -192,7 +292,10 @@ export function InformationGapStudio() {
     triggerToast('Information gap session reset.')
   }
 
-  // FSRS Flashcard export
+  // FSRS Flashcard export — stays client-side: it composes mystery content
+  // (sourced from the catalog GET) with the API-reconciled multiplier and the
+  // studio's bespoke retention note; the engine's own session export is
+  // exposed headless via POST action:fsrsCards.
   const exportedCards: readonly FSRSCuriosityCard[] = useMemo(() => {
     return [
       {
@@ -249,7 +352,7 @@ export function InformationGapStudio() {
             }}
             className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-3 py-1.5 text-xs font-medium text-strong shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
-            {Object.values(CALIBRATED_CURIOSITY_MYSTERIES).map((m) => (
+            {mysteries.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.title}
               </option>

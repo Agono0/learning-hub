@@ -4,22 +4,33 @@
  * Implements K. Anders Ericsson's Deliberate Practice Theory (1993, 2016),
  * Kurt VanLehn's (1990) Impasse-Driven Learning & Schema Bug Repair,
  * and Nina Keith & Michael Frese's (2008) Error Management Training (EMT).
+ *
+ * API-backed studio: every engine computation (ZPD frontier, VanLehn error
+ * taxonomy, Ericsson Deliberate Effort Index, FSRS-6 micro-repair deck) runs
+ * in the runtime-neutral handler via `@/lib/transport` and is mirrored by an
+ * in-browser engine fallback so the studio paints synchronously and keeps
+ * working with the API unreachable (manual-mode guarantee, AGENTS.md rule 9).
+ * All transport goes through `@/lib/transport` only.
  */
 
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   analyzeErrorTaxonomy,
   type BugClass,
   calculateDeliberateEffortIndex,
   calculateZPDFrontier,
   CALIBRATED_DELIBERATE_SUITES,
+  type DeliberateEffortMetrics,
   type DeliberatePracticeSuite,
+  type ErrorTaxonomyBreakdown,
   type FSRSMicroRepairCard,
   type PracticeDifficultyTier,
+  type ZPDFrontierState,
 } from '@learning-hub/core/deliberate'
 import { Badge, Button, DeliberatePracticeHUD, Panel } from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight, hapticMedium } from '../platform/haptics'
 import {
@@ -37,6 +48,65 @@ import {
 
 type StudioTab = 'drills' | 'impasse' | 'taxonomy' | 'deck'
 
+interface SuitesResponse {
+  ok: boolean
+  suites: Record<string, DeliberatePracticeSuite>
+}
+interface ZpdResponse {
+  ok: boolean
+  zpd: ZPDFrontierState
+}
+interface TaxonomyResponse {
+  ok: boolean
+  taxonomy: ErrorTaxonomyBreakdown
+}
+interface EffortResponse {
+  ok: boolean
+  effort: DeliberateEffortMetrics
+}
+interface DeckResponse {
+  ok: boolean
+  cards: FSRSMicroRepairCard[]
+}
+
+/** One combined engine-metrics snapshot: ZPD + VanLehn taxonomy + Ericsson effort. */
+interface DeliberateMetrics {
+  zpd: ZPDFrontierState
+  taxonomy: ErrorTaxonomyBreakdown
+  effort: DeliberateEffortMetrics
+}
+
+/**
+ * The studio's FSRS-6 micro-repair deck contract, extracted verbatim from the
+ * former inline builder so the in-browser mirror produces byte-identical cards
+ * to the `/api/deliberate` `cards` action (manual-mode fallback, rule 9).
+ */
+function buildMicroRepairCards(
+  suite: DeliberatePracticeSuite,
+  isRepaired: boolean,
+): FSRSMicroRepairCard[] {
+  const cards: FSRSMicroRepairCard[] = []
+  for (const drill of suite.drills) {
+    for (const opt of drill.options) {
+      if (!opt.isCorrect && opt.bugClass) {
+        cards.push({
+          id: `fsrs_${suite.id}_${drill.id}_${opt.id}`,
+          suiteId: suite.id,
+          drillId: drill.id,
+          bugClass: opt.bugClass,
+          prompt: `[${suite.title} - Deliberate Impasse]\n${drill.prompt}`,
+          erroneousImpasse: `Identified Bug: ${opt.text}\nDiagnostic: ${opt.diagnosticFeedback}`,
+          schemaRepairSolution: opt.schemaRepairInstruction || drill.expectedKeyInsight,
+          emtReframingMnemonic:
+            'Keith & Frese EMT: "Errors are information! The error exposes the exact boundary of your schema."',
+          recommendedStabilityMultiplier: isRepaired ? 1.35 : 0.8,
+        })
+      }
+    }
+  }
+  return cards
+}
+
 export function DeliberatePracticeStudio() {
   const [selectedSuiteId, setSelectedSuiteId] = useState<string>('lock_free_concurrency')
   const [activeTab, setActiveTab] = useState<StudioTab>('drills')
@@ -53,34 +123,134 @@ export function DeliberatePracticeStudio() {
   const [targetedDeficitReps, setTargetedDeficitReps] = useState<number>(0)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
+  // Engine results delivered by the runtime-neutral handler. The bundled
+  // calibrated suites / in-browser engine mirror paint synchronously; the API
+  // responses replace them once they land (identical engine, identical inputs).
+  const [suites, setSuites] = useState<Record<string, DeliberatePracticeSuite>>(
+    CALIBRATED_DELIBERATE_SUITES,
+  )
+  const [apiMetrics, setApiMetrics] = useState<{ key: string; metrics: DeliberateMetrics } | null>(
+    null,
+  )
+  const [apiCards, setApiCards] = useState<{ key: string; cards: FSRSMicroRepairCard[] } | null>(
+    null,
+  )
+
   const suite: DeliberatePracticeSuite =
-    CALIBRATED_DELIBERATE_SUITES[selectedSuiteId] ??
+    suites[selectedSuiteId] ??
+    suites.lock_free_concurrency ??
     CALIBRATED_DELIBERATE_SUITES.lock_free_concurrency
+
+  // Suite catalog: the GET keeps the API surface exercised and picks up
+  // server-side suite data when available (manual mode keeps the bundled set).
+  useEffect(() => {
+    let stale = false
+    apiGet<SuitesResponse>('/api/deliberate')
+      .then((res) => {
+        if (!stale && res.suites && Object.keys(res.suites).length > 0) setSuites(res.suites)
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated suites remain.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
+
+  // In-browser engine mirror — synchronous first paint + manual-mode fallback
+  // (AGENTS.md rule 9). Same engine, same inputs as the handler actions below.
+  const localMetrics = useMemo<DeliberateMetrics>(
+    () => ({
+      zpd: calculateZPDFrontier(history.slice(-5), currentTier),
+      taxonomy: analyzeErrorTaxonomy(recordedErrors),
+      effort: calculateDeliberateEffortIndex(
+        history.length,
+        targetedDeficitReps,
+        repairedImpasses.size,
+      ),
+    }),
+    [history, currentTier, recordedErrors, targetedDeficitReps, repairedImpasses],
+  )
+
+  // Engine metrics — API first, per-metric engine-mirror fallback (works with
+  // provider `none`). The key-match means a stale in-flight response can never
+  // render for newer inputs; the mirror covers the in-flight window instead.
+  const metricsKey = JSON.stringify({
+    tier: currentTier,
+    history,
+    errors: recordedErrors,
+    deficit: targetedDeficitReps,
+    repairs: repairedImpasses.size,
+  })
+  useEffect(() => {
+    let stale = false
+    const recent = history.slice(-5)
+    void Promise.all([
+      apiSend<ZpdResponse>('/api/deliberate', 'POST', {
+        action: 'zpd',
+        recentResults: recent,
+        currentTier,
+      })
+        .then((res) => res.zpd)
+        .catch(() => calculateZPDFrontier(recent, currentTier)),
+      apiSend<TaxonomyResponse>('/api/deliberate', 'POST', { action: 'taxonomy', recordedErrors })
+        .then((res) => res.taxonomy)
+        .catch(() => analyzeErrorTaxonomy(recordedErrors)),
+      apiSend<EffortResponse>('/api/deliberate', 'POST', {
+        action: 'effort',
+        totalReps: history.length,
+        targetedDeficitReps,
+        impasseRepairsCompleted: repairedImpasses.size,
+      })
+        .then((res) => res.effort)
+        .catch(() =>
+          calculateDeliberateEffortIndex(
+            history.length,
+            targetedDeficitReps,
+            repairedImpasses.size,
+          ),
+        ),
+    ]).then(([zpd, taxonomy, effort]) => {
+      if (!stale) setApiMetrics({ key: metricsKey, metrics: { zpd, taxonomy, effort } })
+    })
+    return () => {
+      stale = true
+    }
+  }, [metricsKey, history, currentTier, recordedErrors, targetedDeficitReps, repairedImpasses])
+  const metrics = apiMetrics?.key === metricsKey ? apiMetrics.metrics : localMetrics
+  const zpdFrontier = metrics.zpd
+  const errorTaxonomy = metrics.taxonomy
+  const deliberateEffort = metrics.effort
+
+  // FSRS micro-repair deck synthesis — same API-first/mirror contract.
+  const localCards = useMemo<FSRSMicroRepairCard[]>(
+    () => buildMicroRepairCards(suite, repairedImpasses.size > 0),
+    [suite, repairedImpasses],
+  )
+  const deckKey = `${suite.id}|${repairedImpasses.size > 0}`
+  useEffect(() => {
+    let stale = false
+    apiSend<DeckResponse>('/api/deliberate', 'POST', {
+      action: 'cards',
+      suiteId: suite.id,
+      repairedImpasseCount: repairedImpasses.size,
+    })
+      .then((res) => {
+        if (!stale && Array.isArray(res.cards)) setApiCards({ key: deckKey, cards: res.cards })
+      })
+      .catch(() => {
+        // Manual mode: the in-browser mirror already rendered this deck.
+      })
+    return () => {
+      stale = true
+    }
+  }, [deckKey, suite, repairedImpasses])
+  const exportedCards = apiCards?.key === deckKey ? apiCards.cards : localCards
 
   // Filter drills by current difficulty tier
   const activeDrills = useMemo(() => {
     return suite.drills.filter((d) => d.difficultyTier === currentTier)
   }, [suite, currentTier])
-
-  // ZPD Frontier state calculation
-  const zpdFrontier = useMemo(() => {
-    const recent = history.slice(-5)
-    return calculateZPDFrontier(recent, currentTier)
-  }, [history, currentTier])
-
-  // VanLehn Error Taxonomy analysis
-  const errorTaxonomy = useMemo(() => {
-    return analyzeErrorTaxonomy(recordedErrors)
-  }, [recordedErrors])
-
-  // Ericsson Deliberate Effort metrics
-  const deliberateEffort = useMemo(() => {
-    return calculateDeliberateEffortIndex(
-      history.length,
-      targetedDeficitReps,
-      repairedImpasses.size,
-    )
-  }, [history.length, targetedDeficitReps, repairedImpasses.size])
 
   // Audio tone player
   const playTone = (type: 'success' | 'alert' | 'repair') => {
@@ -185,31 +355,6 @@ export function DeliberatePracticeStudio() {
     triggerToast('Deliberate practice session reset.')
   }
 
-  // Export FSRS micro-repair cards
-  const exportedCards = useMemo(() => {
-    const cards: FSRSMicroRepairCard[] = []
-    for (const drill of suite.drills) {
-      for (const opt of drill.options) {
-        if (!opt.isCorrect && opt.bugClass) {
-          const isRepaired = repairedImpasses.size > 0
-          cards.push({
-            id: `fsrs_${suite.id}_${drill.id}_${opt.id}`,
-            suiteId: suite.id,
-            drillId: drill.id,
-            bugClass: opt.bugClass,
-            prompt: `[${suite.title} - Deliberate Impasse]\n${drill.prompt}`,
-            erroneousImpasse: `Identified Bug: ${opt.text}\nDiagnostic: ${opt.diagnosticFeedback}`,
-            schemaRepairSolution: opt.schemaRepairInstruction || drill.expectedKeyInsight,
-            emtReframingMnemonic:
-              'Keith & Frese EMT: "Errors are information! The error exposes the exact boundary of your schema."',
-            recommendedStabilityMultiplier: isRepaired ? 1.35 : 0.8,
-          })
-        }
-      }
-    }
-    return cards
-  }, [suite, repairedImpasses])
-
   const handleCopyDeck = () => {
     navigator.clipboard?.writeText(JSON.stringify(exportedCards, null, 2))
     triggerToast('Copied FSRS micro-repair cards to clipboard!')
@@ -250,7 +395,7 @@ export function DeliberatePracticeStudio() {
             }}
             className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-3 py-1.5 text-xs font-medium text-strong shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-600"
           >
-            {Object.values(CALIBRATED_DELIBERATE_SUITES).map((s) => (
+            {Object.values(suites).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.title}
               </option>

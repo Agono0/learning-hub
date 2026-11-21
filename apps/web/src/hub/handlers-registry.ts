@@ -189,6 +189,12 @@ import * as systemDynamics from '../server/handlers/system-dynamics/route'
 import * as modelInquiry from '../server/handlers/model-inquiry/route'
 import * as prototypeExemplar from '../server/handlers/prototype-exemplar/route'
 import * as complexProblemSolving from '../server/handlers/complex-problem-solving/route'
+import * as dualProcess from '../server/handlers/dual-process/route'
+import * as curiosity from '../server/handlers/curiosity/route'
+import * as apprenticeship from '../server/handlers/apprenticeship/route'
+import * as conceptualChange from '../server/handlers/conceptual-change/route'
+import * as deliberate from '../server/handlers/deliberate/route'
+import * as scaffolding from '../server/handlers/scaffolding/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -399,6 +405,12 @@ add('model-inquiry', modelInquiry)
 add('prototype-exemplar', prototypeExemplar)
 add('categorization', prototypeExemplar)
 add('complex-problem-solving', complexProblemSolving)
+add('dual-process', dualProcess)
+add('curiosity', curiosity)
+add('apprenticeship', apprenticeship)
+add('conceptual-change', conceptualChange)
+add('deliberate', deliberate)
+add('scaffolding', scaffolding)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
