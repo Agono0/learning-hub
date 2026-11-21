@@ -197,8 +197,10 @@ export function QuickHudModal() {
         ? 'fixed bottom-5 right-5 z-50 w-full max-w-md shadow-2xl'
         : 'fixed top-12 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl shadow-2xl'
 
+  // Theme-following surface (was dark-hardcoded and leaked into light mode):
+  // light = white card on neutral-200 hairline, dark = the --hub-panel surface.
   const cardClasses =
-    'relative w-full max-w-xl rounded-2xl border border-neutral-700/60 bg-neutral-900/95 text-neutral-100 shadow-2xl backdrop-blur-md overflow-hidden flex flex-col'
+    'relative w-full max-w-xl rounded-2xl border border-neutral-200 bg-white/95 text-body shadow-2xl backdrop-blur-md overflow-hidden flex flex-col dark:border-(--hub-border) dark:bg-(--hub-panel)/95'
 
   const currentCard = dueCards[cardIdx]
 
@@ -206,9 +208,9 @@ export function QuickHudModal() {
     <div className={containerClasses}>
       <div className={cardClasses}>
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-(--hub-border)">
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-500/20 text-indigo-400">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600/15 text-ac-text">
               <Zap className="h-3.5 w-3.5" />
             </div>
             <span className="font-semibold text-xs tracking-wide uppercase text-faint">
@@ -225,7 +227,7 @@ export function QuickHudModal() {
                 )
               }
               title={`Switch presentation style (Current: ${hudStyle})`}
-              className="flex items-center gap-1 rounded px-2 py-0.5 hover:bg-neutral-800 hover:text-white"
+              className="flex items-center gap-1 rounded px-2 py-0.5 hover:bg-neutral-100 hover:text-strong dark:hover:bg-(--hub-panel-2)"
             >
               <Layout className="h-3 w-3" />
               <span className="capitalize text-[11px]">{hudStyle}</span>
@@ -233,7 +235,7 @@ export function QuickHudModal() {
             <IconButton
               label="Close quick HUD"
               onClick={() => setIsOpen(false)}
-              className="hover:bg-neutral-800 hover:text-white"
+              className="hover:bg-neutral-100 hover:text-strong dark:hover:bg-(--hub-panel-2)"
             >
               <X className="h-4 w-4" />
             </IconButton>
@@ -241,13 +243,13 @@ export function QuickHudModal() {
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex border-b border-neutral-800/80 bg-neutral-900/50 px-4 text-xs font-medium">
+        <div className="flex border-b border-neutral-200/80 bg-neutral-50 px-4 text-xs font-medium dark:border-(--hub-border) dark:bg-(--hub-panel-2)/50">
           <button
             onClick={() => setActiveTab('review')}
             className={`flex items-center gap-1.5 border-b-2 py-2.5 px-3 transition-colors ${
               activeTab === 'review'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-faint hover:text-neutral-200'
+                ? 'border-(--ac-strong) text-ac-text'
+                : 'border-transparent text-faint hover:text-secondary'
             }`}
           >
             <Brain className="h-3.5 w-3.5" />
@@ -257,8 +259,8 @@ export function QuickHudModal() {
             onClick={() => setActiveTab('capture')}
             className={`flex items-center gap-1.5 border-b-2 py-2.5 px-3 transition-colors ${
               activeTab === 'capture'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-faint hover:text-neutral-200'
+                ? 'border-(--ac-strong) text-ac-text'
+                : 'border-transparent text-faint hover:text-secondary'
             }`}
           >
             <Inbox className="h-3.5 w-3.5" />
@@ -268,8 +270,8 @@ export function QuickHudModal() {
             onClick={() => setActiveTab('search')}
             className={`flex items-center gap-1.5 border-b-2 py-2.5 px-3 transition-colors ${
               activeTab === 'search'
-                ? 'border-indigo-500 text-indigo-400'
-                : 'border-transparent text-faint hover:text-neutral-200'
+                ? 'border-(--ac-strong) text-ac-text'
+                : 'border-transparent text-faint hover:text-secondary'
             }`}
           >
             <Search className="h-3.5 w-3.5" />
@@ -289,16 +291,16 @@ export function QuickHudModal() {
                     <span>
                       Card {cardIdx + 1} of {dueCards.length}
                     </span>
-                    <span className="rounded bg-neutral-800 px-2 py-0.5">
+                    <span className="rounded bg-neutral-100 px-2 py-0.5 text-secondary dark:bg-(--hub-panel-2)">
                       {currentCard.deckName || 'Default Deck'}
                     </span>
                   </div>
 
-                  <div className="text-base font-medium text-neutral-100">{currentCard.front}</div>
+                  <div className="text-base font-medium text-strong">{currentCard.front}</div>
 
                   {revealed ? (
-                    <div className="space-y-3 border-t border-neutral-800 pt-3">
-                      <div className="text-sm text-indigo-300">{currentCard.back}</div>
+                    <div className="space-y-3 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
+                      <div className="text-sm text-ac-text">{currentCard.back}</div>
                       <div className="flex items-center justify-between pt-2">
                         <span className="text-[11px] text-tertiary">
                           Press 1 (Again) · 2 (Hard) · 3 (Good) · 4 (Easy)
@@ -342,7 +344,7 @@ export function QuickHudModal() {
                       </span>
                       <button
                         onClick={() => setRevealed(true)}
-                        className="flex items-center gap-1.5 rounded-lg bg-indigo-600/30 px-3 py-1.5 text-xs font-medium text-indigo-300 hover:bg-indigo-600/40"
+                        className="flex items-center gap-1.5 rounded-lg bg-indigo-600/15 px-3 py-1.5 text-xs font-medium text-ac-text transition-colors hover:bg-indigo-600/25"
                       >
                         <Eye className="h-3.5 w-3.5" /> Reveal Answer
                       </button>
@@ -351,8 +353,8 @@ export function QuickHudModal() {
                 </div>
               ) : (
                 <div className="text-center space-y-2 py-4">
-                  <Sparkles className="h-7 w-7 text-indigo-400 mx-auto" />
-                  <div className="text-sm font-medium text-neutral-200">All caught up!</div>
+                  <Sparkles className="mx-auto h-7 w-7 text-ac-text" />
+                  <div className="text-sm font-medium text-strong">All caught up!</div>
                   <p className="text-xs text-tertiary">No cards due for micro-review right now.</p>
                 </div>
               )}
@@ -368,7 +370,7 @@ export function QuickHudModal() {
                   placeholder="Capture quick thought, note, or fact…"
                   value={captureText}
                   onChange={(e) => setCaptureText(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-700 bg-neutral-900/80 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-body placeholder:text-faint focus:border-(--ac-strong) focus:outline-none dark:border-(--hub-border) dark:bg-(--hub-sunken) dark:text-neutral-100"
                 />
               </div>
 
@@ -378,7 +380,7 @@ export function QuickHudModal() {
                   placeholder="Source URL (optional)"
                   value={captureUrl}
                   onChange={(e) => setCaptureUrl(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-700/80 bg-neutral-900/50 px-3 py-1.5 text-xs text-neutral-200 placeholder-neutral-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-neutral-300/80 bg-neutral-50 px-3 py-1.5 text-xs text-secondary placeholder:text-faint focus:border-(--ac-strong) focus:outline-none dark:border-(--hub-border) dark:bg-(--hub-panel-2)/50 dark:text-neutral-200"
                 />
                 <button
                   type="submit"
@@ -406,7 +408,7 @@ export function QuickHudModal() {
                   placeholder="Search cards by meaning or concept…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-700 bg-neutral-900/80 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-body placeholder:text-faint focus:border-(--ac-strong) focus:outline-none dark:border-(--hub-border) dark:bg-(--hub-sunken) dark:text-neutral-100"
                 />
                 <button
                   type="submit"
@@ -423,11 +425,11 @@ export function QuickHudModal() {
                   {searchResults.map((m) => (
                     <div
                       key={m.cardId}
-                      className="rounded-lg border border-neutral-800 bg-neutral-900/40 p-2.5 text-xs space-y-1"
+                      className="space-y-1 rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 text-xs dark:border-(--hub-border) dark:bg-(--hub-panel-2)/40"
                     >
                       <div className="flex justify-between items-center text-faint">
-                        <span className="font-medium text-neutral-200">{m.front}</span>
-                        <span className="rounded bg-indigo-950/60 px-1.5 py-0.5 text-[10px] text-indigo-400 font-mono">
+                        <span className="font-medium text-strong">{m.front}</span>
+                        <span className="rounded bg-indigo-600/10 px-1.5 py-0.5 text-[10px] text-ac-text font-mono">
                           {Math.round(m.score * 100)}% match
                         </span>
                       </div>
@@ -441,7 +443,7 @@ export function QuickHudModal() {
         </div>
 
         {/* Footer info */}
-        <div className="border-t border-neutral-800 bg-neutral-900/30 px-4 py-2 text-[11px] text-tertiary flex justify-between items-center">
+        <div className="flex items-center justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-2 text-[11px] text-tertiary dark:border-(--hub-border) dark:bg-(--hub-panel-2)/30">
           <div className="flex items-center gap-1.5">
             <Command className="h-3 w-3" />
             <span>Shortcut: Ctrl+Shift+Space</span>

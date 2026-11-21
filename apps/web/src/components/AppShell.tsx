@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import {
   ChevronDown,
   ChevronRight,
@@ -38,6 +39,7 @@ import { apiGet, apiSend, hubStoragePersistent, onHubStoragePersistence } from '
 import { initReminderScheduler } from '@/platform/reminders'
 import { IconButton, LiveAnnouncerProvider, OfflineBanner, useToast } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
+import { claySpring } from '@/lib/motion'
 
 // v2: the 'Practice studios' group was added to the defaults in the IA
 // restructure (docs/ux-audit.md P1-2); existing saved arrays predate it, so a
@@ -167,7 +169,9 @@ function Sidebar({ pathname }: { pathname: string | null }) {
       } catch {
         // ignore
       }
-      void apiSend('/api/settings', 'PUT', { sidebarCollapsedGroups: next }).catch(() => undefined)
+      void apiSend('/api/settings', 'PUT', {
+        sidebarCollapsedGroups: next,
+      }).catch(() => undefined)
       return next
     })
   }
@@ -209,7 +213,7 @@ function Sidebar({ pathname }: { pathname: string | null }) {
                 type="button"
                 onClick={() => toggleGroup(section.group)}
                 aria-expanded={!isGroupCollapsed}
-                className="flex w-full items-center justify-between rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-faint transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-(--hub-panel-2) dark:hover:text-secondary"
+                className="[@media(pointer:coarse)]:min-h-11 flex w-full items-center justify-between rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-widest text-faint transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-(--hub-panel-2) dark:hover:text-secondary"
               >
                 <span>{section.group}</span>
                 <span className="flex items-center gap-1">
@@ -293,9 +297,50 @@ function Sidebar({ pathname }: { pathname: string | null }) {
   )
 }
 
-/** Tablet icon rail (md – lg). */
+/**
+ * Rail-only persistence for the collapsed groups. Deliberately NOT the
+ * sidebar's `lh-sidebar-collapsed-v2` key (nor the synced
+ * `sidebarCollapsedGroups` settings field): those describe the desktop
+ * sidebar's state, and sharing them would make the two surfaces overwrite
+ * each other. Defaults still come from the shared DEFAULT_COLLAPSED_GROUPS.
+ */
+const RAIL_COLLAPSED_STORAGE_KEY = 'lh-rail-collapsed-v2'
+
+/** Tablet icon rail (md – lg) with collapsible per-group sections (mirrors the sidebar). */
 function Rail({ pathname }: { pathname: string | null }) {
   const sync = useQuickCloudSync()
+
+  // Hydration-safe: initialize to the server-matching constant, then load the
+  // persisted rail groups AFTER hydration (same pattern as the sidebar — an
+  // initializer reading localStorage there caused aria-expanded mismatches).
+  const [collapsed, setCollapsed] = useState<string[]>(DEFAULT_COLLAPSED_GROUPS)
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(RAIL_COLLAPSED_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as unknown
+        if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) {
+          setCollapsed(parsed)
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const toggleGroup = (group: string) => {
+    setCollapsed((prev) => {
+      const next = prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group]
+      try {
+        window.localStorage.setItem(RAIL_COLLAPSED_STORAGE_KEY, JSON.stringify(next))
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }
+
   return (
     <aside className="fixed inset-y-0 left-0 z-20 hidden w-16 print:hidden flex-col items-center border-r border-neutral-200 bg-white/80 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:flex lg:hidden dark:border-(--hub-border) dark:bg-(--hub-sunken)/90">
       <Brand compact />
@@ -325,31 +370,49 @@ function Rail({ pathname }: { pathname: string | null }) {
         aria-label="Main"
         className="mt-2 flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]"
       >
-        {NAV.map((section, i) => (
-          <div key={section.group} className="flex w-full flex-col items-center gap-1">
-            {i > 0 && <div className="my-1 h-px w-8 bg-neutral-200 dark:bg-(--hub-border)" />}
-            {section.items.map((item) => {
-              const active = isActive(pathname, item.href)
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={item.label}
-                  aria-label={item.label}
-                  aria-current={active ? 'page' : undefined}
-                  className={`grid h-11 w-11 place-items-center rounded-xl transition-colors ${
-                    active
-                      ? 'bg-indigo-600/15 text-indigo-600 dark:text-indigo-300'
-                      : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                </Link>
-              )
-            })}
-          </div>
-        ))}
+        {NAV.map((section, i) => {
+          const hasActiveItem = section.items.some((item) => isActive(pathname, item.href))
+          // Same auto-expand-the-active-group rule as the sidebar, so the
+          // active page (with its aria-current) is always visible.
+          const isGroupCollapsed = collapsed.includes(section.group) && !hasActiveItem
+          const GroupIcon = section.icon
+          return (
+            <div key={section.group} className="flex w-full flex-col items-center gap-1">
+              {i > 0 && <div className="my-1 h-px w-8 bg-neutral-200 dark:bg-(--hub-border)" />}
+              <button
+                type="button"
+                onClick={() => toggleGroup(section.group)}
+                aria-expanded={!isGroupCollapsed}
+                aria-label={section.group}
+                title={section.group}
+                className="[@media(pointer:coarse)]:min-h-11 grid min-h-11 w-11 place-items-center rounded-xl transition-colors text-faint hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-(--hub-panel-2) dark:hover:text-secondary"
+              >
+                {GroupIcon && <GroupIcon className="h-5 w-5" />}
+              </button>
+              {!isGroupCollapsed &&
+                section.items.map((item) => {
+                  const active = isActive(pathname, item.href)
+                  const Icon = item.icon
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      title={item.label}
+                      aria-label={item.label}
+                      aria-current={active ? 'page' : undefined}
+                      className={`grid h-11 w-11 place-items-center rounded-xl transition-colors ${
+                        active
+                          ? 'bg-indigo-600/15 text-indigo-600 dark:text-indigo-300'
+                          : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </Link>
+                  )
+                })}
+            </div>
+          )
+        })}
       </nav>
     </aside>
   )
@@ -444,6 +507,33 @@ function MoreSheet({ pathname, onClose }: { pathname: string | null; onClose: ()
   )
 }
 
+/**
+ * Sliding active-tab pill for the phone bottom bar: one element shared across
+ * all five tabs via framer's `layoutId`, so it morphs (transform/opacity-only
+ * layout animation) from the previous tab to the newly active one on the clay
+ * spring.
+ *
+ * Render-choice (deliberate): the pill is ALWAYS rendered on the active tab —
+ * never conditionally behind `motionOK()`, which is synchronously `false` on
+ * the server, so gating the render would mismatch hydration. The pill also
+ * carries no SSR-visible styles beyond an opacity fill, so SSR and the first
+ * client render agree. Reduced-motion users therefore get an INSTANT pill
+ * move instead of a slide — instant = no motion, which is acceptable; the
+ * morph itself is transform-only (motion law) and runs on {@link claySpring}.
+ * The negative z-index keeps it behind the tab icon + label within the bar's
+ * stacking context (backdrop-blur creates one on the nav).
+ */
+function TabPill() {
+  return (
+    <motion.span
+      layoutId="tab-pill"
+      transition={claySpring}
+      aria-hidden
+      className="absolute inset-x-2 top-2 bottom-2 -z-10 rounded-full bg-hub-accent/10"
+    />
+  )
+}
+
 /** Phone top bar + bottom tab bar (< md). */
 function PhoneChrome({ pathname }: { pathname: string | null }) {
   const [moreOpen, setMoreOpen] = useState(false)
@@ -491,12 +581,13 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
               key={item.href}
               href={item.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors ${
+              className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors ${
                 active ? 'font-medium text-indigo-600 dark:text-indigo-300' : 'text-tertiary'
               }`}
             >
+              {active && <TabPill />}
               <Icon className="h-5 w-5" />
-              <span className="max-w-full truncate px-1">{item.label.split(' ')[0]}</span>
+              <span className="max-w-full truncate px-1">{item.shortLabel ?? item.label}</span>
             </Link>
           )
         })}
@@ -505,10 +596,11 @@ function PhoneChrome({ pathname }: { pathname: string | null }) {
           onClick={() => setMoreOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
-          className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors ${
+          className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] transition-colors ${
             !onPrimary ? 'font-medium text-indigo-600 dark:text-indigo-300' : 'text-tertiary'
           }`}
         >
+          {!onPrimary && <TabPill />}
           <Menu className="h-5 w-5" />
           More
         </button>
