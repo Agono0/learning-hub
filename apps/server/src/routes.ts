@@ -165,6 +165,11 @@ import {
   studyPlanOptionsSchema,
   studyPlanSessionSchema,
   type StudyPlan,
+  listMicroWorldScenarios,
+  simulateMicroWorldStep,
+  evaluateCPSSession,
+  generateCPSFSRSDeck,
+  MicroWorldStateSchema,
 } from '@learning-hub/core'
 import { jsonError, readJson, readQuery, sendError, sendJson } from './http'
 
@@ -583,6 +588,22 @@ const prototypeExemplarPlanBodySchema = z.object({
 const prototypeExemplarDeckBodySchema = z.object({
   setId: z.string().default('proto-bird-typicality'),
   criBaseline: z.number().min(0).max(100).default(50),
+})
+
+const cpsStepBodySchema = z.object({
+  scenarioId: z.string().default('tanaland_desert_ecosystem'),
+  currentState: MicroWorldStateSchema,
+  selectedPolicyIds: z.array(z.string()).default([]),
+  inspectedVariableIds: z.array(z.string()).default([]),
+})
+
+const cpsEvaluateBodySchema = z.object({
+  scenarioId: z.string().default('tanaland_desert_ecosystem'),
+  finalState: MicroWorldStateSchema,
+})
+
+const cpsDeckBodySchema = z.object({
+  scenarioId: z.string().default('tanaland_desert_ecosystem'),
 })
 
 const metacognitionBodySchema = z.object({
@@ -2475,6 +2496,64 @@ async function postPrototypeExemplarDeck(req: IncomingMessage, res: ServerRespon
   })
 }
 
+/** GET /cognitive/cps/scenarios — list canonical Dörner Micro-World scenarios */
+async function getCPSScenarios(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const scenarios = listMicroWorldScenarios()
+  sendJson(res, 200, {
+    ok: true,
+    scenarios: scenarios.map((s) => ({
+      id: s.id,
+      title: s.title,
+      domain: s.domain,
+      historicalContext: s.historicalContext,
+      coreDilemma: s.coreDilemma,
+      variablesCount: s.variables.length,
+      policiesCount: s.availablePolicies.length,
+      canonicalFailureMode: s.canonicalFailureMode,
+    })),
+  })
+}
+
+/** POST /cognitive/cps/step — simulate micro-world decision cycle */
+async function postCPSStep(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cpsStepBodySchema)
+  const result = simulateMicroWorldStep(
+    body.scenarioId,
+    body.currentState,
+    body.selectedPolicyIds,
+    body.inspectedVariableIds,
+  )
+  sendJson(res, 200, {
+    ok: true,
+    result,
+  })
+}
+
+/** POST /cognitive/cps/evaluate — evaluate CPS session & diagnose failure pathologies */
+async function postCPSEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cpsEvaluateBodySchema)
+  const evaluation = evaluateCPSSession(body.scenarioId, body.finalState)
+  const deck = generateCPSFSRSDeck(body.scenarioId, evaluation)
+  sendJson(res, 200, {
+    ok: true,
+    evaluation,
+    cardsCount: deck.length,
+    deck,
+  })
+}
+
+/** POST /cognitive/cps/deck — generate calibrated FSRS-6 review deck */
+async function postCPSDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, cpsDeckBodySchema)
+  const deck = generateCPSFSRSDeck(body.scenarioId)
+  sendJson(res, 200, {
+    ok: true,
+    scenarioId: body.scenarioId,
+    cardsCount: deck.length,
+    cards: deck,
+  })
+}
+
 // ── Route table + dispatcher ────────────────────────────────────────────────
 
 /** One registered route: exact method + path match, query parsing left to the handler. */
@@ -2980,6 +3059,30 @@ export const routes: Route[] = [
     path: '/cognitive/categorization/deck',
     summary: 'generate calibrated FSRS-6 review deck for categorization',
     handler: postPrototypeExemplarDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/cps/scenarios',
+    summary: 'list canonical Dietrich Dörner Micro-World scenarios (Dörner 1996, Rasmussen 1983)',
+    handler: getCPSScenarios,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/cps/step',
+    summary: 'simulate micro-world decision cycle with delayed side-effect cascades',
+    handler: postCPSStep,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/cps/evaluate',
+    summary: 'evaluate complex problem solving session (DCE, SEAI, TFS, FMR, CPSI)',
+    handler: postCPSEvaluate,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/cps/deck',
+    summary: 'generate calibrated FSRS-6 review deck for micro-world CPS',
+    handler: postCPSDeck,
   },
 ]
 

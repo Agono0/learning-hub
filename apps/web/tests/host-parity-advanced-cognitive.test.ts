@@ -37,6 +37,7 @@ import {
   collaborativeCommand,
   systemDynamicsCommand,
   modelInquiryCommand,
+  cpsCommand,
 } from '../../cli/src/commands/advanced-learning'
 import { routes, dispatch } from '../../server/src/routes'
 
@@ -952,6 +953,97 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(data.scenarioId).toBe('einsteins_light_chaser')
       expect(data.cardsCount).toBeGreaterThanOrEqual(2)
     })
+
+    it('cps_list_scenarios lists canonical Dörner Micro-Worlds via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cps_list_scenarios')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({})) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        total: number
+        scenarios: Array<{ id: string; title: string }>
+      }
+      expect(data.total).toBe(5)
+      expect(data.scenarios[0]!.id).toBe('tanaland_desert_ecosystem')
+    })
+
+    it('cps_simulate_step runs a decision cycle via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cps_simulate_step')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'tanaland_desert_ecosystem',
+        currentState: {
+          currentCycle: 1,
+          variableValues: {
+            cattle_population: 100,
+            groundwater_table: 50,
+            pasture_vegetation_biomass: 120,
+            tsetse_fly_density: 45,
+            soil_erosion_rate: 15,
+          },
+          activeDelays: [],
+          inspectedVariables: ['cattle_population'],
+          executedPolicyIds: [],
+          systemCollapsed: false,
+        },
+        selectedPolicyIds: ['drill_deep_boreholes'],
+        inspectedVariableIds: ['groundwater_table'],
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        nextState: { currentCycle: number; variableValues: Record<string, number> }
+        stepFeedback: string[]
+      }
+      expect(data.nextState.currentCycle).toBe(2)
+      expect(data.nextState.variableValues['groundwater_table']).toBe(40)
+      expect(data.stepFeedback.length).toBeGreaterThan(0)
+    })
+
+    it('cps_evaluate_session computes Dörner telemetry via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cps_evaluate_session')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'tanaland_desert_ecosystem',
+        finalState: {
+          currentCycle: 4,
+          variableValues: {
+            cattle_population: 160,
+            groundwater_table: 20,
+            pasture_vegetation_biomass: 40,
+            tsetse_fly_density: 10,
+            soil_erosion_rate: 38,
+          },
+          activeDelays: [],
+          inspectedVariables: [],
+          executedPolicyIds: [
+            'drill_deep_boreholes',
+            'veterinary_vaccination_drive',
+            'drill_deep_boreholes',
+          ],
+          systemCollapsed: true,
+          collapseReason:
+            'Critical variable Topsoil Erosion Velocity breached safe operating envelope.',
+        },
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        evaluation: { tier: string; compositeCPSIndex: number; controlEfficiency: number }
+        cardsCount: number
+      }
+      expect(data.evaluation.tier).toBe('ballistic_reactive')
+      expect(data.cardsCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it('cps_generate_deck generates calibrated FSRS-6 deck via MCP', async () => {
+      const tool = advancedLearningTools.find((t) => t.name === 'cps_generate_deck')!
+      expect(tool).toBeDefined()
+      const result = (await tool.handler({
+        scenarioId: 'smart_grid_energy_transition',
+      })) as unknown as McpResultEnvelope
+      const data = JSON.parse(result.content[0]!.text) as {
+        scenarioId: string
+        cardsCount: number
+      }
+      expect(data.scenarioId).toBe('smart_grid_energy_transition')
+      expect(data.cardsCount).toBeGreaterThanOrEqual(1)
+    })
   })
 
   // ── 2. Terminal CLI Commands Tests ─────────────────────────────────────────
@@ -1210,6 +1302,22 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
         consoleSpy.mockRestore()
       }
     })
+
+    it('cpsCommand executes scenarios, step, deck, and eval subcommands', () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        cpsCommand(['scenarios'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cpsCommand(['step', '--id', 'tanaland_desert_ecosystem'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cpsCommand(['deck', '--id', 'tanaland_desert_ecosystem'])
+        expect(consoleSpy).toHaveBeenCalled()
+        cpsCommand([])
+        expect(consoleSpy).toHaveBeenCalled()
+      } finally {
+        consoleSpy.mockRestore()
+      }
+    })
   })
 
   // ── 3. Headless Server REST Routes Tests ──────────────────────────────────
@@ -1268,6 +1376,10 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(registeredPaths).toContain('POST /cognitive/model-inquiry/simulate')
       expect(registeredPaths).toContain('POST /cognitive/model-inquiry/evaluate')
       expect(registeredPaths).toContain('POST /cognitive/model-inquiry/deck')
+      expect(registeredPaths).toContain('GET /cognitive/cps/scenarios')
+      expect(registeredPaths).toContain('POST /cognitive/cps/step')
+      expect(registeredPaths).toContain('POST /cognitive/cps/evaluate')
+      expect(registeredPaths).toContain('POST /cognitive/cps/deck')
     })
 
     it('GET /cognitive/skills/catalog returns skills catalog JSON envelope', async () => {
@@ -1986,6 +2098,83 @@ describe('Host Parity Suite — Advanced Cognitive Engines', () => {
       expect(result.statusCode).toBe(200)
       expect(result.data.ok).toBe(true)
       expect(result.data.cardsCount).toBeGreaterThanOrEqual(2)
+    })
+
+    it('GET /cognitive/cps/scenarios returns canonical scenarios via REST', async () => {
+      const mock = createMockHttp('GET', '/cognitive/cps/scenarios')
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.scenarios.length).toBe(5)
+      expect(result.data.scenarios[0].id).toBe('tanaland_desert_ecosystem')
+    })
+
+    it('POST /cognitive/cps/step simulates micro-world step via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/cps/step', {
+        scenarioId: 'tanaland_desert_ecosystem',
+        currentState: {
+          currentCycle: 1,
+          variableValues: {
+            cattle_population: 100,
+            groundwater_table: 50,
+            pasture_vegetation_biomass: 120,
+            tsetse_fly_density: 45,
+            soil_erosion_rate: 15,
+          },
+          activeDelays: [],
+          inspectedVariables: ['cattle_population'],
+          executedPolicyIds: [],
+          systemCollapsed: false,
+        },
+        selectedPolicyIds: ['drill_deep_boreholes'],
+        inspectedVariableIds: ['groundwater_table'],
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.result.nextState.currentCycle).toBe(2)
+      expect(result.data.result.nextState.variableValues['groundwater_table']).toBe(40)
+    })
+
+    it('POST /cognitive/cps/evaluate evaluates CPS session and telemetry via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/cps/evaluate', {
+        scenarioId: 'tanaland_desert_ecosystem',
+        finalState: {
+          currentCycle: 4,
+          variableValues: {
+            cattle_population: 160,
+            groundwater_table: 20,
+            pasture_vegetation_biomass: 40,
+            tsetse_fly_density: 10,
+            soil_erosion_rate: 38,
+          },
+          activeDelays: [],
+          inspectedVariables: [],
+          executedPolicyIds: [
+            'drill_deep_boreholes',
+            'veterinary_vaccination_drive',
+            'drill_deep_boreholes',
+          ],
+          systemCollapsed: true,
+          collapseReason:
+            'Critical variable Topsoil Erosion Velocity breached safe operating envelope.',
+        },
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.evaluation.tier).toBe('ballistic_reactive')
+      expect(result.data.cardsCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it('POST /cognitive/cps/deck generates calibrated FSRS-6 deck via REST', async () => {
+      const mock = createMockHttp('POST', '/cognitive/cps/deck', {
+        scenarioId: 'pandemic_hospital_surge',
+      })
+      const result = await mock.execute()
+      expect(result.statusCode).toBe(200)
+      expect(result.data.ok).toBe(true)
+      expect(result.data.cardsCount).toBeGreaterThanOrEqual(1)
     })
   })
 })

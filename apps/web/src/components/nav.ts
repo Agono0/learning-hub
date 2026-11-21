@@ -58,6 +58,7 @@ import {
   Shapes,
   ShieldCheck,
   Shuffle,
+  SlidersHorizontal,
   Sparkles,
   Split,
   Swords,
@@ -147,6 +148,11 @@ export const NAV: NavGroup[] = [
       { href: '/collaborative', label: 'Collaborative Scripts', icon: GitMerge },
       { href: '/system-dynamics', label: 'System Dynamics', icon: Activity },
       { href: '/model-inquiry', label: 'Model Inquiry', icon: Telescope },
+      {
+        href: '/complex-problem-solving',
+        label: 'Complex Problem Solving',
+        icon: SlidersHorizontal,
+      },
     ],
   },
   {
