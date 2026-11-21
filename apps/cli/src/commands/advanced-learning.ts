@@ -95,6 +95,12 @@ import {
   evaluateInquirySession,
   generateModelInquiryFsrsDeck,
   type InquirySessionInput,
+  getCanonicalKnowledgeSpaces,
+  initializeMarkovianSession,
+  updateBeliefPosterior,
+  computeFringes,
+  generateKSTCalibratedDeck,
+  verifyWellGradedStructure,
   listMicroWorldScenarios,
   getMicroWorldScenario,
   simulateMicroWorldStep,
@@ -1822,6 +1828,110 @@ export const modelInquiryCommands: RegisteredCommand[] = [
   },
 ]
 
+export function kstCommand(args: string[]): void {
+  const sub = args[0] || 'spaces'
+  const domainId = parseFlag(args, '--id') || 'elementary-algebra'
+  const spaces = getCanonicalKnowledgeSpaces()
+  const structure = spaces.find((s) => s.domainId === domainId) || spaces[0]!
+
+  if (sub === 'spaces' || sub === 'list') {
+    console.log(
+      `\n🌐 Canonical Knowledge Space Theory Structures (${spaces.length} benchmark spaces)`,
+    )
+    console.log('═'.repeat(65))
+    spaces.forEach((s) => {
+      console.log(`• [${s.domainId}] ${s.title}`)
+      console.log(`  Items:          ${s.domainItems.length} assessment problems`)
+      console.log(`  States |K|:     ${s.states.length} valid knowledge states`)
+      console.log(`  Well-Graded:    ${s.isWellGraded ? 'YES (Learning Space)' : 'NO'}`)
+      console.log(`  Description:    ${s.description}`)
+      console.log()
+    })
+    return
+  }
+
+  if (sub === 'probe' || sub === 'assess') {
+    const isCorrect = parseFlag(args, '--correct') !== 'false'
+    const session = initializeMarkovianSession(structure, 'uniform')
+    const nextItem = session.nextSuggestedItemId
+      ? structure.domainItems.find((i) => i.id === session.nextSuggestedItemId)
+      : structure.domainItems[0]
+
+    console.log(`\n🎯 KST Markovian Adaptive Testing Probe (${structure.title})`)
+    console.log('═'.repeat(65))
+    console.log(`Step:           1 (Initial Probe)`)
+    console.log(`Prior Entropy:  ${session.currentEntropy.toFixed(2)} bits`)
+    console.log(`Target Item:    ${nextItem?.title || 'Foundational Probe'} (${nextItem?.id})`)
+    console.log(`Prompt:         ${nextItem?.prompt}`)
+    console.log(
+      `Slip/Guess:     β = ${nextItem?.slipProbability} | η = ${nextItem?.guessProbability}`,
+    )
+
+    if (nextItem) {
+      const updated = updateBeliefPosterior(session, structure, {
+        itemId: nextItem.id,
+        isCorrect,
+      })
+      console.log('─'.repeat(65))
+      console.log(`Simulated Answer: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`)
+      console.log(
+        `Posterior H(P):   ${updated.currentEntropy.toFixed(2)} bits (Δ = ${updated.history[0]?.entropyDelta.toFixed(2)})`,
+      )
+      console.log(`Diagnosed State:  ${updated.mostLikelyStateId}`)
+      console.log(`Confidence:       ${Math.round(updated.confidence * 100)}%`)
+    }
+    return
+  }
+
+  if (sub === 'fringes') {
+    const stateId = parseFlag(args, '--state') || structure.states[1]?.stateId || '∅'
+    const targetState = structure.states.find((s) => s.stateId === stateId) || structure.states[0]!
+    const fringes = computeFringes(targetState.itemIds, structure)
+
+    console.log(`\n🔭 KST Inner & Outer Fringe Telemetry (${structure.title})`)
+    console.log('═'.repeat(65))
+    console.log(
+      `Knowledge State:    ${targetState.stateId === '∅' ? '∅ (Empty Base)' : targetState.stateId}`,
+    )
+    console.log(`Cardinality |K|:    ${targetState.level} items`)
+    console.log(`Inner Fringe K⁻:    ${fringes.innerFringe.join(', ') || 'None (Base state)'}`)
+    console.log(
+      `Outer Fringe K⁺:    ${fringes.outerFringe.join(', ') || 'None (Mastery achieved)'}`,
+    )
+    console.log(`ZPD Readiness:      ${fringes.outerFringe.length} immediate next items`)
+    return
+  }
+
+  if (sub === 'deck') {
+    const session = initializeMarkovianSession(structure, 'uniform')
+    const deck = generateKSTCalibratedDeck(structure, session, { maxCards: 6 })
+
+    console.log(`\n🗂️  Calibrated FSRS-6 Review Deck (${structure.title})`)
+    console.log('═'.repeat(65))
+    console.log(`Generated Cards:    ${deck.length}`)
+    deck.forEach((c, idx) => {
+      console.log(
+        `[Card ${idx + 1}] Type: ${c.cardType.toUpperCase()} (S₀: ${c.stability}d, D₀: ${c.difficulty})`,
+      )
+      console.log(`Front: ${c.front.slice(0, 80)}...`)
+      console.log(`Back:  ${c.back.slice(0, 80)}...`)
+      console.log('─'.repeat(65))
+    })
+    return
+  }
+
+  // Default: audit
+  const wellGraded = verifyWellGradedStructure(structure)
+  console.log(`\n🔬 Knowledge Space Axiom & Well-Graded Verification`)
+  console.log('═'.repeat(65))
+  console.log(`Domain:         ${structure.title}`)
+  console.log(`Total States:   ${structure.states.length}`)
+  console.log(`Union Closed:   ${structure.isKnowledgeSpace ? 'YES' : 'NO'}`)
+  console.log(`Quasi-Ordinal:  ${structure.isQuasiOrdinal ? 'YES' : 'NO'}`)
+  console.log(`Well-Graded:    ${wellGraded.isWellGraded ? 'YES (Valid Learning Space)' : 'NO'}`)
+  console.log(`Violations:     ${wellGraded.violations.length}`)
+}
+
 export function cpsCommand(args: string[]): void {
   const sub = args[0] || 'scenarios'
   const scenarioId = parseFlag(args, '--id') || 'tanaland_desert_ecosystem'
@@ -1934,6 +2044,24 @@ export function cpsCommand(args: string[]): void {
   }
 }
 
+export const knowledgeSpaceCommands: RegisteredCommand[] = [
+  {
+    name: 'kst',
+    description:
+      'Doignon & Falmagne (1985, 1999) Knowledge Space Theory & Markovian Adaptive Testing Studio',
+    usage:
+      '[spaces|probe|fringes|deck|audit] [--id <domainId>] [--state <stateId>] [--correct <true|false>]',
+    run: (runArgs) => kstCommand(runArgs),
+  },
+  {
+    name: 'knowledge-space',
+    description:
+      'Doignon & Falmagne (1985, 1999) Knowledge Space Theory & Markovian Adaptive Testing Studio',
+    usage:
+      '[spaces|probe|fringes|deck|audit] [--id <domainId>] [--state <stateId>] [--correct <true|false>]',
+    run: (runArgs) => kstCommand(runArgs),
+  },
+]
 export const cpsCommands: RegisteredCommand[] = [
   {
     name: 'cps',

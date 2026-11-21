@@ -146,6 +146,7 @@ export const NAV: NavGroup[] = [
       { href: '/anchored', label: 'Anchored Instruction', icon: Anchor },
       { href: '/contrasting', label: 'Contrasting Cases', icon: GitFork },
       { href: '/collaborative', label: 'Collaborative Scripts', icon: GitMerge },
+      { href: '/knowledge-space', label: 'Knowledge Space Theory', icon: Network },
       { href: '/system-dynamics', label: 'System Dynamics', icon: Activity },
       { href: '/model-inquiry', label: 'Model Inquiry', icon: Telescope },
       {

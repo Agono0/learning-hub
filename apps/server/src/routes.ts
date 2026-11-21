@@ -165,6 +165,14 @@ import {
   studyPlanOptionsSchema,
   studyPlanSessionSchema,
   type StudyPlan,
+  getCanonicalKnowledgeSpaces,
+  initializeMarkovianSession,
+  updateBeliefPosterior,
+  diagnoseLearner,
+  computeFringes,
+  generateKSTCalibratedDeck,
+  auditCurriculumStructure,
+  AdaptiveAssessmentSessionSchema,
   listMicroWorldScenarios,
   simulateMicroWorldStep,
   evaluateCPSSession,
@@ -588,6 +596,51 @@ const prototypeExemplarPlanBodySchema = z.object({
 const prototypeExemplarDeckBodySchema = z.object({
   setId: z.string().default('proto-bird-typicality'),
   criBaseline: z.number().min(0).max(100).default(50),
+})
+
+const kstStartBodySchema = z.object({
+  domainId: z.string().default('elementary-algebra'),
+  priorType: z.enum(['uniform', 'difficulty_weighted']).default('uniform'),
+})
+
+const kstProbeBodySchema = z.object({
+  domainId: z.string().default('elementary-algebra'),
+  session: AdaptiveAssessmentSessionSchema,
+  itemId: z.string(),
+  isCorrect: z.boolean(),
+  responseTimeMs: z.number().int().nonnegative().default(3000),
+})
+
+const kstFringesBodySchema = z.object({
+  domainId: z.string().default('elementary-algebra'),
+  stateItems: z.array(z.string()).default([]),
+})
+
+const kstDeckBodySchema = z.object({
+  domainId: z.string().default('elementary-algebra'),
+  stateId: z.string().optional(),
+  maxCards: z.number().int().positive().default(12),
+})
+
+const kstAuditBodySchema = z.object({
+  curriculum: z.object({
+    id: z.string(),
+    title: z.string(),
+    modules: z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        lessons: z.array(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+            prerequisites: z.array(z.string()).optional(),
+            difficulty: z.number().optional(),
+          }),
+        ),
+      }),
+    ),
+  }),
 })
 
 const cpsStepBodySchema = z.object({
@@ -2496,6 +2549,104 @@ async function postPrototypeExemplarDeck(req: IncomingMessage, res: ServerRespon
   })
 }
 
+/** GET /cognitive/kst/spaces — list canonical Knowledge Space Theory structures */
+async function getKstSpaces(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const spaces = getCanonicalKnowledgeSpaces()
+  sendJson(res, 200, {
+    ok: true,
+    spaces: spaces.map((s) => ({
+      domainId: s.domainId,
+      title: s.title,
+      description: s.description,
+      itemsCount: s.domainItems.length,
+      statesCount: s.states.length,
+      isWellGraded: s.isWellGraded,
+      domainItems: s.domainItems,
+    })),
+  })
+}
+
+/** POST /cognitive/kst/start — start a Markovian adaptive assessment session */
+async function postKstStart(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, kstStartBodySchema)
+  const spaces = getCanonicalKnowledgeSpaces()
+  const structure = spaces.find((s) => s.domainId === body.domainId) || spaces[0]!
+  const session = initializeMarkovianSession(structure, body.priorType)
+  const diagnosis = diagnoseLearner(session, structure)
+  sendJson(res, 200, {
+    ok: true,
+    domainId: structure.domainId,
+    domainTitle: structure.title,
+    session,
+    diagnosis,
+  })
+}
+
+/** POST /cognitive/kst/probe — update Bayesian posterior belief after response */
+async function postKstProbe(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, kstProbeBodySchema)
+  const spaces = getCanonicalKnowledgeSpaces()
+  const structure = spaces.find((s) => s.domainId === body.domainId) || spaces[0]!
+  const updatedSession = updateBeliefPosterior(body.session, structure, {
+    itemId: body.itemId,
+    isCorrect: body.isCorrect,
+    responseTimeMs: body.responseTimeMs,
+  })
+  const diagnosis = diagnoseLearner(updatedSession, structure)
+  sendJson(res, 200, {
+    ok: true,
+    session: updatedSession,
+    diagnosis,
+  })
+}
+
+/** POST /cognitive/kst/fringes — compute inner and outer fringes for a state */
+async function postKstFringes(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, kstFringesBodySchema)
+  const spaces = getCanonicalKnowledgeSpaces()
+  const structure = spaces.find((s) => s.domainId === body.domainId) || spaces[0]!
+  const fringes = computeFringes(body.stateItems, structure)
+  sendJson(res, 200, {
+    ok: true,
+    domainId: structure.domainId,
+    stateId: fringes.stateId,
+    innerFringe: fringes.innerFringe,
+    outerFringe: fringes.outerFringe,
+    readyToLearnCount: fringes.outerFringe.length,
+  })
+}
+
+/** POST /cognitive/kst/deck — generate calibrated FSRS-6 review deck */
+async function postKstDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, kstDeckBodySchema)
+  const spaces = getCanonicalKnowledgeSpaces()
+  const structure = spaces.find((s) => s.domainId === body.domainId) || spaces[0]!
+  const targetState = body.stateId
+    ? structure.states.find((s) => s.stateId === body.stateId) ||
+      structure.states[1] ||
+      structure.states[0]!
+    : structure.states[1] || structure.states[0]!
+
+  const cards = generateKSTCalibratedDeck(structure, targetState, { maxCards: body.maxCards })
+  sendJson(res, 200, {
+    ok: true,
+    domainId: structure.domainId,
+    stateId: targetState.stateId,
+    cardsCount: cards.length,
+    cards,
+  })
+}
+
+/** POST /cognitive/kst/audit — perform KST curriculum audit */
+async function postKstAudit(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, kstAuditBodySchema)
+  const report = auditCurriculumStructure(body.curriculum)
+  sendJson(res, 200, {
+    ok: true,
+    report,
+  })
+}
+
 /** GET /cognitive/cps/scenarios — list canonical Dörner Micro-World scenarios */
 async function getCPSScenarios(_req: IncomingMessage, res: ServerResponse): Promise<void> {
   const scenarios = listMicroWorldScenarios()
@@ -3059,6 +3210,42 @@ export const routes: Route[] = [
     path: '/cognitive/categorization/deck',
     summary: 'generate calibrated FSRS-6 review deck for categorization',
     handler: postPrototypeExemplarDeck,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/kst/spaces',
+    summary: 'list canonical Knowledge Space Theory structures (Doignon & Falmagne 1985, 1999)',
+    handler: getKstSpaces,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/kst/start',
+    summary: 'start a Markovian adaptive assessment session with uniform or weighted prior',
+    handler: postKstStart,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/kst/probe',
+    summary: 'update Bayesian posterior belief after response and select next optimal item',
+    handler: postKstProbe,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/kst/fringes',
+    summary: 'compute inner and outer fringes for a knowledge state (Doignon & Falmagne 1999)',
+    handler: postKstFringes,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/kst/deck',
+    summary: 'generate calibrated FSRS-6 review deck for knowledge space frontier',
+    handler: postKstDeck,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/kst/audit',
+    summary: 'perform KST curriculum audit for well-gradedness, bottlenecks, and cycles',
+    handler: postKstAudit,
   },
   {
     method: 'GET',
