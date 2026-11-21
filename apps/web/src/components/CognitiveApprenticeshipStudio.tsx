@@ -9,10 +9,18 @@
  *   Cognitive Apprenticeship methods: Modeling, Coaching, Scaffolding, Articulation, Reflection, Exploration.
  * - Jean Lave & Etienne Wenger (1991):
  *   Legitimate Peripheral Participation (LPP) across authentic practice communities.
+ *
+ * All engine evaluation goes through the hub transport (`/api/apprenticeship`,
+ * GET for the suite corpus, POST `metrics`/`deck` actions); the bundled core
+ * imports below are only the offline fallback so the studio keeps working with
+ * the API unreachable (manual-mode guarantee, AGENTS.md rule 9). The API
+ * computes byte-identical values, so the substitution is never visible.
  */
 
 import React, { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
+  type ApprenticeshipMetrics,
   type ApprenticeshipStage,
   CALIBRATED_APPRENTICESHIP_SUITES,
   calculateFadingIndex,
@@ -22,6 +30,7 @@ import {
   type FSRSTacitHeuristicCard,
 } from '@learning-hub/core/apprenticeship'
 import { Badge, Button, CognitiveApprenticeshipHUD, Panel } from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight, hapticMedium } from '../platform/haptics'
 import {
@@ -42,10 +51,44 @@ import {
 
 type StudioTab = 'traces' | 'articulation' | 'reflection' | 'deck'
 
+/** GET /api/apprenticeship — the calibrated suite corpus served by the hub. */
+interface SuitesResponse {
+  ok: boolean
+  suites: Record<string, CognitiveApprenticeshipSuite>
+}
+/** POST /api/apprenticeship `metrics` — engine telemetry for the session state. */
+interface MetricsResponse {
+  ok: boolean
+  metrics: ApprenticeshipMetrics
+}
+/** POST /api/apprenticeship `deck` — engine-synthesized FSRS tacit-heuristic cards. */
+interface DeckResponse {
+  ok: boolean
+  cards: readonly FSRSTacitHeuristicCard[]
+}
+
 export function CognitiveApprenticeshipStudio() {
   const [selectedSuiteId, setSelectedSuiteId] = useState<string>('distributed_consensus_raft')
   const [activeTab, setActiveTab] = useState<StudioTab>('traces')
   const [currentStage, setCurrentStage] = useState<ApprenticeshipStage>('modeling')
+
+  // Suite corpus via the hub API (GET); the bundled core constant is the
+  // offline fallback, so rendering is identical while the request is in
+  // flight or when the API is unreachable (manual mode, rule 9).
+  const suitesQuery = useQuery({
+    queryKey: ['apprenticeship', 'suites'],
+    queryFn: async (): Promise<Record<string, CognitiveApprenticeshipSuite>> => {
+      try {
+        const res = await apiGet<SuitesResponse>('/api/apprenticeship')
+        if (res?.suites && Object.keys(res.suites).length > 0) return res.suites
+      } catch {
+        // fall through to the bundled corpus
+      }
+      return CALIBRATED_APPRENTICESHIP_SUITES
+    },
+    staleTime: Infinity, // static content — fetch once per session
+  })
+  const suites = suitesQuery.data ?? CALIBRATED_APPRENTICESHIP_SUITES
 
   // Learning progress state
   const [observedTraceIds, setObservedTraceIds] = useState<Set<string>>(new Set())
@@ -59,7 +102,8 @@ export function CognitiveApprenticeshipStudio() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const suite: CognitiveApprenticeshipSuite =
-    CALIBRATED_APPRENTICESHIP_SUITES[selectedSuiteId] ??
+    suites[selectedSuiteId] ??
+    suites.distributed_consensus_raft ??
     CALIBRATED_APPRENTICESHIP_SUITES.distributed_consensus_raft
 
   // Audio tone feedback
@@ -105,8 +149,33 @@ export function CognitiveApprenticeshipStudio() {
     setTimeout(() => setToastMessage(null), 3200)
   }
 
-  // Calculated Apprenticeship Metrics
-  const metrics = useMemo(() => {
+  // Calculated Apprenticeship Metrics — engine evaluation via the hub API
+  // (POST `metrics`), with the pure core primitives as the offline fallback.
+  // The request body doubles as the query key payload, so every state change
+  // re-consults the API while the local value renders instantly meanwhile.
+  const metricsRequest = useMemo(
+    () => ({
+      action: 'metrics' as const,
+      suiteId: suite.id,
+      stage: currentStage,
+      observedTraceIds: [...observedTraceIds].sort(),
+      extractedPrincipleIds: [...unlockedPrincipleIds].sort(),
+      articulationScores: Object.values(articulationAnswers).map((a) => a.score),
+      completedReflectionIds: [...completedReflectionIds].sort(),
+    }),
+    [
+      suite,
+      currentStage,
+      observedTraceIds,
+      articulationAnswers,
+      unlockedPrincipleIds,
+      completedReflectionIds,
+    ],
+  )
+
+  // Offline fallback: the same computation chain the studio ran inline before
+  // hub-ification (engine primitives over the local session state).
+  const localMetrics = useMemo((): ApprenticeshipMetrics => {
     const scores = Object.values(articulationAnswers).map((a) => a.score)
     const tacitRate = calculateTacitExtractionRate(
       unlockedPrincipleIds.size,
@@ -153,6 +222,20 @@ export function CognitiveApprenticeshipStudio() {
     currentStage,
     suite,
   ])
+
+  const metricsQuery = useQuery({
+    queryKey: ['apprenticeship', 'metrics', metricsRequest],
+    queryFn: async (): Promise<ApprenticeshipMetrics> => {
+      try {
+        const res = await apiSend<MetricsResponse>('/api/apprenticeship', 'POST', metricsRequest)
+        if (res?.metrics) return res.metrics
+      } catch {
+        // fall through to the offline engine computation
+      }
+      return localMetrics
+    },
+  })
+  const metrics = metricsQuery.data ?? localMetrics
 
   // Reset Session
   const handleReset = () => {
@@ -218,8 +301,15 @@ export function CognitiveApprenticeshipStudio() {
     })
   }
 
-  // Export FSRS flashcards
-  const exportedCards = useMemo<readonly FSRSTacitHeuristicCard[]>(() => {
+  // Export FSRS flashcards — engine synthesis via the hub API (POST `deck`),
+  // with the studio's own builder kept as the offline fallback (it mirrors the
+  // engine's `CognitiveApprenticeshipSession.exportFSRSCards` exactly).
+  const extractedPrincipleIdList = useMemo(
+    () => [...unlockedPrincipleIds].sort(),
+    [unlockedPrincipleIds],
+  )
+
+  const fallbackCards = useMemo<readonly FSRSTacitHeuristicCard[]>(() => {
     return suite.principles.map((pr) => {
       const isExtracted = unlockedPrincipleIds.has(pr.id)
       const matchingPrompt = suite.prompts.find((p) =>
@@ -246,6 +336,25 @@ export function CognitiveApprenticeshipStudio() {
       }
     })
   }, [suite, unlockedPrincipleIds, currentStage])
+
+  const deckQuery = useQuery({
+    queryKey: ['apprenticeship', 'deck', suite.id, currentStage, extractedPrincipleIdList],
+    queryFn: async (): Promise<readonly FSRSTacitHeuristicCard[]> => {
+      try {
+        const res = await apiSend<DeckResponse>('/api/apprenticeship', 'POST', {
+          action: 'deck',
+          suiteId: suite.id,
+          stage: currentStage,
+          extractedPrincipleIds: extractedPrincipleIdList,
+        })
+        if (res?.cards) return res.cards
+      } catch {
+        // fall through to the offline builder below
+      }
+      return fallbackCards
+    },
+  })
+  const exportedCards = deckQuery.data ?? fallbackCards
 
   const handleCopyDeck = () => {
     navigator.clipboard?.writeText(JSON.stringify(exportedCards, null, 2))
@@ -289,7 +398,7 @@ export function CognitiveApprenticeshipStudio() {
             }}
             className="rounded-lg border border-neutral-200 dark:border-(--hub-border) bg-white dark:bg-(--hub-panel) px-3 py-1.5 text-xs font-medium text-strong shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
-            {Object.values(CALIBRATED_APPRENTICESHIP_SUITES).map((s) => (
+            {Object.values(suites).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.title}
               </option>

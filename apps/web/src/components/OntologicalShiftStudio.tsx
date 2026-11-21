@@ -6,16 +6,25 @@
  * - Stella Vosniadou (1994, 2002): Framework Theory & Synthetic Mental Models
  * - Andrea diSessa (1988, 1993): Knowledge in Pieces & Phenomenological Primitives
  * - Posner, Strike, Hewson & Gertzog (1982): Accommodation Conditions (D, I, P, F)
+ *
+ * All engine evaluation goes through the hub transport (`/api/conceptual-change`,
+ * GET for the scenario/catalog corpus, POST `diagnose`/`cards` actions); the
+ * bundled core imports below are only the offline fallback so the studio keeps
+ * working with the API unreachable (manual-mode guarantee, AGENTS.md rule 9).
+ * The handler mirrors the studio's exact computation chain, so the API result
+ * replacing the local value is never visible.
  */
 
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   CALIBRATED_MISCONCEPTION_SCENARIOS,
   CANONICAL_ATTRIBUTE_CATALOG,
   CANONICAL_PPRIM_CATALOG,
   type ConceptualMisconceptionScenario,
+  type FSRSConceptualShiftCard,
   type OntologicalBranch,
   type OntologicalDiagnosisResult,
   type PosnerConditions,
@@ -27,6 +36,7 @@ import {
   generateFSRSConceptualShiftCards,
 } from '@learning-hub/core/conceptual-change'
 import { Badge, Button, IconButton, OntologicalShiftHUD, Panel } from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight } from '../platform/haptics'
 import {
@@ -48,18 +58,61 @@ import {
 
 type StudioTab = 'attribute_crucible' | 'tree_remapping' | 'posner_refutation' | 'fsrs_deck'
 
+/** GET /api/conceptual-change — scenario corpus + Chi attribute & diSessa p-prim catalogs. */
+interface CatalogResponse {
+  ok: boolean
+  scenarios: ConceptualMisconceptionScenario[]
+  attributeCatalog: typeof CANONICAL_ATTRIBUTE_CATALOG
+  pprimCatalog: typeof CANONICAL_PPRIM_CATALOG
+}
+/** POST /api/conceptual-change `diagnose` — engine ontological diagnosis. */
+interface DiagnoseResponse {
+  ok: boolean
+  diagnosis: OntologicalDiagnosisResult
+}
+/** POST /api/conceptual-change `cards` — engine FSRS conceptual-shift cards. */
+interface CardsResponse {
+  ok: boolean
+  cards: FSRSConceptualShiftCard[]
+}
+
+/** Bundled corpus used while the hub API is unreachable (manual mode, rule 9). */
+const FALLBACK_CATALOG: CatalogResponse = {
+  ok: true,
+  scenarios: CALIBRATED_MISCONCEPTION_SCENARIOS,
+  attributeCatalog: CANONICAL_ATTRIBUTE_CATALOG,
+  pprimCatalog: CANONICAL_PPRIM_CATALOG,
+}
+
 export function OntologicalShiftStudio() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(
     'evolution_natural_selection',
   )
   const [tab, setTab] = useState<StudioTab>('attribute_crucible')
 
+  // Scenario/attribute/p-prim corpora via the hub API (GET); the bundled core
+  // constants are the offline fallback, so rendering is identical while the
+  // request is in flight or when the API is unreachable (manual mode, rule 9).
+  const catalogQuery = useQuery({
+    queryKey: ['conceptual-change', 'catalog'],
+    queryFn: async (): Promise<CatalogResponse> => {
+      try {
+        const res = await apiGet<CatalogResponse>('/api/conceptual-change')
+        if (res?.scenarios?.length) return res
+      } catch {
+        // fall through to the bundled corpus
+      }
+      return FALLBACK_CATALOG
+    },
+    staleTime: Infinity, // static content — fetch once per session
+  })
+  const scenarios = catalogQuery.data?.scenarios ?? CALIBRATED_MISCONCEPTION_SCENARIOS
+  const attributeCatalog = catalogQuery.data?.attributeCatalog ?? CANONICAL_ATTRIBUTE_CATALOG
+  const pprimCatalog = catalogQuery.data?.pprimCatalog ?? CANONICAL_PPRIM_CATALOG
+
   const scenario: ConceptualMisconceptionScenario = useMemo(() => {
-    return (
-      CALIBRATED_MISCONCEPTION_SCENARIOS.find((s) => s.id === selectedScenarioId) ??
-      CALIBRATED_MISCONCEPTION_SCENARIOS[0]
-    )
-  }, [selectedScenarioId])
+    return scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0]
+  }, [selectedScenarioId, scenarios])
 
   // Learner's selected attributes per dimension
   const [selectedAttributes, setSelectedAttributes] = useState<
@@ -136,43 +189,36 @@ export function OntologicalShiftStudio() {
       .catch(() => {})
   }
 
-  // Calculate quantitative diagnostics
+  // Calculate quantitative diagnostics — engine evaluation via the hub API
+  // (POST `diagnose`), with the studio's own computation chain (engine
+  // discrepancy gap → inline Posner index → engine compromise risk & readiness
+  // → stage classifier) as the offline fallback. The request body doubles as
+  // the query-key payload, so every learner-state change re-consults the API
+  // while the local value renders instantly meanwhile.
   const currentAttributeList = useMemo(() => {
     return Object.values(selectedAttributes)
   }, [selectedAttributes])
 
-  const discrepancyGap = useMemo(() => {
-    return calculateOntologicalDiscrepancyGap({
+  const localDiagnosis = useMemo((): OntologicalDiagnosisResult => {
+    const discrepancyGap = calculateOntologicalDiscrepancyGap({
       selectedAttributes: currentAttributeList,
       scenario,
     })
-  }, [currentAttributeList, scenario])
-
-  const posnerAccommodationIndex = useMemo(() => {
-    return (
+    const posnerAccommodationIndex =
       0.35 * posnerConditions.dissatisfaction +
       0.25 * posnerConditions.intelligibility +
       0.25 * posnerConditions.plausibility +
       0.15 * posnerConditions.fruitfulness
-    )
-  }, [posnerConditions])
-
-  const syntheticCompromiseRisk = useMemo(() => {
-    return detectSyntheticCompromiseRisk({
+    const syntheticCompromiseRisk = detectSyntheticCompromiseRisk({
       discrepancyGap,
       posnerConditions,
     })
-  }, [discrepancyGap, posnerConditions])
-
-  const conceptualShiftReadiness = useMemo(() => {
-    return calculateConceptualChangeReadiness({
+    const conceptualShiftReadiness = calculateConceptualChangeReadiness({
       posnerIndex: posnerAccommodationIndex,
       discrepancyGap,
       syntheticRisk: syntheticCompromiseRisk,
     })
-  }, [posnerAccommodationIndex, discrepancyGap, syntheticCompromiseRisk])
 
-  const diagnosisResult: OntologicalDiagnosisResult = useMemo(() => {
     let stage: 'initial_naive_model' | 'synthetic_compromise_model' | 'scientific_emergent_model' =
       'initial_naive_model'
     if (conceptualShiftReadiness >= 0.75 && selectedBranch === 'emergent_process') {
@@ -193,21 +239,60 @@ export function OntologicalShiftStudio() {
       syntheticCompromiseRisk,
       conceptualShiftReadiness,
     }
-  }, [
-    scenario.id,
-    scenario.targetOntologicalBranch,
-    scenario.dominantPPrim,
-    selectedBranch,
-    discrepancyGap,
-    posnerAccommodationIndex,
-    syntheticCompromiseRisk,
-    conceptualShiftReadiness,
-  ])
+  }, [currentAttributeList, scenario, selectedBranch, posnerConditions])
 
-  // Generated FSRS conceptual shift cards
-  const shiftCards = useMemo(() => {
+  const diagnosisQuery = useQuery({
+    queryKey: [
+      'conceptual-change',
+      'diagnose',
+      scenario.id,
+      selectedAttributes,
+      selectedBranch,
+      posnerConditions,
+    ],
+    queryFn: async (): Promise<OntologicalDiagnosisResult> => {
+      try {
+        const res = await apiSend<DiagnoseResponse>('/api/conceptual-change', 'POST', {
+          action: 'diagnose',
+          scenarioId: scenario.id,
+          selectedAttributes,
+          learnerBranch: selectedBranch,
+          posnerConditions,
+        })
+        if (res?.diagnosis) return res.diagnosis
+      } catch {
+        // fall through to the offline engine chain
+      }
+      return localDiagnosis
+    },
+  })
+  const diagnosisResult = diagnosisQuery.data ?? localDiagnosis
+  const syntheticCompromiseRisk = diagnosisResult.syntheticCompromiseRisk
+  const conceptualShiftReadiness = diagnosisResult.conceptualShiftReadiness
+
+  // Generated FSRS conceptual shift cards — engine synthesis via the hub API
+  // (POST `cards`), with the direct engine call kept as the offline fallback.
+  const localShiftCards = useMemo(() => {
     return generateFSRSConceptualShiftCards(scenario, diagnosisResult)
   }, [scenario, diagnosisResult])
+
+  const cardsQuery = useQuery({
+    queryKey: ['conceptual-change', 'cards', scenario.id, diagnosisResult],
+    queryFn: async (): Promise<FSRSConceptualShiftCard[]> => {
+      try {
+        const res = await apiSend<CardsResponse>('/api/conceptual-change', 'POST', {
+          action: 'cards',
+          scenarioId: scenario.id,
+          diagnosis: diagnosisResult,
+        })
+        if (res?.cards) return res.cards
+      } catch {
+        // fall through to the offline engine call
+      }
+      return localShiftCards
+    },
+  })
+  const shiftCards = cardsQuery.data ?? localShiftCards
 
   // Handler: Select an attribute
   const handleSelectAttribute = (
@@ -219,7 +304,7 @@ export function OntologicalShiftStudio() {
       [dimension]: attribute,
     }))
 
-    const isEmergent = CANONICAL_ATTRIBUTE_CATALOG[attribute].branch === 'emergent_process'
+    const isEmergent = attributeCatalog[attribute].branch === 'emergent_process'
     if (isEmergent) {
       // Shifting toward emergent increases plausibility & intelligibility
       setPosnerConditions((prev) => ({
@@ -310,7 +395,7 @@ export function OntologicalShiftStudio() {
 
         {/* Scenario Switcher Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-          {CALIBRATED_MISCONCEPTION_SCENARIOS.map((sc) => (
+          {scenarios.map((sc) => (
             <button
               key={sc.id}
               type="button"
@@ -450,7 +535,7 @@ export function OntologicalShiftStudio() {
               <span className="text-xs text-secondary">
                 {
                   currentAttributeList.filter(
-                    (a) => CANONICAL_ATTRIBUTE_CATALOG[a].branch === 'emergent_process',
+                    (a) => attributeCatalog[a].branch === 'emergent_process',
                   ).length
                 }
                 /6 Emergent Attributes Identified
@@ -461,8 +546,8 @@ export function OntologicalShiftStudio() {
               {scenario.attributeContrasts.map((contrast) => {
                 const currentSelected = selectedAttributes[contrast.dimension]
                 const isEmergentSelected = currentSelected === contrast.emergentAttribute
-                const directMeta = CANONICAL_ATTRIBUTE_CATALOG[contrast.directAttribute]
-                const emergentMeta = CANONICAL_ATTRIBUTE_CATALOG[contrast.emergentAttribute]
+                const directMeta = attributeCatalog[contrast.directAttribute]
+                const emergentMeta = attributeCatalog[contrast.emergentAttribute]
 
                 return (
                   <div
@@ -848,16 +933,15 @@ export function OntologicalShiftStudio() {
           <div className="p-4 rounded-xl bg-neutral-50 dark:bg-(--hub-panel-2) border border-neutral-200 dark:border-(--hub-border) space-y-2">
             <span className="text-xs font-bold text-strong flex items-center gap-1.5">
               <Brain className="w-4 h-4 text-status-warning-text" />
-              diSessa P-Prim Recontextualization:{' '}
-              {CANONICAL_PPRIM_CATALOG[scenario.dominantPPrim].name}
+              diSessa P-Prim Recontextualization: {pprimCatalog[scenario.dominantPPrim].name}
             </span>
             <p className="text-xs text-secondary leading-relaxed">
               <strong className="text-strong">Naive Application:</strong>{' '}
-              {CANONICAL_PPRIM_CATALOG[scenario.dominantPPrim].naiveApplication}
+              {pprimCatalog[scenario.dominantPPrim].naiveApplication}
             </p>
             <p className="text-xs text-secondary leading-relaxed">
               <strong className="text-strong">Scientific Recontextualization:</strong>{' '}
-              {CANONICAL_PPRIM_CATALOG[scenario.dominantPPrim].scientificRecontextualization}
+              {pprimCatalog[scenario.dominantPPrim].scientificRecontextualization}
             </p>
           </div>
         </Panel>
