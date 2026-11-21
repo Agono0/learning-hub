@@ -72,13 +72,22 @@ CI-only test policy.
 
 ## P2 — structural debt (schedule, don't scramble)
 
-### TD-05 · OPEN — engines bundle zod schemas + scenario corpora + logic
+### TD-05 · PARTIAL (#PR-B) — engines bundle zod schemas + scenario corpora + logic
 
 25 engine files >800 LOC; the biggest (`dynamic-assessment/zpd-engine.ts`,
 1,854) is ~80% hardcoded scenario data. The data is _content_, not logic — it
 inflates diffs, merge conflicts, and review noise. **Fix path:** for engines
 touched anyway, split `<domain>/content.ts` (scenario constants) from
 `<domain>-engine.ts`. No big-bang split.
+
+**Shipped (8 of 25 engines, ~7,150 lines of corpora moved):** every engine
+above 1,200 LOC now keeps only logic, with verbatim corpora in
+`<domain>/content.ts` re-exported from the engine so no import path changed:
+`dynamic-assessment` (1,905→425), `productive-failure` (1,822→485),
+`spatial` (1,555→1,193), `anchored` (1,478→563), `model-inquiry`
+(1,394→626), `system-dynamics` (1,377→695), `complex-problem-solving`
+(1,258→557), `prototype-exemplar` (1,421→1,126). Remaining 17 engines split
+on next touch.
 
 ### TD-06 · OPEN — duplicated micro-helpers inside core
 
