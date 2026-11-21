@@ -135,7 +135,7 @@
 
 [data-theme='forest'] {
   --tint: #10b981;
-  --ac-strong: #059669;
+  --ac-strong: #047857;
   --ac-mid: #10b981;
   --ac-soft: #a7f3d0;
   --ac-deep: #064e3b;
@@ -149,7 +149,7 @@
 
 [data-theme='ocean'] {
   --tint: #38bdf8;
-  --ac-strong: #0284c7;
+  --ac-strong: #0369a1;
   --ac-mid: #0ea5e9;
   --ac-soft: #bae6fd;
   --ac-deep: #0c4a6e;
@@ -163,7 +163,7 @@
 
 [data-theme='sunset'] {
   --tint: #fb923c;
-  --ac-strong: #ea580c;
+  --ac-strong: #c2410c;
   --ac-mid: #f97316;
   --ac-soft: #fed7aa;
   --ac-deep: #7c2d12;
