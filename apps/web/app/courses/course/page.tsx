@@ -44,6 +44,7 @@ import {
   Skeleton,
   TextArea,
 } from '@/ui'
+import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
 
 type Lesson = CourseOverview['modules'][number]['lessons'][number]
 
@@ -206,271 +207,292 @@ function Course() {
       <Link href="/courses" className="text-sm text-tertiary hover:underline">
         ← All courses
       </Link>
-      <PageHeader
-        icon={
-          <span className="text-2xl" aria-hidden>
-            {course.emoji ?? '📘'}
-          </span>
-        }
-        title={course.title}
-        subtitle={course.subtitle ?? undefined}
-      />
+      {/* Entrance beats: header first, progress panel second. SSR-safe — ClayIn
+          renders the final state server-side and animates client-side only when
+          motionOK() allows (reduced-motion / e-ink users never see it). */}
+      <ClayIn>
+        <PageHeader
+          icon={
+            <span className="text-2xl" aria-hidden>
+              {course.emoji ?? '📘'}
+            </span>
+          }
+          title={course.title}
+          subtitle={course.subtitle ?? undefined}
+        />
+      </ClayIn>
 
-      <Panel>
-        <div className="flex items-center gap-4">
-          <ProgressRing value={course.progress.fraction} size={64} />
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="text-sm">
-              {course.progress.completed} of {course.progress.total} lessons
-              {course.estHours ? (
-                <span className="text-tertiary"> · ~{course.estHours} h total</span>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {course.level && <Badge>{course.level}</Badge>}
-              <Badge>{course.track.title}</Badge>
-              {course.certified && (
-                <Badge tone="success">
-                  <Award className="h-3 w-3" /> Certified
-                </Badge>
-              )}
+      <ClayIn delayS={staggerDelay(1)}>
+        <Panel>
+          <div className="flex items-center gap-4">
+            <ProgressRing value={course.progress.fraction} size={64} />
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="text-sm">
+                {course.progress.completed} of {course.progress.total} lessons
+                {course.estHours ? (
+                  <span className="text-tertiary"> · ~{course.estHours} h total</span>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {course.level && <Badge>{course.level}</Badge>}
+                <Badge>{course.track.title}</Badge>
+                {course.certified && (
+                  <Badge tone="success">
+                    <Award className="h-3 w-3" /> Certified
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        {next && (
-          <Link href={`/courses/lesson?id=${next.id}`} className="btn w-full justify-center">
-            <Play className="h-4 w-4" /> {course.progress.completed ? 'Continue' : 'Start'}:{' '}
-            {next.title}
+          {next && (
+            <Link href={`/courses/lesson?id=${next.id}`} className="btn w-full justify-center">
+              <Play className="h-4 w-4" /> {course.progress.completed ? 'Continue' : 'Start'}:{' '}
+              {next.title}
+            </Link>
+          )}
+          <Link
+            href={`/review?courseId=${course.id}`}
+            className="btn-ghost mt-2 w-full justify-center"
+            title="Interleave exercises from every lesson of this course (Rohrer: mixed practice)"
+          >
+            <Shuffle className="h-4 w-4" /> Mixed practice
           </Link>
-        )}
-        <Link
-          href={`/review?courseId=${course.id}`}
-          className="btn-ghost mt-2 w-full justify-center"
-          title="Interleave exercises from every lesson of this course (Rohrer: mixed practice)"
-        >
-          <Shuffle className="h-4 w-4" /> Mixed practice
-        </Link>
-      </Panel>
-
-      {course.description && (
-        <Panel title="About this course">
-          <Markdown>{course.description}</Markdown>
         </Panel>
+      </ClayIn>
+
+      {/* Below the fold the sections reveal on scroll (once) instead of
+          animating on mount — long-page choreography per the motion formula. */}
+      {course.description && (
+        <Reveal>
+          <Panel title="About this course">
+            <Markdown>{course.description}</Markdown>
+          </Panel>
+        </Reveal>
       )}
 
       {(course.outcomes.length > 0 || course.prerequisites.length > 0) && (
-        <div className="grid gap-3 md:grid-cols-2">
-          {course.outcomes.length > 0 && (
-            <Panel title="What you’ll be able to do">
-              <ul className="space-y-1.5 text-sm">
-                {course.outcomes.map((o, i) => (
-                  <li key={i} className="flex gap-2">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success-text" />
-                    {o}
-                  </li>
-                ))}
-              </ul>
-            </Panel>
-          )}
-          {course.prerequisites.length > 0 && (
-            <Panel title="Before you start">
-              <ul className="list-disc space-y-1 pl-5 text-sm">
-                {course.prerequisites.map((p, i) => (
-                  <li key={i}>{p}</li>
-                ))}
-              </ul>
-            </Panel>
-          )}
-        </div>
+        <Reveal>
+          <div className="grid gap-3 md:grid-cols-2">
+            {course.outcomes.length > 0 && (
+              <Panel title="What you’ll be able to do">
+                <ul className="space-y-1.5 text-sm">
+                  {course.outcomes.map((o, i) => (
+                    <li key={i} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-status-success-text" />
+                      {o}
+                    </li>
+                  ))}
+                </ul>
+              </Panel>
+            )}
+            {course.prerequisites.length > 0 && (
+              <Panel title="Before you start">
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {course.prerequisites.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              </Panel>
+            )}
+          </div>
+        </Reveal>
       )}
 
-      <section className="space-y-3" aria-label="Syllabus">
-        <h2 className="text-lg font-semibold">Syllabus</h2>
-        {modules.map((m, i) => {
-          const done = m.lessons.filter((l) => l.status === 'completed').length
-          return (
+      <Reveal>
+        <section className="space-y-3" aria-label="Syllabus">
+          <h2 className="text-lg font-semibold">Syllabus</h2>
+          {modules.map((m, i) => {
+            const done = m.lessons.filter((l) => l.status === 'completed').length
+            return (
+              <Panel
+                key={m.id}
+                title={
+                  <span>
+                    <span className="text-tertiary">Module {i + 1} · </span>
+                    {m.title}
+                  </span>
+                }
+                actions={
+                  <span className="text-xs text-tertiary">
+                    {done}/{m.lessons.length}
+                  </span>
+                }
+              >
+                {m.description && <p className="text-sm text-tertiary">{m.description}</p>}
+                <ProgressBar
+                  value={m.lessons.length ? done / m.lessons.length : 0}
+                  label={`${m.title} progress`}
+                />
+                <ol className="-mx-2">
+                  {m.lessons.map((l) => (
+                    <LessonRow key={l.id} lesson={l} />
+                  ))}
+                </ol>
+              </Panel>
+            )
+          })}
+        </section>
+      </Reveal>
+
+      {projects.length > 0 && (
+        <Reveal>
+          <section className="space-y-3" aria-label="Projects">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Hammer className="h-5 w-5" /> Projects
+            </h2>
+            {projects.map((p) => (
+              <Panel key={p.slug} title={p.title}>
+                <ol className="space-y-3">
+                  {p.stages.map((s, si) => (
+                    <li
+                      key={s.id}
+                      className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)"
+                    >
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        {s.completedAt ? (
+                          <CheckCircle2 className="h-4 w-4 text-status-success-text" />
+                        ) : (
+                          <span className="text-xs text-tertiary">Stage {si + 1}</span>
+                        )}
+                        {s.title}
+                      </div>
+                      <Markdown className="mt-1 text-sm">{s.description}</Markdown>
+                      {s.checklist.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {s.checklist.map((item, i) => (
+                            <label key={i} className="flex items-start gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4"
+                                checked={s.checked[i] ?? false}
+                                disabled={stage.isPending}
+                                onChange={(e) =>
+                                  stage.mutate({
+                                    id: s.id,
+                                    checked: s.checklist.map((_, j) =>
+                                      j === i ? e.target.checked : (s.checked[j] ?? false),
+                                    ),
+                                  })
+                                }
+                              />
+                              {item}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </Panel>
+            ))}
+          </section>
+        </Reveal>
+      )}
+
+      <Reveal>
+        <div className="grid gap-3 md:grid-cols-2">
+          {exam && (
             <Panel
-              key={m.id}
               title={
-                <span>
-                  <span className="text-tertiary">Module {i + 1} · </span>
-                  {m.title}
-                </span>
-              }
-              actions={
-                <span className="text-xs text-tertiary">
-                  {done}/{m.lessons.length}
+                <span className="flex items-center gap-2">
+                  <FileQuestion className="h-4 w-4" /> Final exam
                 </span>
               }
             >
-              {m.description && <p className="text-sm text-tertiary">{m.description}</p>}
-              <ProgressBar
-                value={m.lessons.length ? done / m.lessons.length : 0}
-                label={`${m.title} progress`}
-              />
-              <ol className="-mx-2">
-                {m.lessons.map((l) => (
-                  <LessonRow key={l.id} lesson={l} />
-                ))}
-              </ol>
+              <p className="text-sm text-tertiary">
+                {exam.questions} questions{exam.minutes ? ` · ~${exam.minutes} min` : ''} · pass
+                with {Math.round(exam.passScore * 100)}%
+              </p>
+              {exam.bestScore !== null && (
+                <p className="text-sm">
+                  Best score: <strong>{Math.round(exam.bestScore * 100)}%</strong> ({exam.attempts}{' '}
+                  attempt{exam.attempts === 1 ? '' : 's'})
+                </p>
+              )}
+              <Link href={`/courses/exam?id=${course.id}`} className="btn-ghost">
+                {exam.attempts ? 'Retake exam' : 'Take the exam'}
+              </Link>
             </Panel>
-          )
-        })}
-      </section>
-
-      {projects.length > 0 && (
-        <section className="space-y-3" aria-label="Projects">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Hammer className="h-5 w-5" /> Projects
-          </h2>
-          {projects.map((p) => (
-            <Panel key={p.slug} title={p.title}>
-              <ol className="space-y-3">
-                {p.stages.map((s, si) => (
-                  <li
-                    key={s.id}
-                    className="rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)"
-                  >
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      {s.completedAt ? (
-                        <CheckCircle2 className="h-4 w-4 text-status-success-text" />
-                      ) : (
-                        <span className="text-xs text-tertiary">Stage {si + 1}</span>
-                      )}
-                      {s.title}
-                    </div>
-                    <Markdown className="mt-1 text-sm">{s.description}</Markdown>
-                    {s.checklist.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {s.checklist.map((item, i) => (
-                          <label key={i} className="flex items-start gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              className="mt-1 h-4 w-4"
-                              checked={s.checked[i] ?? false}
-                              disabled={stage.isPending}
-                              onChange={(e) =>
-                                stage.mutate({
-                                  id: s.id,
-                                  checked: s.checklist.map((_, j) =>
-                                    j === i ? e.target.checked : (s.checked[j] ?? false),
-                                  ),
-                                })
-                              }
-                            />
-                            {item}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </Panel>
-          ))}
-        </section>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {exam && (
+          )}
           <Panel
             title={
               <span className="flex items-center gap-2">
-                <FileQuestion className="h-4 w-4" /> Final exam
+                <Award className="h-4 w-4" /> Certificate
               </span>
             }
           >
-            <p className="text-sm text-tertiary">
-              {exam.questions} questions{exam.minutes ? ` · ~${exam.minutes} min` : ''} · pass with{' '}
-              {Math.round(exam.passScore * 100)}%
-            </p>
-            {exam.bestScore !== null && (
-              <p className="text-sm">
-                Best score: <strong>{Math.round(exam.bestScore * 100)}%</strong> ({exam.attempts}{' '}
-                attempt{exam.attempts === 1 ? '' : 's'})
-              </p>
+            {certificate.issued ? (
+              <Link href={`/courses/certificate?id=${course.id}`} className="btn">
+                View certificate
+              </Link>
+            ) : certificate.eligible ? (
+              <Link href={`/courses/certificate?id=${course.id}`} className="btn">
+                Claim your certificate
+              </Link>
+            ) : (
+              <ul className="list-disc space-y-1 pl-5 text-sm text-tertiary">
+                {certificate.missing.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
             )}
-            <Link href={`/courses/exam?id=${course.id}`} className="btn-ghost">
-              {exam.attempts ? 'Retake exam' : 'Take the exam'}
-            </Link>
           </Panel>
-        )}
-        <Panel
-          title={
-            <span className="flex items-center gap-2">
-              <Award className="h-4 w-4" /> Certificate
-            </span>
-          }
-        >
-          {certificate.issued ? (
-            <Link href={`/courses/certificate?id=${course.id}`} className="btn">
-              View certificate
-            </Link>
-          ) : certificate.eligible ? (
-            <Link href={`/courses/certificate?id=${course.id}`} className="btn">
-              Claim your certificate
-            </Link>
-          ) : (
-            <ul className="list-disc space-y-1 pl-5 text-sm text-tertiary">
-              {certificate.missing.map((m, i) => (
-                <li key={i}>{m}</li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-      </div>
+        </div>
+      </Reveal>
 
       <GlossaryPanel courseId={course.id} />
 
       <CourseMindMap courseId={course.id} />
 
-      <Panel title="Manage">
-        <div className="flex flex-wrap gap-2">
-          {course.lhcf && (
-            <>
-              <Button
-                variant="ghost"
-                icon={<Sparkles className="h-4 w-4" />}
-                onClick={() => setImproveOpen(true)}
-              >
-                Improve with AI
-              </Button>
-              <Button
-                variant="ghost"
-                icon={<Download className="h-4 w-4" />}
-                onClick={() =>
-                  void apiDownload(
-                    `/api/curriculum/courses/${course.id}/export`,
-                    `${course.slug ?? 'course'}.lhcf.json`,
-                  )
-                }
-              >
-                Export JSON
-              </Button>
-              <Button
-                variant="ghost"
-                icon={<Download className="h-4 w-4" />}
-                onClick={() =>
-                  void apiDownload(
-                    `/api/curriculum/courses/${course.id}/export?format=yaml`,
-                    `${course.slug ?? 'course'}.lhcf.yaml`,
-                  )
-                }
-              >
-                Export YAML
-              </Button>
-            </>
-          )}
-          <Button
-            variant="ghost"
-            className="text-danger-text"
-            icon={<Trash2 className="h-4 w-4" />}
-            onClick={() => setConfirmDelete(true)}
-          >
-            Delete course
-          </Button>
-        </div>
-      </Panel>
+      <Reveal>
+        <Panel title="Manage">
+          <div className="flex flex-wrap gap-2">
+            {course.lhcf && (
+              <>
+                <Button
+                  variant="ghost"
+                  icon={<Sparkles className="h-4 w-4" />}
+                  onClick={() => setImproveOpen(true)}
+                >
+                  Improve with AI
+                </Button>
+                <Button
+                  variant="ghost"
+                  icon={<Download className="h-4 w-4" />}
+                  onClick={() =>
+                    void apiDownload(
+                      `/api/curriculum/courses/${course.id}/export`,
+                      `${course.slug ?? 'course'}.lhcf.json`,
+                    )
+                  }
+                >
+                  Export JSON
+                </Button>
+                <Button
+                  variant="ghost"
+                  icon={<Download className="h-4 w-4" />}
+                  onClick={() =>
+                    void apiDownload(
+                      `/api/curriculum/courses/${course.id}/export?format=yaml`,
+                      `${course.slug ?? 'course'}.lhcf.yaml`,
+                    )
+                  }
+                >
+                  Export YAML
+                </Button>
+              </>
+            )}
+            <Button
+              variant="ghost"
+              className="text-danger-text"
+              icon={<Trash2 className="h-4 w-4" />}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete course
+            </Button>
+          </div>
+        </Panel>
+      </Reveal>
 
       <Sheet
         open={confirmDelete}
@@ -522,33 +544,35 @@ function GlossaryPanel({ courseId }: { courseId: number }) {
   const entries = data?.entries ?? []
   if (entries.length === 0) return null
   return (
-    <Panel title={`Glossary — ${entries.length} key term${entries.length === 1 ? '' : 's'}`}>
-      <dl className="space-y-2">
-        {entries.map((e) => (
-          <div key={`${e.term}-${e.lessonId}`} className="text-sm">
-            <dt className="font-medium">
-              {e.term}
-              <span className="ml-2 text-xs font-normal text-tertiary">
-                <Link href={`/courses/lesson?id=${e.lessonId}`} className="hover:underline">
-                  {e.lessonTitle}
-                </Link>
-                {e.cardId != null && (
-                  <>
-                    {' · '}
-                    <Link href="/decks" className="hover:underline">
-                      has a card →
-                    </Link>
-                  </>
-                )}
-              </span>
-            </dt>
-            <dd className="text-faint">
-              <Markdown>{e.definition}</Markdown>
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </Panel>
+    <Reveal>
+      <Panel title={`Glossary — ${entries.length} key term${entries.length === 1 ? '' : 's'}`}>
+        <dl className="space-y-2">
+          {entries.map((e) => (
+            <div key={`${e.term}-${e.lessonId}`} className="text-sm">
+              <dt className="font-medium">
+                {e.term}
+                <span className="ml-2 text-xs font-normal text-tertiary">
+                  <Link href={`/courses/lesson?id=${e.lessonId}`} className="hover:underline">
+                    {e.lessonTitle}
+                  </Link>
+                  {e.cardId != null && (
+                    <>
+                      {' · '}
+                      <Link href="/decks" className="hover:underline">
+                        has a card →
+                      </Link>
+                    </>
+                  )}
+                </span>
+              </dt>
+              <dd className="text-faint">
+                <Markdown>{e.definition}</Markdown>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
+    </Reveal>
   )
 }
 
@@ -595,26 +619,28 @@ function CourseMindMap({ courseId }: { courseId: number }) {
   })
 
   return (
-    <Panel
-      title="Mind map"
-      actions={
-        <Button variant="ghost" onClick={() => setOpen((o) => !o)}>
-          {open ? 'Hide map' : 'Show map'}
-        </Button>
-      }
-    >
-      {open && (data?.nodes.length ?? 0) > 0 && (
-        <MindMapGraph nodes={data!.nodes} edges={data!.edges} />
-      )}
-      {open && data && data.nodes.length === 0 && (
-        <p className="text-sm text-tertiary">No lessons to map yet.</p>
-      )}
-      {!open && (
-        <p className="text-xs text-tertiary">
-          Modules → lessons → skills, with the prerequisite chain between skills.
-        </p>
-      )}
-    </Panel>
+    <Reveal>
+      <Panel
+        title="Mind map"
+        actions={
+          <Button variant="ghost" onClick={() => setOpen((o) => !o)}>
+            {open ? 'Hide map' : 'Show map'}
+          </Button>
+        }
+      >
+        {open && (data?.nodes.length ?? 0) > 0 && (
+          <MindMapGraph nodes={data!.nodes} edges={data!.edges} />
+        )}
+        {open && data && data.nodes.length === 0 && (
+          <p className="text-sm text-tertiary">No lessons to map yet.</p>
+        )}
+        {!open && (
+          <p className="text-xs text-tertiary">
+            Modules → lessons → skills, with the prerequisite chain between skills.
+          </p>
+        )}
+      </Panel>
+    </Reveal>
   )
 }
 

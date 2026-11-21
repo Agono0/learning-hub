@@ -51,6 +51,7 @@ import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Button, EmptyState, PageHeader, ProgressBar, Sheet } from '@/ui'
+import { ClayIn, Reveal } from '@/lib/motion'
 import { DetoxWizard } from '@/components/DetoxWizard'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -354,620 +355,652 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
-      <PageHeader
-        title="Settings"
-        subtitle="AI provider, scheduler retention, session length, theme."
-      />
+      <ClayIn>
+        <PageHeader
+          title="Settings"
+          subtitle="AI provider, scheduler retention, session length, theme."
+        />
+      </ClayIn>
 
-      <section className="panel space-y-4">
-        <div>
-          <div className="label mb-2">AI provider</div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {PROVIDERS.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => setProvider(p.key)}
-                className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                  provider === p.key
-                    ? 'border-indigo-500 bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
-                    : 'border-neutral-200 hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          {meta.hint && <p className="mt-2 text-xs text-status-warning-text">{meta.hint}</p>}
-          {provider === 'custom-endpoint' && (
-            <p className="mt-1 text-xs text-tertiary">
-              The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and must
-              reply <code>{'{ "result": string | object }'}</code> —{' '}
-              <a
-                href="https://github.com/Agono0/learning-hub/blob/main/docs/ai-providers.md"
-                target="_blank"
-                className="underline"
-              >
-                the HTTP contract
-              </a>
-              .
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-(--hub-border) dark:bg-(--hub-sunken)">
-          <div className="label mb-1.5">1-Click Free &amp; Local Presets</div>
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              {
-                label: 'Gemini 2.5 Flash (Free Tier)',
-                provider: 'google' as AIProvider,
-                model: 'gemini-2.5-flash',
-                baseUrl: '',
-              },
-              {
-                label: 'Groq Llama 3.3 (Free Tier)',
-                provider: 'openai-compatible' as AIProvider,
-                model: 'llama-3.3-70b-versatile',
-                baseUrl: 'https://api.groq.com/openai/v1',
-              },
-              {
-                label: 'OpenRouter (Free Models)',
-                provider: 'openai-compatible' as AIProvider,
-                model: 'meta-llama/llama-3.3-70b-instruct:free',
-                baseUrl: 'https://openrouter.ai/api/v1',
-              },
-              {
-                label: 'DeepSeek Chat',
-                provider: 'openai-compatible' as AIProvider,
-                model: 'deepseek-chat',
-                baseUrl: 'https://api.deepseek.com/v1',
-              },
-              {
-                label: 'Ollama Local (Offline)',
-                provider: 'ollama' as AIProvider,
-                model: 'llama3.1',
-                baseUrl: 'http://localhost:11434/v1',
-              },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() => {
-                  setProvider(preset.provider)
-                  setModel(preset.model)
-                  setBaseUrl(preset.baseUrl)
-                }}
-                className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:border-indigo-500 dark:hover:text-indigo-300"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
+      <Reveal>
+        <section className="panel space-y-4">
           <div>
-            <label className="label mb-1 block">Model</label>
-            <input
-              className="input"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder={meta.modelPlaceholder}
-            />
+            <div className="label mb-2">AI provider</div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {PROVIDERS.map((p) => (
+                <button
+                  key={p.key}
+                  onClick={() => setProvider(p.key)}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    provider === p.key
+                      ? 'border-indigo-500 bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
+                      : 'border-neutral-200 hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {meta.hint && <p className="mt-2 text-xs text-status-warning-text">{meta.hint}</p>}
+            {provider === 'custom-endpoint' && (
+              <p className="mt-1 text-xs text-tertiary">
+                The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and
+                must reply <code>{'{ "result": string | object }'}</code> —{' '}
+                <a
+                  href="https://github.com/Agono0/learning-hub/blob/main/docs/ai-providers.md"
+                  target="_blank"
+                  className="underline"
+                >
+                  the HTTP contract
+                </a>
+                .
+              </p>
+            )}
           </div>
-          {meta.needsBaseUrl && (
+
+          <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-(--hub-border) dark:bg-(--hub-sunken)">
+            <div className="label mb-1.5">1-Click Free &amp; Local Presets</div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                {
+                  label: 'Gemini 2.5 Flash (Free Tier)',
+                  provider: 'google' as AIProvider,
+                  model: 'gemini-2.5-flash',
+                  baseUrl: '',
+                },
+                {
+                  label: 'Groq Llama 3.3 (Free Tier)',
+                  provider: 'openai-compatible' as AIProvider,
+                  model: 'llama-3.3-70b-versatile',
+                  baseUrl: 'https://api.groq.com/openai/v1',
+                },
+                {
+                  label: 'OpenRouter (Free Models)',
+                  provider: 'openai-compatible' as AIProvider,
+                  model: 'meta-llama/llama-3.3-70b-instruct:free',
+                  baseUrl: 'https://openrouter.ai/api/v1',
+                },
+                {
+                  label: 'DeepSeek Chat',
+                  provider: 'openai-compatible' as AIProvider,
+                  model: 'deepseek-chat',
+                  baseUrl: 'https://api.deepseek.com/v1',
+                },
+                {
+                  label: 'Ollama Local (Offline)',
+                  provider: 'ollama' as AIProvider,
+                  model: 'llama3.1',
+                  baseUrl: 'http://localhost:11434/v1',
+                },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setProvider(preset.provider)
+                    setModel(preset.model)
+                    setBaseUrl(preset.baseUrl)
+                  }}
+                  className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:border-indigo-500 dark:hover:text-indigo-300"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="label mb-1 block">Base URL</label>
+              <label className="label mb-1 block">Model</label>
               <input
                 className="input"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder={
-                  provider === 'ollama'
-                    ? 'http://localhost:11434/v1'
-                    : provider === 'custom-endpoint'
-                      ? 'https://your-service.example.com/ai'
-                      : 'https://your-endpoint/v1'
-                }
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder={meta.modelPlaceholder}
               />
             </div>
-          )}
-          {meta.needsKey && (
-            <div>
-              <label className="label mb-1 block">
-                API key {s?.hasApiKey ? '(saved — type to replace)' : ''}
-              </label>
-              <input
-                className="input"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-…"
-              />
-            </div>
-          )}
-          {meta.needsHeaders && (
-            <div className="sm:col-span-2">
-              <label className="label mb-1 block">
-                Extra HTTP headers {s?.hasHeaders ? '(saved — type to replace)' : ''}
-              </label>
-              <textarea
-                className="input min-h-16 font-mono text-xs"
-                value={headers}
-                onChange={(e) => setHeaders(e.target.value)}
-                placeholder={'{"Authorization": "Bearer …", "X-My-Header": "value"}'}
-              />
-            </div>
-          )}
-        </div>
+            {meta.needsBaseUrl && (
+              <div>
+                <label className="label mb-1 block">Base URL</label>
+                <input
+                  className="input"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder={
+                    provider === 'ollama'
+                      ? 'http://localhost:11434/v1'
+                      : provider === 'custom-endpoint'
+                        ? 'https://your-service.example.com/ai'
+                        : 'https://your-endpoint/v1'
+                  }
+                />
+              </div>
+            )}
+            {meta.needsKey && (
+              <div>
+                <label className="label mb-1 block">
+                  API key {s?.hasApiKey ? '(saved — type to replace)' : ''}
+                </label>
+                <input
+                  className="input"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-…"
+                />
+              </div>
+            )}
+            {meta.needsHeaders && (
+              <div className="sm:col-span-2">
+                <label className="label mb-1 block">
+                  Extra HTTP headers {s?.hasHeaders ? '(saved — type to replace)' : ''}
+                </label>
+                <textarea
+                  className="input min-h-16 font-mono text-xs"
+                  value={headers}
+                  onChange={(e) => setHeaders(e.target.value)}
+                  placeholder={'{"Authorization": "Bearer …", "X-My-Header": "value"}'}
+                />
+              </div>
+            )}
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button className="btn" onClick={() => test.mutate()} disabled={test.isPending}>
-            <Wand2 className="h-4 w-4" /> {test.isPending ? 'Testing…' : 'Test connection'}
-          </button>
-          {testResult && (
-            <span
-              className={`text-sm ${testResult.ok ? 'text-status-success-text' : 'text-danger-text'}`}
-            >
-              {testResult.text}
-            </span>
-          )}
-        </div>
-      </section>
+          <div className="flex items-center gap-3">
+            <button className="btn" onClick={() => test.mutate()} disabled={test.isPending}>
+              <Wand2 className="h-4 w-4" /> {test.isPending ? 'Testing…' : 'Test connection'}
+            </button>
+            {testResult && (
+              <span
+                className={`text-sm ${testResult.ok ? 'text-status-success-text' : 'text-danger-text'}`}
+              >
+                {testResult.text}
+              </span>
+            )}
+          </div>
+        </section>
+      </Reveal>
 
-      <DetoxWizard />
+      <Reveal>
+        <DetoxWizard />
+      </Reveal>
 
-      <SemanticIndexPanel />
+      <Reveal>
+        <SemanticIndexPanel />
+      </Reveal>
 
-      <PushSettingsPanel />
+      <Reveal>
+        <PushSettingsPanel />
+      </Reveal>
 
       {/* ── Learner profile (onboarding engine; tunes the knobs below) ── */}
-      <LearnerProfileSection />
+      <Reveal>
+        <LearnerProfileSection />
+      </Reveal>
 
-      <section className="panel space-y-4">
-        <div>
-          <label className="label mb-1 block">
-            Desired retention — {Math.round(retention * 100)}%
-          </label>
-          <input
-            type="range"
-            min={50}
-            max={97}
-            value={Math.round(retention * 100)}
-            onChange={(e) => setRetention(Number(e.target.value) / 100)}
-            className="w-full accent-indigo-500"
-          />
-          {retention > 0.95 && (
-            <p className="mt-1 text-xs text-status-warning-text">
-              Above 95% the scheduler schedules many more reviews for tiny gains — 90% is the sweet
-              spot.
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="label mb-1 block">Focus session length — {sessionMinutes} min</label>
-          <input
-            type="range"
-            min={5}
-            max={90}
-            step={5}
-            value={sessionMinutes}
-            onChange={(e) => setSessionMinutes(Number(e.target.value))}
-            className="w-full accent-indigo-500"
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <Reveal>
+        <section className="panel space-y-4">
           <div>
-            <div className="label">Theme</div>
-            <div className="text-sm text-tertiary">
-              Dark, Light, or follow your OS color scheme automatically.
+            <label className="label mb-1 block">
+              Desired retention — {Math.round(retention * 100)}%
+            </label>
+            <input
+              type="range"
+              min={50}
+              max={97}
+              value={Math.round(retention * 100)}
+              onChange={(e) => setRetention(Number(e.target.value) / 100)}
+              className="w-full accent-indigo-500"
+            />
+            {retention > 0.95 && (
+              <p className="mt-1 text-xs text-status-warning-text">
+                Above 95% the scheduler schedules many more reviews for tiny gains — 90% is the
+                sweet spot.
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="label mb-1 block">Focus session length — {sessionMinutes} min</label>
+            <input
+              type="range"
+              min={5}
+              max={90}
+              step={5}
+              value={sessionMinutes}
+              onChange={(e) => setSessionMinutes(Number(e.target.value))}
+              className="w-full accent-indigo-500"
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="label">Theme</div>
+              <div className="text-sm text-tertiary">
+                Dark, Light, or follow your OS color scheme automatically.
+              </div>
+            </div>
+            <div
+              role="group"
+              aria-label="Theme preference"
+              className="inline-flex rounded-xl border border-neutral-200 bg-neutral-100/70 p-1 dark:border-(--hub-border) dark:bg-(--hub-sunken)"
+            >
+              {(
+                [
+                  { key: 'dark', label: 'Dark', icon: Moon },
+                  { key: 'light', label: 'Light', icon: Sun },
+                  { key: 'system', label: 'System', icon: Monitor },
+                  { key: 'e-ink', label: 'E-Ink Zen', icon: BookOpen },
+                ] as const
+              ).map((opt) => {
+                const Icon = opt.icon
+                const active = theme === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => selectTheme(opt.key)}
+                    aria-pressed={active}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-white text-indigo-600 shadow-xs dark:bg-(--hub-panel-2) dark:text-indigo-300'
+                        : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {opt.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
-          <div
-            role="group"
-            aria-label="Theme preference"
-            className="inline-flex rounded-xl border border-neutral-200 bg-neutral-100/70 p-1 dark:border-(--hub-border) dark:bg-(--hub-sunken)"
-          >
-            {(
-              [
-                { key: 'dark', label: 'Dark', icon: Moon },
-                { key: 'light', label: 'Light', icon: Sun },
-                { key: 'system', label: 'System', icon: Monitor },
-                { key: 'e-ink', label: 'E-Ink Zen', icon: BookOpen },
-              ] as const
-            ).map((opt) => {
-              const Icon = opt.icon
-              const active = theme === opt.key
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => selectTheme(opt.key)}
-                  aria-pressed={active}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                    active
-                      ? 'bg-white text-indigo-600 shadow-xs dark:bg-(--hub-panel-2) dark:text-indigo-300'
-                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
 
-        {/* Color palette — re-skins the whole app and the 3D world mood. */}
-        <div>
-          <div className="label mb-1">Color palette</div>
-          <div className="mb-2.5 text-sm text-tertiary">
-            Tints the entire interface — and the 3D forest's sky and light. Calm is the default.
-          </div>
-          <div
-            role="group"
-            aria-label="Color palette"
-            className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-          >
-            {PALETTES.map((p) => {
-              const active = palette === p.id
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setPalette(p.id)}
-                  aria-pressed={active}
-                  className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
-                    active
-                      ? 'border-indigo-500 bg-indigo-600/10'
-                      : 'border-neutral-200 hover:border-neutral-300 dark:border-(--hub-border) dark:hover:border-(--hub-border-strong)'
-                  }`}
-                >
-                  <span
-                    aria-hidden
-                    className="flex h-7 w-7 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
+          {/* Color palette — re-skins the whole app and the 3D world mood. */}
+          <div>
+            <div className="label mb-1">Color palette</div>
+            <div className="mb-2.5 text-sm text-tertiary">
+              Tints the entire interface — and the 3D forest's sky and light. Calm is the default.
+            </div>
+            <div
+              role="group"
+              aria-label="Color palette"
+              className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            >
+              {PALETTES.map((p) => {
+                const active = palette === p.id
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPalette(p.id)}
+                    aria-pressed={active}
+                    className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
+                      active
+                        ? 'border-indigo-500 bg-indigo-600/10'
+                        : 'border-neutral-200 hover:border-neutral-300 dark:border-(--hub-border) dark:hover:border-(--hub-border-strong)'
+                    }`}
                   >
-                    {p.swatch.map((c) => (
-                      <span key={c} className="h-full flex-1" style={{ backgroundColor: c }} />
-                    ))}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-xs font-semibold">
-                      {p.label}
-                      {p.id === 'calm' && (
-                        <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-faint">
-                          Default
-                        </span>
-                      )}
+                    <span
+                      aria-hidden
+                      className="flex h-7 w-7 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
+                    >
+                      {p.swatch.map((c) => (
+                        <span key={c} className="h-full flex-1" style={{ backgroundColor: c }} />
+                      ))}
                     </span>
-                  </span>
-                </button>
-              )
-            })}
+                    <span className="min-w-0">
+                      <span className="block text-xs font-semibold">
+                        {p.label}
+                        {p.id === 'calm' && (
+                          <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-faint">
+                            Default
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </Reveal>
 
       {/* Sensory — haptics opt-out (F-06): vibration feedback stays calm by default. */}
-      <section className="panel space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="label flex items-center gap-2">
-              <Vibrate className="h-4 w-4 text-indigo-400" />
-              Haptics
-            </div>
-            <p className="mt-0.5 text-xs text-tertiary">
-              Vibration feedback on grading and session boundaries. Off = completely silent.
-            </p>
-          </div>
-          <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hapticsOn}
-              onChange={(e) => setHapticsOn(e.target.checked)}
-              className="accent-indigo-500"
-            />
-            {hapticsOn ? 'Enabled' : 'Disabled'}
-          </label>
-        </div>
-      </section>
-
-      <section className="panel space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <div className="label">FSRS-6 Weight Optimizer &amp; Calibration</div>
-            <p className="mt-0.5 text-xs text-tertiary">
-              Trains personalized 21-parameter FSRS-6 weights directly on your local review log (MAP
-              regularization toward population defaults; requires ≥50 spaced reviews).
-            </p>
-          </div>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              s?.hasCustomWeights
-                ? 'bg-emerald-500/15 text-status-success-text'
-                : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-faint'
-            }`}
-          >
-            {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
-          </span>
-        </div>
-
-        {fsrsQuery.data && (
-          <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-(--hub-border)">
+      <Reveal>
+        <section className="panel space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-tertiary">Spaced transitions</div>
-              <div className="mt-0.5 text-sm font-semibold">
-                {fsrsQuery.data.active.sampleCount}
+              <div className="label flex items-center gap-2">
+                <Vibrate className="h-4 w-4 text-indigo-400" />
+                Haptics
               </div>
-            </div>
-            <div>
-              <div className="text-tertiary">Default Log-Loss</div>
-              <div className="mt-0.5 text-sm font-semibold">
-                {fsrsQuery.data.baseline.logLoss !== null
-                  ? fsrsQuery.data.baseline.logLoss.toFixed(4)
-                  : '—'}
-              </div>
-            </div>
-            <div>
-              <div className="text-tertiary">Active Log-Loss</div>
-              <div className="mt-0.5 text-sm font-semibold text-indigo-400">
-                {fsrsQuery.data.active.logLoss !== null
-                  ? fsrsQuery.data.active.logLoss.toFixed(4)
-                  : '—'}
-              </div>
-            </div>
-            <div>
-              <div className="text-tertiary">Calibration RMSE</div>
-              <div className="mt-0.5 text-sm font-semibold">
-                {fsrsQuery.data.active.rmse !== null
-                  ? `${(fsrsQuery.data.active.rmse * 100).toFixed(2)}%`
-                  : '—'}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label className="label mb-1 block">
-            21 FSRS-6 weights (comma-separated, Anki compatible)
-          </label>
-          <textarea
-            className="input min-h-16 font-mono text-xs"
-            value={weightsDraft}
-            onChange={(e) => setWeightsDraft(e.target.value)}
-            placeholder={FSRS6_DEFAULT_WEIGHTS.join(', ')}
-          />
-        </div>
-
-        <label className="flex items-center gap-2 text-xs text-tertiary">
-          <input
-            type="checkbox"
-            checked={rescheduleOnSave}
-            onChange={(e) => setRescheduleOnSave(e.target.checked)}
-            className="accent-indigo-500"
-          />
-          Reschedule existing reviewed cards by replaying active revlog history
-        </label>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="btn"
-            disabled={fsrsAction.isPending}
-            onClick={() => fsrsAction.mutate({ mode: 'optimize', reschedule: rescheduleOnSave })}
-          >
-            <Sparkles className="h-4 w-4" />{' '}
-            {fsrsAction.isPending ? 'Optimizing…' : 'Optimize weights'}
-          </button>
-          <button
-            className="btn-ghost"
-            disabled={fsrsAction.isPending || !weightsDraft.trim()}
-            onClick={() =>
-              fsrsAction.mutate({
-                mode: 'set',
-                weights: weightsDraft,
-                reschedule: rescheduleOnSave,
-              })
-            }
-          >
-            Apply custom weights
-          </button>
-          <button
-            className="btn-ghost"
-            disabled={fsrsAction.isPending}
-            onClick={() => fsrsAction.mutate({ mode: 'reset', reschedule: rescheduleOnSave })}
-          >
-            <RotateCcw className="h-4 w-4" /> Reset defaults
-          </button>
-        </div>
-
-        {fsrsMessage && (
-          <p
-            className={`text-xs ${fsrsMessage.ok ? 'text-status-success-text' : 'text-status-warning-text'}`}
-          >
-            {fsrsMessage.text}
-          </p>
-        )}
-      </section>
-
-      <section className="panel space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <div className="label flex items-center gap-2">
-              <Bell className="h-4 w-4 text-indigo-400" />
-              Reminders &amp; Push Notifications
-            </div>
-            <p className="mt-0.5 text-xs text-tertiary">
-              Calm, respectful desktop &amp; push reminders (Tauri &amp; Web Notifications). Strict
-              quiet hours, daily cap, and anti-nag spacing.
-            </p>
-          </div>
-          <Link
-            href="/notifications"
-            className="text-xs underline underline-offset-2 text-secondary"
-          >
-            Open Notification Center for per-channel control
-          </Link>
-          <PermissionGate permission="notifications" reason="delivery of every reminder below" />
-          <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-            <input
-              type="checkbox"
-              checked={remindersEnabled}
-              onChange={(e) => setRemindersEnabled(e.target.checked)}
-              className="accent-indigo-500"
-            />
-            {remindersEnabled ? 'Enabled' : 'Disabled'}
-          </label>
-        </div>
-
-        {remindersEnabled && (
-          <div className="space-y-4 pt-2">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="label mb-1 block">Quiet hours start (do not disturb)</label>
-                <input
-                  type="time"
-                  className="input"
-                  value={remindersQuietStart}
-                  onChange={(e) => setRemindersQuietStart(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label mb-1 block">Quiet hours end</label>
-                <input
-                  type="time"
-                  className="input"
-                  value={remindersQuietEnd}
-                  onChange={(e) => setRemindersQuietEnd(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between text-xs text-faint mb-1">
-                <span>Daily reminder limit</span>
-                <span className="font-semibold text-neutral-200">{remindersDailyCap} / day</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={remindersDailyCap}
-                onChange={(e) => setRemindersDailyCap(Number(e.target.value))}
-                className="w-full accent-indigo-500"
-              />
-              <p className="text-[11px] text-tertiary mt-1">
-                Maximum notifications dispatched in a single calendar day across all triggers.
+              <p className="mt-0.5 text-xs text-tertiary">
+                Vibration feedback on grading and session boundaries. Off = completely silent.
               </p>
             </div>
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hapticsOn}
+                onChange={(e) => setHapticsOn(e.target.checked)}
+                className="accent-indigo-500"
+              />
+              {hapticsOn ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
+        </section>
+      </Reveal>
 
+      <Reveal>
+        <section className="panel space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <label className="label mb-2 block">Active reminder triggers</label>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
-                {[
-                  { id: 'daily_review', label: 'Spaced repetition reviews due' },
-                  { id: 'streak_saver', label: 'Streak saver (evening warning)' },
-                  { id: 'break_reminder', label: 'Focus break (after 50m work)' },
-                  { id: 'curriculum_nudge', label: 'Curriculum nudge (2+ days dormant)' },
-                ].map((kind) => {
-                  const checked = remindersKinds.includes(kind.id)
-                  return (
-                    <label
-                      key={kind.id}
-                      className="flex items-center gap-2 cursor-pointer text-secondary"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setRemindersKinds([...remindersKinds, kind.id])
-                          } else {
-                            setRemindersKinds(remindersKinds.filter((k) => k !== kind.id))
-                          }
-                        }}
-                        className="accent-indigo-500"
-                      />
-                      {kind.label}
-                    </label>
-                  )
-                })}
+              <div className="label">FSRS-6 Weight Optimizer &amp; Calibration</div>
+              <p className="mt-0.5 text-xs text-tertiary">
+                Trains personalized 21-parameter FSRS-6 weights directly on your local review log
+                (MAP regularization toward population defaults; requires ≥50 spaced reviews).
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                s?.hasCustomWeights
+                  ? 'bg-emerald-500/15 text-status-success-text'
+                  : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-faint'
+              }`}
+            >
+              {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
+            </span>
+          </div>
+
+          {fsrsQuery.data && (
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-(--hub-border)">
+              <div>
+                <div className="text-tertiary">Spaced transitions</div>
+                <div className="mt-0.5 text-sm font-semibold">
+                  {fsrsQuery.data.active.sampleCount}
+                </div>
+              </div>
+              <div>
+                <div className="text-tertiary">Default Log-Loss</div>
+                <div className="mt-0.5 text-sm font-semibold">
+                  {fsrsQuery.data.baseline.logLoss !== null
+                    ? fsrsQuery.data.baseline.logLoss.toFixed(4)
+                    : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-tertiary">Active Log-Loss</div>
+                <div className="mt-0.5 text-sm font-semibold text-indigo-400">
+                  {fsrsQuery.data.active.logLoss !== null
+                    ? fsrsQuery.data.active.logLoss.toFixed(4)
+                    : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-tertiary">Calibration RMSE</div>
+                <div className="mt-0.5 text-sm font-semibold">
+                  {fsrsQuery.data.active.rmse !== null
+                    ? `${(fsrsQuery.data.active.rmse * 100).toFixed(2)}%`
+                    : '—'}
+                </div>
               </div>
             </div>
+          )}
 
-            <div className="pt-2 flex items-center gap-3">
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                onClick={async () => {
-                  setTestNotifMsg('Sending test notification…')
-                  const ok = await deliverNotification({
-                    kind: 'daily_review',
-                    title: 'Learning HUB Reminder',
-                    body: 'Test notification delivered successfully. Spaced repetition protects your memory curve.',
-                    actionUrl: '/settings',
-                    priority: 1,
-                  })
-                  if (ok) {
-                    setTestNotifMsg('Test notification dispatched!')
-                  } else {
-                    setTestNotifMsg(
-                      'Notification blocked or not supported. Check system permissions.',
-                    )
-                  }
-                }}
-              >
-                Send test notification
-              </button>
-              {testNotifMsg && <span className="text-xs text-faint">{testNotifMsg}</span>}
-            </div>
+          <div>
+            <label className="label mb-1 block">
+              21 FSRS-6 weights (comma-separated, Anki compatible)
+            </label>
+            <textarea
+              className="input min-h-16 font-mono text-xs"
+              value={weightsDraft}
+              onChange={(e) => setWeightsDraft(e.target.value)}
+              placeholder={FSRS6_DEFAULT_WEIGHTS.join(', ')}
+            />
           </div>
-        )}
-      </section>
+
+          <label className="flex items-center gap-2 text-xs text-tertiary">
+            <input
+              type="checkbox"
+              checked={rescheduleOnSave}
+              onChange={(e) => setRescheduleOnSave(e.target.checked)}
+              className="accent-indigo-500"
+            />
+            Reschedule existing reviewed cards by replaying active revlog history
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="btn"
+              disabled={fsrsAction.isPending}
+              onClick={() => fsrsAction.mutate({ mode: 'optimize', reschedule: rescheduleOnSave })}
+            >
+              <Sparkles className="h-4 w-4" />{' '}
+              {fsrsAction.isPending ? 'Optimizing…' : 'Optimize weights'}
+            </button>
+            <button
+              className="btn-ghost"
+              disabled={fsrsAction.isPending || !weightsDraft.trim()}
+              onClick={() =>
+                fsrsAction.mutate({
+                  mode: 'set',
+                  weights: weightsDraft,
+                  reschedule: rescheduleOnSave,
+                })
+              }
+            >
+              Apply custom weights
+            </button>
+            <button
+              className="btn-ghost"
+              disabled={fsrsAction.isPending}
+              onClick={() => fsrsAction.mutate({ mode: 'reset', reschedule: rescheduleOnSave })}
+            >
+              <RotateCcw className="h-4 w-4" /> Reset defaults
+            </button>
+          </div>
+
+          {fsrsMessage && (
+            <p
+              className={`text-xs ${fsrsMessage.ok ? 'text-status-success-text' : 'text-status-warning-text'}`}
+            >
+              {fsrsMessage.text}
+            </p>
+          )}
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className="panel space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="label flex items-center gap-2">
+                <Bell className="h-4 w-4 text-indigo-400" />
+                Reminders &amp; Push Notifications
+              </div>
+              <p className="mt-0.5 text-xs text-tertiary">
+                Calm, respectful desktop &amp; push reminders (Tauri &amp; Web Notifications).
+                Strict quiet hours, daily cap, and anti-nag spacing.
+              </p>
+            </div>
+            <Link
+              href="/notifications"
+              className="text-xs underline underline-offset-2 text-secondary"
+            >
+              Open Notification Center for per-channel control
+            </Link>
+            <PermissionGate permission="notifications" reason="delivery of every reminder below" />
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={remindersEnabled}
+                onChange={(e) => setRemindersEnabled(e.target.checked)}
+                className="accent-indigo-500"
+              />
+              {remindersEnabled ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
+
+          {remindersEnabled && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label mb-1 block">Quiet hours start (do not disturb)</label>
+                  <input
+                    type="time"
+                    className="input"
+                    value={remindersQuietStart}
+                    onChange={(e) => setRemindersQuietStart(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label mb-1 block">Quiet hours end</label>
+                  <input
+                    type="time"
+                    className="input"
+                    value={remindersQuietEnd}
+                    onChange={(e) => setRemindersQuietEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs text-faint mb-1">
+                  <span>Daily reminder limit</span>
+                  <span className="font-semibold text-neutral-200">{remindersDailyCap} / day</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={remindersDailyCap}
+                  onChange={(e) => setRemindersDailyCap(Number(e.target.value))}
+                  className="w-full accent-indigo-500"
+                />
+                <p className="text-[11px] text-tertiary mt-1">
+                  Maximum notifications dispatched in a single calendar day across all triggers.
+                </p>
+              </div>
+
+              <div>
+                <label className="label mb-2 block">Active reminder triggers</label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
+                  {[
+                    { id: 'daily_review', label: 'Spaced repetition reviews due' },
+                    { id: 'streak_saver', label: 'Streak saver (evening warning)' },
+                    { id: 'break_reminder', label: 'Focus break (after 50m work)' },
+                    { id: 'curriculum_nudge', label: 'Curriculum nudge (2+ days dormant)' },
+                  ].map((kind) => {
+                    const checked = remindersKinds.includes(kind.id)
+                    return (
+                      <label
+                        key={kind.id}
+                        className="flex items-center gap-2 cursor-pointer text-secondary"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setRemindersKinds([...remindersKinds, kind.id])
+                            } else {
+                              setRemindersKinds(remindersKinds.filter((k) => k !== kind.id))
+                            }
+                          }}
+                          className="accent-indigo-500"
+                        />
+                        {kind.label}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  onClick={async () => {
+                    setTestNotifMsg('Sending test notification…')
+                    const ok = await deliverNotification({
+                      kind: 'daily_review',
+                      title: 'Learning HUB Reminder',
+                      body: 'Test notification delivered successfully. Spaced repetition protects your memory curve.',
+                      actionUrl: '/settings',
+                      priority: 1,
+                    })
+                    if (ok) {
+                      setTestNotifMsg('Test notification dispatched!')
+                    } else {
+                      setTestNotifMsg(
+                        'Notification blocked or not supported. Check system permissions.',
+                      )
+                    }
+                  }}
+                >
+                  Send test notification
+                </button>
+                {testNotifMsg && <span className="text-xs text-faint">{testNotifMsg}</span>}
+              </div>
+            </div>
+          )}
+        </section>
+      </Reveal>
 
       {/* ── Device Permissions (summary → Permission Center) ── */}
-      <section className="panel space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <div className="label flex items-center gap-2">
-              <LockKeyhole className="h-4 w-4 text-indigo-400" />
-              Device Permissions
+      <Reveal>
+        <section className="panel space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="label flex items-center gap-2">
+                <LockKeyhole className="h-4 w-4 text-indigo-400" />
+                Device Permissions
+              </div>
+              <p className="mt-0.5 text-xs text-tertiary">
+                What this device allows Learning HUB to do — live status, one calm place to grant or
+                review.
+              </p>
             </div>
-            <p className="mt-0.5 text-xs text-tertiary">
-              What this device allows Learning HUB to do — live status, one calm place to grant or
-              review.
-            </p>
+            <Link
+              href="/permissions"
+              className="btn-secondary inline-flex min-h-[44px] items-center px-3 text-sm"
+            >
+              Open Permission Center
+            </Link>
           </div>
-          <Link
-            href="/permissions"
-            className="btn-secondary inline-flex min-h-[44px] items-center px-3 text-sm"
-          >
-            Open Permission Center
-          </Link>
-        </div>
-        <PermissionSummaryLine />
-      </section>
+          <PermissionSummaryLine />
+        </section>
+      </Reveal>
 
       {/* ── Online Identity & Privacy ── */}
-      <OnlineIdentitySection />
+      <Reveal>
+        <OnlineIdentitySection />
+      </Reveal>
 
       {/* ── Desktop & Mobile Power Tools ── */}
-      <PowerToolsSection />
+      <Reveal>
+        <PowerToolsSection />
+      </Reveal>
 
       {/* ── AnkiConnect Live Sync (M13) ── */}
-      <AnkiConnectSection />
+      <Reveal>
+        <AnkiConnectSection />
+      </Reveal>
 
       {/* ── 3D Forest World & Timers (M16) ── */}
-      <WorldSettingsSection />
+      <Reveal>
+        <WorldSettingsSection />
+      </Reveal>
 
-      <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
-        {save.isPending ? 'Saving…' : 'Save settings'}
-      </button>
-      {save.isSuccess && <span className="text-sm text-status-success-text">Saved.</span>}
-      {save.isError && (
-        <span className="text-sm text-danger-text">
-          Save failed — check the headers JSON (must be an object of strings).
-        </span>
-      )}
+      <Reveal>
+        <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Save settings'}
+        </button>
+        {save.isSuccess && <span className="text-sm text-status-success-text">Saved.</span>}
+        {save.isError && (
+          <span className="text-sm text-danger-text">
+            Save failed — check the headers JSON (must be an object of strings).
+          </span>
+        )}
+      </Reveal>
     </div>
   )
 }

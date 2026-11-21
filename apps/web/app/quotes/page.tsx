@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Quote, Search, Star } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { IconButton, PageHeader } from '@/ui'
+import { ClayIn, Stagger, StaggerItem } from '@/lib/motion'
 
 interface QuoteRow {
   id: number
@@ -67,7 +68,7 @@ export default function QuotesPage() {
   }, [all.data, tag, search, showFavorites])
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         icon={<Quote className="h-6 w-6 text-indigo-400" />}
         title="Quotes"
@@ -173,9 +174,9 @@ export default function QuotesPage() {
       </div>
 
       {/* library grid */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <Stagger className="grid gap-3 sm:grid-cols-2">
         {filtered.map((q) => (
-          <div key={q.id} className="panel flex flex-col justify-between gap-2">
+          <StaggerItem key={q.id} className="panel flex flex-col justify-between gap-2">
             <p className="text-sm leading-relaxed text-neutral-200">“{q.text}”</p>
             <div>
               <p className="text-xs text-indigo-300">
@@ -201,12 +202,12 @@ export default function QuotesPage() {
                 </IconButton>
               </div>
             </div>
-          </div>
+          </StaggerItem>
         ))}
         {all.data && filtered.length === 0 && (
           <p className="text-sm text-tertiary">Nothing matches — clear the filters.</p>
         )}
-      </div>
-    </div>
+      </Stagger>
+    </ClayIn>
   )
 }

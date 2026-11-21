@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import {
@@ -19,6 +20,37 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { hapticHeavy, hapticLight } from '@/platform/haptics'
 import { AdaptiveExamStudio } from '@/components/AdaptiveExamStudio'
 import { Button, Callout, PageHeader, Panel, Sheet, Skeleton, useToast } from '@/ui'
+import { motion, useAnimationControls } from 'framer-motion'
+import { ClayIn, Stagger, StaggerItem, clayPopVariants, motionOK, staggerDelay } from '@/lib/motion'
+
+/**
+ * Clay pop-in for CLIENT-STATE-triggered surfaces: scale 0.96 → 1 + fade on the
+ * clay spring (`clayPopVariants` — transform/opacity only).
+ *
+ * Gating: JS animations bypass the CSS `prefers-reduced-motion` / e-ink
+ * kill-switches, so the pop only runs when `motionOK()` is true — otherwise the
+ * content renders in place with no animation.
+ *
+ * Hydration safety (load-bearing): only mounted from client interaction state
+ * (the graded report appears after the user submits an exam) — never in
+ * first-render server output — which is why `useLayoutEffect` (not an
+ * isomorphic fallback) is safe: the component never renders on the server.
+ * `initial={false}` keeps the first client frame identical to the settled
+ * state before the effect hides + starts the pop pre-paint.
+ */
+function ClayPop({ children, className }: { children: ReactNode; className?: string }) {
+  const controls = useAnimationControls()
+  useLayoutEffect(() => {
+    if (!motionOK()) return
+    controls.set('hidden')
+    controls.start('visible')
+  }, [controls])
+  return (
+    <motion.div initial={false} animate={controls} variants={clayPopVariants} className={className}>
+      {children}
+    </motion.div>
+  )
+}
 
 interface ExamQuestion {
   cardId: number
@@ -271,111 +303,123 @@ export default function ExamSimulatorPage() {
     const availableDecks = initialData?.availableDecks ?? []
 
     return (
+      // Entrance choreography: header (beat 0) and the setup body (beat 1) rise
+      // + fade in on the clay spring (`staggerDelay`, total <300ms; motion law:
+      // transform/opacity only, gated by `motionOK`). SSR renders the final
+      // state; the animation is client-only, so hydration output is unchanged.
+      // The error callout and loading skeleton branches above stay instant.
       <div className="container max-w-4xl space-y-6 py-6">
-        <PageHeader
-          title="Adaptive Exam Simulator (CAT 3PL)"
-          subtitle="Simulate real test pressure with Item Response Theory adaptive routing and successive relearning remediation."
-          actions={
-            <Button
-              variant="ghost"
-              onClick={() => setViewMode((m) => (m === 'studio' ? 'classic' : 'studio'))}
-            >
-              <Sparkles className="h-4 w-4 mr-1 text-indigo-400" />
-              {viewMode === 'studio' ? 'Classic Timed Setup' : 'Adaptive CAT Studio'}
-            </Button>
-          }
-        />
-
-        {viewMode === 'studio' ? (
-          <AdaptiveExamStudio
-            onExportRemedialCards={(cards) => {
-              void apiSend<{ ok: boolean; createdCount: number }>(
-                '/api/curriculum/exam/simulator',
-                'POST',
-                {
-                  action: 'create_cards_from_misses',
-                  misses: cards,
-                },
-              ).then((res) => {
-                if (res?.createdCount) {
-                  toast({
-                    title: 'Remedial Cards Enqueued',
-                    description: `Added ${res.createdCount} successive relearning cards to your spaced repetition deck.`,
-                    tone: 'success',
-                  })
-                }
-              })
-            }}
+        <ClayIn>
+          <PageHeader
+            title="Adaptive Exam Simulator (CAT 3PL)"
+            subtitle="Simulate real test pressure with Item Response Theory adaptive routing and successive relearning remediation."
+            actions={
+              <Button
+                variant="ghost"
+                onClick={() => setViewMode((m) => (m === 'studio' ? 'classic' : 'studio'))}
+              >
+                <Sparkles className="h-4 w-4 mr-1 text-indigo-400" />
+                {viewMode === 'studio' ? 'Classic Timed Setup' : 'Adaptive CAT Studio'}
+              </Button>
+            }
           />
-        ) : (
-          <>
-            <Callout tone="accent" title="Delayed Feedback Testing Effect (Butler & Roediger 2008)">
-              Instant feedback during an exam short-circuits critical calibration. This simulator
-              grades your entire test only AFTER submission, mirroring real examination conditions
-              for maximum retention.
-            </Callout>
+        </ClayIn>
 
-            <Panel className="p-6 space-y-5">
-              <div>
-                <label className="label mb-1.5 block">Select Subject / Deck</label>
-                <select
-                  value={selectedDeckId}
-                  onChange={(e) => setSelectedDeckId(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
-                >
-                  <option value="all">All Available Decks</option>
-                  {availableDecks.map((d) => (
-                    <option key={d.id} value={String(d.id)}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <ClayIn delayS={staggerDelay(1)}>
+          {viewMode === 'studio' ? (
+            <AdaptiveExamStudio
+              onExportRemedialCards={(cards) => {
+                void apiSend<{ ok: boolean; createdCount: number }>(
+                  '/api/curriculum/exam/simulator',
+                  'POST',
+                  {
+                    action: 'create_cards_from_misses',
+                    misses: cards,
+                  },
+                ).then((res) => {
+                  if (res?.createdCount) {
+                    toast({
+                      title: 'Remedial Cards Enqueued',
+                      description: `Added ${res.createdCount} successive relearning cards to your spaced repetition deck.`,
+                      tone: 'success',
+                    })
+                  }
+                })
+              }}
+            />
+          ) : (
+            <>
+              <Callout
+                tone="accent"
+                title="Delayed Feedback Testing Effect (Butler & Roediger 2008)"
+              >
+                Instant feedback during an exam short-circuits critical calibration. This simulator
+                grades your entire test only AFTER submission, mirroring real examination conditions
+                for maximum retention.
+              </Callout>
 
-              <div className="grid grid-cols-2 gap-4">
+              <Panel className="p-6 space-y-5">
                 <div>
-                  <label className="label mb-1.5 block">Question Count</label>
+                  <label className="label mb-1.5 block">Select Subject / Deck</label>
                   <select
-                    value={questionCount}
-                    onChange={(e) => setQuestionCount(Number(e.target.value))}
+                    value={selectedDeckId}
+                    onChange={(e) => setSelectedDeckId(e.target.value)}
                     className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
                   >
-                    <option value={5}>5 Questions (Quick Check)</option>
-                    <option value={10}>10 Questions (Standard)</option>
-                    <option value={20}>20 Questions (In-depth)</option>
-                    <option value={30}>30 Questions (Full Paper)</option>
+                    <option value="all">All Available Decks</option>
+                    {availableDecks.map((d) => (
+                      <option key={d.id} value={String(d.id)}>
+                        {d.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <div>
-                  <label className="label mb-1.5 block">Time Limit</label>
-                  <select
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                    className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
-                  >
-                    <option value={5}>5 Minutes</option>
-                    <option value={10}>10 Minutes</option>
-                    <option value={15}>15 Minutes</option>
-                    <option value={30}>30 Minutes</option>
-                    <option value={45}>45 Minutes</option>
-                  </select>
-                </div>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label mb-1.5 block">Question Count</label>
+                    <select
+                      value={questionCount}
+                      onChange={(e) => setQuestionCount(Number(e.target.value))}
+                      className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                    >
+                      <option value={5}>5 Questions (Quick Check)</option>
+                      <option value={10}>10 Questions (Standard)</option>
+                      <option value={20}>20 Questions (In-depth)</option>
+                      <option value={30}>30 Questions (Full Paper)</option>
+                    </select>
+                  </div>
 
-              <div className="pt-2">
-                <Button
-                  className="w-full"
-                  onClick={() => startExamMutation.mutate()}
-                  disabled={startExamMutation.isPending}
-                >
-                  <Timer className="h-4 w-4 mr-2" />
-                  Begin Timed Exam
-                </Button>
-              </div>
-            </Panel>
-          </>
-        )}
+                  <div>
+                    <label className="label mb-1.5 block">Time Limit</label>
+                    <select
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                      className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                    >
+                      <option value={5}>5 Minutes</option>
+                      <option value={10}>10 Minutes</option>
+                      <option value={15}>15 Minutes</option>
+                      <option value={30}>30 Minutes</option>
+                      <option value={45}>45 Minutes</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    className="w-full"
+                    onClick={() => startExamMutation.mutate()}
+                    disabled={startExamMutation.isPending}
+                  >
+                    <Timer className="h-4 w-4 mr-2" />
+                    Begin Timed Exam
+                  </Button>
+                </div>
+              </Panel>
+            </>
+          )}
+        </ClayIn>
       </div>
     )
   }
@@ -592,34 +636,46 @@ export default function ExamSimulatorPage() {
     const passed = gradedReport.score >= 70
 
     return (
+      // Report choreography: header rises (ClayIn, beat 0), the score banner
+      // pops in (ClayPop — gated by `motionOK`), and the remaining sections
+      // follow in 40ms beats; the delayed-feedback question list cascades via
+      // Stagger (all totals <300ms, transform/opacity only). Hydration-safe:
+      // this view only exists after the user submits an exam (client state) —
+      // it never renders on the server, so no pop markup can mismatch SSR
+      // output. The error/loading branches above stay instant.
       <div className="container max-w-3xl space-y-6 py-6">
-        <PageHeader
-          title="Exam Score & Remediation"
-          subtitle="Delayed evaluation report and automated card generation."
-        />
+        <ClayIn>
+          <PageHeader
+            title="Exam Score & Remediation"
+            subtitle="Delayed evaluation report and automated card generation."
+          />
+        </ClayIn>
 
-        {/* Score Banner */}
-        <Panel className="p-6 text-center space-y-3">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
-            <Award
-              className={`h-10 w-10 ${passed ? 'text-status-success-text' : 'text-status-warning-text'}`}
-            />
-          </div>
-          <div>
-            <div
-              className={`text-4xl font-extrabold ${passed ? 'text-status-success-text dark:text-status-success-text' : 'text-status-warning-text dark:text-status-warning-text'}`}
-            >
-              {gradedReport.score}%
+        {/* Score Banner — pop-in (ClayPop: client-only view, gated by
+            `motionOK`; see the component note) */}
+        <ClayPop>
+          <Panel className="p-6 text-center space-y-3">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
+              <Award
+                className={`h-10 w-10 ${passed ? 'text-status-success-text' : 'text-status-warning-text'}`}
+              />
             </div>
-            <div className="text-sm font-medium text-tertiary">
-              {gradedReport.correctCount} of {gradedReport.totalQuestions} Questions Correct
+            <div>
+              <div
+                className={`text-4xl font-extrabold ${passed ? 'text-status-success-text dark:text-status-success-text' : 'text-status-warning-text dark:text-status-warning-text'}`}
+              >
+                {gradedReport.score}%
+              </div>
+              <div className="text-sm font-medium text-tertiary">
+                {gradedReport.correctCount} of {gradedReport.totalQuestions} Questions Correct
+              </div>
             </div>
-          </div>
-          <p className="text-xs text-faint max-w-md mx-auto">{gradedReport.feedbackSummary}</p>
-        </Panel>
+            <p className="text-xs text-faint max-w-md mx-auto">{gradedReport.feedbackSummary}</p>
+          </Panel>
+        </ClayPop>
 
-        {/* Bloom Taxonomy Breakdown */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Bloom Taxonomy Breakdown — entrance beat 2 */}
+        <ClayIn delayS={staggerDelay(2)} className="grid grid-cols-3 gap-3">
           {(['remember', 'understand', 'apply'] as const).map((lvl) => {
             const b = gradedReport.bloomBreakdown[lvl] ?? { total: 0, correct: 0 }
             const pct = b.total > 0 ? Math.round((b.correct / b.total) * 100) : 0
@@ -633,112 +689,119 @@ export default function ExamSimulatorPage() {
               </Panel>
             )
           })}
-        </div>
+        </ClayIn>
 
-        {/* Action: Add Missed Questions to Flashcards */}
+        {/* Action: Add Missed Questions to Flashcards — entrance beat 3 */}
         {gradedReport.missedCards.length > 0 && (
-          <Panel className="p-4 bg-amber-50/60 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/40">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                  Turn Misses into Spaced Repetition Cards
-                </h3>
-                <p className="text-xs text-status-warning-text dark:text-status-warning-text">
-                  {gradedReport.missedCards.length} missed question(s) identified. Reinforce them in
-                  your daily review.
-                </p>
-              </div>
+          <ClayIn delayS={staggerDelay(3)}>
+            <Panel className="p-4 bg-amber-50/60 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/40">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                    Turn Misses into Spaced Repetition Cards
+                  </h3>
+                  <p className="text-xs text-status-warning-text dark:text-status-warning-text">
+                    {gradedReport.missedCards.length} missed question(s) identified. Reinforce them
+                    in your daily review.
+                  </p>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/voice-tutor?topic=${encodeURIComponent(
-                    `Missed exam questions remediation: ${gradedReport.missedCards[0]?.front ?? ''}`,
-                  )}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-xs hover:bg-white dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
-                >
-                  <Mic className="h-3.5 w-3.5" />
-                  Socratic Voice Drill
-                </Link>
-                {cardsAdded ? (
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-status-success-text dark:text-status-success-text">
-                    <CheckCircle2 className="h-4 w-4" /> Added to Decks
-                  </span>
-                ) : (
-                  <Button
-                    onClick={() => addMissesMutation.mutate()}
-                    disabled={addMissesMutation.isPending}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/voice-tutor?topic=${encodeURIComponent(
+                      `Missed exam questions remediation: ${gradedReport.missedCards[0]?.front ?? ''}`,
+                    )}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white/80 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-xs hover:bg-white dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
                   >
-                    <PlusCircle className="h-4 w-4 mr-1.5" />
-                    Add {gradedReport.missedCards.length} Misses to Review
-                  </Button>
-                )}
+                    <Mic className="h-3.5 w-3.5" />
+                    Socratic Voice Drill
+                  </Link>
+                  {cardsAdded ? (
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-status-success-text dark:text-status-success-text">
+                      <CheckCircle2 className="h-4 w-4" /> Added to Decks
+                    </span>
+                  ) : (
+                    <Button
+                      onClick={() => addMissesMutation.mutate()}
+                      disabled={addMissesMutation.isPending}
+                    >
+                      <PlusCircle className="h-4 w-4 mr-1.5" />
+                      Add {gradedReport.missedCards.length} Misses to Review
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
+          </ClayIn>
         )}
 
-        {/* Detailed Question Review */}
+        {/* Detailed Question Review — list cascades in (40ms steps, capped
+            <300ms); StaggerItem carries the list key, Panel keeps its classes. */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-tertiary">
             Question Review (Delayed Feedback)
           </h3>
 
-          {gradedReport.results.map((res, idx) => (
-            <Panel key={res.cardId} className="p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-faint">
-                  Q{idx + 1} · {res.bloomLevel}
-                </span>
-                {res.correct ? (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-status-success-text dark:text-status-success-text">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Correct
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-danger-text dark:text-danger-text">
-                    <XCircle className="h-3.5 w-3.5" /> Missed
-                  </span>
-                )}
-              </div>
+          <Stagger className="space-y-3">
+            {gradedReport.results.map((res, idx) => (
+              <StaggerItem key={res.cardId}>
+                <Panel className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-faint">
+                      Q{idx + 1} · {res.bloomLevel}
+                    </span>
+                    {res.correct ? (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-status-success-text dark:text-status-success-text">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Correct
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-danger-text dark:text-danger-text">
+                        <XCircle className="h-3.5 w-3.5" /> Missed
+                      </span>
+                    )}
+                  </div>
 
-              <div className="text-sm font-medium">{res.prompt}</div>
+                  <div className="text-sm font-medium">{res.prompt}</div>
 
-              <div className="grid gap-2 text-xs pt-1 sm:grid-cols-2">
-                <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                  <span className="font-semibold text-faint block mb-0.5">Your Answer:</span>
-                  <span
-                    className={
-                      res.correct
-                        ? 'text-status-success-text dark:text-status-success-text'
-                        : 'text-danger-text dark:text-danger-text'
-                    }
-                  >
-                    {res.userAnswer || '(blank)'}
-                  </span>
-                </div>
-                <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                  <span className="font-semibold text-faint block mb-0.5">Correct Answer:</span>
-                  <span className="text-neutral-700 dark:text-secondary font-medium">
-                    {res.correctAnswer || 'See reference'}
-                  </span>
-                </div>
-              </div>
+                  <div className="grid gap-2 text-xs pt-1 sm:grid-cols-2">
+                    <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
+                      <span className="font-semibold text-faint block mb-0.5">Your Answer:</span>
+                      <span
+                        className={
+                          res.correct
+                            ? 'text-status-success-text dark:text-status-success-text'
+                            : 'text-danger-text dark:text-danger-text'
+                        }
+                      >
+                        {res.userAnswer || '(blank)'}
+                      </span>
+                    </div>
+                    <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
+                      <span className="font-semibold text-faint block mb-0.5">Correct Answer:</span>
+                      <span className="text-neutral-700 dark:text-secondary font-medium">
+                        {res.correctAnswer || 'See reference'}
+                      </span>
+                    </div>
+                  </div>
 
-              {!res.correct && (
-                <div className="pt-1">
-                  <Link
-                    href={`/voice-tutor?topic=${encodeURIComponent(res.prompt)}&cardId=${res.cardId}`}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-                  >
-                    <Mic className="h-3 w-3" /> Drill with Socratic Voice Tutor
-                  </Link>
-                </div>
-              )}
-            </Panel>
-          ))}
+                  {!res.correct && (
+                    <div className="pt-1">
+                      <Link
+                        href={`/voice-tutor?topic=${encodeURIComponent(res.prompt)}&cardId=${res.cardId}`}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                      >
+                        <Mic className="h-3 w-3" /> Drill with Socratic Voice Tutor
+                      </Link>
+                    </div>
+                  )}
+                </Panel>
+              </StaggerItem>
+            ))}
+          </Stagger>
         </div>
 
-        {/* Retake Button */}
-        <div className="pt-2 text-center">
+        {/* Retake Button — entrance beat 4 */}
+        <ClayIn delayS={staggerDelay(4)} className="pt-2 text-center">
           <Button
             variant="ghost"
             onClick={() => {
@@ -749,7 +812,7 @@ export default function ExamSimulatorPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Take Another Exam
           </Button>
-        </div>
+        </ClayIn>
       </div>
     )
   }

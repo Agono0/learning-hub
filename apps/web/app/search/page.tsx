@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { EmptyState, IconButton, PageHeader, Panel } from '@/ui'
+import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
 
 interface SearchHit {
   kind: string
@@ -141,98 +142,109 @@ function SearchPageInner() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Search Everything"
-        subtitle="Full-text search across all 17 knowledge surfaces — notes, cards, lessons, journal, quotes, reading, mind maps, canvases, palaces, goals, habits, captures and tutor chats."
-      />
+      {/* Entrance beats: header → search panel. SSR-safe — ClayIn renders the
+          final state server-side and animates client-side only when motionOK()
+          allows (reduced-motion / e-ink never see it). */}
+      <ClayIn>
+        <PageHeader
+          title="Search Everything"
+          subtitle="Full-text search across all 17 knowledge surfaces — notes, cards, lessons, journal, quotes, reading, mind maps, canvases, palaces, goals, habits, captures and tutor chats."
+        />
+      </ClayIn>
 
-      <Panel>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
-          <input
-            className="input pl-9 pr-9"
-            placeholder="Search your entire library…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoFocus
-            aria-label="Search query"
-          />
-          {query && (
-            <IconButton
-              label="Clear search"
-              onClick={() => {
-                setQuery('')
-                setDebounced('')
-                setNl(null)
-              }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md"
-            >
-              <X className="h-4 w-4" />
-            </IconButton>
-          )}
-        </div>
-
-        {/* Ask mode — AI plans, the local index answers */}
-        <div className="mt-3 flex flex-col sm:flex-row gap-2">
-          <input
-            className="input flex-1"
-            placeholder="Or ask a question — “what did I write about forgetting names?”"
-            value={aiQuestion}
-            onChange={(e) => setAiQuestion(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void runNlSearch()
-            }}
-            aria-label="Natural-language question"
-          />
-          <button
-            type="button"
-            onClick={() => void runNlSearch()}
-            disabled={nlLoading || !aiQuestion.trim()}
-            className="btn shrink-0"
-          >
-            <Sparkles className="h-4 w-4" />
-            {nlLoading ? 'Planning…' : 'Ask'}
-          </button>
-        </div>
-
-        {nlError && <p className="mt-2 text-xs text-danger-text">{nlError}</p>}
-        {nl && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-tertiary">
-            {nl.usedAI ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-600/10 px-2 py-0.5 text-indigo-600 dark:text-indigo-300">
-                <Sparkles className="h-3 w-3" /> AI plan:{' '}
-                {nl.plan?.queries.map((q) => `“${q}”`).join(' · ')}
-              </span>
-            ) : nl.needsSetup ? (
-              <span>Keyword search (add an AI provider in Settings for question planning)</span>
-            ) : (
-              <span>Keyword search</span>
+      <ClayIn delayS={staggerDelay(1)}>
+        <Panel>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+            <input
+              className="input pl-9 pr-9"
+              placeholder="Search your entire library…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+              aria-label="Search query"
+            />
+            {query && (
+              <IconButton
+                label="Clear search"
+                onClick={() => {
+                  setQuery('')
+                  setDebounced('')
+                  setNl(null)
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md"
+              >
+                <X className="h-4 w-4" />
+              </IconButton>
             )}
           </div>
-        )}
-        {nl?.needsSetup && <SearchTipsStrip />}
 
-        {/* Kind chips */}
-        {presentKinds.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {presentKinds.map((k) => (
-              <button
-                key={k}
-                onClick={() => setActiveKind(activeKind === k ? 'all' : k)}
-                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  activeKind === k || (activeKind === 'all' && presentKinds.length === 1)
-                    ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                    : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-(--hub-border) dark:text-faint'
-                }`}
-              >
-                {KIND_LABELS[k] ?? k}
-              </button>
-            ))}
+          {/* Ask mode — AI plans, the local index answers */}
+          <div className="mt-3 flex flex-col sm:flex-row gap-2">
+            <input
+              className="input flex-1"
+              placeholder="Or ask a question — “what did I write about forgetting names?”"
+              value={aiQuestion}
+              onChange={(e) => setAiQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void runNlSearch()
+              }}
+              aria-label="Natural-language question"
+            />
+            <button
+              type="button"
+              onClick={() => void runNlSearch()}
+              disabled={nlLoading || !aiQuestion.trim()}
+              className="btn shrink-0"
+            >
+              <Sparkles className="h-4 w-4" />
+              {nlLoading ? 'Planning…' : 'Ask'}
+            </button>
           </div>
-        )}
-      </Panel>
 
-      {/* Results */}
+          {nlError && <p className="mt-2 text-xs text-danger-text">{nlError}</p>}
+          {nl && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-tertiary">
+              {nl.usedAI ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-600/10 px-2 py-0.5 text-indigo-600 dark:text-indigo-300">
+                  <Sparkles className="h-3 w-3" /> AI plan:{' '}
+                  {nl.plan?.queries.map((q) => `“${q}”`).join(' · ')}
+                </span>
+              ) : nl.needsSetup ? (
+                <span>Keyword search (add an AI provider in Settings for question planning)</span>
+              ) : (
+                <span>Keyword search</span>
+              )}
+            </div>
+          )}
+          {nl?.needsSetup && <SearchTipsStrip />}
+
+          {/* Kind chips */}
+          {presentKinds.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {presentKinds.map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setActiveKind(activeKind === k ? 'all' : k)}
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    activeKind === k || (activeKind === 'all' && presentKinds.length === 1)
+                      ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
+                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-(--hub-border) dark:text-faint'
+                  }`}
+                >
+                  {KIND_LABELS[k] ?? k}
+                </button>
+              ))}
+            </div>
+          )}
+        </Panel>
+      </ClayIn>
+
+      {/* Results — the hit list staggers in per search (40ms steps, capped by
+          the foundation). The Stagger is re-keyed per query+filter so every new
+          result set runs the same deterministic choreography instead of
+          inheriting a finished animation. Keys/classes/onClick stay on the hit
+          buttons; StaggerItem only wraps them. */}
       {debounced ? (
         shown.length > 0 ? (
           <div className="space-y-2">
@@ -241,21 +253,24 @@ function SearchPageInner() {
               {data?.mode === 'like' ? ' · substring fallback (FTS unavailable)' : ''}
               {isFetching ? ' · …' : ''}
             </p>
-            {shown.map((hit) => (
-              <button
-                key={`${hit.kind}:${hit.id}`}
-                onClick={() => router.push(hit.href)}
-                className="panel block w-full text-left transition-colors hover:border-indigo-400/60"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-sm">{hit.title || '(untitled)'}</span>
-                  <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-tertiary dark:bg-(--hub-panel-2)">
-                    {KIND_LABELS[hit.kind] ?? hit.kind}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-tertiary leading-relaxed">{hit.snippet}</p>
-              </button>
-            ))}
+            <Stagger key={`${debounced}|${activeKind}`} className="space-y-2">
+              {shown.map((hit, i) => (
+                <StaggerItem key={`${hit.kind}:${hit.id}`} index={i}>
+                  <button
+                    onClick={() => router.push(hit.href)}
+                    className="panel block w-full text-left transition-colors hover:border-indigo-400/60"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-sm">{hit.title || '(untitled)'}</span>
+                      <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-tertiary dark:bg-(--hub-panel-2)">
+                        {KIND_LABELS[hit.kind] ?? hit.kind}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-tertiary leading-relaxed">{hit.snippet}</p>
+                  </button>
+                </StaggerItem>
+              ))}
+            </Stagger>
           </div>
         ) : (
           !isFetching && (

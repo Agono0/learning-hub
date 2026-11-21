@@ -19,6 +19,7 @@ import { TransportPanel, useAiStatus, type ManualModeInfo } from '@/components/T
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
 import { FeynmanExplanationCard, IconButton, PageHeader } from '@/ui'
 import { FeynmanSocraticStudio } from '@/components/FeynmanSocraticStudio'
+import { ClayIn, staggerDelay } from '@/lib/motion'
 
 interface Msg {
   /** stable client-side identity — the message list grows during a session */
@@ -283,119 +284,130 @@ export default function FeynmanPage() {
   if (!started) {
     return (
       <div className="mx-auto max-w-4xl space-y-5">
-        <PageHeader
-          title="Feynman Teach-back"
-          subtitle={
-            viewMode === 'studio'
-              ? 'Self-explanation & Socratic reflection: simplify concepts for children or novices, detect jargon, and bridge gaps.'
-              : manual
-                ? 'Manual mode: no AI configured — explain to a real person (or a rubber duck), then grade yourself with the rubric below.'
-                : 'Explain a concept as if to a 12-year-old. A confused student will ask follow-ups, then you get graded on coverage, misconceptions, and gaps.'
-          }
-          actions={
-            <div className="flex rounded-lg bg-neutral-200/70 p-1 dark:bg-neutral-800">
-              <button
-                type="button"
-                onClick={() => setViewMode('studio')}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
-                  viewMode === 'studio'
-                    ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
-                }`}
-              >
-                Socratic Studio
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('dialogue')}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
-                  viewMode === 'dialogue'
-                    ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                    : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
-                }`}
-              >
-                AI Dialogue
-              </button>
-            </div>
-          }
-        />
+        {/* Entrance beats: header → the working panel. SSR-safe — ClayIn
+            renders the final state server-side and animates client-side only
+            when motionOK() allows (reduced-motion / e-ink never see it). */}
+        <ClayIn>
+          <PageHeader
+            title="Feynman Teach-back"
+            subtitle={
+              viewMode === 'studio'
+                ? 'Self-explanation & Socratic reflection: simplify concepts for children or novices, detect jargon, and bridge gaps.'
+                : manual
+                  ? 'Manual mode: no AI configured — explain to a real person (or a rubber duck), then grade yourself with the rubric below.'
+                  : 'Explain a concept as if to a 12-year-old. A confused student will ask follow-ups, then you get graded on coverage, misconceptions, and gaps.'
+            }
+            actions={
+              <div className="flex rounded-lg bg-neutral-200/70 p-1 dark:bg-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('studio')}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                    viewMode === 'studio'
+                      ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
+                  }`}
+                >
+                  Socratic Studio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('dialogue')}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                    viewMode === 'dialogue'
+                      ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
+                  }`}
+                >
+                  AI Dialogue
+                </button>
+              </div>
+            }
+          />
+        </ClayIn>
 
         {viewMode === 'studio' ? (
-          <FeynmanSocraticStudio
-            initialConcept={concept || undefined}
-            initialExplanation={explanation || undefined}
-          />
+          <ClayIn delayS={staggerDelay(1)}>
+            <FeynmanSocraticStudio
+              initialConcept={concept || undefined}
+              initialExplanation={explanation || undefined}
+            />
+          </ClayIn>
         ) : (
-          <div className="panel space-y-3">
-            <div>
-              <label className="label mb-1 block">Concept you're teaching</label>
-              <input
-                className="input"
-                value={concept}
-                onChange={(e) => setConcept(e.target.value)}
-                placeholder="e.g. Bayesian updating"
-              />
-            </div>
-            <div>
-              <label className="label mb-1 block">
-                Your explanation (start here — the student will interrupt)
-              </label>
-              <textarea
-                className="input min-h-40"
-                value={explanation}
-                onChange={(e) => setExplanation(e.target.value)}
-                placeholder="Explain it plainly. Jargon will be questioned…"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="label mb-1 block">
-                Pre-Explanation Confidence (Rozenblit & Keil Calibration)
-              </label>
-              <div className="grid grid-cols-5 gap-1.5 text-xs">
-                {[
-                  { val: 1, label: '1 - Clueless' },
-                  { val: 2, label: '2 - Novice' },
-                  { val: 3, label: '3 - Familiar' },
-                  { val: 4, label: '4 - Confident' },
-                  { val: 5, label: '5 - Expert' },
-                ].map(({ val, label }) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setInitialConfidence(val)}
-                    className={`rounded-lg border px-2 py-1.5 text-center transition-colors ${
-                      initialConfidence === val
-                        ? 'border-indigo-500 bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
-                        : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-faint'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+          <ClayIn delayS={staggerDelay(1)}>
+            <div className="panel space-y-3">
+              <div>
+                <label className="label mb-1 block">Concept you're teaching</label>
+                <input
+                  className="input"
+                  value={concept}
+                  onChange={(e) => setConcept(e.target.value)}
+                  placeholder="e.g. Bayesian updating"
+                />
+              </div>
+              <div>
+                <label className="label mb-1 block">
+                  Your explanation (start here — the student will interrupt)
+                </label>
+                <textarea
+                  className="input min-h-40"
+                  value={explanation}
+                  onChange={(e) => setExplanation(e.target.value)}
+                  placeholder="Explain it plainly. Jargon will be questioned…"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="label mb-1 block">
+                  Pre-Explanation Confidence (Rozenblit & Keil Calibration)
+                </label>
+                <div className="grid grid-cols-5 gap-1.5 text-xs">
+                  {[
+                    { val: 1, label: '1 - Clueless' },
+                    { val: 2, label: '2 - Novice' },
+                    { val: 3, label: '3 - Familiar' },
+                    { val: 4, label: '4 - Confident' },
+                    { val: 5, label: '5 - Expert' },
+                  ].map(({ val, label }) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setInitialConfidence(val)}
+                      className={`rounded-lg border px-2 py-1.5 text-center transition-colors ${
+                        initialConfidence === val
+                          ? 'border-indigo-500 bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300'
+                          : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-faint'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  className="btn"
+                  onClick={start}
+                  disabled={!concept.trim() || !explanation.trim()}
+                >
+                  <GraduationCap className="h-4 w-4" /> Start teaching
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost text-xs"
+                  onClick={() => void runEvaluation(concept, explanation, initialConfidence)}
+                  disabled={!concept.trim() || !explanation.trim()}
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Analyze Readability & Jargon
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                className="btn"
-                onClick={start}
-                disabled={!concept.trim() || !explanation.trim()}
-              >
-                <GraduationCap className="h-4 w-4" /> Start teaching
-              </button>
-              <button
-                type="button"
-                className="btn-ghost text-xs"
-                onClick={() => void runEvaluation(concept, explanation, initialConfidence)}
-                disabled={!concept.trim() || !explanation.trim()}
-              >
-                <Sparkles className="h-3.5 w-3.5" /> Analyze Readability & Jargon
-              </button>
-            </div>
-          </div>
+          </ClayIn>
         )}
 
         {viewMode !== 'studio' && feynmanReport && (
-          <FeynmanExplanationCard report={feynmanReport} onSaveGapCard={handleSaveCard} />
+          <ClayIn delayS={staggerDelay(2)}>
+            <FeynmanExplanationCard report={feynmanReport} onSaveGapCard={handleSaveCard} />
+          </ClayIn>
         )}
       </div>
     )
@@ -403,246 +415,261 @@ export default function FeynmanPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title={`Teaching: ${concept}`}
-        subtitle={
-          manual
-            ? 'Answer your listener from memory. Every stumble is rubric data.'
-            : "Answer the student's questions. One question at a time — just like they'd ask."
-        }
-        actions={
-          !manual && (
-            <button className="btn" onClick={doGrade} disabled={grading || streaming || !sessionId}>
-              <Sparkles className="h-4 w-4" /> {grading ? 'Grading…' : 'Grade my teach-back'}
-            </button>
-          )
-        }
-      />
+      {/* Teaching view: header → dialogue panel rise on start; the grade
+          "celebrate" panel rises in once grading lands. Messages inside the
+          transcript are never animated (chat UX). SSR-safe via the foundation. */}
+      <ClayIn>
+        <PageHeader
+          title={`Teaching: ${concept}`}
+          subtitle={
+            manual
+              ? 'Answer your listener from memory. Every stumble is rubric data.'
+              : "Answer the student's questions. One question at a time — just like they'd ask."
+          }
+          actions={
+            !manual && (
+              <button
+                className="btn"
+                onClick={doGrade}
+                disabled={grading || streaming || !sessionId}
+              >
+                <Sparkles className="h-4 w-4" /> {grading ? 'Grading…' : 'Grade my teach-back'}
+              </button>
+            )
+          }
+        />
+      </ClayIn>
 
-      <div className="panel flex h-[45vh] flex-col">
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-          {manual && (
-            <div className="rounded-lg border border-indigo-500/40 bg-indigo-500/10 p-3 text-xs text-indigo-200">
-              {studentManual?.manual?.title ?? 'Teach a real 12-year-old'}:{' '}
-              {(studentManual?.manual?.steps ?? []).map((s, i) => (
-                <div key={i}>{s}</div>
+      <ClayIn>
+        <div className="panel flex h-[45vh] flex-col">
+          <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+            {manual && (
+              <div className="rounded-lg border border-indigo-500/40 bg-indigo-500/10 p-3 text-xs text-indigo-200">
+                {studentManual?.manual?.title ?? 'Teach a real 12-year-old'}:{' '}
+                {(studentManual?.manual?.steps ?? []).map((s, i) => (
+                  <div key={i}>{s}</div>
+                ))}
+              </div>
+            )}
+            {messages.map((m) => (
+              <div
+                key={m.id}
+                className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                  m.role === 'user'
+                    ? 'ml-auto bg-indigo-600 text-white'
+                    : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
+                }`}
+              >
+                {m.content || '…'}
+              </div>
+            ))}
+          </div>
+          {error && (
+            <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
+              {error}
+            </div>
+          )}
+          {feynmanReport && feynmanReport.socraticProbes.length > 0 && !grade && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-neutral-100 pt-2 dark:border-(--hub-border)">
+              <span className="text-[11px] font-medium text-faint">Socratic probes:</span>
+              {feynmanReport.socraticProbes.slice(0, 2).map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setInput(p.prompt)}
+                  className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary"
+                  title={p.prompt}
+                >
+                  {p.prompt}
+                </button>
               ))}
             </div>
           )}
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                m.role === 'user'
-                  ? 'ml-auto bg-indigo-600 text-white'
-                  : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
-              }`}
-            >
-              {m.content || '…'}
-            </div>
-          ))}
-        </div>
-        {error && (
-          <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
-            {error}
-          </div>
-        )}
-        {feynmanReport && feynmanReport.socraticProbes.length > 0 && !grade && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-neutral-100 pt-2 dark:border-(--hub-border)">
-            <span className="text-[11px] font-medium text-faint">Socratic probes:</span>
-            {feynmanReport.socraticProbes.slice(0, 2).map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setInput(p.prompt)}
-                className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary"
-                title={p.prompt}
-              >
-                {p.prompt}
-              </button>
-            ))}
-          </div>
-        )}
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void send()
-          }}
-        >
-          <input
-            className="input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              manual ? 'Log your answers + the questions you got asked…' : 'Explain further…'
-            }
-            disabled={streaming || Boolean(grade)}
-          />
-          <IconButton
-            label="Send teach-back"
-            type="submit"
-            variant="primary"
-            disabled={streaming || !input.trim() || Boolean(grade)}
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void send()
+            }}
           >
-            <Send className="h-4 w-4" />
-          </IconButton>
-        </form>
-      </div>
+            <input
+              className="input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                manual ? 'Log your answers + the questions you got asked…' : 'Explain further…'
+              }
+              disabled={streaming || Boolean(grade)}
+            />
+            <IconButton
+              label="Send teach-back"
+              type="submit"
+              variant="primary"
+              disabled={streaming || !input.trim() || Boolean(grade)}
+            >
+              <Send className="h-4 w-4" />
+            </IconButton>
+          </form>
+        </div>
+      </ClayIn>
 
       {manual && !grade && graderManual?.manual && (
-        <div className="panel space-y-3">
-          <h2 className="text-sm font-semibold">
-            Self-assessment rubric — grade substance, not style
-          </h2>
-          <p className="text-xs text-tertiary">{graderManual.manual.summary}</p>
-          {graderManual.manual.rubric?.map((r) => (
-            <div key={r.key}>
-              <label className="label mb-1 block">{r.label}</label>
-              <p className="mb-1 text-[11px] text-tertiary">{r.hint}</p>
-              {r.key === 'coverage' ? (
-                <input
-                  className="input w-32"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={selfCoverage}
-                  onChange={(e) =>
-                    setSelfCoverage(
-                      e.target.value === ''
-                        ? ''
-                        : Math.max(0, Math.min(100, Number(e.target.value))),
-                    )
-                  }
-                  placeholder="0–100"
-                />
-              ) : (
-                <textarea
-                  className="input min-h-16 text-xs"
-                  value={
-                    r.key === 'misconceptions'
-                      ? selfMisconceptions
-                      : r.key === 'gaps'
-                        ? selfGaps
-                        : selfCards
-                  }
-                  onChange={(e) => {
-                    if (r.key === 'misconceptions') setSelfMisconceptions(e.target.value)
-                    else if (r.key === 'gaps') setSelfGaps(e.target.value)
-                    else setSelfCards(e.target.value)
-                  }}
-                  placeholder={
-                    r.key === 'suggestedCards'
-                      ? 'What is ____? :: A single-idea answer'
-                      : 'One per line…'
-                  }
-                />
-              )}
-            </div>
-          ))}
-          <button className="btn text-sm" disabled={selfCoverage === ''} onClick={applySelfGrade}>
-            Apply my self-grade
-          </button>
-        </div>
+        <ClayIn>
+          <div className="panel space-y-3">
+            <h2 className="text-sm font-semibold">
+              Self-assessment rubric — grade substance, not style
+            </h2>
+            <p className="text-xs text-tertiary">{graderManual.manual.summary}</p>
+            {graderManual.manual.rubric?.map((r) => (
+              <div key={r.key}>
+                <label className="label mb-1 block">{r.label}</label>
+                <p className="mb-1 text-[11px] text-tertiary">{r.hint}</p>
+                {r.key === 'coverage' ? (
+                  <input
+                    className="input w-32"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={selfCoverage}
+                    onChange={(e) =>
+                      setSelfCoverage(
+                        e.target.value === ''
+                          ? ''
+                          : Math.max(0, Math.min(100, Number(e.target.value))),
+                      )
+                    }
+                    placeholder="0–100"
+                  />
+                ) : (
+                  <textarea
+                    className="input min-h-16 text-xs"
+                    value={
+                      r.key === 'misconceptions'
+                        ? selfMisconceptions
+                        : r.key === 'gaps'
+                          ? selfGaps
+                          : selfCards
+                    }
+                    onChange={(e) => {
+                      if (r.key === 'misconceptions') setSelfMisconceptions(e.target.value)
+                      else if (r.key === 'gaps') setSelfGaps(e.target.value)
+                      else setSelfCards(e.target.value)
+                    }}
+                    placeholder={
+                      r.key === 'suggestedCards'
+                        ? 'What is ____? :: A single-idea answer'
+                        : 'One per line…'
+                    }
+                  />
+                )}
+              </div>
+            ))}
+            <button className="btn text-sm" disabled={selfCoverage === ''} onClick={applySelfGrade}>
+              Apply my self-grade
+            </button>
+          </div>
+        </ClayIn>
       )}
 
       {grade && (
-        <div className="celebrate panel space-y-4">
-          {feynmanReport && (
-            <FeynmanExplanationCard
-              report={feynmanReport}
-              onSelectProbe={(probe) => setInput(probe.prompt)}
-              onSaveGapCard={handleSaveCard}
-            />
-          )}
-          <div className="flex items-center gap-4">
-            <div className="text-4xl font-bold text-ac-text">{grade.coverage}%</div>
-            <div className="text-sm text-tertiary">
-              {manual ? 'concept coverage (self-graded)' : 'concept coverage'}
-            </div>
-          </div>
-          {grade.misconceptions.length > 0 && (
-            <div>
-              <div className="label mb-1">Misconceptions</div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-danger-text">
-                {/* fixed list from one grade response — never reordered, index keys are safe */}
-                {grade.misconceptions.map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {grade.gaps.length > 0 && (
-            <div>
-              <div className="label mb-1">Gaps</div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-status-warning-text">
-                {/* fixed list from one grade response — never reordered, index keys are safe */}
-                {grade.gaps.map((g, i) => (
-                  <li key={i}>{g}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {manual ? (
-            <div className="space-y-2">
-              <div className="label">Save gap-cards ({followUps} answer(s) logged)</div>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  className="input w-52"
-                  value={deckId}
-                  onChange={(e) => setDeckId(Number(e.target.value) || '')}
-                >
-                  <option value="">Pick a deck…</option>
-                  {(decksData?.decks ?? []).map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-                <textarea
-                  className="input min-h-16 flex-1 text-xs"
-                  placeholder={'One card per line: front :: back'}
-                  value={selfCards}
-                  onChange={(e) => setSelfCards(e.target.value)}
-                />
-                <button
-                  className="btn text-xs"
-                  disabled={!deckId || saveGapCards.isPending || !selfCards.trim()}
-                  onClick={() => saveGapCards.mutate()}
-                >
-                  {saveGapCards.isPending ? 'Saving…' : 'Save gap-cards'}
-                </button>
+        <ClayIn>
+          <div className="celebrate panel space-y-4">
+            {feynmanReport && (
+              <FeynmanExplanationCard
+                report={feynmanReport}
+                onSelectProbe={(probe) => setInput(probe.prompt)}
+                onSaveGapCard={handleSaveCard}
+              />
+            )}
+            <div className="flex items-center gap-4">
+              <div className="text-4xl font-bold text-ac-text">{grade.coverage}%</div>
+              <div className="text-sm text-tertiary">
+                {manual ? 'concept coverage (self-graded)' : 'concept coverage'}
               </div>
-              {savedCards !== null && (
-                <p className="celebrate text-xs text-status-success-text">
-                  {savedCards} card(s) created — scheduled for review.
-                </p>
-              )}
             </div>
-          ) : (
-            gapCards.length > 0 && (
+            {grade.misconceptions.length > 0 && (
               <div>
-                <div className="label mb-2">Gap-cards created (scheduled for review)</div>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="label mb-1">Misconceptions</div>
+                <ul className="list-disc space-y-1 pl-5 text-sm text-danger-text">
                   {/* fixed list from one grade response — never reordered, index keys are safe */}
-                  {gapCards.map((c, i) => (
-                    <div
-                      key={i}
-                      className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
-                    >
-                      <div className="font-medium">{c.front}</div>
-                      <div className="mt-1 text-tertiary">{c.back}</div>
-                    </div>
+                  {grade.misconceptions.map((m, i) => (
+                    <li key={i}>{m}</li>
                   ))}
-                </div>
+                </ul>
               </div>
-            )
-          )}
-          <button className="btn-ghost" onClick={resetAll}>
-            Teach another concept
-          </button>
-        </div>
+            )}
+            {grade.gaps.length > 0 && (
+              <div>
+                <div className="label mb-1">Gaps</div>
+                <ul className="list-disc space-y-1 pl-5 text-sm text-status-warning-text">
+                  {/* fixed list from one grade response — never reordered, index keys are safe */}
+                  {grade.gaps.map((g, i) => (
+                    <li key={i}>{g}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {manual ? (
+              <div className="space-y-2">
+                <div className="label">Save gap-cards ({followUps} answer(s) logged)</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="input w-52"
+                    value={deckId}
+                    onChange={(e) => setDeckId(Number(e.target.value) || '')}
+                  >
+                    <option value="">Pick a deck…</option>
+                    {(decksData?.decks ?? []).map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea
+                    className="input min-h-16 flex-1 text-xs"
+                    placeholder={'One card per line: front :: back'}
+                    value={selfCards}
+                    onChange={(e) => setSelfCards(e.target.value)}
+                  />
+                  <button
+                    className="btn text-xs"
+                    disabled={!deckId || saveGapCards.isPending || !selfCards.trim()}
+                    onClick={() => saveGapCards.mutate()}
+                  >
+                    {saveGapCards.isPending ? 'Saving…' : 'Save gap-cards'}
+                  </button>
+                </div>
+                {savedCards !== null && (
+                  <p className="celebrate text-xs text-status-success-text">
+                    {savedCards} card(s) created — scheduled for review.
+                  </p>
+                )}
+              </div>
+            ) : (
+              gapCards.length > 0 && (
+                <div>
+                  <div className="label mb-2">Gap-cards created (scheduled for review)</div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {/* fixed list from one grade response — never reordered, index keys are safe */}
+                    {gapCards.map((c, i) => (
+                      <div
+                        key={i}
+                        className="celebrate rounded-lg border border-neutral-200 p-3 text-sm dark:border-(--hub-border)"
+                      >
+                        <div className="font-medium">{c.front}</div>
+                        <div className="mt-1 text-tertiary">{c.back}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            )}
+            <button className="btn-ghost" onClick={resetAll}>
+              Teach another concept
+            </button>
+          </div>
+        </ClayIn>
       )}
 
       {manual && !grade && (

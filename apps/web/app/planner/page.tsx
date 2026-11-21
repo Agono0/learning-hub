@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarPlus, CalendarCheck, Copy, Check } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { ClayIn, staggerDelay } from '@/lib/motion'
 import {
   StudyPlannerMatrix,
   type PlannerCourse,
@@ -77,41 +78,55 @@ export default function PlannerPage() {
     }))
 
   return (
+    // Entrance choreography: the four blocks rise + fade in on the clay spring,
+    // 40ms apart (`staggerDelay`), total <300ms (motion law: transform/opacity
+    // only, gated by `motionOK`). SSR renders the final state; the animation is
+    // client-only, so hydration output is unchanged. The engagement line is
+    // wrapped inside its conditional so the wrapper only exists once the query
+    // delivers data (no empty-div rhythm shift while it is absent).
     <div className="space-y-6">
-      <PageHeader
-        icon={<CalendarPlus className="h-6 w-6 text-indigo-400" />}
-        title="Study planner"
-        subtitle="Course workload + exam pressure radar → an optimal weekly spaced plan you can keep"
-      />
+      <ClayIn>
+        <PageHeader
+          icon={<CalendarPlus className="h-6 w-6 text-indigo-400" />}
+          title="Study planner"
+          subtitle="Course workload + exam pressure radar → an optimal weekly spaced plan you can keep"
+        />
+      </ClayIn>
 
-      <CalendarSubscriptionCard />
+      <ClayIn delayS={staggerDelay(1)}>
+        <CalendarSubscriptionCard />
+      </ClayIn>
 
       {engagement.data?.engagement && engagement.data.engagement.sent > 0 && (
-        <p className="text-xs text-tertiary">
-          Reminder engagement (7 days): {engagement.data.engagement.clicked} of{' '}
-          {engagement.data.engagement.sent} notifications opened (
-          {engagement.data.engagement.engagementPct}%).
-        </p>
+        <ClayIn as="div" delayS={staggerDelay(2)}>
+          <p className="text-xs text-tertiary">
+            Reminder engagement (7 days): {engagement.data.engagement.clicked} of{' '}
+            {engagement.data.engagement.sent} notifications opened (
+            {engagement.data.engagement.engagementPct}%).
+          </p>
+        </ClayIn>
       )}
 
-      <StudyPlannerMatrix
-        plan={savedPlan}
-        courses={data?.courses ?? []}
-        exams={data?.exams && data.exams.length > 0 ? data.exams : derivedExams}
-        weeklyMinutes={weeklyMinutes}
-        restDay={restDay}
-        onUpdateWeeklyMinutes={(mins) => {
-          setTouched(true)
-          setWeeklyMinutes(mins)
-        }}
-        onUpdateRestDay={(day) => {
-          setTouched(true)
-          setRestDay(day)
-        }}
-        onRebuildPlan={() => buildMutation.mutate()}
-        onRemovePlan={() => removeMutation.mutate()}
-        isRebuilding={buildMutation.isPending}
-      />
+      <ClayIn delayS={staggerDelay(3)}>
+        <StudyPlannerMatrix
+          plan={savedPlan}
+          courses={data?.courses ?? []}
+          exams={data?.exams && data.exams.length > 0 ? data.exams : derivedExams}
+          weeklyMinutes={weeklyMinutes}
+          restDay={restDay}
+          onUpdateWeeklyMinutes={(mins) => {
+            setTouched(true)
+            setWeeklyMinutes(mins)
+          }}
+          onUpdateRestDay={(day) => {
+            setTouched(true)
+            setRestDay(day)
+          }}
+          onRebuildPlan={() => buildMutation.mutate()}
+          onRemovePlan={() => removeMutation.mutate()}
+          isRebuilding={buildMutation.isPending}
+        />
+      </ClayIn>
     </div>
   )
 }

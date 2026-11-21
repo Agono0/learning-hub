@@ -22,6 +22,7 @@ import { curriculumApi, curriculumKeys, type CatalogCourse } from '@/lib/curricu
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, EmptyState, PageHeader, Panel, ProgressBar, ProgressRing, Sheet } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
+import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
 
 interface StarterCourseItem {
   slug: string
@@ -208,12 +209,16 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        icon={<GraduationCap className="h-6 w-6 text-ac-text" />}
-        title="Courses"
-        subtitle="Structured courses with theory, practice that sticks, projects and certificates."
-        actions={actions}
-      />
+      {/* Page entrance: the header is the first beat; SSR-safe — ClayIn renders
+          the final state server-side and animates client-side only when motionOK(). */}
+      <ClayIn>
+        <PageHeader
+          icon={<GraduationCap className="h-6 w-6 text-ac-text" />}
+          title="Courses"
+          subtitle="Structured courses with theory, practice that sticks, projects and certificates."
+          actions={actions}
+        />
+      </ClayIn>
 
       {error && (
         <p role="alert" className="text-sm text-danger-text">
@@ -223,63 +228,75 @@ export default function CoursesPage() {
       {isLoading && <p className="text-sm text-tertiary">Loading…</p>}
 
       {courses && courses.length === 0 && (
-        <div className="space-y-4">
-          <Panel className="space-y-3 border-indigo-500/30">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base font-semibold">
-                  Start in 1 click — Built-in Starter Library
-                </h2>
-                <p className="text-xs text-tertiary">
-                  Offline, research-backed courses with interactive exercises, worked examples &
-                  certificates — no AI key needed.
-                </p>
+        <ClayIn delayS={staggerDelay(1)}>
+          <div className="space-y-4">
+            <Panel className="space-y-3 border-indigo-500/30">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-semibold">
+                    Start in 1 click — Built-in Starter Library
+                  </h2>
+                  <p className="text-xs text-tertiary">
+                    Offline, research-backed courses with interactive exercises, worked examples &
+                    certificates — no AI key needed.
+                  </p>
+                </div>
+                {uninstalledSlugs.length > 0 && (
+                  <button
+                    className="btn text-xs"
+                    disabled={installMutation.isPending}
+                    onClick={() => installMutation.mutate(uninstalledSlugs)}
+                  >
+                    <Download className="h-3.5 w-3.5" />{' '}
+                    {installMutation.isPending ? 'Installing…' : 'Install all 3 starter courses'}
+                  </button>
+                )}
               </div>
-              {uninstalledSlugs.length > 0 && (
-                <button
-                  className="btn text-xs"
-                  disabled={installMutation.isPending}
-                  onClick={() => installMutation.mutate(uninstalledSlugs)}
-                >
-                  <Download className="h-3.5 w-3.5" />{' '}
-                  {installMutation.isPending ? 'Installing…' : 'Install all 3 starter courses'}
-                </button>
-              )}
-            </div>
-            {renderStarterGrid()}
-          </Panel>
+              {renderStarterGrid()}
+            </Panel>
 
-          <EmptyState
-            icon={<BookOpen className="h-8 w-8" />}
-            title="Or build a custom course on any topic"
-            action={
-              <div className="flex flex-wrap justify-center gap-2">
-                <Link href="/courses/new" className="btn">
-                  <Sparkles className="h-4 w-4" /> Create with AI
-                </Link>
-                <Link href="/courses/new?mode=import" className="btn-ghost">
-                  <FileUp className="h-4 w-4" /> Import LHCF
-                </Link>
-              </div>
-            }
-          >
-            Tell any AI what you want to learn — Learning HUB turns its answer into a full course
-            with lessons, exercises, projects and a certificate.
-          </EmptyState>
-        </div>
+            <EmptyState
+              icon={<BookOpen className="h-8 w-8" />}
+              title="Or build a custom course on any topic"
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Link href="/courses/new" className="btn">
+                    <Sparkles className="h-4 w-4" /> Create with AI
+                  </Link>
+                  <Link href="/courses/new?mode=import" className="btn-ghost">
+                    <FileUp className="h-4 w-4" /> Import LHCF
+                  </Link>
+                </div>
+              }
+            >
+              Tell any AI what you want to learn — Learning HUB turns its answer into a full course
+              with lessons, exercises, projects and a certificate.
+            </EmptyState>
+          </div>
+        </ClayIn>
       )}
 
-      {active && <ContinueCard course={active} />}
+      {active && (
+        <ClayIn delayS={staggerDelay(1)}>
+          <ContinueCard course={active} />
+        </ClayIn>
+      )}
 
-      {[...byTrack.entries()].map(([track, list]) => (
-        <section key={track} className="space-y-2">
+      {/* Track sections rise in sequence; each course-card grid staggers its
+          cards (40ms steps, capped by the foundation). StaggerItem renders as a
+          grid so the panel Link inside still stretches to fill its cell — same
+          layout as when the Link was the direct grid child. */}
+      {[...byTrack.entries()].map(([track, list], i) => (
+        <ClayIn key={track} as="section" className="space-y-2" delayS={staggerDelay(i)}>
           <h2 className="text-sm font-semibold text-tertiary">{track}</h2>
-          <div className="grid gap-2 md:grid-cols-2">
-            {list.map((c) => (
-              <CourseCard key={c.id} course={c} />
+          <Stagger className="grid gap-2 md:grid-cols-2">
+            {list.map((c, ci) => (
+              <StaggerItem key={c.id} index={ci} className="grid">
+                <CourseCard course={c} />
+              </StaggerItem>
             ))}
-          </div>
-        </section>
+          </Stagger>
+        </ClayIn>
       ))}
 
       {courses && courses.length > 0 && (

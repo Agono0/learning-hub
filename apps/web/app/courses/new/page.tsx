@@ -31,6 +31,7 @@ import {
   TextArea,
   TextField,
 } from '@/ui'
+import { ClayIn, staggerDelay } from '@/lib/motion'
 
 type Mode = 'create' | 'import'
 
@@ -397,10 +398,15 @@ function NewCourse() {
   const [mode, setMode] = useState<Mode>(params.get('mode') === 'import' ? 'import' : 'create')
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="New course"
-        subtitle="Any AI can write it; Learning HUB turns it into a real course. JSON, YAML and Markdown all work."
-      />
+      {/* Entrance beats: header → step panels rise in sequence. SSR-safe —
+          ClayIn renders the final state server-side and animates client-side
+          only when motionOK() allows (reduced-motion / e-ink never see it). */}
+      <ClayIn>
+        <PageHeader
+          title="New course"
+          subtitle="Any AI can write it; Learning HUB turns it into a real course. JSON, YAML and Markdown all work."
+        />
+      </ClayIn>
       <Tabs
         label="How do you want to add a course?"
         value={mode}
@@ -412,11 +418,17 @@ function NewCourse() {
       />
       {mode === 'create' ? (
         <>
-          <PromptBuilder />
-          <ImportPanel step={3} />
+          <ClayIn delayS={staggerDelay(1)}>
+            <PromptBuilder />
+          </ClayIn>
+          <ClayIn delayS={staggerDelay(2)}>
+            <ImportPanel step={3} />
+          </ClayIn>
         </>
       ) : (
-        <ImportPanel />
+        <ClayIn delayS={staggerDelay(1)}>
+          <ImportPanel />
+        </ClayIn>
       )}
     </div>
   )

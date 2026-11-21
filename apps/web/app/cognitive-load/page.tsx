@@ -16,11 +16,12 @@
 import React from 'react'
 import { Activity, Cpu, Flame, Sparkles } from 'lucide-react'
 import { PageHeader, Panel } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { CognitiveLoadStudio } from '@/components/CognitiveLoadStudio'
 
 export default function CognitiveLoadPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Cognitive Load & Flow State Balancer"
@@ -93,6 +94,6 @@ export default function CognitiveLoadPage() {
           </div>
         </div>
       </Panel>
-    </div>
+    </ClayIn>
   )
 }

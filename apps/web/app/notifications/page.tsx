@@ -11,16 +11,17 @@
 import { BellRing } from 'lucide-react'
 import { NotificationCenter } from '@/components/NotificationCenter'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 
 export default function NotificationsPage() {
   return (
-    <div className="space-y-4 pb-8">
+    <ClayIn as="div" className="space-y-4 pb-8">
       <PageHeader
         title="Notification Center"
         subtitle="You decide what may reach you, when, and how much. Everything that was delivered — or held back — is listed honestly."
         icon={<BellRing className="h-5 w-5" />}
       />
       <NotificationCenter />
-    </div>
+    </ClayIn>
   )
 }

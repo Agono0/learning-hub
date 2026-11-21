@@ -4,6 +4,7 @@
  */
 
 import React from 'react'
+import { ClayIn } from '@/lib/motion'
 import { InquiryStudio } from '@/components/InquiryStudio'
 
 export const metadata = {
@@ -14,8 +15,8 @@ export const metadata = {
 
 export default function InquiryPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <ClayIn as="div" className="container mx-auto px-4 py-8">
       <InquiryStudio />
-    </div>
+    </ClayIn>
   )
 }

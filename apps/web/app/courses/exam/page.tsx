@@ -13,6 +13,7 @@ import { curriculumApi, curriculumKeys, type ExamResult } from '@/lib/curriculum
 import { useIdParam } from '@/lib/use-id-param'
 import { Button, Callout, EmptyState, Markdown, PageHeader, Panel } from '@/ui'
 import { ExerciseInput, defaultAnswer, isAnswerReady, type AnswerValue } from '@/ui/exercises'
+import { ClayIn, Reveal } from '@/lib/motion'
 
 function Exam() {
   const id = useIdParam()
@@ -61,43 +62,49 @@ function Exam() {
       <Link href={`/courses/course?id=${id}`} className="text-sm text-tertiary hover:underline">
         ← Back to course
       </Link>
-      <PageHeader
-        title="Final exam"
-        subtitle={`${data.exercises.length} questions · pass with ${Math.round(data.passScore * 100)}%${data.bestScore !== null ? ` · your best so far: ${Math.round(data.bestScore * 100)}%` : ''}`}
-        icon={
-          data.minutes ? (
-            <Clock className="h-5 w-5 text-faint" aria-label={`about ${data.minutes} minutes`} />
-          ) : undefined
-        }
-      />
+      {/* Entrance beat: header first. SSR-safe — ClayIn renders the final state
+          server-side and animates client-side only when motionOK() allows. */}
+      <ClayIn>
+        <PageHeader
+          title="Final exam"
+          subtitle={`${data.exercises.length} questions · pass with ${Math.round(data.passScore * 100)}%${data.bestScore !== null ? ` · your best so far: ${Math.round(data.bestScore * 100)}%` : ''}`}
+          icon={
+            data.minutes ? (
+              <Clock className="h-5 w-5 text-faint" aria-label={`about ${data.minutes} minutes`} />
+            ) : undefined
+          }
+        />
+      </ClayIn>
 
       {result && (
-        <Callout
-          tone={result.passed ? 'success' : 'warning'}
-          title={
-            result.passed
-              ? `Passed with ${Math.round(result.score * 100)}%`
-              : `${Math.round(result.score * 100)}% — ${Math.round(result.passScore * 100)}% needed`
-          }
-        >
-          {result.passed ? (
-            result.certificate?.eligible ? (
-              <Link
-                href={`/courses/certificate?id=${id}`}
-                className="mt-2 inline-flex items-center gap-1 font-medium underline"
-              >
-                <Award className="h-4 w-4" /> Claim your certificate
-              </Link>
+        <ClayIn>
+          <Callout
+            tone={result.passed ? 'success' : 'warning'}
+            title={
+              result.passed
+                ? `Passed with ${Math.round(result.score * 100)}%`
+                : `${Math.round(result.score * 100)}% — ${Math.round(result.passScore * 100)}% needed`
+            }
+          >
+            {result.passed ? (
+              result.certificate?.eligible ? (
+                <Link
+                  href={`/courses/certificate?id=${id}`}
+                  className="mt-2 inline-flex items-center gap-1 font-medium underline"
+                >
+                  <Award className="h-4 w-4" /> Claim your certificate
+                </Link>
+              ) : (
+                <p>To get the certificate: {result.certificate?.missing.join('; ')}</p>
+              )
             ) : (
-              <p>To get the certificate: {result.certificate?.missing.join('; ')}</p>
-            )
-          ) : (
-            <p>
-              Review the explanations below, practise the weak lessons, and try again — retesting
-              after feedback is how this sticks.
-            </p>
-          )}
-        </Callout>
+              <p>
+                Review the explanations below, practise the weak lessons, and try again — retesting
+                after feedback is how this sticks.
+              </p>
+            )}
+          </Callout>
+        </ClayIn>
       )}
 
       {data.minutes && !result && (
@@ -107,47 +114,51 @@ function Exam() {
         </p>
       )}
 
+      {/* Question panels reveal on scroll (once) — a calm exam reads section by
+          section; in-view panels reveal immediately, inputs stay fully
+          interactive. SSR-safe via the foundation's imperative hiding. */}
       {data.exercises.map((exercise, i) => {
         const r = result?.results[i]
         return (
-          <Panel
-            key={i}
-            title={<span className="text-tertiary">Question {i + 1}</span>}
-            actions={
-              r &&
-              (r.correct ? (
-                <CheckCircle2 className="h-5 w-5 text-status-success-text" aria-label="correct" />
-              ) : (
-                <XCircle className="h-5 w-5 text-danger-text" aria-label="incorrect" />
-              ))
-            }
-          >
-            <Markdown>{exercise.prompt}</Markdown>
-            <ExerciseInput
-              exercise={exercise}
-              value={answers[i] ?? defaultAnswer(exercise)}
-              disabled={Boolean(result) || submit.isPending}
-              onChange={(v) =>
-                setAnswers((a) => {
-                  const next = [...a]
-                  next[i] = v
-                  return next
-                })
+          <Reveal key={i}>
+            <Panel
+              title={<span className="text-tertiary">Question {i + 1}</span>}
+              actions={
+                r &&
+                (r.correct ? (
+                  <CheckCircle2 className="h-5 w-5 text-status-success-text" aria-label="correct" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-danger-text" aria-label="incorrect" />
+                ))
               }
-            />
-            {r && (
-              <div className="space-y-1 text-sm">
-                {r.feedback.map((f, j) => (
-                  <p key={j}>{f}</p>
-                ))}
-                {exercise.explanation && (
-                  <Markdown className="text-neutral-600 dark:text-secondary">
-                    {exercise.explanation}
-                  </Markdown>
-                )}
-              </div>
-            )}
-          </Panel>
+            >
+              <Markdown>{exercise.prompt}</Markdown>
+              <ExerciseInput
+                exercise={exercise}
+                value={answers[i] ?? defaultAnswer(exercise)}
+                disabled={Boolean(result) || submit.isPending}
+                onChange={(v) =>
+                  setAnswers((a) => {
+                    const next = [...a]
+                    next[i] = v
+                    return next
+                  })
+                }
+              />
+              {r && (
+                <div className="space-y-1 text-sm">
+                  {r.feedback.map((f, j) => (
+                    <p key={j}>{f}</p>
+                  ))}
+                  {exercise.explanation && (
+                    <Markdown className="text-neutral-600 dark:text-secondary">
+                      {exercise.explanation}
+                    </Markdown>
+                  )}
+                </div>
+              )}
+            </Panel>
+          </Reveal>
         )
       })}
 

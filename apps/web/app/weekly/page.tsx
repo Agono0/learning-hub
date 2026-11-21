@@ -23,6 +23,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 
 interface WeeklyResponse {
   metrics: {
@@ -122,7 +123,7 @@ export default function WeeklyPage() {
   const forecastMax = Math.max(1, ...(m?.forecast ?? []).map((f) => f.count))
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         icon={<BarChart3 className="h-6 w-6 text-indigo-400" />}
         title="Weekly Review"
@@ -388,6 +389,6 @@ export default function WeeklyPage() {
           </div>
         )}
       </div>
-    </div>
+    </ClayIn>
   )
 }

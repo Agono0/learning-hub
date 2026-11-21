@@ -5,6 +5,7 @@ import { BarChart3, Route, Target } from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
 import { Button, Callout, PageHeader, Skeleton } from '@/ui'
+import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
 
 /** Response of GET /api/review/stats (append-only revlog aggregates). */
 interface ReviewStatsResponse {
@@ -168,20 +169,31 @@ export default function AnalyticsPage() {
   const score = d?.learningScore.score ?? 0
 
   return (
+    // Long page: the header rises in on mount (ClayIn, first beat) and each
+    // section below reveals on scroll (Reveal, once — `useInView`, transform/
+    // opacity only, gated by `motionOK`). SSR renders the final state; the
+    // animations are client-only, so hydration output is unchanged. The error
+    // callout and loading skeletons above stay instant — never animated.
     <div className="space-y-4">
-      <PageHeader
-        icon={<Route className="h-6 w-6 text-indigo-400" />}
-        title="Analytics"
-        subtitle="Everything computed from your real revlog, focus and physio data."
-      />
+      <ClayIn>
+        <PageHeader
+          icon={<Route className="h-6 w-6 text-indigo-400" />}
+          title="Analytics"
+          subtitle="Everything computed from your real revlog, focus and physio data."
+        />
+      </ClayIn>
 
-      <InsightsSection />
+      <Reveal delayS={staggerDelay(1)}>
+        <InsightsSection />
+      </Reveal>
 
       {/* today's counts — /api/review/stats (F-08①) */}
-      <TodayStatsPanel />
+      <Reveal delayS={staggerDelay(2)}>
+        <TodayStatsPanel />
+      </Reveal>
 
       {/* true retention + learning score */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <Reveal className="grid gap-4 sm:grid-cols-2">
         <div className="panel space-y-1 text-center">
           <p className="label">True retention (reviews you passed)</p>
           <p className="text-5xl font-bold tabular-nums text-status-success-text">
@@ -222,10 +234,10 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
-      </div>
+      </Reveal>
 
       {/* forecast histogram */}
-      <div className="panel space-y-2">
+      <Reveal className="panel space-y-2">
         <p className="label flex items-center gap-2">
           <BarChart3 className="h-3.5 w-3.5" /> Forecast — cards due, next 30 days
         </p>
@@ -247,10 +259,10 @@ export default function AnalyticsPage() {
           <span>+15d</span>
           <span>{d?.forecast.length === 31 ? 'later →' : '+30d'}</span>
         </div>
-      </div>
+      </Reveal>
 
       {/* heatmap */}
-      <div className="panel space-y-2">
+      <Reveal className="panel space-y-2">
         <p className="label">Review heatmap — last 30 days</p>
         <div className="flex flex-wrap gap-1">
           {(d?.heatmap ?? []).map((h) => (
@@ -267,10 +279,10 @@ export default function AnalyticsPage() {
             <p className="text-sm text-tertiary">No reviews logged yet.</p>
           )}
         </div>
-      </div>
+      </Reveal>
 
       {/* calibration */}
-      <div className="panel space-y-4">
+      <Reveal className="panel space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <p className="label font-bold text-neutral-100">
@@ -413,10 +425,10 @@ export default function AnalyticsPage() {
             ))}
           </tbody>
         </table>
-      </div>
+      </Reveal>
 
       {/* calibration trainer — the confident-wrong drill list */}
-      <div className="panel space-y-2">
+      <Reveal className="panel space-y-2">
         <p className="label">Calibration trainer — sure but wrong</p>
         {d && d.calibrationTrainer.cards.length > 0 ? (
           <>
@@ -446,10 +458,10 @@ export default function AnalyticsPage() {
               : 'Answer some reviews (with the sure/unsure mark) and the drill list fills here.'}
           </p>
         )}
-      </div>
+      </Reveal>
 
       {/* time of day */}
-      <div className="panel space-y-2">
+      <Reveal className="panel space-y-2">
         <p className="label">Time-of-day performance</p>
         <div className="flex h-24 items-end gap-px">
           {(d?.timeOfDay ?? []).map((h) => (
@@ -475,10 +487,10 @@ export default function AnalyticsPage() {
         <p className="text-xs text-tertiary">
           bar height = correct rate · green = your prime hours (≥90%)
         </p>
-      </div>
+      </Reveal>
 
       {/* your best hours — hour-of-day recall accuracy (chronotype) */}
-      <div className="panel space-y-2">
+      <Reveal className="panel space-y-2">
         <p className="label">Your best hours — recall accuracy by local hour</p>
         <div className="flex h-24 items-end gap-px">
           {(d?.hourAccuracy ?? []).map((h) => (
@@ -499,10 +511,10 @@ export default function AnalyticsPage() {
         </div>
         <p className="text-xs text-tertiary">{bestHoursSentence(d?.hourAccuracy ?? [])}</p>
         <p className="text-xs text-tertiary">grey slots have under 10 reviews — not enough data</p>
-      </div>
+      </Reveal>
 
       {/* focus-leak trend */}
-      <div className="panel space-y-2">
+      <Reveal className="panel space-y-2">
         <p className="label">Focus leaks — tab switches per day (honesty first)</p>
         {(d?.focusLeakTrend.length ?? 0) === 0 ? (
           <p className="text-sm text-tertiary">No focus sessions yet.</p>
@@ -528,7 +540,7 @@ export default function AnalyticsPage() {
             {l.avgPerSession != null ? `· avg ${l.avgPerSession}` : ''}
           </p>
         ))}
-      </div>
+      </Reveal>
     </div>
   )
 }

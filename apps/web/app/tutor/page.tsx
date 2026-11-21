@@ -19,6 +19,7 @@ import type { ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
 import { IconButton, PageHeader } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
+import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -277,85 +278,96 @@ export default function TutorPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Socratic Tutor"
-        subtitle={
-          manual
-            ? 'Self-explain mode: no AI configured — you play the tutor. The escalation ladder becomes self-questioning prompts.'
-            : 'The tutor never gives the answer before your first attempt — nudge → hint → worked example → solution.'
-        }
-        actions={
-          !manual && (
-            <div className="flex items-center gap-2">
-              <select
-                className="input w-44"
-                value={contextType ?? ''}
-                onChange={(e) => {
-                  const v = e.target.value as 'note' | 'lesson' | ''
-                  setContextType(v || null)
-                  setContextId(null)
-                }}
-              >
-                <option value="">No context</option>
-                <option value="note">A note</option>
-                <option value="lesson">A lesson</option>
-              </select>
-              {contextType === 'note' && (
+      {/* Page entrance + panel reveals only. The chat transcript is NEVER
+          staggered: messages re-render on every stream chunk and historical
+          messages must not animate on mount (chat UX). SSR-safe — the motion
+          components render the final state server-side and animate
+          client-side only when motionOK() allows. */}
+      <ClayIn>
+        <PageHeader
+          title="Socratic Tutor"
+          subtitle={
+            manual
+              ? 'Self-explain mode: no AI configured — you play the tutor. The escalation ladder becomes self-questioning prompts.'
+              : 'The tutor never gives the answer before your first attempt — nudge → hint → worked example → solution.'
+          }
+          actions={
+            !manual && (
+              <div className="flex items-center gap-2">
                 <select
-                  className="input w-52"
-                  value={contextId ?? ''}
-                  onChange={(e) => setContextId(Number(e.target.value) || null)}
+                  className="input w-44"
+                  value={contextType ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value as 'note' | 'lesson' | ''
+                    setContextType(v || null)
+                    setContextId(null)
+                  }}
                 >
-                  <option value="">Pick note…</option>
-                  {(notesData?.notes ?? []).map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.title}
-                    </option>
-                  ))}
+                  <option value="">No context</option>
+                  <option value="note">A note</option>
+                  <option value="lesson">A lesson</option>
                 </select>
-              )}
-              {contextType === 'lesson' && (
-                <select
-                  className="input w-52"
-                  value={contextId ?? ''}
-                  onChange={(e) => setContextId(Number(e.target.value) || null)}
-                >
-                  <option value="">Pick lesson…</option>
-                  {(lessonsData?.lessons ?? []).map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.course ? `${l.course} — ${l.title}` : l.title}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )
-        }
-      />
+                {contextType === 'note' && (
+                  <select
+                    className="input w-52"
+                    value={contextId ?? ''}
+                    onChange={(e) => setContextId(Number(e.target.value) || null)}
+                  >
+                    <option value="">Pick note…</option>
+                    {(notesData?.notes ?? []).map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {contextType === 'lesson' && (
+                  <select
+                    className="input w-52"
+                    value={contextId ?? ''}
+                    onChange={(e) => setContextId(Number(e.target.value) || null)}
+                  >
+                    <option value="">Pick lesson…</option>
+                    {(lessonsData?.lessons ?? []).map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.course ? `${l.course} — ${l.title}` : l.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )
+          }
+        />
+      </ClayIn>
 
       {manual ? (
         <>
-          <div className="panel space-y-3">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-              <Lightbulb className="h-3.5 w-3.5" />{' '}
-              {manualData?.manual?.title ?? 'Self-explain mode'} — the ladder, asked to yourself
+          <ClayIn delayS={staggerDelay(1)}>
+            <div className="panel space-y-3">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
+                <Lightbulb className="h-3.5 w-3.5" />{' '}
+                {manualData?.manual?.title ?? 'Self-explain mode'} — the ladder, asked to yourself
+              </div>
+              <ol className="list-decimal space-y-1.5 pl-5 text-sm text-secondary">
+                {(manualData?.manual?.steps ?? ['Loading self-questioning prompts…']).map(
+                  (s, i) => (
+                    <li key={i}>{s}</li>
+                  ),
+                )}
+              </ol>
+              <textarea
+                className="input min-h-40"
+                placeholder="Work through the steps here. Write RESTATE, INVENTORY, PREDICT, ATTEMPT… — the writing IS the retrieval practice."
+                value={scratchpad}
+                onChange={(e) => setScratchpad(e.target.value)}
+              />
+              <p className="text-xs text-tertiary">
+                Anything you wrote for step 10 (LOG) is a flashcard candidate — add it from the
+                Decks page. Reveal from notes only after step 9.
+              </p>
             </div>
-            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-secondary">
-              {(manualData?.manual?.steps ?? ['Loading self-questioning prompts…']).map((s, i) => (
-                <li key={i}>{s}</li>
-              ))}
-            </ol>
-            <textarea
-              className="input min-h-40"
-              placeholder="Work through the steps here. Write RESTATE, INVENTORY, PREDICT, ATTEMPT… — the writing IS the retrieval practice."
-              value={scratchpad}
-              onChange={(e) => setScratchpad(e.target.value)}
-            />
-            <p className="text-xs text-tertiary">
-              Anything you wrote for step 10 (LOG) is a flashcard candidate — add it from the Decks
-              page. Reveal from notes only after step 9.
-            </p>
-          </div>
+          </ClayIn>
           <TransportPanel
             feature="tutor-grade"
             params={{ topic: input || undefined, attempt: scratchpad.slice(0, 500) || undefined }}
@@ -363,234 +375,244 @@ export default function TutorPage() {
           />
         </>
       ) : (
-        <div className="panel flex h-[55vh] flex-col">
-          <div ref={streamBoxRef} className="flex-1 space-y-3 overflow-y-auto pr-1">
-            {messages.length === 0 && (
-              <div className="grid h-full place-items-center text-center text-sm text-tertiary">
-                <div>
-                  <Settings2 className="mx-auto mb-2 h-6 w-6 opacity-40" />
-                  Ask about anything you're learning. Answer first — the tutor will coach, not
-                  solve.
+        <Reveal>
+          <div className="panel flex h-[55vh] flex-col">
+            <div ref={streamBoxRef} className="flex-1 space-y-3 overflow-y-auto pr-1">
+              {messages.length === 0 && (
+                <div className="grid h-full place-items-center text-center text-sm text-tertiary">
+                  <div>
+                    <Settings2 className="mx-auto mb-2 h-6 w-6 opacity-40" />
+                    Ask about anything you're learning. Answer first — the tutor will coach, not
+                    solve.
+                  </div>
                 </div>
+              )}
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                    m.role === 'user'
+                      ? 'ml-auto bg-indigo-600 text-white'
+                      : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
+                  }`}
+                >
+                  {m.content || '…'}
+                </div>
+              ))}
+            </div>
+            {error && (
+              <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
+                {error}
               </div>
             )}
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                  m.role === 'user'
-                    ? 'ml-auto bg-indigo-600 text-white'
-                    : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
-                }`}
-              >
-                {m.content || '…'}
-              </div>
-            ))}
-          </div>
-          {error && (
-            <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
-              {error}
-            </div>
-          )}
-          <form
-            className="mt-3 flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void send(input)
-            }}
-          >
-            <input
-              className="input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Your attempt, question, or confusion…"
-              disabled={streaming}
-            />
-            <IconButton
-              label="Send message"
-              type="submit"
-              variant="primary"
-              disabled={streaming || !input.trim()}
+            <form
+              className="mt-3 flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void send(input)
+              }}
             >
-              <Send className="h-4 w-4" />
-            </IconButton>
-          </form>
-        </div>
+              <input
+                className="input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Your attempt, question, or confusion…"
+                disabled={streaming}
+              />
+              <IconButton
+                label="Send message"
+                type="submit"
+                variant="primary"
+                disabled={streaming || !input.trim()}
+              >
+                <Send className="h-4 w-4" />
+              </IconButton>
+            </form>
+          </div>
+        </Reveal>
       )}
 
       {sessionId != null && messages.length >= 2 && (
         // Provider-none users get this too: the summary POST has an explicit
         // manual mode (raw transcript structured for self-review) and the
         // guided steps render beneath it (rule 9, F-09).
-        <div className="panel space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-              <Sparkles className="h-3.5 w-3.5" /> Session summary &amp; gap cards
+        <ClayIn>
+          <div className="panel space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
+                <Sparkles className="h-3.5 w-3.5" /> Session summary &amp; gap cards
+              </div>
+              <button
+                type="button"
+                className="btn text-xs"
+                disabled={summaryLoading}
+                onClick={() => runSummary.mutate()}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {summaryLoading ? 'Summarizing…' : 'Summarize session'}
+              </button>
             </div>
+
+            {summary && (
+              <div className="space-y-3 text-sm">
+                <p className="text-neutral-600 dark:text-secondary">{summary.summary}</p>
+                {summary.usedAI === false && summaryManualData?.manual && (
+                  <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+                    <div className="label mb-1">
+                      Do it by hand — {summaryManualData.manual.title}
+                    </div>
+                    <p className="mb-2 text-xs text-tertiary">{summaryManualData.manual.summary}</p>
+                    <ol className="list-decimal space-y-1 pl-5 text-xs text-tertiary">
+                      {summaryManualData.manual.steps.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                {summary.gaps.length > 0 && (
+                  <div>
+                    <div className="label mb-1">Gaps</div>
+                    <ul className="list-disc space-y-0.5 pl-5 text-xs">
+                      {summary.gaps.map((g, i) => (
+                        <li key={i}>{g}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {summary.understood.length > 0 && (
+                  <div>
+                    <div className="label mb-1">Understood</div>
+                    <ul className="list-disc space-y-0.5 pl-5 text-xs text-tertiary">
+                      {summary.understood.map((g, i) => (
+                        <li key={i}>{g}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {summary.cards.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="label">{summary.cards.length} starter cards</div>
+                    <div className="grid gap-1.5 sm:grid-cols-2">
+                      {summary.cards.map((c, i) => (
+                        <div
+                          key={i}
+                          className="rounded-lg border border-neutral-200 p-2 text-xs dark:border-(--hub-border)"
+                        >
+                          <span className="block font-medium">{c.front}</span>
+                          <span className="text-tertiary">{c.back}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        className="input w-48"
+                        value={summaryDeck ?? ''}
+                        onChange={(e) => setSummaryDeck(Number(e.target.value) || null)}
+                        aria-label="Deck to save cards into"
+                      >
+                        <option value="">Save to deck…</option>
+                        {(decksData?.decks ?? []).map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn text-xs"
+                        disabled={!summaryDeck || saveSummaryCards.isPending}
+                        onClick={() => saveSummaryCards.mutate()}
+                      >
+                        <Save className="h-3.5 w-3.5" /> Save {summary.cards.length} cards
+                      </button>
+                      {!summary.usedAI && (
+                        <span className="text-[11px] text-faint">
+                          (no provider — add one in Settings for AI gap detection)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </ClayIn>
+      )}
+
+      {!manual && (
+        <Reveal>
+          <div className="panel">
             <button
               type="button"
-              className="btn text-xs"
-              disabled={summaryLoading}
-              onClick={() => runSummary.mutate()}
+              className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary"
+              onClick={() => setSessionsOpen((v) => !v)}
             >
-              <Sparkles className="h-3.5 w-3.5" />
-              {summaryLoading ? 'Summarizing…' : 'Summarize session'}
+              <History className="h-3.5 w-3.5" /> Past sessions
+              {sessionId != null && (
+                <span className="ml-1 normal-case text-faint">(session #{sessionId})</span>
+              )}
+              <span className="ml-auto">{sessionsOpen ? '−' : '+'}</span>
             </button>
-          </div>
-
-          {summary && (
-            <div className="space-y-3 text-sm">
-              <p className="text-neutral-600 dark:text-secondary">{summary.summary}</p>
-              {summary.usedAI === false && summaryManualData?.manual && (
-                <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
-                  <div className="label mb-1">Do it by hand — {summaryManualData.manual.title}</div>
-                  <p className="mb-2 text-xs text-tertiary">{summaryManualData.manual.summary}</p>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs text-tertiary">
-                    {summaryManualData.manual.steps.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-              {summary.gaps.length > 0 && (
-                <div>
-                  <div className="label mb-1">Gaps</div>
-                  <ul className="list-disc space-y-0.5 pl-5 text-xs">
-                    {summary.gaps.map((g, i) => (
-                      <li key={i}>{g}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {summary.understood.length > 0 && (
-                <div>
-                  <div className="label mb-1">Understood</div>
-                  <ul className="list-disc space-y-0.5 pl-5 text-xs text-tertiary">
-                    {summary.understood.map((g, i) => (
-                      <li key={i}>{g}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {summary.cards.length > 0 && (
-                <div className="space-y-2">
-                  <div className="label">{summary.cards.length} starter cards</div>
-                  <div className="grid gap-1.5 sm:grid-cols-2">
-                    {summary.cards.map((c, i) => (
-                      <div
-                        key={i}
-                        className="rounded-lg border border-neutral-200 p-2 text-xs dark:border-(--hub-border)"
-                      >
-                        <span className="block font-medium">{c.front}</span>
-                        <span className="text-tertiary">{c.back}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      className="input w-48"
-                      value={summaryDeck ?? ''}
-                      onChange={(e) => setSummaryDeck(Number(e.target.value) || null)}
-                      aria-label="Deck to save cards into"
-                    >
-                      <option value="">Save to deck…</option>
-                      {(decksData?.decks ?? []).map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
+            {sessionsOpen && (
+              <ul className="mt-2 space-y-1">
+                {(sessionsData?.sessions ?? []).map((s2) => (
+                  <li key={s2.id}>
                     <button
                       type="button"
-                      className="btn text-xs"
-                      disabled={!summaryDeck || saveSummaryCards.isPending}
-                      onClick={() => saveSummaryCards.mutate()}
+                      className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+                      onClick={() => void loadSession(s2.id)}
                     >
-                      <Save className="h-3.5 w-3.5" /> Save {summary.cards.length} cards
-                    </button>
-                    {!summary.usedAI && (
-                      <span className="text-[11px] text-faint">
-                        (no provider — add one in Settings for AI gap detection)
+                      <span className="min-w-0 flex-1 truncate">
+                        {s2.title || `Session ${s2.id}`}
                       </span>
-                    )}
-                  </div>
-                </div>
+                      <span className="ml-2 shrink-0 text-[10px] text-faint">
+                        {new Date(s2.createdAt).toLocaleDateString()}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                {(sessionsData?.sessions ?? []).length === 0 && (
+                  <li className="px-2 py-1 text-xs text-faint">No past sessions yet.</li>
+                )}
+              </ul>
+            )}
+          </div>
+        </Reveal>
+      )}
+
+      {!manual && (
+        <Reveal>
+          <div className="panel">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
+              <Lightbulb className="h-3.5 w-3.5" /> Hint ladder — one rung at a time
+              {!canReveal && (
+                <span className="ml-auto normal-case text-faint">
+                  (make an attempt to unlock reveal)
+                </span>
               )}
             </div>
-          )}
-        </div>
-      )}
-
-      {!manual && (
-        <div className="panel">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary"
-            onClick={() => setSessionsOpen((v) => !v)}
-          >
-            <History className="h-3.5 w-3.5" /> Past sessions
-            {sessionId != null && (
-              <span className="ml-1 normal-case text-faint">(session #{sessionId})</span>
-            )}
-            <span className="ml-auto">{sessionsOpen ? '−' : '+'}</span>
-          </button>
-          {sessionsOpen && (
-            <ul className="mt-2 space-y-1">
-              {(sessionsData?.sessions ?? []).map((s2) => (
-                <li key={s2.id}>
+            <div className="flex flex-wrap gap-2">
+              {LADDER.map((l, i) => {
+                const locked = i === LADDER.length - 1 && !canReveal
+                return (
                   <button
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
-                    onClick={() => void loadSession(s2.id)}
+                    key={l.step}
+                    className="btn-ghost text-xs"
+                    disabled={streaming || locked || i > ladderStep}
+                    onClick={() => climbLadder(i)}
+                    title={
+                      locked
+                        ? 'Make at least one attempt first — retrieval before reveal.'
+                        : undefined
+                    }
                   >
-                    <span className="min-w-0 flex-1 truncate">
-                      {s2.title || `Session ${s2.id}`}
-                    </span>
-                    <span className="ml-2 shrink-0 text-[10px] text-faint">
-                      {new Date(s2.createdAt).toLocaleDateString()}
-                    </span>
+                    {l.label}
                   </button>
-                </li>
-              ))}
-              {(sessionsData?.sessions ?? []).length === 0 && (
-                <li className="px-2 py-1 text-xs text-faint">No past sessions yet.</li>
-              )}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {!manual && (
-        <div className="panel">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-            <Lightbulb className="h-3.5 w-3.5" /> Hint ladder — one rung at a time
-            {!canReveal && (
-              <span className="ml-auto normal-case text-faint">
-                (make an attempt to unlock reveal)
-              </span>
-            )}
+                )
+              })}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {LADDER.map((l, i) => {
-              const locked = i === LADDER.length - 1 && !canReveal
-              return (
-                <button
-                  key={l.step}
-                  className="btn-ghost text-xs"
-                  disabled={streaming || locked || i > ladderStep}
-                  onClick={() => climbLadder(i)}
-                  title={
-                    locked
-                      ? 'Make at least one attempt first — retrieval before reveal.'
-                      : undefined
-                  }
-                >
-                  {l.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        </Reveal>
       )}
     </div>
   )

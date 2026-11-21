@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ClipboardList, Sparkles } from 'lucide-react'
 import { DifficultyAuditStudio, type MeasuredPayload } from '@/components/DifficultyAuditStudio'
 import { PageHeader, Panel } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { apiGet, apiSend } from '@/lib/transport'
 import type { DifficultyAuditReport } from '@learning-hub/core'
 
@@ -55,7 +56,7 @@ export default function DifficultyPage() {
   }
 
   return (
-    <div className="space-y-4 pb-8">
+    <ClayIn as="div" className="space-y-4 pb-8">
       <PageHeader
         title="Difficulty Audit"
         subtitle="Dunlosky et al. (2013) technique utility vs what you actually did — measured where possible, self-reported where not, and honest about the difference."
@@ -120,6 +121,6 @@ export default function DifficultyPage() {
           Self-reported: technique minutes (the studio log above).
         </span>
       </div>
-    </div>
+    </ClayIn>
   )
 }

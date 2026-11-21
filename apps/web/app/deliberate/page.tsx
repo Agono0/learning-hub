@@ -13,11 +13,12 @@
 import React from 'react'
 import { Brain, Crosshair, ShieldAlert, Target } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { DeliberatePracticeStudio } from '@/components/DeliberatePracticeStudio'
 
 export default function DeliberatePracticePage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Deliberate Practice & Progressive Error Recovery Studio"
@@ -81,6 +82,6 @@ export default function DeliberatePracticePage() {
 
       {/* Main Studio Interactive Crucible */}
       <DeliberatePracticeStudio />
-    </div>
+    </ClayIn>
   )
 }

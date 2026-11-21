@@ -12,11 +12,12 @@
 import React from 'react'
 import { Brain, Compass, Layers, Users } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { CognitiveApprenticeshipStudio } from '@/components/CognitiveApprenticeshipStudio'
 
 export default function CognitiveApprenticeshipPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Cognitive Apprenticeship & Expert Modeling Studio"
@@ -45,6 +46,6 @@ export default function CognitiveApprenticeshipPage() {
 
       {/* Main Studio Body */}
       <CognitiveApprenticeshipStudio />
-    </div>
+    </ClayIn>
   )
 }
