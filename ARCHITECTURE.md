@@ -14,7 +14,7 @@ learning-HUB/
 │   │   ├── sync-crypto.ts / ingest.ts  # Web Crypto AES-256-GCM E2EE + EPUB/HTML/YouTube/SQ3R ingest
 │   │   ├── bkt.ts / elo.ts # Bayesian Knowledge Tracing + Puzzle-Elo
 │   │   ├── xp.ts / streaks.ts / motivation.ts / physio.ts
-│   │   ├── cards.ts / linter.ts   # 8 card formats + 20-Rules linter
+│   │   ├── cards.ts / linter.ts   # 10 card formats + 20-Rules linter
 │   │   ├── curriculum.ts / review.ts / analytics.ts / games.ts / memory.ts / language.ts / ideas.ts / notes.ts / reading.ts / journal.ts / weekly.ts / habits.ts / focus.ts / media.ts
 │   │   ├── practice/               # 12 exercise types + pure graders + catalog
 │   │   ├── agenda.ts / study-plan.ts / ics.ts / weakness.ts / notifications.ts / sentence-mining.ts
@@ -37,9 +37,9 @@ learning-HUB/
 │   ├── web/            # Next.js 16 App Router (React 19, Tailwind 4, TanStack Query)
 │   │   ├── app/api/**/route.ts  # REST route handlers (zod boundary, withRoute)
 │   │   └── src/components/      # client islands, command palette, transport panel…
-│   ├── server/         # Headless REST server — Node 22+ native node:http, no framework
-│   ├── mcp/            # MCP stdio server: 93 built-in tools + plugin contributions + 3 resources (@modelcontextprotocol/sdk)
-│   ├── cli/            # terminal adapter: 47 built-in CLI commands
+│   ├── server/         # Headless REST server — Node 24+ native node:http, no framework
+│   ├── mcp/            # MCP stdio server: 128 built-in tools + plugin contributions + 3 resources (@modelcontextprotocol/sdk)
+│   ├── cli/            # terminal adapter: 58 built-in CLI commands
 │   ├── worker/         # Cloudflare worker: rooms, boss raids, library share (deploy: npm run worker:deploy)
 │   └── extension/      # Browser extension: quick-add cards, save-to-read, friction capture (M21)
 ├── plugins/            # loaded by EVERY host at boot (example-echo is the reference)
@@ -139,4 +139,4 @@ TypeScript 7.0 ships **no JS API** — the native compiler (`tsc`) only. JS-API-
 
 - **Unit / property** — `packages/core/tests` (vitest + fast-check where the logic is mathematical: FSRS golden values, Elo, BKT, streaks, linter, …).
 - **Opaque-box E2E** — `tests/e2e` invokes route handlers through standard `Request`/`Response`, the CLI as a subprocess (`node --import tsx`, no `.cmd` assumptions — Windows and Linux CI both work), the MCP server over JSON-RPC stdio, and DB pragmas/views directly. Each file gets a unique DB clone under `data/test-dbs/`; the developer database is never mutated. See [`docs/TEST_INFRA.md`](docs/TEST_INFRA.md).
-- **CI** — `.github/workflows/ci.yml` runs typecheck, lint, workspace unit tests, the full E2E suite and the production build on Node 22 / ubuntu-latest for every push and PR.
+- **CI** — `.github/workflows/ci.yml` runs typecheck, lint, workspace unit tests, the full E2E suite and the production build on Node 24 / ubuntu-latest for every push and PR.

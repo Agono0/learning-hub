@@ -1,6 +1,8 @@
 /**
- * Math learning utilities — theorem → card decomposition and
- * problem-set interleaving. Pure module — safe for client bundles.
+ * Math learning utilities — shared numeric primitives (`clamp`, `hashString`),
+ * theorem → card decomposition and problem-set interleaving. Pure module —
+ * safe for client bundles, imports nothing app-specific (bottom of the graph,
+ * so any core module may import from it without creating a cycle).
  */
 import type { CardContent, CardFormat } from './types'
 
@@ -104,4 +106,40 @@ export function interleaveProblemSets<T>(sets: T[][]): T[] {
     }
   }
   return out
+}
+
+// ─── Shared numeric / hashing primitives ────────────────────────────────────
+
+/**
+ * Clamp `value` into the closed interval [`min`, `max`] — the canonical
+ * bounds helper (TD-06): use this instead of re-deriving local
+ * `Math.min(max, Math.max(min, value))` closures.
+ *
+ * Invariants: returns `value` unchanged when `min ≤ value ≤ max`; NaN
+ * propagates (every `Math.min`/`Math.max` branch yields NaN); works with
+ * ±Infinity bounds. Units follow the caller's domain (probability, rating,
+ * percentage — always pass the bounds you mean).
+ */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * Stable 32-bit FNV-1a hash of a string — the canonical deterministic hash
+ * (TD-06): use this instead of re-deriving local FNV-1a loops.
+ *
+ * Why FNV-1a: fast, dependency-free, and stable across JS engines because it
+ * only uses int32 arithmetic (`Math.imul` for the 32-bit multiply). Returns
+ * an unsigned 32-bit integer (0 .. 2^32-1, `>>> 0`), so the result is safe
+ * for modulo bucketing / per-date label rotation (same input + date always
+ * produce the same bucket on server and client without sharing state). Not
+ * cryptographic — never use it where an adversary can pick inputs.
+ */
+export function hashString(input: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
 }

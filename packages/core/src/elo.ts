@@ -4,6 +4,7 @@
  * K decays with attempts for stability: K = K0/(1 + attempts/const).
  * Used by: review grading, skill ladder, curriculum gating.
  */
+import { clamp } from './math'
 
 export interface EloUpdate {
   ratingBefore: number
@@ -49,8 +50,4 @@ export function eloUpdate(
 /** chess.com-style streak bonus: +5 rating points per streak step, capped. */
 export function streakBonus(currentStreak: number, cap = 10): number {
   return Math.max(0, Math.min(currentStreak, cap)) * 5
-}
-
-function clamp(x: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, x))
 }

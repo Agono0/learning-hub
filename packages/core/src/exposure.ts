@@ -11,6 +11,8 @@
  */
 import { z } from 'zod'
 
+import { dayKey } from './streaks'
+
 export interface CoverageAnalysis {
   totalTokens: number
   uniqueTokens: number
@@ -214,7 +216,7 @@ export function isEligibleForSrsPromotion(
     encounters.map((e) => {
       const d = new Date(e.createdAt)
       // Invalid dates make toISOString() throw — fall back to the raw string.
-      return Number.isNaN(d.getTime()) ? e.createdAt : d.toISOString().slice(0, 10)
+      return Number.isNaN(d.getTime()) ? e.createdAt : dayKey(d)
     }),
   )
 

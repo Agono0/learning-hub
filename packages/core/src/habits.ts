@@ -4,6 +4,8 @@
  * grabbing the phone).
  * Pure helpers; the DB layer owns persistence (habits, habit_logs).
  */
+import { hashString } from './math'
+import { dateKeyOf } from './streaks'
 
 export interface HabitLoopInput {
   cue?: string | null
@@ -151,14 +153,9 @@ export const DOPAMINE_MENU: DopamineItem[] = [
 
 /** Deterministic pick for a given date — the menu's "suggestion of the day". */
 export function dopamineSuggestion(date: Date | string, seedOffset = 0): DopamineItem {
-  const key = typeof date === 'string' ? date.slice(0, 10) : date.toISOString().slice(0, 10)
-  let h = 0x811c9dc5
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i)
-    h = Math.imul(h, 0x01000193)
-  }
+  const key = dateKeyOf(date)
+  const h = hashString(key)
   return DOPAMINE_MENU[
-    ((((h >>> 0) + seedOffset) % DOPAMINE_MENU.length) + DOPAMINE_MENU.length) %
-      DOPAMINE_MENU.length
+    (((h + seedOffset) % DOPAMINE_MENU.length) + DOPAMINE_MENU.length) % DOPAMINE_MENU.length
   ]
 }

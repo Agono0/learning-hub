@@ -20,6 +20,12 @@
  * @module @learning-hub/core/spatial
  */
 
+import { clamp } from '../math'
+
+// Re-exported so `@learning-hub/core/spatial` keeps exposing `clamp` while the
+// implementation lives in the canonical math module (TD-06).
+export { clamp }
+
 export interface Voxel3D {
   x: number
   y: number
@@ -211,10 +217,6 @@ export function toRadians(degrees: number): number {
 
 export function toDegrees(radians: number): number {
   return (radians * 180) / Math.PI
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
 }
 
 export function createIdentityMatrix(): Matrix3x3 {

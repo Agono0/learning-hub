@@ -8,6 +8,8 @@
  */
 import { z } from 'zod'
 
+import { hashString } from '../math'
+
 export const shareEnvelopeSchema = z.object({
   v: z.literal(1),
   schema: z.literal('lh-share/v1'),
@@ -43,12 +45,7 @@ export type FriendStats = z.infer<typeof friendStatsSchema>
  */
 export function computeEnvelopeChecksum(data: unknown): string {
   const json = typeof data === 'string' ? data : JSON.stringify(data)
-  let hash = 0x811c9dc5
-  for (let i = 0; i < json.length; i++) {
-    hash ^= json.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0')
+  return hashString(json).toString(16).padStart(8, '0')
 }
 
 /**

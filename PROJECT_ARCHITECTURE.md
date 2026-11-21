@@ -2,7 +2,7 @@
 
 > **Comprehensive Architecture Blueprint & Deep Component Map**
 > **Current Revision:** 2.0 (Post-Cognitive-Expansion Milestone)
-> **Verified against codebase:** 2026-11-17
+> **Verified against codebase:** 2026-11-21
 
 ---
 
@@ -15,8 +15,8 @@ flowchart TD
     subgraph Delivery ["Delivery Surfaces (Thin Adapters)"]
         WEB["Next.js 16 Web UI<br/>(React 19, Tailwind 4, TanStack Query)"]
         NATIVE["Tauri 2 Shell<br/>(Windows & Android OPFS)"]
-        MCP["MCP Stdio Server<br/>(93 Built-in Tools for AI Agents)"]
-        CLI["Terminal CLI<br/>(47 Built-in Commands)"]
+        MCP["MCP Stdio Server<br/>(128 Built-in Tools for AI Agents)"]
+        CLI["Terminal CLI<br/>(58 Built-in Commands)"]
         SERVER["Headless REST Server<br/>(Zero-dep node:http)"]
         EXT["Browser Extension<br/>(Friction gate & Web Ingest)"]
         CF["Cloudflare Worker<br/>(Realtime Boss Raids)"]
@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph CorePackages ["Core Engine Packages"]
         AIC["packages/ai-adapters<br/>(@ai-sdk/*, Anthropic, OpenAI, Gemini)"]
-        DB["packages/db<br/>(Drizzle ORM, better-sqlite3, WAL, 40 Repos)"]
+        DB["packages/db<br/>(Drizzle ORM, better-sqlite3, WAL, 47 Repos)"]
         CORE["packages/core<br/>(FSRS-6, BKT, Elo, Generation Effect, Event Bus)"]
     end
 
@@ -67,7 +67,7 @@ Zero I/O, zero Node.js dependencies, zero `ai` SDK imports. Completely isomorphi
 | **FSRS Scheduling**     | `fsrs.ts`, `fsrs-optimizer.ts`                                                                                 | `ts-fsrs` 6.0 scheduler, 21-parameter MAP weight optimizer, review reschedule math.                                                                                                                                 |
 | **Cognitive Science**   | `generation/`, `metacognition/`, `feynman/`, `tmr/`, `interleaving/`, `dualcoding/`, `cognitive-load/`, `gkt/` | Slamecka-Graf generation effect, Koriat-Bjork calibration & Brier scores, Feynman teach-back & Rozenblit-Keil IOED evaluation, Rasch-Born sleep TMR cue scheduling, Leitner interleaving, cognitive load telemetry. |
 | **Mastery & Rating**    | `bkt.ts`, `elo.ts`, `weakness.ts`                                                                              | Bayesian Knowledge Tracing ($P(L_0), P(T), P(S), P(G)$), Puzzle & Review Elo ladders, remedial targeting.                                                                                                           |
-| **Cards & Linter**      | `cards.ts`, `linter.ts`, `doctor.ts`                                                                           | 8 card types (basic, cloze, stepwise MCQ, type-in, image occlusion, proof-step, grammar, sentence mining), 20-rules linter, Deck Doctor automated remediations.                                                     |
+| **Cards & Linter**      | `cards.ts`, `linter.ts`, `doctor.ts`                                                                           | 10 card formats (basic, cloze, stepwise MCQ, type-in, image occlusion, sketch, proof-step, grammar, matching, exercise), 20-rules linter, Deck Doctor automated remediations.                                       |
 | **Human Systems**       | `xp.ts`, `streaks.ts`, `motivation.ts`, `habits.ts`, `focus.ts`, `focus-lock/`, `journal.ts`                   | Gamification milestones, streak freezes & weekend amulets, WOOP goal formulation, habit stacking, friction gate countdowns (10s reflection), dopamine menus.                                                        |
 | **Curriculum**          | `curriculum/`, `curriculum.ts`, `practice/`                                                                    | LHCF (Learning HUB Curriculum Format) Track-Course-Unit-Lesson hierarchy, Bloom taxonomy verbs, prerequisite DAG validation, 12 interactive exercise engines.                                                       |
 | **Event Bus & Plugins** | `events.ts`, `plugin.ts`, `plugin-loader.ts`                                                                   | Synchronous, isolated in-process event bus emitting durable facts (`HubEventMap`). Dynamic plugin lifecycle management.                                                                                             |
@@ -77,9 +77,9 @@ Zero I/O, zero Node.js dependencies, zero `ai` SDK imports. Completely isomorphi
 
 The sole writer of SQLite database state. Encapsulates transaction lifecycles and append-only constraints.
 
-- **Schema:** `packages/db/src/schema.ts` defining 92 relational tables with typed JSON attributes.
-- **Migrations:** `packages/db/src/migrations/` containing 27 versioned, strictly idempotent migrations (including SQLite FTS5 search indexes and E-ink Zen preferences).
-- **Repositories:** 40 modular repository files under `packages/db/src/repos/` abstracting queries for decks, cards, analytics, audio, goals, habits, notes, ideas, reading, quests, and sync metadata.
+- **Schema:** `packages/db/src/schema.ts` defining 94 relational tables with typed JSON attributes.
+- **Migrations:** `packages/db/src/migrations/` containing 29 versioned, strictly idempotent migrations (including SQLite FTS5 search indexes and E-ink Zen preferences).
+- **Repositories:** 47 modular repository files under `packages/db/src/repos/` abstracting queries for decks, cards, analytics, audio, goals, habits, notes, ideas, reading, quests, and sync metadata.
 - **The Canonical Review Service:** `packages/db/src/review-service.ts` owning `executeReview` and `executeBatchReview`.
 
 ### 2.3 `packages/ai-adapters` (Isolated AI SDK Port)
@@ -142,4 +142,4 @@ To guarantee identical behavior across Web and Desktop/Mobile without duplicatin
 1. **Zero Secret Leakage:** No API keys are stored in source code or client bundles. AI provider keys are loaded from environment variables or encrypted user settings.
 2. **Transport Abstraction:** `apps/web/src/lib/transport.ts` provides `apiGet`, `apiSend`, and `apiStream`. Raw `fetch()` in UI components is banned and blocked by ESLint AST rules to prevent broken native builds.
 3. **Sanitized Rendering:** Untrusted user input or Markdown from LLMs is rendered strictly through `@/ui/Markdown`, disabling raw HTML execution and preventing XSS.
-4. **End-to-End Encryption:** Multi-device synchronization (`packages/core/src/sync-crypto.ts`) utilizes Web Crypto AES-256-GCM with PBKDF2 key derivation (100,000 iterations) to encrypt database exports prior to transmission.
+4. **End-to-End Encryption:** Multi-device synchronization (`packages/core/src/sync-crypto.ts`) utilizes Web Crypto AES-256-GCM with PBKDF2 key derivation (210,000 iterations) to encrypt database exports prior to transmission.
