@@ -10,20 +10,14 @@
  * (server and client agree without sharing state).
  */
 import type { QuestItem } from './types'
+import { hashString } from './math'
 import { dateKeyOf } from './streaks'
 import { levelFromXp, levelProgress, xpForLevel } from './xp'
 
 // ─── Deterministic hashing (FNV-1a 32-bit) ──────────────────────────────────
 
 /** Stable 32-bit FNV-1a hash of a string — used to rotate labels per date. */
-export function hashString(s: string): number {
-  let h = 0x811c9dc5
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 0x01000193)
-  }
-  return h >>> 0
-}
+export { hashString }
 
 // ─── Daily quests ───────────────────────────────────────────────────────────
 

@@ -9,6 +9,7 @@
  * `dayKey`/`isFreshStartMoment` in streaks.ts/motivation.ts so server and
  * client agree without sharing state.
  */
+import { dayKey } from './streaks'
 
 /** The next temporal landmark, as a dashboard-renderable pair. */
 export interface FreshStartTarget {
@@ -53,7 +54,7 @@ export function nextFreshStart(from: Date): FreshStartTarget {
 
   candidates.sort((a, b) => a.at.getTime() - b.at.getTime())
   const winner = candidates[0]!
-  return { date: winner.at.toISOString().slice(0, 10), label: LABELS[winner.reason] }
+  return { date: dayKey(winner.at), label: LABELS[winner.reason] }
 }
 
 /**
@@ -74,7 +75,7 @@ export function streakBrokeWithinDays(
 ): boolean {
   if (!lastActiveDate || lastActiveDate.trim() === '') return false
   const lastKey = lastActiveDate.slice(0, 10)
-  const todayKey = today.toISOString().slice(0, 10)
+  const todayKey = dayKey(today)
   const gapDays = Math.round(
     (Date.parse(todayKey + 'T00:00:00Z') - Date.parse(lastKey + 'T00:00:00Z')) / DAY_MS,
   )

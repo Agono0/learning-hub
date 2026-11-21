@@ -21,6 +21,7 @@
  */
 
 import { z } from 'zod'
+import { localDayKey } from '../streaks'
 import { isQuietHours } from '../reminders'
 
 /* ------------------------------------------------------------------ */
@@ -368,7 +369,7 @@ export function localDayBoundsIso(
 ): { dayStartIso: string; dayEndIso: string; dayKey: string } {
   const d = typeof now === 'string' ? new Date(now) : now
   // dayKey = the local wall-clock date (same math as streaks.localDayKey).
-  const dayKey = new Date(d.getTime() - offsetMinutes * 60_000).toISOString().slice(0, 10)
+  const dayKey = localDayKey(d, offsetMinutes)
   // Real instant of local midnight = shifted 00:00Z shifted back by the offset.
   const dayStartMs = new Date(`${dayKey}T00:00:00.000Z`).getTime() + offsetMinutes * 60_000
   return {

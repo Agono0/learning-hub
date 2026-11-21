@@ -89,12 +89,20 @@ above 1,200 LOC now keeps only logic, with verbatim corpora in
 (1,258→557), `prototype-exemplar` (1,421→1,126). Remaining 17 engines split
 on next touch.
 
-### TD-06 · OPEN — duplicated micro-helpers inside core
+### TD-06 · PARTIAL (#PR-C) — duplicated micro-helpers inside core
 
 `clamp` ×17 in 14 files (despite `math.ts`), day-key/ISO-slice helpers ×11,
-calibration math ×5, `hashString` ×2. **Fix path:** opportunistically switch a
-file to the shared helper when touching it; add the canonical names to
-`math.ts` (`clamp`, `hashString`) so new code stops re-deriving.
+calibration math ×5, `hashString` ×2. **Shipped:** `math.ts` now owns the
+canonical `clamp` (3-arg) and `hashString` (FNV-1a 32-bit, verbatim from
+motivation.ts) with invariants documented; 11 files migrated with zero
+behavior change — elo, prototype-exemplar, spatial (re-export keeps the
+subpath API), motivation, habits (inline FNV + day-key), curriculum/lhcf
+slug, share checksum, notification-center (→ streaks `localDayKey`), fsrs
+forecast, freshStart, exposure. **Intentionally kept:** fixed-bound
+one-arg variants (`clamp01`, `clampPct`, spatial's rounded clamp, the
+analytics [0,100] closure) — different semantics, not duplicates; the
+calibration "×5" turned out to be five distinct domain functions, not
+copies. Remaining `clamp` locals migrate on next touch of their files.
 
 ### TD-07 · FIXED (#78) — `practice` exported; barrel risk realized and contained
 
@@ -106,16 +114,17 @@ resolution (kept the pre-existing `./cards` binding; the
 `@learning-hub/core/practice` subpath keeps its own). `export *` stays
 (no demonstrated tree-shaking need).
 
-### TD-08 · PARTIAL (#78) — 5 of 7 wrapped
+### TD-08 · FIXED (#78 + #PR-C) — 6 of 7 wrapped, 1 documented exception
 
 `analytics`, `achievements`, `journal/weekly`, `curriculum/skills`,
 `images/[id]` (intentional: binary response), `review/stats`, `graph` — these
-return bare JSON without the ApiError envelope, so their failure shape
-differs from every other route. **Shipped (PR #78):** analytics, achievements, journal/weekly,
-curriculum/skills and graph now return the ApiError envelope.
-Remaining: review/stats (rewritten by PR #73 while unwrapped — wrap on
-next touch) and images/[id] (intentional binary response — document the
-exception in `lib/api.ts`).
+returned bare JSON without the ApiError envelope, so their failure shape
+differed from every other route. **Shipped (PR #78):** analytics, achievements, journal/weekly,
+curriculum/skills and graph now return the ApiError envelope. **Shipped
+(#PR-C):** `review/stats` wrapped in `withRoute` (the last bare-JSON route);
+`images/[id]` documented as the deliberate binary exception in the
+`lib/api.ts` header — every `/api` route now either shares the
+`{ error, detail? }` failure shape or is that one documented route.
 
 ### TD-09 · FIXED (#76) — typed query-key factory + 60 sites migrated
 
@@ -156,13 +165,17 @@ not flag them — but they make hoisting order load-bearing for any future
 value import. **Fix path:** move the imported types into leaf modules when
 the files are touched anyway.
 
-### TD-13 · OPEN — architecture docs drift
+### TD-13 · FIXED (#PR-C) — architecture docs drift
 
-`PROJECT_ARCHITECTURE.md` rev 2.0 says "51+ MCP tools" (93 as of today), "25+
-CLI command modules" (47 built-in commands), and lists zustand in the web
-stack. Numbers corrected in this register's landing commit; **fix path:** add
-a "verified against codebase" date + let the parity/registry tests assert doc
-claims where cheap.
+All headline claims re-verified against code (counted, not guessed) and the
+drifted numbers corrected across `PROJECT_ARCHITECTURE.md`,
+`ARCHITECTURE.md`, `README.md`, `PROJECT_CONTEXT.md`, with a
+"Verified against codebase: 2026-11-21" date: 128 MCP tools (was 51/93),
+58 CLI commands (was 25/47), zustand removed from the stack description
+(TanStack Query + React local state), 94 tables (was 92), 29 migrations (was
+27), 47 repos (was 40), 10 card formats (was 8, list corrected), PBKDF2
+210k iterations (was 100k), Node 24, AI SDK 7, 300+ test files. Where cheap,
+doc claims stay next to registry tests that fail when the code moves.
 
 ## FIXED (evidence)
 

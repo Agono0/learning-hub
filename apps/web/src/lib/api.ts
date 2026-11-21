@@ -4,6 +4,12 @@
  *
  * SERVER-only — importing @learning-hub/db drags better-sqlite3 in.
  * A route opts in by `export const POST = withRoute(async (req) => { ... })`.
+ *
+ * Exception (TD-08, deliberate): `app/api/images/[id]/route.ts` streams the
+ * raw image bytes (`application/octet-stream` + content-type from the row) —
+ * an envelope would corrupt the binary body. It is the only unwrapped route;
+ * everything else must go through {@link withRoute} so failures share the
+ * `{ error: string, detail?: unknown }` JSON shape.
  */
 import { z } from 'zod'
 import { CardNotFoundError, ValidationError } from '@learning-hub/db'

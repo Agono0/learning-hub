@@ -21,6 +21,7 @@ import {
   type Grade as FsrsGrade,
 } from 'ts-fsrs'
 import type { Confidence, Grade } from './types'
+import { dayKey } from './streaks'
 
 /** ts-fsrs v6 card (FSRS-6 variant — the version this app schedules with). */
 export type FsrsCard = DefaultSchedulerCard<'FSRS-6'>
@@ -296,10 +297,10 @@ export function forecastNext30Days(
   const startUtc = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate())
   const buckets = new Map<string, number>()
   for (let i = 0; i < 30; i++) {
-    buckets.set(new Date(startUtc + i * DAY_MS).toISOString().slice(0, 10), 0)
+    buckets.set(dayKey(new Date(startUtc + i * DAY_MS)), 0)
   }
   for (const r of rows) {
-    const key = new Date(r.due).toISOString().slice(0, 10)
+    const key = dayKey(new Date(r.due))
     const bucket = buckets.get(key)
     if (bucket !== undefined) buckets.set(key, bucket + 1)
   }

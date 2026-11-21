@@ -57,6 +57,8 @@
 
 import { z } from 'zod'
 
+import { clamp } from '../math'
+
 // TD-05: scenario corpora (canonical category sets) are CONTENT, not logic — they
 // live in ./content.ts so engine diffs stay about algorithms. The engine still
 // consumes CANONICAL_CATEGORIZATION_SETS and re-exports the whole corpus, so every
@@ -304,10 +306,6 @@ export type CategorizationDeck = z.infer<typeof categorizationDeckSchema>
 function roundTo(value: number, digits = 4): number {
   const factor = 10 ** digits
   return Math.round(value * factor) / factor
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
 }
 
 function normalizeWeights(weights: number[], dimCount: number): number[] {

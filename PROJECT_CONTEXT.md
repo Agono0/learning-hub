@@ -13,10 +13,10 @@ Learning HUB is a local-first, research-grounded, comprehensive self-learning pl
 
 Key strategic design philosophies:
 
-1. **Local-First & Multi-Surface:** One shared brain, accessible via Next.js Web UI, native desktop/mobile shells (Tauri 2 on Windows/Android), Model Context Protocol (MCP) stdio interface for autonomous AI agents, a 25+ command CLI, and a zero-dependency headless REST server.
+1. **Local-First & Multi-Surface:** One shared brain, accessible via Next.js Web UI, native desktop/mobile shells (Tauri 2 on Windows/Android), Model Context Protocol (MCP) stdio interface for autonomous AI agents, a 58-command CLI, and a zero-dependency headless REST server.
 2. **AI-Optional / Prompt-Transportable:** Full functionality with zero external API keys (`provider: 'none'`); every AI feature strictly provides an evidence-based manual mode alongside prompt transport envelopes.
 3. **Single Canonical Review Pipeline:** Any surface interacting with review cards commits state through a single atomic transaction in `packages/db/src/review-service.ts`, ensuring zero drift across FSRS schedules, append-only logs (`revlog`), XP awards, streak tracking, and skill mastery.
-4. **Agent Ergonomics:** Direct integration with AI coding assistants and autonomous agents through a unified MCP server providing 51+ domain tools and dynamic plugin hooks.
+4. **Agent Ergonomics:** Direct integration with AI coding assistants and autonomous agents through a unified MCP server providing 128 built-in domain tools and dynamic plugin hooks.
 
 ---
 
@@ -26,11 +26,11 @@ Key strategic design philosophies:
 | ------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | **Runtimes**             | Node.js, Webview / Browser, Web Worker, Cloudflare Workers | Node.js `>=20` (engines specify `>=24`), Chromium / WebKit webviews, Cloudflare Workers    |
 | **Languages**            | TypeScript, Rust, SQL, Bash                                | TypeScript 6.0.3 (side-by-side JS API) + TS 7.0 compiler; Rust 2021 (Tauri 2 backend)      |
-| **Frameworks**           | Next.js 16 (App Router), React 19, Tailwind CSS 4          | Server Components + Client Islands; TanStack Query, Zustand state stores                   |
-| **Database & ORM**       | SQLite (`better-sqlite3`), Drizzle ORM, OPFS SQLite WASM   | WAL pragmas enabled, 92 relational tables, 27 versioned idempotent migrations, FTS5 search |
+| **Frameworks**           | Next.js 16 (App Router), React 19, Tailwind CSS 4          | Server Components + Client Islands; TanStack Query server-state cache, React local state   |
+| **Database & ORM**       | SQLite (`better-sqlite3`), Drizzle ORM, OPFS SQLite WASM   | WAL pragmas enabled, 94 relational tables, 29 versioned idempotent migrations, FTS5 search |
 | **Scheduling & Science** | `ts-fsrs` 6.0, Bayesian Knowledge Tracing, Glicko/Elo      | 21-parameter MAP optimizer, Desired Retention 0.9 default, BKT $P(\text{known}) \ge 0.95$  |
-| **AI Integration**       | Vercel AI SDK 4 (`@ai-sdk/*`), Custom HTTP, Stdio MCP      | `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, `@modelcontextprotocol/sdk`       |
-| **Testing & CI**         | Vitest 5.1, Fast-Check, Playwright, ESLint 10, Prettier 3  | 163+ test files, 4-tier opaque E2E suite with isolated SQLite database forks               |
+| **AI Integration**       | Vercel AI SDK 7 (`@ai-sdk/*`), Custom HTTP, Stdio MCP      | `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`, `@modelcontextprotocol/sdk`       |
+| **Testing & CI**         | Vitest 5.1, Fast-Check, Playwright, ESLint 10, Prettier 3  | 300+ test files, 4-tier opaque E2E suite with isolated SQLite database forks               |
 
 ---
 
@@ -42,13 +42,13 @@ The repository is structured as an npm workspaces monorepo:
 learning-hub/
 ├── packages/
 │   ├── core/                  # Pure TypeScript domain logic (zero I/O, zero AI SDK imports)
-│   ├── db/                    # Drizzle ORM schemas, 27 migrations, 40 repositories, review service
+│   ├── db/                    # Drizzle ORM schemas, 29 migrations, 47 repositories, review service
 │   └── ai-adapters/           # Sole importer of @ai-sdk/*; provider registries and networkFetch
 ├── apps/
 │   ├── web/                   # Next.js 16 Web application, route handlers, and Web Worker Hub
 │   ├── server/                # Headless node:http REST server (zero web framework dependencies)
-│   ├── mcp/                   # Model Context Protocol stdio server exposing 51+ domain tools
-│   ├── cli/                   # Terminal interface with 25+ command suites
+│   ├── mcp/                   # Model Context Protocol stdio server exposing 128 built-in domain tools
+│   ├── cli/                   # Terminal interface with 58 built-in commands
 │   ├── native/                # Tauri 2 native shell configuration (Windows & Android)
 │   ├── worker/                # Cloudflare worker for multi-player rooms and boss battles
 │   └── extension/             # Browser extension for web article ingestion and friction logging
