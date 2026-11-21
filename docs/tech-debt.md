@@ -72,13 +72,22 @@ CI-only test policy.
 
 ## P2 — structural debt (schedule, don't scramble)
 
-### TD-05 · OPEN — engines bundle zod schemas + scenario corpora + logic
+### TD-05 · PARTIAL (#PR-B) — engines bundle zod schemas + scenario corpora + logic
 
 25 engine files >800 LOC; the biggest (`dynamic-assessment/zpd-engine.ts`,
 1,854) is ~80% hardcoded scenario data. The data is _content_, not logic — it
 inflates diffs, merge conflicts, and review noise. **Fix path:** for engines
 touched anyway, split `<domain>/content.ts` (scenario constants) from
 `<domain>-engine.ts`. No big-bang split.
+
+**Shipped (8 of 25 engines, ~7,150 lines of corpora moved):** every engine
+above 1,200 LOC now keeps only logic, with verbatim corpora in
+`<domain>/content.ts` re-exported from the engine so no import path changed:
+`dynamic-assessment` (1,905→425), `productive-failure` (1,822→485),
+`spatial` (1,555→1,193), `anchored` (1,478→563), `model-inquiry`
+(1,394→626), `system-dynamics` (1,377→695), `complex-problem-solving`
+(1,258→557), `prototype-exemplar` (1,421→1,126). Remaining 17 engines split
+on next touch.
 
 ### TD-06 · PARTIAL (#PR-C) — duplicated micro-helpers inside core
 
@@ -130,13 +139,22 @@ Declared in `apps/web/package.json`, zero `create(` usage, no stores dir.
 **Fix path:** remove it (or adopt it consciously); either way the stack
 description in README/ARCHITECTURE stops advertising it.
 
-### TD-11 · OPEN — `apps/server` routes.ts is a 2,361-line monolith with parity gaps
+### TD-11 · FIXED (#PR-A) — `apps/server` routes.ts is a monolith with parity gaps
 
-59 routes in one file; curriculum/focus/habits/notes/ideas are missing
-entirely from the headless server while MCP/CLI/web serve them. **Fix path:**
-TD-01 first (shared repos), then move route groups into `routes/<area>.ts`
-modules with the same `Route[]` table pattern; add the missing domains only
-after the parity test (TD-04) exists.
+**Fix shipped:** the 3,334-line `routes.ts` monolith is split into
+`src/routes/<area>.ts` modules (`system`, `review`, `interleaving`,
+`cognitive`, `advanced`, `studios`) with the same `Route[]` table pattern —
+`routes.ts` is now a 9-line composition root re-exporting `dispatch`,
+`routes`, `prototypeExemplarRouteJson` so `apps/server/src/index.ts` and the
+cross-host parity tests keep their import surface. All 89 existing routes
+kept their paths, validation, and registration order. The missing domains
+landed as new area modules reusing the shared repos: `curriculum` (5 routes),
+`ideas` (7), `focus` (10), `habits` (4), `notes` (7) — plus
+`/cognitive/exposure`, `/cognitive/workload`, `/cognitive/weakness` and
+`/cognitive/load` computation routes (Krashen exposure ledger, forecast
+workload, confusion-pair weakness radar, CLT benchmarks + Paas/flow
+evaluation). Every body/query stays zod-validated (`readJson`/`readQuery`);
+`Route.method` remains `GET | POST` (deletes are POST subpaths).
 
 ### TD-12 · FIXED (#78) — leaf-module types broke both cycles
 
