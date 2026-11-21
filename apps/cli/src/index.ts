@@ -66,6 +66,8 @@ import {
   zpdCommands,
 } from './commands/advanced-learning'
 import { prototypeExemplarCommands } from './commands/prototype-exemplar'
+import { cognitiveLoadCommands } from './commands/cognitive-load'
+import { dualcodingCommands } from './commands/dualcoding'
 
 const rawArgs = process.argv.slice(2)
 const scriptArgs =
@@ -129,6 +131,8 @@ const builtinCommands: RegisteredCommand[] = [
   ...systemDynamicsCommands,
   ...modelInquiryCommands,
   ...prototypeExemplarCommands,
+  ...cognitiveLoadCommands,
+  ...dualcodingCommands,
   ...knowledgeSpaceCommands,
   ...cpsCommands,
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
