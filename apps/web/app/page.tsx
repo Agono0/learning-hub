@@ -4,12 +4,15 @@
  * Today — the dashboard. Renders from the widget registry
  * (components/dashboard/widgets.tsx): first-party and plugin widgets appear by
  * registering there, and the learner reorders everything (persisted locally).
- * On mount the content blocks (quick review, banners, header, widget rows) rise
- * + fade in once, in sequence (Entrance → ClayIn; transform/opacity only,
- * stagger capped <300ms — the loading skeletons and error callout stay instant).
+ * The page leads with the header (title + the one primary action), then the
+ * quick-review strip — the header-first order is the audit's L3 fix (the
+ * dashboard no longer opens with an unlabeled strip of controls). On mount the
+ * content blocks (header, quick review, banners, widget rows) rise + fade in
+ * once, in sequence (Entrance → ClayIn; transform/opacity only, stagger capped
+ * <300ms — the loading skeletons and error callout stay instant).
  */
+import React, { useRef } from 'react'
 import Link from 'next/link'
-import { useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
@@ -35,10 +38,10 @@ const ORDER_KEY_HINT = 'Order is saved on this device. Reset restores the defaul
  * conditional banner that is absent never shifts the delays of later blocks.
  */
 const ENTRANCE_SLOT = {
-  quickReview: 0,
-  freshBanner: 1,
-  nudge: 2,
-  header: 3,
+  header: 0,
+  quickReview: 1,
+  freshBanner: 2,
+  nudge: 3,
   rowsBase: 4,
 } as const
 
@@ -191,9 +194,35 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
+      {/* Header first (audit L3): the page opens with its title and the one
+          primary action, then the quick-review strip. */}
+      <Entrance step={ENTRANCE_SLOT.header}>
+        <PageHeader
+          title="Today"
+          subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-ghost border text-xs"
+                title={ORDER_KEY_HINT}
+                onClick={() => setOrder(DEFAULT_ORDER)}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset layout
+              </button>
+              <Link href="/review" className="btn h-11 px-6 text-base">
+                <Repeat2 className="h-5 w-5" />
+                {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
+              </Link>
+            </div>
+          }
+        />
+      </Entrance>
+
       <Entrance step={ENTRANCE_SLOT.quickReview}>
         <QuickReviewWidget />
       </Entrance>
+
       {d.freshStart && (
         <Entrance
           step={ENTRANCE_SLOT.freshBanner}
@@ -220,29 +249,6 @@ export default function DashboardPage() {
           </div>
         </Entrance>
       )}
-
-      <Entrance step={ENTRANCE_SLOT.header}>
-        <PageHeader
-          title="Today"
-          subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
-          actions={
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="btn-ghost border text-xs"
-                title={ORDER_KEY_HINT}
-                onClick={() => setOrder(DEFAULT_ORDER)}
-              >
-                <RotateCcw className="h-3.5 w-3.5" /> Reset layout
-              </button>
-              <Link href="/review" className="btn h-11 px-6 text-base">
-                <Repeat2 className="h-5 w-5" />
-                {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
-              </Link>
-            </div>
-          }
-        />
-      </Entrance>
 
       {/* Learner-profile undo banner — self-gating (renders nothing without a
           pending "lh-profile-applied" record); shown only once the page data

@@ -1,6 +1,32 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+/**
+ * /settings — every knob of the learning system in one place.
+ *
+ * UX-audit redesign (branch feat/ux-audit-redesign):
+ * - L6  The stack is scannable: a sticky "Jump to" chip index sits under the
+ *       PageHeader (anchor per major section, smooth-scrolled only when
+ *       `motionOK()`), every section carries a stable `id`, and the four
+ *       low-frequency sections (Online Identity, Power tools, AnkiConnect,
+ *       3D World) collapse into a Radix accordion (type="multiple", all
+ *       collapsed by default). Core sections stay always-open panels.
+ * - L7  Save models are now explicit (see the table in the file tail):
+ *       server sections keep the global Save button; Quick-HUD style and
+ *       Anki sync mode persist device-locally via localStorage (hydration-safe
+ *       read-after-mount, mirroring ProfileTunedBanner); 3D world settings
+ *       keep their instant-save endpoint but confirm via toast.
+ * - C3/C4/M9  Raw label+input pairs, native checkboxes and range inputs moved
+ *       onto the kit: TextField/TextArea, Toggle, Slider.
+ * - C6  The five hand-rolled choose-one patterns use ChipPicker (palette
+ *       swatches survive as the chip's icon slot).
+ * - M3  Sub-44px chips carry a `[@media(pointer:coarse)]:min-h-11` guard.
+ * - Motion: the framer `Reveal` pass stays the owner of every top-level
+ *   mount; `useGsapReveal` complements it ONLY on inner plain-DOM grids the
+ *   framer pass never covered (jump chips, preset row, reminder grids) —
+ *   one animation owner per element, transform/opacity only.
+ */
+
+import React, { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Bell,
@@ -40,18 +66,52 @@ import {
   setPalette,
   usePalette,
   normalizeThemePreference,
+  type PaletteId,
   type ThemePreference,
 } from '@/components/ThemeSync'
 import { deliverNotification } from '@/platform/reminders'
 import { usePermissionSnapshot } from '@/lib/use-permissions'
-import { PermissionGate } from '@/ui'
 import { permissionSummaryLine } from '@learning-hub/core/permissions'
 import Link from 'next/link'
 import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, EmptyState, PageHeader, ProgressBar, Sheet } from '@/ui'
-import { ClayIn, Reveal } from '@/lib/motion'
+import {
+  Badge,
+  Button,
+  EmptyState,
+  PageHeader,
+  PermissionGate,
+  ProgressBar,
+  Sheet,
+  Slider,
+  TextArea,
+  TextField,
+  Toggle,
+  useToast,
+} from '@/ui'
+import { ClayIn, Reveal, motionOK } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { IconTile } from '@/components/ui/icon-tile'
+import { KeyMetricRow } from '@/components/ui/key-metric-row'
+import { SectionHeader } from '@/components/ui/section-header'
 import { DetoxWizard } from '@/components/DetoxWizard'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -142,6 +202,113 @@ const PROVIDERS: {
   },
 ]
 
+/** ChipPicker items for the provider grid (audit C6 — was a hand-rolled card grid). */
+const PROVIDER_ITEMS = PROVIDERS.map((p) => ({ value: p.key, label: p.label }))
+
+/** One-click provider presets (audit M3 — coarse-pointer 44px tap guard added). */
+const AI_PRESETS: { label: string; provider: AIProvider; model: string; baseUrl: string }[] = [
+  {
+    label: 'Gemini 2.5 Flash (Free Tier)',
+    provider: 'google',
+    model: 'gemini-2.5-flash',
+    baseUrl: '',
+  },
+  {
+    label: 'Groq Llama 3.3 (Free Tier)',
+    provider: 'openai-compatible',
+    model: 'llama-3.3-70b-versatile',
+    baseUrl: 'https://api.groq.com/openai/v1',
+  },
+  {
+    label: 'OpenRouter (Free Models)',
+    provider: 'openai-compatible',
+    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    baseUrl: 'https://openrouter.ai/api/v1',
+  },
+  {
+    label: 'DeepSeek Chat',
+    provider: 'openai-compatible',
+    model: 'deepseek-chat',
+    baseUrl: 'https://api.deepseek.com/v1',
+  },
+  {
+    label: 'Ollama Local (Offline)',
+    provider: 'ollama',
+    model: 'llama3.1',
+    baseUrl: 'http://localhost:11434/v1',
+  },
+]
+
+/**
+ * Section index for the sticky "Jump to" chip row (audit L6). Chips render in
+ * page order so the index reads top-to-bottom like the page; the four
+ * `settings-online` / `settings-power-tools` / `settings-anki` /
+ * `settings-world` targets double as the advanced accordion's item values,
+ * so jumping to them also expands them.
+ */
+const SECTION_ANCHORS = [
+  { id: 'settings-ai', label: 'AI' },
+  { id: 'settings-profile', label: 'Profile' },
+  { id: 'settings-scheduler', label: 'Scheduler' },
+  { id: 'settings-appearance', label: 'Appearance' },
+  { id: 'settings-fsrs', label: 'FSRS' },
+  { id: 'settings-reminders', label: 'Reminders' },
+  { id: 'settings-permissions', label: 'Permissions' },
+  { id: 'settings-online', label: 'Online' },
+  { id: 'settings-power-tools', label: 'Power tools' },
+  { id: 'settings-anki', label: 'Anki' },
+  { id: 'settings-world', label: '3D World' },
+] as const
+
+/** Accordion item values for the low-frequency sections (collapsed by default). */
+const ADVANCED_SECTION_IDS = [
+  'settings-online',
+  'settings-power-tools',
+  'settings-anki',
+  'settings-world',
+] as const
+
+/**
+ * Sticky "Jump to" index (audit L6): one anchor chip per major section,
+ * horizontally scrollable at phone width. Smooth scrolling is gated by
+ * `motionOK()` — reduced-motion and e-ink users get an instant jump. Chips
+ * use the ChipPicker inactive recipe so the index never competes with the
+ * page's one primary action (Save).
+ */
+function SectionJumpNav({ onJump }: { onJump: (id: string) => void }) {
+  // GSAP reveal on the chip row (mandate: GSAP owns inner grids the framer
+  // pass does not cover; the chips are plain buttons, no framer conflict).
+  const chipsRef = useGsapReveal<HTMLDivElement>({ y: 8, stagger: 0.03 })
+  return (
+    <nav
+      aria-label="Jump to a settings section"
+      className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-20 pb-1 pt-1 md:top-3"
+    >
+      <div
+        ref={chipsRef}
+        className="flex gap-1.5 overflow-x-auto rounded-2xl border border-neutral-200 bg-white/85 p-1.5 backdrop-blur dark:border-(--hub-border) dark:bg-(--hub-sunken)/85"
+      >
+        {SECTION_ANCHORS.map((anchor) => (
+          <button
+            key={anchor.id}
+            type="button"
+            onClick={() => onJump(anchor.id)}
+            className={[
+              'shrink-0 whitespace-nowrap rounded-full border border-(--hub-border) px-3 py-1.5',
+              'text-xs font-medium text-secondary transition-colors duration-(--duration-fast)',
+              'hover:bg-hub-accent/5 hover:text-hub-accent [@media(pointer:coarse)]:min-h-11',
+              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-(--ac-strong)',
+              'focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg)',
+            ].join(' ')}
+          >
+            {anchor.label}
+          </button>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
 interface SettingsRow {
   aiProvider: AIProvider
   aiModel: string | null
@@ -182,6 +349,7 @@ interface FsrsStatusResponse {
 
 export default function SettingsPage() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const { data } = useQuery<{ settings: SettingsRow }>({
     queryKey: queryKeys.settings,
     queryFn: () => apiGet<{ settings: SettingsRow }>('/api/settings'),
@@ -216,6 +384,14 @@ export default function SettingsPage() {
     'curriculum_nudge',
   ])
   const [testNotifMsg, setTestNotifMsg] = useState<string | null>(null)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [openAdvanced, setOpenAdvanced] = useState<string[]>([])
+
+  // GSAP reveals on inner plain-DOM grids (mandate: GSAP complements the
+  // framer Reveal pass on elements it never animated — never on the same node).
+  const presetsRef = useGsapReveal<HTMLDivElement>({ y: 10, stagger: 0.04 })
+  const quietHoursRef = useGsapReveal<HTMLDivElement>({ y: 10, stagger: 0.04 })
+  const triggersRef = useGsapReveal<HTMLDivElement>({ y: 10, stagger: 0.04 })
 
   useEffect(() => {
     if (!s) return
@@ -316,8 +492,23 @@ export default function SettingsPage() {
     onSuccess: () => {
       setApiKey('')
       setHeaders('')
+      toast({
+        title: 'Settings saved',
+        description: 'Provider, scheduler and reminder preferences updated.',
+        tone: 'success',
+      })
       void qc.invalidateQueries({ queryKey: queryKeys.settings })
       void qc.invalidateQueries({ queryKey: ['ai-status'] })
+    },
+    onError: (err) => {
+      toast({
+        title: 'Save failed',
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Check the headers JSON (must be an object of strings).',
+        tone: 'danger',
+      })
     },
   })
 
@@ -351,6 +542,21 @@ export default function SettingsPage() {
     save.mutate(next)
   }
 
+  /**
+   * Jump-to handler for the sticky chip index (audit L6). Advanced sections
+   * expand first (they are collapsed by default) so the anchor lands on real
+   * content; the scroll itself is smooth only when motion is allowed.
+   */
+  const jumpToSection = (id: string) => {
+    if ((ADVANCED_SECTION_IDS as readonly string[]).includes(id)) {
+      setOpenAdvanced((prev) => (prev.includes(id) ? prev : [...prev, id]))
+    }
+    document.getElementById(id)?.scrollIntoView({
+      behavior: motionOK() ? 'smooth' : 'auto',
+      block: 'start',
+    })
+  }
+
   const meta = PROVIDERS.find((p) => p.key === provider) ?? PROVIDERS[0]!
 
   return (
@@ -362,77 +568,39 @@ export default function SettingsPage() {
         />
       </ClayIn>
 
+      <SectionJumpNav onJump={jumpToSection} />
+
       <Reveal>
-        <section className="panel space-y-4">
-          <div>
-            <div className="label mb-2">AI provider</div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {PROVIDERS.map((p) => (
-                <button
-                  key={p.key}
-                  onClick={() => setProvider(p.key)}
-                  className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                    provider === p.key
-                      ? 'border-indigo-500 bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300'
-                      : 'border-neutral-200 hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {meta.hint && <p className="mt-2 text-xs text-status-warning-text">{meta.hint}</p>}
-            {provider === 'custom-endpoint' && (
-              <p className="mt-1 text-xs text-tertiary">
-                The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and
-                must reply <code>{'{ "result": string | object }'}</code> —{' '}
-                <a
-                  href="https://github.com/Agono0/learning-hub/blob/main/docs/ai-providers.md"
-                  target="_blank"
-                  className="underline"
-                >
-                  the HTTP contract
-                </a>
-                .
-              </p>
-            )}
-          </div>
+        <section id="settings-ai" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          <SectionHeader title="AI provider" />
+
+          {/* Choose-one via ChipPicker (audit C6): active = accent tint + ring. */}
+          <ChipPicker<AIProvider>
+            label="AI provider"
+            value={provider}
+            onChange={setProvider}
+            items={PROVIDER_ITEMS}
+          />
+          {meta.hint && <p className="text-xs text-status-warning-text">{meta.hint}</p>}
+          {provider === 'custom-endpoint' && (
+            <p className="mt-1 text-xs text-tertiary">
+              The endpoint receives <code>{'{ v, feature, system, prompt, schema }'}</code> and must
+              reply <code>{'{ "result": string | object }'}</code> —{' '}
+              <a
+                href="https://github.com/Agono0/learning-hub/blob/main/docs/ai-providers.md"
+                target="_blank"
+                className="underline"
+              >
+                the HTTP contract
+              </a>
+              .
+            </p>
+          )}
 
           <div className="rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-(--hub-border) dark:bg-(--hub-sunken)">
             <div className="label mb-1.5">1-Click Free &amp; Local Presets</div>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                {
-                  label: 'Gemini 2.5 Flash (Free Tier)',
-                  provider: 'google' as AIProvider,
-                  model: 'gemini-2.5-flash',
-                  baseUrl: '',
-                },
-                {
-                  label: 'Groq Llama 3.3 (Free Tier)',
-                  provider: 'openai-compatible' as AIProvider,
-                  model: 'llama-3.3-70b-versatile',
-                  baseUrl: 'https://api.groq.com/openai/v1',
-                },
-                {
-                  label: 'OpenRouter (Free Models)',
-                  provider: 'openai-compatible' as AIProvider,
-                  model: 'meta-llama/llama-3.3-70b-instruct:free',
-                  baseUrl: 'https://openrouter.ai/api/v1',
-                },
-                {
-                  label: 'DeepSeek Chat',
-                  provider: 'openai-compatible' as AIProvider,
-                  model: 'deepseek-chat',
-                  baseUrl: 'https://api.deepseek.com/v1',
-                },
-                {
-                  label: 'Ollama Local (Offline)',
-                  provider: 'ollama' as AIProvider,
-                  model: 'llama3.1',
-                  baseUrl: 'http://localhost:11434/v1',
-                },
-              ].map((preset) => (
+            <div ref={presetsRef} className="flex flex-wrap gap-1.5">
+              {AI_PRESETS.map((preset) => (
                 <button
                   key={preset.label}
                   type="button"
@@ -441,7 +609,7 @@ export default function SettingsPage() {
                     setModel(preset.model)
                     setBaseUrl(preset.baseUrl)
                   }}
-                  className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:border-indigo-500 dark:hover:text-indigo-300"
+                  className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:border-indigo-500 hover:text-indigo-600 [@media(pointer:coarse)]:min-h-11 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary dark:hover:border-indigo-500 dark:hover:text-indigo-300"
                 >
                   {preset.label}
                 </button>
@@ -450,63 +618,56 @@ export default function SettingsPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label mb-1 block">Model</label>
-              <input
-                className="input"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder={meta.modelPlaceholder}
-              />
-            </div>
+            <TextField
+              label="Model"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder={meta.modelPlaceholder}
+            />
             {meta.needsBaseUrl && (
-              <div>
-                <label className="label mb-1 block">Base URL</label>
-                <input
-                  className="input"
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder={
-                    provider === 'ollama'
-                      ? 'http://localhost:11434/v1'
-                      : provider === 'custom-endpoint'
-                        ? 'https://your-service.example.com/ai'
-                        : 'https://your-endpoint/v1'
-                  }
-                />
-              </div>
+              <TextField
+                label="Base URL"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder={
+                  provider === 'ollama'
+                    ? 'http://localhost:11434/v1'
+                    : provider === 'custom-endpoint'
+                      ? 'https://your-service.example.com/ai'
+                      : 'https://your-endpoint/v1'
+                }
+              />
             )}
             {meta.needsKey && (
-              <div>
-                <label className="label mb-1 block">
-                  API key {s?.hasApiKey ? '(saved — type to replace)' : ''}
-                </label>
-                <input
-                  className="input"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-…"
-                />
-              </div>
+              <TextField
+                label={s?.hasApiKey ? 'API key (saved — type to replace)' : 'API key'}
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-…"
+              />
             )}
             {meta.needsHeaders && (
-              <div className="sm:col-span-2">
-                <label className="label mb-1 block">
-                  Extra HTTP headers {s?.hasHeaders ? '(saved — type to replace)' : ''}
-                </label>
-                <textarea
-                  className="input min-h-16 font-mono text-xs"
-                  value={headers}
-                  onChange={(e) => setHeaders(e.target.value)}
-                  placeholder={'{"Authorization": "Bearer …", "X-My-Header": "value"}'}
-                />
-              </div>
+              <TextArea
+                className="sm:col-span-2 [&_textarea]:min-h-16 [&_textarea]:font-mono [&_textarea]:text-xs"
+                label={
+                  s?.hasHeaders
+                    ? 'Extra HTTP headers (saved — type to replace)'
+                    : 'Extra HTTP headers'
+                }
+                value={headers}
+                onChange={(e) => setHeaders(e.target.value)}
+                placeholder={'{"Authorization": "Bearer …", "X-My-Header": "value"}'}
+              />
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="btn" onClick={() => test.mutate()} disabled={test.isPending}>
+            <button
+              className="btn [@media(pointer:coarse)]:min-h-11"
+              onClick={() => test.mutate()}
+              disabled={test.isPending}
+            >
               <Wand2 className="h-4 w-4" /> {test.isPending ? 'Testing…' : 'Test connection'}
             </button>
             {testResult && (
@@ -538,38 +699,38 @@ export default function SettingsPage() {
       </Reveal>
 
       <Reveal>
-        <section className="panel space-y-4">
-          <div>
-            <label className="label mb-1 block">
-              Desired retention — {Math.round(retention * 100)}%
-            </label>
-            <input
-              type="range"
-              min={50}
-              max={97}
-              value={Math.round(retention * 100)}
-              onChange={(e) => setRetention(Number(e.target.value) / 100)}
-              className="w-full accent-indigo-500"
-            />
-            {retention > 0.95 && (
-              <p className="mt-1 text-xs text-status-warning-text">
-                Above 95% the scheduler schedules many more reviews for tiny gains — 90% is the
-                sweet spot.
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="label mb-1 block">Focus session length — {sessionMinutes} min</label>
-            <input
-              type="range"
-              min={5}
-              max={90}
-              step={5}
-              value={sessionMinutes}
-              onChange={(e) => setSessionMinutes(Number(e.target.value))}
-              className="w-full accent-indigo-500"
-            />
-          </div>
+        <section id="settings-scheduler" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          <SectionHeader title="Scheduler & sessions" />
+          <Slider
+            label="Desired retention"
+            min={50}
+            max={97}
+            value={Math.round(retention * 100)}
+            onChange={(v) => setRetention(v / 100)}
+            format={(v) => `${v}%`}
+          />
+          {retention > 0.95 && (
+            <p className="text-xs text-status-warning-text">
+              Above 95% the scheduler schedules many more reviews for tiny gains — 90% is the sweet
+              spot.
+            </p>
+          )}
+          <Slider
+            label="Focus session length"
+            min={5}
+            max={90}
+            step={5}
+            value={sessionMinutes}
+            onChange={setSessionMinutes}
+            format={(v) => `${v} min`}
+          />
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section id="settings-appearance" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          <SectionHeader title="Appearance" />
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="label">Theme</div>
@@ -598,13 +759,13 @@ export default function SettingsPage() {
                     type="button"
                     onClick={() => selectTheme(opt.key)}
                     aria-pressed={active}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
                       active
                         ? 'bg-white text-indigo-600 shadow-xs dark:bg-(--hub-panel-2) dark:text-indigo-300'
                         : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
                     }`}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                     {opt.label}
                   </button>
                 )
@@ -612,164 +773,118 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Color palette — re-skins the whole app and the 3D world mood. */}
+          {/* Color palette — re-skins the whole app and the 3D world mood.
+              ChipPicker carries the palette preview swatches in its icon slot
+              (audit C6); selection state stays the ThemeSync store. */}
           <div>
             <div className="label mb-1">Color palette</div>
             <div className="mb-2.5 text-sm text-tertiary">
               Tints the entire interface — and the 3D forest's sky and light. Calm is the default.
             </div>
-            <div
-              role="group"
-              aria-label="Color palette"
-              className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-            >
-              {PALETTES.map((p) => {
-                const active = palette === p.id
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPalette(p.id)}
-                    aria-pressed={active}
-                    className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
-                      active
-                        ? 'border-indigo-500 bg-indigo-600/10'
-                        : 'border-neutral-200 hover:border-neutral-300 dark:border-(--hub-border) dark:hover:border-(--hub-border-strong)'
-                    }`}
+            <ChipPicker<PaletteId>
+              label="Color palette"
+              value={palette}
+              onChange={setPalette}
+              items={PALETTES.map((p) => ({
+                value: p.id,
+                label: p.label,
+                ...(p.id === 'calm' ? { hint: 'Default' } : {}),
+                icon: (
+                  <span
+                    aria-hidden="true"
+                    className="flex h-7 w-7 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
                   >
-                    <span
-                      aria-hidden
-                      className="flex h-7 w-7 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
-                    >
-                      {p.swatch.map((c) => (
-                        <span key={c} className="h-full flex-1" style={{ backgroundColor: c }} />
-                      ))}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-xs font-semibold">
-                        {p.label}
-                        {p.id === 'calm' && (
-                          <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-faint">
-                            Default
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+                    {p.swatch.map((c) => (
+                      <span key={c} className="h-full flex-1" style={{ backgroundColor: c }} />
+                    ))}
+                  </span>
+                ),
+              }))}
+            />
           </div>
         </section>
       </Reveal>
 
       {/* Sensory — haptics opt-out (F-06): vibration feedback stays calm by default. */}
       <Reveal>
-        <section className="panel space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="label flex items-center gap-2">
-                <Vibrate className="h-4 w-4 text-indigo-400" />
+        <section id="settings-haptics" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          {/* Kit Toggle (audit C4) — 44px ARIA switch; state mapping unchanged. */}
+          <Toggle
+            checked={hapticsOn}
+            onChange={setHapticsOn}
+            label={
+              <span className="flex items-center gap-2">
+                <Vibrate className="h-4 w-4 text-indigo-400" aria-hidden="true" />
                 Haptics
-              </div>
-              <p className="mt-0.5 text-xs text-tertiary">
-                Vibration feedback on grading and session boundaries. Off = completely silent.
-              </p>
-            </div>
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={hapticsOn}
-                onChange={(e) => setHapticsOn(e.target.checked)}
-                className="accent-indigo-500"
-              />
-              {hapticsOn ? 'Enabled' : 'Disabled'}
-            </label>
-          </div>
+              </span>
+            }
+            description="Vibration feedback on grading and session boundaries. Off = completely silent."
+          />
         </section>
       </Reveal>
 
       <Reveal>
-        <section className="panel space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <div className="label">FSRS-6 Weight Optimizer &amp; Calibration</div>
-              <p className="mt-0.5 text-xs text-tertiary">
-                Trains personalized 21-parameter FSRS-6 weights directly on your local review log
-                (MAP regularization toward population defaults; requires ≥50 spaced reviews).
-              </p>
-            </div>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                s?.hasCustomWeights
-                  ? 'bg-emerald-500/15 text-status-success-text'
-                  : 'bg-neutral-200/70 text-neutral-600 dark:bg-(--hub-border) dark:text-faint'
-              }`}
-            >
-              {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
-            </span>
-          </div>
+        <section id="settings-fsrs" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          <SectionHeader
+            title="FSRS-6 Weight Optimizer & Calibration"
+            action={
+              <Badge tone={s?.hasCustomWeights ? 'success' : 'neutral'}>
+                {s?.hasCustomWeights ? 'Personalized (21w)' : 'Default FSRS-6'}
+              </Badge>
+            }
+          />
+          <p className="text-xs text-tertiary">
+            Trains personalized 21-parameter FSRS-6 weights directly on your local review log (MAP
+            regularization toward population defaults; requires ≥50 spaced reviews).
+          </p>
 
           {fsrsQuery.data && (
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-3 text-xs sm:grid-cols-4 dark:border-(--hub-border)">
-              <div>
-                <div className="text-tertiary">Spaced transitions</div>
-                <div className="mt-0.5 text-sm font-semibold">
-                  {fsrsQuery.data.active.sampleCount}
-                </div>
-              </div>
-              <div>
-                <div className="text-tertiary">Default Log-Loss</div>
-                <div className="mt-0.5 text-sm font-semibold">
-                  {fsrsQuery.data.baseline.logLoss !== null
-                    ? fsrsQuery.data.baseline.logLoss.toFixed(4)
-                    : '—'}
-                </div>
-              </div>
-              <div>
-                <div className="text-tertiary">Active Log-Loss</div>
-                <div className="mt-0.5 text-sm font-semibold text-indigo-400">
-                  {fsrsQuery.data.active.logLoss !== null
-                    ? fsrsQuery.data.active.logLoss.toFixed(4)
-                    : '—'}
-                </div>
-              </div>
-              <div>
-                <div className="text-tertiary">Calibration RMSE</div>
-                <div className="mt-0.5 text-sm font-semibold">
-                  {fsrsQuery.data.active.rmse !== null
-                    ? `${(fsrsQuery.data.active.rmse * 100).toFixed(2)}%`
-                    : '—'}
-                </div>
-              </div>
-            </div>
+            <KeyMetricRow
+              columns={4}
+              metrics={[
+                { label: 'Spaced transitions', value: String(fsrsQuery.data.active.sampleCount) },
+                {
+                  label: 'Default Log-Loss',
+                  value:
+                    fsrsQuery.data.baseline.logLoss !== null
+                      ? fsrsQuery.data.baseline.logLoss.toFixed(4)
+                      : '—',
+                },
+                {
+                  label: 'Active Log-Loss',
+                  value:
+                    fsrsQuery.data.active.logLoss !== null
+                      ? fsrsQuery.data.active.logLoss.toFixed(4)
+                      : '—',
+                },
+                {
+                  label: 'Calibration RMSE',
+                  value:
+                    fsrsQuery.data.active.rmse !== null
+                      ? `${(fsrsQuery.data.active.rmse * 100).toFixed(2)}%`
+                      : '—',
+                },
+              ]}
+            />
           )}
 
-          <div>
-            <label className="label mb-1 block">
-              21 FSRS-6 weights (comma-separated, Anki compatible)
-            </label>
-            <textarea
-              className="input min-h-16 font-mono text-xs"
-              value={weightsDraft}
-              onChange={(e) => setWeightsDraft(e.target.value)}
-              placeholder={FSRS6_DEFAULT_WEIGHTS.join(', ')}
-            />
-          </div>
+          <TextArea
+            className="[&_textarea]:min-h-16 [&_textarea]:font-mono [&_textarea]:text-xs"
+            label="21 FSRS-6 weights (comma-separated, Anki compatible)"
+            value={weightsDraft}
+            onChange={(e) => setWeightsDraft(e.target.value)}
+            placeholder={FSRS6_DEFAULT_WEIGHTS.join(', ')}
+          />
 
-          <label className="flex items-center gap-2 text-xs text-tertiary">
-            <input
-              type="checkbox"
-              checked={rescheduleOnSave}
-              onChange={(e) => setRescheduleOnSave(e.target.checked)}
-              className="accent-indigo-500"
-            />
-            Reschedule existing reviewed cards by replaying active revlog history
-          </label>
+          <Toggle
+            checked={rescheduleOnSave}
+            onChange={setRescheduleOnSave}
+            label="Reschedule existing reviewed cards by replaying active revlog history"
+          />
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              className="btn"
+              className="btn [@media(pointer:coarse)]:min-h-11"
               disabled={fsrsAction.isPending}
               onClick={() => fsrsAction.mutate({ mode: 'optimize', reschedule: rescheduleOnSave })}
             >
@@ -777,7 +892,7 @@ export default function SettingsPage() {
               {fsrsAction.isPending ? 'Optimizing…' : 'Optimize weights'}
             </button>
             <button
-              className="btn-ghost"
+              className="btn-ghost [@media(pointer:coarse)]:min-h-11"
               disabled={fsrsAction.isPending || !weightsDraft.trim()}
               onClick={() =>
                 fsrsAction.mutate({
@@ -790,13 +905,39 @@ export default function SettingsPage() {
               Apply custom weights
             </button>
             <button
-              className="btn-ghost"
+              className="btn-ghost [@media(pointer:coarse)]:min-h-11"
               disabled={fsrsAction.isPending}
-              onClick={() => fsrsAction.mutate({ mode: 'reset', reschedule: rescheduleOnSave })}
+              onClick={() => setResetDialogOpen(true)}
             >
               <RotateCcw className="h-4 w-4" /> Reset defaults
             </button>
           </div>
+
+          {/* Confirmation gate (kit AlertDialog): resetting weights discards the
+              personalized fit and — with the toggle above — replays the revlog
+              for every reviewed card, so it deserves one explicit confirm. */}
+          <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset to FSRS-6 defaults?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Discards your personalized 21 weights and reverts scheduling to the population
+                  defaults.
+                  {rescheduleOnSave
+                    ? ' Existing reviewed cards will be rescheduled from the revlog history.'
+                    : ''}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep my weights</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => fsrsAction.mutate({ mode: 'reset', reschedule: rescheduleOnSave })}
+                >
+                  Reset defaults
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {fsrsMessage && (
             <p
@@ -809,115 +950,91 @@ export default function SettingsPage() {
       </Reveal>
 
       <Reveal>
-        <section className="panel space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <div className="label flex items-center gap-2">
-                <Bell className="h-4 w-4 text-indigo-400" />
-                Reminders &amp; Push Notifications
-              </div>
-              <p className="mt-0.5 text-xs text-tertiary">
-                Calm, respectful desktop &amp; push reminders (Tauri &amp; Web Notifications).
-                Strict quiet hours, daily cap, and anti-nag spacing.
-              </p>
-            </div>
-            <Link
-              href="/notifications"
-              className="text-xs underline underline-offset-2 text-secondary"
-            >
-              Open Notification Center for per-channel control
-            </Link>
-            <PermissionGate permission="notifications" reason="delivery of every reminder below" />
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={remindersEnabled}
-                onChange={(e) => setRemindersEnabled(e.target.checked)}
-                className="accent-indigo-500"
-              />
-              {remindersEnabled ? 'Enabled' : 'Disabled'}
-            </label>
-          </div>
+        <section id="settings-reminders" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          <SectionHeader
+            icon={Bell}
+            title="Reminders & Push Notifications"
+            action={
+              <Link
+                href="/notifications"
+                className="text-xs underline underline-offset-2 text-secondary"
+              >
+                Open Notification Center for per-channel control
+              </Link>
+            }
+          />
+          <p className="text-xs text-tertiary">
+            Calm, respectful desktop &amp; push reminders (Tauri &amp; Web Notifications). Strict
+            quiet hours, daily cap, and anti-nag spacing.
+          </p>
+          <PermissionGate permission="notifications" reason="delivery of every reminder below" />
+
+          <Toggle
+            checked={remindersEnabled}
+            onChange={setRemindersEnabled}
+            label="Reminders enabled"
+          />
 
           {remindersEnabled && (
             <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="label mb-1 block">Quiet hours start (do not disturb)</label>
-                  <input
-                    type="time"
-                    className="input"
-                    value={remindersQuietStart}
-                    onChange={(e) => setRemindersQuietStart(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="label mb-1 block">Quiet hours end</label>
-                  <input
-                    type="time"
-                    className="input"
-                    value={remindersQuietEnd}
-                    onChange={(e) => setRemindersQuietEnd(e.target.value)}
-                  />
-                </div>
+              <div ref={quietHoursRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <TextField
+                  label="Quiet hours start (do not disturb)"
+                  type="time"
+                  value={remindersQuietStart}
+                  onChange={(e) => setRemindersQuietStart(e.target.value)}
+                />
+                <TextField
+                  label="Quiet hours end"
+                  type="time"
+                  value={remindersQuietEnd}
+                  onChange={(e) => setRemindersQuietEnd(e.target.value)}
+                />
               </div>
 
               <div>
-                <div className="flex justify-between text-xs text-faint mb-1">
-                  <span>Daily reminder limit</span>
-                  <span className="font-semibold text-neutral-200">{remindersDailyCap} / day</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
+                <Slider
+                  label="Daily reminder limit"
+                  min={1}
+                  max={10}
                   value={remindersDailyCap}
-                  onChange={(e) => setRemindersDailyCap(Number(e.target.value))}
-                  className="w-full accent-indigo-500"
+                  onChange={setRemindersDailyCap}
+                  format={(v) => `${v} / day`}
                 />
-                <p className="text-[11px] text-tertiary mt-1">
+                <p className="mt-1 text-xs text-tertiary">
                   Maximum notifications dispatched in a single calendar day across all triggers.
                 </p>
               </div>
 
               <div>
-                <label className="label mb-2 block">Active reminder triggers</label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
+                <div className="label mb-2 block">Active reminder triggers</div>
+                <div ref={triggersRef} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[
                     { id: 'daily_review', label: 'Spaced repetition reviews due' },
                     { id: 'streak_saver', label: 'Streak saver (evening warning)' },
                     { id: 'break_reminder', label: 'Focus break (after 50m work)' },
                     { id: 'curriculum_nudge', label: 'Curriculum nudge (2+ days dormant)' },
-                  ].map((kind) => {
-                    const checked = remindersKinds.includes(kind.id)
-                    return (
-                      <label
-                        key={kind.id}
-                        className="flex items-center gap-2 cursor-pointer text-secondary"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setRemindersKinds([...remindersKinds, kind.id])
-                            } else {
-                              setRemindersKinds(remindersKinds.filter((k) => k !== kind.id))
-                            }
-                          }}
-                          className="accent-indigo-500"
-                        />
-                        {kind.label}
-                      </label>
-                    )
-                  })}
+                  ].map((kind) => (
+                    <Toggle
+                      key={kind.id}
+                      checked={remindersKinds.includes(kind.id)}
+                      onChange={(next) => {
+                        setRemindersKinds(
+                          next
+                            ? [...remindersKinds, kind.id]
+                            : remindersKinds.filter((k) => k !== kind.id),
+                        )
+                      }}
+                      label={kind.label}
+                    />
+                  ))}
                 </div>
               </div>
 
               <div className="pt-2 flex items-center gap-3">
                 <button
                   type="button"
-                  className="btn-ghost text-xs"
+                  className="btn-ghost text-xs [@media(pointer:coarse)]:min-h-11"
                   onClick={async () => {
                     setTestNotifMsg('Sending test notification…')
                     const ok = await deliverNotification({
@@ -947,59 +1064,52 @@ export default function SettingsPage() {
 
       {/* ── Device Permissions (summary → Permission Center) ── */}
       <Reveal>
-        <section className="panel space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <div className="label flex items-center gap-2">
-                <LockKeyhole className="h-4 w-4 text-indigo-400" />
-                Device Permissions
-              </div>
-              <p className="mt-0.5 text-xs text-tertiary">
-                What this device allows Learning HUB to do — live status, one calm place to grant or
-                review.
-              </p>
-            </div>
-            <Link
-              href="/permissions"
-              className="btn-secondary inline-flex min-h-[44px] items-center px-3 text-sm"
-            >
-              Open Permission Center
-            </Link>
-          </div>
+        <section id="settings-permissions" className="panel scroll-mt-32 space-y-3 md:scroll-mt-24">
+          <SectionHeader
+            icon={LockKeyhole}
+            title="Device Permissions"
+            action={
+              <Link
+                href="/permissions"
+                className="btn-secondary inline-flex min-h-[44px] items-center px-3 text-sm"
+              >
+                Open Permission Center
+              </Link>
+            }
+          />
+          <p className="text-xs text-tertiary">
+            What this device allows Learning HUB to do — live status, one calm place to grant or
+            review.
+          </p>
           <PermissionSummaryLine />
         </section>
       </Reveal>
 
-      {/* ── Online Identity & Privacy ── */}
+      {/* ── Low-frequency sections (audit L6): collapsed accordion so the page
+          scans; the jump chips expand an item before scrolling to it. ── */}
       <Reveal>
-        <OnlineIdentitySection />
-      </Reveal>
-
-      {/* ── Desktop & Mobile Power Tools ── */}
-      <Reveal>
-        <PowerToolsSection />
-      </Reveal>
-
-      {/* ── AnkiConnect Live Sync (M13) ── */}
-      <Reveal>
-        <AnkiConnectSection />
-      </Reveal>
-
-      {/* ── 3D Forest World & Timers (M16) ── */}
-      <Reveal>
-        <WorldSettingsSection />
+        <Accordion
+          type="multiple"
+          value={openAdvanced}
+          onValueChange={setOpenAdvanced}
+          className="space-y-4"
+        >
+          <OnlineIdentitySection />
+          <PowerToolsSection />
+          <AnkiConnectSection />
+          <WorldSettingsSection />
+        </Accordion>
       </Reveal>
 
       <Reveal>
-        <button className="btn" onClick={() => save.mutate(undefined)} disabled={save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save settings'}
-        </button>
-        {save.isSuccess && <span className="text-sm text-status-success-text">Saved.</span>}
-        {save.isError && (
-          <span className="text-sm text-danger-text">
-            Save failed — check the headers JSON (must be an object of strings).
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => save.mutate(undefined)} loading={save.isPending}>
+            Save settings
+          </Button>
+          <p className="text-xs text-tertiary">
+            Quick-HUD style and Anki sync mode are stored on this device only.
+          </p>
+        </div>
       </Reveal>
     </div>
   )
@@ -1053,6 +1163,7 @@ const TRAIT_BARS = [
  */
 function LearnerProfileSection() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const { data } = useQuery<{ settings: SettingsRow }>({
     queryKey: queryKeys.settings,
     queryFn: () => apiGet<{ settings: SettingsRow }>('/api/settings'),
@@ -1098,6 +1209,11 @@ function LearnerProfileSection() {
     onSuccess: () => {
       setPresetOpen(false)
       setMessage(null)
+      toast({
+        title: 'Learner profile applied',
+        description: 'Scheduler knobs updated.',
+        tone: 'success',
+      })
       void qc.invalidateQueries({ queryKey: queryKeys.settings })
     },
     onError: (e: Error) => setMessage(e.message),
@@ -1107,6 +1223,7 @@ function LearnerProfileSection() {
     mutationFn: () => apiSend('/api/settings', 'PUT', { learnerProfile: null }),
     onSuccess: () => {
       setMessage(null)
+      toast({ title: 'Learner profile removed', tone: 'neutral' })
       void qc.invalidateQueries({ queryKey: queryKeys.settings })
     },
     onError: (e: Error) => setMessage(e.message),
@@ -1139,8 +1256,8 @@ function LearnerProfileSection() {
               disabled={applyPreset.isPending}
               className={`min-h-[44px] rounded-xl border p-3 text-left transition-colors ${
                 active
-                  ? 'border-indigo-500 bg-indigo-600/10'
-                  : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
+                  ? 'border-transparent bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+                  : 'border-(--hub-border) text-secondary hover:bg-hub-accent/5'
               }`}
             >
               <div className="text-sm font-medium">{preset.label}</div>
@@ -1153,20 +1270,16 @@ function LearnerProfileSection() {
   )
 
   return (
-    <section className="panel space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <div className="label flex items-center gap-2">
-            <User className="h-4 w-4 text-indigo-400" />
-            Learner profile
-          </div>
-          <p className="mt-0.5 text-xs text-tertiary">
-            Tunes session length, retention and daily doses around how you learn. The knobs it
-            changed stay editable below — the profile recommends, you decide.
-          </p>
-        </div>
-        {profile && <Badge tone="accent">{profile.archetypeLabel}</Badge>}
-      </div>
+    <section id="settings-profile" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+      <SectionHeader
+        icon={User}
+        title="Learner profile"
+        action={profile ? <Badge tone="accent">{profile.archetypeLabel}</Badge> : undefined}
+      />
+      <p className="text-xs text-tertiary">
+        Tunes session length, retention and daily doses around how you learn. The knobs it changed
+        stay editable below — the profile recommends, you decide.
+      </p>
 
       {profile ? (
         <div className="space-y-4">
@@ -1273,8 +1386,56 @@ interface AnkiMappingsResponse {
   }>
 }
 
+/**
+ * Read a validated enum choice from localStorage AFTER mount (hydration-safe:
+ * the first client render matches the server, which always sees the fallback).
+ * Malformed or absent values count as absent. Mirrors ProfileTunedBanner.
+ */
+function readStoredChoice<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const raw = window.localStorage.getItem(key)
+    return allowed.includes(raw as T) ? (raw as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+/**
+ * Persist a device-local choice. Storage being unavailable (private mode,
+ * quota) must never break the UI — the preference is cosmetic.
+ */
+function writeStoredChoice(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value)
+  } catch {
+    // Device-local preference — ignore storage failures.
+  }
+}
+
+/**
+ * Device-local Quick-HUD presentation style (audit L7a). Deliberately NOT part
+ * of the server settings payload — it is a per-device presentation preference
+ * and the settings schema change is out of scope for this pass. Key:
+ * `lh-quickhud-style`; consumers (e.g. the Quick-HUD launcher) read the same
+ * key. Scope: this device only.
+ */
+const QUICKHUD_STYLE_KEY = 'lh-quickhud-style'
+const QUICKHUD_STYLES = ['spotlight', 'tray', 'palette'] as const
+type QuickHudStyle = (typeof QUICKHUD_STYLES)[number]
+
+/**
+ * Device-local Anki sync mode (audit L7a). Same reasoning as the Quick-HUD
+ * style: presentation/device preference, kept in localStorage under
+ * `lh-anki-mode` instead of the server settings schema. Scope: this device
+ * only; still feeds the AnkiConnect `test_connection` POST below.
+ */
+const ANKI_MODE_KEY = 'lh-anki-mode'
+const ANKI_MODES = ['live_loopback', 'apkg_export', 'mirror_readonly'] as const
+type AnkiSyncMode = (typeof ANKI_MODES)[number]
+
 function OnlineIdentitySection() {
   const qc = useQueryClient()
+  const { toast } = useToast()
   const identityQuery = useQuery({
     queryKey: ['online-identity'],
     queryFn: () =>
@@ -1301,7 +1462,6 @@ function OnlineIdentitySection() {
   const [serverUrl, setServerUrl] = useState('')
   const [showLeaderboard, setShowLeaderboard] = useState(true)
   const [allowBuddies, setAllowBuddies] = useState(true)
-  const [savedMsg, setSavedMsg] = useState(false)
 
   useEffect(() => {
     if (identityQuery.data) {
@@ -1323,196 +1483,197 @@ function OnlineIdentitySection() {
         allowBuddyRequests: allowBuddies,
       }),
     onSuccess: () => {
-      setSavedMsg(true)
-      setTimeout(() => setSavedMsg(false), 2000)
+      toast({
+        title: 'Identity updated',
+        description: 'Online preferences saved.',
+        tone: 'success',
+      })
       void qc.invalidateQueries({ queryKey: ['online-identity'] })
+    },
+    onError: () => {
+      toast({ title: 'Could not update identity', tone: 'danger' })
     },
   })
 
   return (
-    <section className="panel space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <Globe className="h-4 w-4" /> Online Engagement & Identity
-        </h2>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-            mode === 'device_key'
-              ? 'bg-emerald-500/10 text-status-success-text'
-              : mode === 'offline'
-                ? 'bg-neutral-500/10 text-faint'
-                : 'bg-indigo-500/10 text-indigo-400'
-          }`}
-        >
-          {mode === 'device_key'
-            ? 'Anonymous Device Key'
-            : mode === 'offline'
-              ? 'Offline First'
-              : 'Magic Link'}
+    <AccordionItem
+      value="settings-online"
+      id="settings-online"
+      className="scroll-mt-32 md:scroll-mt-24"
+    >
+      <AccordionTrigger>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <IconTile icon={Globe} size="sm" />
+          <span className="truncate">Online Engagement &amp; Identity</span>
         </span>
-      </div>
-
-      <p className="text-xs text-faint">
-        Learning HUB is 100% offline-first. Connect opt-in to participate in live study rooms,
-        community deck/course sharing, and cooperative boss raids.
-      </p>
-
-      <div className="space-y-3 pt-2">
-        <div>
-          <label className="label mb-1 block">Identity Mode</label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {IDENTITY_MODES.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setMode(opt.id)}
-                className={`rounded-lg border p-3 text-left transition-all ${
-                  mode === opt.id
-                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label mb-1 block">Display Alias</label>
-            <input
-              type="text"
-              className="input"
-              value={alias}
-              onChange={(e) => setAlias(e.target.value)}
-              placeholder="e.g. Marie Curie"
-              maxLength={40}
-            />
-          </div>
-          <div>
-            <label className="label mb-1 block">Engagement Worker Server</label>
-            <input
-              type="url"
-              className="input font-mono text-xs"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              placeholder="https://learning-hub-engagement.workers.dev"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-secondary">
-            <input
-              type="checkbox"
-              checked={showLeaderboard}
-              onChange={(e) => setShowLeaderboard(e.target.checked)}
-              className="accent-indigo-500"
-            />
-            Show study progress on global opt-in weekly leaderboard
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-secondary">
-            <input
-              type="checkbox"
-              checked={allowBuddies}
-              onChange={(e) => setAllowBuddies(e.target.checked)}
-              className="accent-indigo-500"
-            />
-            Allow accountability buddies to send study nudges & room invitations
-          </label>
-        </div>
-
-        <div className="pt-2 flex items-center gap-3">
-          <button
-            type="button"
-            className="btn-ghost text-xs"
-            disabled={saveMutation.isPending}
-            onClick={() => saveMutation.mutate()}
+        <span className="flex shrink-0 items-center">
+          <Badge
+            tone={mode === 'device_key' ? 'success' : mode === 'offline' ? 'neutral' : 'accent'}
           >
-            {saveMutation.isPending ? 'Saving…' : 'Update Online Identity'}
-          </button>
-          {savedMsg && <span className="text-xs text-status-success-text">Identity updated!</span>}
+            {mode === 'device_key'
+              ? 'Anonymous Device Key'
+              : mode === 'offline'
+                ? 'Offline First'
+                : 'Magic Link'}
+          </Badge>
+        </span>
+      </AccordionTrigger>
+      <AccordionContent>
+        <div className="space-y-4 pt-3">
+          <p className="text-xs text-faint">
+            Learning HUB is 100% offline-first. Connect opt-in to participate in live study rooms,
+            community deck/course sharing, and cooperative boss raids.
+          </p>
+
+          <div className="space-y-3 pt-2">
+            {/* Choose-one via ChipPicker (audit C6) — hints carry the mode copy. */}
+            <ChipPicker<IdentityMode>
+              label="Identity Mode"
+              value={mode}
+              onChange={setMode}
+              items={IDENTITY_MODES.map((opt) => ({
+                value: opt.id,
+                label: opt.title,
+                hint: opt.desc,
+              }))}
+            />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Display Alias"
+                type="text"
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                placeholder="e.g. Marie Curie"
+                maxLength={40}
+              />
+              <TextField
+                label="Engagement Worker Server"
+                type="url"
+                className="[&_input]:font-mono [&_input]:text-xs"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                placeholder="https://learning-hub-engagement.workers.dev"
+              />
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <Toggle
+                checked={showLeaderboard}
+                onChange={setShowLeaderboard}
+                label="Show study progress on global opt-in weekly leaderboard"
+              />
+              <Toggle
+                checked={allowBuddies}
+                onChange={setAllowBuddies}
+                label="Allow accountability buddies to send study nudges & room invitations"
+              />
+            </div>
+
+            <div className="pt-2 flex items-center gap-3">
+              <Button
+                variant="ghost"
+                loading={saveMutation.isPending}
+                onClick={() => saveMutation.mutate()}
+              >
+                Update Online Identity
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </AccordionContent>
+    </AccordionItem>
   )
 }
 
 function PowerToolsSection() {
-  const [hudStyle, setHudStyle] = useState<'spotlight' | 'tray' | 'palette'>('spotlight')
+  // Audit L7a: the Quick-HUD style used to live only in component state and
+  // was lost on reload. It now hydrates from localStorage after mount and
+  // writes through on change. Device-local scope (see QUICKHUD_STYLE_KEY).
+  const [hudStyle, setHudStyle] = useState<QuickHudStyle>('spotlight')
+
+  useEffect(() => {
+    setHudStyle(readStoredChoice(QUICKHUD_STYLE_KEY, QUICKHUD_STYLES, 'spotlight'))
+  }, [])
+
+  const changeHudStyle = (next: QuickHudStyle) => {
+    setHudStyle(next)
+    writeStoredChoice(QUICKHUD_STYLE_KEY, next)
+  }
 
   return (
-    <section className="panel space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <Command className="h-4 w-4 text-indigo-400" /> Desktop & Mobile Power Tools
-        </h2>
-        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-400">
-          HUD & Embeddings Ready
+    <AccordionItem
+      value="settings-power-tools"
+      id="settings-power-tools"
+      className="scroll-mt-32 md:scroll-mt-24"
+    >
+      <AccordionTrigger>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <IconTile icon={Command} size="sm" />
+          <span className="truncate">Desktop &amp; Mobile Power Tools</span>
         </span>
-      </div>
+        <span className="flex shrink-0 items-center">
+          <Badge tone="accent">HUD &amp; Embeddings Ready</Badge>
+        </span>
+      </AccordionTrigger>
+      <AccordionContent>
+        <div className="space-y-4 pt-3">
+          <p className="text-xs text-faint">
+            Global hotkey{' '}
+            <kbd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-xs text-neutral-200 dark:bg-(--hub-panel-2)">
+              Ctrl+Shift+Space
+            </kbd>{' '}
+            opens the Quick-HUD from anywhere on desktop for instant micro-reviews and quick inbox
+            capture.
+          </p>
 
-      <p className="text-xs text-faint">
-        Global hotkey{' '}
-        <kbd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-200">
-          Ctrl+Shift+Space
-        </kbd>{' '}
-        opens the Quick-HUD from anywhere on desktop for instant micro-reviews and quick inbox
-        capture.
-      </p>
+          <div className="grid gap-3 pt-2 sm:grid-cols-2">
+            <ChipPicker<QuickHudStyle>
+              label="Quick-HUD Presentation Style"
+              value={hudStyle}
+              onChange={changeHudStyle}
+              items={[
+                { value: 'spotlight', label: 'Spotlight', hint: 'Centered modal' },
+                { value: 'tray', label: 'Tray Widget', hint: 'Bottom corner' },
+                { value: 'palette', label: 'Palette', hint: 'Top command bar' },
+              ]}
+            />
 
-      <div className="grid gap-3 pt-2 sm:grid-cols-2">
-        <div>
-          <label className="label mb-1.5 block">Quick-HUD Presentation Style</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'spotlight' as const, label: 'Spotlight', desc: 'Centered modal' },
-              { id: 'tray' as const, label: 'Tray Widget', desc: 'Bottom corner' },
-              { id: 'palette' as const, label: 'Palette', desc: 'Top command bar' },
-            ].map((opt) => (
+            <div className="flex flex-col justify-end space-y-2">
               <button
-                key={opt.id}
                 type="button"
-                onClick={() => setHudStyle(opt.id)}
-                className={`rounded-lg border p-2 text-center text-xs transition-all ${
-                  hudStyle === opt.id
-                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300 font-medium'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
+                onClick={() => window.dispatchEvent(new CustomEvent('toggle-quick-hud'))}
+                className="btn-ghost flex items-center justify-center gap-2 border border-indigo-500/30 px-4 py-2 text-xs text-indigo-300 [@media(pointer:coarse)]:min-h-11 dark:text-indigo-300"
               >
-                <div>{opt.label}</div>
-                <div className="text-[10px] text-tertiary">{opt.desc}</div>
+                <Layout className="h-3.5 w-3.5" /> Test Open Quick-HUD
               </button>
-            ))}
+              <div className="flex items-center gap-2 text-xs text-tertiary">
+                <Smartphone className="h-3.5 w-3.5" />
+                <span>Android Home-Screen review glance widget receiver configured.</span>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-col justify-end space-y-2">
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('toggle-quick-hud'))}
-            className="btn-ghost flex items-center justify-center gap-2 text-xs py-2 border border-indigo-500/30 text-indigo-300"
-          >
-            <Layout className="h-3.5 w-3.5" /> Test Open Quick-HUD
-          </button>
-          <div className="flex items-center gap-2 text-[11px] text-tertiary">
-            <Smartphone className="h-3.5 w-3.5" />
-            <span>Android Home-Screen review glance widget receiver configured.</span>
-          </div>
-        </div>
-      </div>
-    </section>
+      </AccordionContent>
+    </AccordionItem>
   )
 }
 
 function AnkiConnectSection() {
-  const [syncMode, setSyncMode] = useState<'live_loopback' | 'apkg_export' | 'mirror_readonly'>(
-    'live_loopback',
-  )
+  // Audit L7a: sync mode persisted device-locally (see ANKI_MODE_KEY) instead
+  // of evaporating with component state; still feeds the test POST below.
+  const [syncMode, setSyncMode] = useState<AnkiSyncMode>('live_loopback')
   const [testStatus, setTestStatus] = useState<string | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+
+  useEffect(() => {
+    setSyncMode(readStoredChoice(ANKI_MODE_KEY, ANKI_MODES, 'live_loopback'))
+  }, [])
+
+  const changeSyncMode = (next: AnkiSyncMode) => {
+    setSyncMode(next)
+    writeStoredChoice(ANKI_MODE_KEY, next)
+  }
 
   const ankiQuery = useQuery<AnkiMappingsResponse>({
     queryKey: ['anki-mappings'],
@@ -1543,97 +1704,100 @@ function AnkiConnectSection() {
   }
 
   return (
-    <section className="panel space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <RefreshCw className="h-4 w-4 text-indigo-400" /> Live Anki Sync & AnkiConnect
-        </h2>
-        <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[11px] font-medium text-indigo-400">
-          AnkiConnect v6
+    <AccordionItem
+      value="settings-anki"
+      id="settings-anki"
+      className="scroll-mt-32 md:scroll-mt-24"
+    >
+      <AccordionTrigger>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <IconTile icon={RefreshCw} size="sm" />
+          <span className="truncate">Live Anki Sync &amp; AnkiConnect</span>
         </span>
-      </div>
+        <span className="flex shrink-0 items-center">
+          <Badge tone="accent">AnkiConnect v6</Badge>
+        </span>
+      </AccordionTrigger>
+      <AccordionContent>
+        <div className="space-y-4 pt-3">
+          <p className="text-xs text-faint">
+            Seamlessly synchronize cards and review intervals with Anki desktop via localhost:8765
+            loopback, or export portable .apkg decks.
+          </p>
 
-      <p className="text-xs text-faint">
-        Seamlessly synchronize cards and review intervals with Anki desktop via localhost:8765
-        loopback, or export portable .apkg decks.
-      </p>
+          <div className="space-y-3 pt-2">
+            <ChipPicker<AnkiSyncMode>
+              label="Sync Mode"
+              value={syncMode}
+              onChange={changeSyncMode}
+              items={[
+                {
+                  value: 'live_loopback',
+                  label: 'Live Loopback (Recommended)',
+                  hint: 'Continuous real-time sync with running Anki via localhost:8765.',
+                },
+                {
+                  value: 'apkg_export',
+                  label: '.apkg Packages',
+                  hint: 'Manual package export/import for airgapped or mobile transfers.',
+                },
+                {
+                  value: 'mirror_readonly',
+                  label: 'Read-Only Mirror',
+                  hint: 'Imports decks and card schedules without modifying your Anki library.',
+                },
+              ]}
+            />
 
-      <div className="space-y-3 pt-2">
-        <div>
-          <label className="label mb-1.5 block">Sync Mode</label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {[
-              {
-                id: 'live_loopback' as const,
-                title: 'Live Loopback (Recommended)',
-                desc: 'Continuous real-time sync with running Anki via localhost:8765.',
-              },
-              {
-                id: 'apkg_export' as const,
-                title: '.apkg Packages',
-                desc: 'Manual package export/import for airgapped or mobile transfers.',
-              },
-              {
-                id: 'mirror_readonly' as const,
-                title: 'Read-Only Mirror',
-                desc: 'Imports decks and card schedules without modifying your Anki library.',
-              },
-            ].map((opt) => (
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <button
-                key={opt.id}
                 type="button"
-                onClick={() => setSyncMode(opt.id)}
-                className={`rounded-lg border p-3 text-left transition-all ${
-                  syncMode === opt.id
-                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
+                disabled={isTesting}
+                onClick={testConnection}
+                className="btn px-3 py-2 text-xs [@media(pointer:coarse)]:min-h-11"
               >
-                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
+                <RefreshCw className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
+                {isTesting ? 'Testing…' : 'Test AnkiConnect Link'}
               </button>
-            ))}
+              <span className="text-xs text-faint">
+                {ankiQuery.data?.count ?? 0} mapped cards synchronized
+              </span>
+              {testStatus && <span className="text-xs text-secondary">{testStatus}</span>}
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3 pt-1">
-          <button
-            type="button"
-            disabled={isTesting}
-            onClick={testConnection}
-            className="btn text-xs py-2 px-3"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isTesting ? 'animate-spin' : ''}`} />
-            {isTesting ? 'Testing…' : 'Test AnkiConnect Link'}
-          </button>
-          <span className="text-xs text-faint">
-            {ankiQuery.data?.count ?? 0} mapped cards synchronized
-          </span>
-          {testStatus && <span className="text-xs text-secondary">{testStatus}</span>}
-        </div>
-      </div>
-    </section>
+      </AccordionContent>
+    </AccordionItem>
   )
 }
 
+type WorldViewMode = 'hybrid' | 'diorama' | 'third_person'
+type WorldTimerTheme = 'tree' | 'hourglass' | 'campfire' | 'clockwork' | 'crystal'
+type WorldIntegrationMode = 'dedicated' | 'focus_embedded' | 'hud_modal'
+type WorldSoundscape = 'birds' | 'rain' | 'fire' | 'wind' | 'none'
+
+/**
+ * 3D world settings — save-model decision (audit L7b): these fields keep their
+ * own instant-save endpoint (`POST /api/world/settings`, one patch per change)
+ * because joining the global Save button would mean hoisting four world states
+ * into the page and extending the settings PUT schema — a server-contract
+ * change. To make the different model explicit, every save now confirms via
+ * toast (the old 2-second "saved" span was easy to miss below the fold).
+ */
 function WorldSettingsSection() {
-  const [viewMode, setViewMode] = useState<'hybrid' | 'diorama' | 'third_person'>('hybrid')
-  const [timerTheme, setTimerTheme] = useState<
-    'tree' | 'hourglass' | 'campfire' | 'clockwork' | 'crystal'
-  >('tree')
-  const [integrationMode, setIntegrationMode] = useState<
-    'dedicated' | 'focus_embedded' | 'hud_modal'
-  >('dedicated')
-  const [soundscape, setSoundscape] = useState<'birds' | 'rain' | 'fire' | 'wind' | 'none'>('none')
-  const [saved, setSaved] = useState(false)
+  const { toast } = useToast()
+  const [viewMode, setViewMode] = useState<WorldViewMode>('hybrid')
+  const [timerTheme, setTimerTheme] = useState<WorldTimerTheme>('tree')
+  const [integrationMode, setIntegrationMode] = useState<WorldIntegrationMode>('dedicated')
+  const [soundscape, setSoundscape] = useState<WorldSoundscape>('none')
 
   const settingsQuery = useQuery<{
     ok: boolean
     settings: {
-      viewMode: 'hybrid' | 'diorama' | 'third_person'
-      timerTheme: 'tree' | 'hourglass' | 'campfire' | 'clockwork' | 'crystal'
-      integrationMode: 'dedicated' | 'focus_embedded' | 'hud_modal'
-      soundscape: 'birds' | 'rain' | 'fire' | 'wind' | 'none'
+      viewMode: WorldViewMode
+      timerTheme: WorldTimerTheme
+      integrationMode: WorldIntegrationMode
+      soundscape: WorldSoundscape
     }
   }>({
     queryKey: ['world-settings'],
@@ -1653,172 +1817,154 @@ function WorldSettingsSection() {
   const saveSettings = async (patch: Record<string, string>) => {
     try {
       await apiSend('/api/world/settings', 'POST', patch)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (err) {
-      console.error('Failed to save 3D world settings:', err)
+      toast({ title: '3D world preference saved', tone: 'success' })
+    } catch {
+      toast({
+        title: 'Could not save 3D world settings',
+        description: 'Check your connection and try again.',
+        tone: 'danger',
+      })
     }
   }
 
   return (
-    <section className="panel space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <TreePine className="h-4 w-4 text-status-success-text" /> 3D Forest of Focus & Timers
-        </h2>
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-status-success-text">
-          Three.js Low-Poly
+    <AccordionItem
+      value="settings-world"
+      id="settings-world"
+      className="scroll-mt-32 md:scroll-mt-24"
+    >
+      <AccordionTrigger>
+        <span className="flex min-w-0 items-center gap-2.5">
+          <IconTile icon={TreePine} size="sm" tone="success" />
+          <span className="truncate">3D Forest of Focus &amp; Timers</span>
         </span>
-      </div>
+        <span className="flex shrink-0 items-center">
+          <Badge tone="success">Three.js Low-Poly</Badge>
+        </span>
+      </AccordionTrigger>
+      <AccordionContent>
+        <div className="space-y-4 pt-3">
+          <p className="text-xs text-faint">
+            Configure camera presentation, default 3D visual timer themes, and ambient soundscapes.
+            Changes save immediately.
+          </p>
 
-      <p className="text-xs text-faint">
-        Configure camera presentation, default 3D visual timer themes, and ambient soundscapes.
-      </p>
-
-      <div className="space-y-4 pt-2">
-        <div>
-          <label className="label mb-1.5 block">Camera & Control Mode</label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {[
-              {
-                id: 'hybrid',
-                title: 'Auto-Switch (Hybrid)',
-                desc: 'Isometric Diorama during focus, Third-Person when exploring.',
-              },
-              {
-                id: 'diorama',
-                title: 'Isometric Diorama',
-                desc: 'Calm fixed-angle orbit view with smooth zoom and zero distraction.',
-              },
-              {
-                id: 'third_person',
-                title: 'Third-Person Explorer',
-                desc: 'Follow camera with WASD / touch character traversal across the island.',
-              },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  setViewMode(opt.id as typeof viewMode)
-                  void saveSettings({ viewMode: opt.id })
+          <div className="space-y-4 pt-2">
+            <div>
+              <div className="label mb-1.5 block">Camera &amp; Control Mode</div>
+              <ChipPicker<WorldViewMode>
+                label="Camera & Control Mode"
+                value={viewMode}
+                onChange={(next) => {
+                  setViewMode(next)
+                  void saveSettings({ viewMode: next })
                 }}
-                className={`rounded-lg border p-3 text-left transition-all ${
-                  viewMode === opt.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
-              </button>
-            ))}
+                items={[
+                  {
+                    value: 'hybrid',
+                    label: 'Auto-Switch (Hybrid)',
+                    hint: 'Isometric Diorama during focus, Third-Person when exploring.',
+                  },
+                  {
+                    value: 'diorama',
+                    label: 'Isometric Diorama',
+                    hint: 'Calm fixed-angle orbit view with smooth zoom and zero distraction.',
+                  },
+                  {
+                    value: 'third_person',
+                    label: 'Third-Person Explorer',
+                    hint: 'Follow camera with WASD / touch character traversal across the island.',
+                  },
+                ]}
+              />
+            </div>
+
+            <div>
+              <div className="label mb-1.5 block">Default 3D Timer Theme</div>
+              <ChipPicker<WorldTimerTheme>
+                label="Default 3D Timer Theme"
+                value={timerTheme}
+                onChange={(next) => {
+                  setTimerTheme(next)
+                  void saveSettings({ timerTheme: next })
+                }}
+                items={[
+                  { value: 'tree', label: 'Growing Tree' },
+                  { value: 'hourglass', label: 'Hourglass' },
+                  { value: 'campfire', label: 'Campfire' },
+                  { value: 'clockwork', label: 'Clockwork' },
+                  { value: 'crystal', label: 'Mystic Crystal' },
+                ]}
+              />
+            </div>
+
+            <div>
+              <div className="label mb-1.5 block">Integration Surface</div>
+              <ChipPicker<WorldIntegrationMode>
+                label="Integration Surface"
+                value={integrationMode}
+                onChange={(next) => {
+                  setIntegrationMode(next)
+                  void saveSettings({ integrationMode: next })
+                }}
+                items={[
+                  {
+                    value: 'dedicated',
+                    label: 'Dedicated Page (/world)',
+                    hint: 'Full-screen 3D world with interactive marketplace.',
+                  },
+                  {
+                    value: 'focus_embedded',
+                    label: 'Embedded in /focus',
+                    hint: 'Embeds 3D timer directly inside the focus timer page.',
+                  },
+                  {
+                    value: 'hud_modal',
+                    label: 'Global HUD Launcher',
+                    hint: 'Available as a floating popup modal across all screens.',
+                  },
+                ]}
+              />
+            </div>
+
+            <div>
+              <div className="label mb-1.5 block">Ambient Nature Soundscape</div>
+              <ChipPicker<WorldSoundscape>
+                label="Ambient Nature Soundscape"
+                value={soundscape}
+                onChange={(next) => {
+                  setSoundscape(next)
+                  void saveSettings({ soundscape: next })
+                }}
+                items={[
+                  { value: 'birds', label: 'Forest Birds' },
+                  { value: 'rain', label: 'Gentle Rain' },
+                  { value: 'fire', label: 'Campfire Embers' },
+                  { value: 'none', label: 'Muted (Off)' },
+                ]}
+              />
+            </div>
           </div>
         </div>
-
-        <div>
-          <label className="label mb-1.5 block">Default 3D Timer Theme</label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {[
-              { id: 'tree', label: 'Growing Tree' },
-              { id: 'hourglass', label: 'Hourglass' },
-              { id: 'campfire', label: 'Campfire' },
-              { id: 'clockwork', label: 'Clockwork' },
-              { id: 'crystal', label: 'Mystic Crystal' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => {
-                  setTimerTheme(t.id as typeof timerTheme)
-                  void saveSettings({ timerTheme: t.id })
-                }}
-                className={`rounded-lg border p-2 text-center text-xs transition-all ${
-                  timerTheme === t.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text font-semibold'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="label mb-1.5 block">Integration Surface</label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {[
-              {
-                id: 'dedicated',
-                title: 'Dedicated Page (/world)',
-                desc: 'Full-screen 3D world with interactive marketplace.',
-              },
-              {
-                id: 'focus_embedded',
-                title: 'Embedded in /focus',
-                desc: 'Embeds 3D timer directly inside the focus timer page.',
-              },
-              {
-                id: 'hud_modal',
-                title: 'Global HUD Launcher',
-                desc: 'Available as a floating popup modal across all screens.',
-              },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  setIntegrationMode(opt.id as typeof integrationMode)
-                  void saveSettings({ integrationMode: opt.id })
-                }}
-                className={`rounded-lg border p-3 text-left transition-all ${
-                  integrationMode === opt.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-neutral-200">{opt.title}</div>
-                <div className="text-[11px] text-tertiary mt-1 leading-snug">{opt.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="label mb-1.5 block">Ambient Nature Soundscape</label>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: 'birds', label: 'Forest Birds' },
-              { id: 'rain', label: 'Gentle Rain' },
-              { id: 'fire', label: 'Campfire Embers' },
-              { id: 'none', label: 'Muted (Off)' },
-            ].map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  setSoundscape(s.id as typeof soundscape)
-                  void saveSettings({ soundscape: s.id })
-                }}
-                className={`rounded-lg border px-3 py-1.5 text-xs transition-all ${
-                  soundscape === s.id
-                    ? 'border-emerald-500 bg-emerald-500/10 text-status-success-text font-semibold'
-                    : 'border-neutral-200 dark:border-(--hub-border) text-faint hover:border-neutral-300'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {saved && (
-          <span className="text-xs text-status-success-text font-medium">
-            3D preferences saved.
-          </span>
-        )}
-      </div>
-    </section>
+      </AccordionContent>
+    </AccordionItem>
   )
 }
+
+/**
+ * Save-model table (audit L7) — where every setting persists:
+ *
+ * | Section            | Path                                                              |
+ * | ------------------ | ----------------------------------------------------------------- |
+ * | AI provider        | global `Save settings` → `PUT /api/settings` (schema-validated)   |
+ * | Scheduler/FSRS     | global `Save settings`; FSRS actions via `/api/fsrs/optimize`     |
+ * | Theme              | instant (selectTheme → applyThemePreference + PUT settings)       |
+ * | Palette            | instant (ThemeSync `setPalette` store)                            |
+ * | Haptics            | global `Save settings` (`hapticsEnabled`)                         |
+ * | Reminders          | global `Save settings` (quiet hours, cap, kinds)                  |
+ * | Learner profile    | instant preset apply → `PUT /api/settings` + undo banner          |
+ * | Online identity    | section button → `POST /api/online/identity` + toast              |
+ * | Quick-HUD style    | device-local: `localStorage['lh-quickhud-style']` (audit L7a)     |
+ * | Anki sync mode     | device-local: `localStorage['lh-anki-mode']` (audit L7a)          |
+ * | 3D world settings  | instant per-change `POST /api/world/settings` + toast (audit L7b) |
+ */

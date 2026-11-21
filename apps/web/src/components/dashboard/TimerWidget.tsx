@@ -8,12 +8,16 @@
  * control. When idle, it offers calm quick-starts (15/25/45/60) instead of a
  * wall of options. Everything renders from the pure engine state
  * (`useGlobalTimer`), so it always agrees with the nav chip and /focus.
+ *
+ * The widget carries its own `.panel` card (audit G2: it was the only
+ * full-width row without one, reading as uncarded chrome next to its
+ * panel-wrapped siblings).
  */
+import React, { useEffect, useState } from 'react'
+import type { ReactElement } from 'react'
 import Link from 'next/link'
 import { Pause, Play, Square, Timer } from 'lucide-react'
 import { useMotionValueEvent, useSpring } from 'framer-motion'
-import { useEffect, useState } from 'react'
-import type { ReactElement } from 'react'
 import { ProgressRing } from '@/ui/Progress'
 import { Button } from '@/ui/Button'
 import { Badge } from '@/ui/Feedback'
@@ -87,7 +91,7 @@ export function TimerWidget() {
   const progress = running ? 1 - timer.remaining / Math.max(1, state.plannedMinutes * 60) : 0
 
   return (
-    <section className="space-y-3" aria-label="Focus timer">
+    <section className="panel space-y-3" aria-label="Focus timer">
       {running ? (
         <div className="flex flex-wrap items-center gap-4">
           <SpringRing
