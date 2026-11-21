@@ -2466,7 +2466,6 @@ async function postModelInquiryDeck(req: IncomingMessage, res: ServerResponse): 
   })
 }
 
-<<<<<<< HEAD
 // ── Prototype & Exemplar Categorization (Rosch 1975; Reed 1972; Nosofsky 1986;
 //    Ashby & Gott 1988; Landauer & Bjork 1978; Kang 2016) — same engine calls
 //    and response shapes as the web handler (host-parity contract) ──────────
@@ -2624,8 +2623,6 @@ async function postKstAudit(req: IncomingMessage, res: ServerResponse): Promise<
   sendJson(res, 200, {
     ok: true,
     report,
-  })
-}
   })
 }
 
