@@ -226,8 +226,8 @@
   --text-strong: var(--n-900);
   --text-body: var(--n-800);
   --text-secondary: color-mix(in oklab, var(--n-700) 88%, black 12%);
-  --text-tertiary: color-mix(in oklab, var(--n-600) 80%, black 20%);
-  --text-faint: color-mix(in oklab, var(--n-600) 74%, black 26%);
+  --text-tertiary: color-mix(in oklab, var(--n-600) 76%, black 24%);
+  --text-faint: color-mix(in oklab, var(--n-600) 70%, black 30%);
 
   /* Accent/status text — LIGHT steps (600/700-level so they pass on white).
      --ac-text mixes a little black into the palette accent so every palette
