@@ -19,7 +19,6 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   CALIBRATED_DIAGNOSTIC_SCENARIOS,
   CANONICAL_COGNITIVE_BIAS_CATALOG,
@@ -84,28 +83,28 @@ export function DualProcessStudio() {
   // (GET /api/dual-process). The shipped content is both the initial data and
   // the unreachable-API fallback, so rendering never waits on the transport
   // and the studio works with the API down (manual mode, AGENTS.md rule 9).
-  const catalogQuery = useQuery({
-    queryKey: ['dual-process', 'catalog'],
-    queryFn: async (): Promise<DualProcessCatalogResponse> => {
-      try {
-        return await apiGet<DualProcessCatalogResponse>('/api/dual-process')
-      } catch {
-        return {
-          ok: true,
-          scenarios: CALIBRATED_DIAGNOSTIC_SCENARIOS,
-          biasCatalog: CANONICAL_COGNITIVE_BIAS_CATALOG,
-        }
-      }
-    },
-    initialData: {
-      ok: true,
-      scenarios: CALIBRATED_DIAGNOSTIC_SCENARIOS,
-      biasCatalog: CANONICAL_COGNITIVE_BIAS_CATALOG,
-    },
-    staleTime: Infinity,
+  // API-first effect fetch: the bundled corpus paints synchronously (SSR
+  // included); the handler's catalog replaces it once the response lands.
+  const [catalog, setCatalog] = useState<DualProcessCatalogResponse>({
+    ok: true,
+    scenarios: CALIBRATED_DIAGNOSTIC_SCENARIOS,
+    biasCatalog: CANONICAL_COGNITIVE_BIAS_CATALOG,
   })
-  const scenarios = catalogQuery.data?.scenarios ?? CALIBRATED_DIAGNOSTIC_SCENARIOS
-  const biasCatalog = catalogQuery.data?.biasCatalog ?? CANONICAL_COGNITIVE_BIAS_CATALOG
+  useEffect(() => {
+    let stale = false
+    apiGet<DualProcessCatalogResponse>('/api/dual-process')
+      .then((res) => {
+        if (!stale && res?.scenarios?.length && res.biasCatalog) setCatalog(res)
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated corpus remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
+  const scenarios = catalog.scenarios
+  const biasCatalog = catalog.biasCatalog
 
   // Scenario state
   const scenario: DiagnosticScenario = useMemo(() => {
@@ -273,21 +272,45 @@ export function DualProcessStudio() {
       system2Confidence,
     ],
   )
-  const evaluationQuery = useQuery({
-    queryKey: ['dual-process', 'evaluate', sessionInput],
-    queryFn: async (): Promise<DualProcessEvaluateResponse> => {
-      return apiSend<DualProcessEvaluateResponse>('/api/dual-process', 'POST', {
-        action: 'evaluate',
-        session: sessionInput,
+  // Authoritative evaluation through the hub transport (POST /api/dual-process
+  // `action:evaluate`): the handler derives override/accuracy against the
+  // scenario corpus and runs the same scoring functions server-side. The
+  // request is keyed on the full session input so each interaction reconciles;
+  // until it lands (or forever, if the API is unreachable) the identical local
+  // mirror above shows — the HUD never flickers. The key-match means a stale
+  // in-flight response can never render for newer inputs.
+  const [apiEvaluation, setApiEvaluation] = useState<{
+    key: string
+    metrics: DualProcessSessionMetrics
+    tier: ReflectiveMindTier
+  } | null>(null)
+  const evaluationKey = JSON.stringify(sessionInput)
+  useEffect(() => {
+    let stale = false
+    apiSend<DualProcessEvaluateResponse>('/api/dual-process', 'POST', {
+      action: 'evaluate',
+      session: sessionInput,
+    })
+      .then((res) => {
+        if (!stale && res?.metrics) {
+          setApiEvaluation({ key: evaluationKey, metrics: res.metrics, tier: res.tier })
+        }
       })
-    },
-    staleTime: Infinity,
-  })
-  const metrics: DualProcessSessionMetrics = evaluationQuery.data?.metrics ?? localMetrics
+      .catch(() => {
+        // Manual mode: the in-browser mirror already rendered this evaluation.
+      })
+    return () => {
+      stale = true
+    }
+  }, [evaluationKey, sessionInput])
+  const metrics: DualProcessSessionMetrics =
+    apiEvaluation?.key === evaluationKey ? apiEvaluation.metrics : localMetrics
   // Stanovich reflective tier — server-derived when the evaluation landed,
   // locally classified otherwise (same thresholds, same value).
   const reflectiveTier: ReflectiveMindTier =
-    evaluationQuery.data?.tier ?? evaluateReflectiveMindTier(metrics.reflectiveMindIndex)
+    apiEvaluation?.key === evaluationKey
+      ? apiEvaluation.tier
+      : evaluateReflectiveMindTier(metrics.reflectiveMindIndex)
 
   // Generated FSRS Debiasing Cards — synthesized by the handler (POST
   // /api/dual-process `action:deck`) with the local generation as the instant
@@ -295,22 +318,25 @@ export function DualProcessStudio() {
   const localDeck: FSRSDebiasingCard[] = useMemo(() => {
     return generateFSRSDebiasingDeck(scenario)
   }, [scenario])
-  const deckQuery = useQuery({
-    queryKey: ['dual-process', 'deck', scenario.id],
-    queryFn: async (): Promise<FSRSDebiasingCard[]> => {
-      try {
-        const res = await apiSend<DualProcessDeckResponse>('/api/dual-process', 'POST', {
-          action: 'deck',
-          scenarioId: scenario.id,
-        })
-        return res.cards
-      } catch {
-        return localDeck
-      }
-    },
-    staleTime: Infinity,
-  })
-  const debiasingCards: FSRSDebiasingCard[] = deckQuery.data ?? localDeck
+  const [apiDeck, setApiDeck] = useState<{ key: string; cards: FSRSDebiasingCard[] } | null>(null)
+  const deckKey = scenario.id
+  useEffect(() => {
+    let stale = false
+    apiSend<DualProcessDeckResponse>('/api/dual-process', 'POST', {
+      action: 'deck',
+      scenarioId: scenario.id,
+    })
+      .then((res) => {
+        if (!stale && Array.isArray(res.cards)) setApiDeck({ key: deckKey, cards: res.cards })
+      })
+      .catch(() => {
+        // Manual mode: the in-browser generation already rendered this deck.
+      })
+    return () => {
+      stale = true
+    }
+  }, [deckKey, scenario])
+  const debiasingCards: FSRSDebiasingCard[] = apiDeck?.key === deckKey ? apiDeck.cards : localDeck
 
   // Handler: Submit System 1 Fast Gut Choice
   const handleSystem1Submit = (choiceId: string) => {

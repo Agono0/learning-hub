@@ -26,8 +26,7 @@
 
 'use client'
 
-import React, { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CALIBRATED_CURIOSITY_MYSTERIES,
   calculateLoewensteinEpistemicTension,
@@ -87,20 +86,25 @@ export function InformationGapStudio() {
   // Mystery catalog — served by the runtime-neutral handler (GET
   // /api/curiosity). The shipped corpus is both the initial data and the
   // unreachable-API fallback, so rendering never waits on the transport
-  // (manual mode, AGENTS.md rule 9).
-  const catalogQuery = useQuery({
-    queryKey: ['curiosity', 'catalog'],
-    queryFn: async (): Promise<CuriosityCatalogResponse> => {
-      try {
-        return await apiGet<CuriosityCatalogResponse>('/api/curiosity')
-      } catch {
-        return { ok: true, mysteries: Object.values(CALIBRATED_CURIOSITY_MYSTERIES) }
-      }
-    },
-    initialData: { ok: true, mysteries: Object.values(CALIBRATED_CURIOSITY_MYSTERIES) },
-    staleTime: Infinity,
-  })
-  const mysteries = catalogQuery.data?.mysteries ?? Object.values(CALIBRATED_CURIOSITY_MYSTERIES)
+  // (manual mode, AGENTS.md rule 9). API-first effect fetch: the bundled
+  // corpus paints synchronously (SSR included); the handler's catalog
+  // replaces it once the response lands.
+  const [mysteries, setMysteries] = useState<CuriosityGapMystery[]>(() =>
+    Object.values(CALIBRATED_CURIOSITY_MYSTERIES),
+  )
+  useEffect(() => {
+    let stale = false
+    apiGet<CuriosityCatalogResponse>('/api/curiosity')
+      .then((res) => {
+        if (!stale && res?.mysteries?.length) setMysteries(res.mysteries)
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated corpus remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
 
   const mystery: CuriosityGapMystery =
     mysteries.find((m) => m.id === selectedMysteryId) ??
@@ -158,18 +162,34 @@ export function InformationGapStudio() {
     }),
     [mystery, baseK, revealedClueIds, isResolved],
   )
-  const metricsQuery = useQuery({
-    queryKey: ['curiosity', 'metrics', metricsInput],
-    queryFn: async (): Promise<CuriosityMetrics> => {
-      const res = await apiSend<CuriosityMetricsResponse>('/api/curiosity', 'POST', {
-        action: 'metrics',
-        ...metricsInput,
+  // The metrics request is keyed on its serialized inputs ({mysteryId,
+  // priorKnowledgeLevel, cluesRevealedCount, isResolved}); a response is
+  // applied only while its key still matches the current inputs, so a stale
+  // in-flight response can never render for newer inputs — the identical
+  // local mirror covers the in-flight window (values are deterministic, so
+  // the substitution is never visible).
+  const [apiMetrics, setApiMetrics] = useState<{ key: string; metrics: CuriosityMetrics } | null>(
+    null,
+  )
+  const metricsKey = JSON.stringify(metricsInput)
+  useEffect(() => {
+    let stale = false
+    apiSend<CuriosityMetricsResponse>('/api/curiosity', 'POST', {
+      action: 'metrics',
+      ...metricsInput,
+    })
+      .then((res) => {
+        if (!stale && res?.metrics) setApiMetrics({ key: metricsKey, metrics: res.metrics })
       })
-      return res.metrics
-    },
-    staleTime: Infinity,
-  })
-  const metrics: CuriosityMetrics = metricsQuery.data ?? localMetrics
+      .catch(() => {
+        // Manual mode: the in-browser mirror already rendered these metrics.
+      })
+    return () => {
+      stale = true
+    }
+  }, [metricsKey, metricsInput])
+  const metrics: CuriosityMetrics =
+    apiMetrics?.key === metricsKey ? apiMetrics.metrics : localMetrics
 
   // Play audio soundscapes
   const playAudioChime = (tone: 'clue' | 'success' | 'trap') => {

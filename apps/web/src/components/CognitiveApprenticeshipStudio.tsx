@@ -17,8 +17,7 @@
  * computes byte-identical values, so the substitution is never visible.
  */
 
-import React, { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   type ApprenticeshipMetrics,
   type ApprenticeshipStage,
@@ -72,23 +71,27 @@ export function CognitiveApprenticeshipStudio() {
   const [activeTab, setActiveTab] = useState<StudioTab>('traces')
   const [currentStage, setCurrentStage] = useState<ApprenticeshipStage>('modeling')
 
-  // Suite corpus via the hub API (GET); the bundled core constant is the
-  // offline fallback, so rendering is identical while the request is in
-  // flight or when the API is unreachable (manual mode, rule 9).
-  const suitesQuery = useQuery({
-    queryKey: ['apprenticeship', 'suites'],
-    queryFn: async (): Promise<Record<string, CognitiveApprenticeshipSuite>> => {
-      try {
-        const res = await apiGet<SuitesResponse>('/api/apprenticeship')
-        if (res?.suites && Object.keys(res.suites).length > 0) return res.suites
-      } catch {
-        // fall through to the bundled corpus
-      }
-      return CALIBRATED_APPRENTICESHIP_SUITES
-    },
-    staleTime: Infinity, // static content — fetch once per session
-  })
-  const suites = suitesQuery.data ?? CALIBRATED_APPRENTICESHIP_SUITES
+  // Suite corpus via the hub API (GET, static content — one-shot fetch per
+  // session); the bundled core constant is the initial state and the offline
+  // fallback, so rendering is identical while the request is in flight or
+  // when the API is unreachable (manual mode, rule 9). API-first effect
+  // fetch: the bundled corpus paints synchronously (SSR included).
+  const [suites, setSuites] = useState<Record<string, CognitiveApprenticeshipSuite>>(
+    CALIBRATED_APPRENTICESHIP_SUITES,
+  )
+  useEffect(() => {
+    let stale = false
+    apiGet<SuitesResponse>('/api/apprenticeship')
+      .then((res) => {
+        if (!stale && res?.suites && Object.keys(res.suites).length > 0) setSuites(res.suites)
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated suite corpus remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
 
   // Learning progress state
   const [observedTraceIds, setObservedTraceIds] = useState<Set<string>>(new Set())
@@ -223,19 +226,29 @@ export function CognitiveApprenticeshipStudio() {
     suite,
   ])
 
-  const metricsQuery = useQuery({
-    queryKey: ['apprenticeship', 'metrics', metricsRequest],
-    queryFn: async (): Promise<ApprenticeshipMetrics> => {
-      try {
-        const res = await apiSend<MetricsResponse>('/api/apprenticeship', 'POST', metricsRequest)
-        if (res?.metrics) return res.metrics
-      } catch {
-        // fall through to the offline engine computation
-      }
-      return localMetrics
-    },
-  })
-  const metrics = metricsQuery.data ?? localMetrics
+  // The metrics request is keyed on its serialized request body; a response
+  // is applied only while its key still matches the current request, so a
+  // stale in-flight response can never render for newer session state — the
+  // identical offline engine computation covers the in-flight window.
+  const [apiMetrics, setApiMetrics] = useState<{
+    key: string
+    metrics: ApprenticeshipMetrics
+  } | null>(null)
+  const metricsKey = JSON.stringify(metricsRequest)
+  useEffect(() => {
+    let stale = false
+    apiSend<MetricsResponse>('/api/apprenticeship', 'POST', metricsRequest)
+      .then((res) => {
+        if (!stale && res?.metrics) setApiMetrics({ key: metricsKey, metrics: res.metrics })
+      })
+      .catch(() => {
+        // Manual mode: the offline engine computation already rendered.
+      })
+    return () => {
+      stale = true
+    }
+  }, [metricsKey, metricsRequest])
+  const metrics = apiMetrics?.key === metricsKey ? apiMetrics.metrics : localMetrics
 
   // Reset Session
   const handleReset = () => {
@@ -337,24 +350,35 @@ export function CognitiveApprenticeshipStudio() {
     })
   }, [suite, unlockedPrincipleIds, currentStage])
 
-  const deckQuery = useQuery({
-    queryKey: ['apprenticeship', 'deck', suite.id, currentStage, extractedPrincipleIdList],
-    queryFn: async (): Promise<readonly FSRSTacitHeuristicCard[]> => {
-      try {
-        const res = await apiSend<DeckResponse>('/api/apprenticeship', 'POST', {
-          action: 'deck',
-          suiteId: suite.id,
-          stage: currentStage,
-          extractedPrincipleIds: extractedPrincipleIdList,
-        })
-        if (res?.cards) return res.cards
-      } catch {
-        // fall through to the offline builder below
-      }
-      return fallbackCards
-    },
-  })
-  const exportedCards = deckQuery.data ?? fallbackCards
+  // The deck request is keyed on suite | stage | extracted principles; a
+  // response is applied only while its key still matches, so a stale
+  // in-flight response can never render for a different deck — the offline
+  // builder above (which mirrors the engine byte-for-byte) covers the
+  // in-flight window and manual mode.
+  const [apiDeck, setApiDeck] = useState<{
+    key: string
+    cards: readonly FSRSTacitHeuristicCard[]
+  } | null>(null)
+  const deckKey = `${suite.id}|${currentStage}|${extractedPrincipleIdList.join(',')}`
+  useEffect(() => {
+    let stale = false
+    apiSend<DeckResponse>('/api/apprenticeship', 'POST', {
+      action: 'deck',
+      suiteId: suite.id,
+      stage: currentStage,
+      extractedPrincipleIds: extractedPrincipleIdList,
+    })
+      .then((res) => {
+        if (!stale && res?.cards) setApiDeck({ key: deckKey, cards: res.cards })
+      })
+      .catch(() => {
+        // Manual mode: the offline builder already rendered this deck.
+      })
+    return () => {
+      stale = true
+    }
+  }, [deckKey, suite, currentStage, extractedPrincipleIdList])
+  const exportedCards = apiDeck?.key === deckKey ? apiDeck.cards : fallbackCards
 
   const handleCopyDeck = () => {
     navigator.clipboard?.writeText(JSON.stringify(exportedCards, null, 2))

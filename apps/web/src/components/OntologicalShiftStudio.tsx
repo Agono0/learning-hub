@@ -18,7 +18,6 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   CALIBRATED_MISCONCEPTION_SCENARIOS,
   CANONICAL_ATTRIBUTE_CATALOG,
@@ -90,25 +89,30 @@ export function OntologicalShiftStudio() {
   )
   const [tab, setTab] = useState<StudioTab>('attribute_crucible')
 
-  // Scenario/attribute/p-prim corpora via the hub API (GET); the bundled core
-  // constants are the offline fallback, so rendering is identical while the
+  // Scenario/attribute/p-prim corpora via the hub API (GET, static content —
+  // one-shot fetch per session); the bundled core constants are the initial
+  // state and the offline fallback, so rendering is identical while the
   // request is in flight or when the API is unreachable (manual mode, rule 9).
-  const catalogQuery = useQuery({
-    queryKey: ['conceptual-change', 'catalog'],
-    queryFn: async (): Promise<CatalogResponse> => {
-      try {
-        const res = await apiGet<CatalogResponse>('/api/conceptual-change')
-        if (res?.scenarios?.length) return res
-      } catch {
-        // fall through to the bundled corpus
-      }
-      return FALLBACK_CATALOG
-    },
-    staleTime: Infinity, // static content — fetch once per session
-  })
-  const scenarios = catalogQuery.data?.scenarios ?? CALIBRATED_MISCONCEPTION_SCENARIOS
-  const attributeCatalog = catalogQuery.data?.attributeCatalog ?? CANONICAL_ATTRIBUTE_CATALOG
-  const pprimCatalog = catalogQuery.data?.pprimCatalog ?? CANONICAL_PPRIM_CATALOG
+  // API-first effect fetch: the bundled corpus paints synchronously (SSR).
+  const [catalog, setCatalog] = useState<CatalogResponse>(FALLBACK_CATALOG)
+  useEffect(() => {
+    let stale = false
+    apiGet<CatalogResponse>('/api/conceptual-change')
+      .then((res) => {
+        if (!stale && res?.scenarios?.length && res.attributeCatalog && res.pprimCatalog) {
+          setCatalog(res)
+        }
+      })
+      .catch(() => {
+        // Manual mode: the bundled calibrated corpus remains.
+      })
+    return () => {
+      stale = true
+    }
+  }, [])
+  const scenarios = catalog.scenarios
+  const attributeCatalog = catalog.attributeCatalog
+  const pprimCatalog = catalog.pprimCatalog
 
   const scenario: ConceptualMisconceptionScenario = useMemo(() => {
     return scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0]
@@ -241,32 +245,44 @@ export function OntologicalShiftStudio() {
     }
   }, [currentAttributeList, scenario, selectedBranch, posnerConditions])
 
-  const diagnosisQuery = useQuery({
-    queryKey: [
-      'conceptual-change',
-      'diagnose',
-      scenario.id,
-      selectedAttributes,
-      selectedBranch,
-      posnerConditions,
-    ],
-    queryFn: async (): Promise<OntologicalDiagnosisResult> => {
-      try {
-        const res = await apiSend<DiagnoseResponse>('/api/conceptual-change', 'POST', {
-          action: 'diagnose',
-          scenarioId: scenario.id,
-          selectedAttributes,
-          learnerBranch: selectedBranch,
-          posnerConditions,
-        })
-        if (res?.diagnosis) return res.diagnosis
-      } catch {
-        // fall through to the offline engine chain
-      }
-      return localDiagnosis
-    },
+  // The diagnose request is keyed on its serialized inputs (scenario |
+  // attributes | branch | Posner conditions); a response is applied only
+  // while its key still matches the current inputs, so a stale in-flight
+  // response can never render for newer learner state — the identical
+  // offline engine chain above covers the in-flight window.
+  const [apiDiagnosis, setApiDiagnosis] = useState<{
+    key: string
+    diagnosis: OntologicalDiagnosisResult
+  } | null>(null)
+  const diagnosisKey = JSON.stringify({
+    scenarioId: scenario.id,
+    selectedAttributes,
+    selectedBranch,
+    posnerConditions,
   })
-  const diagnosisResult = diagnosisQuery.data ?? localDiagnosis
+  useEffect(() => {
+    let stale = false
+    apiSend<DiagnoseResponse>('/api/conceptual-change', 'POST', {
+      action: 'diagnose',
+      scenarioId: scenario.id,
+      selectedAttributes,
+      learnerBranch: selectedBranch,
+      posnerConditions,
+    })
+      .then((res) => {
+        if (!stale && res?.diagnosis) {
+          setApiDiagnosis({ key: diagnosisKey, diagnosis: res.diagnosis })
+        }
+      })
+      .catch(() => {
+        // Manual mode: the offline engine chain already rendered.
+      })
+    return () => {
+      stale = true
+    }
+  }, [diagnosisKey, scenario, selectedAttributes, selectedBranch, posnerConditions])
+  const diagnosisResult =
+    apiDiagnosis?.key === diagnosisKey ? apiDiagnosis.diagnosis : localDiagnosis
   const syntheticCompromiseRisk = diagnosisResult.syntheticCompromiseRisk
   const conceptualShiftReadiness = diagnosisResult.conceptualShiftReadiness
 
@@ -276,23 +292,33 @@ export function OntologicalShiftStudio() {
     return generateFSRSConceptualShiftCards(scenario, diagnosisResult)
   }, [scenario, diagnosisResult])
 
-  const cardsQuery = useQuery({
-    queryKey: ['conceptual-change', 'cards', scenario.id, diagnosisResult],
-    queryFn: async (): Promise<FSRSConceptualShiftCard[]> => {
-      try {
-        const res = await apiSend<CardsResponse>('/api/conceptual-change', 'POST', {
-          action: 'cards',
-          scenarioId: scenario.id,
-          diagnosis: diagnosisResult,
-        })
-        if (res?.cards) return res.cards
-      } catch {
-        // fall through to the offline engine call
-      }
-      return localShiftCards
-    },
-  })
-  const shiftCards = cardsQuery.data ?? localShiftCards
+  // The cards request is keyed on scenario | diagnosis; a response is applied
+  // only while its key still matches, so a stale in-flight response can never
+  // render for a different diagnosis — the direct engine call above covers
+  // the in-flight window and manual mode.
+  const [apiCards, setApiCards] = useState<{
+    key: string
+    cards: FSRSConceptualShiftCard[]
+  } | null>(null)
+  const cardsKey = `${scenario.id}|${JSON.stringify(diagnosisResult)}`
+  useEffect(() => {
+    let stale = false
+    apiSend<CardsResponse>('/api/conceptual-change', 'POST', {
+      action: 'cards',
+      scenarioId: scenario.id,
+      diagnosis: diagnosisResult,
+    })
+      .then((res) => {
+        if (!stale && Array.isArray(res.cards)) setApiCards({ key: cardsKey, cards: res.cards })
+      })
+      .catch(() => {
+        // Manual mode: the offline engine call already rendered this deck.
+      })
+    return () => {
+      stale = true
+    }
+  }, [cardsKey, scenario, diagnosisResult])
+  const shiftCards = apiCards?.key === cardsKey ? apiCards.cards : localShiftCards
 
   // Handler: Select an attribute
   const handleSelectAttribute = (
