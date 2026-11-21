@@ -26,7 +26,7 @@ import {
   detectSyntheticCompromiseRisk,
   generateFSRSConceptualShiftCards,
 } from '@learning-hub/core/conceptual-change'
-import { Badge, Button, OntologicalShiftHUD, Panel } from '@/ui'
+import { Badge, Button, IconButton, OntologicalShiftHUD, Panel } from '@/ui'
 import { getSharedAudioContext } from '@/lib/audio-graph'
 import { hapticHeavy, hapticLight } from '../platform/haptics'
 import {
@@ -693,16 +693,18 @@ export function OntologicalShiftStudio() {
                 >
                   {isSimRunning ? 'Pause Sim' : 'Run Micro-Sim'}
                 </button>
-                <button
-                  type="button"
+                <IconButton
+                  label="Reset micro-simulation"
+                  size="sm"
+                  variant="bare"
                   onClick={() => {
                     setSimStep(0)
                     setIsSimRunning(false)
                   }}
-                  className="p-1 rounded-lg text-xs bg-white/10 hover:bg-white/20 text-white transition-all"
+                  className="rounded-lg text-white bg-white/10 hover:bg-white/20"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                </button>
+                </IconButton>
               </div>
             </div>
 

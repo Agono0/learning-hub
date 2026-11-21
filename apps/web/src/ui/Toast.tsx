@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react'
 import { cx } from './cx'
+import { IconButton } from './IconButton'
 
 export type ToastTone = 'neutral' | 'success' | 'warning' | 'danger'
 
@@ -145,14 +146,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            <button
-              type="button"
+            <IconButton
+              label="Dismiss notification"
               onClick={() => dismiss(item.id)}
-              aria-label="Dismiss notification"
-              className="-m-1 rounded-md p-2 text-faint transition-colors hover:bg-neutral-100 hover:text-neutral-600 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 dark:hover:bg-(--hub-panel-2) dark:hover:text-neutral-200"
+              className="-m-1 rounded-md"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </IconButton>
           </div>
         ))}
       </div>

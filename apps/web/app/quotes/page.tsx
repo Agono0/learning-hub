@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Quote, Search, Star } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { IconButton, PageHeader } from '@/ui'
 
 interface QuoteRow {
   id: number
@@ -194,11 +194,11 @@ export default function QuotesPage() {
                     </span>
                   ))}
                 </div>
-                <button onClick={() => toggleFavorite.mutate(q)} aria-label="favorite">
+                <IconButton label="favorite" onClick={() => toggleFavorite.mutate(q)}>
                   <Star
                     className={`h-4 w-4 ${q.favorite ? 'fill-amber-400 text-status-warning-text' : 'text-neutral-600'}`}
                   />
-                </button>
+                </IconButton>
               </div>
             </div>
           </div>

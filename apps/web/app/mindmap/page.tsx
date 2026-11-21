@@ -12,7 +12,7 @@ import { Network, Plus, Sparkles, FileText, Trash2, Save, Move3d, Layers } from 
 import { parseMarkdownOutline, type MindmapData, type MindmapNode } from '@learning-hub/core/visual'
 import { apiGet, apiSend } from '@/lib/transport'
 import { InteractiveMindmapStudio } from '@/components/InteractiveMindmapStudio'
-import { Button, Callout, PageHeader, Panel, Skeleton } from '@/ui'
+import { Button, Callout, IconButton, PageHeader, Panel, Skeleton } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 
 interface MindmapRow {
@@ -391,17 +391,16 @@ export default function MindmapPage() {
                     }`}
                   >
                     <span className="truncate flex-1">{m.title}</span>
-                    <button
-                      type="button"
+                    <IconButton
+                      label="Delete map"
                       onClick={(e) => {
                         e.stopPropagation()
                         deleteMutation.mutate(m.id)
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-danger-text"
-                      title="Delete map"
+                      className="hover:text-danger-text"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </IconButton>
                   </div>
                 )
               })}

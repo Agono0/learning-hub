@@ -20,6 +20,7 @@ import {
   VolumeX,
   Zap,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   ARCHITECTURAL_THEMES,
   PalaceReviewSession,
@@ -701,42 +702,43 @@ export function MemoryPalace3DStudio({
           )}
 
           {/* Sound Toggle */}
-          <button
-            type="button"
+          <IconButton
+            label="Toggle Spatial Audio"
+            size="sm"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
-            title="Toggle Spatial Audio"
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white"
           >
             {soundEnabled ? (
               <Volume2 className="h-4 w-4 text-indigo-400" />
             ) : (
               <VolumeX className="h-4 w-4" />
             )}
-          </button>
+          </IconButton>
 
           {/* Reset Camera */}
-          <button
-            type="button"
+          <IconButton
+            label="Reset Position"
+            size="sm"
             onClick={() => {
               setCameraPos([0, 1.6, 5])
               setCameraYaw(0)
               setIsTourActive(false)
               setTourProgress(0)
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
-            title="Reset Position"
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white"
           >
             <RotateCcw className="h-4 w-4" />
-          </button>
+          </IconButton>
 
           {/* Fullscreen Button */}
-          <button
-            type="button"
+          <IconButton
+            label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            size="sm"
             onClick={() => setIsFullscreen((prev) => !prev)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -787,39 +789,39 @@ export function MemoryPalace3DStudio({
 
         {/* On-Screen Mobile / Desktop Walking Navigation Pad */}
         <div className="absolute bottom-4 left-4 z-20 flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-slate-900/80 p-2 backdrop-blur-md">
-          <button
-            type="button"
+          <IconButton
+            label="Walk Forward (W)"
+            size="sm"
             onClick={() => handleWalkButton('forward')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
-            title="Walk Forward (W)"
+            className="rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
           >
             <ArrowUp className="h-4 w-4" />
-          </button>
+          </IconButton>
           <div className="flex items-center gap-1">
-            <button
-              type="button"
+            <IconButton
+              label="Strafe Left (A)"
+              size="sm"
               onClick={() => handleWalkButton('left')}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
-              title="Strafe Left (A)"
+              className="rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+            </IconButton>
+            <IconButton
+              label="Walk Backward (S)"
+              size="sm"
               onClick={() => handleWalkButton('backward')}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
-              title="Walk Backward (S)"
+              className="rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
             >
               <ArrowDown className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
+            </IconButton>
+            <IconButton
+              label="Strafe Right (D)"
+              size="sm"
               onClick={() => handleWalkButton('right')}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
-              title="Strafe Right (D)"
+              className="rounded-lg bg-white/5 text-secondary hover:bg-white/10 hover:text-white"
             >
               <ArrowRight className="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
         </div>
       </div>

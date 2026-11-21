@@ -6,7 +6,7 @@ import { CalendarCheck, Coffee, Link2, PartyPopper, Plus, Trash2 } from 'lucide-
 import { DOPAMINE_MENU, type DopamineType } from '@learning-hub/core/src/habits'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { IconButton, PageHeader } from '@/ui'
 
 interface Habit {
   id: number
@@ -137,22 +137,24 @@ export default function HabitsPage() {
                 <span className="w-5 text-center text-xs text-neutral-600">
                   {i === 0 ? '┌' : '└'}
                 </span>
-                <button
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                <IconButton
+                  label={`check in ${h.name}`}
+                  size="sm"
+                  variant="bare"
+                  onClick={() => checkin.mutate(h.id)}
+                  disabled={checkin.isPending}
+                  className={`shrink-0 rounded-full border ${
                     h.todayDone
                       ? `border-emerald-500 bg-emerald-500/20 text-status-success-text ${celebrated === h.id ? 'celebrate' : ''}`
                       : 'border-neutral-300 text-tertiary hover:border-indigo-400 dark:border-(--hub-border)'
                   }`}
-                  onClick={() => checkin.mutate(h.id)}
-                  disabled={checkin.isPending}
-                  aria-label={`check in ${h.name}`}
                 >
                   {h.todayDone ? (
                     <PartyPopper className="h-4 w-4" />
                   ) : (
                     <Coffee className="h-4 w-4" />
                   )}
-                </button>
+                </IconButton>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-neutral-700 dark:text-neutral-200">
                     {h.anchor ? (
@@ -177,13 +179,13 @@ export default function HabitsPage() {
                     {h.solidifying.stage} · {h.solidifying.days}d
                   </p>
                 </div>
-                <button
-                  className="btn-ghost px-2 text-neutral-600"
+                <IconButton
+                  label={`delete ${h.name}`}
                   onClick={() => removeHabit.mutate(h.id)}
-                  aria-label={`delete ${h.name}`}
+                  className="text-neutral-600"
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </IconButton>
               </li>
             ))}
           </ul>

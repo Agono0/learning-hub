@@ -7,7 +7,7 @@ import { HelpCircle, Mic, MicOff, RefreshCw, Send, Volume2, VolumeX } from 'luci
 import { apiGet, apiSend } from '@/lib/transport'
 import { hapticLight, hapticWarning } from '@/platform/haptics'
 import { listenForSpeech, playChime, speakText, stopSpeaking } from '@/lib/audio-engine'
-import { Button, Callout, Markdown, PageHeader, Panel, useToast } from '@/ui'
+import { Button, Callout, IconButton, Markdown, PageHeader, Panel, useToast } from '@/ui'
 
 interface DialogueTurn {
   role: 'user' | 'assistant'
@@ -347,25 +347,25 @@ function VoiceTutorContent() {
                     : 'bg-indigo-500/10'
               }`}
             >
-              <button
-                type="button"
+              <IconButton
+                label="Click to speak your answer"
                 onClick={() => void triggerMic()}
                 disabled={isPending || isSpeaking}
-                className={`flex h-20 w-20 items-center justify-center rounded-full shadow-lg transition-transform active:scale-95 ${
+                variant="bare"
+                className={`h-20 w-20 rounded-full shadow-lg ${
                   isListening
                     ? 'bg-rose-500 text-white'
                     : isSpeaking
                       ? 'bg-emerald-500 text-white'
                       : 'bg-indigo-600 text-white hover:bg-indigo-500'
                 }`}
-                title="Click to speak your answer"
               >
                 {isListening ? (
                   <MicOff className="h-8 w-8 animate-pulse" />
                 ) : (
                   <Mic className="h-8 w-8" />
                 )}
-              </button>
+              </IconButton>
             </div>
             <div className="mt-2 text-xs font-medium text-tertiary">
               {isListening

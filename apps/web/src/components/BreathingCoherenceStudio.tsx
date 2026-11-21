@@ -17,6 +17,7 @@ import {
   Wind,
   Zap,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   BREATHING_PROTOCOLS,
   calculateHrvMetrics,
@@ -288,22 +289,20 @@ export function BreathingCoherenceStudio({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <IconButton
+            label={soundEnabled ? 'Mute Chimes' : 'Enable Chimes'}
             onClick={() => setSoundEnabled((v) => !v)}
-            title={soundEnabled ? 'Mute Chimes' : 'Enable Chimes'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
+            className="rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white"
           >
             {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <IconButton
+            label={isFullScreen ? 'Exit Full Screen' : 'Full Screen Focus'}
             onClick={toggleFullScreen}
-            title={isFullScreen ? 'Exit Full Screen' : 'Full Screen Focus'}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
+            className="rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white"
           >
             {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </button>
+          </IconButton>
         </div>
       </div>
 

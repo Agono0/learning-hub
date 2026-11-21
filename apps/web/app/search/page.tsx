@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { EmptyState, PageHeader, Panel } from '@/ui'
+import { EmptyState, IconButton, PageHeader, Panel } from '@/ui'
 
 interface SearchHit {
   kind: string
@@ -158,17 +158,17 @@ function SearchPageInner() {
             aria-label="Search query"
           />
           {query && (
-            <button
+            <IconButton
+              label="Clear search"
               onClick={() => {
                 setQuery('')
                 setDebounced('')
                 setNl(null)
               }}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-faint hover:text-neutral-700 dark:hover:text-neutral-200"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md"
             >
               <X className="h-4 w-4" />
-            </button>
+            </IconButton>
           )}
         </div>
 

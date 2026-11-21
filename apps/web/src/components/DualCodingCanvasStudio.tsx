@@ -22,6 +22,7 @@ import {
   Square,
   X,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import { analyzeDualCoding, type DualCodingAnalysis } from '@learning-hub/core/dualcoding'
 import { apiGet, apiSend } from '@/lib/transport'
 import { hapticLight, hapticMedium } from '@/platform/haptics'
@@ -512,14 +513,13 @@ export function DualCodingCanvasStudio({
         </div>
 
         {onClose && (
-          <button
-            type="button"
+          <IconButton
+            label="Close studio"
             onClick={onClose}
-            className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint dark:hover:text-neutral-200 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-            aria-label="Close studio"
+            className="rounded-lg hover:bg-neutral-100 hover:text-neutral-700 dark:text-faint dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
             <X className="h-5 w-5" />
-          </button>
+          </IconButton>
         )}
       </div>
 
@@ -645,58 +645,62 @@ export function DualCodingCanvasStudio({
           <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-700">
             {/* Tools */}
             <div className="flex items-center gap-1">
-              <button
-                type="button"
+              <IconButton
+                label="Pen Tool"
+                size="sm"
+                variant="bare"
                 onClick={() => setActiveTool('pen')}
-                className={`p-1.5 rounded-lg transition ${
+                className={`rounded-lg ${
                   activeTool === 'pen'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
                     : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Pen Tool"
-                aria-label="Pen Tool"
               >
                 <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
+              </IconButton>
+              <IconButton
+                label="Rectangle Box"
+                size="sm"
+                variant="bare"
                 onClick={() => setActiveTool('rect')}
-                className={`p-1.5 rounded-lg transition ${
+                className={`rounded-lg ${
                   activeTool === 'rect'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                     : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Rectangle Box"
-                aria-label="Rectangle Box"
               >
                 <Square className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
+              </IconButton>
+              <IconButton
+                label="Circle Node"
+                size="sm"
+                variant="bare"
                 onClick={() => setActiveTool('circle')}
-                className={`p-1.5 rounded-lg transition ${
+                className={`rounded-lg ${
                   activeTool === 'circle'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                     : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Circle Node"
-                aria-label="Circle Node"
               >
                 <Circle className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
+              </IconButton>
+              <IconButton
+                label="Arrow Pointer"
+                size="sm"
+                variant="bare"
                 onClick={() => setActiveTool('arrow')}
-                className={`p-1.5 rounded-lg transition ${
+                className={`rounded-lg ${
                   activeTool === 'arrow'
                     ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-400 shadow-2xs'
                     : 'text-tertiary hover:text-neutral-700 dark:text-faint'
                 }`}
                 title="Arrow Pointer"
-                aria-label="Arrow Pointer"
               >
                 <MoveUpRight className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
 
             {/* Colors */}
@@ -720,16 +724,16 @@ export function DualCodingCanvasStudio({
 
             {/* Actions */}
             <div className="flex items-center gap-1">
-              <button
-                type="button"
+              <IconButton
+                label="Undo last element"
+                size="sm"
+                title="Undo"
                 onClick={handleUndo}
                 disabled={elements.length === 0}
-                className="p-1.5 text-tertiary hover:text-neutral-700 dark:text-faint disabled:opacity-40 rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-700/50 transition"
-                title="Undo"
-                aria-label="Undo last element"
+                className="rounded-lg hover:bg-neutral-200/50 hover:text-neutral-700 dark:text-faint dark:hover:bg-neutral-700/50"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-              </button>
+              </IconButton>
               <button
                 type="button"
                 onClick={handleClear}

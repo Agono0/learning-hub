@@ -24,6 +24,7 @@ import {
   Sparkles,
   Star,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   evaluateFeynmanExplanation,
   type FeynmanDiagnosticReport,
@@ -263,12 +264,14 @@ export function FeynmanSocraticStudio({
           </div>
           <div className="flex items-center gap-1.5 pt-1">
             {[1, 2, 3, 4, 5].map((star) => (
-              <button
+              <IconButton
                 key={star}
-                type="button"
-                onClick={() => setInitialConfidence(star)}
-                className="p-1 text-secondary dark:text-neutral-600 hover:text-status-warning-text transition"
+                label={`${star} star${star === 1 ? '' : 's'} confidence`}
                 title={`${star} stars`}
+                size="sm"
+                variant="bare"
+                onClick={() => setInitialConfidence(star)}
+                className="text-secondary dark:text-neutral-600 hover:text-status-warning-text"
               >
                 <Star
                   className={`h-5 w-5 ${
@@ -277,7 +280,7 @@ export function FeynmanSocraticStudio({
                       : 'text-secondary dark:text-neutral-600'
                   }`}
                 />
-              </button>
+              </IconButton>
             ))}
           </div>
         </div>

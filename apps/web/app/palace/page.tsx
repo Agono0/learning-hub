@@ -14,7 +14,7 @@ import { Box, Eye, EyeOff, Map, MapPin, Play, Plus, Save, Trash2, X } from 'luci
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { palaceWalkOrder } from '@learning-hub/core/memory'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Button, Callout, PageHeader, Skeleton } from '@/ui'
+import { Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
 
 interface PalaceRow {
   id: number
@@ -212,13 +212,13 @@ export default function MemoryPalacePage() {
                   {p.palace.name}
                   <span className="ml-2 text-xs text-tertiary">{p.items.length} loci</span>
                 </button>
-                <button
-                  className="opacity-0 hover:text-danger-text group-hover:opacity-100"
+                <IconButton
+                  label="Delete palace"
                   onClick={() => deletePalace.mutate(p.palace.id)}
-                  title="delete"
+                  className="hover:text-danger-text"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                </IconButton>
               </div>
             ))}
             {list.data && list.data.palaces.length === 0 && (
@@ -296,12 +296,13 @@ export default function MemoryPalacePage() {
                           </option>
                         ))}
                       </select>
-                      <button
-                        className="btn-ghost ml-auto px-2 hover:text-danger-text"
+                      <IconButton
+                        label={`Remove locus ${i + 1}`}
                         onClick={() => setItems(items.filter((_, j) => j !== i))}
+                        className="ml-auto hover:text-danger-text"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </IconButton>
                     </div>
                     <input
                       className="input mt-2"

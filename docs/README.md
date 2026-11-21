@@ -21,6 +21,7 @@ Everything worth reading, in one place. Start with [`AGENTS.md`](../AGENTS.md)
 | [adr/0003-curriculum-format-lhcf.md](adr/0003-curriculum-format-lhcf.md)   | Why the format is a public contract                                      |
 | Both curriculum docs are **generated** — `npm run docs:curriculum` — and a |
 | drift test fails if they go stale.                                         |
+| ------------------------------------------------------------------------   | ------------------------------------------------------------------------ |
 
 ## Engineering reference
 
@@ -31,12 +32,9 @@ Everything worth reading, in one place. Start with [`AGENTS.md`](../AGENTS.md)
 | [contracts.md](contracts.md)               | The stable interface contracts (deps, repos, handlers, transport, AI, plugins) |
 | [tech-debt.md](tech-debt.md)               | The Architect's prioritized, evidence-backed debt register                     |
 | [adr/](adr/README.md)                      | Architecture decision records (one codebase, migrations, LHCF)                 |
-| Doc                                        | What it is                                                                     |
 | ------------------------------------------ | --------------------------------------------------------------                 |
-| [ENGINE-REFERENCE.md](ENGINE-REFERENCE.md) | API details: review pipeline, repos, event bus                                 |
-| [TEST_INFRA.md](TEST_INFRA.md)             | The test pyramid: unit, dual-driver DB, opaque-box E2E tiers                   |
 | [search.md](search.md)                     | Search: FTS5 surfaces, card corpus, LIKE fallback, ⌘K recents                  |
-| [adr/](adr/README.md)                      | Architecture decision records (one codebase, migrations, LHCF)                 |
+| [accessibility.md](accessibility.md)       | The a11y standards: 44px law, focus ring, skip link, motion                    |
 
 ## Plans
 

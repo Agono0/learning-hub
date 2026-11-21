@@ -31,7 +31,7 @@ import {
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
-import { Button, PageHeader, SelectField, Toggle, useToast } from '@/ui'
+import { Button, IconButton, PageHeader, SelectField, Toggle, useToast } from '@/ui'
 import { SoundscapeBar } from '@/components/SoundscapeBar'
 import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
@@ -592,7 +592,7 @@ export default function FocusPage() {
           <div className="flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-100/50 p-1 dark:border-(--hub-border) dark:bg-(--hub-panel)">
             <button
               type="button"
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center ${
                 activeTab === 'standard'
                   ? 'bg-white shadow text-neutral-900 dark:bg-(--hub-panel-2) dark:text-white'
                   : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -603,7 +603,7 @@ export default function FocusPage() {
             </button>
             <button
               type="button"
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                 activeTab === 'max'
                   ? 'bg-indigo-600 text-white shadow'
                   : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
@@ -997,7 +997,7 @@ export default function FocusPage() {
                       <button
                         key={m}
                         type="button"
-                        className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition ${
+                        className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition inline-flex items-center focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                           maxMinutes === m
                             ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
                             : 'border-neutral-200 text-faint hover:border-neutral-300 dark:border-(--hub-border)'
@@ -1060,12 +1060,13 @@ export default function FocusPage() {
                           className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
                         >
                           {d}
-                          <button
-                            type="button"
+                          <IconButton
+                            label={`Remove allowed domain ${d}`}
                             onClick={() => setExtraDomains(extraDomains.filter((x) => x !== d))}
+                            className="hover:text-danger-text"
                           >
-                            <X className="h-3 w-3 hover:text-danger-text" />
-                          </button>
+                            <X className="h-3 w-3" />
+                          </IconButton>
                         </span>
                       ))}
                     </div>
@@ -1097,12 +1098,13 @@ export default function FocusPage() {
                           className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
                         >
                           {a}
-                          <button
-                            type="button"
+                          <IconButton
+                            label={`Remove allowed app ${a}`}
                             onClick={() => setExtraApps(extraApps.filter((x) => x !== a))}
+                            className="hover:text-danger-text"
                           >
-                            <X className="h-3 w-3 hover:text-danger-text" />
-                          </button>
+                            <X className="h-3 w-3" />
+                          </IconButton>
                         </span>
                       ))}
                     </div>

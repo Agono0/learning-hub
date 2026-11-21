@@ -217,7 +217,7 @@
   /* Semantic text ramp — LIGHT values (on --n-50 / white panels). The
      tertiary/faint steps mix extra black into the ramp steps so every palette
      (incl. the light sunset/blossom tints) clears WCAG AA 4.5:1; locked by
-     apps/web/tests/token-contrast.test.ts. */
+     apps/web/tests/design-token-contrast.test.ts (both modes, every palette). */
   --text-strong: var(--n-900);
   --text-body: var(--n-800);
   --text-secondary: color-mix(in oklab, var(--n-700) 88%, black 12%);
@@ -469,6 +469,11 @@ body {
    0.96-scale patterns — docs/ui-design-signature.md §5). */
 .animate-fade-in {
   animation: fade-in var(--duration-base) var(--ease-enter) both;
+}
+/* Fast variant for ephemeral UI (InfoHint bubbles) — enters instantly per the
+   motion law ("ephemeral UI enters instantly"), still token-driven. */
+.animate-fade-in-fast {
+  animation: fade-in var(--duration-fast) var(--ease-enter) both;
 }
 @keyframes fade-in-up {
   from {

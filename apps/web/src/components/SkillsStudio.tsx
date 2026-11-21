@@ -39,7 +39,7 @@ import {
   type SkillExecutionResult,
 } from '@learning-hub/core/skills'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, Callout, Markdown, Panel, SkillsHUD } from '@/ui'
+import { Badge, Button, Callout, IconButton, Markdown, Panel, SkillsHUD } from '@/ui'
 
 const CATEGORIES: Array<{ id: 'all' | SkillCategory; label: string }> = [
   { id: 'all', label: 'All Skills' },
@@ -539,14 +539,15 @@ export function SkillsStudio() {
 
                       <div className="rounded-lg bg-black/40 p-2 text-[10px] font-mono text-status-success-text border border-white/5 flex items-center justify-between">
                         <span>Test: {ticket.testRecipe}</span>
-                        <button
-                          type="button"
+                        <IconButton
+                          label="Copy test recipe"
+                          size="sm"
+                          variant="bare"
                           onClick={() => handleCopy(ticket.testRecipe)}
-                          className="text-tertiary hover:text-white"
-                          title="Copy test recipe"
+                          className="hover:text-white"
                         >
                           <Copy className="h-3 w-3" />
-                        </button>
+                        </IconButton>
                       </div>
                     </div>
                   ))}

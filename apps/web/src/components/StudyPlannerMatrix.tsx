@@ -22,7 +22,7 @@ import {
   Target,
   Trash2,
 } from 'lucide-react'
-import { Badge, Button, Panel } from '@/ui'
+import { Badge, Button, IconButton, Panel } from '@/ui'
 
 export interface PlannerCourse {
   courseId: number
@@ -171,14 +171,13 @@ export function StudyPlannerMatrix({
                 <Download className="h-3.5 w-3.5" />
                 Export 8-Week .ICS
               </a>
-              <button
-                type="button"
+              <IconButton
+                label="Remove Plan"
                 onClick={onRemovePlan}
-                className="p-1.5 text-faint hover:text-danger-text dark:hover:text-danger-text rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
-                title="Remove Plan"
+                className="rounded-lg hover:bg-rose-50 hover:text-danger-text dark:hover:bg-rose-950/30 dark:hover:text-danger-text"
               >
                 <Trash2 className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
           ) : null}
         </div>
@@ -265,22 +264,24 @@ export function StudyPlannerMatrix({
                     <div className="pt-2 mt-2 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between text-[10px] text-tertiary">
                       <span>Tune day:</span>
                       <div className="flex items-center gap-1">
-                        <button
-                          type="button"
+                        <IconButton
+                          label="-15 mins"
+                          size="sm"
+                          variant="bare"
                           onClick={() => adjustDayMinutes(dayIndex, -15)}
-                          className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-faint"
-                          title="-15 mins"
+                          className="rounded hover:bg-neutral-100 text-neutral-600 dark:bg-transparent dark:hover:bg-neutral-800 dark:text-faint"
                         >
                           <Minus className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
+                        </IconButton>
+                        <IconButton
+                          label="+15 mins"
+                          size="sm"
+                          variant="bare"
                           onClick={() => adjustDayMinutes(dayIndex, 15)}
-                          className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-faint"
-                          title="+15 mins"
+                          className="rounded hover:bg-neutral-100 text-neutral-600 dark:bg-transparent dark:hover:bg-neutral-800 dark:text-faint"
                         >
                           <Plus className="h-3 w-3" />
-                        </button>
+                        </IconButton>
                       </div>
                     </div>
                   ) : null}

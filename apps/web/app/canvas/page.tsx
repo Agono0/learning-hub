@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { IconButton, PageHeader } from '@/ui'
 import { DualCodingAnalyzer } from '@/components/DualCodingAnalyzer'
 
 interface CanvasItem {
@@ -309,8 +309,8 @@ export default function CanvasPage() {
                   />
                   <div className="flex justify-between text-[10px] text-faint">
                     <span>{item.kind}</span>
-                    <button
-                      className="hover:text-danger-text"
+                    <IconButton
+                      label={`Delete node ${item.text.slice(0, 24)}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         setItems((xs) => xs.filter((x) => x.id !== item.id))
@@ -318,9 +318,10 @@ export default function CanvasPage() {
                           es.filter((e2) => e2.from !== item.id && e2.to !== item.id),
                         )
                       }}
+                      className="hover:text-danger-text"
                     >
                       <Trash2 className="h-3 w-3" />
-                    </button>
+                    </IconButton>
                   </div>
                 </div>
               ))}
@@ -344,12 +345,13 @@ export default function CanvasPage() {
                     <span className="flex-1 truncate">
                       {from} → {to}
                     </span>
-                    <button
-                      className="hover:text-danger-text"
+                    <IconButton
+                      label={`Delete edge ${from} to ${to}`}
                       onClick={() => setEdges((es) => es.filter((x) => x.id !== e.id))}
+                      className="hover:text-danger-text"
                     >
                       <Trash2 className="h-3 w-3" />
-                    </button>
+                    </IconButton>
                   </div>
                 )
               })}

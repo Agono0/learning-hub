@@ -30,7 +30,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { IconButton, PageHeader } from '@/ui'
 import { getDeviceIdentity } from '@/lib/device'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -941,9 +941,9 @@ export default function BackupPage() {
               <h2 className="flex items-center gap-2 text-lg font-bold">
                 <GitMerge className="h-5 w-5 text-indigo-400" /> Import backup snapshot
               </h2>
-              <button className="btn-ghost px-2" onClick={() => setPendingBackup(null)}>
+              <IconButton label="Cancel import" onClick={() => setPendingBackup(null)}>
                 <X className="h-4 w-4" />
-              </button>
+              </IconButton>
             </div>
 
             {pendingBackup.encrypted ? (

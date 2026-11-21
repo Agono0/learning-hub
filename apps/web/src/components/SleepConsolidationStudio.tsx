@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Bed, Eye, EyeOff, Moon, Play, ShieldCheck, Sliders, Sparkles, Square } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   calculateSwsWindows,
   earconPartials,
@@ -341,11 +342,13 @@ export function SleepConsolidationStudio({
                   className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 px-3.5 py-2.5 text-xs transition-colors hover:bg-white/10"
                 >
                   <div className="flex items-center gap-2.5">
-                    <button
-                      type="button"
+                    <IconButton
+                      label={isPlaying ? 'Playing earcon' : 'Preview earcon'}
+                      size="sm"
+                      variant="bare"
                       onClick={() => handleAuditionEarcon(cue.cardId, cue.earcon)}
                       className={cx(
-                        'flex h-7 w-7 items-center justify-center rounded-lg border transition-all active:scale-95',
+                        'rounded-lg border',
                         isPlaying
                           ? 'bg-emerald-500/20 border-emerald-500 text-status-success-text'
                           : 'bg-white/10 border-white/10 text-secondary hover:text-white',
@@ -356,7 +359,7 @@ export function SleepConsolidationStudio({
                       ) : (
                         <Play className="h-3 w-3 fill-current" />
                       )}
-                    </button>
+                    </IconButton>
                     <div>
                       <p className="font-medium line-clamp-1">
                         {cue.frontText || `Card #${cue.cardId}`}

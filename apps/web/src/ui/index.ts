@@ -7,6 +7,7 @@
  */
 export { Button, type ButtonProps } from './Button'
 export { IconButton, type IconButtonProps } from './IconButton'
+export { InfoHint, type InfoHintProps } from './InfoHint'
 export { Menu, type MenuItem, type MenuProps } from './Menu'
 export { Panel, type PanelProps } from './Panel'
 export { PageHeader, type PageHeaderProps } from './PageHeader'
@@ -111,3 +112,20 @@ export { PermissionGate } from './PermissionGate'
 export { ErrorBoundary } from './ErrorBoundary'
 export { OfflineBanner } from './OfflineBanner'
 export { CognitiveLoadFlowHUD, type CognitiveLoadFlowHUDProps } from './CognitiveLoadFlowHUD'
+
+// ── WCAG 2.2 AAA Accessibility Kit ──
+export { FocusTrap, type FocusTrapProps } from './FocusTrap'
+export {
+  LiveAnnouncerProvider,
+  useAnnounce,
+  LiveRegion,
+  type LiveAnnouncerContextValue,
+  type LiveAnnouncerProviderProps,
+  type LivePriority,
+  type LiveRegionProps,
+} from './LiveAnnouncer'
+export { VisuallyHidden, type VisuallyHiddenProps } from './VisuallyHidden'
+export { KeyboardNavGroup, type KeyboardNavGroupProps } from './KeyboardNavGroup'
+export { AccessibleFlashcard, type AccessibleFlashcardProps } from './AccessibleFlashcard'
+export { Modal, type ModalProps } from './Modal'
+export { SkipLink, type SkipLinkProps } from './SkipLink'
