@@ -29,8 +29,11 @@
  */
 
 import { motion, useAnimationControls, useInView } from 'framer-motion'
-import { useEffect, useLayoutEffect, useRef } from 'react'
-import type { ReactElement, ReactNode } from 'react'
+// Default React import (repo JSX pattern): apps/web compiles JSX with the classic
+// runtime under vitest/esbuild ("jsx": "preserve" in tsconfig maps to
+// React.createElement), so every JSX file reachable from a renderToString test
+// must import React or it throws "ReferenceError: React is not defined" in CI.
+import React, { useEffect, useLayoutEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import type { TargetAndTransition, Transition, Variants } from 'framer-motion'
 
 /**
