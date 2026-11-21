@@ -72,7 +72,7 @@ CI-only test policy.
 
 ## P2 — structural debt (schedule, don't scramble)
 
-### TD-05 · PARTIAL (#PR-B) — engines bundle zod schemas + scenario corpora + logic
+### TD-05 · FIXED (#95 + #97 + #PR-E) — engines bundle zod schemas + scenario corpora + logic
 
 25 engine files >800 LOC; the biggest (`dynamic-assessment/zpd-engine.ts`,
 1,854) is ~80% hardcoded scenario data. The data is _content_, not logic — it
@@ -80,19 +80,24 @@ inflates diffs, merge conflicts, and review noise. **Fix path:** for engines
 touched anyway, split `<domain>/content.ts` (scenario constants) from
 `<domain>-engine.ts`. No big-bang split.
 
-**Shipped (17 of 25 engines, ~11,850 lines of corpora moved):** every engine
-above 950 LOC now keeps only logic, with verbatim corpora in
-`<domain>/content.ts` re-exported from the engine (or served via accessors
-where the constant was module-private) so no import path changed —
-`dynamic-assessment` (1,905→425), `productive-failure` (1,822→485),
-`spatial` (1,555→1,193), `anchored` (1,478→563), `model-inquiry`
-(1,394→626), `system-dynamics` (1,377→695), `complex-problem-solving`
-(1,258→557), `prototype-exemplar` (1,421→1,126), `reciprocal-teaching`
-(1,215→733), `scaffolding` (1,197→702), `contrasting` (1,120→381),
-`dialectic` (1,106→471), `inquiry` (1,051→507), `argumentation`
-(1,044→529), `interactivity` (971→571), `peer-instruction` (960→345),
-`equilibrium` (945→547). Remaining 8 engines (≤ ~945 LOC) split on next
-touch.
+**Shipped (complete — every engine file >800 LOC split, ~14,850 lines of
+corpora moved across three batches):** each engine now keeps only logic with
+verbatim corpora in `<domain>/content.ts`, re-exported from the engine (or
+served via accessors where the constant was module-private) so no import
+path changed — batch 1 (#95): `dynamic-assessment` (1,905→425),
+`productive-failure` (1,822→485), `spatial` (1,555→1,193), `anchored`
+(1,478→563), `model-inquiry` (1,394→626), `system-dynamics` (1,377→695),
+`complex-problem-solving` (1,258→557), `prototype-exemplar` (1,421→1,126);
+batch 2 (#97): `reciprocal-teaching` (1,215→733), `scaffolding`
+(1,197→702), `contrasting` (1,120→381), `dialectic` (1,106→471),
+`inquiry` (1,051→507), `argumentation` (1,044→529), `interactivity`
+(971→571), `peer-instruction` (960→345), `equilibrium` (945→547);
+batch 3 (#PR-E): `knowledge-graph/schema-distillation` (969→632),
+`interleaving/structural-invariance` (937→626), `practice/cat` (862→629),
+`conceptual-change` (859→322), `collaborative` (852→487), `dualprocess`
+(851→294), `apprenticeship` (846→376), `explanation` (841→492),
+`flexibility` (821→413), `metacognition/hypercorrection` (809→633).
+TD-02 contract schemas stayed in every engine; no test file was touched.
 
 ### TD-06 · PARTIAL (#PR-C) — duplicated micro-helpers inside core
 
