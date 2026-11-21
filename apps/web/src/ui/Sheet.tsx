@@ -77,7 +77,8 @@ export function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       <div
         ref={panel}
         tabIndex={-1}
-        className="sheet-panel relative flex max-h-[90dvh] w-full flex-col rounded-t-2xl border border-neutral-200 bg-white outline-none md:max-w-lg md:rounded-2xl dark:border-(--hub-border) dark:bg-(--hub-sunken)"
+        className="sheet-panel relative flex max-h-[90dvh] w-full flex-col rounded-t-[28px] border-neutral-200 bg-white outline-none md:max-w-lg md:rounded-[28px] dark:border-(--hub-border) dark:bg-(--hub-panel)"
+        style={{ borderWidth: 'var(--clay-border)' }}
       >
         <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3 dark:border-(--hub-border)">
           <h2 className="text-base font-semibold">{title}</h2>

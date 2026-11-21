@@ -11,7 +11,9 @@
  * darkest); dark surfaces come from the `--hub-*` variables via dark: utils.
  */
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans:
+    var(--font-body), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
   --color-hub-bg: var(--hub-bg);
   --color-hub-panel: var(--hub-panel);
   --color-hub-panel-2: var(--hub-panel-2);
@@ -115,87 +117,90 @@
 /* Default palette: Calm — sage-tinted warm gray. */
 :root,
 [data-theme='calm'] {
-  --tint: #7c8f84;
-  --ac-strong: #56735f;
-  --ac-mid: #6d8f79;
-  --ac-soft: #a7c3b0;
-  --ac-deep: #2c3a31;
-  --hub-bg: #0e120f;
-  --hub-panel: #151a16;
-  --hub-panel-2: #1c221d;
-  --hub-sunken: #101411;
-  --hub-border: #262e28;
-  --hub-border-strong: #3a443c;
+  /* clay default: vibrant indigo + energetic orange (ui-ux-pro-max
+     "Educational App" palette), lavender-white light surfaces, deep
+     indigo-night dark surfaces */
+  --tint: #6366f1;
+  --ac-strong: #4f46e5;
+  --ac-mid: #6366f1;
+  --ac-soft: #c7d2fe;
+  --ac-deep: #312e81;
+  --hub-bg: #191832;
+  --hub-panel: #211f45;
+  --hub-panel-2: #282554;
+  --hub-sunken: #151430;
+  --hub-border: #34316b;
+  --hub-border-strong: #4b4890;
 }
 
 [data-theme='forest'] {
-  --tint: #6f9b6a;
-  --ac-strong: #3f7d46;
-  --ac-mid: #55975c;
-  --ac-soft: #9ccaa0;
-  --ac-deep: #1d331e;
-  --hub-bg: #0d130c;
-  --hub-panel: #131b12;
-  --hub-panel-2: #1a2418;
-  --hub-sunken: #0f150e;
-  --hub-border: #24301f;
-  --hub-border-strong: #37452f;
+  --tint: #10b981;
+  --ac-strong: #059669;
+  --ac-mid: #10b981;
+  --ac-soft: #a7f3d0;
+  --ac-deep: #064e3b;
+  --hub-bg: #0c1512;
+  --hub-panel: #122019;
+  --hub-panel-2: #182a21;
+  --hub-sunken: #0e1813;
+  --hub-border: #1f3b2e;
+  --hub-border-strong: #2f5a45;
 }
 
 [data-theme='ocean'] {
-  --tint: #6f93b8;
-  --ac-strong: #2f6ea3;
-  --ac-mid: #4b8ab8;
-  --ac-soft: #9fc4e0;
-  --ac-deep: #16293c;
-  --hub-bg: #0c1116;
-  --hub-panel: #121920;
-  --hub-panel-2: #19232c;
-  --hub-sunken: #0e141a;
-  --hub-border: #223040;
-  --hub-border-strong: #35485c;
+  --tint: #38bdf8;
+  --ac-strong: #0284c7;
+  --ac-mid: #0ea5e9;
+  --ac-soft: #bae6fd;
+  --ac-deep: #0c4a6e;
+  --hub-bg: #0a1220;
+  --hub-panel: #0f1b30;
+  --hub-panel-2: #16233c;
+  --hub-sunken: #0c1524;
+  --hub-border: #1e3355;
+  --hub-border-strong: #2f4f80;
 }
 
 [data-theme='sunset'] {
-  --tint: #c2916b;
-  --ac-strong: #b45f2d;
-  --ac-mid: #cd7d4a;
-  --ac-soft: #edb98a;
-  --ac-deep: #3d2113;
-  --hub-bg: #14100c;
-  --hub-panel: #1c1612;
-  --hub-panel-2: #241c16;
-  --hub-sunken: #171210;
-  --hub-border: #33281e;
-  --hub-border-strong: #4b3a2a;
+  --tint: #fb923c;
+  --ac-strong: #ea580c;
+  --ac-mid: #f97316;
+  --ac-soft: #fed7aa;
+  --ac-deep: #7c2d12;
+  --hub-bg: #1c1208;
+  --hub-panel: #2a1a0d;
+  --hub-panel-2: #362213;
+  --hub-sunken: #1e130a;
+  --hub-border: #46280f;
+  --hub-border-strong: #6d3f18;
 }
 
 [data-theme='blossom'] {
-  --tint: #c48ea4;
-  --ac-strong: #b04a72;
-  --ac-mid: #c9678d;
-  --ac-soft: #efadc4;
-  --ac-deep: #3b1b29;
-  --hub-bg: #130e12;
-  --hub-panel: #1b141a;
-  --hub-panel-2: #241a22;
-  --hub-sunken: #171015;
-  --hub-border: #332531;
-  --hub-border-strong: #4b3646;
+  --tint: #f472b6;
+  --ac-strong: #db2777;
+  --ac-mid: #ec4899;
+  --ac-soft: #fbcfe8;
+  --ac-deep: #831843;
+  --hub-bg: #1d0d17;
+  --hub-panel: #2a1220;
+  --hub-panel-2: #371829;
+  --hub-sunken: #1e0e17;
+  --hub-border: #471c33;
+  --hub-border-strong: #6d2c4f;
 }
 
 [data-theme='midnight'] {
-  --tint: #8b8fc0;
-  --ac-strong: #6355c7;
-  --ac-mid: #7c6fdd;
-  --ac-soft: #b3abef;
-  --ac-deep: #201d3d;
-  --hub-bg: #0d0d14;
-  --hub-panel: #141420;
-  --hub-panel-2: #1b1b2a;
-  --hub-sunken: #0f0f17;
-  --hub-border: #272740;
-  --hub-border-strong: #3c3c5c;
+  --tint: #a78bfa;
+  --ac-strong: #7c3aed;
+  --ac-mid: #8b5cf6;
+  --ac-soft: #ddd6fe;
+  --ac-deep: #4c1d95;
+  --hub-bg: #14122b;
+  --hub-panel: #1c1940;
+  --hub-panel-2: #242050;
+  --hub-sunken: #100e24;
+  --hub-border: #2e2960;
+  --hub-border-strong: #453f8f;
 }
 
 /* Perceived-lightness ramp derived from the palette tint (one source of truth).
@@ -244,7 +249,24 @@
   --danger-text: #be123c; /* rose-700 */
   --danger-soft: color-mix(in oklab, #e11d48 15%, transparent);
 
+  /* ── Claymorphism layer (ui-ux-pro-max style recipe) ──
+     Soft 3D "clay" surfaces: chunky radii, thick borders, double shadows
+     (inner highlight + outer drop), and a springy press. Values are
+     mode-aware via the .dark block so clay reads puffy in light and
+     glossy in dark. */
+  --clay-radius: 22px;
+  --clay-radius-sm: 16px;
+  --clay-border: 3px;
+  --clay-shadow:
+    inset -3px -3px 7px rgba(255, 255, 255, 0.75), inset 2px 2px 6px rgba(30, 27, 75, 0.05),
+    7px 7px 16px rgba(79, 70, 229, 0.16);
+  --clay-shadow-sm:
+    inset -2px -2px 5px rgba(255, 255, 255, 0.7), 4px 4px 10px rgba(79, 70, 229, 0.13);
+  --clay-pressed:
+    inset 3px 3px 7px rgba(30, 27, 75, 0.12), inset -2px -2px 5px rgba(255, 255, 255, 0.6);
+
   /* Motion tokens — one language for every transition/animation. */
+  --ease-clay: cubic-bezier(0.34, 1.56, 0.64, 1); /* springy overshoot — hover/press bounce */
   --duration-fast: 150ms; /* press feedback, hovers, small state swaps */
   --duration-base: 240ms; /* sheets, dialogs, reveals, progress fills */
   --duration-slow: 400ms; /* large surfaces & world entrances only (micro ceiling 300ms) */
@@ -256,6 +278,12 @@
 
 /* Semantic text tokens — DARK values (on the --hub-* surfaces). */
 .dark {
+  --clay-shadow:
+    inset -3px -3px 7px rgba(255, 255, 255, 0.05), inset 2px 2px 6px rgba(0, 0, 0, 0.3),
+    7px 7px 18px rgba(0, 0, 0, 0.5);
+  --clay-shadow-sm: inset -2px -2px 5px rgba(255, 255, 255, 0.04), 4px 4px 12px rgba(0, 0, 0, 0.4);
+  --clay-pressed:
+    inset 3px 3px 7px rgba(0, 0, 0, 0.45), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
   --text-strong: var(--n-100);
   --text-body: var(--n-200);
   --text-secondary: var(--n-300);
@@ -287,33 +315,82 @@ html {
 
 body {
   @apply bg-neutral-50 text-neutral-900 antialiased dark:bg-(--hub-bg) dark:text-neutral-100;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Card surfaces used across all pages */
+/* Playful clay identity: rounded display face for every heading level. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* Card surfaces used across all pages — claymorphism: chunky radius, thick
+   border, double shadow (inner highlight + outer drop). */
 .panel {
-  @apply rounded-xl border border-neutral-200 bg-white p-4 dark:border-(--hub-border) dark:bg-(--hub-panel);
+  @apply p-4 bg-white border-neutral-200 dark:border-(--hub-border) dark:bg-(--hub-panel);
+  border-radius: var(--clay-radius);
+  border-width: var(--clay-border);
+  box-shadow: var(--clay-shadow);
 }
 
 .btn {
-  @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
-    bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all text-white
+    bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:pointer-events-none;
+  border-radius: var(--clay-radius-sm);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: var(--clay-shadow-sm);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-clay);
+}
+.btn:hover {
+  transform: translateY(-1px) scale(1.02);
+}
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: var(--clay-pressed);
 }
 
 .btn-ghost {
-  @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
+  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-all
     text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-(--hub-panel-2) disabled:opacity-50;
+  border-radius: var(--clay-radius-sm);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-clay);
+}
+.btn-ghost:active {
+  transform: scale(0.97);
 }
 
 /* DESIGN.md §6 "secondary": subdued fill + hairline, for the 2nd..nth action. */
 .btn-secondary {
-  @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors
-    border border-neutral-200 bg-neutral-100 text-neutral-800 hover:bg-neutral-200
+  @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-bold transition-all
+    border-neutral-200 bg-neutral-100 text-neutral-800 hover:bg-neutral-200
     dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-neutral-200 dark:hover:bg-(--hub-border);
+  border-radius: var(--clay-radius-sm);
+  border-width: 2px;
+  box-shadow: var(--clay-shadow-sm);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-clay);
+}
+.btn-secondary:hover {
+  transform: translateY(-1px);
+}
+.btn-secondary:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: var(--clay-pressed);
 }
 
 .input {
-  @apply w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm outline-none
+  @apply w-full border-neutral-300 bg-white px-3 py-2 text-sm outline-none
     focus:ring-2 focus:ring-indigo-500/40 dark:border-(--hub-border) dark:bg-(--hub-sunken) dark:text-neutral-100;
+  border-radius: var(--clay-radius-sm);
+  border-width: 2px;
+  font-family: inherit;
 }
 
 .label {
@@ -347,7 +424,7 @@ body {
   }
 }
 .celebrate {
-  animation: pop-in 0.45s ease-out both;
+  animation: pop-in 0.5s var(--ease-clay) both;
 }
 
 /* breathing circle for the friction gate */
@@ -383,6 +460,42 @@ body {
   select.input {
     font-size: 16px;
   }
+}
+
+/* Pastel clay tints — the playful rotation for metric tiles / widget headers
+   (ui-ux-pro-max claymorphism palette: soft peach, baby blue, mint, lilac).
+   Text inside stays on the standard token ramp for AA. */
+.clay-peach {
+  background: linear-gradient(145deg, #ffe4dc, #ffd6d1);
+  --hub-border: #f3b7ad;
+}
+.clay-blue {
+  background: linear-gradient(145deg, #dbeafe, #d0e4fd);
+  --hub-border: #a9c7f5;
+}
+.clay-mint {
+  background: linear-gradient(145deg, #d7f7e4, #c8f2dc);
+  --hub-border: #a4dfc0;
+}
+.clay-lilac {
+  background: linear-gradient(145deg, #e8e5ff, #ddd9ff);
+  --hub-border: #bdb6f2;
+}
+.dark .clay-peach {
+  background: linear-gradient(145deg, rgba(253, 188, 180, 0.14), rgba(253, 188, 180, 0.07));
+  --hub-border: rgba(253, 188, 180, 0.3);
+}
+.dark .clay-blue {
+  background: linear-gradient(145deg, rgba(147, 197, 253, 0.13), rgba(147, 197, 253, 0.07));
+  --hub-border: rgba(147, 197, 253, 0.28);
+}
+.dark .clay-mint {
+  background: linear-gradient(145deg, rgba(110, 231, 183, 0.13), rgba(110, 231, 183, 0.07));
+  --hub-border: rgba(110, 231, 183, 0.28);
+}
+.dark .clay-lilac {
+  background: linear-gradient(145deg, rgba(196, 181, 253, 0.14), rgba(196, 181, 253, 0.07));
+  --hub-border: rgba(196, 181, 253, 0.3);
 }
 
 /* Wide content (tables, code, long rows) scrolls inside itself, never the page. */
@@ -630,9 +743,20 @@ html.theme-e-ink .panel {
 /* .panel is the default card; .panel-elevated is the raised/interactive tile.
    (.panel-glass / .panel-interactive were retired — folded into this one.) */
 .panel-elevated {
-  @apply rounded-xl border border-neutral-200/80 bg-white shadow-sm transition-colors
-    hover:border-neutral-300 hover:shadow-md
-    dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong);
+  @apply bg-white border-neutral-200/80 transition-all
+    hover:border-neutral-300 dark:border-(--hub-border) dark:bg-(--hub-panel) dark:hover:border-(--hub-border-strong);
+  border-radius: var(--clay-radius);
+  border-width: var(--clay-border);
+  box-shadow: var(--clay-shadow);
+}
+.panel-elevated:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    7px 9px 20px rgba(79, 70, 229, 0.2),
+    var(--clay-shadow);
+  transition:
+    transform var(--duration-fast) var(--ease-clay),
+    box-shadow var(--duration-fast) var(--ease-clay);
 }
 
 /* Subtle glow pulse for active badges and indicators */
