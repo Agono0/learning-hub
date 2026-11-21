@@ -4,8 +4,12 @@
  * Today — the dashboard. Renders from the widget registry
  * (components/dashboard/widgets.tsx): first-party and plugin widgets appear by
  * registering there, and the learner reorders everything (persisted locally).
+ * On mount the content blocks (quick review, banners, header, widget rows) rise
+ * + fade in once, in sequence (Entrance → ClayIn; transform/opacity only,
+ * stagger capped <300ms — the loading skeletons and error callout stay instant).
  */
 import Link from 'next/link'
+import { useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide-react'
 import { levelFromXp } from '@learning-hub/core/xp'
@@ -19,8 +23,56 @@ import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import { ProfileTunedBanner } from '@/components/dashboard/ProfileTunedBanner'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
+import { ClayIn, staggerDelay } from '@/lib/motion'
 
 const ORDER_KEY_HINT = 'Order is saved on this device. Reset restores the default layout.'
+
+/**
+ * Fixed sequence slots for the dashboard's mount choreography. Each animated
+ * block takes one slot; the motion foundation staggers slots 40ms apart and
+ * caps the delay at 260ms (`staggerDelay`), keeping the whole entrance under
+ * the 300ms motion-law budget. Slots are absolute (not sequential) so a
+ * conditional banner that is absent never shifts the delays of later blocks.
+ */
+const ENTRANCE_SLOT = {
+  quickReview: 0,
+  freshBanner: 1,
+  nudge: 2,
+  header: 3,
+  rowsBase: 4,
+} as const
+
+interface EntranceProps {
+  /** Sequence slot for this block (`ENTRANCE_SLOT`). */
+  step: number
+  /** Content to reveal. */
+  children: React.ReactNode
+  /** Optional className forwarded to the rendered element (panel/grid classes live here). */
+  className?: string
+  /** Rendered tag. Defaults to `'div'`; widget rows use `'section'` to keep the DOM shape. */
+  as?: 'div' | 'section'
+}
+
+/**
+ * Dashboard entrance block: rises + fades in once, on mount, at its sequence
+ * slot (`staggerDelay(step)` on the clay spring) — one-time list choreography
+ * per the motion law (first render only).
+ *
+ * Why a wrapper instead of a bare `ClayIn`: the slot is captured on FIRST mount
+ * (`useRef`), so later re-renders — the 30s dashboard poll, or widget reorders
+ * that change a row's position — keep the same delay and never re-trigger the
+ * rise (ClayIn re-animates when its `delayS` prop changes). SSR-safe: ClayIn
+ * renders the final state server-side and animates client-side only when motion
+ * is allowed (`motionOK`).
+ */
+function Entrance({ step, children, className, as = 'div' }: EntranceProps) {
+  const stepRef = useRef(step)
+  return (
+    <ClayIn as={as} className={className} delayS={staggerDelay(stepRef.current)}>
+      {children}
+    </ClayIn>
+  )
+}
 
 export default function DashboardPage() {
   const {
@@ -139,9 +191,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <QuickReviewWidget />
+      <Entrance step={ENTRANCE_SLOT.quickReview}>
+        <QuickReviewWidget />
+      </Entrance>
       {d.freshStart && (
-        <div className="panel border-indigo-400/40 bg-indigo-600/10">
+        <Entrance
+          step={ENTRANCE_SLOT.freshBanner}
+          className="panel border-indigo-400/40 bg-indigo-600/10"
+        >
           <div className="flex items-center gap-2 text-sm font-medium text-indigo-300">
             <Sparkles className="h-4 w-4" />
             Fresh start —{' '}
@@ -152,47 +209,54 @@ export default function DashboardPage() {
             })}
             . Today is a perfect day to begin again.
           </div>
-        </div>
+        </Entrance>
       )}
 
       {nudge && (
-        <div className="panel">
+        <Entrance step={ENTRANCE_SLOT.nudge} className="panel">
           <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-secondary">
             <Sprout className="h-4 w-4 shrink-0 text-status-success-text" />
             <span>Fresh start: {nudge.label}</span>
           </div>
-        </div>
+        </Entrance>
       )}
 
-      <PageHeader
-        title="Today"
-        subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
-        actions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="btn-ghost border text-xs"
-              title={ORDER_KEY_HINT}
-              onClick={() => setOrder(DEFAULT_ORDER)}
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Reset layout
-            </button>
-            <Link href="/review" className="btn h-11 px-6 text-base">
-              <Repeat2 className="h-5 w-5" />
-              {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
-            </Link>
-          </div>
-        }
-      />
+      <Entrance step={ENTRANCE_SLOT.header}>
+        <PageHeader
+          title="Today"
+          subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-ghost border text-xs"
+                title={ORDER_KEY_HINT}
+                onClick={() => setOrder(DEFAULT_ORDER)}
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset layout
+              </button>
+              <Link href="/review" className="btn h-11 px-6 text-base">
+                <Repeat2 className="h-5 w-5" />
+                {d.dueCount > 0 ? `Review ${d.dueCount} cards` : 'Start Daily Loop'}
+              </Link>
+            </div>
+          }
+        />
+      </Entrance>
 
       {/* Learner-profile undo banner — self-gating (renders nothing without a
           pending "lh-profile-applied" record); shown only once the page data
-          has loaded, above the widget grid. */}
+          has loaded, above the widget grid. Deliberately left out of the
+          entrance choreography: it renders null on first render (localStorage
+          is read after mount), so wrapping it would add a permanent empty div
+          that shifts the space-y-5 rhythm. */}
       <ProfileTunedBanner />
 
       {rows.map((row, rowIdx) => (
-        <section
+        <Entrance
           key={row.map((r) => r.id).join('+')}
+          as="section"
+          step={ENTRANCE_SLOT.rowsBase + rowIdx}
           className={row.length === 1 ? '' : 'grid gap-3 md:grid-cols-2'}
         >
           {row.map((cell) => (
@@ -220,7 +284,7 @@ export default function DashboardPage() {
               {cell.node}
             </div>
           ))}
-        </section>
+        </Entrance>
       ))}
     </div>
   )
