@@ -80,14 +80,19 @@ inflates diffs, merge conflicts, and review noise. **Fix path:** for engines
 touched anyway, split `<domain>/content.ts` (scenario constants) from
 `<domain>-engine.ts`. No big-bang split.
 
-**Shipped (8 of 25 engines, ~7,150 lines of corpora moved):** every engine
-above 1,200 LOC now keeps only logic, with verbatim corpora in
-`<domain>/content.ts` re-exported from the engine so no import path changed:
+**Shipped (17 of 25 engines, ~11,850 lines of corpora moved):** every engine
+above 950 LOC now keeps only logic, with verbatim corpora in
+`<domain>/content.ts` re-exported from the engine (or served via accessors
+where the constant was module-private) so no import path changed —
 `dynamic-assessment` (1,905→425), `productive-failure` (1,822→485),
 `spatial` (1,555→1,193), `anchored` (1,478→563), `model-inquiry`
 (1,394→626), `system-dynamics` (1,377→695), `complex-problem-solving`
-(1,258→557), `prototype-exemplar` (1,421→1,126). Remaining 17 engines split
-on next touch.
+(1,258→557), `prototype-exemplar` (1,421→1,126), `reciprocal-teaching`
+(1,215→733), `scaffolding` (1,197→702), `contrasting` (1,120→381),
+`dialectic` (1,106→471), `inquiry` (1,051→507), `argumentation`
+(1,044→529), `interactivity` (971→571), `peer-instruction` (960→345),
+`equilibrium` (945→547). Remaining 8 engines (≤ ~945 LOC) split on next
+touch.
 
 ### TD-06 · PARTIAL (#PR-C) — duplicated micro-helpers inside core
 
