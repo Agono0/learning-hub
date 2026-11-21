@@ -25,6 +25,9 @@ const REVIEW_TARGET = 20
 /** Due-queue size the "due now" ring saturates at — any real queue reads as "ready". */
 const DUE_SATURATION = 20
 
+/** Pastel clay rotation for the tiles (peach / baby blue / mint / lilac). */
+const PASTELS = ['clay-peach', 'clay-blue', 'clay-mint', 'clay-lilac'] as const
+
 /** Entrance stagger per ring tile (motion law: 30-50ms/child, total < 300ms). */
 const TILE_STAGGER_MS = 40
 
@@ -106,7 +109,7 @@ export function DailyLoopWidget({ data: d }: WidgetProps) {
         {tiles.map((t, i) => (
           <div
             key={t.key}
-            className="animate-fade-in-up rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)"
+            className={`animate-fade-in-up panel-elevated p-3 ${PASTELS[i % PASTELS.length]}`}
             style={{ animationDelay: `${i * TILE_STAGGER_MS}ms` }}
           >
             <ProgressRing value={t.fraction} size={64} label={t.ringLabel} />

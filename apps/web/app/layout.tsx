@@ -1,7 +1,26 @@
 import type { Metadata, Viewport } from 'next'
+import { Fredoka, Nunito } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 import { AppShell } from '@/components/AppShell'
+
+/**
+ * Playful clay identity (ui-ux-pro-max recipe: "Soft Rounded" + "Playful
+ * Creative" pairings): Fredoka for headings, Nunito for body. next/font
+ * self-hosts both at build time — no runtime fetch, offline-safe.
+ */
+const fredoka = Fredoka({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-heading',
+  display: 'swap',
+})
+const nunito = Nunito({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-body',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Learning HUB',
@@ -29,7 +48,12 @@ const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem('lh-theme'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark" data-theme="calm" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${fredoka.variable} ${nunito.variable}`}
+      data-theme="calm"
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
