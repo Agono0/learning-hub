@@ -57,6 +57,8 @@ import {
   evaluateCognitiveFlexibility,
   exportFlexibilityToFSRSCards,
   CALIBRATED_INTERACTIVITY_SUITES,
+  CALIBRATED_COGNITIVE_LOAD_SCENARIOS,
+  evaluateComprehensiveCognitiveLoad,
   CALIBRATED_EQUILIBRIUM_SUITES,
   evaluateReflectiveEquilibrium,
   exportEquilibriumToFSRSCards,
@@ -991,6 +993,49 @@ async function postInteractivity(req: IncomingMessage, res: ServerResponse): Pro
       ? calculateInstructionalEfficiency(body.mentalEffort, body.performance)
       : null
   sendJson(res, 200, { ok: true, analysis, paas, paasClassification: paas?.classification ?? null })
+}
+
+/** GET /cognitive/load/benchmarks — list CLT benchmark scenarios and capacity limits */
+async function getCltBenchmarks(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  sendJson(res, 200, {
+    ok: true,
+    capacityLimit: 4.0,
+    scenarios: Object.values(CALIBRATED_COGNITIVE_LOAD_SCENARIOS).map((s) => ({
+      id: s.id,
+      title: s.title,
+      elementInteractivityScore: s.elementInteractivityScore,
+    })),
+  })
+}
+
+/** POST /cognitive/load/evaluate — full comprehensive cognitive load + Paas + flow evaluation */
+async function postCltEvaluate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(
+    req,
+    z.object({
+      responseLatencyMs: z.number().min(0).default(3500),
+      baselineLatencyMs: z.number().positive().optional(),
+      backspaceCount: z.number().int().min(0).default(0),
+      recentErrorsInLast5Cards: z.number().int().min(0).max(5).default(0),
+      subjectiveMentalEffortRating: z.number().min(1).max(9).optional(),
+      taskElementCount: z.number().int().min(1).max(20).optional(),
+      learnerDomainMastery: z.number().min(0).max(1).optional(),
+      targetTaskDifficulty: z.number().min(0).max(1).optional(),
+      scenarioId: z.string().default('distributed_paxos_consensus'),
+    }),
+  )
+  const scenario = CALIBRATED_COGNITIVE_LOAD_SCENARIOS[body.scenarioId]
+  const evaluation = evaluateComprehensiveCognitiveLoad({
+    responseLatencyMs: body.responseLatencyMs,
+    baselineLatencyMs: body.baselineLatencyMs,
+    backspaceCount: body.backspaceCount,
+    recentErrorsInLast5Cards: body.recentErrorsInLast5Cards,
+    subjectiveMentalEffortRating: body.subjectiveMentalEffortRating,
+    taskElementCount: body.taskElementCount ?? scenario?.elementInteractivityScore,
+    learnerDomainMastery: body.learnerDomainMastery,
+    targetTaskDifficulty: body.targetTaskDifficulty,
+  })
+  sendJson(res, 200, { ok: true, evaluation })
 }
 
 /** POST /cognitive/equilibrium — Rawls reflective equilibrium + Tetlock calibration. */
@@ -2828,6 +2873,18 @@ export const routes: Route[] = [
     path: '/cognitive/equilibrium',
     summary: 'Rawls reflective equilibrium + Tetlock calibration (philosophy suites)',
     handler: postEquilibrium,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/load/benchmarks',
+    summary: 'list CLT benchmark scenarios and Cowan capacity limits',
+    handler: getCltBenchmarks,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/load/evaluate',
+    summary: 'evaluate comprehensive cognitive load, Paas efficiency, and Csikszentmihalyi flow',
+    handler: postCltEvaluate,
   },
   {
     method: 'POST',
