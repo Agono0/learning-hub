@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Brain, Check, Command, Eye, Inbox, Layout, Search, Sparkles, X, Zap } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { getEmbeddingEngine } from '@/lib/embeddings-client'
+import { IconButton } from '@/ui'
 
 export type HudStyle = 'spotlight' | 'tray' | 'palette'
 
@@ -229,12 +230,13 @@ export function QuickHudModal() {
               <Layout className="h-3 w-3" />
               <span className="capitalize text-[11px]">{hudStyle}</span>
             </button>
-            <button
+            <IconButton
+              label="Close quick HUD"
               onClick={() => setIsOpen(false)}
-              className="rounded p-1 hover:bg-neutral-800 hover:text-white"
+              className="hover:bg-neutral-800 hover:text-white"
             >
               <X className="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
         </div>
 

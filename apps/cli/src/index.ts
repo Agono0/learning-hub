@@ -50,6 +50,7 @@ import {
   cerCommands,
   collaborativeCommands,
   contrastingCommands,
+  cpsCommands,
   epistemicCommands,
   inquiryCommands,
   knowledgeSpaceCommands,
@@ -129,6 +130,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...modelInquiryCommands,
   ...prototypeExemplarCommands,
   ...knowledgeSpaceCommands,
+  ...cpsCommands,
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
   ...notesCommands,

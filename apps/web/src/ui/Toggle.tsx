@@ -49,6 +49,7 @@ export function Toggle({
         onClick={() => onChange(!checked)}
         className={cx(
           'inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-50',
+          'focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none',
         )}
       >
         <span

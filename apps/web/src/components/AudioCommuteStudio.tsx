@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Car, Headphones, Mic, MicOff, Play, SkipForward, Square } from 'lucide-react'
+import { IconButton } from '@/ui'
 import { hapticLight, hapticWarning } from '../platform/haptics'
 import { cx } from '../ui/cx'
 
@@ -301,19 +302,18 @@ export function AudioCommuteStudio({
           </div>
 
           {/* Voice Command Mic Indicator */}
-          <button
-            type="button"
+          <IconButton
+            label={isListening ? 'Microphone Active' : 'Enable Voice Commands'}
             onClick={isListening ? stopListening : startListening}
-            title={isListening ? 'Microphone Active' : 'Enable Voice Commands'}
             className={cx(
-              'flex h-9 w-9 items-center justify-center rounded-xl border transition-all',
+              'rounded-xl border',
               isListening
                 ? 'bg-rose-500/20 border-rose-500 text-danger-text animate-pulse'
                 : 'bg-white/5 border-white/10 text-faint hover:text-white',
             )}
           >
             {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-          </button>
+          </IconButton>
         </div>
       </div>
 

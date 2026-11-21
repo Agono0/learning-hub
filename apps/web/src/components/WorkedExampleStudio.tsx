@@ -17,6 +17,7 @@ import {
   VolumeX,
   XCircle,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   CALIBRATED_SCAFFOLDING_PROBLEMS,
   WorkedExampleSession,
@@ -347,14 +348,14 @@ export function WorkedExampleStudio({
 
         {/* Audio Mute & Reset */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAudioMuted(!audioMuted)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white transition-all"
+          <IconButton
+            label={audioMuted ? 'Unmute audio feedback' : 'Mute audio feedback'}
             title={audioMuted ? 'Unmute Earcons' : 'Mute Earcons'}
-            aria-label={audioMuted ? 'Unmute audio feedback' : 'Mute audio feedback'}
+            onClick={() => setAudioMuted(!audioMuted)}
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white"
           >
             {audioMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
+          </IconButton>
           <button
             onClick={handleResetSession}
             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-secondary hover:bg-white/10 hover:text-white transition-all"
@@ -524,13 +525,14 @@ export function WorkedExampleStudio({
                         {step.governingPrinciple}
                       </span>
                       {/* One-click Export to FSRS */}
-                      <button
+                      <IconButton
+                        label="Export Step to FSRS Spaced Repetition Card"
+                        size="sm"
                         onClick={() => handleExportFlashcard(step.stepIndex)}
-                        className="rounded-lg border border-white/10 bg-white/5 p-1 text-faint hover:bg-white/10 hover:text-white transition-all"
-                        title="Export Step to FSRS Spaced Repetition Card"
+                        className="rounded-lg border border-white/10 bg-white/5 text-faint hover:bg-white/10 hover:text-white"
                       >
                         <Sparkles className="h-3.5 w-3.5 text-status-success-text" />
-                      </button>
+                      </IconButton>
                     </div>
                   </div>
 

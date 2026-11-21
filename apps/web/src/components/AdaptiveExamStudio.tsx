@@ -15,6 +15,7 @@ import {
   VolumeX,
   XCircle,
 } from 'lucide-react'
+import { IconButton } from '@/ui'
 import {
   CALIBRATED_QUESTION_BANKS,
   AdaptiveExamSession,
@@ -337,18 +338,18 @@ export function AdaptiveExamStudio({
           )}
 
           {/* Sound Toggle */}
-          <button
-            type="button"
+          <IconButton
+            label="Toggle Audio Cues"
+            size="sm"
             onClick={() => setSoundEnabled((p) => !p)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white transition-all"
-            title="Toggle Audio Cues"
+            className="rounded-xl border border-white/10 bg-white/5 text-faint hover:text-white"
           >
             {soundEnabled ? (
               <Volume2 className="h-4 w-4 text-indigo-400" />
             ) : (
               <VolumeX className="h-4 w-4" />
             )}
-          </button>
+          </IconButton>
         </div>
       </div>
 
@@ -508,17 +509,19 @@ export function AdaptiveExamStudio({
                       </div>
 
                       {/* Strike-through button */}
-                      <button
-                        type="button"
+                      <IconButton
+                        label={isEliminated ? 'Restore option' : 'Eliminate distractor'}
+                        size="sm"
+                        variant="bare"
                         onClick={(e) => handleToggleEliminate(e, i)}
                         className={cx(
-                          'p-1 rounded-md text-faint hover:text-danger-text hover:bg-rose-500/10 transition-all text-[11px]',
-                          isEliminated ? 'text-danger-text' : 'opacity-0 group-hover:opacity-100',
+                          'rounded-md text-faint hover:text-danger-text hover:bg-rose-500/10 text-[11px]',
+                          isEliminated ? 'text-danger-text' : '',
                         )}
                         title={isEliminated ? 'Restore option' : 'Eliminate distractor'}
                       >
                         <XCircle className="h-4 w-4" />
-                      </button>
+                      </IconButton>
                     </div>
                   )
                 })}

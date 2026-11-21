@@ -835,7 +835,7 @@ function ReviewPageInner() {
                     setSelectedDeckIds([deckId])
                   }
                 }}
-                className="text-xs font-medium text-indigo-400 hover:text-indigo-300"
+                className="inline-flex items-center text-xs font-medium text-indigo-400 hover:text-indigo-300 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
               >
                 {multiDeckMode ? '← Back to single deck' : '⇄ Interleave multiple decks'}
               </button>
@@ -844,7 +844,7 @@ function ReviewPageInner() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setDeckId(null)}
-                  className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                     deckId === null
                       ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
                       : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-secondary dark:hover:bg-(--hub-panel-2)'
@@ -859,7 +859,7 @@ function ReviewPageInner() {
                   <button
                     key={d.id}
                     onClick={() => setDeckId(d.id)}
-                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                       deckId === d.id
                         ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
                         : 'border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:text-secondary dark:hover:bg-(--hub-panel-2)'
@@ -971,7 +971,7 @@ function ReviewPageInner() {
               <button
                 type="button"
                 onClick={() => setSpeedDrillActive(!speedDrillActive)}
-                className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors ${
+                className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${
                   speedDrillActive
                     ? 'border-amber-500 bg-amber-500/20 text-status-warning-text'
                     : 'border-neutral-300 dark:border-neutral-700 text-tertiary hover:text-secondary'
@@ -992,7 +992,7 @@ function ReviewPageInner() {
                     key={s}
                     type="button"
                     onClick={() => setSpeedLimitSec(s)}
-                    className={`rounded px-2 py-0.5 border ${
+                    className={`rounded px-2 py-0.5 border focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 inline-flex items-center justify-center ${
                       speedLimitSec === s
                         ? 'border-amber-500 bg-amber-500/20 text-status-warning-text font-bold'
                         : 'border-neutral-300 dark:border-neutral-700 text-faint'
@@ -1299,7 +1299,7 @@ function ReviewPageInner() {
                 <button
                   type="button"
                   onClick={() => setFlowAlert(null)}
-                  className="rounded px-2 py-1 text-xs text-status-info-text hover:bg-sky-500/20"
+                  className="rounded px-2.5 py-1 text-xs text-status-info-text hover:bg-sky-500/20 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center"
                 >
                   Dismiss
                 </button>
@@ -1311,7 +1311,7 @@ function ReviewPageInner() {
                   <span>Metacognitive Hypercorrection (Butterfield &amp; Metcalfe)</span>
                   <button
                     onClick={() => setHyperNotice(null)}
-                    className="text-xs text-status-warning-text hover:text-amber-200"
+                    className="text-xs text-status-warning-text hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 inline-flex items-center [@media(pointer:coarse)]:px-2"
                   >
                     Dismiss
                   </button>
@@ -1521,7 +1521,7 @@ function ReviewPageInner() {
               <button
                 type="button"
                 onClick={() => setCoherenceModalOpen(false)}
-                className="text-xs text-faint hover:text-white"
+                className="inline-flex items-center text-xs text-faint hover:text-white focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3"
               >
                 Close and return to review
               </button>

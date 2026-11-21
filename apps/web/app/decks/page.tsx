@@ -37,6 +37,7 @@ import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import {
   Button,
   Callout,
+  IconButton,
   LeitnerProgression,
   Menu,
   PageHeader,
@@ -367,7 +368,7 @@ export default function DecksPage() {
               setActiveDeck(null)
               setDeckFsrsNote(null)
             }}
-            className={`rounded-lg border px-3 py-2 text-sm ${
+            className={`rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
               activeDeck === null
                 ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
                 : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-secondary'
@@ -385,6 +386,7 @@ export default function DecksPage() {
               }`}
             >
               <button
+                className="inline-flex items-center text-left focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11"
                 onClick={() => {
                   setActiveDeck(d.id)
                   setDeckFsrsNote(null)
@@ -413,13 +415,13 @@ export default function DecksPage() {
                   </span>
                 )}
               </button>
-              <button
-                className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-danger-text"
+              <IconButton
+                label="Delete deck"
                 onClick={() => deleteDeck.mutate(d.id)}
-                title="delete deck"
+                className="hover:text-danger-text"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </IconButton>
             </span>
           ))}
         </div>
@@ -696,7 +698,7 @@ function CardEditorModal({
           {FORMATS.map((f) => (
             <button
               key={f}
-              className={`rounded-lg border px-2.5 py-1 text-xs ${type === f ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300' : 'border-neutral-200 text-tertiary dark:border-(--hub-border)'}`}
+              className={`rounded-lg border px-2.5 py-1 text-xs inline-flex items-center focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${type === f ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300' : 'border-neutral-200 text-tertiary dark:border-(--hub-border)'}`}
               onClick={() => {
                 setType(f)
                 setDraft({})
@@ -862,7 +864,7 @@ function FormatEditor({
             {(['basic', 'typein', 'enumeration'] as const).map((m) => (
               <button
                 key={m}
-                className={`rounded border px-2 py-1 ${v.mode === m ? 'border-indigo-500 text-indigo-300' : 'border-neutral-200 text-tertiary dark:border-(--hub-border)'}`}
+                className={`rounded border px-2 py-1 inline-flex items-center focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${v.mode === m ? 'border-indigo-500 text-indigo-300' : 'border-neutral-200 text-tertiary dark:border-(--hub-border)'}`}
                 onClick={() => patch('cloze', { ...v, mode: m })}
               >
                 {m}

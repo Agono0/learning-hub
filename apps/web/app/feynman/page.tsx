@@ -17,7 +17,7 @@ import { GraduationCap, Send, Sparkles } from 'lucide-react'
 import type { FeynmanDiagnosticReport } from '@learning-hub/core'
 import { TransportPanel, useAiStatus, type ManualModeInfo } from '@/components/TransportPanel'
 import { apiGet, apiSend, apiStream } from '@/lib/transport'
-import { FeynmanExplanationCard, PageHeader } from '@/ui'
+import { FeynmanExplanationCard, IconButton, PageHeader } from '@/ui'
 import { FeynmanSocraticStudio } from '@/components/FeynmanSocraticStudio'
 
 interface Msg {
@@ -479,13 +479,14 @@ export default function FeynmanPage() {
             }
             disabled={streaming || Boolean(grade)}
           />
-          <button
-            className="btn"
+          <IconButton
+            label="Send teach-back"
             type="submit"
+            variant="primary"
             disabled={streaming || !input.trim() || Boolean(grade)}
           >
             <Send className="h-4 w-4" />
-          </button>
+          </IconButton>
         </form>
       </div>
 

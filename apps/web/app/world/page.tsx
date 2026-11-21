@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { usePalette } from '@/components/ThemeSync'
-import { Badge, EmptyState, PageHeader, Panel, Tabs, useToast } from '@/ui'
+import { Badge, EmptyState, IconButton, PageHeader, Panel, Tabs, useToast } from '@/ui'
 import type { WorldCanvasHandle } from '@/ui/WorldCanvas'
 import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
 
@@ -472,16 +472,17 @@ export default function WorldPage() {
                   )}
                   {viewMode === 'diorama' ? 'Third-Person (WASD)' : 'Orbit Diorama'}
                 </button>
-                <button
+                <IconButton
+                  label={soundscape === 'none' ? 'Enable soundscape' : 'Mute soundscape'}
                   onClick={() => setSoundscape(soundscape === 'none' ? 'birds' : 'none')}
-                  className="btn-ghost bg-slate-900/80 backdrop-blur-md border border-slate-700/50 text-xs p-1.5 rounded-lg"
+                  className="border border-slate-700/50 bg-slate-900/80 backdrop-blur-md"
                 >
                   {soundscape === 'none' ? (
                     <VolumeX className="w-3.5 h-3.5 text-faint" />
                   ) : (
                     <Volume2 className="w-3.5 h-3.5 text-status-success-text" />
                   )}
-                </button>
+                </IconButton>
               </div>
             </div>
 
@@ -508,12 +509,13 @@ export default function WorldPage() {
                       <Pause className="w-4 h-4 mr-1.5" /> Pause
                     </button>
                   )}
-                  <button
+                  <IconButton
+                    label="Reset focus timer"
                     onClick={handleResetTimer}
-                    className="btn-ghost border border-slate-700 text-faint text-xs p-2 rounded-lg"
+                    className="border border-slate-700 text-faint"
                   >
                     <RotateCcw className="w-4 h-4" />
-                  </button>
+                  </IconButton>
                 </div>
               </div>
             </div>

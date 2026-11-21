@@ -48,6 +48,7 @@ import {
   Badge,
   Button,
   GenerationMatrixHUD,
+  IconButton,
   PageHeader,
   Panel,
   ProgressBar,
@@ -949,13 +950,13 @@ function SocialLeaderboardSection() {
                   <td className="py-2.5 font-bold text-status-warning-text">{entry.xp} XP</td>
                   <td className="py-2.5 text-right">
                     {!entry.isSelf && (
-                      <button
-                        title="Remove friend"
+                      <IconButton
+                        label="Remove friend"
                         onClick={() => deleteFriendMutation.mutate(entry.id)}
-                        className="text-tertiary hover:text-danger-text transition-colors p-1"
+                        className="hover:text-danger-text"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </IconButton>
                     )}
                   </td>
                 </tr>

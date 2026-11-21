@@ -54,8 +54,16 @@ export function Slider({
         step={step}
         value={value}
         disabled={disabled}
+        aria-valuenow={value}
+        aria-valuemin={min}
+        aria-valuemax={max}
+        aria-valuetext={format ? String(format(value)) : String(value)}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-indigo-600 disabled:opacity-50"
+        className={cx(
+          'w-full accent-indigo-600 disabled:opacity-50',
+          'focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none',
+          '[@media(pointer:coarse)]:h-11',
+        )}
         {...rest}
       />
     </div>
