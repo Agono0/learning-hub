@@ -339,15 +339,13 @@
   </g>
 
   <!-- forgetting curve motif -->
-  <g transform="translate(920 70) scale(0.78)" opacity="0.9">
+  <g transform="translate(980 56) scale(0.74)" opacity="0.9">
     <path d="M0 470 C 90 470 140 470 200 462 C 300 449 340 380 430 372 C 520 364 560 300 650 295 C 700 292 720 240 780 235" stroke="url(#accentLine)" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.9"/>
     <path d="M0 470 C 80 452 120 402 190 396 C 280 388 330 330 420 326" stroke="#5b6274" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-dasharray="2 12" opacity="0.7"/>
     <circle cx="200" cy="462" r="9" fill="#4f46e5"/>
     <circle cx="430" cy="372" r="9" fill="#7c3aed"/>
     <circle cx="650" cy="295" r="9" fill="#2f6ea3"/>
     <circle cx="780" cy="235" r="9" fill="#56735f"/>
-    <text x="195" y="500" fill="#8b93a8" font-size="20" text-anchor="middle">review</text>
-    <text x="430" y="410" fill="#8b93a8" font-size="20" text-anchor="middle">recall</text>
     <text x="650" y="333" fill="#8b93a8" font-size="20" text-anchor="middle">stability ↑</text>
     <text x="762" y="273" fill="#8b93a8" font-size="20" text-anchor="middle">mastery</text>
   </g>
@@ -360,7 +358,7 @@
   </g>
 
   <!-- wordmark -->
-  <text x="285" y="262" fill="#ffffff" font-size="72" font-weight="700" letter-spacing="0.5">Learning HUB</text>
+  <text x="285" y="262" fill="#ffffff" font-size="72" font-weight="700" letter-spacing="1.5">Learning HUB</text>
   <text x="288" y="312" fill="#a3abc0" font-size="28" font-weight="500">The research-backed self-learning system — local-first, one codebase, every host.</text>
 
   <!-- stat chips -->
