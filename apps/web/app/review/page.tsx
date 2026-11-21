@@ -363,6 +363,19 @@ function ReviewPageInner() {
 
     return () => clearInterval(timer)
   }, [speedDrillActive, started, finishedAt, revealed, idx, speedLimitSec, current])
+
+  // Session-end sync: grades commit per card, so the dashboard aggregate (due
+  // count, XP, streak) and the activity timeline are invalidated exactly ONCE
+  // — when the session summary appears — never per card (that would refetch
+  // mid-session). Covers every natural-completion path that sets finishedAt
+  // (gradeMutation and the exercise track). `['timeline', 7]` matches the
+  // ActivityTimelineWidget query key in apps/web/src/components/dashboard/widgets.tsx.
+  const sessionSummaryVisible = finishedAt !== null || (!current && results.length > 0)
+  useEffect(() => {
+    if (!sessionSummaryVisible) return
+    void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
+    void qc.invalidateQueries({ queryKey: ['timeline', 7] })
+  }, [sessionSummaryVisible, qc])
   // delayed feedback (Butler & Roediger 2008): the "Correct these first"
   // restudy list blocks the queue until the learner dismisses it
   const corrections = session.data?.corrections ?? []
@@ -531,6 +544,9 @@ function ReviewPageInner() {
       resetCardState()
       setFinishedAt(null)
       void qc.invalidateQueries({ queryKey: queryKeys.decks })
+      // Undo rewrites revlog history — the dashboard due/XP/streak aggregates
+      // must refetch alongside the deck list.
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
     },
   })
 
@@ -1493,6 +1509,10 @@ function ReviewPageInner() {
           onClick={() => {
             setStarted(false)
             setFinishedAt(null)
+            // Grades committed so far are already persisted — sync the dashboard
+            // aggregates and timeline before returning to the setup screen.
+            void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
+            void qc.invalidateQueries({ queryKey: ['timeline', 7] })
           }}
         >
           End session <ArrowRight className="h-3.5 w-3.5" />

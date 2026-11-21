@@ -80,6 +80,12 @@ export function QuickReviewWidget({ className }: QuickReviewWidgetProps) {
       setIdx((i) => i + 1)
       void qc.invalidateQueries({ queryKey: ['hud-quick-review'] })
       void qc.invalidateQueries({ queryKey: queryKeys.decks })
+      // Quick grades feed the same FSRS/XP pipeline as full sessions, so the
+      // dashboard aggregate (due count, XP, streak) and the activity timeline
+      // must refetch too. `['timeline', 7]` matches the ActivityTimelineWidget
+      // query key in apps/web/src/components/dashboard/widgets.tsx.
+      void qc.invalidateQueries({ queryKey: queryKeys.dashboard })
+      void qc.invalidateQueries({ queryKey: ['timeline', 7] })
     },
   })
 

@@ -17,24 +17,31 @@ import {
   Activity,
   BookOpen,
   CalendarClock,
+  CheckCircle2,
   CirclePlay,
+  Coins,
   ExternalLink,
   FileText,
   Flame,
   Pickaxe,
   Quote as QuoteIcon,
   Repeat2,
+  ShieldAlert,
   Shapes,
   Sparkles,
+  Sprout,
   Telescope,
   Timer,
   Zap,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Callout, EmptyState, Skeleton, StatCard, useToast } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
+import { DailyLoopWidget } from './DailyLoopWidget'
+import { AnalyticsGlimpseWidget } from './AnalyticsGlimpseWidget'
 
 export interface WidgetProps {
   data: DashboardData
@@ -273,13 +280,49 @@ interface TimelineEntry {
   detail: string | null
 }
 
+/**
+ * Per-kind icon + status color — sanctioned tokens only (status success /
+ * warning / info text and the hub accent), never raw hex. Colors follow the
+ * event's emotional valence: accent = productive loop (reviews, XP,
+ * achievements), success = focus & growth, warning = friction, info = neutral
+ * ledger events.
+ */
+const TIMELINE_KIND_META: Record<string, { icon: LucideIcon; className: string }> = {
+  review: { icon: Repeat2, className: 'text-hub-accent' },
+  xp: { icon: Zap, className: 'text-hub-accent' },
+  achievement: { icon: Sparkles, className: 'text-hub-accent' },
+  focus: { icon: Timer, className: 'text-status-success-text' },
+  tree: { icon: Sprout, className: 'text-status-success-text' },
+  habit: { icon: CheckCircle2, className: 'text-status-success-text' },
+  friction: { icon: ShieldAlert, className: 'text-status-warning-text' },
+  coin: { icon: Coins, className: 'text-status-info-text' },
+  goal: { icon: CalendarClock, className: 'text-status-info-text' },
+}
+
+/** Fallback for unknown kinds so plugin-side kinds can never crash a row. */
+const TIMELINE_FALLBACK_META = { icon: Activity as LucideIcon, className: 'text-tertiary' }
+
+/** Rows shown before the inline "Show all N" expansion. */
+const TIMELINE_COLLAPSED_ROWS = 12
+
+/** Compact relative stamp: "just now" → "5m ago" → "2h ago" → weekday ("Tue"). */
+function relativeStamp(at: string): string {
+  const ms = Date.now() - new Date(at).getTime()
+  if (ms < 60_000) return 'just now'
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`
+  return new Date(at).toLocaleDateString(undefined, { weekday: 'short' })
+}
+
 function ActivityTimelineWidget(_props: WidgetProps) {
+  const [expanded, setExpanded] = React.useState(false)
   const { data } = useQuery<{ entries: TimelineEntry[] }>({
     queryKey: ['timeline', 7],
     queryFn: () => apiGet('/api/timeline?days=7'),
     staleTime: 30_000,
   })
-  const entries = (data?.entries ?? []).slice(0, 8)
+  const entries = data?.entries ?? []
+  const visible = expanded ? entries : entries.slice(0, TIMELINE_COLLAPSED_ROWS)
   return (
     <section className="panel h-full">
       <div className="flex items-center justify-between">
@@ -296,17 +339,33 @@ function ActivityTimelineWidget(_props: WidgetProps) {
           appear here.
         </p>
       ) : (
-        <ul className="mt-3 space-y-1.5 text-sm">
-          {entries.map((e, i) => (
-            <li key={`${e.at}-${i}`} className="flex items-baseline gap-2">
-              <span className="w-14 shrink-0 text-[10px] text-faint">
-                {new Date(e.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </span>
-              <span className="min-w-0 flex-1 truncate">{e.title}</span>
-              {e.detail && <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="mt-3 space-y-1.5 text-sm">
+            {visible.map((e, i) => {
+              const meta = TIMELINE_KIND_META[e.kind] ?? TIMELINE_FALLBACK_META
+              const Icon = meta.icon
+              return (
+                <li key={`${e.at}-${i}`} className="flex items-baseline gap-2">
+                  <Icon className={`h-3.5 w-3.5 shrink-0 ${meta.className}`} aria-hidden />
+                  <span className="w-12 shrink-0 text-[10px] text-faint">
+                    {relativeStamp(e.at)}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{e.title}</span>
+                  {e.detail && <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>}
+                </li>
+              )
+            })}
+          </ul>
+          {entries.length > TIMELINE_COLLAPSED_ROWS && (
+            <button
+              type="button"
+              className="btn-ghost mt-2 text-xs"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded ? 'Show less' : `Show all ${entries.length}`}
+            </button>
+          )}
+        </>
       )}
     </section>
   )
@@ -535,6 +594,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
 import { timerWidgetDef } from './TimerWidget'
 
 export const BUILT_IN_WIDGETS: WidgetDef[] = [
+  { id: 'daily-loop', title: 'Daily loop', span: 'full', component: DailyLoopWidget },
   { id: 'stats', title: 'Stats', span: 'full', component: StatsWidget },
   timerWidgetDef,
   { id: 'open-loops', title: 'Open loops', span: 'full', component: OpenLoopsWidget },
@@ -542,6 +602,12 @@ export const BUILT_IN_WIDGETS: WidgetDef[] = [
   { id: 'agenda', title: "Today's agenda", span: 'half', component: AgendaWidget },
   { id: 'timeline', title: 'Activity', span: 'half', component: ActivityTimelineWidget },
   { id: 'insights', title: 'Insights', span: 'half', component: InsightsWidget },
+  {
+    id: 'analytics-glimpse',
+    title: 'Momentum',
+    span: 'half',
+    component: AnalyticsGlimpseWidget,
+  },
   {
     id: 'untested',
     title: 'Read but never tested',

@@ -15,7 +15,9 @@ import {
   focusSessions,
   getDailyQuest,
   getDueCardCount,
+  getOpenFocusSession,
   getStreakRow,
+  getTodayReviewTallies,
   getXpTotals,
   journalEntries,
   lessonProgress,
@@ -70,6 +72,19 @@ export interface DashboardData {
   agenda: AgendaItem[]
   /** needs-attention list for the bell (packages/core/src/notifications.ts) */
   notifications: NotificationItem[]
+  /** focus minutes actually completed today (UTC day bucket) — the Daily Loop focus ring */
+  focusMinutesToday: number
+  /** reviews committed today (revlog rows, undone excluded) — the Daily Loop reviews ring */
+  reviewsToday: number
+  /**
+   * The focus session currently running (not completed AND not ended), if any —
+   * same "live" definition as GET /api/focus. Null when nothing is running.
+   */
+  runningFocus: {
+    id: number
+    startedAt: string
+    plannedMinutes: number
+  } | null
 }
 
 function isFreshStartMoment(d: Date): boolean {
@@ -156,6 +171,23 @@ export const GET = withRoute(async (): Promise<Response> => {
         eq(focusSessions.completed, true),
       ),
     )
+  const focusMinutesToday = Math.round(Number(focusRow?.minutes ?? 0))
+
+  // Reviews committed today — the shared stats repo (undone reviews excluded,
+  // ADR 0004) over the same UTC day key the agenda and XP totals use.
+  const reviewsToday = getTodayReviewTallies({ now }).reviews
+
+  // The live focus session (not completed, not ended) — same repo call the
+  // focus handler uses, so the dashboard ring and /focus always agree.
+  const openFocus = getOpenFocusSession()
+  const runningFocus = openFocus
+    ? {
+        id: openFocus.id,
+        startedAt: openFocus.startedAt,
+        plannedMinutes: openFocus.plannedMinutes,
+      }
+    : null
+
   const [journalRow] = await db
     .select({ id: journalEntries.id })
     .from(journalEntries)
@@ -173,7 +205,7 @@ export const GET = withRoute(async (): Promise<Response> => {
       title: l.lessonTitle,
       courseTitle: l.courseTitle,
     })),
-    focusMinutesToday: Math.round(Number(focusRow?.minutes ?? 0)),
+    focusMinutesToday,
     focusTargetMinutes: FOCUS_TARGET_MINUTES,
     quest: todayQuest ? { title: 'daily quest', completed: todayQuest.completed } : null,
     journalDoneToday: journalRow != null,
@@ -209,6 +241,9 @@ export const GET = withRoute(async (): Promise<Response> => {
     openLoops,
     agenda,
     notifications,
+    focusMinutesToday,
+    reviewsToday,
+    runningFocus,
   }
   return Response.json(payload)
 })
