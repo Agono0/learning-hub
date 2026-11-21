@@ -40,6 +40,8 @@ import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
 import { prototypeExemplarTools } from './tools/prototype-exemplar'
+import { cognitiveLoadTools } from './tools/cognitive-load'
+import { dualcodingTools } from './tools/dualcoding'
 import type { RegisteredTool } from './tool-kit'
 
 // ─── Server ─────────────────────────────────────────────────────────────────
@@ -75,6 +77,8 @@ async function main() {
     ...telemetryAudioTools,
     ...advancedLearningTools,
     ...prototypeExemplarTools,
+    ...cognitiveLoadTools,
+    ...dualcodingTools,
   ] as RegisteredTool[]) {
     server.registerTool(
       registered.name,

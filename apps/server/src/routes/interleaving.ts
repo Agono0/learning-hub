@@ -10,11 +10,14 @@ import {
   CALIBRATED_INVARIANCE_PROBLEMS,
   computeCategoryContrastMatrix,
   computeDiscriminationTelemetry,
+  computeInterleavingSchedule,
   computeSequenceMetrics,
   exportFSRSInterleavingDeck,
   generateContrastSchedule,
+  interleavingItemSchema,
+  interleavingScheduleOptionsSchema,
 } from '@learning-hub/core'
-import { sendJson, readQuery } from '../http'
+import { sendJson, readJson, readQuery } from '../http'
 import type { Route } from './shared'
 
 const invarianceAttemptSchema = z.object({
@@ -27,6 +30,12 @@ const invarianceAttemptSchema = z.object({
 const invarianceQuerySchema = z.object({
   mode: z.enum(['interleaved', 'blocked']).default('interleaved'),
   attemptsJson: z.string().max(100_000).optional(),
+})
+
+/** POST /cognitive/interleaving/schedule body — candidate items + partial scheduling options (parity with the web handler). */
+const interleavingRequestSchema = z.object({
+  items: z.array(interleavingItemSchema),
+  options: interleavingScheduleOptionsSchema.partial().optional(),
 })
 
 /** Parses ?attemptsJson into validated attempts; malformed input scores as no telemetry. */
@@ -95,6 +104,17 @@ async function getStructuralInvariance(
   })
 }
 
+/**
+ * POST /cognitive/interleaving/schedule — Rohrer & Taylor interleaving practice
+ * scheduler & discrimination engine: compute the optimal interleaved sequence for
+ * candidate items, with category entropy and reflection prompts.
+ */
+async function postInterleavingSchedule(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, interleavingRequestSchema)
+  const result = computeInterleavingSchedule(body.items, body.options ?? {})
+  sendJson(res, 200, { ok: true, result })
+}
+
 /** GET /plugins — names + versions of the plugins loaded at boot (core registry). */
 
 /** Route table for this area — concatenated in ./index.ts in the original routes.ts order. */
@@ -104,5 +124,11 @@ export const interleavingRoutes: Route[] = [
     path: '/cognitive/structural-invariance',
     summary: 'interleaved structural invariance plan (?mode=interleaved|blocked)',
     handler: getStructuralInvariance,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/interleaving/schedule',
+    summary: 'compute optimal interleaved practice schedule for candidate items',
+    handler: postInterleavingSchedule,
   },
 ]

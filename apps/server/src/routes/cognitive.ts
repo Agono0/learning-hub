@@ -7,11 +7,16 @@ import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
+  addConceptDagEdge,
   db,
   cards,
   deriveMeasuredBehavior,
+  getConceptDag,
+  getConceptDagNode,
   getRevlogTrialRows,
   reconstructCorrectionTrials,
+  updateNodeMasteries,
+  upsertConceptDagNode,
 } from '@learning-hub/db'
 import {
   createGenerationLadder,
@@ -28,6 +33,7 @@ import {
   auditSpacing,
   SELF_REPORT_PROMPTS,
   prioritizeRelearningQueue,
+  sessionTelemetrySchema,
   sleepProfileSchema,
   toConsolidationCandidates,
   fragilityScore,
@@ -41,16 +47,23 @@ import {
   CALIBRATED_INTERACTIVITY_SUITES,
   CALIBRATED_COGNITIVE_LOAD_SCENARIOS,
   evaluateComprehensiveCognitiveLoad,
+  evaluateFlowState,
   CALIBRATED_EQUILIBRIUM_SUITES,
   evaluateReflectiveEquilibrium,
   exportEquilibriumToFSRSCards,
+  analyzeDualCoding,
   analyzeElementInteractivity,
   calculateInstructionalEfficiency,
   judgmentOfLearningSchema,
   pretestRelatedness,
   selectPretestCandidates,
+  propagateGktBelief,
+  topologicalSortGkt,
+  wouldIntroduceCycle,
+  type GktEdge,
+  type GktNode,
 } from '@learning-hub/core'
-import { sendJson, jsonError, readJson, readQuery } from '../http'
+import { ApiError, sendJson, jsonError, readJson, readQuery } from '../http'
 import type { Route } from './shared'
 
 const generationChallengeSchema = z.object({
@@ -68,6 +81,64 @@ const metacognitionBodySchema = z.object({
 const metacognitionQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
   deckId: z.coerce.number().int().positive().optional(),
+})
+
+/** GKT concept node id (trimmed, bounded — same validation as the web handler). */
+const nodeIdSchema = z.string().trim().min(1).max(120)
+
+/** POST /cognitive/gkt body — upsert_node | add_edge | evaluate_review (parity with the web handler). */
+const gktPostSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('upsert_node'),
+    courseId: z.number().int().positive().optional(),
+    nodeData: z.object({
+      id: nodeIdSchema,
+      title: z.string().trim().min(1).max(200),
+      description: z.string().max(2000).optional(),
+      masteryProb: z.number().min(0.001).max(0.999).optional(),
+    }),
+  }),
+  z.object({
+    action: z.literal('add_edge'),
+    edgeData: z.object({
+      prerequisiteId: nodeIdSchema,
+      dependentId: nodeIdSchema,
+      weight: z.number().min(0.1).max(1).optional(),
+    }),
+  }),
+  z.object({
+    action: z.literal('evaluate_review'),
+    courseId: z.number().int().positive().optional(),
+    nodeId: nodeIdSchema,
+    passed: z.boolean(),
+  }),
+])
+
+/** GET /cognitive/gkt query. */
+const gktQuerySchema = z.object({
+  courseId: z.coerce.number().int().positive().optional(),
+})
+
+/** GET /cognitive/flow-state quick-assessment query (parity with the web handler). */
+const flowQuerySchema = z.object({
+  elapsedMinutes: z.coerce.number().min(0).default(0),
+  accuracy: z.coerce.number().min(0).max(1).default(0.85),
+})
+
+/** GET /cognitive/dual-coding query (parity with the web handler). */
+const dualCodingQuerySchema = z.object({
+  cardId: z.coerce.number().int().positive().optional(),
+  text: z.string().default(''),
+})
+
+/** POST /cognitive/dual-coding body (parity with the web handler). */
+const dualCodingInputSchema = z.object({
+  cardId: z.number().int().positive().optional(),
+  text: z.string().min(1),
+  hasImage: z.boolean().optional(),
+  hasDiagram: z.boolean().optional(),
+  verbalRetention: z.number().min(0).max(1).optional(),
+  visualRetention: z.number().min(0).max(1).optional(),
 })
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -585,6 +656,149 @@ async function getHypercorrection(
   })
 }
 
+// ── GKT (graph knowledge tracing) — parity with web handlers/cognitive/gkt ──
+
+type GktDagRows = ReturnType<typeof getConceptDag>
+
+/** DB row → core GktNode (nullable course/lastAssessedAt become undefined). */
+function toCoreGktNode(n: GktDagRows['nodes'][number]): GktNode {
+  return {
+    id: n.id,
+    title: n.title,
+    courseId: n.courseId ?? undefined,
+    masteryProb: n.masteryProb,
+    slipProb: n.slipProb,
+    guessProb: n.guessProb,
+    transitProb: n.transitProb,
+    lastAssessedAt: n.lastAssessedAt ?? undefined,
+  }
+}
+
+/** DB row → core GktEdge. */
+function toCoreGktEdge(e: GktDagRows['edges'][number]): GktEdge {
+  return { prerequisiteId: e.prerequisiteId, dependentId: e.dependentId, weight: e.weight }
+}
+
+/** GET /cognitive/gkt — the (optionally course-scoped) concept DAG, nodes topologically sorted. */
+async function getGkt(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const { courseId } = readQuery(url, gktQuerySchema)
+  const { nodes, edges } = getConceptDag(courseId)
+  const coreEdges = edges.map(toCoreGktEdge)
+  sendJson(res, 200, {
+    ok: true,
+    nodes: topologicalSortGkt(nodes.map(toCoreGktNode), coreEdges),
+    edges: coreEdges,
+  })
+}
+
+/**
+ * POST /cognitive/gkt — `upsert_node`, `add_edge` (refused with 409 when it would
+ * create a cycle — a prerequisite graph must stay a DAG), or `evaluate_review`
+ * (one pass/fail on a concept → BKT update + upstream blame / downstream credit,
+ * persisted atomically, with a root-cause alert naming the weakest prerequisite).
+ */
+async function postGkt(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, gktPostSchema)
+
+  switch (body.action) {
+    case 'upsert_node': {
+      const node = upsertConceptDagNode({
+        id: body.nodeData.id,
+        title: body.nodeData.title,
+        description: body.nodeData.description,
+        masteryProb: body.nodeData.masteryProb,
+        courseId: body.courseId,
+      })
+      sendJson(res, 200, { ok: true, node })
+      return
+    }
+
+    case 'add_edge': {
+      const { prerequisiteId, dependentId, weight } = body.edgeData
+      if (!getConceptDagNode(prerequisiteId) || !getConceptDagNode(dependentId)) {
+        throw new ApiError(404, 'both concepts must exist before they can be linked')
+      }
+      // Cycle check against the WHOLE graph — prerequisites may span courses.
+      const all = getConceptDag().edges.map(toCoreGktEdge)
+      if (wouldIntroduceCycle(all, { prerequisiteId, dependentId })) {
+        throw new ApiError(409, 'that link would create a prerequisite cycle')
+      }
+      const edge = addConceptDagEdge({ prerequisiteId, dependentId, weight })
+      sendJson(res, 200, { ok: true, edge })
+      return
+    }
+
+    case 'evaluate_review': {
+      const { nodes, edges } = getConceptDag(body.courseId)
+      const nodeMap = new Map(nodes.map((n) => [n.id, toCoreGktNode(n)]))
+      if (!nodeMap.has(body.nodeId)) throw new ApiError(404, 'concept not found')
+
+      const result = propagateGktBelief(nodeMap, edges.map(toCoreGktEdge), {
+        nodeId: body.nodeId,
+        passed: body.passed,
+      })
+      updateNodeMasteries(result.updatedMasteries, undefined, body.nodeId)
+
+      sendJson(res, 200, {
+        ok: true,
+        updatedMasteries: result.updatedMasteries,
+        rootCauseAlert: result.rootCauseAlert,
+      })
+      return
+    }
+  }
+}
+
+// ── Flow state & ultradian rhythm — parity with web handlers/cognitive/flow-state ──
+
+/** GET /cognitive/flow-state — quick assessment of the current focus block and ultradian phase. */
+async function getFlowState(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const { elapsedMinutes, accuracy } = readQuery(url, flowQuerySchema)
+  const evaluation = evaluateFlowState({
+    accuracy,
+    averageLatencyMs: 2500,
+    expectedLatencyMs: 2500,
+    cardsAnswered: Math.round(elapsedMinutes * 2),
+    elapsedFocusMinutes: elapsedMinutes,
+  })
+  sendJson(res, 200, { ok: true, flow: evaluation })
+}
+
+/** POST /cognitive/flow-state — evaluate session telemetry (accuracy, latency, strain) for flow zone & recommendations. */
+async function postFlowState(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, sessionTelemetrySchema)
+  const evaluation = evaluateFlowState(body)
+  sendJson(res, 200, { ok: true, flow: evaluation })
+}
+
+// ── Dual coding (Paivio) — parity with web handlers/cognitive/dual-coding ──
+
+/** GET /cognitive/dual-coding — analyze a text snippet or card for dual-coding viability (?cardId=&text=). */
+async function getDualCoding(_req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const { cardId, text } = readQuery(url, dualCodingQuerySchema)
+  const analysis = analyzeDualCoding({
+    cardId,
+    text: text || 'Concept definition',
+    hasImage: false,
+    hasDiagram: false,
+  })
+  sendJson(res, 200, { ok: true, analysis })
+}
+
+/** POST /cognitive/dual-coding — evaluate composite retention, channel forgetting reduction, and modality suggestions. */
+async function postDualCoding(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, dualCodingInputSchema)
+  const analysis = analyzeDualCoding({
+    cardId: body.cardId,
+    text: body.text,
+    hasImage: body.hasImage,
+    hasDiagram: body.hasDiagram,
+    verbalRetention: body.verbalRetention,
+    visualRetention: body.visualRetention,
+  })
+  sendJson(res, 200, { ok: true, analysis })
+}
+
 /** GET /cognitive/skills/catalog — lists canonical agent skills */
 
 /** Route table for this area — concatenated in ./index.ts in the original routes.ts order. */
@@ -686,5 +900,41 @@ export const cognitiveRoutes: Route[] = [
     summary:
       'Sweller element-interactivity analysis + Paas efficiency (?suiteKey=&extraneousLoadFactor=&mentalEffort=&performance=)',
     handler: postInteractivity,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/gkt',
+    summary: 'concept DAG, nodes topologically sorted (?courseId=)',
+    handler: getGkt,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/gkt',
+    summary: 'upsert_node, add_edge (409 on cycle) or evaluate_review BKT propagation',
+    handler: postGkt,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/flow-state',
+    summary: 'quick flow & ultradian phase assessment (?elapsedMinutes=&accuracy=)',
+    handler: getFlowState,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/flow-state',
+    summary: 'evaluate session telemetry for flow zone & recommendations',
+    handler: postFlowState,
+  },
+  {
+    method: 'GET',
+    path: '/cognitive/dual-coding',
+    summary: 'dual-coding viability analysis for a snippet (?cardId=&text=)',
+    handler: getDualCoding,
+  },
+  {
+    method: 'POST',
+    path: '/cognitive/dual-coding',
+    summary: 'composite retention, channel forgetting reduction, modality suggestions',
+    handler: postDualCoding,
   },
 ]
