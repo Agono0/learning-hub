@@ -21,7 +21,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-07 | OTA | Manifest generator script: hash .next-tauri → manifest.json (files{path,sha256,size}), emit changed-file patch set vs previous manifest | script runs, fixtures tested | scripts/update-manifest.mjs, tests | O1-01 |
 - [x] O1-08 | OTA | CI: nightly workflow — build web+native, generate+sign manifest, diff vs previous release, tag nightly-YYYYMMDD-<sha>, upload assets + pointer | workflow yaml valid; dry-run artifact list | .github/workflows/nightly.yml | O1-07 |
 - [x] O1-09 | OTA | Sign keypair: generate Ed25519 minisign keys; pubkey committed to tauri.conf + repo; private key documented as Actions secret (user adds) | pubkey in repo, docs/updates.md key section | apps/native/src-tauri/tauri.conf.json (LEAD), docs/updates.md | O1-02 |
-- [ ] O1-10 | OTA | tauri-plugin-updater wiring for Windows native layer: conf + capability + Rust init + signature artifacts (createUpdaterArtifacts) | conf valid; updater builder reachable in dev | apps/native/src-tauri/tauri.conf.json, Cargo.toml, lib.rs, capabilities (LEAD-applied) | O1-02 |
+- [~W1] O1-10 | OTA | tauri-plugin-updater wiring for Windows native layer: conf + capability + Rust init + signature artifacts (createUpdaterArtifacts) | conf valid; updater builder reachable in dev | apps/native/src-tauri/tauri.conf.json, Cargo.toml, lib.rs, capabilities (LEAD-applied) | O1-02 |
 - [x] O1-11 | OTA | Promote workflow: manual dispatch nightly→beta/stable (re-tag pointer, keep artifacts) | workflow yaml + docs | .github/workflows/promote.yml | O1-08 |
 - [x] O1-12 | OTA | Play channel flag: build-time env LH_UPDATE_CHANNEL=play bakes self-update off; sideload default on | unit test of flag reader both ways | apps/web/src/lib/updates.ts (client service), next.config env, docs | O1-01 |
 - [ ] O1-13 | OTA | Android sideload install: Kotlin PackageInstaller session for full per-ABI APK; REQUEST_INSTALL_PACKAGES; consent flow | code + docs; CI compiles | apps/native/src-tauri/gen/android/.../MaxUpdatePlugin.kt + manifest, Cargo bridge | O1-02 |
@@ -40,7 +40,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 ## Epic 2 — Max Focus device lock (M2)
 
 - [x] M2-01 | LOCK | Session state machine in core: locked→cooldown→can_confirm→ended + hardCapAt, unlock reasons (timer/pin/battery/failure/tamper), monotonic anchor vs wall clock | unit tests all transitions | packages/core/src/focus-lock/session.ts, tests | P0-1 |
-- [ ] M2-02 | LOCK | PIN vault: PBKDF2 hash (web crypto) + salt in userSettings JSON; first-use set + security-question recovery; verify API | unit tests | packages/core/src/focus-lock/pin.ts + tests, handler | M2-01 |
+- [x] M2-02 | LOCK | PIN vault: PBKDF2 hash (web crypto) + salt in userSettings JSON; first-use set + security-question recovery; verify API | unit tests | packages/core/src/focus-lock/pin.ts + tests, handler | M2-01 |
 - [ ] M2-03 | LOCK | maxFocusSessions table + migration (LEAD applies): tier, deviceId, startedAt, plannedEnd, hardCapAt, state, exitReason | migration + repo CRUD + tests | packages/db/src/schema.ts, migrations/0xx-max-focus.ts, repos/focus-lock.ts | M2-01 |
 - [ ] M2-04 | LOCK | Handlers: start/status/extend/exit(+reason+pin verify)/history via withRoute + zod | integration tests | apps/web/src/server/handlers/focus/max/…, hub registry | M2-03 |
 - [ ] M2-05 | LOCK | Windows Rust: topmost fullscreen window across ALL monitors | code + CI compile | apps/native/src-tauri/src/lock_win.rs | M2-01 |
@@ -75,7 +75,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 
 Schema batches are LEAP-applied by lead after worker writes migration file.
 
-- [ ] S3-01 | SP | DB schema batch A (LEAD applies migration): taskProjects, taskTags, taskItems (parentId, projectId, tagIds JSON?→link table, estimateMs, timeSpentOnDay JSON, due, dueWithTime, deadline, priority, isDone, doneAt, wonthado, repeatCfgId, notes, order), taskRepeatCfgs, taskReminders | migration idempotent; drizzle types export | packages/db/src/schema.ts + migrations/0xx-sp-tasks.ts | P0-1 |
+- [~W2] S3-01 | SP | DB schema batch A (LEAD applies migration): taskProjects, taskTags, taskItems (parentId, projectId, tagIds JSON?→link table, estimateMs, timeSpentOnDay JSON, due, dueWithTime, deadline, priority, isDone, doneAt, wonthado, repeatCfgId, notes, order), taskRepeatCfgs, taskReminders | migration idempotent; drizzle types export | packages/db/src/schema.ts + migrations/0xx-sp-tasks.ts | P0-1 |
 - [ ] S3-02 | SP | DB schema batch B (LEAD applies): taskTimeLogs (per task/day/session ms), taskSections, taskAttachments, taskArchiveTiers, simpleCounters, metricDays, taskViews(boards) JSON | migration + types | packages/db/src/schema.ts + migrations/0xx-sp-views.ts | S3-01 |
 - [ ] S3-03 | SP | Core task domain: model + ops (create/update/complete/reopen/duplicate/bulk/validate) pure functions | unit tests | packages/core/src/tasks/index.ts + tests | S3-01 |
 - [ ] S3-04 | SP | Core subtasks: one nesting level, parent aggregates time/estimate | unit tests | packages/core/src/tasks/subtasks.ts | S3-03 |
