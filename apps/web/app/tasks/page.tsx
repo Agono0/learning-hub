@@ -307,6 +307,11 @@ export default function TasksPage() {
                     {sectionTasks.length}
                   </span>
                 </div>
+                {sectionTasks.length === 0 && (
+                  <p className="text-xs text-tertiary">
+                    Empty section — drag a task onto this header to file it here.
+                  </p>
+                )}
                 {sectionTasks.length > 0 && (
                   <ul className="flex flex-col gap-2">
                     {sectionTasks.map((task) => (
