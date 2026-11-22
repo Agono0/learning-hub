@@ -17,6 +17,7 @@ import { ErrorBoundary } from '@/ui'
 import { classifyRequestError } from '@/lib/use-api-error'
 import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import { ProfileTunedBanner } from '@/components/dashboard/ProfileTunedBanner'
+import { NextUpCard } from '@/components/dashboard/NextUpCard'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -189,6 +190,8 @@ export default function DashboardPage() {
           pending "lh-profile-applied" record); shown only once the page data
           has loaded, above the widget grid. */}
       <ProfileTunedBanner />
+
+      <NextUpCard data={d} />
 
       {rows.map((row, rowIdx) => (
         <section
