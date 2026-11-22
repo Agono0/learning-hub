@@ -9,6 +9,97 @@
 mod focus;
 mod update;
 
+/// Updates base dir under app data: `<app_data_dir>/updates` (A/B slots plus
+/// the atomic pointer file — see `update.rs`).
+fn slot_updates_dir(app: &tauri::AppHandle) -> std::path::PathBuf {
+    use tauri::Manager;
+    app.path()
+        .app_data_dir()
+        .map(|dir| dir.join("updates"))
+        .unwrap_or_else(|_| std::env::temp_dir().join("learning-hub-updates"))
+}
+
+/// Content-Type for slot-served files — conservative extension map covering
+/// everything the `.next-tauri` export emits. Unknown extensions default to
+/// `application/octet-stream` so nothing is ever sniffed.
+fn mime_for(path: &str) -> &'static str {
+    let ext = path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    match ext.as_str() {
+        "html" => "text/html; charset=utf-8",
+        "js" | "mjs" => "text/javascript; charset=utf-8",
+        "css" => "text/css; charset=utf-8",
+        "json" | "map" => "application/json",
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "avif" => "image/avif",
+        "ico" => "image/x-icon",
+        "woff" => "font/woff",
+        "woff2" => "font/woff2",
+        "ttf" | "otf" => "font/ttf",
+        "mp3" => "audio/mpeg",
+        "wav" => "audio/wav",
+        "wasm" => "application/wasm",
+        "txt" => "text/plain; charset=utf-8",
+        "webmanifest" => "application/manifest+json",
+        "xml" => "application/xml",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Serves the ACTIVE slot over the custom `lhslot` scheme (O1-04), falling
+/// back to the bundled `.next-tauri` assets via the asset resolver when the
+/// slot has no such file (first run — no pointer, empty slot, missing file).
+///
+/// Uri shapes from the webview: `https://lhslot.localhost/<path>` on Windows
+/// and `lhslot://localhost/<path>` elsewhere — both expose the path through
+/// `Uri::path()`, so one parser serves both.
+///
+/// Capabilities note: capabilities bind by window label (`"main"`), not by
+/// origin, and Tauri 2 treats registered custom schemes as app origins — so
+/// IPC permissions survive the slot switch with no capability rebind.
+///
+/// Origin note: the slot origin differs from the bundled origin, which moves
+/// the webview's OPFS/localStorage scope; slot payloads are only promoted
+/// after signature verification, and the storage path is tracked in
+/// docs/updates.md §"Slots & the webview origin".
+fn serve_slot_protocol(
+    app: &tauri::AppHandle,
+    request: tauri::http::Request<Vec<u8>>,
+) -> tauri::http::Response<std::borrow::Cow<'static, [u8]>> {
+    use std::borrow::Cow;
+    use tauri::Manager;
+
+    let path = request.uri().path().trim_start_matches('/');
+    let rel = if path.is_empty() { "index.html" } else { path };
+    let base = slot_updates_dir(app);
+
+    if let Some(bytes) = update::lookup_in_active_slot(&base, rel) {
+        return tauri::http::Response::builder()
+            .status(200)
+            .header("Content-Type", mime_for(rel))
+            .body(Cow::Owned(bytes))
+            .expect("valid slot response");
+    }
+
+    // Fallback: the payload the shell shipped with (bundled export).
+    if let Some(asset) = app.asset_resolver().get(rel) {
+        return tauri::http::Response::builder()
+            .status(200)
+            .header("Content-Type", mime_for(rel))
+            .body(Cow::Owned(asset.bytes().into_owned()))
+            .expect("valid bundled response");
+    }
+
+    tauri::http::Response::builder()
+        .status(404)
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .body(Cow::Borrowed(b"not found".as_slice()))
+        .expect("valid 404 response")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -26,7 +117,13 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         // AI provider traffic from the hub worker (via the main thread) — native HTTP, no webview CORS.
         .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        // Delta-OTA A/B slots (O1-04): serve the active slot's payload over a
+        // custom scheme, falling back to the bundled assets when no slot has
+        // been promoted yet (first run). See update.rs + docs/updates.md.
+        .register_uri_scheme_protocol("lhslot", |ctx, request| {
+            serve_slot_protocol(ctx.app_handle(), request)
+        });
 
     #[cfg(mobile)]
     let builder = builder.plugin(tauri_plugin_haptics::init());

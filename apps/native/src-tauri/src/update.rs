@@ -593,6 +593,20 @@ pub fn promote_inactive_slot(base_dir: &Path) -> Result<SlotId, UpdateError> {
     Ok(next)
 }
 
+/// Bytes of `rel_path` inside the ACTIVE slot — the serving seam used by the
+/// custom URI-scheme protocol (O1-04, `serve_slot_protocol` in `lib.rs`).
+///
+/// Returns `None` when there is no pointer, the slot has never been filled,
+/// the path is unsafe, or the file does not exist — every one of those cases
+/// means "fall back to the bundled assets", not "error out the webview".
+pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>> {
+    if is_unsafe_rel_path(rel_path) {
+        return None;
+    }
+    let slot = active_slot(base_dir).ok()?;
+    fs::read(slot_dir(base_dir, slot).join(rel_path)).ok()
+}
+
 // ─── Tests (known-key fixture, no network) ───────────────────────────────────
 
 #[cfg(test)]
@@ -915,5 +929,34 @@ mod slot_tests {
         );
         assert!(files_base_url("https://example.com/other.json").is_err());
         assert!(files_base_url("http://example.com/manifest.json").is_err());
+    }
+
+    #[test]
+    fn active_slot_lookup_serves_promoted_files_and_falls_back_to_none() {
+        let base = temp_base();
+        // First run: no slots on disk — every lookup falls back (None).
+        assert_eq!(lookup_in_active_slot(&base, "index.html"), None);
+        assert_eq!(lookup_in_active_slot(&base, "../escape"), None);
+
+        let (manifest, manifest_bytes) = test_manifest(vec![file_entry("index.html", b"slotted")]);
+        download_to_inactive_slot(
+            &base,
+            &manifest,
+            &manifest_bytes,
+            "https://example.com/rel",
+            |_| Ok(b"slotted".to_vec()),
+        )
+        .unwrap();
+        // Still bundled (download targets the INACTIVE slot): None.
+        assert_eq!(lookup_in_active_slot(&base, "index.html"), None);
+        // After promotion the active slot serves the new bytes.
+        promote_inactive_slot(&base).unwrap();
+        assert_eq!(
+            lookup_in_active_slot(&base, "index.html"),
+            Some(b"slotted".to_vec())
+        );
+        assert_eq!(lookup_in_active_slot(&base, "missing.html"), None);
+        assert_eq!(lookup_in_active_slot(&base, "../evil"), None);
+        fs::remove_dir_all(&base).ok();
     }
 }

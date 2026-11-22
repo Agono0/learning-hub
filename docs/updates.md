@@ -78,6 +78,31 @@ the new build never reports ready.
 | Android Play     | Store updates only                                                                                      | **Off** — `LH_UPDATE_CHANNEL=play` bakes self-update off (O1-12) |
 | Web (browser)    | Not applicable — reload is the update                                                                   | n/a                                                              |
 
+## Slots & the webview origin (O1-04)
+
+The active slot is served over a custom URI scheme (`lhslot`) registered in
+`apps/native/src-tauri/src/lib.rs::serve_slot_protocol`: files come from
+`<app_data_dir>/updates/slots/<active>/` (resolved by
+`update::lookup_in_active_slot`), and anything the slot does not have falls
+back to the bundled `.next-tauri` export via Tauri's asset resolver — so a
+fresh install (no pointer file, slot A implied) serves bundled bytes and
+behaves exactly like today.
+
+Two properties that matter for reviewers:
+
+- **Capabilities need no rebinding.** Tauri capabilities bind by window label
+  (`"main"`), not by origin, and a registered custom scheme is treated as an
+  app origin — IPC permissions survive a slot switch unchanged
+  (`capabilities/*.json`).
+- **The webview origin changes between bundled and slot serving.**
+  `tauri://localhost` (bundled) and `lhslot://localhost` / `https://
+lhslot.localhost` (slot) are different origins, which relocates the
+  webview's OPFS/localStorage scope — including the sqlite-wasm database.
+  This is flagged for the lead (rule 10 adjacency): either the hub worker's
+  storage path must be origin-independent, or a first-boot migration must
+  copy OPFS data before the first slot promotion. Tracked here until O1-05's
+  boot-confirm flow lands.
+
 ## Android signing — keystore persistence (O1-22)
 
 **Problem.** `scripts/tauri-android.mjs` signs release APKs from
