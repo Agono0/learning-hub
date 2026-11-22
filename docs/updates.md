@@ -1,9 +1,13 @@
 # Self-updates — delta OTA architecture
 
-> Status: Epic 1 (delta OTA) is **in flight** — this document describes the
-> target architecture and the parts already true today. Sections marked with a
-> task ID (`O1-xx`, see `TASKS.md`) are not yet implemented. Ground truth about
-> the current stack lives in [ARCHITECTURE_NOTES.md](ARCHITECTURE_NOTES.md).
+> Status: Epic 1 (delta OTA) is **in flight**. Already real: the core contracts
+> (`packages/core/src/update/`, O1-01), the manifest generator
+> (`scripts/update-manifest.mjs`, O1-07), the nightly release pipeline
+> (`.github/workflows/nightly.yml`, O1-08), channel promotion
+> (`.github/workflows/promote.yml`, O1-11) and the patch-size probe (O1-20).
+> The native client (Rust `update.rs`, O1-02+) is being built against these
+> contracts. Ground truth about the current stack lives in
+> [ARCHITECTURE_NOTES.md](ARCHITECTURE_NOTES.md).
 
 ## Why delta updates
 
@@ -15,22 +19,55 @@ for that. The OTA system ships only changed files into an inactive slot and
 flips a pointer — measured target: hot patches well under 50 KB
 (O1-20 records the number into release notes).
 
+## Architecture in one paragraph
+
+CI builds the `.next-tauri` export and hashes **every file** (sha256 + size)
+into a content-addressed `manifest.json` (`updateManifestSchema` in
+`packages/core/src/update/`, O1-01). A small per-channel **pointer** document
+(`updatePointerSchema`, the `nightly.json` of the channel) names the current
+version and the https URL of the channel's **signed** manifest. The client
+polls the pointer, compares versions (`compareVersions` understands semver AND
+the `nightly-YYYYMMDD-<sha>` CI tag format), downloads the manifest, verifies
+its **Ed25519 minisign signature** (never disable this), then fetches only
+files whose hashes differ — or a delta patch bundle — into the **inactive A/B
+slot**. Apply is **ask-first on restart**; boot-confirm rollback flips back if
+the new build never reports ready.
+
 ## Channels & pointer model (locked decisions)
 
-- **Channels:** `nightly` → `beta` → `stable`, pointer files per channel
-  (`nightly.json`, …) hosted on **GitHub Releases** (O1-01, O1-08, O1-11).
+- **Channels:** `nightly` → `beta` → `stable`, one pointer file per channel:
+  `nightly.json`, `beta.json`, `stable.json`.
+- **Pointer hosting:** a fixed GitHub release with tag **`channel-pointers`**
+  holds the mutable pointer assets (and per-channel signed manifest copies,
+  `manifest-<channel>.json` + `.sig`). This gives clients ONE stable https URL
+  per channel — GitHub's `releases/latest` ignores prereleases, and the
+  nightly release tag changes every night. The nightly workflow refreshes
+  `nightly.json` there (O1-08); `promote.yml` refreshes `beta.json`/`stable.json`
+  (O1-11).
+- **Versioning:** nightly builds are tagged `nightly-YYYYMMDD-<shortsha>`;
+  the manifest `version` is `YYYYMMDD-<shortsha>`. `compareVersions` (O1-01)
+  strips the tag prefix, compares the date numerically, then the short sha —
+  a nightly of the same date always sorts after its bare base version.
+- **Promotion:** `promote.yml` copies the source release's manifest, rewrites
+  only its `channel` field, **re-signs it** (bytes changed ⇒ new signature) and
+  re-points the channel — artifacts (patches, installer) are never rebuilt.
+  Rollback to an older build = run the workflow again with its tag.
 - **Apply policy:** ask-first, apply on restart — the app never rewrites
   itself under the user's feet, and refuses to apply while a Max Focus
-  session is active (O1-06, core gate shared with `packages/core/src/focus-lock/`).
+  session is active (O1-06, core gate shared with `packages/core/src/focus-lock/`;
+  `updateSettingsSchema.autoApply` is a locked `false` literal, O1-01).
 - **Integrity:** every file in `manifest.json` carries `sha256` + `size`; the
   manifest is Ed25519 (minisign) signed; the client verifies signature first,
-  then per-file hashes (O1-02, O1-18).
-- **Rollback:** the webview confirms boot to the Rust layer; N missed
-  confirmations flip the slot pointer back to the previous release and log
-  it (O1-05, O1-17).
+  then per-file hashes (O1-02, O1-18). Every URL in a manifest, patch or
+  pointer must be https — enforced by `assertHttps` in the schemas.
 - **A/B slots** live in Tauri's `app_data_dir` (writable per-origin), the
   active slot is served through a custom URI-scheme protocol with fallback to
   the bundled asset resolver (O1-03, O1-04).
+- **Rollback:** the webview confirms boot to the Rust layer; N missed
+  confirmations flip the slot pointer back to the previous release and log
+  it (O1-05, O1-17). Clock manipulation during a session is detected by the
+  monotonic-anchor vs wall-clock gate in the focus session machine
+  (`packages/core/src/focus-lock/session.ts`, M2-01/M2-20).
 
 ## Platform matrix
 
@@ -94,28 +131,56 @@ keystore so store and sideload artifacts share an identity where policy allows.
 
 ## Manifest signing key ceremony (O1-09)
 
-- **Keypair:** Ed25519 minisign keys generated once (`O1-02` verifies with
-  `minisign-verify` + `sha2` in `apps/native/src-tauri/src/update.rs`).
+- **Keypair:** Ed25519 minisign keys generated once (Tauri CLI:
+  `npx tauri signer generate -w lh-update.key`). The Rust client verifies with
+  `minisign-verify` + `sha2` in `apps/native/src-tauri/src/update.rs` (O1-02).
 - **Public key:** committed to the repository (and referenced by
   `tauri.conf.json` once the updater plugin lands — LEAD-applied file).
-- **Private key:** GitHub Actions secret (e.g. `LH_UPDATE_SIGNING_KEY`),
-  used only by the nightly workflow (O1-08) to sign `manifest.json`.
+- **Private key:** GitHub Actions secrets `TAURI_SIGNING_PRIVATE_KEY` and
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (the exact names the Tauri CLI and
+  `nightly.yml`/`promote.yml` consume). Used to sign `manifest.json` and the
+  channel pointers; nothing else. Until the secrets exist, the workflows
+  publish **unsigned** artifacts with a loud warning — the client refuses
+  unsigned manifests by design, so an unsigned release is inert, never
+  silently trusted.
 - **Rotation:** publish the new public key in a release **before** signing
   manifests with it; keep the old key verifying for one channel cycle.
+- **Never commit the private key** (rule 12); treat it like the Android
+  keystore — losing it is recoverable (rotate), leaking it is not (an attacker
+  can sign malicious updates for every existing client).
 
-## Release flow (target)
+## Release flow
 
 1. `nightly.yml` (O1-08): build web + native, `scripts/update-manifest.mjs`
    (O1-07) hashes `.next-tauri` → `manifest.json` and diffs against the
-   previous release's manifest to emit the changed-file patch set, signs it,
-   tags `nightly-YYYYMMDD-<sha>`, uploads assets + channel pointer.
+   previous release's manifest to emit the changed-file patch set (≤ 5, the
+   O1-19 upgrade chain), signs it, tags `nightly-YYYYMMDD-<sha>`, uploads
+   assets + refreshes the `nightly.json` pointer on `channel-pointers`.
 2. CI applies a one-line web change and records the resulting hot-patch size
    into release notes + this document (O1-20).
-3. `promote.yml` (O1-11): manual dispatch re-tags a nightly build's pointer to
-   `beta`/`stable`, keeping artifacts.
+3. `promote.yml` (O1-11): manual dispatch re-points a nightly build's channel
+   to `beta`/`stable` on `channel-pointers`, keeping artifacts.
 4. Client (Settings → Updates, O1-14): channel picker, check-now, interval,
    Wi-Fi-only (Android), changelog panel; banner prompts with patch-vs-full
    size (O1-15); download is resumable with progress events (O1-16).
+
+## Update-check flow (client contract, O1-02/O1-14)
+
+1. Poll `https://github.com/<owner>/<repo>/releases/download/channel-pointers/<channel>.json`
+   every `autoCheckIntervalHours` (default 6, Wi-Fi-only on Android).
+2. Parse the pointer (`updatePointerSchema`); unknown fields are ignored so old
+   clients survive pointer evolution (O1-28).
+3. If `compareVersions(pointer.version, installedVersion) > 0`: fetch
+   `pointer.manifestUrl` and **verify its minisign signature against the
+   committed public key** — a bad signature aborts everything (O1-18).
+4. Check `minNativeVersion`: when the installed shell is older, hot update is
+   impossible — route the user to the full installer/APK (`requiresNative`
+   behaves the same way for native-code changes).
+5. `pickPatch(manifest, installedVersion)` — a matching delta patch from the
+   last 5 builds, else fall back to `fullPackageUrl`. Show the size, ask first.
+6. Download into the inactive slot, verify every file's sha256 against the
+   manifest, atomically flip the slot pointer, restart, boot-confirm (O1-05).
+   Never while a Max Focus session is active (O1-06).
 
 ## Measured hot patch size (O1-20)
 
