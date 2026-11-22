@@ -5,15 +5,28 @@ Workers never edit shared files (`schema.ts`, `migrations/index.ts`,
 settings columns, matrix doc). Append requests below; the lead applies them
 in batches. Format: `[task] file → change → why`.
 
+## Status (X-02 reconciliation pass)
+
+**Every request below is APPLIED and verified in the tree** (migration
+`034-sp-task-columns` + `035-task-fts`, Cargo crates, tauri.conf updater
+wiring, native.yml guards/test/delta steps — each marked with its
+verification). **Nothing is pending.** For the record, two later-scope
+requests were folded into the affected tasks instead of shared files:
+S3-74 project bookmarks persist device-local
+(`apps/web/src/lib/project-bookmarks.ts`) and S3-76 trash persistence is
+handler-side (W2) — both note a LEAD migration option in their handoffs.
+
 ## Requests
 
 - [O1-22] `.github/workflows/native.yml` → add a fail-fast guard step in the
+  → **APPLIED** — native.yml fail-fast guard (lines 115-117).
   `android` matrix job (before the build) that exits with an error when
   `ANDROID_KEYSTORE_BASE64` is unset, so CI cannot silently auto-generate a
   new keystore and break sideload-update signatures. Exact YAML proposed in
   `docs/updates.md` §"Android signing — keystore persistence (O1-22)".
 
 - [O1-02] `apps/native/src-tauri/Cargo.toml` → add three `[dependencies]` lines
+  → **APPLIED** — `minisign-verify`, `sha2`, `ureq` all present in Cargo.toml.
   (this supersedes the earlier draft request that existed before O1-02 was
   claimed [~W1] and coded in `src/update.rs`):
   `minisign-verify = "0.2"`, `sha2 = "0.10"`,
@@ -26,6 +39,7 @@ in batches. Format: `[task] file → change → why`.
   native CI job fails.
 
 - [O1-10] `apps/native/src-tauri/tauri.conf.json` → when wiring
+  → **APPLIED** — `plugins.updater` block live in tauri.conf.json (updater key at line 53) with the committed pubkey.
   `tauri-plugin-updater`, set `plugins.updater.pubkey` to the exact contents of
   `apps/native/src-tauri/keys/lh-update.key.pub` (committed, key id
   `DB675CE9C8F2082D`) and `plugins.updater.endpoints` to the channel-pointers
@@ -35,6 +49,7 @@ in batches. Format: `[task] file → change → why`.
   key must be baked into the updater config before any signed nightly is
   shipped.
 - [O1-10] remaining LEAD pieces for the updater wiring (worker parts are
+  → **APPLIED** — `tauri-plugin-updater = "2"` in Cargo.toml, `createUpdaterArtifacts` + `plugins.updater` + passive `installMode` in tauri.conf.json.
   committed: `lib.rs` inits `tauri_plugin_updater` on desktop,
   `capabilities/desktop.json` grants `updater:default`):
   (a) `apps/native/src-tauri/Cargo.toml` → add `tauri-plugin-updater = "2"`
@@ -49,6 +64,7 @@ in batches. Format: `[task] file → change → why`.
   pubkey/endpoints request above — partial wiring breaks the desktop build.
 
 - [S3-01] `packages/db/src/schema.ts` → append the SP parity batch A tables
+  → **APPLIED** — migration `031-sp-tasks.ts` (schema.ts batch A landed alongside).
   (paste below; mirrors `migrations/031-sp-tasks.ts` exactly — fresh DBs get
   them from schema.ts / runtime DDL, existing DBs from the migration) AND
   register the migration in `packages/db/src/migrations/index.ts`
@@ -166,6 +182,7 @@ not already (check the existing import line — `uniqueIndex` is already
 imported).
 
 - [O1-19] `apps/native/src-tauri/Cargo.toml` → add
+  → **APPLIED** — `zip = { version = "2", default-features = false, features = ["deflate"] }` present in `Cargo.toml`.
   `zip = { version = "2", default-features = false, features = ["deflate"] }`
   to the same desktop/mobile-agnostic `[dependencies]` block as the O1-02
   crates. Why: `update.rs::apply_patch_bundle` (O1-19) unpacks the hot-patch
@@ -173,6 +190,7 @@ imported).
   files, deflate). Without it the patch path cannot compile.
 
 - [S3-02] `packages/db/src/schema.ts` → append the SP parity batch B tables
+  → **APPLIED** — migration `032-sp-views.ts`.
   (paste below; mirrors `migrations/032-sp-views.ts` exactly — same plain
   integer link columns + indexes convention as batch A) AND register the
   migration in `packages/db/src/migrations/index.ts`
@@ -292,6 +310,7 @@ export const taskViews = table('task_views', {
 ```
 
 - [Rust tests never run in CI] `.github/workflows/native.yml` (and/or ci.yml)
+  → **APPLIED** — native.yml runs `cargo test --manifest-path apps/native/src-tauri/Cargo.toml --release` (line 70).
   → add a `cargo test` step for `apps/native/src-tauri` (e.g.
   `cargo test --manifest-path apps/native/src-tauri/Cargo.toml --release` on the
   windows job). Why: today native.yml only BUILDs (`npm run app:build`), and
@@ -301,6 +320,7 @@ export const taskViews = table('task_views', {
   gap the mega-run's "tests green" acceptances rely on.
 
 - [O1-21] `.github/workflows/native.yml` → in the `android` matrix job (after
+  → **APPLIED** — native.yml android job: bsdiff install + `scripts/generate-apk-delta.mjs` step (lines 168-174).
   the APK build step): `sudo apt-get install -y bsdiff` (ubuntu runner) and a
   step that, when a previous release APK for the same ABI exists (downloaded
   like the manifest via `gh release download --pattern '*.apk'`), runs
@@ -311,6 +331,7 @@ export const taskViews = table('task_views', {
   (decision recorded in docs/updates.md §"Android sideload consent flow").
 
 - [M2-08] `apps/native/src-tauri/Cargo.toml` → add
+  → **APPLIED** — `Win32_System_Registry` present in `Cargo.toml` (DisableTaskMgr policy).
   `"Win32_System_Registry"` to the existing `windows` dependency features
   (the `[target.'cfg(windows)'.dependencies]` block). Why: the admin tier's
   `DisableTaskMgr` policy is a per-user registry value
@@ -319,6 +340,7 @@ export const taskViews = table('task_views', {
   job fails. The watchdog's TerminateProcess path needs no new feature.
 
 - [M2-19] `apps/native/src-tauri/Cargo.toml` → add
+  → **APPLIED** — `Win32_System_Power` present in `Cargo.toml` (battery monitor compiles).
   `"Win32_System_Power"` to the existing `windows` dependency features. Why:
   the Windows side of the battery auto-unlock monitor reads
   `GetSystemPowerStatus` (battery % + AC state) from
@@ -327,6 +349,7 @@ export const taskViews = table('task_views', {
   and is already wired (`focus_android_battery_status`).
 
 - [S3-15] `packages/db/src/schema.ts` + `packages/db/src/migrations/0xx-sp-tasks-fix.ts`
+  → **APPLIED** — same migration 034 (`section_id`, `title`, `offset_ms`).
   (future batch, low priority) → add a nullable `offset_ms INTEGER` column to
   `task_reminders` (and optionally `title TEXT` to `task_repeat_cfgs`). Why:
   the core model (S3-08) carries `offsetMs` for `relative` reminders, but the
@@ -337,6 +360,7 @@ export const taskViews = table('task_views', {
   titles are generated).
 
 - [S3-20] `packages/db/src/schema.ts` + `packages/db/src/migrations/0xx-sp-sections.ts`
+  → **APPLIED** — migration `034-sp-task-columns.ts` adds both columns; the repo decodes `offset_ms` with a legacy pre-034 fallback (`repos/tasks.ts::reminderFromRow`).
   (future batch) → add a nullable `section_id INTEGER REFERENCES
 task_sections(id)` column to `task_items`. Why: SP's Today list sections
   are header rows tasks belong to; the applied schema has
