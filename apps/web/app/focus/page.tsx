@@ -51,6 +51,7 @@ import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
 import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
 import { MaxFocusExitGate } from '@/components/MaxFocusExitGate'
+import { FocusModePicker } from '@/components/tasks/FocusModePicker'
 import { MaxFocusPrecheck } from '@/components/MaxFocusPrecheck'
 import { MaxFocusAllowlistEditor } from '@/components/MaxFocusAllowlistEditor'
 import { MaxFocusSessionHistory } from '@/components/MaxFocusSessionHistory'
@@ -722,6 +723,17 @@ export default function FocusPage() {
           {!running && (
             <Reveal>
               <div className="panel space-y-4">
+                {/* S3-32: focus strategies over the standard timer — the
+                    picker applies the strategy's focus length; countdown
+                    defaults to the bound task's remaining estimate (S3-80,
+                    S3-34 binding via the task input below). */}
+                <FocusModePicker
+                  today={new Date().toISOString().slice(0, 10)}
+                  boundTask={
+                    task.trim().length > 0 ? { estimateMs: null, timeSpentOnDay: {} } : null
+                  }
+                  onApplyMinutes={setMinutes}
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   {POMODORO_PRESETS.map((p) => (
                     <Button
