@@ -2,7 +2,7 @@
 
 /**
  * Search Everything — the full-screen face of /api/search (FTS5 across all 17
- * knowledge surfaces) with an optional AI planner that turns a natural-language
+ * knowledge surfaces UNIFIED with SP tasks since S3-38) with an optional AI planner that turns a natural-language
  * question into a keyword plan (/api/search/nl). The AI never answers; it only
  * chooses what to look for, so results are always the user's own data.
  */
@@ -11,7 +11,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Callout, EmptyState, IconButton, PageHeader, Panel, Skeleton } from '@/ui'
+import { Badge, Callout, EmptyState, IconButton, PageHeader, Panel, Skeleton } from '@/ui'
 import { ChipPicker } from '@/components/ui/chip-picker'
 import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
 
@@ -21,6 +21,8 @@ interface SearchHit {
   title: string
   snippet: string
   href: string
+  /** Task hits only (S3-38): true when the matched task is already done. */
+  done?: boolean
 }
 
 interface SearchResponse {
@@ -41,6 +43,7 @@ interface ManualEnvelope {
 }
 
 const KIND_LABELS: Record<string, string> = {
+  task: 'Tasks',
   note: 'Notes',
   card: 'Cards',
   lesson: 'Lessons',
@@ -149,7 +152,7 @@ function SearchPageInner() {
       <ClayIn>
         <PageHeader
           title="Search Everything"
-          subtitle="Full-text search across all 17 knowledge surfaces — notes, cards, lessons, journal, quotes, reading, mind maps, canvases, palaces, goals, habits, captures and tutor chats."
+          subtitle="Full-text search across all 17 knowledge surfaces plus your tasks — notes, cards, lessons, journal, quotes, reading, mind maps, canvases, palaces, goals, habits, captures and tutor chats."
         />
       </ClayIn>
 
@@ -268,7 +271,14 @@ function SearchPageInner() {
                     className="panel block w-full text-left transition-colors hover:border-indigo-400/60"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sm">{hit.title || '(untitled)'}</span>
+                      <span className="font-medium text-sm">
+                        {hit.title || '(untitled)'}
+                        {hit.kind === 'task' && hit.done ? (
+                          <Badge tone="neutral" className="ml-2 align-middle">
+                            done
+                          </Badge>
+                        ) : null}
+                      </span>
                       <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-tertiary dark:bg-(--hub-panel-2)">
                         {KIND_LABELS[hit.kind] ?? hit.kind}
                       </span>

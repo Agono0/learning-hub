@@ -94,7 +94,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-17 | SP | Handlers batch B: projects/tags/sections + views(boards) persistence | integration tests | handlers + registry | S3-15 |
 - [x] S3-18 | SP | Handlers batch C: time-tracking tick/stop + worklog + export CSV + finish-day | integration tests | handlers | S3-15, S3-10 |
 - [x] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
-- [ ] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
+- [~W1] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
 - [ ] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
 - [ ] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
 - [ ] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
@@ -112,7 +112,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 |
 - [ ] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts | S3-03 |
 - [ ] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |
-- [ ] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | apps/web/app/search upgrade | S3-14 |
+- [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
 - [ ] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |
 - [ ] S3-40 | SP | Onboarding addition: SP first-run steps (create project, add task via short syntax) | wizard step | OnboardingWizard | S3-20 |
 - [ ] S3-41 | SP | Docs: docs/tasks.md (data model, shortcuts, parity map) | doc complete | docs/tasks.md | S3-39 |

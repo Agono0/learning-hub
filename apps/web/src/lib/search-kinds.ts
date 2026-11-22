@@ -8,6 +8,7 @@
  * and kept honest by apps/web/tests/search-palette.test.ts.
  */
 export type SearchHitKind =
+  | 'task'
   | 'note'
   | 'card'
   | 'lesson'
@@ -28,6 +29,7 @@ export type SearchHitKind =
 
 /** Kind → label shown next to each hit (palette chips, /search kind chips). */
 export const SEARCH_KIND_LABELS: Record<string, string> = {
+  task: 'Tasks',
   note: 'Notes',
   card: 'Cards',
   lesson: 'Lessons',
