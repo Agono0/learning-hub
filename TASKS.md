@@ -144,7 +144,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-64 | SP | Core: priority model (p1..p3 + strategies via tags) | unit tests | packages/core/src/tasks/priority.ts | S3-06
 - [x] S3-65 | SP | Core: today membership = due date only (virtual tag math) | unit tests | packages/core/src/tasks/today.ts | S3-03
 - [x] S3-66 | SP | Core: won't-do state exclusions from counts | unit tests | packages/core/src/tasks/wontdo.ts | S3-03
-- [ ] S3-67 | SP | DB: taskItem full-text index (FTS5 migration) for search | migration + repo queries | packages/db migrations + repos/tasks.ts | S3-01
+- [x] S3-67 | SP | DB: taskItem full-text index (FTS5 migration) for search | migration + repo queries | packages/db migrations + repos/tasks.ts | S3-01 W2 audit: FTS5 task-item index landed in e0b4482 (fts-search house pattern) — repo queries live in repos/tasks.ts
 - [ ] S3-68 | SP | UI: add-task-bar autocomplete token highlighting | component test | tasks components | S3-09
 - [ ] S3-69 | SP | UI: inline subtask add input + checklist progress (2/5) on rows | component | tasks components | S3-04
 - [x] S3-70 | SP | UI: multi-select bar (select-all, bulk complete/project/tag/delete) | component | tasks components | S3-16  W2 audit: MultiSelectBar ships select-all/complete/won-t-do/clear through /api/tasks/bulk; project/tag moves deliberately stay in the detail panel (one-primary-action law, documented in the component header)
@@ -153,7 +153,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-73 | SP | UI: keyboard nav K/J + X select + ? cheat sheet overlay | component | tasks components | S3-35
 - [ ] S3-74 | SP | UI: project bookmarks (links/files/commands rows) | component | projects UI | S3-22
 - [ ] S3-75 | SP | UI: archived-projects section + trophy reopen flow | component | projects UI | S3-22
-- [ ] S3-76 | SP | UI: recently-deleted trash view with restore | component | trash | S3-12
+- [~W2] S3-76 | SP | UI: recently-deleted trash view with restore | component | trash | S3-12
 - [ ] S3-77 | SP | UI: time-tracking tick indicator + tracked-title document title | lib + UI | use-global-timer glue | S3-10
 - [ ] S3-78 | SP | UI: idle-classify dialog (assign to task / break / discard) | component | idle | S3-33
 - [x] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30  W2: core/tasks/summary.ts — dailySummaryText (honest zero state, leaf-aware top tasks via S3-88, evaluation line) deterministic share text, 4 unit tests; share-sheet UI wiring left to the metrics page owner
