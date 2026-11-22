@@ -93,7 +93,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-16 | SP | Handlers batch A: tasks CRUD + bulk + duplicate + move-to-project + archive/restore | integration tests | apps/web/src/server/handlers/tasks/…, hub registry | S3-15 |
 - [x] S3-17 | SP | Handlers batch B: projects/tags/sections + views(boards) persistence | integration tests | handlers + registry | S3-15 |
 - [x] S3-18 | SP | Handlers batch C: time-tracking tick/stop + worklog + export CSV + finish-day | integration tests | handlers | S3-15, S3-10 |
-- [~W1] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
+- [x] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
 - [ ] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
 - [ ] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
 - [ ] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
@@ -168,8 +168,8 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
 - [ ] S3-89 | SP | Core: activity heatmap data builder | unit tests | metrics | S3-30
 - [ ] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31
-- [ ] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
-- [ ] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
+- [x] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
+- [x] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
 - [ ] S3-93 | SP | Handlers: notes-project linking (project notes) | integration tests | handlers + notes | S3-05
 - [ ] S3-94 | SP | UI: planner capacity % + over-budget indicators | component | planner | S3-25
 - [ ] S3-95 | SP | UI: schedule "from previous days" row + deadline flags | component | schedule | S3-26

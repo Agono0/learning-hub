@@ -101,6 +101,16 @@ import * as tasksTime from '../server/handlers/tasks-time/route'
 import * as tasksWorklogExport from '../server/handlers/tasks-worklog/export/route'
 import * as tasksWorklog from '../server/handlers/tasks-worklog/route'
 import * as tasksFinishDay from '../server/handlers/tasks-finish-day/route'
+import * as tasksRepeatCfgsId from '../server/handlers/tasks-repeat-cfgs/[id]/route'
+import * as tasksRepeatCfgs from '../server/handlers/tasks-repeat-cfgs/route'
+import * as tasksRemindersId from '../server/handlers/tasks-reminders/[id]/route'
+import * as tasksReminders from '../server/handlers/tasks-reminders/route'
+import * as tasksPlanner from '../server/handlers/tasks-planner/route'
+import * as tasksSchedule from '../server/handlers/tasks-schedule/route'
+import * as tasksMetrics from '../server/handlers/tasks-metrics/route'
+import * as tasksCountersIncrement from '../server/handlers/tasks-counters/[id]/increment/route'
+import * as tasksCountersId from '../server/handlers/tasks-counters/[id]/route'
+import * as tasksCounters from '../server/handlers/tasks-counters/route'
 import * as graph from '../server/handlers/graph/route'
 import * as habitsCheckin from '../server/handlers/habits/checkin/route'
 import * as habitsId from '../server/handlers/habits/[id]/route'
@@ -338,6 +348,16 @@ add('tasks-time/tick', tasksTimeTick)
 add('tasks-worklog', tasksWorklog)
 add('tasks-worklog/export', tasksWorklogExport)
 add('tasks-finish-day', tasksFinishDay)
+add('tasks-repeat-cfgs', tasksRepeatCfgs)
+add('tasks-repeat-cfgs/[id]', tasksRepeatCfgsId)
+add('tasks-reminders', tasksReminders)
+add('tasks-reminders/[id]', tasksRemindersId)
+add('tasks-planner', tasksPlanner)
+add('tasks-schedule', tasksSchedule)
+add('tasks-metrics', tasksMetrics)
+add('tasks-counters', tasksCounters)
+add('tasks-counters/[id]', tasksCountersId)
+add('tasks-counters/[id]/increment', tasksCountersIncrement)
 add('graph', graph)
 add('habits', habits)
 add('habits/checkin', habitsCheckin)
