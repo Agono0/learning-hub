@@ -154,7 +154,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-74 | SP | UI: project bookmarks (links/files/commands rows) | component | projects UI | S3-22
 - [x] S3-75 | SP | UI: archived-projects section + trophy reopen flow | component | projects UI | S3-22  W1: Projects Archived section + Restore + detail Archive/Restore — landed with S3-22 (fe709ef)
 - [x] S3-76 | SP | UI: recently-deleted trash view with restore | component | trash | S3-12 W2: lib/task-trash (device-local, TTL-purging reads, full-schema round-trip) + TrashView (restore via /api/tasks/[id]/restore, purge button, days-left badges) + 6 tests
-- [ ] S3-77 | SP | UI: time-tracking tick indicator + tracked-title document title | lib + UI | use-global-timer glue | S3-10
+- [x] S3-77 | SP | UI: time-tracking tick indicator + tracked-title document title | lib + UI | use-global-timer glue | S3-10 W2: title half shipped as useTrackedTitle (S3-43); UI half = TrackedTaskIndicator.tsx (pulsing tracking chip + minute math, 4 tests); page mount is a one-liner for the tasks-page owner
 - [ ] S3-78 | SP | UI: idle-classify dialog (assign to task / break / discard) | component | idle | S3-33
 - [x] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30  W2: core/tasks/summary.ts — dailySummaryText (honest zero state, leaf-aware top tasks via S3-88, evaluation line) deterministic share text, 4 unit tests; share-sheet UI wiring left to the metrics page owner
 - [ ] S3-80 | SP | UI: countdown default = task remaining estimate | glue | focus-modes | S3-32
