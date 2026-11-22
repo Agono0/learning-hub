@@ -12,7 +12,7 @@ import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { workContextTotals } from '@learning-hub/core'
+import { taskItemSchema, workContextTotals, type TaskItem } from '@learning-hub/core'
 import ProjectsPage from '../app/tasks/projects/page'
 import type { TasksResponse } from '../app/tasks/projects/page'
 
@@ -45,24 +45,31 @@ describe('Projects list — SSR safety', () => {
 })
 
 describe('Projects glue — ordering, totals, payloads', () => {
+  // Full core model rows (the API returns complete task_items — building via
+  // taskItemSchema keeps the fixture honest when the model grows).
+  const task = (overrides: Record<string, unknown>): TaskItem =>
+    taskItemSchema.parse({
+      title: 'Task',
+      ...overrides,
+    })
   const tasks = {
     tasks: [
-      {
+      task({
         id: 1,
         projectId: 10,
         tagIds: [3],
         isDone: false,
         wonthado: false,
         timeSpentOnDay: { '2026-03-10': 60_000 },
-      },
-      {
+      }),
+      task({
         id: 2,
         projectId: null,
         tagIds: [],
         isDone: false,
         wonthado: false,
         timeSpentOnDay: { '2026-03-10': 30_000 },
-      },
+      }),
     ],
   } satisfies TasksResponse
 

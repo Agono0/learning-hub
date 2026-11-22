@@ -17,7 +17,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, ArchiveRestore, Copy, FolderKanban, Plus } from 'lucide-react'
-import { workContextTotals } from '@learning-hub/core'
+import { type TaskItem, workContextTotals } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Badge, Button, EmptyState, Skeleton, TextField } from '@/ui'
 import { cx } from '@/ui/cx'
@@ -36,13 +36,9 @@ interface ProjectRow {
 interface ProjectsResponse {
   projects: ProjectRow[]
 }
+/** GET /api/tasks payload — full task rows (the list consumes the core model). */
 export interface TasksResponse {
-  tasks: Array<{
-    id: number
-    projectId: number | null
-    tagIds: number[]
-    timeSpentOnDay: Record<string, number>
-  }>
+  tasks: TaskItem[]
 }
 
 /** The palette the project color picker offers (same keys as tags/feeds). */
