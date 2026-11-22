@@ -326,7 +326,12 @@ fn to_hex(bytes: &[u8]) -> String {
 // tmp+rename atomic write only after a slot is complete and hash-verified.
 // A crash can therefore leave a stale inactive slot, never a half-written
 // active one. Serving the active slot over a custom URI scheme is O1-04;
-// boot-confirm rollback (missed confirmations flip the pointer back) is O1-05.
+// boot-confirm rollback (O1-05) lives in {@link boot_reconcile} below.
+
+/// How many consecutive boots the ACTIVE slot may start WITHOUT the webview
+/// confirming ready before it is declared broken and rolled back. Three gives
+/// a flaky-but-recoverable shell two extra chances before reverting.
+pub const MAX_BOOT_MISSES: u32 = 3;
 
 /// The two install slots.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -357,9 +362,8 @@ impl SlotId {
     }
 }
 
-/// The atomic slot switch. Extra fields added later (e.g. O1-05 boot-confirm
-/// counters) must keep parsing older pointer files (serde ignores unknown
-/// fields by default; missing optional fields default to `None`).
+/// The atomic slot switch. Extra fields added later must keep parsing older
+/// pointer files (serde ignores unknown fields; missing optionals default).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SlotPointer {
@@ -368,6 +372,11 @@ pub struct SlotPointer {
     /// RFC 3339 timestamp of the last flip (informational).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    /// O1-05: consecutive boots the active slot started without the webview
+    /// confirming ready. Reset to 0 by `confirm_boot_ready`; at
+    /// `MAX_BOOT_MISSES` the pointer flips back to the previous slot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub missed_confirmations: Option<u32>,
 }
 
 /// `<base>/slots/` — the two slot directories.
@@ -400,6 +409,7 @@ pub fn read_pointer(base_dir: &Path) -> Result<SlotPointer, UpdateError> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(SlotPointer {
             active: SlotId::A,
             updated_at: None,
+            missed_confirmations: None,
         }),
         Err(e) => Err(UpdateError::Network(format!(
             "reading slot-pointer.json failed: {e}"
@@ -580,7 +590,8 @@ where
 }
 
 /// Atomically flips the pointer to the INACTIVE slot (the one
-/// `download_to_inactive_slot` just filled and verified).
+/// `download_to_inactive_slot` just filled and verified). The new slot
+/// starts with a fresh boot-confirm budget.
 pub fn promote_inactive_slot(base_dir: &Path) -> Result<SlotId, UpdateError> {
     let next = inactive_slot(base_dir)?;
     write_pointer_atomic(
@@ -588,9 +599,65 @@ pub fn promote_inactive_slot(base_dir: &Path) -> Result<SlotId, UpdateError> {
         &SlotPointer {
             active: next,
             updated_at: None,
+            missed_confirmations: Some(0),
         },
     )?;
     Ok(next)
+}
+
+// ─── Boot-confirm rollback (O1-05) ───────────────────────────────────────────
+
+/// Called ONCE per app boot, before the webview loads: reconciles the
+/// boot-confirm counter of the active slot.
+///
+/// - counter ≥ `MAX_BOOT_MISSES` → the active slot never confirmed ready on
+///   `MAX_BOOT_MISSES` consecutive boots: it is declared broken and the
+///   pointer flips BACK to the other slot (which holds the previously
+///   confirmed build — downloads target the inactive slot and promotion
+///   swaps roles). Counter resets; the broken slot becomes the next
+///   download target, so the system self-heals.
+/// - otherwise → counter increments: this boot is pending confirmation.
+///
+/// The webview invokes `update_confirm_boot_ready` once it is actually
+/// serving, which resets the counter (`confirm_boot_ready`). Every write is
+/// the atomic tmp+rename, so a crash mid-boot can never lose the counter.
+pub fn boot_reconcile(base_dir: &Path) -> Result<SlotId, UpdateError> {
+    let mut pointer = read_pointer(base_dir)?;
+    let missed = pointer.missed_confirmations.unwrap_or(0);
+    if missed >= MAX_BOOT_MISSES {
+        let broken = pointer.active;
+        pointer.active = broken.other();
+        pointer.missed_confirmations = Some(0);
+        write_pointer_atomic(base_dir, &pointer)?;
+        log::warn!(
+            "update: slot {:?} missed {} consecutive boot confirmations — rolled back to {:?}",
+            broken,
+            MAX_BOOT_MISSES,
+            pointer.active
+        );
+        return Ok(pointer.active);
+    }
+    pointer.missed_confirmations = Some(missed + 1);
+    write_pointer_atomic(base_dir, &pointer)?;
+    log::info!(
+        "update: boot on slot {:?} pending confirmation ({}/{} missed so far)",
+        pointer.active,
+        missed + 1,
+        MAX_BOOT_MISSES
+    );
+    Ok(pointer.active)
+}
+
+/// The webview confirmed it is serving from the active slot. Resets the
+/// boot-confirm counter (no-op write when it is already 0).
+pub fn confirm_boot_ready(base_dir: &Path) -> Result<(), UpdateError> {
+    let mut pointer = read_pointer(base_dir)?;
+    if pointer.missed_confirmations.unwrap_or(0) != 0 {
+        pointer.missed_confirmations = Some(0);
+        write_pointer_atomic(base_dir, &pointer)?;
+        log::info!("update: webview confirmed boot ready — counter reset");
+    }
+    Ok(())
 }
 
 /// Bytes of `rel_path` inside the ACTIVE slot — the serving seam used by the
@@ -957,6 +1024,83 @@ mod slot_tests {
         );
         assert_eq!(lookup_in_active_slot(&base, "missing.html"), None);
         assert_eq!(lookup_in_active_slot(&base, "../evil"), None);
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn boot_counter_increments_and_rolls_back_after_max_misses() {
+        let base = temp_base();
+        // Boot 1..=MAX_BOOT_MISSES increment the counter, staying on slot A.
+        for expected in 1..=MAX_BOOT_MISSES {
+            assert_eq!(boot_reconcile(&base).unwrap(), SlotId::A);
+            let pointer = read_pointer(&base).unwrap();
+            assert_eq!(pointer.missed_confirmations, Some(expected));
+        }
+        // One more broken boot — the pointer flips BACK to slot B, counter reset.
+        assert_eq!(boot_reconcile(&base).unwrap(), SlotId::B);
+        let pointer = read_pointer(&base).unwrap();
+        assert_eq!(pointer.active, SlotId::B);
+        assert_eq!(pointer.missed_confirmations, Some(0));
+        // The broken slot becomes the next download target (self-healing).
+        assert_eq!(inactive_slot(&base).unwrap(), SlotId::A);
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn confirm_boot_ready_resets_the_counter() {
+        let base = temp_base();
+        boot_reconcile(&base).unwrap();
+        assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(1));
+        confirm_boot_ready(&base).unwrap();
+        assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(0));
+        // Idempotent: confirming again never writes or errors.
+        confirm_boot_ready(&base).unwrap();
+        assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(0));
+        // And healthy boots never accumulate toward rollback.
+        assert_eq!(boot_reconcile(&base).unwrap(), SlotId::A);
+        assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(1));
+        confirm_boot_ready(&base).unwrap();
+        assert_eq!(boot_reconcile(&base).unwrap(), SlotId::A);
+        assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(1));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn rollback_returns_the_previously_confirmed_build() {
+        let base = temp_base();
+        // Real-world shape: slot B was promoted and NEVER confirmed
+        // (broken web build); slot A still holds the last good build.
+        write_pointer_atomic(
+            &base,
+            &SlotPointer {
+                active: SlotId::B,
+                updated_at: None,
+                missed_confirmations: Some(MAX_BOOT_MISSES),
+            },
+        )
+        .unwrap();
+        assert_eq!(boot_reconcile(&base).unwrap(), SlotId::A);
+        let pointer = read_pointer(&base).unwrap();
+        assert_eq!(pointer.active, SlotId::A);
+        assert_eq!(pointer.missed_confirmations, Some(0));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn pointer_without_counter_field_still_parses() {
+        let base = temp_base();
+        // A pointer written by the O1-03-only client (no missedConfirmations).
+        fs::write(
+            pointer_path(&base),
+            r#"{ "active": "slot-b", "updatedAt": "2026-11-23T00:00:00.000Z" }"#,
+        )
+        .unwrap();
+        let pointer = read_pointer(&base).unwrap();
+        assert_eq!(pointer.active, SlotId::B);
+        assert_eq!(pointer.missed_confirmations, None);
+        // And the boot flow upgrades it in place.
+        assert_eq!(boot_reconcile(&base).unwrap(), SlotId::B);
+        assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(1));
         fs::remove_dir_all(&base).ok();
     }
 }
