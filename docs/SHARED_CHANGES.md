@@ -24,3 +24,13 @@ in batches. Format: `[task] file → change → why`.
   without a tauri runtime — hence ureq, per the O1-02 brief "ureq or use
   plugin http"). Without these crates `src/update.rs` cannot compile and the
   native CI job fails.
+
+- [O1-10] `apps/native/src-tauri/tauri.conf.json` → when wiring
+  `tauri-plugin-updater`, set `plugins.updater.pubkey` to the exact contents of
+  `apps/native/src-tauri/keys/lh-update.key.pub` (committed, key id
+  `DB675CE9C8F2082D`) and `plugins.updater.endpoints` to the channel-pointers
+  URLs (see docs/updates.md §"Channels & pointer model"): e.g.
+  `https://github.com/Agono0/learning-hub/releases/download/channel-pointers/nightly.json`
+  (per channel / store flavor). Why: O1-09 generated the keypair; the public
+  key must be baked into the updater config before any signed nightly is
+  shipped.

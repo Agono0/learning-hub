@@ -156,18 +156,29 @@ keystore so store and sideload artifacts share an identity where policy allows.
 
 ## Manifest signing key ceremony (O1-09)
 
-- **Keypair:** Ed25519 minisign keys generated once (Tauri CLI:
-  `npx tauri signer generate -w lh-update.key`). The Rust client verifies with
-  `minisign-verify` + `sha2` in `apps/native/src-tauri/src/update.rs` (O1-02).
-- **Public key:** committed to the repository (and referenced by
-  `tauri.conf.json` once the updater plugin lands — LEAD-applied file).
-- **Private key:** GitHub Actions secrets `TAURI_SIGNING_PRIVATE_KEY` and
-  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (the exact names the Tauri CLI and
-  `nightly.yml`/`promote.yml` consume). Used to sign `manifest.json` and the
-  channel pointers; nothing else. Until the secrets exist, the workflows
-  publish **unsigned** artifacts with a loud warning — the client refuses
-  unsigned manifests by design, so an unsigned release is inert, never
-  silently trusted.
+- **Keypair (DONE).** Ed25519 minisign keypair generated with the Tauri CLI
+  (`npx tauri signer generate -w apps/native/src-tauri/keys/lh-update.key
+--password "" --ci`). Key id: `DB675CE9C8F2082D`.
+- **Public key (committed):**
+  [`apps/native/src-tauri/keys/lh-update.key.pub`](../apps/native/src-tauri/keys/lh-update.key.pub)
+  — safe to distribute; the Rust client (O1-02) embeds/verifies against it,
+  and `tauri.conf.json` references it once the updater plugin lands (O1-10,
+  LEAD-applied — request filed in `docs/SHARED_CHANGES.md`).
+- **Private key (`apps/native/src-tauri/keys/lh-update.key`, gitignored via
+  `*.key`, generated with NO password):** lives only on the machine that
+  generated it until the repository owner moves it into GitHub Actions
+  secrets — then DELETE the local file. User steps (one-time):
+  1. Copy the file contents.
+  2. Settings → Secrets and variables → Actions → add
+     `TAURI_SIGNING_PRIVATE_KEY` (paste the file contents) — the exact name
+     `nightly.yml`/`promote.yml` and the Tauri CLI consume. No
+     `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secret is needed (key has no
+     password; if you re-generate with one, add it too).
+  3. Delete the local `lh-update.key`.
+     Used to sign `manifest.json` and the channel pointers; nothing else. Until
+     the secret exists, the workflows publish **unsigned** artifacts with a loud
+     warning — the client refuses unsigned manifests by design, so an unsigned
+     release is inert, never silently trusted.
 - **Rotation:** publish the new public key in a release **before** signing
   manifests with it; keep the old key verifying for one channel cycle.
 - **Never commit the private key** (rule 12); treat it like the Android
