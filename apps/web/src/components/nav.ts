@@ -13,6 +13,7 @@ import {
   Brain,
   CalendarCheck,
   CalendarRange,
+  Columns3,
   Compass,
   Cpu,
   DatabaseBackup,
@@ -117,6 +118,7 @@ export const NAV: NavGroup[] = [
         shortLabel: 'Decks',
       },
       { href: '/planner', label: 'Planner', icon: CalendarRange },
+      { href: '/boards', label: 'Boards', icon: Columns3, shortLabel: 'Boards' },
       {
         href: '/curriculum',
         label: 'Skills & exams',
