@@ -114,7 +114,11 @@ describe('031 sp-tasks (S3-01 batch A)', () => {
     spTasks.up(createMigrationContext(raw))
     // Second direct application must not throw (all IF NOT EXISTS).
     expect(() => spTasks.up(createMigrationContext(raw))).not.toThrow()
-    // Runner on an already-migrated database applies nothing.
+    // A direct up() bypasses the runner's bookkeeping, so the first
+    // runMigrations RECORDS the migration (runner contract) while recreating
+    // nothing; only the SECOND runner run reports applied=[].
+    const first = runMigrations(raw, [spTasks])
+    expect(first.applied.map((m) => m.id)).toEqual([31])
     const second = runMigrations(raw, [spTasks])
     expect(second.applied).toEqual([])
   })

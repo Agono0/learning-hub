@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { createMigrationContext, runMigrations } from '../src/migrations/runner'
+import { spTasks } from '../src/migrations/031-sp-tasks'
 import { spViews } from '../src/migrations/032-sp-views'
 import type { RawSqliteHandle } from '../src/index'
 
@@ -75,7 +76,9 @@ describe('032 sp-views (S3-02 batch B)', () => {
     runMigrations(raw, [spViews])
     const names = (
       raw
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE '%_idx'")
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'index' AND (name LIKE '%_idx' OR name LIKE '%_uniq')",
+        )
         .all() as {
         name: string
       }[]
@@ -94,14 +97,26 @@ describe('032 sp-views (S3-02 batch B)', () => {
   it('is idempotent — double up() and runner re-run both no-op', () => {
     const raw = open()
     spViews.up(createMigrationContext(raw))
+    // Second direct application must not throw (all IF NOT EXISTS).
     expect(() => spViews.up(createMigrationContext(raw))).not.toThrow()
+    // A direct up() bypasses the runner's bookkeeping, so the first
+    // runMigrations RECORDS the migration (runner contract) while recreating
+    // nothing; only the SECOND runner run reports applied=[].
+    const first = runMigrations(raw, [spViews])
+    expect(first.applied.map((m) => m.id)).toEqual([32])
     const second = runMigrations(raw, [spViews])
     expect(second.applied).toEqual([])
   })
 
   it('accepts SP-shaped usage: time logs, counter logs, unique metric day', () => {
     const raw = open()
-    runMigrations(raw, [spViews])
+    // Batch B builds on batch A (FKs reference task_items etc.) — run both.
+    runMigrations(raw, [spTasks, spViews])
+    // Seed the referenced parent row (batch-A FK target).
+    raw.exec(
+      `INSERT INTO task_items (id, title, created_at, updated_at)
+       VALUES (1, 'Usage task', '2026-11-22', '2026-11-22');`,
+    )
     raw.exec(
       `INSERT INTO task_time_logs (task_id, day, session_ms, source, created_at)
        VALUES (1, '2026-11-22', 900000, 'focus', '2026-11-22T10:00:00Z'),

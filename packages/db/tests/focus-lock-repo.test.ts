@@ -244,6 +244,9 @@ describe('M2-03 lock-state persistence (state / tier / exitReason / hardCapAt)',
     expect(lock.tier).toBe('owner')
     expect(lock.hardCapAt).toBe(session.hardCapAt)
 
+    // A new start refuses while a session is open (lifecycle contract) —
+    // end the first lock before checking the no-tier default shape.
+    endMaxFocusSessionByReason(session.id, { reason: 'pin' })
     // without an explicit tier the column stays null (the native bridge fills it)
     const plain = start(15).session
     expect(plain.state).toBe('locked')
@@ -275,25 +278,24 @@ describe('M2-03 lock-state persistence (state / tier / exitReason / hardCapAt)',
   })
 
   it('closeExpiredMaxSession ends at the earlier of planned end and hard cap, reason timer', () => {
+    // One fixture timestamp, reused for set + assert (two clock reads drift).
+    const expiredAt = minutesAgo(1)
     const a = start(10).session
-    db.update(focusSessions)
-      .set({ lockedUntil: minutesAgo(1) })
-      .where(eq(focusSessions.id, a.id))
-      .run()
+    db.update(focusSessions).set({ lockedUntil: expiredAt }).where(eq(focusSessions.id, a.id)).run()
     expect(closeExpiredMaxSession(getMaxFocusSessionRow(a.id)!, db)).toBe(true)
     const endedA = getMaxFocusSessionRow(a.id)!
     expect(endedA.state).toBe('ended')
     expect(endedA.exitReason).toBe('timer')
-    expect(endedA.endedAt).toBe(minutesAgo(1))
+    expect(endedA.endedAt).toBe(expiredAt)
 
     // hard cap earlier than the planned end still closes (cap = the ceiling)
     const b = start(10).session
     db.update(focusSessions)
-      .set({ lockedUntil: new Date(Date.now() + 60_000).toISOString(), hardCapAt: minutesAgo(1) })
+      .set({ lockedUntil: new Date(Date.now() + 60_000).toISOString(), hardCapAt: expiredAt })
       .where(eq(focusSessions.id, b.id))
       .run()
     expect(closeExpiredMaxSession(getMaxFocusSessionRow(b.id)!, db)).toBe(true)
-    expect(getMaxFocusSessionRow(b.id)!.endedAt).toBe(minutesAgo(1))
+    expect(getMaxFocusSessionRow(b.id)!.endedAt).toBe(expiredAt)
   })
 
   it('setMaxFocusSessionState / Tier / Window persist and throw on unknown ids', () => {
@@ -366,14 +368,24 @@ describe('M2-03 lock-state persistence (state / tier / exitReason / hardCapAt)',
   })
 
   it('listMaxFocusSessions returns only max rows; listMaxFocusExits the reflections', () => {
-    start(15, { task: 'max one' })
+    const first = start(15, { task: 'max one' })
+    // A CLOSED standard session (abandoned pomodoro shape) — it must not
+    // appear in the max-only list, and an open row would block the next start.
     db.insert(focusSessions)
-      .values({ startedAt: new Date().toISOString(), plannedMinutes: 25 })
+      .values({
+        startedAt: new Date().toISOString(),
+        plannedMinutes: 25,
+        endedAt: new Date().toISOString(),
+        actualMinutes: 25,
+        completed: false,
+      })
       .run() // standard session — must not appear
     const maxRows = listMaxFocusSessions({ limit: 10 })
     expect(maxRows).toHaveLength(1)
     expect(maxRows[0]!.mode).toBe('max')
 
+    // The first lock is still open — end it before the exit-flow session.
+    endMaxFocusSessionByReason(first.session.id, { reason: 'pin' })
     const { session } = start(20)
     requestMaxFocusEarlyExit()
     db.update(focusSessions)
