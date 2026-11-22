@@ -186,7 +186,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12
 - [ ] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16
 - [x] M2-33 | LOCK | Windows: session state persisted + restored after app restart (not just reboot) | code + tests | lock_win.rs | M2-24
-- [~W3] M2-34 | LOCK | Both: "session ended by cap/battery" post-session report card | UI + handler | focus page | M2-19
+- [x] M2-34 | LOCK | Both: "session ended by cap/battery" post-session report card | UI + handler | focus page | M2-19
 - [ ] M2-35 | LOCK | Docs: admin/watchdog security notes in docs/max-focus.md (no secrets, restore guarantees) | doc section | docs/max-focus.md | M2-08
 
 ## Worker protocol reminders
