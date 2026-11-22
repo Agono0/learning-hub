@@ -11,7 +11,6 @@
  * projection the pre-session checklist (M2-16) renders before the user
  * commits to a lock.
  */
-import { missingRequiredPermissions } from './session'
 import type { FocusSessionTier } from './index'
 
 /**
@@ -60,13 +59,31 @@ export interface TierChecklist {
 }
 
 /**
+ * Canonical permission id: trimmed, lowercased, and separator-folded
+ * (`KeyboardHook`, `keyboard_hook`, `keyboard-hook` all → `keyboardhook`).
+ *
+ * Stronger than session.ts's lowercase-only convention because native
+ * reporters disagree on SEPARATORS as well as case (Rust snake_case vs
+ * Kotlin/CamelCase identifiers) — the checklist must never show a granted
+ * permission as missing over punctuation.
+ */
+function canonPermission(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, '')
+}
+
+/**
  * Compute the granted-vs-needed checklist for one tier. Pure; the caller
  * polls `granted` each tick (the native bridges refresh their permission
- * state per tick — M2-20's `missingRequiredPermissions` shares this input).
+ * state per tick — M2-20's `missingRequiredPermissions` shares the same
+ * lowercase-insensitive spirit, with separator folding added here).
  */
 export function tierChecklist(tier: FocusSessionTier, granted: readonly string[]): TierChecklist {
   const required = TIER_REQUIREMENTS[tier] ?? []
-  const missing = missingRequiredPermissions(granted, required)
+  const have = new Set(granted.map(canonPermission))
+  const missing = required.filter((r) => !have.has(canonPermission(r)))
   const missingSet = new Set(missing)
   return {
     rows: required.map((permission) => ({ permission, granted: !missingSet.has(permission) })),
