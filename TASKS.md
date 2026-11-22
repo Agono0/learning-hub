@@ -39,7 +39,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 
 ## Epic 2 — Max Focus device lock (M2)
 
-- [ ] M2-01 | LOCK | Session state machine in core: locked→cooldown→can_confirm→ended + hardCapAt, unlock reasons (timer/pin/battery/failure/tamper), monotonic anchor vs wall clock | unit tests all transitions | packages/core/src/focus-lock/session.ts, tests | P0-1 |
+- [x] M2-01 | LOCK | Session state machine in core: locked→cooldown→can_confirm→ended + hardCapAt, unlock reasons (timer/pin/battery/failure/tamper), monotonic anchor vs wall clock | unit tests all transitions | packages/core/src/focus-lock/session.ts, tests | P0-1 |
 - [ ] M2-02 | LOCK | PIN vault: PBKDF2 hash (web crypto) + salt in userSettings JSON; first-use set + security-question recovery; verify API | unit tests | packages/core/src/focus-lock/pin.ts + tests, handler | M2-01 |
 - [ ] M2-03 | LOCK | maxFocusSessions table + migration (LEAD applies): tier, deviceId, startedAt, plannedEnd, hardCapAt, state, exitReason | migration + repo CRUD + tests | packages/db/src/schema.ts, migrations/0xx-max-focus.ts, repos/focus-lock.ts | M2-01 |
 - [ ] M2-04 | LOCK | Handlers: start/status/extend/exit(+reason+pin verify)/history via withRoute + zod | integration tests | apps/web/src/server/handlers/focus/max/…, hub registry | M2-03 |
