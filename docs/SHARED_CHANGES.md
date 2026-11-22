@@ -171,3 +171,122 @@ imported).
   crates. Why: `update.rs::apply_patch_bundle` (O1-19) unpacks the hot-patch
   bundles emitted by `scripts/update-manifest.mjs` (fflate zips of changed
   files, deflate). Without it the patch path cannot compile.
+
+- [S3-02] `packages/db/src/schema.ts` → append the SP parity batch B tables
+  (paste below; mirrors `migrations/032-sp-views.ts` exactly — same plain
+  integer link columns + indexes convention as batch A) AND register the
+  migration in `packages/db/src/migrations/index.ts`
+  (`import { spViews } from './032-sp-views'` + append `spViews` to
+  `MIGRATIONS`). Migration file written and tested
+  (`packages/db/tests/sp-views-migration.test.ts`). Exact paste:
+
+```ts
+/** ─── SP parity: task system batch B (S3-02; time logs, sections, views) ── */
+
+/** SP time logs (S3-10): one row per tracked session per task per day. */
+export const taskTimeLogs = table('task_time_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull(),
+  day: text('day').notNull(), // YYYY-MM-DD
+  sessionMs: integer('session_ms').notNull(),
+  startedAt: text('started_at'),
+  source: text('source').notNull().default('manual'), // 'manual' | 'focus' | 'idle'
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP task list sections (S3-02): ordered groupings inside a task list. */
+export const taskSections = table('task_sections', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP task attachments (S3-37): files, URLs and shell commands. */
+export const taskAttachments = table('task_attachments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull(),
+  type: text('type').notNull(), // 'file' | 'url' | 'command'
+  value: text('value').notNull(),
+  title: text('title'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP archive tiers (S3-11): young → old auto-archive state per archived task. */
+export const taskArchiveTiers = table('task_archive_tiers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull().unique(),
+  tier: text('tier').notNull().default('young'), // 'young' | 'old'
+  archivedAt: text('archived_at').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP simple counters (S3-31): free-floating habit counters (habits kept). */
+export const simpleCounters = table('simple_counters', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  label: text('label').notNull(),
+  color: text('color'),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** Daily counter taps (S3-90 streaks read these; unique per counter+day). */
+export const simpleCounterLogs = table(
+  'simple_counter_logs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    counterId: integer('counter_id').notNull(),
+    day: text('day').notNull(), // YYYY-MM-DD
+    count: integer('count').notNull().default(1),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('simple_counter_logs_day_uniq').on(t.counterId, t.day)],
+)
+
+/** SP metric days (S3-30/S3-50): one row per day — metrics map + evaluation sheet. */
+export const metricDays = table('metric_days', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  day: text('day').notNull().unique(), // YYYY-MM-DD
+  metrics: text('metrics', { mode: 'json' }).$type<Record<string, number>>().notNull().default({}), // metric key → ms/count that day
+  impact: integer('impact'), // 1–4 (evaluation sheet, S3-50)
+  energy: integer('energy'), // 1–3 (evaluation sheet, S3-50)
+  reflection: text('reflection'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP saved views / boards (S3-24/S3-44): built-ins are seeded, these are user views. */
+export const taskViews = table('task_views', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  kind: text('kind').notNull().default('custom'), // 'kanban' | 'eisenhower' | 'custom'
+  filter: text('filter', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}), // rule chips: { tags: [...], projectId, priority, ... }
+  sortBy: text('sort_by'),
+  groupBy: text('group_by'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+```
