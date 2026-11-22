@@ -66,7 +66,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [ ] M2-25 | LOCK | Session history UI (sessions, exits, reasons) | page section + test | apps/web/app/focus/page.tsx | M2-04 |
 - [x] M2-26 | LOCK | Unit tests: full state-machine matrix incl. tamper/clock/battery | tests green | packages/core/tests/focus-lock-session.test.ts | M2-01, M2-20 |
 - [x] M2-27 | LOCK | docs/MAX_FOCUS_TESTPLAN.md: every escape route × tier × platform + expected behavior | doc complete | docs/MAX_FOCUS_TESTPLAN.md | M2-24 |
-- [ ] M2-28 | LOCK | docs/max-focus.md: architecture, tiers, PIN/recovery, store disclosures | doc complete | docs/max-focus.md | M2-27 |
+- [~W3] M2-28 | LOCK | docs/max-focus.md: architecture, tiers, PIN/recovery, store disclosures | doc complete | docs/max-focus.md | M2-27 |
 - [ ] M2-29 | LOCK | Integration tests for max handlers (SSR-safe, route coverage) | tests green | apps/web/tests/max-focus-integration.test.ts | M2-04 |
 - [ ] M2-30 | LOCK | Desktop e2e smoke: lock apply→release round-trip in CI (headless) | CI job or vitest e2e | tests/e2e/… | M2-23 |
 - [ ] M2-31 | LOCK | Notification: persistent "session running" + unlock notification | code | apps/web notifications gate | M2-04 |
@@ -84,7 +84,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-07 | SP | Core repeat engine: cycles d/w/m/y + interval + start/end + skip dates + re-anchor modes + projections | unit tests (SP parity cases) | packages/core/src/tasks/repeat.ts | S3-03 |
 - [x] S3-08 | SP | Core reminders: per-task reminder planner (reuse core/reminders patterns), exact-alarm note (Android) | unit tests | packages/core/src/tasks/reminders.ts | S3-03, S3-02 |
 - [x] S3-09 | SP | Short-syntax parser: #tag +project 10m/1h @date @every p1..3 !deadline + autocomplete token model | exhaustive unit tests | packages/core/src/tasks/short-syntax.ts | S3-07 |
-- [~W2] S3-10 | SP | Time-tracking core: current task, per-day maps, merge/conflict | unit tests | packages/core/src/tasks/time-tracking.ts | S3-03 |
+- [x] S3-10 | SP | Time-tracking core: current task, per-day maps, merge/conflict | unit tests | packages/core/src/tasks/time-tracking.ts | S3-03 |
 - [ ] S3-11 | SP | Archive core: young/old tiers, auto-archive config, restore | unit tests | packages/core/src/tasks/archive.ts | S3-03 |
 - [ ] S3-12 | SP | Recently-deleted trash (30-day, device-local) | unit tests | packages/core/src/tasks/trash.ts | S3-03 |
 - [ ] S3-13 | SP | Undo core: last-op undo stack for task ops | unit tests | packages/core/src/tasks/undo.ts | S3-03 |

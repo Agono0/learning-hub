@@ -422,3 +422,6 @@ export * from './today'
 
 // Won't-do exclusion (S3-66) — re-exported so hosts consume one entry.
 export * from './wontdo'
+
+// Time-tracking core (S3-10) — re-exported so hosts consume one entry.
+export * from './time-tracking'
