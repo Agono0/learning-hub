@@ -122,7 +122,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-45 | SP | Estimated-vs-spent indicators, priority indicators, deadline badges across lists | components | tasks components | S3-20 |  W2: TaskIndicators.tsx (EstimateSpentBadge/PriorityBadge/DeadlineBadge + pure tone/urgency math) wired into TaskRow; page-integration copy updated to the shared contract (landed via 262a34d/1cae11b sweeps)
 - [x] S3-46 | SP | Task summary tables + per-project rollup | components | tasks | S3-43 |  W2: TaskSummaryTable.tsx — leaf-only per-task table + sumByProject rollup over S3-88 math + honest empty state; SSR tests (landed via 1cae11b sweep)
 - [x] S3-47 | SP | Repeating-task UI: repeat config dialog (cycle/interval/anchor modes) | component | tasks components | S3-07 | W2: RepeatConfigDialog.tsx (cycle/interval/start-end/skip dates/re-anchor + 034 title) over the repeat-cfgs routes; handler title passthrough wired (POST+PATCH — flagged cross-file touch in W1 lane, additive)
-- [ ] S3-48 | SP | Reminder UI: per-task reminders dialog + global toggles | component | tasks | S3-08 |
+- [x] S3-48 | SP | Reminder UI: per-task reminders dialog + global toggles | component | tasks | S3-08 | W2: TaskRemindersDialog.tsx — list/add/remove at_time+relative reminders (offset presets, exact-alarm flag) + global policy section (master toggle via the single settings PUT) + label/validation/SSR tests
 - [ ] S3-49 | SP | "Add tasks for tomorrow" + today-planning sync (Today/Planner exclusivity) | UI + core | tasks | S3-29 |
 - [ ] S3-50 | SP | Evaluation sheet: reflection note, impact 1-4, energy 1-3 per day | UI + handler | metrics | S3-30 |
 - [ ] S3-51 | SP | Tracking reminder dialog for untracked counters/metrics | UI | metrics | S3-31 |
