@@ -7,6 +7,7 @@ import type { LearnerProfile } from '@learning-hub/core'
 import {
   index,
   integer,
+  primaryKey,
   real,
   sqliteTable as table,
   text,
@@ -848,6 +849,14 @@ export const focusSessions = table(
     }>(),
     exitRequestedAt: text('exit_requested_at'),
     endedEarly: integer('ended_early', { mode: 'boolean' }).notNull().default(false),
+    /** M2-03: lock state-machine phase (locked|cooldown|can_confirm|ended). */
+    state: text('state'),
+    /** M2-03: enforcement tier reached (owner|accessibility|windows-admin|windows-basic). */
+    tier: text('tier'),
+    /** M2-03: logged reason when the session ended early (PIN-gated exit). */
+    exitReason: text('exit_reason'),
+    /** M2-03: absolute hard-cap timestamp (ISO) — the session auto-unlocks past it. */
+    hardCapAt: text('hard_cap_at'),
   },
   (t) => [index('focus_started_idx').on(t.startedAt)],
 )
@@ -1819,3 +1828,211 @@ export const prototypeExemplarSessions = table(
   },
   (t) => [index('prototype_exemplar_sessions_created_idx').on(t.createdAt)],
 )
+
+/** ─── SP parity: task system (S3-01 batch A; Super Productivity model) ─── */
+
+/** SP-parity task projects (S3-05 core): backlog flag, notes, color, archive. */
+export const taskProjects = table('task_projects', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  backlogFlag: integer('backlog_flag', { mode: 'boolean' }).notNull().default(false),
+  color: text('color'),
+  archivedAt: text('archived_at'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP-parity tags (S3-06): unique name + color; items link via task_item_tags. */
+export const taskTags = table('task_tags', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  color: text('color'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP repeat config (S3-07): cycle d|w|m|y, interval, start/end, skip dates, re-anchor. */
+export const taskRepeatCfgs = table('task_repeat_cfgs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  cycle: text('cycle').notNull(), // 'd' | 'w' | 'm' | 'y'
+  interval: integer('interval').notNull().default(1),
+  startDate: text('start_date'),
+  endDate: text('end_date'),
+  skipDates: text('skip_dates', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  reAnchor: text('re_anchor').notNull().default('completion'), // 'completion' | 'scheduled' | 'postponed'
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/**
+ * SP-parity task item (S3-03): one nesting level via parent_id; per-day time
+ * map; won't-do state; order = list ordinal (habits.'order' house style).
+ */
+export const taskItems = table('task_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  parentId: integer('parent_id'), // one nesting level (SP subtasks)
+  projectId: integer('project_id'),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  priority: text('priority').notNull().default('none'), // 'none' | 'low' | 'medium' | 'high'
+  estimateMs: integer('estimate_ms'),
+  timeSpentOnDay: text('time_spent_on_day', { mode: 'json' })
+    .$type<Record<string, number>>()
+    .notNull()
+    .default({}), // date (YYYY-MM-DD) → ms tracked that day
+  due: text('due'), // YYYY-MM-DD, or full ISO when dueWithTime
+  dueWithTime: integer('due_with_time', { mode: 'boolean' }).notNull().default(false),
+  deadline: text('deadline'),
+  isDone: integer('is_done', { mode: 'boolean' }).notNull().default(false),
+  doneAt: text('done_at'),
+  wonthado: integer('wonthado', { mode: 'boolean' }).notNull().default(false), // SP "won't do"
+  repeatCfgId: integer('repeat_cfg_id'),
+  order: integer('order').notNull().default(0),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** task_items ↔ task_tags many-to-many (composite PK covers item→tags). */
+export const taskItemTags = table(
+  'task_item_tags',
+  {
+    itemId: integer('item_id').notNull(),
+    tagId: integer('tag_id').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.tagId] })],
+)
+
+/** SP per-task reminders (S3-08); exact_alarm flags the Android exact-alarm path. */
+export const taskReminders = table('task_reminders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull(),
+  remindAt: text('remind_at').notNull(),
+  type: text('type').notNull().default('at_time'), // 'at_time' | 'relative'
+  exactAlarm: integer('exact_alarm', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** ─── SP parity: task system batch B (S3-02; time logs, sections, views) ── */
+
+/** SP time logs (S3-10): one row per tracked session per task per day. */
+export const taskTimeLogs = table('task_time_logs', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull(),
+  day: text('day').notNull(), // YYYY-MM-DD
+  sessionMs: integer('session_ms').notNull(),
+  startedAt: text('started_at'),
+  source: text('source').notNull().default('manual'), // 'manual' | 'focus' | 'idle'
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP task list sections (S3-02): ordered groupings inside a task list. */
+export const taskSections = table('task_sections', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP task attachments (S3-37): files, URLs and shell commands. */
+export const taskAttachments = table('task_attachments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull(),
+  type: text('type').notNull(), // 'file' | 'url' | 'command'
+  value: text('value').notNull(),
+  title: text('title'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP archive tiers (S3-11): young → old auto-archive state per archived task. */
+export const taskArchiveTiers = table('task_archive_tiers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  taskId: integer('task_id').notNull().unique(),
+  tier: text('tier').notNull().default('young'), // 'young' | 'old'
+  archivedAt: text('archived_at').notNull(),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP simple counters (S3-31): free-floating habit counters (habits kept). */
+export const simpleCounters = table('simple_counters', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  label: text('label').notNull(),
+  color: text('color'),
+  archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** Daily counter taps (S3-90 streaks read these; unique per counter+day). */
+export const simpleCounterLogs = table(
+  'simple_counter_logs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    counterId: integer('counter_id').notNull(),
+    day: text('day').notNull(), // YYYY-MM-DD
+    count: integer('count').notNull().default(1),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('simple_counter_logs_day_uniq').on(t.counterId, t.day)],
+)
+
+/** SP metric days (S3-30/S3-50): one row per day — metrics map + evaluation sheet. */
+export const metricDays = table('metric_days', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  day: text('day').notNull().unique(), // YYYY-MM-DD
+  metrics: text('metrics', { mode: 'json' }).$type<Record<string, number>>().notNull().default({}), // metric key → ms/count that day
+  impact: integer('impact'), // 1–4 (evaluation sheet, S3-50)
+  energy: integer('energy'), // 1–3 (evaluation sheet, S3-50)
+  reflection: text('reflection'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** SP saved views / boards (S3-24/S3-44): built-ins are seeded, these are user views. */
+export const taskViews = table('task_views', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  kind: text('kind').notNull().default('custom'), // 'kanban' | 'eisenhower' | 'custom'
+  filter: text('filter', { mode: 'json' }).$type<Record<string, unknown>>().notNull().default({}), // rule chips
+  sortBy: text('sort_by'),
+  groupBy: text('group_by'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
