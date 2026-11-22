@@ -3,6 +3,7 @@ import {
   assertHttps,
   compareVersions,
   latestJsonSchema,
+  parseUpdatePointer,
   pickPatch,
   platformSchema,
   updateManifestSchema,
@@ -155,6 +156,65 @@ describe('update schemas', () => {
           publishedAt: '2026-11-22T03:14:15.926Z',
         }).success,
       ).toBe(false)
+    })
+
+    it('strips unknown fields so future pointers validate on old clients (O1-28)', () => {
+      const futurePointer = {
+        channel: 'nightly',
+        version: '20261122-abc1234',
+        manifestUrl: 'https://releases.example.com/manifest.json',
+        publishedAt: '2026-11-22T03:14:15.926Z',
+        // Fields a future format might add — an old client must ignore them.
+        rolloutPercent: 25,
+        signatures: { minisign: 'unused' },
+      }
+      const parsed = updatePointerSchema.parse(futurePointer)
+      expect(parsed).toEqual({
+        channel: 'nightly',
+        version: '20261122-abc1234',
+        manifestUrl: 'https://releases.example.com/manifest.json',
+        publishedAt: '2026-11-22T03:14:15.926Z',
+      })
+      expect('rolloutPercent' in parsed).toBe(false)
+    })
+  })
+
+  describe('parseUpdatePointer (client-side, never throws — O1-28)', () => {
+    const validPointer = {
+      channel: 'nightly',
+      version: '20261122-abc1234',
+      manifestUrl: 'https://releases.example.com/manifest.json',
+      publishedAt: '2026-11-22T05:00:00+02:00',
+    }
+
+    it('parses a valid pointer, accepting RFC 3339 offsets', () => {
+      const parsed = parseUpdatePointer(validPointer)
+      expect(parsed).not.toBeNull()
+      expect(parsed?.version).toBe('20261122-abc1234')
+      expect(parsed?.notes).toBeUndefined()
+    })
+
+    it('strips unknown fields gracefully', () => {
+      const parsed = parseUpdatePointer({ ...validPointer, someFutureField: 42 })
+      expect(parsed).not.toBeNull()
+      expect('someFutureField' in (parsed ?? {})).toBe(false)
+    })
+
+    it('returns null (never throws) for invalid documents', () => {
+      expect(parseUpdatePointer({ ...validPointer, manifestUrl: 'http://x/y' })).toBeNull()
+      expect(parseUpdatePointer({ ...validPointer, channel: 'canary' })).toBeNull()
+      expect(parseUpdatePointer({ ...validPointer, version: '' })).toBeNull()
+      expect(parseUpdatePointer(null)).toBeNull()
+      expect(parseUpdatePointer(undefined)).toBeNull()
+      expect(parseUpdatePointer('not an object')).toBeNull()
+      expect(parseUpdatePointer(42)).toBeNull()
+      expect(parseUpdatePointer([])).toBeNull()
+    })
+
+    it('round-trips through JSON the way the client fetches it', () => {
+      const onDisk = JSON.stringify(validPointer)
+      const parsed = parseUpdatePointer(JSON.parse(onDisk))
+      expect(parsed).toEqual(validPointer)
     })
   })
 

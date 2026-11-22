@@ -201,6 +201,23 @@ export const updatePointerSchema = z.object({
 /** The parsed {@link updatePointerSchema} shape. */
 export type UpdatePointer = z.infer<typeof updatePointerSchema>
 
+/**
+ * Client-side pointer validation (O1-28): parse an untrusted pointer document
+ * without ever throwing.
+ *
+ * Graceful by design on two axes:
+ * - **Unknown fields are stripped** (zod object default), so a future pointer
+ *   that carries extra metadata still validates against old clients — a
+ *   pointer format extension must never brick the updater.
+ * - **Invalid documents return `null`** instead of throwing, so the calling
+ *   client treats failure as "no update information this cycle" (log + retry
+ *   on the next interval), never a crash.
+ */
+export function parseUpdatePointer(raw: unknown): UpdatePointer | null {
+  const result = updatePointerSchema.safeParse(raw)
+  return result.success ? result.data : null
+}
+
 // ── Tauri official-updater latest.json ──────────────────────────────────────
 
 /** Per-platform entry of the official Tauri updater document. */
