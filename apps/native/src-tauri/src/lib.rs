@@ -7,6 +7,7 @@
 //! notifications, haptics, logging and window management.
 
 mod focus;
+mod update;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {

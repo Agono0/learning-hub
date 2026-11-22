@@ -13,5 +13,14 @@ in batches. Format: `[task] file → change → why`.
   new keystore and break sideload-update signatures. Exact YAML proposed in
   `docs/updates.md` §"Android signing — keystore persistence (O1-22)".
 
-- [O1-02] `apps/native/src-tauri/Cargo.toml` → add three `[dependencies]` lines:
-  `minisign-verify = "0.2"`, `sha2 = "0.10"`, `hex = "0.4"` (and `ureq = { version = "2", features = ["json"] }` ONLY if `tauri_plugin_http::reqwest` proves unusable for the updater fetch — plugin http is already a dependency and is preferred). Why: O1-02's update.rs needs minisign (Ed25519) verification of the signed manifest/pointer and per-file sha256 verification; without these crates the module cannot compile and the Rust CI job fails. O1-02 is currently unclaimable for workers because this file is LEAD-only.
+- [O1-02] `apps/native/src-tauri/Cargo.toml` → add three `[dependencies]` lines
+  (this supersedes the earlier draft request that existed before O1-02 was
+  claimed [~W1] and coded in `src/update.rs`):
+  `minisign-verify = "0.2"`, `sha2 = "0.10"`,
+  `ureq = { version = "2", default-features = false, features = ["tls"] }`.
+  NO `hex` crate (update.rs hand-rolls lowercase hex) and NO plugin-http use
+  on the Rust side (its `tauri_plugin_http::reqwest` re-export is async-only;
+  the updater needs a blocking, timeout-bound client that is unit-testable
+  without a tauri runtime — hence ureq, per the O1-02 brief "ureq or use
+  plugin http"). Without these crates `src/update.rs` cannot compile and the
+  native CI job fails.
