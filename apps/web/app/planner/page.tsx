@@ -30,6 +30,7 @@ import {
   type WeeklyPlanShape,
 } from '@/components/StudyPlannerMatrix'
 import { CalendarSubscriptions } from '@/components/CalendarSubscriptions'
+import { TaskPlannerBoard } from '@/components/tasks/TaskPlannerBoard'
 
 interface PlannerData {
   savedPlan: WeeklyPlanShape | null
@@ -151,6 +152,10 @@ export default function PlannerPage() {
           />
         </div>
       </ClayIn>
+
+      {/* S3-25: the SP task-planning board — day columns, capacity %, drag-to-
+          schedule, overdue row; calendar events from the S3-27 feed cache. */}
+      <TaskPlannerBoard />
 
       {/* S3-27: subscribe to external calendars (iCal feeds / CalDAV VTODO).
           Self-contained section; device-local list, server-side fetch. */}
