@@ -16,8 +16,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, ArchiveRestore, Copy, Trash2 } from 'lucide-react'
 import { workContextTotals } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, Button, Markdown, Skeleton, TextArea, TextField } from '@/ui'
+import {
+  Badge,
+  Button,
+  IconButton,
+  Markdown,
+  SelectField,
+  Skeleton,
+  TextArea,
+  TextField,
+} from '@/ui'
 import { cx } from '@/ui/cx'
+import {
+  addBookmark,
+  loadBookmarks,
+  removeBookmark,
+  type ProjectBookmark,
+} from '@/lib/project-bookmarks'
 
 interface ProjectRow {
   id: number
@@ -75,6 +90,16 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     setToday(new Date().toISOString().slice(0, 10))
   }, [])
+
+  // S3-74: bookmarks are device-local (no project-attachment table yet).
+  const [bookmarks, setBookmarks] = useState<ProjectBookmark[]>([])
+  const [bookmarkType, setBookmarkType] = useState<'file' | 'url' | 'command'>('url')
+  const [bookmarkValue, setBookmarkValue] = useState('')
+  useEffect(() => {
+    if (Number.isInteger(projectId) && projectId > 0) {
+      setBookmarks(loadBookmarks(projectId))
+    }
+  }, [projectId])
 
   const projectQ = useQuery({
     queryKey: ['tasks-projects', projectId],
@@ -202,6 +227,82 @@ export default function ProjectDetailPage() {
               <Markdown>{draft.notes}</Markdown>
             </div>
           )}
+
+          {/* S3-74: project bookmarks — links, files and commands (device-local). */}
+          <div className="panel mb-4 rounded-xl px-3 py-2.5">
+            <span className="label mb-1.5 block text-xs font-semibold text-tertiary">
+              Bookmarks
+            </span>
+            <ul className="mb-2 flex flex-col gap-1">
+              {bookmarks.map((b) => (
+                <li key={b.id} className="flex items-center gap-2 text-sm">
+                  <Badge tone="neutral">{b.type}</Badge>
+                  {b.type === 'url' ? (
+                    <a
+                      href={b.value}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="min-w-0 flex-1 truncate text-body underline"
+                    >
+                      {b.title ?? b.value}
+                    </a>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate text-body">{b.title ?? b.value}</span>
+                  )}
+                  <IconButton
+                    label="Remove bookmark"
+                    size="sm"
+                    onClick={() => {
+                      setBookmarks(removeBookmark(projectId, b.id))
+                    }}
+                    className="text-danger-text"
+                  >
+                    <Trash2 className="size-3.5" aria-hidden />
+                  </IconButton>
+                </li>
+              ))}
+              {bookmarks.length === 0 && (
+                <li className="text-sm text-tertiary">
+                  No bookmarks yet — pin the spec, repo or command you always open for this project.
+                </li>
+              )}
+            </ul>
+            <div className="flex flex-wrap items-end gap-2">
+              <SelectField
+                label="Type"
+                value={bookmarkType}
+                onChange={(e) => setBookmarkType(e.target.value as 'file' | 'url' | 'command')}
+              >
+                <option value="url">URL</option>
+                <option value="file">File</option>
+                <option value="command">Command</option>
+              </SelectField>
+              <TextField
+                label="Value"
+                className="min-w-48 flex-1"
+                value={bookmarkValue}
+                onChange={(e) => setBookmarkValue(e.target.value)}
+                placeholder="https://… or a file path"
+              />
+              <Button
+                variant="secondary"
+                className="min-h-[44px]"
+                disabled={bookmarkValue.trim().length === 0}
+                onClick={() => {
+                  setBookmarks([
+                    addBookmark({
+                      projectId,
+                      type: bookmarkType,
+                      value: bookmarkValue.trim(),
+                    }),
+                  ])
+                  setBookmarkValue('')
+                }}
+              >
+                Pin
+              </Button>
+            </div>
+          </div>
 
           <div className="mb-4 flex flex-col gap-2">
             <span className="label block text-xs text-tertiary">Color</span>
