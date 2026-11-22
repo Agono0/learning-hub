@@ -340,5 +340,9 @@ export * from './battery'
 // Boot/kill resume (M2-24) — persisted-session contract + fresh-anchor rule.
 export * from './resume'
 
+// Per-tier permission checklist (M2-32) — granted-vs-needed matrix the
+// pre-session checklist (M2-16) renders.
+export * from './tiers'
+
 // PIN vault (M2-02) — PBKDF2 hashing + verification for the exit gate (M2-04).
 export * from './pin'

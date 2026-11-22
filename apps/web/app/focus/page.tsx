@@ -26,6 +26,11 @@ import {
   createFrictionGate,
   type FrictionGate,
 } from '@learning-hub/core/src/focus'
+import {
+  DEFAULT_ALLOWED_DOMAINS,
+  normalizeDomain,
+  normalizeExeName,
+} from '@learning-hub/core/src/focus-lock'
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
@@ -46,6 +51,7 @@ import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
 import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
 import { MaxFocusExitGate } from '@/components/MaxFocusExitGate'
+import { MaxFocusPrecheck } from '@/components/MaxFocusPrecheck'
 import { MaxFocusReportCard } from '@/components/MaxFocusReportCard'
 import {
   DEVICE_OWNER_ADB_COMMAND,
@@ -307,6 +313,8 @@ export default function FocusPage() {
   const [newDomain, setNewDomain] = useState('')
   const [newApp, setNewApp] = useState('')
   const [copiedToken, setCopiedToken] = useState(false)
+  // M2-16: the explicit pre-session confirm — the start button gates on it.
+  const [precheckConfirmed, setPrecheckConfirmed] = useState(false)
 
   // ── running session state ──
   const [session, setSession] = useState<FocusSession | null>(null)
@@ -616,6 +624,30 @@ export default function FocusPage() {
     setCopiedToken(true)
     setTimeout(() => setCopiedToken(false), 2000)
   }
+
+  // M2-16: resolved allowlist preview (defaults + preset + extras) — what
+  // stays reachable once the lock engages; everything else is blocked.
+  const precheckDomains = Array.from(
+    new Set(
+      [
+        ...DEFAULT_ALLOWED_DOMAINS,
+        ...(allowlists.data?.allowlists.find((p) => p.id === selectedPresetId)?.domains ?? []),
+        ...extraDomains,
+      ]
+        .map(normalizeDomain)
+        .filter(Boolean),
+    ),
+  )
+  const precheckApps = Array.from(
+    new Set(
+      [
+        ...(allowlists.data?.allowlists.find((p) => p.id === selectedPresetId)?.apps ?? []),
+        ...extraApps,
+      ]
+        .map(normalizeExeName)
+        .filter(Boolean),
+    ),
+  )
 
   const mm = Math.floor(secondsLeft / 60)
   const ss = secondsLeft % 60
@@ -1101,11 +1133,20 @@ export default function FocusPage() {
                     )}
                   </div>
 
-                  {/* Start Button */}
+                  {/* Pre-session checklist (M2-16): permission audit + what
+                      will be blocked + the explicit confirm. */}
+                  <MaxFocusPrecheck
+                    allowedDomains={precheckDomains}
+                    allowedApps={precheckApps}
+                    confirmed={precheckConfirmed}
+                    onConfirmedChange={setPrecheckConfirmed}
+                  />
+
+                  {/* Start Button — gated on the explicit confirm */}
                   <Button
                     variant="primary"
                     className="w-full py-2.5 text-sm font-bold shadow-lg"
-                    disabled={startMaxSessionMutation.isPending}
+                    disabled={startMaxSessionMutation.isPending || !precheckConfirmed}
                     onClick={() => startMaxSessionMutation.mutate()}
                   >
                     <Shield className="h-4 w-4 mr-1.5" />
