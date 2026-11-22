@@ -17,13 +17,14 @@ import {
   CalendarClock,
   Check,
   ChevronRight,
-  Clock,
   Copy,
+  ListMinus,
   MoreVertical,
   Trash2,
 } from 'lucide-react'
 import { Badge, IconButton } from '@/ui'
 import { cx } from '@/ui/cx'
+import { DeadlineBadge, EstimateSpentBadge, PriorityBadge } from './TaskIndicators'
 
 /** The task shape the S3-16 handler returns (core TaskItem over JSON). */
 export type TaskRowTask = {
@@ -54,26 +55,13 @@ export interface TaskRowProps {
   onDragStart: (id: number) => void
   onDropOnto: (targetId: number) => void
   dragging: boolean
+  /** Present only for sectioned tasks — removes the section assignment. */
+  onUnsection?: (id: number) => void
 }
 
 /** Total tracked ms across days. */
 function trackedTotal(task: TaskRowTask): number {
   return Object.values(task.timeSpentOnDay).reduce((a, b) => a + b, 0)
-}
-
-/** Human minutes: `90m`, `1h 30m`. */
-function humanMs(ms: number): string {
-  const m = Math.round(ms / 60_000)
-  const h = Math.floor(m / 60)
-  if (h === 0) return `${m}m`
-  return m % 60 === 0 ? `${h}h` : `${h}h ${m % 60}m`
-}
-
-const PRIORITY_LABEL: Record<TaskRowTask['priority'], string> = {
-  none: '',
-  low: 'p3',
-  medium: 'p2',
-  high: 'p1',
 }
 
 export function TaskRow({
@@ -90,9 +78,9 @@ export function TaskRow({
   onDragStart,
   onDropOnto,
   dragging,
+  onUnsection,
 }: TaskRowProps) {
   const overdue = task.due !== null && task.due.slice(0, 10) < today
-  const deadlinePassed = task.deadline !== null && task.deadline < today
   const tracked = trackedTotal(task)
   const hasTime = task.estimateMs !== null || tracked > 0
 
@@ -150,26 +138,9 @@ export function TaskRow({
               {overdue ? `Overdue · ${task.due.slice(0, 10)}` : task.due.slice(0, 10)}
             </Badge>
           )}
-          {task.deadline !== null && (
-            <Badge tone={deadlinePassed ? 'danger' : 'warning'}>
-              Deadline {task.deadline}
-              {deadlinePassed ? ' passed' : ''}
-            </Badge>
-          )}
-          {PRIORITY_LABEL[task.priority] !== '' && (
-            <Badge tone={task.priority === 'high' ? 'danger' : 'neutral'}>
-              {PRIORITY_LABEL[task.priority]}
-            </Badge>
-          )}
-          {hasTime && (
-            <Badge tone="neutral">
-              <Clock className="size-3" aria-hidden />
-              {tracked > 0 ? humanMs(tracked) : ''}
-              {task.estimateMs !== null
-                ? `${tracked > 0 ? ' / ' : ''}${humanMs(task.estimateMs)}`
-                : ''}
-            </Badge>
-          )}
+          {task.deadline !== null && <DeadlineBadge deadline={task.deadline} today={today} />}
+          <PriorityBadge priority={task.priority} />
+          {hasTime && <EstimateSpentBadge estimateMs={task.estimateMs} spentMs={tracked} />}
         </span>
       </button>
 
@@ -202,6 +173,16 @@ export function TaskRow({
       >
         <Trash2 className="size-3.5" aria-hidden />
       </IconButton>
+      {onUnsection !== undefined && (
+        <IconButton
+          label={`Remove “${task.title}” from its section`}
+          size="sm"
+          onClick={() => onUnsection(task.id)}
+          className="text-tertiary"
+        >
+          <ListMinus className="size-3.5" aria-hidden />
+        </IconButton>
+      )}
       <IconButton label={`Open “${task.title}” details`} size="sm" onClick={() => onOpen(task.id)}>
         <MoreVertical className="size-3.5" aria-hidden />
       </IconButton>

@@ -78,6 +78,7 @@ import * as tasksAttachmentsId from '../server/handlers/tasks-attachments/[id]/r
 import * as tasksArchive from '../server/handlers/tasks/[id]/archive/route'
 import * as tasksComplete from '../server/handlers/tasks/[id]/complete/route'
 import * as tasksDuplicate from '../server/handlers/tasks/[id]/duplicate/route'
+import * as tasksSection from '../server/handlers/tasks/[id]/section/route'
 import * as tasksReopen from '../server/handlers/tasks/[id]/reopen/route'
 import * as tasksRestore from '../server/handlers/tasks/[id]/restore/route'
 import * as tasksTags from '../server/handlers/tasks/[id]/tags/route'
@@ -92,6 +93,7 @@ import * as tasksProjectsRestore from '../server/handlers/tasks-projects/[id]/re
 import * as tasksProjects from '../server/handlers/tasks-projects/route'
 import * as tasksSectionsId from '../server/handlers/tasks-sections/[id]/route'
 import * as tasksSections from '../server/handlers/tasks-sections/route'
+import * as tasksSectionsAssignments from '../server/handlers/tasks-sections/assignments/route'
 import * as tasksTagsId from '../server/handlers/tasks-tags/[id]/route'
 import * as tasksTagsRoot from '../server/handlers/tasks-tags/route'
 import * as tasksViewsId from '../server/handlers/tasks-views/[id]/route'
@@ -329,6 +331,7 @@ add('tasks/[id]/archive', tasksArchive)
 add('tasks/[id]/complete', tasksComplete)
 add('tasks/[id]/duplicate', tasksDuplicate)
 add('tasks/[id]/reopen', tasksReopen)
+add('tasks/[id]/section', tasksSection)
 add('tasks/[id]/restore', tasksRestore)
 add('tasks/[id]/tags', tasksTags)
 add('tasks/bulk', tasksBulk)
@@ -341,6 +344,7 @@ add('tasks-projects/[id]/duplicate', tasksProjectsDuplicate)
 add('tasks-projects/[id]/restore', tasksProjectsRestore)
 add('tasks-sections', tasksSections)
 add('tasks-sections/[id]', tasksSectionsId)
+add('tasks-sections/assignments', tasksSectionsAssignments)
 add('tasks-tags', tasksTagsRoot)
 add('tasks-tags/[id]', tasksTagsId)
 add('tasks-views', tasksViews)

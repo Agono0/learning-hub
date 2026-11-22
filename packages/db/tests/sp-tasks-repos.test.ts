@@ -52,6 +52,7 @@ import {
   listCounters,
   listMetricDays,
   listSections,
+  listTaskSectionAssignments,
   listTaskAttachments,
   listTaskItems,
   listTaskProjects,
@@ -66,6 +67,7 @@ import {
   restoreTaskProjectRow,
   runArchivePass,
   setDb,
+  setTaskItemSection,
   setTaskItemTags,
   setTaskOrder,
   simpleCounterLogs,
@@ -368,8 +370,9 @@ describe('projects', () => {
 })
 
 describe('repeat configs', () => {
-  it('persists a config and drops the UI-only title', () => {
+  it('persists a config and keeps the optional UI title (034)', () => {
     const cfg = createRepeatCfgRow({
+      title: 'Every 3 days',
       cycle: 'd',
       interval: 3,
       startDate: '2026-01-01',
@@ -378,12 +381,23 @@ describe('repeat configs', () => {
       reAnchor: 'scheduled',
     })
     expect(getRepeatCfg(cfg.id)).toMatchObject({
+      title: 'Every 3 days',
       cycle: 'd',
       interval: 3,
       skipDates: ['2026-01-04'],
     })
-    const updated = updateRepeatCfgRow(cfg.id, { interval: 5 })!
+    const unnamed = createRepeatCfgRow({
+      cycle: 'd',
+      interval: 1,
+      startDate: '2026-01-01',
+      endDate: null,
+      skipDates: [],
+      reAnchor: 'completion',
+    })
+    expect(unnamed.title).toBeNull()
+    const updated = updateRepeatCfgRow(cfg.id, { interval: 5, title: 'Every 5 days' })!
     expect(updated.interval).toBe(5)
+    expect(updated.title).toBe('Every 5 days')
     expect(() =>
       createRepeatCfgRow({
         cycle: 'x' as never,
@@ -430,7 +444,7 @@ describe('task reminders', () => {
     )
   })
 
-  it('encodes relative offsets in remind_at and decodes them back', () => {
+  it('stores relative offsets in the real offset_ms column (034) with legacy fallback', () => {
     const task = createTaskItem({ title: 'Relative' })
     const reminder = createTaskReminderRow({
       taskId: task.id,
@@ -439,10 +453,24 @@ describe('task reminders', () => {
     })
     expect(reminder.remindAt).toBeNull()
     expect(reminder.offsetMs).toBe(-1_800_000)
+    // The column is the storage; remind_at is the NOT NULL placeholder.
+    const rawRow = db.select().from(taskReminders).where(eq(taskReminders.id, reminder.id)).get()!
+    expect(rawRow.offsetMs).toBe(-1_800_000)
+    expect(rawRow.remindAt).toBe('')
+
+    // Legacy fallback: a pre-034 row (offset encoded as a string in
+    // remind_at, offset_ms NULL) still decodes.
+    db.insert(taskReminders)
+      .values({ taskId: task.id, remindAt: String(-600_000), type: 'relative' })
+      .run()
+    const legacy = listTaskReminders({ taskId: task.id }).find((r) => r.id !== reminder.id)
+    expect(legacy?.offsetMs).toBe(-600_000)
+
     const shifted = updateTaskReminderRow(reminder.id, { offsetMs: -900_000 })!
     expect(shifted.offsetMs).toBe(-900_000)
     expect(updateTaskReminderRow(reminder.id, { exactAlarm: true })!.exactAlarm).toBe(true)
     expect(deleteTaskReminderRow(reminder.id)).toBe(true)
+    expect(deleteTaskReminderRow(legacy!.id)).toBe(true)
     expect(listTaskReminders({ taskId: task.id })).toEqual([])
   })
 })
@@ -493,6 +521,30 @@ describe('sections and attachments', () => {
     expect(() => createSection('   ')).toThrow(/needs a name/)
     expect(deleteSection(a.id)).toBe(true)
     expect(deleteSection(a.id)).toBe(false)
+  })
+
+  it('assigns tasks to sections (034) and unassigns on section delete', () => {
+    const section = createSection('Morning')
+    const other = createSection('Evening')
+    const task = createTaskItem({ title: 'Sectioned' })
+
+    expect(listTaskSectionAssignments()).toEqual([])
+    setTaskItemSection(task.id, section.id)
+    expect(listTaskSectionAssignments()).toEqual([{ taskId: task.id, sectionId: section.id }])
+    // Re-assigning moves the task; null unassigns.
+    setTaskItemSection(task.id, other.id)
+    expect(listTaskSectionAssignments()).toEqual([{ taskId: task.id, sectionId: other.id }])
+    setTaskItemSection(task.id, null)
+    expect(listTaskSectionAssignments()).toEqual([])
+
+    // Integrity: unknown task / unknown section throw.
+    expect(() => setTaskItemSection(987, section.id)).toThrow(/task #987/)
+    expect(() => setTaskItemSection(task.id, 987)).toThrow(/section #987/)
+
+    // Deleting a section unassigns its tasks instead of dangling.
+    setTaskItemSection(task.id, other.id)
+    deleteSection(other.id)
+    expect(listTaskSectionAssignments()).toEqual([])
   })
 
   it('validates attachment types and task existence', () => {

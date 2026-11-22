@@ -7,15 +7,16 @@
  * - Core model ↔ row: `task_items` rows map onto the core {@link TaskItem}
  *   with `tagIds` denormalized from `task_item_tags` (the table stores the
  *   link rows, the model carries ids — reads aggregate, writes split).
- * - Relative reminders: the `task_reminders.remind_at` column is NOT NULL
- *   and there is no offset column, so `type='relative'` rows store the
- *   offset in milliseconds as a string (`String(offsetMs)`, e.g. `-1800000`).
- *   {@link reminderFromRow} decodes it back into the core
- *   `remindAt: null / offsetMs: number` shape. A future migration may add a
- *   real `offset_ms` column (see docs/SHARED_CHANGES.md) — the decode is the
- *   only place that would change.
- * - Repeat configs: `task_repeat_cfgs` has no `title` column — the title a
- *   UI passes is dropped on write (SP shows generated titles anyway).
+ * - Relative reminders: the real `task_reminders.offset_ms` column
+ *   (migration 034) stores the offset; `remind_at` stays NOT NULL and is
+ *   `''` for relative rows. {@link reminderFromRow} decodes the column with
+ *   a legacy fallback to the pre-034 string encoding in `remind_at`, so
+ *   rows written before the migration keep resolving.
+ * - Repeat configs: `task_repeat_cfgs.title` (migration 034) persists the
+ *   optional UI title; null when the caller does not name the rule.
+ * - Sections: `task_items.section_id` (migration 034) assigns a task to a
+ *   `task_sections` header row ({@link setTaskItemSection}); deleting a
+ *   section unassigns its tasks rather than dangling the reference.
  * - Referential integrity: SQLite FKs are off by default (031 note), so the
  *   repos own it — parent/project/tag/repeat-cfg existence is checked before
  *   writes and deletes cascade to dependent rows.
@@ -123,8 +124,8 @@ export const taskViewKindSchema = ['kanban', 'eisenhower', 'custom'] as const
 /** One saved-view kind. */
 export type TaskViewKind = (typeof taskViewKindSchema)[number]
 
-/** The `task_repeat_cfgs` write shape — the core input minus the unpersisted title. */
-export type RepeatCfgWrite = Omit<CreateRepeatCfgInput, 'title'>
+/** The `task_repeat_cfgs` write shape — the full core input (title persisted, 034). */
+export type RepeatCfgWrite = CreateRepeatCfgInput
 
 /**
  * Everything needed to resurrect a deleted task: the item, its subtasks,
@@ -177,12 +178,16 @@ function taskFromRow(conn: DbOrTx, row: TaskItemRow): TaskItem {
 
 /**
  * `task_reminders` row → core {@link TaskReminder}. `at_time` rows keep
- * their ISO `remind_at`; `relative` rows decode the offset milliseconds
- * stored (as a string) in the same column — see the module header.
+ * their ISO `remind_at`; `relative` rows decode the offset from the real
+ * `offset_ms` column (migration 034) with a legacy fallback to the
+ * pre-034 string encoding in `remind_at` — see the module header.
  */
 function reminderFromRow(row: TaskReminderRow): TaskReminder {
   const isRelative = row.type === 'relative'
-  const offsetMs = isRelative ? Number(row.remindAt) : NaN
+  // Prefer the real column (034+); fall back to the legacy encoded string.
+  const offsetMs = isRelative
+    ? (row.offsetMs ?? (Number.isFinite(Number(row.remindAt)) ? Number(row.remindAt) : NaN))
+    : NaN
   return {
     id: row.id,
     taskId: row.taskId,
@@ -194,11 +199,12 @@ function reminderFromRow(row: TaskReminderRow): TaskReminder {
   }
 }
 
-/** Core reminder draft → insert values (offset encoded for `relative`). */
+/** Core reminder draft → insert values (real `offset_ms` column for `relative`). */
 function reminderToInsert(reminder: TaskReminder): typeof taskReminders.$inferInsert {
   return {
     taskId: reminder.taskId,
-    remindAt: reminder.type === 'at_time' ? (reminder.remindAt ?? '') : String(reminder.offsetMs),
+    remindAt: reminder.type === 'at_time' ? (reminder.remindAt ?? '') : '',
+    offsetMs: reminder.type === 'relative' ? reminder.offsetMs : null,
     type: reminder.type,
     exactAlarm: reminder.exactAlarm,
     createdAt: reminder.createdAt,
@@ -1061,8 +1067,8 @@ export function getRepeatCfg(id: number, database?: DbOrTx): RepeatCfgRow | null
 }
 
 /**
- * Create a repeat config. The core input's `title` is dropped (the table
- * has no title column — see the module header).
+ * Create a repeat config; the optional `title` persists (migration 034) —
+ * SP generates titles but lets users rename the rule.
  */
 export function createRepeatCfgRow(input: RepeatCfgWrite, database?: DbOrTx): RepeatCfgRow {
   return txRun((conn) => {
@@ -1071,6 +1077,7 @@ export function createRepeatCfgRow(input: RepeatCfgWrite, database?: DbOrTx): Re
     return conn
       .insert(taskRepeatCfgs)
       .values({
+        title: v.title ?? null,
         cycle: v.cycle,
         interval: v.interval,
         startDate: v.startDate,
@@ -1095,6 +1102,7 @@ export function updateRepeatCfgRow(
     const existing = conn.select().from(taskRepeatCfgs).where(eq(taskRepeatCfgs.id, id)).get()
     if (!existing) return null
     const v = createRepeatCfgInputSchema.parse({
+      title: patch.title !== undefined ? patch.title : existing.title,
       cycle: patch.cycle ?? existing.cycle,
       interval: patch.interval ?? existing.interval,
       startDate: patch.startDate ?? existing.startDate,
@@ -1105,6 +1113,7 @@ export function updateRepeatCfgRow(
     conn
       .update(taskRepeatCfgs)
       .set({
+        title: v.title ?? null,
         cycle: v.cycle,
         interval: v.interval,
         startDate: v.startDate,
@@ -1200,7 +1209,7 @@ export function updateTaskReminderRow(
     if (row.type === 'relative' && patch.offsetMs !== undefined) {
       conn
         .update(taskReminders)
-        .set({ remindAt: String(patch.offsetMs) })
+        .set({ offsetMs: patch.offsetMs, remindAt: '' })
         .where(eq(taskReminders.id, id))
         .run()
     }
@@ -1434,14 +1443,63 @@ export function updateSection(
   }, database)
 }
 
-/** Delete a section (no dependents — tasks are not section-scoped). */
+/**
+ * Delete a section: its tasks are UNASSIGNED (`section_id` nulled) rather
+ * than dangling — SP keeps the tasks, only the header disappears.
+ */
 export function deleteSection(id: number, database?: DbOrTx): boolean {
   return txRun((conn) => {
     const existing = conn.select().from(taskSections).where(eq(taskSections.id, id)).get()
     if (!existing) return false
+    conn.update(taskItems).set({ sectionId: null }).where(eq(taskItems.sectionId, id)).run()
     conn.delete(taskSections).where(eq(taskSections.id, id)).run()
     return true
   }, database)
+}
+
+/**
+ * Assign a task to a section header (migration 034's `section_id`) — the
+ * drag-into-section write path. `null` unassigns (SP's "drag out of the
+ * section"). Integrity: the task and the section must exist.
+ */
+export function setTaskItemSection(
+  taskId: number,
+  sectionId: number | null,
+  database?: DbOrTx,
+): void {
+  txRun((conn) => {
+    const task = conn.select().from(taskItems).where(eq(taskItems.id, taskId)).get()
+    if (!task) throw new Error(`task #${taskId} not found`)
+    if (sectionId !== null) {
+      const section = conn.select().from(taskSections).where(eq(taskSections.id, sectionId)).get()
+      requireRow('section', sectionId, section)
+    }
+    conn
+      .update(taskItems)
+      .set({ sectionId, updatedAt: new Date().toISOString() })
+      .where(eq(taskItems.id, taskId))
+      .run()
+  }, database)
+}
+
+/**
+ * The task → section map for list rendering (S3-20's inline headers):
+ * one `{ taskId, sectionId }` row per SECTIONED task (unsectioned tasks
+ * are absent — the page treats missing as null).
+ */
+export function listTaskSectionAssignments(
+  database?: DbOrTx,
+): Array<{ taskId: number; sectionId: number }> {
+  return run(
+    (conn) =>
+      conn
+        .select({ taskId: taskItems.id, sectionId: taskItems.sectionId })
+        .from(taskItems)
+        .where(sql`${taskItems.sectionId} IS NOT NULL`)
+        .all()
+        .map((r) => ({ taskId: r.taskId, sectionId: r.sectionId as number })),
+    database,
+  )
 }
 
 // ── Attachments ─────────────────────────────────────────────────────────────

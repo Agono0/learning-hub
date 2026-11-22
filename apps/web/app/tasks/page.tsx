@@ -290,7 +290,11 @@ export default function TasksPage() {
                         onDragStart={setDraggingId}
                         onDropOnto={dropOnto}
                         dragging={draggingId === task.id}
-                        onUnsection={sectionAssignM.isPending ? undefined : (id) => sectionAssignM.mutate({ id, sectionId: null })}
+                        onUnsection={
+                          sectionAssignM.isPending
+                            ? undefined
+                            : (id) => sectionAssignM.mutate({ id, sectionId: null })
+                        }
                       />
                     ))}
                   </ul>
