@@ -1342,6 +1342,36 @@ mod slot_tests {
         assert_eq!(active_slot(&base).unwrap(), SlotId::B);
         fs::remove_dir_all(&base).ok();
     }
+
+    #[test]
+    fn tampered_pointer_is_rejected_at_parse() {
+        let base = temp_base();
+        // A corrupted pointer (torn write, bit rot, hostile edit) is a hard
+        // parse error — the boot flow refuses to guess and the protocol
+        // falls back to the bundled payload (lookup_in_active_slot → None).
+        for evil in [
+            "not json at all",
+            "{ \"active\": \"slot-c\" }", // unknown slot id
+            "{ \"active\": 42 }",         // wrong type
+            "",                           // empty file
+        ] {
+            fs::write(pointer_path(&base), evil).unwrap();
+            assert!(
+                matches!(read_pointer(&base), Err(UpdateError::Parse(_))),
+                "pointer {evil:?} must be rejected"
+            );
+        }
+        // A VALID but unsigned pointer (written by the native layer itself)
+        // still parses — pointers are origin-trusted, signature-trust lives
+        // in the manifest (see docs/updates.md integrity section).
+        fs::write(
+            pointer_path(&base),
+            r#"{ "active": "slot-a", "missedConfirmations": 1 }"#,
+        )
+        .unwrap();
+        assert_eq!(read_pointer(&base).unwrap().active, SlotId::A);
+        fs::remove_dir_all(&base).ok();
+    }
 }
 
 // ─── Resumable download tests (O1-16) ────────────────────────────────────────

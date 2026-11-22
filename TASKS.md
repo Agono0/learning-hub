@@ -29,7 +29,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-15 | OTA | Update-available banner + apply prompt (respect ask-first; shows size: patch vs full) | component + test | apps/web/src/components/UpdateBanner.tsx | O1-14 |
 - [x] O1-16 | OTA | Rust download: resumable ranges, progress events to webview | unit tests for range math | apps/native/src-tauri/src/update.rs | O1-03 |
 - [x] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
-- [ ] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
+- [x] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
 - [ ] O1-19 | OTA | Upgrade-from-N test: apply patches from each of last 5 manifests (fixture chain) | tests green | tests in update.rs + fixtures | O1-07 |
 - [x] O1-20 | OTA | Measured patch size: CI job applies a one-line web change → records hot patch KB into release notes + docs/updates.md | <50 KB recorded or deviation explained | .github/workflows/nightly.yml, docs/updates.md | O1-08 |
 - [ ] O1-21 | OTA | Android bsdiff delta APK (stretch): CI generates per-ABI patch vs previous release; client applies + re-signs via persisted keystore | measured sizes; fallback to full APK | scripts, Kotlin apply, native.yml | O1-13 |
@@ -179,7 +179,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
 - [ ] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards/planner | S3-24
 - [ ] O1-25 | OTA | Update check interval + Wi-Fi-only honored by Rust scheduler | code + tests | update.rs | O1-14
-- [~W3] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
+- [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [ ] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
 - [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
 - [ ] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
