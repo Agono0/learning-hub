@@ -175,7 +175,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-95 | SP | UI: schedule "from previous days" row + deadline flags | component | schedule | S3-26
 - [ ] S3-96 | SP | UI: impact stars + lazy chart components | component | metrics | S3-30
 - [ ] S3-97 | SP | Docs: keyboard shortcut default map table in docs/tasks.md | doc section | docs/tasks.md | S3-35
-- [ ] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42
+- [x] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42 |  W1: audited my SP pages — Tasks (empty list EmptyState + loading skeleton + error Callout + new empty-section hint), Schedule (tray/timeline EmptyState + overdue empty + skeleton), planner board (tray/Open day lines), TaskDetail (subtasks/reminders/attachments empty lines). W3 pages (boards/worklog/metrics) are its lane
 - [x] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20 |  W1: useWindowedList pure windowRange math + WindowedTaskList (fixed-row windowing, no deps); tasks page virtualizes the unsectioned list at >=50 items (plain render below); 6 tests incl. a 1200-item render (<=20 DOM rows)
 - [x] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards page (focusable quadrants+cards with --ac-strong rings, list semantics, live hints; planner side is W1's S3-25 surface) | S3-24
 - [x] O1-25 | OTA | Update check interval + Wi-Fi-only honored by the check scheduler | code + tests | apps/web/src/lib/updates.ts client service (scheduler owns the loop; settings are webview-local; Rust keeps download/promote) | O1-14 |
