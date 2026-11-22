@@ -410,3 +410,6 @@ export * from './short-syntax'
 
 // Estimate math (S3-62) — re-exported so hosts consume one entry.
 export * from './estimates'
+
+// Deadline semantics (S3-63) — re-exported so hosts consume one entry.
+export * from './deadlines'
