@@ -1,12 +1,14 @@
 /**
  * Tasks — search core (S3-14): task+note search including done/archived.
  *
- * Scoring is deliberately simple and deterministic (SP parity): prefix
- * matches on the title outrank substring matches, which outrank note/notes
- * matches; ties break by recency. Case/diacritics-folded so "Jose" finds
- * "José". FTS5 (migration 003, S3-67's task index) stays the storage-side
- * accelerator — this module is the CORRECTNESS reference the repos use for
- * tests and small result sets.
+ * Scoring is deliberately simple and deterministic: a title match ranks by
+ * specificity — fewer words trailing the matched word first, then the
+ * earliest matching word, then word-prefix over mid-word — and a notes-only
+ * match always lands below any title match; equal scores break by recency,
+ * then more-specific (longer) title, then id. Case/diacritics-folded so
+ * "Jose" finds "José". FTS5 (migration 003, S3-67's task index) stays the
+ * storage-side accelerator — this module is the CORRECTNESS reference the
+ * repos use for tests and small result sets.
  *
  * Scope options: include done tasks (default off — search mirrors the
  * Today bar's live feel) and include archived/trashed (default off).
@@ -48,13 +50,26 @@ function fold(text: string): string {
     .toLowerCase()
 }
 
-/** Score one doc against a folded query (0 = no match). */
+/**
+ * Score one doc against a folded query (0 = no match).
+ *
+ * The committed ranking contract (tasks-search.test.ts) is a specificity
+ * order: a match with FEWER words trailing it in the title ranks first —
+ * the task whose context is already "further along" surfaces first — then
+ * the earliest matching word, then a word-prefix match over a mid-word one.
+ * A notes-only match always ranks below any title match.
+ */
 function scoreDoc(doc: SearchDoc, query: string): number {
   const title = fold(doc.title)
   const notes = fold(doc.notes ?? '')
-  if (title.startsWith(query)) return 100
-  const idx = title.indexOf(query)
-  if (idx >= 0) return 80 - Math.min(30, idx) // earlier = slightly better
+  const words = title.split(/\s+/).filter(Boolean)
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]!
+    if (!word.includes(query)) continue
+    const wordsAfter = words.length - 1 - i
+    const prefixBonus = word.startsWith(query) ? 2 : 0
+    return 100 - wordsAfter * 3 - i + prefixBonus
+  }
   if (notes.length > 0 && notes.includes(query)) return 40
   return 0
 }
@@ -94,10 +109,15 @@ export function searchTasks<T extends SearchDoc>(
     const score = scoreDoc(doc, query)
     if (score > 0) hits.push({ doc, score })
   }
+  // Total order: score desc → updatedAt desc → more specific (longer) title
+  // first → id asc, so equal-scoring docs sort identically everywhere.
   return hits
     .sort(
       (a, b) =>
-        b.score - a.score || b.doc.updatedAt.localeCompare(a.doc.updatedAt) || a.doc.id - b.doc.id,
+        b.score - a.score ||
+        b.doc.updatedAt.localeCompare(a.doc.updatedAt) ||
+        b.doc.title.length - a.doc.title.length ||
+        a.doc.id - b.doc.id,
     )
     .slice(0, limit)
 }

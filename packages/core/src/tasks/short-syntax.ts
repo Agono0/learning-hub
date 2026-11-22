@@ -143,6 +143,12 @@ const TOKEN_TESTS: Array<{ kind: ShortSyntaxTokenKind; test: (chunk: string) => 
  * whitespace and classifies by {@link TOKEN_TESTS}. A bare `@`/`!`/`#`/`+`
  * (still being typed) classifies as `unknown` so autocomplete can offer
  * suggestions instead of treating it as title text.
+ *
+ * When the input CONTAINS a quoted span, the leading prose before the first
+ * quote is absorbed as sentence context (the quote anchors the title) and is
+ * not emitted as tokens — the token stream starts at the quote. Inputs
+ * without quotes tokenize every chunk (prose → `unknown`), matching the
+ * highlighter's offsets.
  */
 export function tokenizeShortSyntax(input: string): ShortSyntaxToken[] {
   const tokens: ShortSyntaxToken[] = []
@@ -163,7 +169,13 @@ export function tokenizeShortSyntax(input: string): ShortSyntaxToken[] {
     segments.push({ text: input.slice(lastEnd), start: lastEnd, quoted: false })
   }
 
-  for (const seg of segments) {
+  // A quoted span anchors the title: leading prose before the FIRST quote is
+  // sentence context, not syntax — drop it from the token stream.
+  const firstQuoteIndex = segments.findIndex((s) => s.quoted)
+
+  for (let segIndex = 0; segIndex < segments.length; segIndex++) {
+    const seg = segments[segIndex]!
+    if (!seg.quoted && segIndex < firstQuoteIndex) continue
     if (seg.quoted) {
       tokens.push({
         kind: 'quoted',
@@ -212,7 +224,11 @@ export function suggestAt(input: string, caret: number): ShortSyntaxSuggestion |
   if (project) return { kind: 'project', trigger: project[1], query: project[2] ?? '' }
   const deadline = /^(!)(\S*)$/.exec(lastChunk)
   if (deadline) return { kind: 'deadline', trigger: deadline[1], query: deadline[2] ?? '' }
-  const repeat = /^(@every\s?)(\S*)$/i.exec(before)
+  // "@every" with a trailing space (or a partial interval typed after it)
+  // suggests the repeat kind even though lastChunk is empty — the interval
+  // list is what autocomplete offers next. The lastChunk checks above can't
+  // see it because the chunk boundary eats the trailing space.
+  const repeat = /(?:^|\s)(@every\s?)(\S*)$/i.exec(before)
   if (repeat) return { kind: 'repeat', trigger: '@every', query: repeat[2] ?? '' }
   // Partial estimate chains: `45`, `1h`, `1h3` (mid-`1h30m`)…
   if (/^\d{1,3}(h\d{0,3})?$/i.test(lastChunk)) {

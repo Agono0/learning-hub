@@ -62,8 +62,11 @@ export function effectivePriority(
 export function compareByEffectivePriority(
   strategies: PriorityStrategy[] = [],
 ): (a: TaskItem, b: TaskItem) => number {
+  // Ties break by id ascending — a deterministic total order (insertion-order
+  // stability is not enough when callers sort differently-shaped arrays).
   return (a, b) =>
-    priorityRank(effectivePriority(b, strategies)) - priorityRank(effectivePriority(a, strategies))
+    priorityRank(effectivePriority(b, strategies)) -
+      priorityRank(effectivePriority(a, strategies)) || a.id - b.id
 }
 
 /**

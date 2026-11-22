@@ -371,7 +371,11 @@ describe('compareVersions', () => {
       for (const b of versions) {
         const ab = compareVersions(a, b)
         const ba = compareVersions(b, a)
-        expect(ab).toBe(-ba)
+        // Guard the negation: when both sides compare 0, `-ba` is -0 and
+        // Object.is(0, -0) is false — the impl never emits -0 (sign() returns
+        // the literal 0), so branch instead of negating.
+        if (ab === 0) expect(ba).toBe(0)
+        else expect(ab).toBe(-ba)
         if (a === b) expect(ab).toBe(0)
       }
     }

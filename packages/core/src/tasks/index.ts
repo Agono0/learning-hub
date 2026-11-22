@@ -117,9 +117,18 @@ export function createTask(input: CreateTaskInput, now: string): TaskItem {
  * completing/reopening belongs to {@link completeTask}/{@link reopenTask}
  * (pass `isDone` here only for bulk paths — they go through
  * {@link bulkApply}, the one grading-adjacent path for batch changes).
+ *
+ * A non-positive `estimateMs` patch throws {@link TaskDomainError}: the
+ * row schema admits 0 (a stored row must parse for repair tooling), but a
+ * PATCH setting 0 is a domain-rule violation — a zero estimate is
+ * meaningless, so it never lands (validateTask carries the same rule for
+ * hand-built rows).
  */
 export function updateTask(task: TaskItem, patch: UpdateTaskInput, now: string): TaskItem {
   const v = updateTaskInputSchema.parse(patch)
+  if (v.estimateMs !== undefined && v.estimateMs !== null && v.estimateMs <= 0) {
+    throw new TaskDomainError('estimate-nonpositive', 'Time estimate must be greater than zero.')
+  }
   return { ...task, ...v, updatedAt: now }
 }
 

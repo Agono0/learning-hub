@@ -42,6 +42,9 @@ export const undoOpSchema = z.discriminatedUnion('op', [
 /** The parsed {@link undoOpSchema} shape. */
 export type UndoOp = z.infer<typeof undoOpSchema>
 
+/** The known op discriminants — the kind-only guard set for the stack. */
+export const UNDO_OP_KINDS = ['complete', 'reopen', 'wontdo', 'update', 'delete', 'create'] as const
+
 /** One stack entry: the op plus a human label and timestamp. */
 export interface UndoEntry {
   op: UndoOp
@@ -50,13 +53,23 @@ export interface UndoEntry {
   at: string
 }
 
-/** Build a stack entry (validates the op). */
+/**
+ * Build a stack entry. The stack guard is KIND-ONLY: an op of a known kind
+ * is accepted as-is — typed callers build complete payloads, and undo
+ * payloads are only fully validated where the op is APPLIED
+ * (`undoOpSchema` consumers) — while an UNKNOWN op kind is rejected. That
+ * is the "unknown op shape" this guard exists for: a forward-compat stack
+ * written by a newer client must be prunable, not crash the push path.
+ */
 export function pushUndo(
   stack: UndoEntry[],
   entry: Omit<UndoEntry, 'at'>,
   now: string,
 ): UndoEntry[] {
-  undoOpSchema.parse(entry.op)
+  const kind: unknown = (entry.op as { op?: unknown } | null | undefined)?.op
+  if (typeof kind !== 'string' || !(UNDO_OP_KINDS as readonly string[]).includes(kind)) {
+    throw new Error('Unknown undo op kind: ' + String(kind))
+  }
   const next = [{ ...entry, at: now }, ...stack]
   return next.slice(0, UNDO_STACK_LIMIT)
 }

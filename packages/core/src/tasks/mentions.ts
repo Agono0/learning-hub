@@ -48,6 +48,11 @@ export interface Mention {
  * caller's resolution set (the repo's people list / project titles);
  * unknown names are still returned when `onlyKnownNames` is off, marked
  * `known: false`. Escaped `@@name` is skipped (literal text).
+ *
+ * Project mentions (`@+name`) are STRUCTURAL (SP's `@+project` grammar, the
+ * same prefix the short-syntax parser owns): the `onlyKnownNames` filter is
+ * a people-resolution guard, so once the projects toggle is on, project
+ * mentions always extract — unresolved ones simply carry `known: false`.
  */
 export function extractMentions(
   note: string,
@@ -67,7 +72,7 @@ export function extractMentions(
     if (!isProject && !config.people) continue
     const bare = isProject ? name.slice(1) : name
     const known = knownNames.has(bare)
-    if (!known && config.onlyKnownNames) continue
+    if (!known && config.onlyKnownNames && !isProject) continue
     mentions.push({ name: bare, raw, known, start, end: start + raw.length })
   }
   return mentions

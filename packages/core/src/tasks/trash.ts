@@ -50,10 +50,13 @@ export function daysUntilExpiry(entry: Pick<TrashEntry, 'deletedAt'>, now: strin
 
 /** True when the entry is past its TTL and should be purged. */
 export function isExpired(entry: Pick<TrashEntry, 'deletedAt'>, now: string): boolean {
-  return (
-    daysUntilExpiry(entry, now) <= 0 &&
-    Date.parse(entry.deletedAt) + TRASH_TTL_DAYS * DAY_MS <= Date.parse(now)
-  )
+  const deletedMs = Date.parse(entry.deletedAt)
+  // Fail CLOSED on a corrupt stamp: an unparseable deletedAt counts as
+  // expired so the view never renders rot and the purge reclaims it.
+  if (Number.isNaN(deletedMs)) return true
+  const nowMs = Date.parse(now)
+  if (Number.isNaN(nowMs)) return false // unmeasurable now: nothing is provably past TTL
+  return deletedMs + TRASH_TTL_DAYS * DAY_MS <= nowMs
 }
 
 /** Create an entry from a deletion event (`now` stamps the TTL anchor). */

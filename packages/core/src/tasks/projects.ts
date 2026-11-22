@@ -18,8 +18,14 @@ import { TaskDomainError } from './shared'
 export const taskProjectSchema = z.object({
   /** Row id; `0` for unpersisted drafts. */
   id: z.number().int().nonnegative(),
-  /** Project title, 1–200 chars. */
-  title: z.string().min(1).max(200),
+  /**
+   * Project title, ≤200 chars. The MIN-LENGTH rule lives at the domain
+   * layer ({@link validateProject}), not here: a hand-built row with an
+   * empty title must PARSE so the validator can report it as a rule
+   * violation (SP's validate-at-domain-layer). Inputs (`createProjectInput`
+   * / `updateProjectInput`) stay strict — they reject `''` at the boundary.
+   */
+  title: z.string().max(200),
   /** Free-form project notes (S3-93 links standalone notes to this field). */
   notes: z.string().max(10_000).nullable(),
   /**
