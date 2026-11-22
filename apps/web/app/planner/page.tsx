@@ -29,6 +29,7 @@ import {
   type PlannerCourse,
   type WeeklyPlanShape,
 } from '@/components/StudyPlannerMatrix'
+import { CalendarSubscriptions } from '@/components/CalendarSubscriptions'
 
 interface PlannerData {
   savedPlan: WeeklyPlanShape | null
@@ -150,6 +151,10 @@ export default function PlannerPage() {
           />
         </div>
       </ClayIn>
+
+      {/* S3-27: subscribe to external calendars (iCal feeds / CalDAV VTODO).
+          Self-contained section; device-local list, server-side fetch. */}
+      <CalendarSubscriptions />
 
       <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
         <AlertDialogContent>

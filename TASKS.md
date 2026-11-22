@@ -101,7 +101,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | apps/web/app/boards/page.tsx + core/boards.ts | S3-17 |
 - [ ] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
 - [ ] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
-- [ ] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts upgrade, handlers | S3-26 |
+- [x] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts parser, calendar/import handler + registry, lib/calendar-feeds + CalendarSubscriptions on planner | S3-26 |
 - [ ] S3-28 | SP | Worklog page: history day/week, inline corrections, CSV export UI | page + tests | apps/web/app/worklog/page.tsx | S3-18 |
 - [ ] S3-29 | SP | Finish-day flow: summary, auto-archive, plan-tomorrow prompt, celebration | page flow + tests | apps/web/app/tasks/finish-day | S3-18, S3-11 |
 - [ ] S3-30 | SP | Metrics: per-day records, aggregates, line charts (hand-rolled SVG), activity heatmap | page + tests | apps/web/app/metrics/page.tsx + core/metrics.ts | S3-19 |
