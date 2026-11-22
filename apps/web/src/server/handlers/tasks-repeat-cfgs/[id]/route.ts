@@ -10,6 +10,7 @@ import { readJson, withRoute } from '@/lib/api'
 import { routeId, taskErrorResponse, type IdContext } from '../../tasks/_shared'
 
 const patchSchema = z.object({
+  title: z.string().max(200).nullable().optional(),
   cycle: z.enum(['d', 'w', 'm', 'y']).optional(),
   interval: z.number().int().min(1).max(999).optional(),
   startDate: z

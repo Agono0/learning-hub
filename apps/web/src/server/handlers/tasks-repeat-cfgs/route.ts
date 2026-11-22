@@ -30,11 +30,12 @@ const createSchema = z.object({
   reAnchor: z.enum(['scheduled', 'completion', 'postponed']),
 })
 
-/** POST /api/tasks-repeat-cfgs — 201 with the row (title dropped). */
+/** POST /api/tasks-repeat-cfgs — 201 with the row (title persisted, 034). */
 export const POST = withRoute(async (req: Request) => {
   try {
     const body = await readJson(req, createSchema)
     const cfg = createRepeatCfgRow({
+      title: body.title ?? null,
       cycle: body.cycle,
       interval: body.interval,
       startDate: body.startDate,
