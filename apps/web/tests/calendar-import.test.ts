@@ -10,10 +10,13 @@
  *   add/remove/update roundtrips, per-subscription feed cache, corrupted
  *   storage degrading to empty.
  * - SSR-safe render of `CalendarSubscriptions` (renderToString — storage
- *   reads are effect-only, so server markup matches hydration).
+ *   reads are effect-only, so server markup matches hydration), plus the
+ *   S3-42 sweep check that the section is MOUNTED on /planner and
+ *   server-visible there.
  */
 import React from 'react'
 import { renderToString } from 'react-dom/server'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as importRoute from '../src/server/handlers/calendar/import/route'
 import {
@@ -25,6 +28,7 @@ import {
   updateSubscription,
 } from '../src/lib/calendar-feeds'
 import { CalendarSubscriptions } from '../src/components/CalendarSubscriptions'
+import PlannerPage from '../app/planner/page'
 
 /** Invoke the handler exactly like the App Router would (async-params shape). */
 function postImport(body: unknown): Promise<Response> {
@@ -197,6 +201,38 @@ describe('device-local subscriptions (@/lib/calendar-feeds)', () => {
     stubWindowStorage()
     const subs = addSubscription({ name: 'A', url: 'https://a.example/x.ics' })
     expect(updateSubscription('nope', { visible: false })).toEqual(subs)
+  })
+})
+
+/**
+ * Never-resolving fetch: the planner's queries stay pending, render stays
+ * deterministic (S3-42 house pattern).
+ */
+function stubPendingFetch(): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise<Response>(() => {})),
+  )
+}
+
+describe('CalendarSubscriptions mounted on /planner (S3-42 sweep)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('the planner page renders the subscriptions section in server context', () => {
+    stubPendingFetch()
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const html = renderToString(
+      React.createElement(QueryClientProvider, { client: qc }, React.createElement(PlannerPage)),
+    )
+    expect(html).toContain('Study planner')
+    // The section is mounted unconditionally (S3-27): its header, the
+    // honest empty state, and the add-form labels are all server-visible.
+    expect(html).toContain('Calendar subscriptions')
+    expect(html).toContain('No calendars yet')
+    expect(html).toContain('Feed URL (https)')
+    expect(html).toContain('Subscribe')
   })
 })
 
