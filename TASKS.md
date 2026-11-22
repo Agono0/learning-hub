@@ -64,8 +64,8 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] M2-23 | LOCK | Rust session commands: focus_session_apply/status/release wired to state machine; webview bridge events | commands compile; invoke tests | apps/native/src-tauri/src/focus.rs | M2-05 |
 - [x] M2-24 | LOCK | Reboot/kill resume: persisted session state re-applied on boot (both platforms) | code + tests | core + Rust + Kotlin | M2-14, M2-23 |
 - [ ] M2-25 | LOCK | Session history UI (sessions, exits, reasons) | page section + test | apps/web/app/focus/page.tsx | M2-04 |
-- [~W3] M2-26 | LOCK | Unit tests: full state-machine matrix incl. tamper/clock/battery | tests green | packages/core/tests/focus-lock-session.test.ts | M2-01, M2-20 |
-- [ ] M2-27 | LOCK | docs/MAX_FOCUS_TESTPLAN.md: every escape route × tier × platform + expected behavior | doc complete | docs/MAX_FOCUS_TESTPLAN.md | M2-24 |
+- [x] M2-26 | LOCK | Unit tests: full state-machine matrix incl. tamper/clock/battery | tests green | packages/core/tests/focus-lock-session.test.ts | M2-01, M2-20 |
+- [~W3] M2-27 | LOCK | docs/MAX_FOCUS_TESTPLAN.md: every escape route × tier × platform + expected behavior | doc complete | docs/MAX_FOCUS_TESTPLAN.md | M2-24 |
 - [ ] M2-28 | LOCK | docs/max-focus.md: architecture, tiers, PIN/recovery, store disclosures | doc complete | docs/max-focus.md | M2-27 |
 - [ ] M2-29 | LOCK | Integration tests for max handlers (SSR-safe, route coverage) | tests green | apps/web/tests/max-focus-integration.test.ts | M2-04 |
 - [ ] M2-30 | LOCK | Desktop e2e smoke: lock apply→release round-trip in CI (headless) | CI job or vitest e2e | tests/e2e/… | M2-23 |
@@ -143,7 +143,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-63 | SP | Core: deadline vs due semantics (past-deadline flagging) | unit tests | packages/core/src/tasks/deadlines.ts | S3-03
 - [x] S3-64 | SP | Core: priority model (p1..p3 + strategies via tags) | unit tests | packages/core/src/tasks/priority.ts | S3-06
 - [x] S3-65 | SP | Core: today membership = due date only (virtual tag math) | unit tests | packages/core/src/tasks/today.ts | S3-03
-- [~W2] S3-66 | SP | Core: won't-do state exclusions from counts | unit tests | packages/core/src/tasks/wontdo.ts | S3-03
+- [x] S3-66 | SP | Core: won't-do state exclusions from counts | unit tests | packages/core/src/tasks/wontdo.ts | S3-03
 - [ ] S3-67 | SP | DB: taskItem full-text index (FTS5 migration) for search | migration + repo queries | packages/db migrations + repos/tasks.ts | S3-01
 - [ ] S3-68 | SP | UI: add-task-bar autocomplete token highlighting | component test | tasks components | S3-09
 - [ ] S3-69 | SP | UI: inline subtask add input + checklist progress (2/5) on rows | component | tasks components | S3-04

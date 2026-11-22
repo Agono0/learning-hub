@@ -419,3 +419,6 @@ export * from './priority'
 
 // Today membership (S3-65) — re-exported so hosts consume one entry.
 export * from './today'
+
+// Won't-do exclusion (S3-66) — re-exported so hosts consume one entry.
+export * from './wontdo'
