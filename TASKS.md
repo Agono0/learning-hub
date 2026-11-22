@@ -49,8 +49,8 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [ ] M2-08 | LOCK | Windows admin tier: optional elevation → DisableTaskMgr + watchdog process; ALWAYS restored on end (guarantee via drop guard) | code + docs | apps/native/src-tauri/src/lock_win.rs, lock_watchdog | M2-07 |
 - [x] M2-09 | LOCK | Windows allowlisted app switching (user can open allowlisted exes only) | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
 - [x] M2-10 | LOCK | Android Kotlin: Device Owner provisioning helper + exact ADB dpm command emitted by setup wizard | wizard shows command; docs | apps/native/src-tauri/gen/android (Kotlin), apps/web/app/focus/page.tsx section | M2-01 |
-- [ ] M2-11 | LOCK | Android Kotlin: Lock Task Mode plugin (startLockTask + allowlisted packages + lock-task features) | code + docs | gen/android Kotlin plugin + Cargo bridge | M2-10 |
-- [ ] M2-12 | LOCK | Android Kotlin Tier 2: AccessibilityService foreground-app watcher + return-to-focus | code + disclosure screen | gen/android Kotlin + manifest | M2-01 |
+- [x] M2-11 | LOCK | Android Kotlin: Lock Task Mode plugin (startLockTask + allowlisted packages + lock-task features) | code + docs | gen/android Kotlin plugin + Cargo bridge | M2-10 |
+- [~W3] M2-12 | LOCK | Android Kotlin Tier 2: AccessibilityService foreground-app watcher + return-to-focus | code + disclosure screen | gen/android Kotlin + manifest | M2-01 |
 - [ ] M2-13 | LOCK | Android Kotlin Tier 2: full-screen overlay (SYSTEM_ALERT_WINDOW) + UsageStats backup detector | code | gen/android | M2-12 |
 - [ ] M2-14 | LOCK | Android Kotlin: Device Admin anti-uninstall + BOOT_COMPLETED resume + foreground service with elapsedRealtime | code + manifest perms | gen/android | M2-11, M2-13 |
 - [ ] M2-15 | LOCK | Emergency dialer always reachable: SYSTEM_ALLOWED_APPS enforcement on both platforms; dialer tile during session | tests + UI | packages/core focus-lock SYSTEM_ALLOWED_APPS, lock UIs | M2-05, M2-11 |
@@ -81,7 +81,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-04 | SP | Core subtasks: one nesting level, parent aggregates time/estimate | unit tests | packages/core/src/tasks/subtasks.ts | S3-03 |
 - [x] S3-05 | SP | Core projects: CRUD, backlog flag, archive/duplicate, notes field | unit tests | packages/core/src/tasks/projects.ts | S3-03 |
 - [x] S3-06 | SP | Core tags: CRUD, colors, OR/AND filter, "no tags", Today virtual tag | unit tests | packages/core/src/tasks/tags.ts | S3-03 |
-- [~W2] S3-07 | SP | Core repeat engine: cycles d/w/m/y + interval + start/end + skip dates + re-anchor modes + projections | unit tests (SP parity cases) | packages/core/src/tasks/repeat.ts | S3-03 |
+- [x] S3-07 | SP | Core repeat engine: cycles d/w/m/y + interval + start/end + skip dates + re-anchor modes + projections | unit tests (SP parity cases) | packages/core/src/tasks/repeat.ts | S3-03 |
 - [ ] S3-08 | SP | Core reminders: per-task reminder planner (reuse core/reminders patterns), exact-alarm note (Android) | unit tests | packages/core/src/tasks/reminders.ts | S3-03, S3-02 |
 - [ ] S3-09 | SP | Short-syntax parser: #tag +project 10m/1h @date @every p1..3 !deadline + autocomplete token model | exhaustive unit tests | packages/core/src/tasks/short-syntax.ts | S3-07 |
 - [ ] S3-10 | SP | Time-tracking core: current task, per-day maps, merge/conflict | unit tests | packages/core/src/tasks/time-tracking.ts | S3-03 |

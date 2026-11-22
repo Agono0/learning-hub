@@ -398,3 +398,6 @@ export * from './projects'
 
 // Tag model + SP tag filters (S3-06) — re-exported so hosts consume one entry.
 export * from './tags'
+
+// Repeat engine (S3-07) — re-exported so hosts consume one entry.
+export * from './repeat'
