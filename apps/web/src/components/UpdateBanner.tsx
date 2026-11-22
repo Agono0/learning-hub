@@ -20,8 +20,9 @@
  * the client hydrates.
  */
 import { ArrowDownToLine } from 'lucide-react'
-import { Button } from '@/ui'
+import { Button, ProgressBar } from '@/ui'
 import { SELF_UPDATE_ENABLED } from '@/lib/updates'
+import { progressRatio, type UpdateDownloadProgress } from '@/platform/update-progress'
 
 /** An available update, already verified by the update service. */
 export interface UpdateOffer {
@@ -49,6 +50,8 @@ export interface UpdateBannerProps {
   onDismiss?: () => void
   /** True while the consented download runs — the primary button shows it. */
   applying?: boolean
+  /** Live download progress (O1-27) — renders the bar while `applying`. */
+  progress?: UpdateDownloadProgress | null
 }
 
 /**
@@ -62,7 +65,13 @@ export function formatUpdateSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function UpdateBanner({ offer, onApply, onDismiss, applying = false }: UpdateBannerProps) {
+export function UpdateBanner({
+  offer,
+  onApply,
+  onDismiss,
+  applying = false,
+  progress = null,
+}: UpdateBannerProps) {
   if (!SELF_UPDATE_ENABLED || !offer) return null
 
   const patchAvailable = !offer.requiresNative && offer.patchSize !== undefined
@@ -89,6 +98,13 @@ export function UpdateBanner({ offer, onApply, onDismiss, applying = false }: Up
             {offer.requiresNative ? ' · app reinstall required' : ''} · installs after you restart —
             nothing changes until then.
           </p>
+          {applying && progress !== null ? (
+            <ProgressBar
+              value={progressRatio(progress)}
+              label="Update download progress"
+              className="mt-2"
+            />
+          ) : null}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
