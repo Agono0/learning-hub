@@ -3,25 +3,35 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { MAX_FOCUS_HARD_CAP_MINUTES, advanceSession } from '@learning-hub/core'
 import {
   cancelMaxFocusEarlyExit,
   closeExpiredMaxSession,
   confirmMaxFocusEarlyExit,
   createFocusAllowlist,
   deleteFocusAllowlist,
+  endMaxFocusSessionByReason,
+  extendMaxFocusSession,
   focusAllowlists,
   focusSessions,
   frictionEvents,
   getActiveFocusLock,
+  getMaxFocusSessionRow,
   getOpenFocusSession,
   getOrCreateFocusBridge,
   initDb,
   listFocusAllowlists,
+  listMaxFocusExits,
+  listMaxFocusSessions,
   recordFocusBridgeHeartbeat,
   requestMaxFocusEarlyExit,
   rotateFocusBridgeToken,
   setDb,
+  setMaxFocusSessionState,
+  setMaxFocusSessionTier,
+  setMaxFocusSessionWindow,
   startMaxFocusSession,
+  toMaxFocusMachineSession,
   updateFocusAllowlist,
   type LearningHubDB,
 } from '../src/index'
@@ -218,5 +228,161 @@ describe('allowlist CRUD', () => {
 
     expect(deleteFocusAllowlist(a.id)).toBe(true)
     expect(deleteFocusAllowlist(a.id)).toBe(false)
+  })
+})
+
+describe('M2-03 lock-state persistence (state / tier / exitReason / hardCapAt)', () => {
+  it('stamps state=locked + the 4h hard cap at start and records a tier when given', () => {
+    const { session, lock } = start(30, { tier: 'owner' })
+    expect(session.state).toBe('locked')
+    expect(session.tier).toBe('owner')
+    const startedMs = new Date(session.startedAt).getTime()
+    expect(new Date(session.hardCapAt!).getTime()).toBe(
+      startedMs + MAX_FOCUS_HARD_CAP_MINUTES * 60_000,
+    )
+    expect(lock.state).toBe('locked')
+    expect(lock.tier).toBe('owner')
+    expect(lock.hardCapAt).toBe(session.hardCapAt)
+
+    // without an explicit tier the column stays null (the native bridge fills it)
+    const plain = start(15).session
+    expect(plain.state).toBe('locked')
+    expect(plain.tier).toBeNull()
+    expect(plain.hardCapAt).not.toBeNull()
+  })
+
+  it('exit request persists cooldown; cancel restores locked', () => {
+    start()
+    requestMaxFocusEarlyExit()
+    expect(getOpenFocusSession()!.state).toBe('cooldown')
+    expect(getActiveFocusLock().state).toBe('cooldown')
+    cancelMaxFocusEarlyExit()
+    expect(getOpenFocusSession()!.state).toBe('locked')
+    expect(getActiveFocusLock().state).toBe('locked')
+  })
+
+  it('confirm exit stamps state=ended with exitReason=pin', () => {
+    const { session } = start()
+    requestMaxFocusEarlyExit()
+    db.update(focusSessions)
+      .set({ exitRequestedAt: minutesAgo(2) })
+      .where(eq(focusSessions.id, session.id))
+      .run()
+    const done = confirmMaxFocusEarlyExit('my reflection is long enough here')
+    expect(done.session.state).toBe('ended')
+    expect(done.session.exitReason).toBe('pin')
+    expect(done.lock.state).toBeNull() // lock is inactive after the end
+  })
+
+  it('closeExpiredMaxSession ends at the earlier of planned end and hard cap, reason timer', () => {
+    const a = start(10).session
+    db.update(focusSessions)
+      .set({ lockedUntil: minutesAgo(1) })
+      .where(eq(focusSessions.id, a.id))
+      .run()
+    expect(closeExpiredMaxSession(getMaxFocusSessionRow(a.id)!, db)).toBe(true)
+    const endedA = getMaxFocusSessionRow(a.id)!
+    expect(endedA.state).toBe('ended')
+    expect(endedA.exitReason).toBe('timer')
+    expect(endedA.endedAt).toBe(minutesAgo(1))
+
+    // hard cap earlier than the planned end still closes (cap = the ceiling)
+    const b = start(10).session
+    db.update(focusSessions)
+      .set({ lockedUntil: new Date(Date.now() + 60_000).toISOString(), hardCapAt: minutesAgo(1) })
+      .where(eq(focusSessions.id, b.id))
+      .run()
+    expect(closeExpiredMaxSession(getMaxFocusSessionRow(b.id)!, db)).toBe(true)
+    expect(getMaxFocusSessionRow(b.id)!.endedAt).toBe(minutesAgo(1))
+  })
+
+  it('setMaxFocusSessionState / Tier / Window persist and throw on unknown ids', () => {
+    const { session } = start(20)
+    expect(setMaxFocusSessionState(session.id, 'can_confirm').state).toBe('can_confirm')
+    expect(setMaxFocusSessionTier(session.id, 'windows-admin').tier).toBe('windows-admin')
+    expect(setMaxFocusSessionTier(session.id, null).tier).toBeNull()
+    const future = new Date(Date.now() + 90_000).toISOString()
+    const capped = new Date(Date.now() + 120_000).toISOString()
+    const row = setMaxFocusSessionWindow(session.id, { lockedUntil: future, hardCapAt: capped })
+    expect(row.lockedUntil).toBe(future)
+    expect(row.hardCapAt).toBe(capped)
+    expect(() => setMaxFocusSessionState(999_999, 'locked')).toThrow(/not found/)
+    expect(() => setMaxFocusSessionTier(999_999, 'owner')).toThrow(/not found/)
+    expect(() => setMaxFocusSessionWindow(999_999, { lockedUntil: future })).toThrow(/not found/)
+  })
+
+  it('endMaxFocusSessionByReason stamps battery/tamper ends and is idempotent', () => {
+    const { session } = start(45)
+    const row = endMaxFocusSessionByReason(session.id, { reason: 'battery' })
+    expect(row.state).toBe('ended')
+    expect(row.exitReason).toBe('battery')
+    expect(row.completed).toBe(false)
+    expect(row.endedAt).not.toBeNull()
+    // the first end wins — a tamper event cannot rewrite an ended session
+    const again = endMaxFocusSessionByReason(session.id, { reason: 'tamper' })
+    expect(again.exitReason).toBe('battery')
+    expect(() => endMaxFocusSessionByReason(999_999, { reason: 'failure' })).toThrow(/not found/)
+  })
+
+  it('extendMaxFocusSession moves the planned end, clamps to the hard cap, refuses mid-exit', () => {
+    const { session } = start(60)
+    const before = new Date(session.lockedUntil!).getTime()
+    const extended = extendMaxFocusSession(30)
+    expect(new Date(extended.session.lockedUntil!).getTime()).toBe(before + 30 * 60_000)
+    expect(extended.lock.active).toBe(true)
+
+    // asking for 10 more hours only reaches the 4h cap
+    const clamped = extendMaxFocusSession(600)
+    expect(new Date(clamped.session.lockedUntil!).getTime()).toBe(
+      new Date(session.hardCapAt!).getTime(),
+    )
+
+    // mid-exit-flow extension is refused — the reflection gate must not be outrun
+    requestMaxFocusEarlyExit()
+    expect(() => extendMaxFocusSession(10)).toThrow(/exit is pending/)
+  })
+
+  it('toMaxFocusMachineSession maps rows the core machine can advance and end', () => {
+    const { session } = start(30)
+    const row = getMaxFocusSessionRow(session.id)!
+    const startedMs = new Date(row.startedAt).getTime()
+    const machine = toMaxFocusMachineSession(row, startedMs)
+    expect(machine.state).toBe('locked')
+
+    // advance past the planned end → the machine ends it with reason timer
+    const past = advanceSession(machine, {
+      wallMs: startedMs + 31 * 60_000,
+      monoMs: startedMs + 31 * 60_000,
+    })
+    expect(past.session.state).toBe('ended')
+    expect(past.session.unlockReason).toBe('timer')
+    expect(past.events).toContain('session_ended')
+
+    // exit request → cooldown shape with the 60s window
+    requestMaxFocusEarlyExit()
+    const cooling = toMaxFocusMachineSession(getMaxFocusSessionRow(session.id)!, startedMs)
+    expect(cooling.state).toBe('cooldown')
+    expect(cooling.cooldownEndsAtMs).toBe(cooling.exitRequestedAtMs! + 60_000)
+  })
+
+  it('listMaxFocusSessions returns only max rows; listMaxFocusExits the reflections', () => {
+    start(15, { task: 'max one' })
+    db.insert(focusSessions)
+      .values({ startedAt: new Date().toISOString(), plannedMinutes: 25 })
+      .run() // standard session — must not appear
+    const maxRows = listMaxFocusSessions({ limit: 10 })
+    expect(maxRows).toHaveLength(1)
+    expect(maxRows[0]!.mode).toBe('max')
+
+    const { session } = start(20)
+    requestMaxFocusEarlyExit()
+    db.update(focusSessions)
+      .set({ exitRequestedAt: minutesAgo(2) })
+      .where(eq(focusSessions.id, session.id))
+      .run()
+    confirmMaxFocusEarlyExit('history test reflection, long enough')
+    const exits = listMaxFocusExits()
+    expect(exits).toHaveLength(1)
+    expect(exits[0]).toMatchObject({ trigger: 'max_focus_exit', proceeded: true })
   })
 })

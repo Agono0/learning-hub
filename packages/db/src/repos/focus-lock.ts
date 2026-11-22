@@ -8,14 +8,19 @@ import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm'
 import {
   COOLDOWN_SECONDS,
   DEFAULT_ALLOWED_DOMAINS,
+  MAX_FOCUS_HARD_CAP_MINUTES,
   exitGate,
   normalizeDomain,
   normalizeExeName,
   XP_REWARDS,
   type FocusAllowlistInput,
   type FocusLockStatus,
+  type FocusSessionTier,
   type FrictionTrigger,
+  type MaxFocusSession,
   type MaxFocusStartInput,
+  type MaxSessionPhase,
+  type SessionUnlockReason,
 } from '@learning-hub/core'
 import { updateStreakInTx } from '../review-service'
 import { getDb, type LearningHubDB } from '../index'
@@ -57,23 +62,291 @@ export function getOpenFocusSession(
 
 /**
  * Closes a Max Focus session whose lock ran out while nobody was watching
- * (app closed). It ended at `lockedUntil`; it is NOT marked completed because
+ * (app closed). It ended at the earlier of `lockedUntil` (planned end) and
+ * `hardCapAt` (M2-03 absolute ceiling); it is NOT marked completed because
  * completion (and its XP) is only granted through the session-end route.
- * Returns true if the session was closed.
+ * The M2-03 columns are stamped for the report card: `state = 'ended'`,
+ * `exitReason = 'timer'`. Returns true if the session was closed.
  */
 export function closeExpiredMaxSession(
   session: typeof focusSessions.$inferSelect,
   conn: DbOrTx,
   now: Date = new Date(),
 ): boolean {
-  if (session.mode !== 'max' || !session.lockedUntil || session.endedAt) return false
-  if (new Date(session.lockedUntil).getTime() > now.getTime()) return false
+  if (session.mode !== 'max' || session.endedAt) return false
+  const lockEnd = session.lockedUntil !== null ? Date.parse(session.lockedUntil) : NaN
+  const capEnd = session.hardCapAt !== null ? Date.parse(session.hardCapAt) : NaN
+  const candidates = [lockEnd, capEnd].filter((ms) => Number.isFinite(ms))
+  if (candidates.length === 0) return false
+  const endMs = Math.min(...candidates)
+  if (now.getTime() < endMs) return false
+  const endIso = new Date(endMs).toISOString()
   conn
     .update(focusSessions)
-    .set({ endedAt: session.lockedUntil, actualMinutes: session.plannedMinutes })
+    .set({
+      endedAt: endIso,
+      actualMinutes: session.plannedMinutes,
+      state: 'ended',
+      exitReason: 'timer',
+    })
     .where(eq(focusSessions.id, session.id))
     .run()
   return true
+}
+
+// ─── M2-03: persisted lock-state columns (state / tier / exitReason / hardCapAt) ──
+//
+// Migration 033 extended `focus_sessions` with the Max Focus state-machine
+// columns. The lifecycle mutators above (start / request / confirm / cancel /
+// closeExpiredMaxSession) keep them in step; these setters cover the paths
+// the platform layer drives directly: the native bridge reporting which
+// enforcement tier it achieved (M2-05…M2-14), system-forced unlocks
+// (battery / tamper / watchdog failure — M2-19/M2-20/M2-23), extensions
+// clamped by the hard cap, and the history surfaces (M2-25).
+
+/** Fetch one session row by id (works inside or outside a transaction). */
+export function getMaxFocusSessionRow(id: number, database?: DbOrTx): FocusSessionRow | undefined {
+  const conn = database ?? getDb()
+  return conn.select().from(focusSessions).where(eq(focusSessions.id, id)).get()
+}
+
+/** Internal: require a row, with a clear error for the setters below. */
+function requireSessionRow(id: number, database?: DbOrTx): FocusSessionRow {
+  const row = getMaxFocusSessionRow(id, database)
+  if (!row) throw new Error(`Focus session #${id} not found`)
+  return row
+}
+
+/**
+ * Persist a lock-phase transition (`locked → cooldown → can_confirm → ended`).
+ * Throws when the session does not exist. Callers deriving the phase from the
+ * machine should also stamp `exitReason` via {@link endMaxFocusSessionByReason}
+ * when the target phase is `ended`.
+ */
+export function setMaxFocusSessionState(
+  id: number,
+  state: MaxSessionPhase,
+  database?: DbOrTx,
+): FocusSessionRow {
+  const conn = database ?? getDb()
+  requireSessionRow(id, conn)
+  conn.update(focusSessions).set({ state }).where(eq(focusSessions.id, id)).run()
+  return requireSessionRow(id, conn)
+}
+
+/** Record the enforcement tier the native layer actually achieved (null resets). */
+export function setMaxFocusSessionTier(
+  id: number,
+  tier: FocusSessionTier | null,
+  database?: DbOrTx,
+): FocusSessionRow {
+  const conn = database ?? getDb()
+  requireSessionRow(id, conn)
+  conn.update(focusSessions).set({ tier }).where(eq(focusSessions.id, id)).run()
+  return requireSessionRow(id, conn)
+}
+
+/** Move a running lock's deadlines (`lockedUntil` planned end and/or `hardCapAt`). */
+export function setMaxFocusSessionWindow(
+  id: number,
+  patch: { lockedUntil?: string; hardCapAt?: string },
+  database?: DbOrTx,
+): FocusSessionRow {
+  const conn = database ?? getDb()
+  requireSessionRow(id, conn)
+  conn.update(focusSessions).set(patch).where(eq(focusSessions.id, id)).run()
+  return requireSessionRow(id, conn)
+}
+
+/** Input for {@link endMaxFocusSessionByReason}. */
+export interface EndMaxFocusByReasonArgs {
+  /** Why the session ended — stored in `exit_reason` (migration 033). */
+  reason: SessionUnlockReason
+  /** End timestamp (ISO); defaults to now. */
+  endedAt?: string
+  /** Actual minutes; defaults to the elapsed start→end time. */
+  actualMinutes?: number
+  /** Natural completion flag — true only for a timer end that grants XP elsewhere. */
+  completed?: boolean
+}
+
+/**
+ * System-forced / natural end of a Max Focus session with the unlock reason
+ * stamped: battery threshold (M2-19), tamper detection (M2-20), watchdog
+ * failure (M2-23) or a natural timer end. Idempotent — an already-ended
+ * session is returned unchanged. No XP here: reward stays on the canonical
+ * completion path (rule 7); callers that end with `completed: true` route
+ * through {@link finishFocusSession}.
+ */
+export function endMaxFocusSessionByReason(
+  sessionId: number,
+  args: EndMaxFocusByReasonArgs,
+  database?: LearningHubDB,
+): FocusSessionRow {
+  const conn = database ?? getDb()
+
+  return withTransaction((tx) => {
+    const existing = tx.select().from(focusSessions).where(eq(focusSessions.id, sessionId)).get()
+    if (!existing) throw new Error(`Focus session #${sessionId} not found`)
+    if (existing.endedAt) return existing
+
+    const endedAt = args.endedAt ?? new Date().toISOString()
+    const actualMinutes = Math.max(
+      0,
+      args.actualMinutes ?? elapsedMinutes(existing.startedAt, new Date(endedAt)),
+    )
+    const [row] = tx
+      .update(focusSessions)
+      .set({
+        endedAt,
+        actualMinutes,
+        completed: args.completed ?? false,
+        state: 'ended',
+        exitReason: args.reason,
+      })
+      .where(eq(focusSessions.id, sessionId))
+      .returning()
+      .all()
+    return row!
+  }, conn)
+}
+
+/**
+ * Extend a running Max Focus session by `extraMinutes`, clamped to the
+ * absolute hard cap. Extending is allowed only while `locked` — mid-exit-flow
+ * extensions would let a session outrun its own reflection gate (the same
+ * rule the core machine's `extendMaxSession` enforces device-side). Returns
+ * the updated session and refreshed lock status.
+ */
+export function extendMaxFocusSession(
+  extraMinutes: number,
+  database?: LearningHubDB,
+): { session: FocusSessionRow; lock: FocusLockStatus } {
+  const conn = database ?? getDb()
+
+  return withTransaction((tx) => {
+    const session = getOpenFocusSession(tx)
+    if (!session || session.mode !== 'max') {
+      throw new Error('No active Max Focus session to extend.')
+    }
+    if (session.exitRequestedAt) {
+      throw new Error('Cannot extend while an early exit is pending — cancel or finish it first.')
+    }
+
+    const startedMs = Date.parse(session.startedAt)
+    const baseMs = session.lockedUntil
+      ? Date.parse(session.lockedUntil)
+      : startedMs + session.plannedMinutes * 60_000
+    const capMs = session.hardCapAt
+      ? Date.parse(session.hardCapAt)
+      : startedMs + MAX_FOCUS_HARD_CAP_MINUTES * 60_000
+    const proposed = baseMs + extraMinutes * 60_000
+    const nextMs = Math.min(Number.isFinite(proposed) ? proposed : capMs, capMs)
+
+    tx.update(focusSessions)
+      .set({ lockedUntil: new Date(nextMs).toISOString() })
+      .where(eq(focusSessions.id, session.id))
+      .run()
+
+    return { session: getMaxFocusSessionRow(session.id, tx)!, lock: getActiveFocusLock(tx) }
+  }, conn)
+}
+
+/**
+ * Map a persisted row onto the core session machine's {@link MaxFocusSession}
+ * so handlers/platform code can run `advanceSession` / `requestSessionExit` /
+ * `confirmSessionExit` over real data. The monotonic anchor is NOT persisted
+ * (it is meaningless across boots and devices — see `core/focus-lock/resume.ts`);
+ * callers supply the current reading. Phase derivation prefers the raw facts
+ * (`endedAt`, `exitRequestedAt`) over the cached `state` column so a stale
+ * cache can never resurrect an ended lock.
+ */
+export function toMaxFocusMachineSession(
+  row: FocusSessionRow,
+  monoAnchorMs: number,
+): MaxFocusSession {
+  const startedAtMs = safeParseMs(row.startedAt, 0)
+  const plannedEndMs = row.lockedUntil
+    ? safeParseMs(row.lockedUntil, startedAtMs + row.plannedMinutes * 60_000)
+    : startedAtMs + row.plannedMinutes * 60_000
+  const hardCapAtMs = row.hardCapAt
+    ? safeParseMs(row.hardCapAt, startedAtMs + MAX_FOCUS_HARD_CAP_MINUTES * 60_000)
+    : startedAtMs + MAX_FOCUS_HARD_CAP_MINUTES * 60_000
+  const base = {
+    sessionId: String(row.id),
+    startedAtMs,
+    plannedEndMs,
+    hardCapAtMs,
+    monoAnchorMs,
+  }
+
+  if (row.endedAt) {
+    return {
+      ...base,
+      state: 'ended',
+      exitRequestedAtMs: row.exitRequestedAt ? safeParseMs(row.exitRequestedAt, null) : null,
+      cooldownEndsAtMs: null,
+      unlockReason: (row.exitReason as SessionUnlockReason | null) ?? null,
+      endedAtMs: safeParseMs(row.endedAt, startedAtMs),
+    }
+  }
+
+  if (row.exitRequestedAt) {
+    const requestedAtMs = safeParseMs(row.exitRequestedAt, startedAtMs)
+    return {
+      ...base,
+      state: 'cooldown',
+      exitRequestedAtMs: requestedAtMs,
+      cooldownEndsAtMs: requestedAtMs + COOLDOWN_SECONDS * 1000,
+      unlockReason: null,
+      endedAtMs: null,
+    }
+  }
+
+  return {
+    ...base,
+    state: 'locked',
+    exitRequestedAtMs: null,
+    cooldownEndsAtMs: null,
+    unlockReason: null,
+    endedAtMs: null,
+  }
+}
+
+/** `Date.parse` with a fallback — corrupt timestamps never produce NaN shapes. */
+function safeParseMs(iso: string, fallback: number): number
+function safeParseMs(iso: string, fallback: number | null): number | null
+function safeParseMs(iso: string, fallback: number | null): number | null {
+  const ms = Date.parse(iso)
+  return Number.isFinite(ms) ? ms : fallback
+}
+
+/** Recent Max Focus sessions, newest first (M2-25 history UI + GET handler). */
+export function listMaxFocusSessions(
+  opts: { limit?: number; db?: LearningHubDB } = {},
+): FocusSessionRow[] {
+  const conn = opts.db ?? getDb()
+  return conn
+    .select()
+    .from(focusSessions)
+    .where(eq(focusSessions.mode, 'max'))
+    .orderBy(desc(focusSessions.startedAt))
+    .limit(opts.limit ?? 20)
+    .all()
+}
+
+/** Exit/reflection friction records for Max Focus sessions, newest first. */
+export function listMaxFocusExits(
+  opts: { limit?: number; db?: LearningHubDB } = {},
+): (typeof frictionEvents.$inferSelect)[] {
+  const conn = opts.db ?? getDb()
+  return conn
+    .select()
+    .from(frictionEvents)
+    .where(eq(frictionEvents.trigger, 'max_focus_exit'))
+    .orderBy(desc(frictionEvents.createdAt))
+    .limit(opts.limit ?? 50)
+    .all()
 }
 
 /**
@@ -169,6 +442,9 @@ export function getActiveFocusLock(database?: DbOrTx): FocusLockStatus {
       },
       lastHeartbeatAt: bridge.lastHeartbeatAt,
       task: null,
+      state: null,
+      tier: null,
+      hardCapAt: null,
     }
   }
 
@@ -192,6 +468,9 @@ export function getActiveFocusLock(database?: DbOrTx): FocusLockStatus {
       },
       lastHeartbeatAt: bridge.lastHeartbeatAt,
       task: activeSession.task,
+      state: null,
+      tier: null,
+      hardCapAt: null,
     }
   }
 
@@ -233,16 +512,25 @@ export function getActiveFocusLock(database?: DbOrTx): FocusLockStatus {
     },
     lastHeartbeatAt: bridge.lastHeartbeatAt,
     task: activeSession.task,
+    state: gate.state,
+    tier: (activeSession.tier as FocusSessionTier | null) ?? null,
+    hardCapAt: activeSession.hardCapAt,
   }
 }
 
 /**
  * Atomically starts a new Max Focus session with frozen allowlist snapshot.
+ *
+ * M2-03: the row is stamped with the state machine's starting phase
+ * (`state = 'locked'`), the absolute hard cap (`hardCapAt = start + 4h`,
+ * the locked Phase-1 decision) and, when the caller already knows it, the
+ * enforcement `tier` the platform layer will apply (the native bridge can
+ * refine it later via {@link setMaxFocusSessionTier}).
  */
 export function startMaxFocusSession(
-  input: MaxFocusStartInput,
+  input: MaxFocusStartInput & { tier?: FocusSessionTier },
   database?: LearningHubDB,
-): { session: typeof focusSessions.$inferSelect; lock: FocusLockStatus } {
+): { session: FocusSessionRow; lock: FocusLockStatus } {
   const conn = database ?? getDb()
 
   return withTransaction((tx) => {
@@ -311,6 +599,7 @@ export function startMaxFocusSession(
     const now = new Date()
     const nowIso = now.toISOString()
     const lockedUntil = new Date(now.getTime() + input.minutes * 60_000).toISOString()
+    const hardCapAt = new Date(now.getTime() + MAX_FOCUS_HARD_CAP_MINUTES * 60_000).toISOString()
 
     const snapshot = {
       domains: Array.from(domainsSet),
@@ -331,6 +620,9 @@ export function startMaxFocusSession(
         leaks: 0,
         completed: false,
         endedEarly: false,
+        state: 'locked',
+        tier: input.tier ?? null,
+        hardCapAt,
       })
       .returning()
       .all()
@@ -347,6 +639,9 @@ export function startMaxFocusSession(
       allowlist: snapshot,
       lastHeartbeatAt: null,
       task: created!.task,
+      state: 'locked',
+      tier: input.tier ?? null,
+      hardCapAt,
     }
 
     return { session: created!, lock }
@@ -369,7 +664,7 @@ export function requestMaxFocusEarlyExit(database?: LearningHubDB): { lock: Focu
     const nowIso = new Date().toISOString()
     if (!session.exitRequestedAt) {
       tx.update(focusSessions)
-        .set({ exitRequestedAt: nowIso })
+        .set({ exitRequestedAt: nowIso, state: 'cooldown' })
         .where(eq(focusSessions.id, session.id))
         .run()
     }
@@ -426,6 +721,8 @@ export function confirmMaxFocusEarlyExit(
         completed: false,
         endedEarly: true,
         leaks: (session.leaks ?? 0) + 1,
+        state: 'ended',
+        exitReason: 'pin',
       })
       .where(eq(focusSessions.id, session.id))
       .run()
@@ -463,7 +760,7 @@ export function cancelMaxFocusEarlyExit(database?: LearningHubDB): { lock: Focus
     if (session.exitRequestedAt) {
       const nowIso = new Date().toISOString()
       tx.update(focusSessions)
-        .set({ exitRequestedAt: null })
+        .set({ exitRequestedAt: null, state: 'locked' })
         .where(eq(focusSessions.id, session.id))
         .run()
 
