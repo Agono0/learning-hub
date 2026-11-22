@@ -110,7 +110,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-33 | SP | Idle detection (desktop Tauri): subtract idle, classify dialog; suppress during Max Focus | Rust command + core + UI | apps/native/src-tauri/src/idle.rs, core | S3-32 |
 - [ ] S3-34 | SP | Max Focus wiring: start focus session from task; task auto-tracked during lock | core glue + UI | focus-lock + tasks | M2-01, S3-32 |
 - [ ] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 |
-- [ ] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts | S3-03 |
+- [~W3] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts | S3-03 |
 - [ ] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |
 - [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
 - [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |  W1: Tasks/Schedule shortLabels added (pages exist); Projects/Tags entries DEFERRED to S3-22/S3-23 — their pages do not exist yet and nav law forbids dead links
@@ -176,7 +176,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-96 | SP | UI: impact stars + lazy chart components | component | metrics | S3-30
 - [ ] S3-97 | SP | Docs: keyboard shortcut default map table in docs/tasks.md | doc section | docs/tasks.md | S3-35
 - [ ] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42
-- [~W1] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
+- [x] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20 |  W1: useWindowedList pure windowRange math + WindowedTaskList (fixed-row windowing, no deps); tasks page virtualizes the unsectioned list at >=50 items (plain render below); 6 tests incl. a 1200-item render (<=20 DOM rows)
 - [x] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards page (focusable quadrants+cards with --ac-strong rings, list semantics, live hints; planner side is W1's S3-25 surface) | S3-24
 - [x] O1-25 | OTA | Update check interval + Wi-Fi-only honored by the check scheduler | code + tests | apps/web/src/lib/updates.ts client service (scheduler owns the loop; settings are webview-local; Rust keeps download/promote) | O1-14 |
 - [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
