@@ -23,7 +23,11 @@ function doc(overrides: Partial<SearchDoc> = {}): SearchDoc {
 
 function asDocs(tasks: TaskItem[]): SearchDoc[] {
   const mapped = tasks.map((t) => taskToSearchDoc(t))
-  return mapped.filter((d): d is SearchDoc => d !== null)
+  const out: SearchDoc[] = []
+  for (const d of mapped) {
+    if (d !== null) out.push(d)
+  }
+  return out
 }
 
 describe('ranking', () => {
