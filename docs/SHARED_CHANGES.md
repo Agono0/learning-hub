@@ -299,3 +299,13 @@ export const taskViews = table('task_views', {
   unit tests written by O1-02/O1-03/O1-05/O1-16/O1-17/O1-18/O1-19 (update.rs)
   and lock_win.rs are never executed or compile-checked. One step closes the
   gap the mega-run's "tests green" acceptances rely on.
+
+- [O1-21] `.github/workflows/native.yml` → in the `android` matrix job (after
+  the APK build step): `sudo apt-get install -y bsdiff` (ubuntu runner) and a
+  step that, when a previous release APK for the same ABI exists (downloaded
+  like the manifest via `gh release download --pattern '*.apk'`), runs
+  `node scripts/generate-apk-delta.mjs --base <prev.apk> --target <new.apk>
+--out dist/delta --label <abi> --report dist/delta/delta-report.json` and
+  uploads `dist/delta` with the release assets. The webview KEEPS the full-APK
+  fallback (O1-13) until the measured ratios justify an on-device patch path
+  (decision recorded in docs/updates.md §"Android sideload consent flow").

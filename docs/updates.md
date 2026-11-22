@@ -109,6 +109,22 @@ grant screen available — it is never a silent-install permission. Play-distrib
 builds never reach this flow (self-update baked off, O1-12). Pre-Android-8
 global "unknown sources" toggles (`sdkInt < 26`) are treated as granted.
 
+### APK deltas (stretch, O1-21)
+
+`scripts/generate-apk-delta.mjs` produces a per-ABI binary delta between the
+previous release APK and the new one (bsdiff), plus a size report
+(`delta-report.json`: bytes, KB, and `ratio = patch/target`). CI installs
+`bsdiff` and runs it per ABI (LEAD-applied step, request in
+`docs/SHARED_CHANGES.md`); the measured sizes land in the release notes and
+decide whether an on-device patch-apply path is ever worth building.
+
+**The shipped client behavior is the fallback**: the sideload flow (above)
+always installs the FULL verified APK (O1-13) — a broken or oversized delta
+never ships (the script fails loudly on empty/failed bsdiff output), and no
+on-device bspatch/re-sign path exists until the measurements justify one.
+Rule of thumb encoded in the script's summary: ship a delta only at
+ratio ≤ 0.4.
+
 ## Slots & the webview origin (O1-04)
 
 The active slot is served over a custom URI scheme (`lhslot`) registered in
