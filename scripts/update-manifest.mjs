@@ -38,6 +38,7 @@
  *   and writes local files.
  */
 import { createHash } from 'node:crypto'
+import { pathToFileURL } from 'node:url'
 import { createReadStream } from 'node:fs'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -387,4 +388,13 @@ function assertNonEmpty(value, label) {
   if (typeof value !== 'string' || value.length === 0) {
     throw new Error(`${label} must be a non-empty string`)
   }
+}
+
+// CLI entry: `node scripts/update-manifest.mjs [opts]` — run main() only when
+// invoked directly (the unit tests import main() and call it with fixtures).
+if (process.argv[1] !== undefined && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error instanceof Error ? error.message : error)
+    process.exitCode = 1
+  })
 }
