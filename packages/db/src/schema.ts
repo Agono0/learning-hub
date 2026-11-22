@@ -1866,6 +1866,8 @@ export const taskRepeatCfgs = table('task_repeat_cfgs', {
   endDate: text('end_date'),
   skipDates: text('skip_dates', { mode: 'json' }).$type<string[]>().notNull().default([]),
   reAnchor: text('re_anchor').notNull().default('completion'), // 'completion' | 'scheduled' | 'postponed'
+  /** Optional UI title for the rule (SP generates these; user may rename). */
+  title: text('title'),
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
@@ -1897,6 +1899,8 @@ export const taskItems = table('task_items', {
   doneAt: text('done_at'),
   wonthado: integer('wonthado', { mode: 'boolean' }).notNull().default(false), // SP "won't do"
   repeatCfgId: integer('repeat_cfg_id'),
+  /** S3-20: owning section header row within the list (null = unsectioned). */
+  sectionId: integer('section_id'),
   order: integer('order').notNull().default(0),
   createdAt: text('created_at')
     .notNull()
@@ -1921,6 +1925,8 @@ export const taskReminders = table('task_reminders', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   taskId: integer('task_id').notNull(),
   remindAt: text('remind_at').notNull(),
+  /** S3-08: relative-reminder offset from the due moment, in ms (at_time: null). */
+  offsetMs: integer('offset_ms'),
   type: text('type').notNull().default('at_time'), // 'at_time' | 'relative'
   exactAlarm: integer('exact_alarm', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at')

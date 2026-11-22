@@ -43,6 +43,7 @@ import { learnerProfileMigration } from './030-learner-profile'
 import { spTasks } from './031-sp-tasks'
 import { spViews } from './032-sp-views'
 import { maxFocusSessions } from './033-max-focus-sessions'
+import { spTaskColumns } from './034-sp-task-columns'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -79,6 +80,7 @@ export const MIGRATIONS: readonly Migration[] = [
   spTasks,
   spViews,
   maxFocusSessions,
+  spTaskColumns,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

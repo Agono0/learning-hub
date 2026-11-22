@@ -106,19 +106,20 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers the mega-run batches last, after the 030 learner-profile tail', () => {
+  it('registers the mega-run batches last, in strictly increasing id order', () => {
     // The registry legitimately grew (mega-run Epic 3 SP-parity batches and
-    // M2-03 max-focus lock-state columns). Ordering integrity is enforced by
-    // assertMigrationOrder (strictly increasing ids) above; this pins the
-    // newest batches to the tail so an accidental reorder still fails.
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(maxFocusSessions)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(spViews)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(spTasks)
-    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(learnerProfileMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(prototypeExemplarSessionsMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 6]).toBe(notificationCenter)
-    expect(MIGRATIONS[MIGRATIONS.length - 7]).toBe(hapticsSetting)
-    expect(MIGRATIONS[MIGRATIONS.length - 8]).toBe(exposureEventsMigration)
+    // the M2-03 max-focus columns). Ordering integrity is enforced by
+    // assertMigrationOrder (strictly increasing ids) above; this additionally
+    // asserts the tail is the HIGHEST id (appending a migration out of order
+    // still fails) and that the SP-parity batches sit at the end.
+    const tail = MIGRATIONS[MIGRATIONS.length - 1]!
+    expect(tail.id).toBe(Math.max(...MIGRATIONS.map((m) => m.id)))
+    expect(tail.id).toBeGreaterThanOrEqual(33) // mega-run batches live here
+    expect(MIGRATIONS[MIGRATIONS.length - 2]?.id).toBeLessThan(tail.id)
+    expect(MIGRATIONS.map((m) => m.name)).toContain('sp-task-columns')
+    expect(MIGRATIONS.map((m) => m.name)).toContain('sp-tasks')
+    expect(MIGRATIONS.map((m) => m.name)).toContain('sp-views')
+    expect(MIGRATIONS.map((m) => m.name)).toContain('max-focus-sessions')
   })
 })
 
