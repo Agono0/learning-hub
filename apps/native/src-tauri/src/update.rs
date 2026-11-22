@@ -1239,6 +1239,32 @@ mod slot_tests {
     }
 
     #[test]
+    fn pointer_atomicity_survives_a_crash_leftover_tmp_file() {
+        let base = temp_base();
+        // Committed pointer says B (a previous promotion).
+        write_pointer_atomic(
+            &base,
+            &SlotPointer { active: SlotId::B, updated_at: None, missed_confirmations: Some(0) },
+        )
+        .unwrap();
+        // Simulate a crash mid-write: a stale .tmp full of garbage next to it.
+        let tmp = pointer_path(&base).with_extension("json.tmp");
+        fs::write(&tmp, b"{ \"active\": \"slot-a\" // torn write").unwrap();
+
+        // Readers only ever consult the committed pointer — never the tmp.
+        assert_eq!(read_pointer(&base).unwrap().active, SlotId::B);
+        // And the next atomic write replaces BOTH the pointer and the tmp.
+        write_pointer_atomic(
+            &base,
+            &SlotPointer { active: SlotId::A, updated_at: None, missed_confirmations: Some(0) },
+        )
+        .unwrap();
+        assert_eq!(read_pointer(&base).unwrap().active, SlotId::A);
+        assert!(!tmp.exists());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
     fn confirm_boot_ready_resets_the_counter() {
         let base = temp_base();
         boot_reconcile(&base).unwrap();

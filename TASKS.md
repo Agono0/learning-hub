@@ -28,7 +28,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-14 | OTA | Settings > Updates UI: stream picker (nightly/beta/stable), check-now, auto-check interval, Wi-Fi-only (Android), current version + changelog panel | page renders SSR-safe; integration test | apps/web/app/settings/page.tsx (Updates section), apps/web/src/lib/updates.ts | O1-12 |
 - [x] O1-15 | OTA | Update-available banner + apply prompt (respect ask-first; shows size: patch vs full) | component + test | apps/web/src/components/UpdateBanner.tsx | O1-14 |
 - [x] O1-16 | OTA | Rust download: resumable ranges, progress events to webview | unit tests for range math | apps/native/src-tauri/src/update.rs | O1-03 |
-- [ ] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
+- [x] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
 - [ ] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
 - [ ] O1-19 | OTA | Upgrade-from-N test: apply patches from each of last 5 manifests (fixture chain) | tests green | tests in update.rs + fixtures | O1-07 |
 - [x] O1-20 | OTA | Measured patch size: CI job applies a one-line web change → records hot patch KB into release notes + docs/updates.md | <50 KB recorded or deviation explained | .github/workflows/nightly.yml, docs/updates.md | O1-08 |
