@@ -413,3 +413,6 @@ export * from './estimates'
 
 // Deadline semantics (S3-63) — re-exported so hosts consume one entry.
 export * from './deadlines'
+
+// Priority model (S3-64) — re-exported so hosts consume one entry.
+export * from './priority'
