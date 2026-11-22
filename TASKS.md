@@ -26,7 +26,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-12 | OTA | Play channel flag: build-time env LH_UPDATE_CHANNEL=play bakes self-update off; sideload default on | unit test of flag reader both ways | apps/web/src/lib/updates.ts (client service), next.config env, docs | O1-01 |
 - [ ] O1-13 | OTA | Android sideload install: Kotlin PackageInstaller session for full per-ABI APK; REQUEST_INSTALL_PACKAGES; consent flow | code + docs; CI compiles | apps/native/src-tauri/gen/android/.../MaxUpdatePlugin.kt + manifest, Cargo bridge | O1-02 |
 - [x] O1-14 | OTA | Settings > Updates UI: stream picker (nightly/beta/stable), check-now, auto-check interval, Wi-Fi-only (Android), current version + changelog panel | page renders SSR-safe; integration test | apps/web/app/settings/page.tsx (Updates section), apps/web/src/lib/updates.ts | O1-12 |
-- [ ] O1-15 | OTA | Update-available banner + apply prompt (respect ask-first; shows size: patch vs full) | component + test | apps/web/src/components/UpdateBanner.tsx | O1-14 |
+- [~W2] O1-15 | OTA | Update-available banner + apply prompt (respect ask-first; shows size: patch vs full) | component + test | apps/web/src/components/UpdateBanner.tsx | O1-14 |
 - [ ] O1-16 | OTA | Rust download: resumable ranges, progress events to webview | unit tests for range math | apps/native/src-tauri/src/update.rs | O1-03 |
 - [ ] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
 - [ ] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
@@ -181,7 +181,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] O1-25 | OTA | Update check interval + Wi-Fi-only honored by Rust scheduler | code + tests | update.rs | O1-14
 - [ ] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [ ] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
-- [~W3] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
+- [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
 - [ ] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
 - [ ] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12
 - [ ] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16
