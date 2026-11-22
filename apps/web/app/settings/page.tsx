@@ -286,7 +286,7 @@ function SectionJumpNav({ onJump }: { onJump: (id: string) => void }) {
     >
       <div
         ref={chipsRef}
-        className="flex gap-1.5 overflow-x-auto rounded-2xl border border-neutral-200 bg-white/85 p-1.5 backdrop-blur dark:border-(--hub-border) dark:bg-(--hub-sunken)/85"
+        className="flex gap-1.5 overflow-x-auto rounded-2xl border border-neutral-200 bg-white/85 p-1.5 pr-8 backdrop-blur dark:border-(--hub-border) dark:bg-(--hub-sunken)/85"
       >
         {SECTION_ANCHORS.map((anchor) => (
           <button
@@ -305,6 +305,17 @@ function SectionJumpNav({ onJump }: { onJump: (id: string) => void }) {
           </button>
         ))}
       </div>
+      {/* Audit: the last visible chip used to clip hard at the right edge with
+          no affordance. The row always overflows at the page's max-w-2xl
+          (11 chips), so a static fade is safe at every width: it dissolves
+          into the surrounding surface (the pill's own white/85 in light mode,
+          the body's --hub-bg in dark) and the row's trailing ghost padding
+          (pr-8) lets the final chip scroll fully clear of the fade zone.
+          pointer-events-none keeps every chip tappable beneath the overlay. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-1 right-0 w-6 bg-gradient-to-l from-white to-transparent dark:from-(--hub-bg) dark:to-transparent"
+      />
     </nav>
   )
 }
@@ -951,15 +962,22 @@ export default function SettingsPage() {
 
       <Reveal>
         <section id="settings-reminders" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
+          {/* Audit: the long action used to clip at the right viewport edge on
+              390px and fought the sentence-case law (it inherited the header's
+              CSS uppercase). Short visible label; the full wording lives on
+              title/aria; flex-wrap lets the action drop to its own row. */}
           <SectionHeader
             icon={Bell}
             title="Reminders & Push Notifications"
+            className="flex-wrap"
             action={
               <Link
                 href="/notifications"
-                className="text-xs underline underline-offset-2 text-secondary"
+                aria-label="Open Notification Center for per-channel control"
+                title="Open Notification Center for per-channel control"
+                className="normal-case text-xs underline underline-offset-2 text-secondary"
               >
-                Open Notification Center for per-channel control
+                Per-channel control
               </Link>
             }
           />
@@ -1501,12 +1519,14 @@ function OnlineIdentitySection() {
       id="settings-online"
       className="scroll-mt-32 md:scroll-mt-24"
     >
+      {/* Audit: on 390px the title used to truncate mid-word ("Online
+          Engagement & L") while the trailing badge kept its space. One
+          wrapping row: the title grows and wraps at word boundaries, the
+          badge drops beneath it when tight, and the chevron stays put. */}
       <AccordionTrigger>
-        <span className="flex min-w-0 items-center gap-2.5">
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <IconTile icon={Globe} size="sm" />
-          <span className="truncate">Online Engagement &amp; Identity</span>
-        </span>
-        <span className="flex shrink-0 items-center">
+          <span className="min-w-0 grow break-words">Online Engagement &amp; Identity</span>
           <Badge
             tone={mode === 'device_key' ? 'success' : mode === 'offline' ? 'neutral' : 'accent'}
           >
@@ -1608,11 +1628,9 @@ function PowerToolsSection() {
       className="scroll-mt-32 md:scroll-mt-24"
     >
       <AccordionTrigger>
-        <span className="flex min-w-0 items-center gap-2.5">
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <IconTile icon={Command} size="sm" />
-          <span className="truncate">Desktop &amp; Mobile Power Tools</span>
-        </span>
-        <span className="flex shrink-0 items-center">
+          <span className="min-w-0 grow break-words">Desktop &amp; Mobile Power Tools</span>
           <Badge tone="accent">HUD &amp; Embeddings Ready</Badge>
         </span>
       </AccordionTrigger>
@@ -1710,11 +1728,9 @@ function AnkiConnectSection() {
       className="scroll-mt-32 md:scroll-mt-24"
     >
       <AccordionTrigger>
-        <span className="flex min-w-0 items-center gap-2.5">
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <IconTile icon={RefreshCw} size="sm" />
-          <span className="truncate">Live Anki Sync &amp; AnkiConnect</span>
-        </span>
-        <span className="flex shrink-0 items-center">
+          <span className="min-w-0 grow break-words">Live Anki Sync &amp; AnkiConnect</span>
           <Badge tone="accent">AnkiConnect v6</Badge>
         </span>
       </AccordionTrigger>
@@ -1834,11 +1850,9 @@ function WorldSettingsSection() {
       className="scroll-mt-32 md:scroll-mt-24"
     >
       <AccordionTrigger>
-        <span className="flex min-w-0 items-center gap-2.5">
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <IconTile icon={TreePine} size="sm" tone="success" />
-          <span className="truncate">3D Forest of Focus &amp; Timers</span>
-        </span>
-        <span className="flex shrink-0 items-center">
+          <span className="min-w-0 grow break-words">3D Forest of Focus &amp; Timers</span>
           <Badge tone="success">Three.js Low-Poly</Badge>
         </span>
       </AccordionTrigger>

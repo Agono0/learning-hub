@@ -694,7 +694,9 @@ export default function FocusPage() {
                 />
 
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-status-success-text" aria-live="polite">
+                  {/* ETA is quiet info, not a second control — the Start button
+                      below is the one primary action for starting a session. */}
+                  <p className="text-sm text-secondary" aria-live="polite">
                     {finishLine}
                   </p>
                   <Button
@@ -741,7 +743,7 @@ export default function FocusPage() {
                     </Button>
                     <Link
                       href="/world"
-                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-faint transition-colors hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
+                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-tertiary transition-colors hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
                     >
                       3D Sanctuary →
                     </Link>
@@ -850,13 +852,13 @@ export default function FocusPage() {
                     </Button>
                     <Button
                       variant="ghost"
-                      className="text-faint"
+                      className="text-tertiary"
                       onClick={() => void finishGate(false)}
                     >
                       <XCircle className="h-4 w-4" /> Abort the session
                     </Button>
                   </div>
-                  <p className="text-xs text-faint">
+                  <p className="text-xs text-tertiary">
                     Proceeding requires a written reflection — that is the whole point.
                   </p>
                 </div>
@@ -890,7 +892,7 @@ export default function FocusPage() {
                   <h2 className="text-2xl font-bold tracking-tight text-white">
                     {activeLock.task || 'Deep Learning Lockdown'}
                   </h2>
-                  <p className="text-sm text-faint mt-1">
+                  <p className="text-sm text-secondary mt-1">
                     Committed until {new Date(activeLock.endsAt ?? '').toLocaleTimeString()}
                   </p>
                 </div>
@@ -952,7 +954,7 @@ export default function FocusPage() {
                       <AlertTriangle className="h-4 w-4 shrink-0" />
                       Early Exit Cooldown: {activeLock.cooldownRemainingSec}s remaining
                     </div>
-                    <p className="text-xs text-faint">
+                    <p className="text-xs text-tertiary">
                       Take a slow breath. Ulysses contracts separate sudden impulses from deliberate
                       actions. Why do you want to break focus?
                     </p>
@@ -982,7 +984,7 @@ export default function FocusPage() {
                       <ShieldAlert className="h-4 w-4 shrink-0" />
                       Cooldown Complete — State Your Reflection
                     </div>
-                    <p className="text-xs text-faint">
+                    <p className="text-xs text-tertiary">
                       Type at least 20 characters explaining the reason for ending early. It will be
                       logged to your friction history.
                     </p>
@@ -1025,7 +1027,7 @@ export default function FocusPage() {
                       <h2 className="text-base font-bold text-strong">
                         Precommitment Ulysses Lockdown
                       </h2>
-                      <p className="text-xs text-faint mt-0.5">
+                      <p className="text-xs text-tertiary mt-0.5">
                         Chrome opens only allowlisted domains and learning video on YouTube. Windows
                         watchdog minimizes all other desktop apps.
                       </p>
@@ -1175,7 +1177,7 @@ export default function FocusPage() {
                       <span className="text-tertiary text-xs">Awaiting Extension Heartbeat</span>
                     )}
                   </div>
-                  <p className="text-faint text-xs leading-relaxed">
+                  <p className="text-tertiary text-xs leading-relaxed">
                     Install the Learning HUB companion extension in Chrome from{' '}
                     <code className="text-secondary bg-(--hub-panel-2) px-1 py-0.5 rounded">
                       apps/extension/dist

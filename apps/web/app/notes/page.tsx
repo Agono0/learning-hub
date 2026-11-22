@@ -351,9 +351,14 @@ export default function NotesPage() {
                 </button>
               ))}
             </div>
-            <div className="panel">
-              {activeId != null && <RelatedPanel kind="note" refId={activeId} />}
-            </div>
+            {/* Audit: the wrapper used to mount an empty bordered .panel even
+                with no note selected — render the whole container only when a
+                note is active so no empty panel ever appears. */}
+            {activeId != null && (
+              <div className="panel">
+                <RelatedPanel kind="note" refId={activeId} />
+              </div>
+            )}
           </aside>
 
           <CardMinerSheet

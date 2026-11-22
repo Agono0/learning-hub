@@ -179,33 +179,39 @@ export function AnalyticsGlimpseWidget(_props: WidgetProps) {
 
           {/* next-7-days forecast — mini histogram, hub-accent bars. Each bar
               carries a role="img" + date/count aria-label so the chart is not
-              hover-only (G4). */}
+              hover-only (G4). With no forecast data the bar row and the
+              "today / +7d" axis labels hide entirely — an empty plot between
+              two axis labels reads like a broken chart; only the honest
+              empty-state copy remains. */}
           <div className="mt-4">
             <p className="text-xs text-tertiary">Cards due — next 7 days</p>
-            <div className="mt-1 flex h-16 items-end gap-px">
-              {forecast.map((f, i) => (
-                <div
-                  key={f.date}
-                  role="img"
-                  aria-label={`${f.date}: ${f.count} cards due`}
-                  title={`${f.date}: ${f.count}`}
-                  className="group relative flex-1"
-                >
-                  <ForecastBar
-                    index={i}
-                    heightPct={(f.count / forecastMax) * 100}
-                    minHeightPx={f.count > 0 ? 2 : 0}
-                  />
+            {forecast.length === 0 ? (
+              <p className="mt-1 text-sm text-tertiary">Nothing scheduled yet.</p>
+            ) : (
+              <>
+                <div className="mt-1 flex h-16 items-end gap-px">
+                  {forecast.map((f, i) => (
+                    <div
+                      key={f.date}
+                      role="img"
+                      aria-label={`${f.date}: ${f.count} cards due`}
+                      title={`${f.date}: ${f.count}`}
+                      className="group relative flex-1"
+                    >
+                      <ForecastBar
+                        index={i}
+                        heightPct={(f.count / forecastMax) * 100}
+                        minHeightPx={f.count > 0 ? 2 : 0}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {forecast.length === 0 && (
-                <p className="text-sm text-tertiary">Nothing scheduled yet.</p>
-              )}
-            </div>
-            <div className="mt-1 flex justify-between text-xs text-neutral-600 dark:text-faint">
-              <span>today</span>
-              <span>+{FORECAST_DAYS}d</span>
-            </div>
+                <div className="mt-1 flex justify-between text-xs text-neutral-600 dark:text-faint">
+                  <span>today</span>
+                  <span>+{FORECAST_DAYS}d</span>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

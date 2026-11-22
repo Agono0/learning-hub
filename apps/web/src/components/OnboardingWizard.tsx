@@ -389,7 +389,7 @@ export function OnboardingWizard() {
                         setTheme(opt.key)
                         applyThemePreference(opt.key)
                       }}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors ${
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
                           : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
@@ -419,7 +419,7 @@ export function OnboardingWizard() {
                       key={opt.min}
                       type="button"
                       onClick={() => setSessionMinutes(opt.min)}
-                      className={`rounded-xl border p-3 text-left transition-colors ${
+                      className={`rounded-xl border p-3 text-left transition-colors [@media(pointer:coarse)]:min-h-11 ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
                           : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
@@ -596,7 +596,7 @@ export function OnboardingWizard() {
                     key={course.slug}
                     type="button"
                     onClick={() => toggleSlug(course.slug)}
-                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors [@media(pointer:coarse)]:min-h-11 ${
                       checked
                         ? 'border-indigo-500 bg-indigo-600/10'
                         : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
