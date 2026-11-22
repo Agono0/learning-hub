@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useGsapCountUp } from '@/lib/useGsapCountUp'
+import { SimpleCounters } from '@/components/tasks/SimpleCounters'
 
 interface Habit {
   id: number
@@ -370,6 +371,10 @@ export default function HabitsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* S3-31: SP simple counters — free-floating tap counters with
+          streaks, under the habits loop (habits stay untouched). */}
+      <SimpleCounters today={null} />
     </ClayIn>
   )
 }
