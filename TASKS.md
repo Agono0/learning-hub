@@ -96,8 +96,8 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
 - [x] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
 - [x] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
-- [~W1] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
-- [~W1] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
+- [x] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |  W1: /tasks/projects list (backlog-last sort, archived section, per-project today-time via S3-43, backlog toggle/duplicate/archive/restore) + /tasks/projects/[id] detail (notes Markdown preview, palette, task list, delete-to-inbox) + SSR tests
+- [x] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |  W1: /tasks/tags list (colors, per-tag today-time, delete-unlinks) with ChipPicker OR/AND mode + aria-pressed multi-select over core filterTasksByTags + /tasks/tags/[id] detail (rename/recolor, task list) + SSR tests
 - [x] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | core/boards.ts engine + app/boards/page.tsx + lib/board-views (device-local custom views) + nav entry | S3-17 |
 - [x] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
 - [x] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
@@ -113,7 +113,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts (bfddedc) + AddTaskBar onPaste (in 8b24d80 batch) | S3-03 |
 - [x] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |  W2 audit: DONE via S3-21 (b50850f) — TaskDetail has the full attachments UI (type/value form + list over the S3-19 attachments routes)
 - [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
-- [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |  W1: Tasks/Schedule shortLabels added (pages exist); Projects/Tags entries DEFERRED to S3-22/S3-23 — their pages do not exist yet and nav law forbids dead links
+- [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |  W1: Tasks/Schedule shortLabels added; Projects/Tags entries landed with their pages (Discipline group, shortLabels Projects/Tags) — the original deferral is resolved
 - [ ] S3-40 | SP | Onboarding addition: SP first-run steps (create project, add task via short syntax) | wizard step | OnboardingWizard | S3-20 |
 - [x] S3-41 | SP | Docs: docs/tasks.md (data model, shortcuts, parity map) | doc complete | docs/tasks.md | S3-39 |  W2: docs/tasks.md — data model over 031/032/034, short-syntax reference, today/planning exclusivity, boards/views semantics, worklog leaf-only, reminders/repeats/evaluation, Max Focus integration points, today keyboard map (S3-35/S3-73/S3-97 marked planned)
 - [x] S3-42 | SP | Integration tests: renderToString for every new page (today/boards/schedule/worklog/metrics) | tests green | apps/web/tests/sp-*-integration.test.ts (7 files, 47/47: W1 tasks/planner/schedule + W3 boards/worklog/metrics + planner calendar-mount; handoff docs/handoffs/S3-42.md) | S3-20..S3-30 |
@@ -156,7 +156,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-76 | SP | UI: recently-deleted trash view with restore | component | trash | S3-12
 - [ ] S3-77 | SP | UI: time-tracking tick indicator + tracked-title document title | lib + UI | use-global-timer glue | S3-10
 - [ ] S3-78 | SP | UI: idle-classify dialog (assign to task / break / discard) | component | idle | S3-33
-- [ ] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30
+- [x] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30  W2: core/tasks/summary.ts — dailySummaryText (honest zero state, leaf-aware top tasks via S3-88, evaluation line) deterministic share text, 4 unit tests; share-sheet UI wiring left to the metrics page owner
 - [ ] S3-80 | SP | UI: countdown default = task remaining estimate | glue | focus-modes | S3-32
 - [x] S3-81 | SP | UI: break-time never logged to task (guard) | core test | time-tracking | S3-32  W2 audit: guard shipped in core time-tracking applyTick (break sources refused) + test exists (tasks-time-tracking.test.ts:142)
 - [ ] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26
@@ -167,7 +167,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36  W2 audit: DONE via S3-36 (bfddedc markdownToTaskDrafts/tasksToMarkdown/isMarkdownPaste + bf749f2 AddTaskBar paste wiring) — end-to-end exists
 - [x] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
 - [x] S3-89 | SP | Core: activity heatmap data builder | unit tests | packages/core/src/metrics.ts buildActivityHeatmap + tests | S3-30
-- [ ] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31
+- [x] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31  W2: core/tasks/counters.ts — counterStreak (SP rule: untapped today open, untapped yesterday breaks; best run anywhere; zero-count days skip) + totals, 8 unit tests
 - [x] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
 - [x] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
 - [ ] S3-93 | SP | Handlers: notes-project linking (project notes) | integration tests | handlers + notes | S3-05

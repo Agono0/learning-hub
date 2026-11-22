@@ -395,6 +395,8 @@ export * from './mentions'
 
 // Worklog rollups (S3-88) — re-exported so hosts consume one entry.
 export * from './worklog'
+export * from './counters'
+export * from './summary'
 
 // Work context totals + tracked title (S3-43) — one entry for hosts.
 export * from './work-context'
