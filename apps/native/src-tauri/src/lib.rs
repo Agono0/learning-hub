@@ -114,6 +114,7 @@ pub fn run() {
             update_download_file,
             update_android_device_info,
             update_install_android_apk,
+            focus_android_provision_status,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -153,7 +154,10 @@ pub fn run() {
         // Android sideload installer (O1-13): registers the Kotlin
         // `MaxUpdatePlugin` (PackageInstaller + consent flow) and manages its
         // handle as `MaxUpdateAndroid` for the commands below.
-        .plugin(max_update_plugin());
+        .plugin(max_update_plugin())
+        // Device Owner status for Max Focus Tier 1 (M2-10): registers the
+        // Kotlin `MaxFocusAndroidPlugin`; M2-11 (Lock Task) extends it.
+        .plugin(focus_android_plugin());
 
     // Desktop: one running instance (focus it on relaunch) + remembered window geometry.
     #[cfg(desktop)]
@@ -358,6 +362,49 @@ pub async fn update_install_android_apk(
     {
         let _ = (app, apk_path);
         Err("sideload updates are Android-only".to_string())
+    }
+}
+
+// ── Max Focus Android bridge (M2-10) ───────────────────────────────────────
+
+/// Managed handle to the Kotlin `MaxFocusAndroidPlugin` (device-owner status;
+/// M2-11's Lock Task commands will live in the same plugin).
+#[cfg(target_os = "android")]
+#[derive(Clone)]
+struct MaxFocusAndroid(tauri::plugin::PluginHandle<tauri::Wry>);
+
+/// Registers the app-local Kotlin plugin (gen/android/.../MaxFocusAndroidPlugin.kt).
+#[cfg(target_os = "android")]
+fn focus_android_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::<tauri::Wry>::new("max-focus-android")
+        .setup(|app, api| {
+            let handle =
+                api.register_android_plugin("dev.learninghub.app", "MaxFocusAndroidPlugin")?;
+            app.manage(MaxFocusAndroid(handle));
+            Ok(())
+        })
+        .build()
+}
+
+/// Device Owner provisioning status (M2-10): whether Learning HUB is Device
+/// Owner on this device (Tier 1) and whether Lock Task is permitted (M2-11).
+/// The SETUP WIZARD (focus page) shows the exact ADB provisioning command —
+/// provisioning itself must run from a computer (`dpm set-device-owner`).
+#[tauri::command]
+pub async fn focus_android_provision_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("deviceOwnerStatus", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("device owner status is Android-only".to_string())
     }
 }
 

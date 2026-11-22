@@ -39,5 +39,20 @@
             android:name="android.support.FILE_PROVIDER_PATHS"
             android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Device Admin / Device Owner target (M2-10): the receiver the ADB
+             provisioning command binds (`dpm set-device-owner`). Enabling admin
+             alone grants nothing; Owner status (Tier 1) enables Lock Task (M2-11). -->
+        <receiver
+            android:name=".MaxDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/max_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

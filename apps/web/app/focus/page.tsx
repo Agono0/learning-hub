@@ -46,6 +46,12 @@ import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
+import {
+  DEVICE_OWNER_ADB_COMMAND,
+  deviceOwnerStatus,
+  type DeviceOwnerStatus,
+  deviceOwnerProvisioningSupported,
+} from '@/platform/device-owner'
 
 // The 3D presentation canvas is optional during focus sessions — keep three.js
 // out of the focus route's critical path (same pattern as /world and the graph).
@@ -127,6 +133,70 @@ interface DistractionRow {
   id: number
   name: string
   kind: 'app' | 'website' | 'habit'
+}
+
+/**
+ * Device Owner provisioning panel (M2-10) — Max Focus Tier 1 on Android.
+ *
+ * Android + Tauri only (null otherwise, hydration-safe: platform detected
+ * after mount). Shows the EXACT one-time ADB provisioning command with a
+ * copy button (confirm-in-place "Copied") and the live provisioned state
+ * from the native plugin. Honest copy: provisioning needs a computer, and
+ * enabling device admin alone grants nothing.
+ */
+function DeviceOwnerPanel() {
+  const [supported, setSupported] = useState(false)
+  const [status, setStatus] = useState<DeviceOwnerStatus | null>(null)
+  const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setSupported(deviceOwnerProvisioningSupported())
+    void deviceOwnerStatus().then(setStatus)
+    return () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current)
+    }
+  }, [])
+
+  if (!supported) return null
+
+  const copy = () => {
+    void navigator.clipboard
+      .writeText(DEVICE_OWNER_ADB_COMMAND)
+      .then(() => {
+        setCopied(true)
+        if (copiedTimer.current) clearTimeout(copiedTimer.current)
+        copiedTimer.current = setTimeout(() => setCopied(false), 2000)
+      })
+      .catch(() => {
+        // clipboard blocked — the command is fully visible/selectable above
+      })
+  }
+
+  return (
+    <div className="panel space-y-3">
+      <p className="label">Device Owner provisioning — Max Focus Tier 1 (Android)</p>
+      <p className="text-xs text-secondary">
+        One-time setup from a computer with ADB, on a device that has no Google account yet. This
+        enables Lock Task Mode; enabling device admin alone grants nothing.
+      </p>
+      <code className="scroll-x block rounded-lg bg-neutral-100 px-3 py-2 text-xs break-all text-neutral-800 dark:bg-(--hub-sunken) dark:text-neutral-200">
+        {DEVICE_OWNER_ADB_COMMAND}
+      </code>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" onClick={copy}>
+          {copied ? 'Copied' : 'Copy command'}
+        </Button>
+        <span className="text-xs text-tertiary">
+          {status
+            ? status.isDeviceOwner
+              ? 'This device is provisioned — Lock Task Mode is available.'
+              : 'Not provisioned yet — run the command above, then reopen this page.'
+            : 'Provisioning state unknown until the native shell reports it.'}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -1254,6 +1324,11 @@ export default function FocusPage() {
       {/* ─── DISTRACTION APPS (F-08③) ───────────────────────────────────── */}
       <Reveal>
         <DistractionAppsPanel />
+      </Reveal>
+
+      {/* ─── DEVICE OWNER PROVISIONING (M2-10) ───────────────────────────── */}
+      <Reveal>
+        <DeviceOwnerPanel />
       </Reveal>
 
       {/* ─── DETOX WIZARD (One-Time) ──────────────────────────────────────── */}
