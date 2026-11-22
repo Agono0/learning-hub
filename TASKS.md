@@ -7,6 +7,30 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 
 ## Phase 0 — discovery docs
 
+<!-- X-03 CLOSEOUT AUDIT (2026-11-22): 148/149 rows [x] with handoffs (33 audit
+stubs added for rows that landed without one); flagship spot-check green (14
+artifacts present, core/db/web typecheck 0 errors — Rust compiles in CI per
+rule 17). The 12 REMAINING OPEN ROWS are the exact ship-gap:
+
+  Ship-blocking for X-04 (the final PR):
+  - X-04 itself: open the PR (patch sizes + matrix + LIMITATIONS summary).
+
+  W2 in-flight (focus-modes/idle/shortcuts lane):
+  - S3-35 keyboard shortcuts (core map + settings UI) — S3-73's J/K/X/?
+    already covers the task list; S3-97's map table rides on this row.
+  - S3-97 keyboard map table in docs/tasks.md (blocked by S3-35).
+
+  Depth rows (parity depth, not gates — safe to ship without):
+  - M2-08 Windows admin tier (tier-2 hardening; tier-1 covers the lock).
+  - O1-30 Android Play-flavor build task in native.yml.
+  - M2-35 admin/watchdog security notes in docs/max-focus.md.
+  - S3-31 counters/habits upgrade UI (core streak math S3-90 landed).
+  - S3-40 SP onboarding steps. S3-82 schedule touch drag.
+  - S3-93 notes↔project linking. S3-94 capacity settings.
+  - S3-95 schedule "from previous days" row (data already in the handler).
+  - S3-96 impact stars + lazy charts (S3-50 core landed).
+-->
+
 - [x] P0-1 | docs | ARCHITECTURE_NOTES.md: stack map (native shell, CI, focus machinery, task-like domains, settings, sync, test infra) | doc complete, every claim has a path | docs/ARCHITECTURE_NOTES.md | - |
 - [x] P0-2 | docs | SUPER_PRODUCTIVITY_FEATURE_MATRIX.md: all 44 SP modules → exists/partial/missing → plan or "skipped by user" (integrations/sync/plugins/themes rows = skipped by user) | every SP feature row present | docs/SUPER_PRODUCTIVITY_FEATURE_MATRIX.md | W2: 51 rows, 8 sections + coverage summary; prettier clean |
 
@@ -108,7 +132,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-31 | SP | Habits/counters upgrade: simple counters with streaks + charts (existing habits kept) | core + UI + tests | packages/core/src/tasks/counters.ts, habits page upgrade | S3-19 |
 - [x] S3-32 | SP | Focus modes: Pomodoro/Flowtime/Countdown strategies on existing timer; task-tracking bidirectional; break reminders | core + UI + tests | packages/core/src/tasks/focus-modes.ts, focus page integration | S3-10 | W2: core/tasks/focus-modes.ts — pomodoro cadence + long-breaks, flowtime earned breaks (completeFocusRunEarly), countdown blocks; FocusModePicker UI wired on the focus page standard tab; 11 core tests + 3 SSR - [x] S3-33 | SP | Idle detection (desktop Tauri): subtract idle, classify dialog; suppress during Max Focus | Rust command + core + UI | apps/native/src-tauri/src/idle.rs, core | S3-32 | W2: core/tasks/idle.ts (classify jitter/break/discard + subtraction cap + Max Focus suppression S3-34) + apps/native/src-tauri/src/idle.rs (system_idle_ms — self-contained user32/kernel32 externs, NO Cargo feature needed; registered in lib.rs) + 10 core tests; poll wiring on the timer is a page-glue follow-up
 - [x] S3-34 | SP | Max Focus wiring: start focus session from task; task auto-tracked during lock | core glue + UI | focus-lock + tasks | M2-01, S3-32 | W2: binding half — focus-modes state carries taskId (S3-34) so ticks log source focus against it; the task-tracking session glue rides the existing PATCH flow; S3-33 idle suppression lands with the idle build
--[x] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 | W2: core/tasks/shortcuts.ts (default map mirroring S3-73, combo grammar + normalize/conflicts/event resolver incl. the ? shift+/ duality, 13 tests) + ShortcutsSection settings UI (per-row capture, conflicts flag, per-row reset) over device-local lib/shortcut-overrides; page resolver wiring = mount follow-up
+      -[x] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 | W2: core/tasks/shortcuts.ts (default map mirroring S3-73, combo grammar + normalize/conflicts/event resolver incl. the ? shift+/ duality, 13 tests) + ShortcutsSection settings UI (per-row capture, conflicts flag, per-row reset) over device-local lib/shortcut-overrides; page resolver wiring = mount follow-up
 - [x] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts (bfddedc) + AddTaskBar onPaste (in 8b24d80 batch) | S3-03 |
 - [x] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 | W2 audit: DONE via S3-21 (b50850f) — TaskDetail has the full attachments UI (type/value form + list over the S3-19 attachments routes)
 - [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
