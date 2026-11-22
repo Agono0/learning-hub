@@ -42,6 +42,23 @@ Everything worth reading, in one place. Start with [`AGENTS.md`](../AGENTS.md)
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | [plans/MASTER-FIX-PLAN.md](plans/MASTER-FIX-PLAN.md) | Full project audit (2026-11-08): 26 findings F-01–F-26 with per-finding specs, commit-level runbooks, and the P0–P4 execution roadmap |
 
+## Mega-run (delta OTA · Max Focus · Super Productivity)
+
+Landed on `feature/mega-run`; the run's working docs and the per-task
+handoffs (`handoffs/` — one per task) live here too.
+
+| Doc                                                                          | What it is                                                                                                                                  |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| [ARCHITECTURE_NOTES.md](ARCHITECTURE_NOTES.md)                               | Pre-run stack map (§1–11) + the post-run map (§12): task domain, update stack, Max Focus native layer, SP page set — every claim path-cited |
+| [updates.md](updates.md)                                                     | Delta OTA architecture: channels, manifest/pointer protocol, A/B slots, key ceremony, rollback, Play policy                                 |
+| [max-focus.md](max-focus.md)                                                 | Max Focus architecture: tiers, PIN vault, allowlists, store disclosures                                                                     |
+| [MAX_FOCUS_TESTPLAN.md](MAX_FOCUS_TESTPLAN.md)                               | Every escape route × tier × platform with expected behavior                                                                                 |
+| [tasks.md](tasks.md)                                                         | The SP task domain: data model over migrations 031–034, short-syntax reference, exclusivity rules, repeats/reminders/evaluation             |
+| [SUPER_PRODUCTIVITY_FEATURE_MATRIX.md](SUPER_PRODUCTIVITY_FEATURE_MATRIX.md) | All 44 SP modules → honest status with closing-task refs + coverage summary                                                                 |
+| [LIMITATIONS.md](LIMITATIONS.md)                                             | Hard platform limits (Ctrl+Alt+Del, Play policy, Device Owner) + the run-discovered ones (exact alarms, desktop-only idle, local stores)    |
+| [SHARED_CHANGES.md](SHARED_CHANGES.md)                                       | The lead-applied shared-file request log — all requests applied and verified (X-02)                                                         |
+| [handoffs/](handoffs/)                                                       | Per-task handoffs: deliverable paths, owner notes, verification state (33 audit stubs added by X-03)                                        |
+
 ## Platforms & integrations
 
 | Doc                                              | What it is                                                                                   |
