@@ -161,7 +161,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-81 | SP | UI: break-time never logged to task (guard) | core test | time-tracking | S3-32
 - [ ] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26
 - [ ] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27
-- [ ] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | boards | S3-24
+- [x] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | app/boards/page.tsx (arrow-key grid walk, X/Enter pick+drop, Escape, aria-live) | S3-24
 - [ ] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44
 - [x] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
 - [ ] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36
@@ -177,7 +177,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-97 | SP | Docs: keyboard shortcut default map table in docs/tasks.md | doc section | docs/tasks.md | S3-35
 - [ ] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42
 - [ ] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
-- [ ] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards/planner | S3-24
+- [x] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards page (focusable quadrants+cards with --ac-strong rings, list semantics, live hints; planner side is W1's S3-25 surface) | S3-24
 - [x] O1-25 | OTA | Update check interval + Wi-Fi-only honored by the check scheduler | code + tests | apps/web/src/lib/updates.ts client service (scheduler owns the loop; settings are webview-local; Rust keeps download/promote) | O1-14 |
 - [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [x] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16

@@ -138,6 +138,19 @@ export default function BoardsPage() {
   const [draftName, setDraftName] = useState('')
   const [draftChips, setDraftChips] = useState<BoardRuleChip[]>([])
   const [dragOver, setDragOver] = useState<string | null>(null)
+  // S3-84 keyboard quadrant nav (Eisenhower): the focused quadrant and the
+  // task currently "carried" by the keyboard (pick with X/Enter, drop with
+  // Enter, cancel with Escape — a full keyboard alternative to dragging).
+  const [quadrantCursor, setQuadrantCursor] = useState<string | null>(null)
+  const [held, setHeld] = useState<TaskItem | null>(null)
+
+  // The cursor only means something on the Eisenhower grid.
+  useEffect(() => {
+    if (tab !== 'eisenhower') {
+      setQuadrantCursor(null)
+      setHeld(null)
+    }
+  }, [tab])
 
   useEffect(() => {
     setToday(localToday())
@@ -205,6 +218,55 @@ export default function BoardsPage() {
 
   const tasks = tasksQuery.data?.tasks ?? []
 
+  /**
+   * S3-84 — keyboard quadrant navigation over the Eisenhower grid (2×2,
+   * columns ordered q1 q2 / q3 q4): arrows walk the grid, X/Enter picks up
+   * the first task of the focused quadrant (or drops the held one), Escape
+   * cancels. The per-column select remains the pointer-free path for
+   * kanban/custom boards; the drag remains the pointer path here.
+   */
+  const onBoardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (tab !== 'eisenhower' || !board) return
+    const columns = board.columns.map((c) => c.column)
+    const idx = quadrantCursor === null ? -1 : columns.findIndex((c) => c.id === quadrantCursor)
+    const move = (): void => {
+      const base = idx < 0 ? 0 : idx
+      // q1(0) q2(1) / q3(2) q4(3): left/right flip the low bit, up/down ±2.
+      let next = base
+      if (e.key === 'ArrowRight') next = base % 2 === 0 ? base + 1 : base - 1
+      else if (e.key === 'ArrowLeft') next = base % 2 === 0 ? base + 1 : base - 1
+      else if (e.key === 'ArrowDown') next = base < 2 ? base + 2 : base - 2
+      else if (e.key === 'ArrowUp') next = base < 2 ? base + 2 : base - 2
+      else return
+      e.preventDefault()
+      setQuadrantCursor(columns[Math.max(0, Math.min(columns.length - 1, next))]?.id ?? null)
+    }
+    if (e.key.startsWith('Arrow')) {
+      move()
+      return
+    }
+    if (e.key === 'Escape') {
+      if (held) {
+        e.preventDefault()
+        setHeld(null)
+      }
+      return
+    }
+    if (e.key === 'x' || e.key === 'X' || e.key === 'Enter') {
+      const targetId = columns[Math.max(0, idx)]?.id
+      if (!targetId) return
+      e.preventDefault()
+      const bucket = board.columns.find((c) => c.column.id === targetId)
+      if (!bucket) return
+      if (held) {
+        applyMove.mutate({ task: held, chip: bucket.column.chip })
+        setHeld(null)
+      } else if (bucket.tasks.length > 0) {
+        setHeld(bucket.tasks[0])
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <ClayIn>
@@ -259,71 +321,95 @@ export default function BoardsPage() {
           prioritize.
         </EmptyState>
       ) : board && view ? (
-        <div className="scroll-x -mx-4 flex gap-3 px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3 xl:grid-cols-5">
-          {board.columns.map(({ column, tasks: colTasks }) => (
-            <section
-              key={column.id}
-              onDragOver={(e) => {
-                e.preventDefault()
-                setDragOver(column.id)
-              }}
-              onDragLeave={() => setDragOver((cur) => (cur === column.id ? null : cur))}
-              onDrop={(e) => {
-                e.preventDefault()
-                setDragOver(null)
-                const id = Number(e.dataTransfer.getData('text/plain'))
-                const task = tasks.find((t) => t.id === id)
-                if (task && !applyMove.isPending) applyMove.mutate({ task, chip: column.chip })
-              }}
-              className={`flex min-w-[240px] flex-1 flex-col gap-2 rounded-2xl border p-3 transition-opacity ${
-                dragOver === column.id ? 'opacity-80' : 'opacity-100'
-              } border-neutral-200 bg-neutral-50 dark:border-(--hub-border) dark:bg-(--hub-panel)`}
-              aria-label={`${column.label} column`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-strong">{column.label}</h2>
-                <Badge tone="neutral">{colTasks.length}</Badge>
-              </div>
-              <p className="rounded-lg bg-white/60 px-2 py-1 text-[11px] leading-snug text-tertiary dark:bg-black/20">
-                chip: {column.chip.label}
-              </p>
-              {colTasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-1">
-                  <span className="mt-3 text-tertiary" aria-hidden>
-                    <GripVertical className="h-4 w-4" />
-                  </span>
-                  <div
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
-                    className="min-w-0 flex-1 cursor-grab"
-                  >
-                    <TaskCard task={task} today={today} />
-                  </div>
-                </div>
-              ))}
-              {colTasks.length === 0 ? (
-                <p className="py-3 text-center text-xs text-tertiary">Drop tasks here</p>
-              ) : null}
-              <select
-                aria-label={`Move a task to ${column.label}`}
-                value=""
-                onChange={(e) => {
-                  const task = tasks.find((t) => t.id === Number(e.target.value))
+        <div
+          className="scroll-x -mx-4 flex gap-3 px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3 xl:grid-cols-5"
+          onKeyDown={onBoardKeyDown}
+        >
+          {tab === 'eisenhower' ? (
+            <p className="sr-only" aria-live="polite">
+              {held
+                ? `Carrying “${held.title}” — arrow keys move, Enter drops, Escape cancels.`
+                : 'Arrow keys move between quadrants, X picks up the first task, Enter drops it, Escape cancels.'}
+            </p>
+          ) : null}
+          {board.columns.map(({ column, tasks: colTasks }) => {
+            const focused = tab === 'eisenhower' && quadrantCursor === column.id
+            return (
+              <section
+                key={column.id}
+                tabIndex={0}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOver(column.id)
+                }}
+                onDragLeave={() => setDragOver((cur) => (cur === column.id ? null : cur))}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOver(null)
+                  const id = Number(e.dataTransfer.getData('text/plain'))
+                  const task = tasks.find((t) => t.id === id)
                   if (task && !applyMove.isPending) applyMove.mutate({ task, chip: column.chip })
                 }}
-                className="mt-auto min-h-[44px] rounded-lg border border-neutral-200 bg-white px-2 text-xs dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                className={`flex min-w-[240px] flex-1 flex-col gap-2 rounded-2xl border p-3 transition-opacity focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) ${
+                  dragOver === column.id ? 'opacity-80' : 'opacity-100'
+                } ${
+                  focused
+                    ? 'border-indigo-500 dark:border-indigo-400'
+                    : 'border-neutral-200 dark:border-(--hub-border)'
+                } bg-neutral-50 dark:bg-(--hub-panel)`}
+                aria-label={`${column.label} column, ${colTasks.length} task${colTasks.length === 1 ? '' : 's'}${focused ? ', focused' : ''}`}
               >
-                <option value="">Move a task here…</option>
-                {tasks
-                  .filter((t) => !colTasks.some((c) => c.id === t.id))
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.title}
-                    </option>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-strong">{column.label}</h2>
+                  <Badge tone="neutral">{colTasks.length}</Badge>
+                </div>
+                <p className="rounded-lg bg-white/60 px-2 py-1 text-[11px] leading-snug text-tertiary dark:bg-black/20">
+                  chip: {column.chip.label}
+                </p>
+                <div role="list" className="flex flex-col gap-2">
+                  {colTasks.map((task) => (
+                    <div key={task.id} role="listitem" className="flex items-start gap-1">
+                      <span className="mt-3 text-tertiary" aria-hidden>
+                        <GripVertical className="h-4 w-4" />
+                      </span>
+                      <div
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData('text/plain', String(task.id))}
+                        tabIndex={0}
+                        aria-label={`${task.title} — drag to a column, or use the Move select below`}
+                        className={`min-w-0 flex-1 cursor-grab rounded-xl focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) ${
+                          held?.id === task.id ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <TaskCard task={task} today={today} />
+                      </div>
+                    </div>
                   ))}
-              </select>
-            </section>
-          ))}
+                </div>
+                {colTasks.length === 0 ? (
+                  <p className="py-3 text-center text-xs text-tertiary">Drop tasks here</p>
+                ) : null}
+                <select
+                  aria-label={`Move a task to ${column.label}`}
+                  value=""
+                  onChange={(e) => {
+                    const task = tasks.find((t) => t.id === Number(e.target.value))
+                    if (task && !applyMove.isPending) applyMove.mutate({ task, chip: column.chip })
+                  }}
+                  className="mt-auto min-h-[44px] rounded-lg border border-neutral-200 bg-white px-2 text-xs dark:border-(--hub-border) dark:bg-(--hub-panel)"
+                >
+                  <option value="">Move a task here…</option>
+                  {tasks
+                    .filter((t) => !colTasks.some((c) => c.id === t.id))
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.title}
+                      </option>
+                    ))}
+                </select>
+              </section>
+            )
+          })}
           {board.unmatched.length > 0 ? (
             <section className="min-w-[240px] flex-1 rounded-2xl border border-dashed border-neutral-300 p-3 dark:border-(--hub-border)">
               <h2 className="text-sm font-semibold text-secondary">
