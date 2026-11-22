@@ -7,6 +7,9 @@
 //! notifications, haptics, logging and window management.
 
 mod focus;
+// Max Focus lock windows (M2-05) — commands are wired in M2-23.
+#[allow(dead_code)]
+mod lock_win;
 mod update;
 
 /// Updates base dir under app data: `<app_data_dir>/updates` (A/B slots plus
@@ -109,6 +112,8 @@ pub fn run() {
             focus::focus_lock_status,
             update_confirm_boot_ready,
             update_download_file,
+            update_android_device_info,
+            update_install_android_apk,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -143,7 +148,12 @@ pub fn run() {
         });
 
     #[cfg(mobile)]
-    let builder = builder.plugin(tauri_plugin_haptics::init());
+    let builder = builder
+        .plugin(tauri_plugin_haptics::init())
+        // Android sideload installer (O1-13): registers the Kotlin
+        // `MaxUpdatePlugin` (PackageInstaller + consent flow) and manages its
+        // handle as `MaxUpdateAndroid` for the commands below.
+        .plugin(max_update_plugin());
 
     // Desktop: one running instance (focus it on relaunch) + remembered window geometry.
     #[cfg(desktop)]
@@ -271,6 +281,84 @@ fn setup_desktop_shell(app: &mut tauri::App) -> Result<(), tauri::Error> {
 #[tauri::command]
 pub fn update_confirm_boot_ready(app: tauri::AppHandle) -> Result<(), String> {
     update::confirm_boot_ready(&slot_updates_dir(&app)).map_err(|e| e.to_string())
+}
+
+// ── Android sideload bridge (O1-13) ────────────────────────────────────────
+
+/// Managed handle to the Kotlin `MaxUpdatePlugin` registered at setup
+/// (`max_update_plugin`). Android-only; the sideload commands below reach the
+/// PackageInstaller flow through it.
+#[cfg(target_os = "android")]
+#[derive(Clone)]
+struct MaxUpdateAndroid(tauri::plugin::PluginHandle<tauri::Wry>);
+
+/// Registers the app-local Kotlin plugin (`gen/android/.../MaxUpdatePlugin.kt`,
+/// package `dev.learninghub.app`) so its PackageInstaller commands are
+/// reachable from Rust. Android-only — compiled out elsewhere.
+#[cfg(target_os = "android")]
+fn max_update_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::<tauri::Wry>::new("max-update")
+        .setup(|app, api| {
+            let handle =
+                api.register_android_plugin("dev.learninghub.app", "MaxUpdatePlugin")?;
+            app.manage(MaxUpdateAndroid(handle));
+            Ok(())
+        })
+        .build()
+}
+
+/// Android device facts for the sideload flow (O1-13): the device's primary
+/// ABI (per-ABI APK pick), SDK level and whether the user has already granted
+/// the per-app "install unknown apps" consent. Other hosts answer with a
+/// clean error — the client service only calls this on Android.
+#[tauri::command]
+pub async fn update_android_device_info(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxUpdateAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("deviceInfo", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("sideload updates are Android-only".to_string())
+    }
+}
+
+/// Installs a downloaded, sha256-verified per-ABI APK (O1-13). `apk_path` must
+/// be a file the Rust downloader produced (confined to the updates dir).
+///
+/// Never silent: when the per-app "install unknown apps" grant is missing, the
+/// Kotlin side opens the system consent screen and resolves
+/// `{ consentRequired: true }` (the UI explains and lets the user re-tap);
+/// after consent, `{ committed: true }` once the PackageInstaller session is
+/// committed — the SYSTEM installer dialog is the final consent stage.
+#[tauri::command]
+pub async fn update_install_android_apk(
+    app: tauri::AppHandle,
+    apk_path: String,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxUpdateAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "installApk",
+                serde_json::json!({ "apkPath": apk_path }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, apk_path);
+        Err("sideload updates are Android-only".to_string())
+    }
 }
 
 /// Resumable ranged download of one update artifact (O1-16), run from the
