@@ -187,10 +187,14 @@ export async function createPinVault(
  * attempt is rate-limited at the handler layer (M2-04), not here.
  */
 export async function verifyPin(vault: PinVault, pin: string): Promise<boolean> {
-  const record = pinVaultSchema.parse(vault)
+  // Fail CLOSED on corrupted/tampered records: a vault that no longer parses
+  // can never match a freshly-derived candidate, and throwing here would turn
+  // a tampered record into an unhandled rejection inside the exit flow.
+  const record = pinVaultSchema.safeParse(vault)
+  if (!record.success) return false
   if (!pinSchema.safeParse(pin).success) return false
-  const candidate = await pbkdf2Sha256(pin, hexToBytes(record.salt), record.iterations)
-  return constantTimeEqual(candidate, hexToBytes(record.hash))
+  const candidate = await pbkdf2Sha256(pin, hexToBytes(record.data.salt), record.data.iterations)
+  return constantTimeEqual(candidate, hexToBytes(record.data.hash))
 }
 
 /**

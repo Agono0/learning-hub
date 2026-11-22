@@ -901,6 +901,7 @@ describe('max focus mode (milestone 6)', () => {
       session: { id: number; mode: string }
       lock: { active: boolean; endsAt: string }
     }
+    const maxSessionId = startBody.session.id
     expect(startBody.ok).toBe(true)
     expect(startBody.session.mode).toBe('max')
     expect(startBody.lock.active).toBe(true)
@@ -951,6 +952,15 @@ describe('max focus mode (milestone 6)', () => {
       post('/api/focus/bridge', { action: 'heartbeat', extensionId: 'lh-ext-1' }),
     )
     expect(hbRes.status).toBe(200)
+
+    // End the session: the M2-21 settings lock refuses PUT /api/settings while
+    // a max lock is active, and the shared test DB persists across tests in
+    // this file. Completing the session is the honest end of this flow.
+    const endRes = await M.focusId.PATCH(
+      req('PATCH', `/api/focus/${maxSessionId}`, { completed: true, actualMinutes: 0.1 }),
+      { params: Promise.resolve({ id: String(maxSessionId) }) },
+    )
+    expect(endRes.status).toBe(200)
   })
 
   it('plans, logs, clicks, and configures calm reminders', async () => {

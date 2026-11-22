@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 
 /**
  * MaxFocusDisclosures — the store-policy compliant disclosure screens for the

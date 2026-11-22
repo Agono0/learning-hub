@@ -81,7 +81,7 @@ describe('parseCalendarFeed — VEVENT', () => {
     // fold whitespace is additive, so "was " + " folded" unfolds to
     // "was folded" — a break directly before the space would consume it).
     const crlf =
-      'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fold-1\r\nSUMMARY:A very long title that was \r\n folded across two lines\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
+      'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fold-1\r\nDTSTART:20260101T090000Z\r\nDTEND:20260101T100000Z\r\nSUMMARY:A very long title that was \r\n folded across two lines\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
     expect(parseCalendarFeed(crlf).events[0].title).toBe(
       'A very long title that was folded across two lines',
     )

@@ -20,11 +20,9 @@ import {
   dayKeySchema,
   nonNegativeMs,
   positiveId,
-  taskItemSchema,
   taskPrioritySchema,
   timestampSchema,
   type TaskItem,
-  type TaskPriority,
 } from './shared'
 
 // Shared leaf definitions live in './shared' and are re-exported here for the

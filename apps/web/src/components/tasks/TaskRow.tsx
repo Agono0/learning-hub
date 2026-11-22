@@ -65,7 +65,8 @@ function trackedTotal(task: TaskRowTask): number {
 function humanMs(ms: number): string {
   const m = Math.round(ms / 60_000)
   const h = Math.floor(m / 60)
-  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`
+  if (h === 0) return `${m}m`
+  return m % 60 === 0 ? `${h}h` : `${h}h ${m % 60}m`
 }
 
 const PRIORITY_LABEL: Record<TaskRowTask['priority'], string> = {

@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 
 /**
  * UpdateBanner — the ask-first update prompt (O1-15).
@@ -69,7 +70,7 @@ export interface UpdateBannerProps {
 export function formatUpdateSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '0 B'
   if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 

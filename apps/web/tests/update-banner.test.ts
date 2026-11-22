@@ -8,6 +8,8 @@
  * same pattern as update-channel-flag.test.ts), and untrusted-notes escaping.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const cleanHtml = (html: string): string => html.replace(/<!-- -->/g, '')
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { formatUpdateSize, UpdateBanner, type UpdateOffer } from '../src/components/UpdateBanner'
@@ -34,9 +36,9 @@ describe('UpdateBanner (O1-15)', () => {
 
   it('renders the ask-first prompt with patch-vs-full sizes', () => {
     const html = render({ offer: offer() })
-    expect(html).toContain('Learning HUB 20261122-abc1234 is ready')
-    expect(html).toContain('Hot update · 50.0 KB · full download 40.0 MB')
-    expect(html).toContain('installs after you restart — nothing changes until then')
+    expect(cleanHtml(html)).toContain('Learning HUB 20261122-abc1234 is ready')
+    expect(cleanHtml(html)).toContain('Hot update · 50.0 KB · full download 40.0 MB')
+    expect(cleanHtml(html)).toContain('installs after you restart — nothing changes until then')
     expect(html).toContain('Download update')
     expect(html).toContain('Not now')
     expect(html).toContain('Focus timer: fixed drift on long sessions.')
@@ -85,7 +87,8 @@ describe('formatUpdateSize', () => {
     expect(formatUpdateSize(512)).toBe('512 B')
     expect(formatUpdateSize(1024)).toBe('1.0 KB')
     expect(formatUpdateSize(51200)).toBe('50.0 KB')
-    expect(formatUpdateSize(15 * 1024)).toBe('15 KB')
+    // Uniform one-decimal rule (calm numerals): 15 KB is the odd one out.
+    expect(formatUpdateSize(15 * 1024)).toBe('15.0 KB')
     expect(formatUpdateSize(5 * 1024 * 1024)).toBe('5.0 MB')
     expect(formatUpdateSize(40 * 1024 * 1024)).toBe('40.0 MB')
   })

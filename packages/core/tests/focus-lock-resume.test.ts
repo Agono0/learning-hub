@@ -57,7 +57,14 @@ describe('resumeMaxFocusSession (M2-24)', () => {
   it('a resumed session still enforces its original planned end', () => {
     const clock = { wallMs: BASE.savedAtMs + 60_000, monoMs: 10_000 }
     const resumed = resumeMaxFocusSession(BASE, clock)!
-    const atEnd = { wallMs: BASE.plannedEndMs + 1, monoMs: clock.monoMs + 60_000 }
+    // The paired clock at the planned end: wall advanced to plannedEndMs+1,
+    // so monotonic must have advanced by the SAME span since the resume
+    // anchor (plannedEndMs - resumeWall) — otherwise the tamper gate
+    // correctly trips (M2-24 fixture math; twin fixed in session.test).
+    const atEnd = {
+      wallMs: BASE.plannedEndMs + 1,
+      monoMs: clock.monoMs + (BASE.plannedEndMs - clock.wallMs) + 1,
+    }
     const advanced = advanceSession(resumed, atEnd)
     expect(advanced.session.state).toBe('ended')
     expect(advanced.session.unlockReason).toBe('timer')
