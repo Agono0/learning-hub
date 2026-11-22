@@ -693,6 +693,165 @@ pub fn promote_inactive_slot_if_allowed(
     promote_inactive_slot(base_dir)
 }
 
+// ─── Resumable ranged download (O1-16) ──────────────────────────────────────
+
+/// What the server answered to a ranged GET.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RangeResponse {
+    /// HTTP 206 — the server honored `Range:`; bytes continue the file.
+    Partial(Vec<u8>),
+    /// HTTP 200 — the server ignored `Range:` and returned the WHOLE file;
+    /// the caller must restart from scratch.
+    Full(Vec<u8>),
+}
+
+/// `Range:` header value to resume a download at byte `start` (open-ended to
+/// EOF — the server sends the remainder, which we hash-verify in full).
+pub fn range_header(start: u64) -> String {
+    format!("bytes={start}-")
+}
+
+/// Bytes already on disk = the resume offset. A missing file means "start
+/// over"; a stale/partial file means "continue at its length".
+pub fn resume_offset(dest: &Path) -> u64 {
+    fs::metadata(dest).map(|m| m.len()).unwrap_or(0)
+}
+
+/// Downloaded/total as a 0–100 percentage (saturating; totals of 0 report 100
+/// only when downloaded is 0 — a 0-byte file is "done").
+pub fn progress_percent(downloaded: u64, total: u64) -> u64 {
+    if total == 0 {
+        return 100;
+    }
+    ((downloaded.min(total) * 100) / total).min(100)
+}
+
+/// Performs the actual ranged GET for `download_resumable`. Production binds
+/// this to `fetch_range_http`; tests inject in-memory responses.
+pub trait RangeFetcher {
+    /// Fetches the file bytes from `start` to EOF.
+    fn fetch_range(&mut self, start: u64) -> Result<RangeResponse, UpdateError>;
+}
+
+/// HTTP ranged GET via the shared agent (https-only). Maps 206 →
+/// `Partial`, 200 → `Full`; anything else is a network error.
+pub fn fetch_range_http(url: &str, start: u64) -> Result<RangeResponse, UpdateError> {
+    assert_https(url)?;
+    let response = AGENT
+        .get(url)
+        .set("Range", &range_header(start))
+        .call()
+        .map_err(|e| UpdateError::Network(format!("ranged GET {url} @ {start}: {e}")))?;
+    // Capture the status BEFORE consuming the body (into_reader moves it).
+    let status = response.status();
+    let mut bytes = Vec::new();
+    response
+        .into_reader()
+        .read_to_end(&mut bytes)
+        .map_err(|e| UpdateError::Network(format!("ranged GET body: {e}")))?;
+    match status {
+        206 => Ok(RangeResponse::Partial(bytes)),
+        200 => Ok(RangeResponse::Full(bytes)),
+        status => Err(UpdateError::Network(format!(
+            "ranged GET {url}: unexpected status {status}"
+        ))),
+    }
+}
+
+/// Resumable, hash-verified single-file download.
+///
+/// Contract:
+/// - resumes at {@link resume_offset} of `dest` (a hostile/stale partial
+///   LARGER than `total` restarts from scratch);
+/// - `206 Partial` appends the remainder; `200 Full` restarts from scratch
+///   (some servers/CDNs strip `Range:`);
+/// - the assembled file MUST match `expected_sha256` and `total` exactly, or
+///   the whole thing errors out (nothing partial is ever left trusted —
+///   callers treat a lingering partial as scratch space);
+/// - progress is reported as `(downloaded, total)` pairs via `on_progress`,
+///   with a final call at (total, total). The tauri command
+///   `update_download_file` (lib.rs) bridges this onto the webview as
+///   `update://download-progress` events.
+pub fn download_resumable<P>(
+    dest: &Path,
+    total: u64,
+    expected_sha256: &str,
+    mut on_progress: P,
+    fetcher: &mut dyn RangeFetcher,
+) -> Result<(), UpdateError>
+where
+    P: FnMut(u64, u64),
+{
+    let mut start = resume_offset(dest);
+    if start > total {
+        // Stale partial from a previous, different download — scratch it.
+        fs::write(dest, b"").map_err(|e| UpdateError::Network(format!("truncate {dest:?}: {e}")))?;
+        start = 0;
+    }
+    on_progress(start, total);
+
+    match fetcher.fetch_range(start)? {
+        RangeResponse::Partial(rest) => {
+            if start + rest.len() as u64 != total {
+                return Err(UpdateError::Hash(format!(
+                    "ranged download size mismatch: had {start}, got {} more, total {total}",
+                    rest.len()
+                )));
+            }
+            use std::io::Write;
+            let mut file = fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(dest)
+                .map_err(|e| UpdateError::Network(format!("open {dest:?}: {e}")))?;
+            file.write_all(&rest)
+                .map_err(|e| UpdateError::Network(format!("append {dest:?}: {e}")))?;
+        }
+        RangeResponse::Full(all) => {
+            if all.len() as u64 != total {
+                return Err(UpdateError::Hash(format!(
+                    "full download size mismatch: got {} bytes, manifest says {total}",
+                    all.len()
+                )));
+            }
+            fs::write(dest, &all)
+                .map_err(|e| UpdateError::Network(format!("write {dest:?}: {e}")))?;
+        }
+    }
+
+    on_progress(total, total);
+    let assembled = fs::read(dest)
+        .map_err(|e| UpdateError::Network(format!("read {dest:?}: {e}")))?;
+    verify_file_hash(&assembled, expected_sha256)
+}
+
+/// Convenience wrapper over {@link download_resumable} for `fetch_range_http`.
+pub fn download_resumable_http<P>(
+    dest: &Path,
+    url: &str,
+    total: u64,
+    expected_sha256: &str,
+    on_progress: P,
+) -> Result<(), UpdateError>
+where
+    P: FnMut(u64, u64),
+{
+    let url = url.to_string();
+    let mut fetcher = HttpRangeFetcher { url };
+    download_resumable(dest, total, expected_sha256, on_progress, &mut fetcher)
+}
+
+/// {@link RangeFetcher} backed by the shared https agent.
+struct HttpRangeFetcher {
+    url: String,
+}
+
+impl RangeFetcher for HttpRangeFetcher {
+    fn fetch_range(&mut self, start: u64) -> Result<RangeResponse, UpdateError> {
+        fetch_range_http(&self.url, start)
+    }
+}
+
 /// Bytes of `rel_path` inside the ACTIVE slot — the serving seam used by the
 /// custom URI-scheme protocol (O1-04, `serve_slot_protocol` in `lib.rs`).
 ///
@@ -1156,5 +1315,169 @@ mod slot_tests {
         assert_eq!(promote_inactive_slot_if_allowed(&base, false).unwrap(), SlotId::B);
         assert_eq!(active_slot(&base).unwrap(), SlotId::B);
         fs::remove_dir_all(&base).ok();
+    }
+}
+
+// ─── Resumable download tests (O1-16) ────────────────────────────────────────
+
+#[cfg(test)]
+mod download_tests {
+    use super::*;
+
+    fn temp_file(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "lh-update-o1-16-{}-{}",
+            std::process::id(),
+            name
+        ));
+        fs::create_dir_all(&dir).expect("create temp dir");
+        dir.join(name)
+    }
+
+    /// In-memory fetcher: serves `content[start..]` as 206, or the whole
+    /// content as 200 when `ignore_range` is set.
+    struct FakeFetcher {
+        content: Vec<u8>,
+        ignore_range: bool,
+        calls: Vec<u64>,
+    }
+
+    impl FakeFetcher {
+        fn new(content: &[u8]) -> Self {
+            Self { content: content.to_vec(), ignore_range: false, calls: vec![] }
+        }
+    }
+
+    impl RangeFetcher for FakeFetcher {
+        fn fetch_range(&mut self, start: u64) -> Result<RangeResponse, UpdateError> {
+            self.calls.push(start);
+            if self.ignore_range {
+                return Ok(RangeResponse::Full(self.content.clone()));
+            }
+            Ok(RangeResponse::Partial(self.content[start as usize..].to_vec()))
+        }
+    }
+
+    #[test]
+    fn range_header_is_open_ended() {
+        assert_eq!(range_header(0), "bytes=0-");
+        assert_eq!(range_header(1024), "bytes=1024-");
+    }
+
+    #[test]
+    fn resume_offset_is_file_size_or_zero() {
+        let dest = temp_file("offset");
+        assert_eq!(resume_offset(&dest), 0);
+        fs::write(&dest, b"0123456789").unwrap();
+        assert_eq!(resume_offset(&dest), 10);
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn progress_percent_saturates() {
+        assert_eq!(progress_percent(0, 100), 0);
+        assert_eq!(progress_percent(50, 100), 50);
+        assert_eq!(progress_percent(100, 100), 100);
+        assert_eq!(progress_percent(150, 100), 100);
+        assert_eq!(progress_percent(5, 0), 100);
+    }
+
+    #[test]
+    fn resumes_a_partial_download_and_verifies_the_hash() {
+        let dest = temp_file("resume");
+        let content: Vec<u8> = (0..100u8).collect();
+        let sha = hash_hex(&content);
+        // Pre-existing partial: first 40 bytes already on disk.
+        fs::write(&dest, &content[..40]).unwrap();
+
+        let mut fetcher = FakeFetcher::new(&content);
+        let mut progress = Vec::new();
+        download_resumable(&dest, 100, &sha, |d, t| progress.push((d, t)), &mut fetcher)
+            .expect("resumed download succeeds");
+
+        // Fetcher was asked to continue at the resume offset, once.
+        assert_eq!(fetcher.calls, vec![40]);
+        assert_eq!(fs::read(&dest).unwrap(), content);
+        // Progress walks 40 → 100.
+        assert_eq!(progress, vec![(40, 100), (100, 100)]);
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn full_response_restarts_from_scratch() {
+        let dest = temp_file("restart");
+        let content = b"the-real-content".to_vec();
+        // Stale partial with unrelated bytes.
+        fs::write(&dest, b"stale").unwrap();
+
+        let mut fetcher = FakeFetcher { content: content.clone(), ignore_range: true, calls: vec![] };
+        download_resumable(
+            &dest,
+            content.len() as u64,
+            &hash_hex(&content),
+            |_, _| {},
+            &mut fetcher,
+        )
+        .expect("restart download succeeds");
+
+        // Server ignored Range → fetched from 0, final file is the full body.
+        assert_eq!(fetcher.calls, vec![0]);
+        assert_eq!(fs::read(&dest).unwrap(), content);
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn stale_partial_larger_than_total_restarts_at_zero() {
+        let dest = temp_file("stale");
+        let content = b"tiny".to_vec();
+        fs::write(&dest, b"much-longer-than-total").unwrap();
+
+        let mut fetcher = FakeFetcher::new(&content);
+        download_resumable(
+            &dest,
+            content.len() as u64,
+            &hash_hex(&content),
+            |_, _| {},
+            &mut fetcher,
+        )
+        .expect("stale partial is scratched and restarted");
+        assert_eq!(fetcher.calls, vec![0]);
+        assert_eq!(fs::read(&dest).unwrap(), content);
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn size_mismatch_from_server_is_a_hash_error() {
+        let dest = temp_file("sizemismatch");
+        let content = b"12345678".to_vec();
+        fs::write(&dest, b"1234").unwrap(); // resume offset 4
+
+        struct ShortFetcher;
+        impl RangeFetcher for ShortFetcher {
+            fn fetch_range(&mut self, _start: u64) -> Result<RangeResponse, UpdateError> {
+                Ok(RangeResponse::Partial(b"567".to_vec())) // 3 bytes → 7 total ≠ 8
+            }
+        }
+        assert!(matches!(
+            download_resumable(&dest, 8, &hash_hex(&content), |_, _| {}, &mut ShortFetcher),
+            Err(UpdateError::Hash(_))
+        ));
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn final_hash_mismatch_is_rejected() {
+        let dest = temp_file("badhash");
+        struct WrongFetcher;
+        impl RangeFetcher for WrongFetcher {
+            fn fetch_range(&mut self, _start: u64) -> Result<RangeResponse, UpdateError> {
+                Ok(RangeResponse::Full(b"not-what-the-manifest-said".to_vec()))
+            }
+        }
+        assert!(matches!(
+            download_resumable(&dest, 26, &hash_hex(b"expected"), |_, _| {}, &mut WrongFetcher),
+            Err(UpdateError::Hash(_))
+        ));
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
     }
 }

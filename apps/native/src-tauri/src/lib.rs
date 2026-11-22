@@ -108,6 +108,7 @@ pub fn run() {
             focus::focus_lock_release,
             focus::focus_lock_status,
             update_confirm_boot_ready,
+            update_download_file,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -270,4 +271,45 @@ fn setup_desktop_shell(app: &mut tauri::App) -> Result<(), tauri::Error> {
 #[tauri::command]
 pub fn update_confirm_boot_ready(app: tauri::AppHandle) -> Result<(), String> {
     update::confirm_boot_ready(&slot_updates_dir(&app)).map_err(|e| e.to_string())
+}
+
+/// Resumable ranged download of one update artifact (O1-16), run from the
+/// webview's client service. Progress is emitted to ALL windows as
+/// `update://download-progress` events (`{ downloaded, total }`) so the
+/// update banner can show a live bar (O1-15/O1-27).
+///
+/// Defense in depth: `dest` must live inside `<app_data_dir>/updates` — the
+/// webview cannot aim this command at arbitrary filesystem paths.
+#[tauri::command]
+pub fn update_download_file(
+    app: tauri::AppHandle,
+    url: String,
+    dest: String,
+    total: u64,
+    expected_sha256: String,
+) -> Result<(), String> {
+    use tauri::Emitter;
+
+    let base = slot_updates_dir(&app);
+    let dest_path = std::path::PathBuf::from(&dest);
+    if !dest_path.starts_with(&base) {
+        return Err(format!(
+            "update download destination must live under {:?}",
+            base
+        ));
+    }
+    let handle = app.clone();
+    update::download_resumable_http(
+        &dest_path,
+        &url,
+        total,
+        &expected_sha256,
+        move |downloaded, total| {
+            let _ = handle.emit(
+                "update://download-progress",
+                serde_json::json!({ "downloaded": downloaded, "total": total }),
+            );
+        },
+    )
+    .map_err(|e| e.to_string())
 }
