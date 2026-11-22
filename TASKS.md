@@ -77,7 +77,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 
 - [x] S3-01 | SP | DB schema batch A (LEAD applies migration): taskProjects, taskTags, taskItems (parentId, projectId, tagIds JSON?→link table, estimateMs, timeSpentOnDay JSON, due, dueWithTime, deadline, priority, isDone, doneAt, wonthado, repeatCfgId, notes, order), taskRepeatCfgs, taskReminders | migration idempotent; drizzle types export | packages/db/src/schema.ts + migrations/0xx-sp-tasks.ts | W2: migration 031 + tests + SHARED_CHANGES paste; LEAD applies schema.ts batch |
 - [x] S3-02 | SP | DB schema batch B (LEAD applies): taskTimeLogs (per task/day/session ms), taskSections, taskAttachments, taskArchiveTiers, simpleCounters, metricDays, taskViews(boards) JSON | migration + types | packages/db/src/schema.ts + migrations/0xx-sp-views.ts | S3-01 |
-- [ ] S3-03 | SP | Core task domain: model + ops (create/update/complete/reopen/duplicate/bulk/validate) pure functions | unit tests | packages/core/src/tasks/index.ts + tests | S3-01 |
+- [~W2] S3-03 | SP | Core task domain: model + ops (create/update/complete/reopen/duplicate/bulk/validate) pure functions | unit tests | packages/core/src/tasks/index.ts + tests | S3-01 |
 - [ ] S3-04 | SP | Core subtasks: one nesting level, parent aggregates time/estimate | unit tests | packages/core/src/tasks/subtasks.ts | S3-03 |
 - [ ] S3-05 | SP | Core projects: CRUD, backlog flag, archive/duplicate, notes field | unit tests | packages/core/src/tasks/projects.ts | S3-03 |
 - [ ] S3-06 | SP | Core tags: CRUD, colors, OR/AND filter, "no tags", Today virtual tag | unit tests | packages/core/src/tasks/tags.ts | S3-03 |
