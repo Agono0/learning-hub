@@ -5,9 +5,10 @@
  *
  * The SP-parity quick-capture loop: add via short syntax (AddTaskBar),
  * scan the open list, complete / reorder / multi-select in place, and open
- * the detail panel for everything deeper. Sections render as a management
- * strip (the 031 schema has no task→section column yet — see the S3-20
- * handoff; the strip is honest about that).
+ * the detail panel for everything deeper. Sections are real list dividers
+ * (migration 034's `task_items.section_id`): unsectioned tasks first, then
+ * each section header with its tasks — dropping a row onto a header assigns
+ * it (SP's drag-into-section).
  *
  * SSR-safe: all reads go through react-query (pending → skeleton), the
  * clock arrives in an effect (`today === ''` until hydration), and nothing
@@ -35,6 +36,9 @@ interface ProjectsResponse {
 }
 interface SectionsResponse {
   sections: Array<{ id: number; name: string; sortOrder: number }>
+}
+interface AssignmentsResponse {
+  assignments: Array<{ taskId: number; sectionId: number }>
 }
 
 export default function TasksPage() {
@@ -66,9 +70,14 @@ export default function TasksPage() {
     queryKey: ['tasks-sections'],
     queryFn: () => apiGet<SectionsResponse>('/api/tasks-sections'),
   })
+  const assignmentsQ = useQuery({
+    queryKey: ['tasks-sections', 'assignments'],
+    queryFn: () => apiGet<AssignmentsResponse>('/api/tasks-sections/assignments'),
+  })
 
   function invalidate(): void {
     void qc.invalidateQueries({ queryKey: ['tasks'] })
+    void qc.invalidateQueries({ queryKey: ['tasks-sections'] })
   }
 
   const completeM = useMutation({
@@ -130,6 +139,13 @@ export default function TasksPage() {
     onError: (e) => setPageError(e instanceof Error ? e.message : 'Could not add the section'),
   })
 
+  const sectionAssignM = useMutation({
+    mutationFn: (args: { id: number; sectionId: number | null }) =>
+      apiSend(`/api/tasks/${args.id}/section`, 'PUT', { sectionId: args.sectionId }),
+    onSuccess: invalidate,
+    onError: (e) => setPageError(e instanceof Error ? e.message : 'Could not move the task'),
+  })
+
   const tasks = tasksQ.data?.tasks ?? []
   const tagNames = useMemo(() => {
     const map = new Map<number, string>()
@@ -138,6 +154,16 @@ export default function TasksPage() {
   }, [tagsQ.data])
   const ids = useMemo(() => tasks.map((t) => t.id), [tasks])
   const openTask = openTaskId !== null ? (tasks.find((t) => t.id === openTaskId) ?? null) : null
+  const sectionOf = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const a of assignmentsQ.data?.assignments ?? []) map.set(a.taskId, a.sectionId)
+    return map
+  }, [assignmentsQ.data])
+  const sections = useMemo(
+    () => (sectionsQ.data?.sections ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder),
+    [sectionsQ.data],
+  )
+  const unsectioned = useMemo(() => tasks.filter((t) => !sectionOf.has(t.id)), [tasks, sectionOf])
 
   function move(id: number, direction: -1 | 1): void {
     const idx = ids.indexOf(id)
@@ -184,19 +210,6 @@ export default function TasksPage() {
         />
       </Panel>
 
-      {(sectionsQ.data?.sections.length ?? 0) > 0 && (
-        <div className="scroll-x mb-4 flex gap-2" aria-label="Sections">
-          {sectionsQ.data?.sections.map((s) => (
-            <span
-              key={s.id}
-              className="shrink-0 rounded-full bg-neutral-100 px-3 py-1.5 text-sm font-medium text-body dark:bg-(--hub-panel-2)"
-            >
-              {s.name}
-            </span>
-          ))}
-        </div>
-      )}
-
       {loading ? (
         <ul className="flex flex-col gap-2" aria-hidden>
           {Array.from({ length: 4 }, (_, i) => (
@@ -211,26 +224,81 @@ export default function TasksPage() {
           line.
         </EmptyState>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              tagNames={tagNames}
-              today={today}
-              selected={selected.has(task.id)}
-              onToggleSelect={toggleSelect}
-              onComplete={(id) => completeM.mutate(id)}
-              onOpen={setOpenTaskId}
-              onDuplicate={(id) => duplicateM.mutate(id)}
-              onDelete={(id) => deleteM.mutate(id)}
-              onMove={move}
-              onDragStart={setDraggingId}
-              onDropOnto={dropOnto}
-              dragging={draggingId === task.id}
-            />
-          ))}
-        </ul>
+        <div className="flex flex-col gap-2">
+          {unsectioned.length > 0 && (
+            <ul className="flex flex-col gap-2">
+              {unsectioned.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  tagNames={tagNames}
+                  today={today}
+                  selected={selected.has(task.id)}
+                  onToggleSelect={toggleSelect}
+                  onComplete={(id) => completeM.mutate(id)}
+                  onOpen={setOpenTaskId}
+                  onDuplicate={(id) => duplicateM.mutate(id)}
+                  onDelete={(id) => deleteM.mutate(id)}
+                  onMove={move}
+                  onDragStart={setDraggingId}
+                  onDropOnto={dropOnto}
+                  dragging={draggingId === task.id}
+                />
+              ))}
+            </ul>
+          )}
+          {sections.map((section) => {
+            const sectionTasks = tasks.filter((t) => sectionOf.get(t.id) === section.id)
+            return (
+              <section key={section.id} className="flex flex-col gap-2">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Section ${section.name} — drop tasks here to assign`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    if (draggingId !== null) {
+                      sectionAssignM.mutate({ id: draggingId, sectionId: section.id })
+                      setDraggingId(null)
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') e.preventDefault()
+                  }}
+                  className="flex min-h-[44px] items-center gap-2 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm font-semibold text-body transition-colors dark:border-(--hub-border) hover:border-(--ac-strong)"
+                >
+                  {section.name}
+                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-tertiary dark:bg-(--hub-panel-2)">
+                    {sectionTasks.length}
+                  </span>
+                </div>
+                {sectionTasks.length > 0 && (
+                  <ul className="flex flex-col gap-2">
+                    {sectionTasks.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        tagNames={tagNames}
+                        today={today}
+                        selected={selected.has(task.id)}
+                        onToggleSelect={toggleSelect}
+                        onComplete={(id) => completeM.mutate(id)}
+                        onOpen={setOpenTaskId}
+                        onDuplicate={(id) => duplicateM.mutate(id)}
+                        onDelete={(id) => deleteM.mutate(id)}
+                        onMove={move}
+                        onDragStart={setDraggingId}
+                        onDropOnto={dropOnto}
+                        dragging={draggingId === task.id}
+                        onUnsection={sectionAssignM.isPending ? undefined : (id) => sectionAssignM.mutate({ id, sectionId: null })}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )
+          })}
+        </div>
       )}
 
       <div className="mt-6 flex items-end gap-2">

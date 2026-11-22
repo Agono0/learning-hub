@@ -24,6 +24,11 @@ async function tempDir(): Promise<string> {
  * Write a fake `bsdiff` binary (a node script with a shebang + exec bit) that
  * behaves according to `mode` — the tests only run on POSIX CI, where an
  * executable script is a valid --bsdiff-bin target.
+ *
+ * argv layout inside the stub: `[node, script, base, target, patch]` — the
+ * PATCH path is `process.argv[4]` (the old stub wrote argv[3], silently
+ * OVERWRITING the target fixture and leaving the patch empty — the CI
+ * "empty patch" failures).
  */
 async function fakeBsdiff(dir: string, mode: 'ok' | 'empty' | 'fail'): Promise<string> {
   const bin = path.join(dir, `bsdiff-${mode}.js`)
@@ -31,8 +36,8 @@ async function fakeBsdiff(dir: string, mode: 'ok' | 'empty' | 'fail'): Promise<s
     mode === 'fail'
       ? '#!/usr/bin/env node\nconsole.error("boom"); process.exit(1)\n'
       : mode === 'empty'
-        ? `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(process.argv[3], '')\n`
-        : `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(process.argv[3], 'PATCHDATA'.repeat(64))\n`
+        ? `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(process.argv[4], '')\n`
+        : `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(process.argv[4], 'PATCHDATA'.repeat(64))\n`
   await writeFile(bin, body)
   await chmod(bin, 0o755)
   return bin
@@ -84,7 +89,8 @@ describe('generate-apk-delta script (O1-21)', () => {
         expect(report.label).toBe('arm64-v8a')
         expect(report.base.bytes).toBe(4096)
         expect(report.target.bytes).toBe(6144)
-        expect(report.patch.bytes).toBe(64 * 10)
+        // 'PATCHDATA' is 9 chars × 64 repeats.
+        expect(report.patch.bytes).toBe(9 * 64)
         expect(report.patch.path).toBe(path.join(out, 'delta-arm64-v8a.patch'))
         expect(report.ratio).toBeCloseTo(report.patch.bytes / 6144, 4)
       },
