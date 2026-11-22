@@ -305,3 +305,39 @@ export function updateApplyGate(session: MaxFocusSession | null): UpdateApplyDec
   if (session.state === 'ended') return { allowed: true, reason: 'session-ended' }
   return { allowed: false, reason: 'session-active' }
 }
+
+// ─── Tamper detection (M2-20) ────────────────────────────────────────────────
+
+/**
+ * Returns the required permissions MISSING from the platform-reported
+ * `granted` list (case-insensitive, whitespace-trimmed — Android names like
+ * `SYSTEM_ALERT_WINDOW` arrive in whatever case the plugin reports).
+ *
+ * The platform layer (Rust/Kotlin bridges) polls its permission state each
+ * tick; a non-empty result means the user revoked something mid-session and
+ * the caller MUST end immediately with
+ * `forceUnlockSession(session, clock, 'tamper')` — after which the handler
+ * logs {@link tamperFrictionReason} into `friction_events` (append-only).
+ * Clock-change tamper detection lives in {@link advanceSession} (monotonic
+ * anchor vs wall clock); this function covers the permission half of M2-20.
+ */
+export function missingRequiredPermissions(
+  granted: readonly string[],
+  required: readonly string[],
+): string[] {
+  const have = new Set(granted.map((g) => g.trim().toLowerCase()))
+  return required.filter((r) => !have.has(r.trim().toLowerCase()))
+}
+
+/**
+ * Human-readable reason for the friction log after a tamper end.
+ * - missing permissions → "permissions revoked: a, b";
+ * - empty list → the clock-tamper case (already detected by
+ *   {@link advanceSession}'s monotonic-anchor divergence).
+ */
+export function tamperFrictionReason(missing: readonly string[]): string {
+  if (missing.length === 0) {
+    return 'clock tamper: wall clock diverged from the monotonic anchor'
+  }
+  return `permissions revoked: ${missing.join(', ')}`
+}

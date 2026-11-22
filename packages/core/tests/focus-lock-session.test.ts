@@ -16,8 +16,10 @@ import {
   forceUnlockSession,
   maxFocusSessionSchema,
   maxSessionStartSchema,
+  missingRequiredPermissions,
   requestSessionExit,
   startMaxFocusSession,
+  tamperFrictionReason,
   updateApplyGate,
   type MaxFocusSession,
   type SessionClock,
@@ -341,5 +343,42 @@ describe('update-apply gate (O1-06) — never apply during Max Focus', () => {
   it('refuses apply for a hard-cap-extended session that is still running', () => {
     const extended = extendMaxSession(startSession(200), clockAt(0), { extraMinutes: 40 })
     expect(updateApplyGate(extended)).toEqual({ allowed: false, reason: 'session-active' })
+  })
+})
+
+describe('tamper detection (M2-20) — permissions revoked + friction reasons', () => {
+  const REQUIRED = ['overlay', 'device_admin', 'usage_stats']
+
+  it('reports missing permissions case-insensitively and trims noise', () => {
+    expect(
+      missingRequiredPermissions([' Overlay ', 'DEVICE_ADMIN', 'usage-stats'], REQUIRED),
+    ).toEqual(['usage_stats'])
+    expect(
+      missingRequiredPermissions(['overlay', 'device_admin', 'usage_stats'], REQUIRED),
+    ).toEqual([])
+    expect(missingRequiredPermissions([], REQUIRED)).toEqual(REQUIRED)
+  })
+
+  it('classifies the friction reason for revoked permissions', () => {
+    const missing = missingRequiredPermissions(['device_admin'], REQUIRED)
+    expect(missing).toEqual(['overlay', 'usage_stats'])
+    expect(tamperFrictionReason(missing)).toBe('permissions revoked: overlay, usage_stats')
+    expect(tamperFrictionReason([])).toBe(
+      'clock tamper: wall clock diverged from the monotonic anchor',
+    )
+  })
+
+  it('ends the session with reason tamper when permissions are revoked mid-session', () => {
+    const s = startSession(25)
+    // Tick 1: all granted — session continues.
+    expect(advanceSession(s, clockAt(60_000)).session.state).toBe('locked')
+    // Tick 2: the user revoked device_admin → platform detects, force-ends.
+    const missing = missingRequiredPermissions(['overlay'], REQUIRED)
+    const ended = forceUnlockSession(s, clockAt(120_000), 'tamper')
+    expect(ended.state).toBe('ended')
+    expect(ended.unlockReason).toBe('tamper')
+    expect(tamperFrictionReason(missing)).toBe('permissions revoked: device_admin, usage_stats')
+    // The tamper end is terminal (idempotent advance).
+    expect(advanceSession(ended, clockAt(180_000)).events).toEqual([])
   })
 })
