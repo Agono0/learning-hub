@@ -96,8 +96,8 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
 - [x] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
 - [x] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
-- [ ] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
-- [ ] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
+- [~W1] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
+- [~W1] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
 - [x] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | core/boards.ts engine + app/boards/page.tsx + lib/board-views (device-local custom views) + nav entry | S3-17 |
 - [x] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
 - [x] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
@@ -110,7 +110,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-33 | SP | Idle detection (desktop Tauri): subtract idle, classify dialog; suppress during Max Focus | Rust command + core + UI | apps/native/src-tauri/src/idle.rs, core | S3-32 |
 - [ ] S3-34 | SP | Max Focus wiring: start focus session from task; task auto-tracked during lock | core glue + UI | focus-lock + tasks | M2-01, S3-32 |
 - [ ] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 |
-- [~W3] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts | S3-03 |
+- [x] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts (bfddedc) + AddTaskBar onPaste (in 8b24d80 batch) | S3-03 |
 - [ ] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |
 - [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
 - [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |  W1: Tasks/Schedule shortLabels added (pages exist); Projects/Tags entries DEFERRED to S3-22/S3-23 — their pages do not exist yet and nav law forbids dead links
