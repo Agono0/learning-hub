@@ -9,7 +9,17 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
-use std::time::{Duration, Instant};
+// Duration feeds only the Windows watchdog cadence + heartbeat windows.
+#[cfg(windows)]
+use std::time::Duration;
+use std::time::Instant;
+
+// Windows-desktop lock-window machinery (fullscreen windows, keyboard hook,
+// refocus guard, M2-05..M2-09). The module is compiled ONLY on Windows — the
+// session commands below fall back to status-only implementations elsewhere
+// (mobile / non-Windows desktop), where Max Focus runs on the web-layer gates.
+#[cfg(windows)]
+use crate::lock_win;
 
 const LOOPBACK_PORT: u16 = 47615;
 
@@ -464,7 +474,7 @@ fn session_file_path(app: &tauri::AppHandle) -> std::path::PathBuf {
 /// and calls `focus_session_apply` again; this only restores the truth for
 /// `focus_session_status` so the UI never shows "unlocked" after a restart.
 fn restore_persisted_max_session(app: &tauri::AppHandle) {
-    if max_session().lock().map(|mut c| c.is_some()).unwrap_or(true) {
+    if max_session().lock().map(|c| c.is_some()).unwrap_or(true) {
         return; // memory already holds a session, or state poisoned
     }
     if let Some(snapshot) = read_session_file(&session_file_path(app)) {
@@ -472,6 +482,55 @@ fn restore_persisted_max_session(app: &tauri::AppHandle) {
             *current = Some(snapshot);
         }
     }
+}
+
+// Platform seam for the lock WINDOWS (M2-05): Windows desktop applies real
+// fullscreen lock windows via `lock_win`; every other target (mobile,
+// non-Windows desktop) no-ops the window part and reports unlocked=false —
+// enforcement there comes from the web-layer gates + the Android actuator
+// commands below.
+
+/// Apply the lock windows for a session snapshot (Windows desktop; no-op
+/// elsewhere).
+#[cfg(windows)]
+fn apply_lock_windows_for_session(
+    app: &tauri::AppHandle,
+    allowed_apps: &[String],
+    admin_hardening: bool,
+) -> Result<(), String> {
+    lock_win::apply_lock_windows_with_allowlist_and_tier(app, allowed_apps, admin_hardening)
+}
+
+#[cfg(not(windows))]
+fn apply_lock_windows_for_session(
+    _app: &tauri::AppHandle,
+    _allowed_apps: &[String],
+    _admin_hardening: bool,
+) -> Result<(), String> {
+    Ok(())
+}
+
+/// True while at least one lock window is alive (Windows desktop; false
+/// elsewhere).
+#[cfg(windows)]
+fn lock_windows_active(app: &tauri::AppHandle) -> bool {
+    lock_win::is_locked(app)
+}
+
+#[cfg(not(windows))]
+fn lock_windows_active(_app: &tauri::AppHandle) -> bool {
+    false
+}
+
+/// Release the lock windows (Windows desktop; no-op elsewhere).
+#[cfg(windows)]
+fn release_lock_windows_for_session(app: &tauri::AppHandle) -> Result<(), String> {
+    lock_win::release_lock_windows(app)
+}
+
+#[cfg(not(windows))]
+fn release_lock_windows_for_session(_app: &tauri::AppHandle) -> Result<(), String> {
+    Ok(())
 }
 
 /// Apply the Max Focus lock: fullscreen windows per monitor + keyboard hook +
@@ -483,11 +542,7 @@ pub async fn focus_session_apply(
     snapshot: MaxSessionSnapshot,
 ) -> Result<serde_json::Value, String> {
     let admin_hardening = snapshot.tier.as_deref() == Some("windows-admin");
-    lock_win::apply_lock_windows_with_allowlist_and_tier(
-        &app,
-        &snapshot.allowed_apps,
-        admin_hardening,
-    )?;
+    apply_lock_windows_for_session(&app, &snapshot.allowed_apps, admin_hardening)?;
     {
         let mut current = max_session().lock().map_err(|_| "max session state poisoned")?;
         *current = Some(snapshot.clone());
@@ -497,7 +552,7 @@ pub async fn focus_session_apply(
     let _ = app.emit("max-focus://applied", &snapshot);
     Ok(serde_json::json!({
         "applied": true,
-        "locked": lock_win::is_locked(&app),
+        "locked": lock_windows_active(&app),
         "sessionId": snapshot.session_id,
     }))
 }
@@ -512,7 +567,7 @@ pub async fn focus_session_status(app: tauri::AppHandle) -> Result<serde_json::V
         .map_err(|_| "max session state poisoned")?
         .clone();
     Ok(serde_json::json!({
-        "locked": lock_win::is_locked(&app),
+        "locked": lock_windows_active(&app),
         "keyboardHookActive": keyboard_hook_active(),
         "refocusGuardActive": refocus_guard_active(),
         "session": current,
@@ -532,7 +587,7 @@ pub async fn focus_session_release(
             "unknown unlock reason '{reason}' — expected timer|pin|battery|failure|tamper"
         ));
     }
-    lock_win::release_lock_windows(&app)?;
+    release_lock_windows_for_session(&app)?;
     clear_session_file(&session_file_path(&app));
     let session = {
         let mut current = max_session().lock().map_err(|_| "max session state poisoned")?;
@@ -564,6 +619,259 @@ fn refocus_guard_active() -> bool {
 #[cfg(not(windows))]
 fn refocus_guard_active() -> bool {
     false
+}
+
+// ─── Max Focus Android bridge (M2-10/M2-11/M2-12/M2-14/M2-19/M2-20) ─────────
+//
+// The platform ACTUATORS behind the web session machine (M2-01): Device Owner
+// status, Lock Task pinning, the accessibility watcher, the session
+// foreground service + clock, the anti-uninstall gate and battery reading —
+// all through the Kotlin `MaxFocusAndroidPlugin` / `MaxFocusLockTask`
+// classes. Android-only; other hosts answer with a clean error so the UI can
+// explain the platform gap instead of hanging.
+
+/// Managed handle to the Kotlin `MaxFocusAndroidPlugin` (device-owner status,
+/// watcher, session service; M2-11's Lock Task lives in the same plugin
+/// family).
+#[cfg(target_os = "android")]
+#[derive(Clone)]
+struct MaxFocusAndroid(tauri::plugin::PluginHandle<tauri::Wry>);
+
+/// Registers the app-local Kotlin plugin (gen/android/.../MaxFocusAndroidPlugin.kt).
+#[cfg(target_os = "android")]
+pub fn focus_android_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::<tauri::Wry>::new("max-focus-android")
+        .setup(|app, api| {
+            use tauri::Manager;
+            let handle =
+                api.register_android_plugin("dev.learninghub.app", "MaxFocusAndroidPlugin")?;
+            app.manage(MaxFocusAndroid(handle));
+            // Lock Task Mode (M2-11) — separate class, same plugin family.
+            let lock_task =
+                api.register_android_plugin("dev.learninghub.app", "MaxFocusLockTask")?;
+            app.manage(MaxFocusLockTask(lock_task));
+            Ok(())
+        })
+        .build()
+}
+
+/// Managed handle to the Kotlin `MaxFocusLockTask` class (M2-11).
+#[cfg(target_os = "android")]
+#[derive(Clone)]
+struct MaxFocusLockTask(tauri::plugin::PluginHandle<tauri::Wry>);
+
+/// Device Owner provisioning status (M2-10): whether Learning HUB is Device
+/// Owner on this device (Tier 1) and whether Lock Task is permitted (M2-11).
+/// The SETUP WIZARD (focus page) shows the exact ADB provisioning command —
+/// provisioning itself must run from a computer (`dpm set-device-owner`).
+#[tauri::command]
+pub async fn focus_android_provision_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("deviceOwnerStatus", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("device owner status is Android-only".to_string())
+    }
+}
+
+/// Pins the foreground to the session's allowlisted packages (M2-11, Tier 1:
+/// Device Owner only — the Kotlin side rejects otherwise). The emergency
+/// dialer package MUST be part of `packages` (M2-15).
+#[tauri::command]
+pub async fn focus_android_start_lock_task(
+    app: tauri::AppHandle,
+    packages: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusLockTask>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "startLockTask",
+                serde_json::json!({ "packages": packages }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, packages);
+        Err("Lock Task Mode is Android-only".to_string())
+    }
+}
+
+/// Unpins the foreground (session end / emergency exit). Idempotent.
+#[tauri::command]
+pub async fn focus_android_stop_lock_task(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusLockTask>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("stopLockTask", ())
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("Lock Task Mode is Android-only".to_string())
+    }
+}
+
+/// Arm/disarm the Tier 2 AccessibilityService watcher (M2-12) for the CURRENT
+/// session: `active` + the allowlisted packages. The web layer calls this on
+/// Max Focus start/end; the service stays inert whenever active=false.
+#[tauri::command]
+pub async fn focus_android_set_watch_state(
+    app: tauri::AppHandle,
+    active: bool,
+    packages: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "setWatchState",
+                serde_json::json!({ "active": active, "packages": packages }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, active, packages);
+        Err("the accessibility watcher is Android-only".to_string())
+    }
+}
+
+/// Deep-link to the system accessibility settings (Tier 2 grant screen).
+/// The DISCLOSURE component (MaxFocusDisclosures.tsx) must be shown BEFORE
+/// this is invoked — store policy requires informed consent.
+#[tauri::command]
+pub async fn focus_android_open_accessibility_settings(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("openAccessibilitySettings", ())
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("accessibility settings are Android-only".to_string())
+    }
+}
+
+/// Start/stop the Max Focus session foreground service (M2-14): the persistent
+/// "session running" notification + boot-resume expectation. `active=true`
+/// starts (with KEY_RESUME_EXPECTED), `false` stops and clears it.
+#[tauri::command]
+pub async fn focus_android_session_service(app: tauri::AppHandle, active: bool) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                if active { "sessionServiceStart" } else { "sessionServiceStop" },
+                (),
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, active);
+        Err("the session service is Android-only".to_string())
+    }
+}
+
+/// Monotonic elapsed ms since the running session's anchor (M2-14/M2-20):
+/// elapsedRealtime is sleep-inclusive and wall-clock-tamper-proof.
+#[tauri::command]
+pub async fn focus_android_session_elapsed(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("sessionElapsed", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("the session clock is Android-only".to_string())
+    }
+}
+
+/// Anti-uninstall hard gate (M2-14, Device Owner only): blocks uninstalling
+/// Learning HUB during a protected session. The release path ALWAYS pairs
+/// this with `active=false`; M2-24's boot reconcile re-asserts the state.
+#[tauri::command]
+pub async fn focus_android_set_anti_uninstall(
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "setAntiUninstall",
+                serde_json::json!({ "enabled": enabled }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, enabled);
+        Err("anti-uninstall is Android-only".to_string())
+    }
+}
+
+/// Battery reading for the M2-19 auto-unlock gate (Android: the sticky
+/// battery broadcast; Windows lands with the Win32 power feature — see
+/// docs/SHARED_CHANGES.md). The caller runs the pure core gate
+/// `shouldAutoUnlockBattery` and, when it fires, calls
+/// `forceUnlockSession(session, clock, 'battery')`.
+#[tauri::command]
+pub async fn focus_android_battery_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("batteryStatus", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("the battery monitor is Android-only (Windows lands with the power feature)".to_string())
+    }
 }
 
 #[cfg(test)]

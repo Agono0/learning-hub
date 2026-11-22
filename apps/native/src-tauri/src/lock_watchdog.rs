@@ -38,7 +38,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub const WATCHDOG_INTERVAL_MS: u64 = 2_000;
 
 /// The registry path of the DisableTaskMgr value (UTF-16, null-terminated).
-const POLICY_SUBKEY: &[u8] = b"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\System\0";
+const POLICY_SUBKEY: &[u8] = b"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\0";
 const POLICY_VALUE: &[u8] = b"DisableTaskMgr\0";
 
 const HKEY_CURRENT_USER: isize = 0x8000_0001;
@@ -99,7 +99,7 @@ pub fn set_disable_task_mgr(enabled: bool) -> bool {
                 value_name.as_ptr(),
                 0,
                 REG_DWORD,
-                &data.to_ne_bytes().as_ptr().cast(),
+                data.to_ne_bytes().as_ptr().cast(),
                 4,
             ) == 0;
             RegCloseKey(hkey);
@@ -162,7 +162,12 @@ static HARDENING: std::sync::Mutex<Option<TaskMgrGuard>> = std::sync::Mutex::new
 /// acquire while hardened is a no-op success). Returns whether the policy
 /// write succeeded (false = tier-1 fallback; the session proceeds either
 /// way — hardening is best-effort BY DESIGN).
-pub fn acquire_hardening(enabled: bool) -> bool {
+///
+/// `_enabled` is the caller's elevation decision, kept for call-site
+/// readability: acquire happens only while an opted-in (`windows-admin`)
+/// session runs, and the hardening itself is always ON for as long as the
+/// guard is held — dropping it restores the policy.
+pub fn acquire_hardening(_enabled: bool) -> bool {
     let mut slot = HARDENING.lock().unwrap_or_else(|e| e.into_inner());
     if slot.is_some() {
         return true;

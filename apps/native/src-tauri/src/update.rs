@@ -231,7 +231,8 @@ pub fn fetch_pointer(base_url: &str, channel: UpdateChannel) -> Result<UpdatePoi
 }
 
 /// Fetches the signed manifest (`manifest_url`) plus its sidecar signature
-/// (`{manifest_url}.sig`, the base64 minisign signature blob).
+/// (`{manifest_url}.sig` — the tauri signer's artifact,
+/// `base64(minisign text)`; [`verify_minisign`] unwraps that layer).
 pub fn fetch_manifest(manifest_url: &str) -> Result<(UpdateManifest, String), UpdateError> {
     let manifest = parse_manifest(&http_get(manifest_url)?)?;
     let signature = http_get(&format!("{manifest_url}.sig"))?;
@@ -244,28 +245,81 @@ pub fn fetch_manifest(manifest_url: &str) -> Result<(UpdateManifest, String), Up
 
 // ─── Verification ────────────────────────────────────────────────────────────
 
+/// Minimal standard-alphabet base64 decoder for minisign artifacts.
+///
+/// Self-contained on purpose (no `base64` crate for one decode path — same
+/// pattern as `idle.rs`'s self-contained externs). Returns `None` on any
+/// invalid character; padding (`=`) may only terminate the input.
+fn base64_decode(input: &str) -> Option<Vec<u8>> {
+    const ALPHABET: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut reverse = [255u8; 256];
+    for (index, &c) in ALPHABET.iter().enumerate() {
+        reverse[c as usize] = index as u8;
+    }
+    let mut out = Vec::with_capacity(input.len() / 4 * 3);
+    let mut acc: u32 = 0;
+    let mut bits: u32 = 0;
+    for &byte in input.as_bytes() {
+        if byte == b'=' {
+            break; // padding — only valid as a terminator
+        }
+        let value = reverse[byte as usize];
+        if value == 255 {
+            return None;
+        }
+        acc = (acc << 6) | value as u32;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push(((acc >> bits) & 0xFF) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    Some(out)
+}
+
+/// The minisign TEXT (comment + base64 lines) behind a wire artifact.
+///
+/// The nightly CI signer (O1-08) is the tauri CLI, which wraps the minisign
+/// text in ONE layer of base64 — both the `.sig` release assets and the
+/// updater public key committed to `tauri.conf.json` are
+/// `base64(minisign text)`. Texts that already start with the minisign
+/// untrusted-comment line pass through unchanged.
+fn minisign_text(artifact: &str) -> String {
+    let trimmed = artifact.trim();
+    if trimmed.starts_with("untrusted comment:") {
+        return trimmed.to_string();
+    }
+    base64_decode(trimmed)
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .unwrap_or_else(|| trimmed.to_string())
+}
+
 /// Verifies a minisign (Ed25519) signature over `data`.
 ///
-/// `pub_key_b64` is the base64 blob `"Ed" || raw 32-byte public key` (committed
-/// to the repo / tauri.conf.json, O1-09); `signature_b64` is the base64 blob
-/// `"Ed" || u64be(trailer_len) || 64-byte signature || trusted comment` as
-/// produced by `minisign` and the nightly CI signer (O1-08).
+/// `pub_key_b64` is the updater public key as committed (O1-09:
+/// `tauri.conf.json` / `keys/lh-update.key.pub` — `base64(minisign .pub
+/// text)`); `signature_b64` is the nightly CI signer's sidecar artifact
+/// (O1-08: `base64(minisign .sig text)`). Both accept the already-unwrapped
+/// minisign text too. `minisign-verify` 0.2 parses the standard four-line
+/// minisign formats (`PublicKey::decode` / `Signature::decode`) and verifies
+/// the pre-hashed ("ED") signatures the tauri signer emits; legacy "Ed"
+/// signatures are refused (`allow_legacy = false`).
 pub fn verify_minisign(
     pub_key_b64: &str,
     signature_b64: &str,
     data: &[u8],
 ) -> Result<(), UpdateError> {
-    let pk = minisign_verify::PublicKey::from_base64(pub_key_b64.trim())
+    let pk = minisign_verify::PublicKey::decode(&minisign_text(pub_key_b64))
         .map_err(|e| UpdateError::InvalidInput(format!("public key: {e}")))?;
-    let sig = minisign_verify::Signature::from_base64(signature_b64.trim())
-        .map_err(|e| UpdateError::Signature(format!("signature blob: {e}")))?;
-    if sig.verify(&pk, data) {
-        Ok(())
-    } else {
-        Err(UpdateError::Signature(
-            "minisign signature did not verify — treating the document as hostile".into(),
+    let sig = minisign_verify::Signature::decode(&minisign_text(signature_b64))
+        .map_err(|e| UpdateError::Signature(format!("signature: {e}")))?;
+    pk.verify(data, &sig, false).map_err(|e| {
+        UpdateError::Signature(format!(
+            "minisign signature did not verify — treating the document as hostile ({e})"
         ))
-    }
+    })
 }
 
 /// Verifies the manifest signature over the EXACT bytes that were fetched —
@@ -986,6 +1040,153 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
     fs::read(slot_dir(base_dir, slot).join(rel_path)).ok()
 }
 
+// ─── App integration (commands + the lhslot serving seam) ────────────────────
+
+/// Updates base dir under app data: `<app_data_dir>/updates` (A/B slots plus
+/// the atomic pointer file). Lives here (not lib.rs) so the slot commands and
+/// the lhslot protocol share one definition.
+pub fn slot_updates_dir(app: &tauri::AppHandle) -> PathBuf {
+    use tauri::Manager;
+    app.path()
+        .app_data_dir()
+        .map(|dir| dir.join("updates"))
+        .unwrap_or_else(|_| std::env::temp_dir().join("learning-hub-updates"))
+}
+
+// ─── Android sideload bridge (O1-13) ────────────────────────────────────────
+//
+// The Rust side of the Android OTA path: the webview's client service
+// downloads + hash-verifies a per-ABI APK through `update_download_file`,
+// then installs it through the Kotlin `MaxUpdatePlugin` (PackageInstaller +
+// consent flow) via the commands below. Android-only — compiled out
+// elsewhere.
+
+/// Managed handle to the Kotlin `MaxUpdatePlugin` registered at setup
+/// (`max_update_plugin`). Android-only; the sideload commands reach the
+/// PackageInstaller flow through it.
+#[cfg(target_os = "android")]
+#[derive(Clone)]
+struct MaxUpdateAndroid(tauri::plugin::PluginHandle<tauri::Wry>);
+
+/// Registers the app-local Kotlin plugin (`gen/android/.../MaxUpdatePlugin.kt`,
+/// package `dev.learninghub.app`) so its PackageInstaller commands are
+/// reachable from Rust. Android-only — compiled out elsewhere.
+#[cfg(target_os = "android")]
+pub fn max_update_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::<tauri::Wry>::new("max-update")
+        .setup(|app, api| {
+            use tauri::Manager;
+            let handle =
+                api.register_android_plugin("dev.learninghub.app", "MaxUpdatePlugin")?;
+            app.manage(MaxUpdateAndroid(handle));
+            Ok(())
+        })
+        .build()
+}
+
+/// Android device facts for the sideload flow (O1-13): the device's primary
+/// ABI (per-ABI APK pick), SDK level and whether the user has already granted
+/// the per-app "install unknown apps" consent. Other hosts answer with a
+/// clean error — the client service only calls this on Android.
+#[tauri::command]
+pub async fn update_android_device_info(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxUpdateAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("deviceInfo", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("sideload updates are Android-only".to_string())
+    }
+}
+
+/// Installs a downloaded, sha256-verified per-ABI APK (O1-13). `apk_path` must
+/// be a file the Rust downloader produced (confined to the updates dir).
+///
+/// Never silent: when the per-app "install unknown apps" grant is missing, the
+/// Kotlin side opens the system consent screen and resolves
+/// `{ consentRequired: true }` (the UI explains and lets the user re-tap);
+/// after consent, `{ committed: true }` once the PackageInstaller session is
+/// committed — the SYSTEM installer dialog is the final consent stage.
+#[tauri::command]
+pub async fn update_install_android_apk(
+    app: tauri::AppHandle,
+    apk_path: String,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxUpdateAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "installApk",
+                serde_json::json!({ "apkPath": apk_path }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, apk_path);
+        Err("sideload updates are Android-only".to_string())
+    }
+}
+
+/// The webview reports it is up and serving (O1-05) — invoked once after the
+/// frontend mounts. Resets the boot-confirm counter of the active slot so a
+/// healthy boot never accumulates toward rollback. The client service wires
+/// this into its mount flow (apps/web/src/lib/updates.ts).
+#[tauri::command]
+pub fn update_confirm_boot_ready(app: tauri::AppHandle) -> Result<(), String> {
+    confirm_boot_ready(&slot_updates_dir(&app)).map_err(|e| e.to_string())
+}
+
+/// Resumable ranged download of one update artifact (O1-16), run from the
+/// webview's client service. Progress is emitted to ALL windows as
+/// `update://download-progress` events (`{ downloaded, total }`) so the
+/// update banner can show a live bar (O1-15/O1-27).
+///
+/// Defense in depth: `dest` must live inside `<app_data_dir>/updates` — the
+/// webview cannot aim this command at arbitrary filesystem paths.
+#[tauri::command]
+pub fn update_download_file(
+    app: tauri::AppHandle,
+    url: String,
+    dest: String,
+    total: u64,
+    expected_sha256: String,
+) -> Result<(), String> {
+    use tauri::Emitter;
+
+    let base = slot_updates_dir(&app);
+    let dest_path = std::path::PathBuf::from(&dest);
+    if !dest_path.starts_with(&base) {
+        return Err(format!(
+            "update download destination must live under {base:?}"
+        ));
+    }
+    let handle = app.clone();
+    download_resumable_http(
+        &dest_path,
+        &url,
+        total,
+        &expected_sha256,
+        move |downloaded, total| {
+            let _ = handle.emit(
+                "update://download-progress",
+                serde_json::json!({ "downloaded": downloaded, "total": total }),
+            );
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
 // ─── Tests (known-key fixture, no network) ───────────────────────────────────
 
 #[cfg(test)]
@@ -1012,13 +1213,22 @@ mod tests {
   "fullPackageUrl": "https://github.com/learning-hub/releases/download/nightly-20261122-abc1234/app.zip"
 }"#;
 
-    /// Minisign public-key blob for the fixture keypair ("Ed" || raw key).
-    const FIXTURE_PK: &str = "RWQBMFmgKUfGYa5XZBkjDcVZyj2mPqGIe5UT40U2XR2SdQ==";
+    /// Minisign public key for the fixture keypair — the standard two-line
+    /// `.pub` text (the same shape committed to `tauri.conf.json`, O1-09).
+    /// Generated once with the tauri CLI signer; see docs/updates.md key
+    /// ceremony.
+    const FIXTURE_PK: &str = "untrusted comment: minisign public key: B0614820E4A80475\nRWR1BKjkIEhhsKddsXxgh1RluoDMGCykFhJ76UKKW9BEar0+cwQnNyJZ";
 
-    /// Minisign signature blob over FIXTURE_MANIFEST bytes with trusted
-    /// comment "trusted comment: fixture" (generated once with the fixture
-    /// private key; see docs/updates.md key ceremony).
-    const FIXTURE_SIG: &str = "RWQAAAAAAAAAGH3P1tG32SvdG3PYfXLI9FoK6fNG7kOvUBrnttGwV5yBS5cD+aPek9i5ZI8nnWV6mxC3/5bgr19D3Tcdjof7hAF0cnVzdGVkIGNvbW1lbnQ6IGZpeHR1cmU=";
+    /// Minisign signature over the EXACT FIXTURE_MANIFEST bytes — the
+    /// four-line `.sig` text the tauri CLI signer emits (pre-hashed "ED"
+    /// mode: untrusted comment + signature line + trusted comment + global
+    /// signature). Generated once with the fixture private key; see
+    /// docs/updates.md key ceremony.
+    const FIXTURE_SIG: &str = "untrusted comment: signature from tauri secret key\nRUR1BKjkIEhhsKIa04m6KlrzJu1Vdz1mWkMKSWZ9krSXBKKVUOHft08o98R8atxLaYqEAbRsnZFxeUOwVly93zKZfPeQE7sZpAo=\ntrusted comment: timestamp:1795386286\tfile:fixture_manifest.json\n3F0t4sxo05xJia/rER6T5Y8KQRgV2YmZpJEssEedYqyRROUool5jKc4TwJzUprPqjpxGp/f63GC/90/mqVJbDQ==";
+
+    /// The nightly signer's WIRE form of [`FIXTURE_SIG`] — the `.sig` release
+    /// asset is `base64(minisign text)`; the verifier unwraps that layer.
+    const FIXTURE_SIG_WIRE: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSMUJLamtJRWhoc0tJYTA0bTZLbHJ6SnUxVmR6MW1Xa01LU1daOWtyU1hCS0tWVU9IZnQwOG85OFI4YXR4TGFZcUVBYlJzblpGeGVVT3dWbHk5M3pLWmZQZVFFN3NacEFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzk1Mzg2Mjg2CWZpbGU6Zml4dHVyZV9tYW5pZmVzdC5qc29uCjNGMHQ0c3hvMDV4SmlhL3JFUjZUNVk4S1FSZ1YyWW1acEpFc3NFZWRZcXlSUk9Vb29sNWpLYzRUd0p6VXByUHFqcHhHcC9mNjNHQy85MC9tcVZKYkRRPT0K";
 
     /// sha256 of FIXTURE_MANIFEST bytes (lowercase hex).
     const FIXTURE_SHA: &str = "fe9915390cf041ef51e75e9ad54c3f36441a869c06f196d90efce82c609cbec6";
@@ -1058,6 +1268,23 @@ mod tests {
     }
 
     #[test]
+    fn verifies_wire_format_signature_after_base64_unwrap() {
+        // The nightly CI signer (O1-08) uploads `.sig` assets wrapped in one
+        // layer of base64 — the verifier must unwrap it before parsing.
+        verify_manifest_signature(FIXTURE_MANIFEST.as_bytes(), FIXTURE_SIG_WIRE, FIXTURE_PK)
+            .expect("wire-format signature must verify after the base64 unwrap");
+    }
+
+    #[test]
+    fn base64_decoder_handles_known_vectors_and_rejects_garbage() {
+        assert_eq!(base64_decode("SGVsbG8=").as_deref(), Some(b"Hello".as_slice()));
+        assert_eq!(base64_decode("dW50cnVzdGVk").as_deref(), Some(b"untrusted".as_slice()));
+        assert_eq!(base64_decode(""), Some(Vec::new()));
+        assert_eq!(base64_decode("not base64!"), None);
+        assert_eq!(base64_decode("a=b"), None);
+    }
+
+    #[test]
     fn rejects_tampered_manifest() {
         let tampered = FIXTURE_MANIFEST.replace("nightly-20261122-abc1234", "nightly-20261122-ffff000");
         assert!(matches!(
@@ -1068,8 +1295,9 @@ mod tests {
 
     #[test]
     fn rejects_wrong_public_key() {
-        // A different valid Ed25519 minisign public key must not verify.
-        let other_pk = "RWQ83hYRbi91uaoqDeWgeYO7JwIGRoovTs9wY1xR/jtePA==";
+        // A different valid Ed25519 minisign public key must not verify
+        // (key-id mismatch inside the minisign verification).
+        let other_pk = "untrusted comment: minisign public key: FC05B4E023917F73\nRWRzf5Ej4LQF/CWvi6+W1tWuMemMXWnWXWp9qxyVqM2JMm8r5L1JewQm";
         assert!(matches!(
             verify_manifest_signature(FIXTURE_MANIFEST.as_bytes(), FIXTURE_SIG, other_pk),
             Err(UpdateError::Signature(_))
