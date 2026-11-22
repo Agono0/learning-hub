@@ -15,7 +15,7 @@ export const metadata = {
 
 export default function ReciprocalTeachingPage() {
   return (
-    <ClayIn as="div" className="space-y-5">
+    <ClayIn as="div" className="container mx-auto space-y-5">
       <ReciprocalTeachingStudio />
     </ClayIn>
   )

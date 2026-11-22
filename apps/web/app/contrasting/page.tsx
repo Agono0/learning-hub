@@ -18,7 +18,7 @@ export default function ContrastingCasesPage() {
   // container — one animation owner per element).
   const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="space-y-6">
+    <ClayIn as="div" className="container mx-auto space-y-6">
       <PageHeader
         title="Contrasting Cases Studio"
         subtitle="Preparation for Future Learning (PFL): invent mathematical invariants from contrasting examples before expert lecture delivery (Schwartz & Bransford 1998, 2004)."
