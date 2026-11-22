@@ -111,7 +111,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-34 | SP | Max Focus wiring: start focus session from task; task auto-tracked during lock | core glue + UI | focus-lock + tasks | M2-01, S3-32 |
 - [ ] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 |
 - [x] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts (bfddedc) + AddTaskBar onPaste (in 8b24d80 batch) | S3-03 |
-- [ ] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |
+- [x] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |  W2 audit: DONE via S3-21 (b50850f) — TaskDetail has the full attachments UI (type/value form + list over the S3-19 attachments routes)
 - [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
 - [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |  W1: Tasks/Schedule shortLabels added (pages exist); Projects/Tags entries DEFERRED to S3-22/S3-23 — their pages do not exist yet and nav law forbids dead links
 - [ ] S3-40 | SP | Onboarding addition: SP first-run steps (create project, add task via short syntax) | wizard step | OnboardingWizard | S3-20 |
@@ -147,7 +147,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-67 | SP | DB: taskItem full-text index (FTS5 migration) for search | migration + repo queries | packages/db migrations + repos/tasks.ts | S3-01
 - [ ] S3-68 | SP | UI: add-task-bar autocomplete token highlighting | component test | tasks components | S3-09
 - [ ] S3-69 | SP | UI: inline subtask add input + checklist progress (2/5) on rows | component | tasks components | S3-04
-- [ ] S3-70 | SP | UI: multi-select bar (select-all, bulk complete/project/tag/delete) | component | tasks components | S3-16
+- [x] S3-70 | SP | UI: multi-select bar (select-all, bulk complete/project/tag/delete) | component | tasks components | S3-16  W2 audit: MultiSelectBar ships select-all/complete/won-t-do/clear through /api/tasks/bulk; project/tag moves deliberately stay in the detail panel (one-primary-action law, documented in the component header)
 - [ ] S3-71 | SP | UI: task context menu (duplicate, move, schedule, archive) | component | tasks components | S3-16
 - [ ] S3-72 | SP | UI: drag-and-drop reorder + cross-day planner drops | component + core | planner + tasks | S3-25
 - [ ] S3-73 | SP | UI: keyboard nav K/J + X select + ? cheat sheet overlay | component | tasks components | S3-35
@@ -158,13 +158,13 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-78 | SP | UI: idle-classify dialog (assign to task / break / discard) | component | idle | S3-33
 - [ ] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30
 - [ ] S3-80 | SP | UI: countdown default = task remaining estimate | glue | focus-modes | S3-32
-- [ ] S3-81 | SP | UI: break-time never logged to task (guard) | core test | time-tracking | S3-32
+- [x] S3-81 | SP | UI: break-time never logged to task (guard) | core test | time-tracking | S3-32  W2 audit: guard shipped in core time-tracking applyTick (break sources refused) + test exists (tasks-time-tracking.test.ts:142)
 - [ ] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26
-- [ ] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27
+- [x] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27  W2 audit: DONE via S3-27 (CalendarSubscriptions has per-subscription color dot palette + visibility Toggle persisting via updateSubscription)
 - [x] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | app/boards/page.tsx (arrow-key grid walk, X/Enter pick+drop, Escape, aria-live) | S3-24
 - [x] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44  W2: SaveViewBar.tsx — capture any filtered list (filter+sort+group) as a task_views row via POST /api/tasks-views, confirm-in-place; page wiring left to boards/tasks owners
 - [x] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
-- [ ] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36
+- [x] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36  W2 audit: DONE via S3-36 (bfddedc markdownToTaskDrafts/tasksToMarkdown/isMarkdownPaste + bf749f2 AddTaskBar paste wiring) — end-to-end exists
 - [x] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
 - [x] S3-89 | SP | Core: activity heatmap data builder | unit tests | packages/core/src/metrics.ts buildActivityHeatmap + tests | S3-30
 - [ ] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31
