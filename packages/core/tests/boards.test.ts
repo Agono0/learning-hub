@@ -205,22 +205,22 @@ describe('applyChip (the drag contract)', () => {
   })
 
   it('can clear a due, set a literal due, or add/remove a tag', () => {
-    const clear = { id: 'c1', label: '', filter: {}, apply: { clearDue: true as const } }
+    const clear = { id: 'c1', label: 'chip', filter: {}, apply: { clearDue: true as const } }
     expect(applyChip(task({ due: TODAY }), clear, TODAY).due).toBeNull()
 
-    const literal = { id: 'c2', label: '', filter: {}, apply: { due: '2026-12-01' } }
+    const literal = { id: 'c2', label: 'chip', filter: {}, apply: { due: '2026-12-01' } }
     expect(applyChip(task(), literal, TODAY).due).toBe('2026-12-01')
 
-    const tagger = { id: 'c3', label: '', filter: {}, apply: { addTagId: 9 } }
+    const tagger = { id: 'c3', label: 'chip', filter: {}, apply: { addTagId: 9 } }
     expect(applyChip(task({ tagIds: [2] }), tagger, TODAY).tagIds).toEqual([2, 9])
     expect(applyChip(task({ tagIds: [2, 9] }), tagger, TODAY).tagIds).toEqual([2, 9]) // no dupes
 
-    const untagger = { id: 'c4', label: '', filter: {}, apply: { removeTagId: 2 } }
+    const untagger = { id: 'c4', label: 'chip', filter: {}, apply: { removeTagId: 2 } }
     expect(applyChip(task({ tagIds: [2, 9] }), untagger, TODAY).tagIds).toEqual([9])
   })
 
   it('re-opening never silently clears a won’t-do decision', () => {
-    const reopen = { id: 'r', label: '', filter: {}, apply: { isDone: false as const } }
+    const reopen = { id: 'r', label: 'chip', filter: {}, apply: { isDone: false as const } }
     const t = task({ wonthado: true })
     const next = applyChip(t, reopen, TODAY)
     expect(next.isDone).toBe(false)
@@ -230,7 +230,7 @@ describe('applyChip (the drag contract)', () => {
   it('rejects impossible patches (clearDue + due) at the boundary', () => {
     const bad = {
       id: 'bad',
-      label: '',
+      label: 'chip',
       filter: {},
       apply: { clearDue: true as const, due: '2026-12-01' },
     }

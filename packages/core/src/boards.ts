@@ -38,7 +38,10 @@ import {
 /**
  * The filter half of a rule chip — every present key must hold for a task
  * to match. Absent keys don't constrain (a chip with only `isDone: true`
- * matches every completed task).
+ * matches every completed task). `urgent`/`important` are the DATA-DRIVEN
+ * Eisenhower axes (see {@link isUrgent}/{@link isImportant}) — they make
+ * each quadrant's chip distinguishable, so `buildBoard`'s first-match rule
+ * lands every open task in exactly one quadrant.
  */
 export const boardChipFilterSchema = z.object({
   isDone: z.boolean().optional(),
@@ -56,6 +59,10 @@ export const boardChipFilterSchema = z.object({
   overdue: z.boolean().optional(),
   /** Due (or deadline) falls within N days of `today` (inclusive). */
   dueWithinDays: z.number().int().min(0).max(3650).optional(),
+  /** Urgent axis (overdue, or due/deadline within the window). */
+  urgent: z.boolean().optional(),
+  /** Important axis (priority high|medium). */
+  important: z.boolean().optional(),
 })
 export type BoardChipFilter = z.infer<typeof boardChipFilterSchema>
 
@@ -244,7 +251,15 @@ export function eisenhowerBoardView(): BoardView {
     chip: {
       id: `builtin:eisenhower:${id}`,
       label,
-      filter: { isDone: false, wonthado: false },
+      // Quadrants must be MUTUALLY EXCLUSIVE filters — buildBoard assigns by
+      // first match, so an under-specified filter would swallow every open
+      // task into Q1.
+      filter: {
+        isDone: false,
+        wonthado: false,
+        important,
+        urgent,
+      },
       apply: {
         priority: important ? 'high' : 'low',
         ...(urgent ? { dueInDays: URGENT_WINDOW_DAYS } : { clearDue: true }),
@@ -277,6 +292,8 @@ export function matchesChip(task: TaskItem, chip: BoardRuleChip, today: string):
   if (f.hasDue !== undefined && (task.due !== null) !== f.hasDue) return false
   if (f.overdue !== undefined && isOverdue(task, today) !== f.overdue) return false
   if (f.dueWithinDays !== undefined && !isUrgent(task, today)) return false
+  if (f.urgent !== undefined && isUrgent(task, today) !== f.urgent) return false
+  if (f.important !== undefined && isImportant(task) !== f.important) return false
   return true
 }
 
@@ -321,7 +338,10 @@ export function buildBoard(
  * S3-66).
  */
 export function applyChip(task: TaskItem, chip: BoardRuleChip, today: string): TaskItem {
-  const apply = chip.apply
+  // zod at the boundary: the chip (filter + apply) is parsed before any
+  // field is read, so an illegal patch (e.g. clearDue + a due) throws a
+  // schema error instead of silently applying a policy mix.
+  const apply = boardRuleChipSchema.parse(chip).apply
   const next: TaskItem = {
     ...task,
     priority: apply.priority ?? task.priority,
