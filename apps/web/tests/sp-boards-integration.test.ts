@@ -1,10 +1,16 @@
 /**
- * Integration tests for the Boards page (S3-24).
+ * Integration tests for the Boards page (S3-24) — part of the S3-42
+ * renderToString sweep over the new SP pages.
  *
  * - SSR-safe render: the page composes `QueryClientProvider` + useQuery +
  *   `ClayIn` (GSAP) — `renderToString` must produce the loading shell
  *   without touching storage/clocks at render time (all reads are
  *   effect-only; `today` and task data arrive client-side).
+ * - Load-bearing text (S3-42): header + rule-chip contract, the three view
+ *   tabs, and the honest absence of data-only regions while queries are
+ *   pending. renderToString splits interpolated JSX text with `<!-- -->`
+ *   markers — static strings assert directly (see max-focus-exit-gate's
+ *   cleanHtml for the interpolated case).
  * - The device-local custom-view store (`@/lib/board-views`): roundtrips,
  *   corrupted-storage degradation, cap.
  * - Core glue over REAL handler data shapes: a task list as `GET /api/tasks`
@@ -100,8 +106,27 @@ describe('BoardsPage (SSR-safe)', () => {
     expect(html).toContain('Kanban')
     expect(html).toContain('Eisenhower')
     expect(html).toContain('Custom')
-    // The rule-chip contract is visible in the header subtitle.
-    expect(html).toContain('rule chip')
+    // The rule-chip contract is visible in the header subtitle (S3-42:
+    // load-bearing text — the full sentence, so a regression that swaps the
+    // copy cannot pass silently). The apostrophe renders as &#x27;, so the
+    // assertion stops before it.
+    expect(html).toContain('Drag a card into a column')
+    expect(html).toContain('rule chip is applied to the task')
+  })
+
+  it('renders no data-only regions while queries are pending', () => {
+    stubPendingFetch()
+    const html = renderPage()
+    // Column labels are data-driven (built-in views need `today`), the
+    // unmatched bucket needs tasks, the builder is custom-tab only — none
+    // of them belong in the pending-query shell.
+    expect(html).not.toContain('Not on this board')
+    expect(html).not.toContain('Build a custom view')
+    expect(html).not.toContain('Backlog')
+    expect(html).not.toContain('Drop tasks here')
+    // The honest empty state needs the queries to SETTLE (not load): with a
+    // never-resolving fetch it must NOT be there either.
+    expect(html).not.toContain('No tasks yet')
   })
 
   it('does not call the clock or storage during render', () => {

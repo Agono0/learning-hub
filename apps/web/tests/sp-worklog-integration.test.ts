@@ -1,5 +1,6 @@
 /**
- * Integration tests for the Worklog page (S3-28).
+ * Integration tests for the Worklog page (S3-28) — part of the S3-42
+ * renderToString sweep over the new SP pages.
  *
  * - SSR-safe render: ranges + data are client-only (effect-set), so
  *   `renderToString` produces the pending shell and matches hydration; no

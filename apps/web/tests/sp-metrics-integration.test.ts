@@ -1,5 +1,6 @@
 /**
- * Integration tests for the Metrics page (S3-30).
+ * Integration tests for the Metrics page (S3-30) — part of the S3-42
+ * renderToString sweep over the new SP pages.
  *
  * - SSR-safe render: ranges + `today` are effect-set, queries stay pending
  *   under a stubbed never-resolving fetch — `renderToString` produces the
