@@ -103,7 +103,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
 - [x] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts parser, calendar/import handler + registry, lib/calendar-feeds + CalendarSubscriptions on planner | S3-26 |
 - [x] S3-28 | SP | Worklog page: history day/week, inline corrections, CSV export UI | page + tests | apps/web/app/worklog/page.tsx (consumes S3-18 endpoints; handoff notes the contract) | S3-18 |
-- [ ] S3-29 | SP | Finish-day flow: summary, auto-archive, plan-tomorrow prompt, celebration | page flow + tests | apps/web/app/tasks/finish-day | S3-18, S3-11 |
+- [~W1] S3-29 | SP | Finish-day flow: summary, auto-archive, plan-tomorrow prompt, celebration | page flow + tests | apps/web/app/tasks/finish-day | S3-18, S3-11 |
 - [x] S3-30 | SP | Metrics: per-day records, aggregates, line charts (hand-rolled SVG), activity heatmap | page + tests | apps/web/app/metrics/page.tsx + core/metrics.ts (fed by landed S3-18/analytics endpoints; S3-19 can add series) | S3-19 |
 - [ ] S3-31 | SP | Habits/counters upgrade: simple counters with streaks + charts (existing habits kept) | core + UI + tests | packages/core/src/tasks/counters.ts, habits page upgrade | S3-19 |
 - [ ] S3-32 | SP | Focus modes: Pomodoro/Flowtime/Countdown strategies on existing timer; task-tracking bidirectional; break reminders | core + UI + tests | packages/core/src/tasks/focus-modes.ts, focus page integration | S3-10 |
@@ -145,14 +145,14 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-65 | SP | Core: today membership = due date only (virtual tag math) | unit tests | packages/core/src/tasks/today.ts | S3-03
 - [x] S3-66 | SP | Core: won't-do state exclusions from counts | unit tests | packages/core/src/tasks/wontdo.ts | S3-03
 - [x] S3-67 | SP | DB: taskItem full-text index (FTS5 migration) for search | migration + repo queries | packages/db migrations + repos/tasks.ts | S3-01 W2 audit: FTS5 task-item index landed in e0b4482 (fts-search house pattern) — repo queries live in repos/tasks.ts
-- [ ] S3-68 | SP | UI: add-task-bar autocomplete token highlighting | component test | tasks components | S3-09
-- [ ] S3-69 | SP | UI: inline subtask add input + checklist progress (2/5) on rows | component | tasks components | S3-04
+- [x] S3-68 | SP | UI: add-task-bar autocomplete token highlighting | component test | tasks components | S3-09  W1: suggestAt (S3-09 core) drives AddTaskBar suggestion chips per token kind — landed with S3-20 (07f9491)
+- [~W1] S3-69 | SP | UI: inline subtask add input + checklist progress (2/5) on rows | component | tasks components | S3-04
 - [x] S3-70 | SP | UI: multi-select bar (select-all, bulk complete/project/tag/delete) | component | tasks components | S3-16  W2 audit: MultiSelectBar ships select-all/complete/won-t-do/clear through /api/tasks/bulk; project/tag moves deliberately stay in the detail panel (one-primary-action law, documented in the component header)
-- [ ] S3-71 | SP | UI: task context menu (duplicate, move, schedule, archive) | component | tasks components | S3-16
-- [ ] S3-72 | SP | UI: drag-and-drop reorder + cross-day planner drops | component + core | planner + tasks | S3-25
-- [ ] S3-73 | SP | UI: keyboard nav K/J + X select + ? cheat sheet overlay | component | tasks components | S3-35
+- [~W1] S3-71 | SP | UI: task context menu (duplicate, move, schedule, archive) | component | tasks components | S3-16
+- [x] S3-72 | SP | UI: drag-and-drop reorder + cross-day planner drops | component + core | planner + tasks | S3-25  W1: row drag = reorder via POST /api/tasks/order (262a34d); planner/schedule drag onto days = cross-day reschedule via PATCH due (986b9b8, fa15c55)
+- [~W1] S3-73 | SP | UI: keyboard nav K/J + X select + ? cheat sheet overlay | component | tasks components | S3-35
 - [ ] S3-74 | SP | UI: project bookmarks (links/files/commands rows) | component | projects UI | S3-22
-- [ ] S3-75 | SP | UI: archived-projects section + trophy reopen flow | component | projects UI | S3-22
+- [x] S3-75 | SP | UI: archived-projects section + trophy reopen flow | component | projects UI | S3-22  W1: Projects Archived section + Restore + detail Archive/Restore — landed with S3-22 (fe709ef)
 - [~W2] S3-76 | SP | UI: recently-deleted trash view with restore | component | trash | S3-12
 - [ ] S3-77 | SP | UI: time-tracking tick indicator + tracked-title document title | lib + UI | use-global-timer glue | S3-10
 - [ ] S3-78 | SP | UI: idle-classify dialog (assign to task / break / discard) | component | idle | S3-33
