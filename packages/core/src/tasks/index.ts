@@ -434,3 +434,6 @@ export * from './trash'
 
 // Undo stack (S3-13) — re-exported so hosts consume one entry.
 export * from './undo'
+
+// Task search (S3-14) — re-exported so hosts consume one entry.
+export * from './search'
