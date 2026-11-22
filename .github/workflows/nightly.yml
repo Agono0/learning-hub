@@ -209,6 +209,34 @@ jobs:
             --prerelease \
             "${ASSETS[@]}"
 
+      # O1-11 pointer hosting: clients need ONE stable URL per channel, but the
+      # nightly release tag changes every night (and `releases/latest` ignores
+      # prereleases). A fixed `channel-pointers` release holds the mutable
+      # pointer assets; promote.yml (O1-11) manages beta.json/stable.json there.
+      - name: Publish nightly pointer to the channel-pointers release
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view channel-pointers >/dev/null 2>&1; then
+            gh release create channel-pointers \
+              --title "Update channel pointers" \
+              --notes "Mutable pointer assets (nightly.json / beta.json / stable.json) and per-channel signed manifests. This is the stable URL set clients poll. Never delete this release." \
+              --latest=false
+          fi
+          cp dist/nightly/manifest.json dist/nightly/manifest-nightly.json
+          if [ -e dist/nightly/manifest.json.sig ]; then
+            cp dist/nightly/manifest.json.sig dist/nightly/manifest-nightly.json.sig
+          fi
+          ASSETS=(dist/nightly/nightly.json dist/nightly/manifest-nightly.json)
+          for f in dist/nightly/nightly.json.sig dist/nightly/manifest-nightly.json.sig; do
+            if [ -e "$f" ]; then ASSETS+=("$f"); fi
+          done
+          for f in "${ASSETS[@]}"; do
+            gh release delete-asset channel-pointers "$(basename "$f")" -y || true
+            gh release upload channel-pointers "$f"
+          done
+
       - name: Upload workflow artifact (always, for inspection)
         uses: actions/upload-artifact@v4
         with:
