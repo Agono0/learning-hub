@@ -443,3 +443,6 @@ export * from './order'
 
 // Grouping helpers (S3-61) — re-exported so hosts consume one entry.
 export * from './grouping'
+
+// Mention config (S3-86) — re-exported so hosts consume one entry.
+export * from './mentions'
