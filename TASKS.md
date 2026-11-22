@@ -14,7 +14,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 
 - [x] O1-01 | OTA | Update domain types in core: manifest.json, pointer (nightly.json), channel enum, minNativeVersion, semver-ish compare | zod schemas + unit tests | packages/core/src/update/index.ts, packages/core/src/index.ts export, packages/core/tests/update.test.ts | dep P0-1 waived by lead (discovery complete) |
 - [x] O1-02 | OTA | Rust update module skeleton: fetch pointer+manifest, Ed25519/minisign verify, sha256 per-file verify | cargo checks via CI; unit test for verify (known key fixture) | apps/native/src-tauri/src/update.rs, Cargo.toml (minisign-verify, sha2, ureq or use plugin http) | O1-01 |
-- [ ] O1-03 | OTA | Rust A/B slots in app_data_dir: download to inactive slot, atomic pointer file (tmp+rename), list current | unit-testable helpers + tests | apps/native/src-tauri/src/update.rs | O1-02 |
+- [x] O1-03 | OTA | Rust A/B slots in app_data_dir: download to inactive slot, atomic pointer file (tmp+rename), list current | unit-testable helpers + tests | apps/native/src-tauri/src/update.rs | O1-02 |
 - [ ] O1-04 | OTA | Custom URI-scheme protocol serving active slot with fallback to bundled AssetResolver; capabilities rebinding | dev-served page loads from slot when set, bundled otherwise | apps/native/src-tauri/src/lib.rs, src/update.rs, capabilities/*.json | O1-03 |
 - [ ] O1-05 | OTA | Boot-confirm rollback: webview ready invoke; N missed confirmations → flip pointer back + log | unit test of confirm counter | apps/native/src-tauri/src/update.rs, lib.rs | O1-04 |
 - [ ] O1-06 | OTA | Apply-on-restart + never-during-Max-Focus: update service refuses apply while session active (core gate) | unit tests | packages/core/src/update + focus-lock interplay, apps/native/src-tauri/src/update.rs | O1-03, M2-01 |
@@ -31,10 +31,10 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [ ] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
 - [ ] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
 - [ ] O1-19 | OTA | Upgrade-from-N test: apply patches from each of last 5 manifests (fixture chain) | tests green | tests in update.rs + fixtures | O1-07 |
-- [ ] O1-20 | OTA | Measured patch size: CI job applies a one-line web change → records hot patch KB into release notes + docs/updates.md | <50 KB recorded or deviation explained | .github/workflows/nightly.yml, docs/updates.md | O1-08 |
+- [x] O1-20 | OTA | Measured patch size: CI job applies a one-line web change → records hot patch KB into release notes + docs/updates.md | <50 KB recorded or deviation explained | .github/workflows/nightly.yml, docs/updates.md | O1-08 |
 - [ ] O1-21 | OTA | Android bsdiff delta APK (stretch): CI generates per-ABI patch vs previous release; client applies + re-signs via persisted keystore | measured sizes; fallback to full APK | scripts, Kotlin apply, native.yml | O1-13 |
 - [x] O1-22 | OTA | Keystore persistence: docs + workflow guard requiring ANDROID_KEYSTORE_BASE64 secret; local keytool fallback only for dev | docs + workflow check step | .github/workflows/native.yml (LEAD), docs/updates.md | P0-1 |
-- [ ] O1-23 | OTA | docs/updates.md: architecture, channels, key ceremony, rollback, Play policy note | doc complete | docs/updates.md | O1-08 |
+- [~W3] O1-23 | OTA | docs/updates.md: architecture, channels, key ceremony, rollback, Play policy note | doc complete | docs/updates.md | O1-08 |
 - [ ] O1-24 | OTA | LIMITATIONS.md: Ctrl+Alt+Del, Play hot-patch policy, Android silent-install limits | doc exists | docs/LIMITATIONS.md | O1-13, M2-07 |
 
 ## Epic 2 — Max Focus device lock (M2)

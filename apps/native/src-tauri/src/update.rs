@@ -19,6 +19,9 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
+use std::fs;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::time::Duration;
 
@@ -310,6 +313,286 @@ fn to_hex(bytes: &[u8]) -> String {
     out
 }
 
+// ─── A/B slots (O1-03) ───────────────────────────────────────────────────────
+//
+// The web payload lives in two sibling slots under
+// `<app_data_dir>/updates/`:
+//
+//   slots/slot-a/…           ← full `.next-tauri` export of one build
+//   slots/slot-b/…           ← the other build
+//   slot-pointer.json        ← `{ "active": "slot-a" }` — THE switch
+//
+// Downloads always target the INACTIVE slot; the pointer is flipped with a
+// tmp+rename atomic write only after a slot is complete and hash-verified.
+// A crash can therefore leave a stale inactive slot, never a half-written
+// active one. Serving the active slot over a custom URI scheme is O1-04;
+// boot-confirm rollback (missed confirmations flip the pointer back) is O1-05.
+
+/// The two install slots.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SlotId {
+    /// First slot — also the implicit default on first run (the bundled app).
+    #[serde(rename = "slot-a")]
+    A,
+    /// Second slot.
+    #[serde(rename = "slot-b")]
+    B,
+}
+
+impl SlotId {
+    /// The other slot (A ↔ B).
+    pub fn other(self) -> SlotId {
+        match self {
+            SlotId::A => SlotId::B,
+            SlotId::B => SlotId::A,
+        }
+    }
+
+    /// Directory name inside `slots/`.
+    pub fn dir_name(self) -> &'static str {
+        match self {
+            SlotId::A => "slot-a",
+            SlotId::B => "slot-b",
+        }
+    }
+}
+
+/// The atomic slot switch. Extra fields added later (e.g. O1-05 boot-confirm
+/// counters) must keep parsing older pointer files (serde ignores unknown
+/// fields by default; missing optional fields default to `None`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlotPointer {
+    /// Slot the webview currently loads from.
+    pub active: SlotId,
+    /// RFC 3339 timestamp of the last flip (informational).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<String>,
+}
+
+/// `<base>/slots/` — the two slot directories.
+pub fn slots_root(base_dir: &Path) -> PathBuf {
+    base_dir.join("slots")
+}
+
+/// `<base>/slot-pointer.json` — the atomic A/B switch file.
+pub fn pointer_path(base_dir: &Path) -> PathBuf {
+    base_dir.join("slot-pointer.json")
+}
+
+/// `<base>/slots/<slot>/` — one build's payload.
+pub fn slot_dir(base_dir: &Path, slot: SlotId) -> PathBuf {
+    slots_root(base_dir).join(slot.dir_name())
+}
+
+/// `<base>/slots/<slot>/manifest.json` — the EXACT signed manifest bytes of
+/// the build in that slot (kept verbatim for future patch diffs, O1-19).
+pub fn slot_manifest_path(base_dir: &Path, slot: SlotId) -> PathBuf {
+    slot_dir(base_dir, slot).join("manifest.json")
+}
+
+/// Reads the pointer. A missing pointer file means first run: slot A is
+/// active (the bundled payload is conceptually slot A).
+pub fn read_pointer(base_dir: &Path) -> Result<SlotPointer, UpdateError> {
+    match fs::read_to_string(pointer_path(base_dir)) {
+        Ok(json) => serde_json::from_str(&json)
+            .map_err(|e| UpdateError::Parse(format!("slot-pointer.json: {e}"))),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(SlotPointer {
+            active: SlotId::A,
+            updated_at: None,
+        }),
+        Err(e) => Err(UpdateError::Network(format!(
+            "reading slot-pointer.json failed: {e}"
+        ))),
+    }
+}
+
+/// Atomically writes the pointer: serialize → write `<path>.tmp` → rename
+/// over the target. `std::fs::rename` replaces an existing destination on
+/// Windows (MoveFileEx + `MOVEFILE_REPLACE_EXISTING`), so readers on every
+/// platform observe either the old or the new pointer — never a torn write.
+pub fn write_pointer_atomic(base_dir: &Path, pointer: &SlotPointer) -> Result<(), UpdateError> {
+    let json = serde_json::to_string_pretty(pointer)
+        .map_err(|e| UpdateError::Parse(format!("serialize pointer: {e}")))?;
+    let path = pointer_path(base_dir);
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, json.as_bytes())
+        .map_err(|e| UpdateError::Network(format!("writing pointer tmp file: {e}")))?;
+    fs::rename(&tmp, &path).map_err(|e| UpdateError::Network(format!(
+        "renaming pointer into place (atomic flip): {e}"
+    )))?;
+    Ok(())
+}
+
+/// Slot currently selected by the pointer (default A on first run).
+pub fn active_slot(base_dir: &Path) -> Result<SlotId, UpdateError> {
+    Ok(read_pointer(base_dir)?.active)
+}
+
+/// Slot downloads target — always the complement of the active slot.
+pub fn inactive_slot(base_dir: &Path) -> Result<SlotId, UpdateError> {
+    Ok(active_slot(base_dir)?.other())
+}
+
+/// Current slot occupancy, as reported by {@link list_current}.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlotStatus {
+    /// Slot the webview currently loads from.
+    pub active: SlotId,
+    /// The download target.
+    pub inactive: SlotId,
+    /// Version installed in the active slot (`None` = bundled first run).
+    pub active_version: Option<String>,
+    /// Version parked in the inactive slot (`None` = empty).
+    pub inactive_version: Option<String>,
+}
+
+/// Lists the current A/B state: which slot is active and which versions are
+/// installed where (read from each slot's stored `manifest.json`).
+pub fn list_current(base_dir: &Path) -> Result<SlotStatus, UpdateError> {
+    let active = active_slot(base_dir)?;
+    let inactive = active.other();
+    Ok(SlotStatus {
+        active,
+        inactive,
+        active_version: slot_version(base_dir, active)?,
+        inactive_version: slot_version(base_dir, inactive)?,
+    })
+}
+
+/// Version of the build parked in `slot` (from its stored manifest), or
+/// `None` when the slot has never been filled.
+fn slot_version(base_dir: &Path, slot: SlotId) -> Result<Option<String>, UpdateError> {
+    let path = slot_manifest_path(base_dir, slot);
+    match fs::read_to_string(&path) {
+        Ok(json) => Ok(Some(parse_manifest(&json)?.version)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(UpdateError::Parse(format!(
+            "reading slot manifest {:?}: {e}",
+            path
+        ))),
+    }
+}
+
+/// Derives the files base URL from a manifest URL: the release asset
+/// directory the manifest was fetched from (CI uploads every payload file
+/// next to `manifest.json`, see O1-08).
+pub fn files_base_url(manifest_url: &str) -> Result<String, UpdateError> {
+    match manifest_url.trim_end_matches('/').strip_suffix("/manifest.json") {
+        Some(base) if !base.is_empty() => Ok(base.to_string()),
+        _ => Err(UpdateError::InvalidInput(format!(
+            "manifest URL does not end in /manifest.json: {manifest_url}"
+        ))),
+    }
+}
+
+/// Fetches one manifest file as raw bytes over https (release asset).
+pub fn fetch_file_bytes(file_base_url: &str, file: &UpdateFile) -> Result<Vec<u8>, UpdateError> {
+    let url = format!("{}/{}", file_base_url.trim_end_matches('/'), file.path);
+    assert_https(&url)?;
+    let response = AGENT
+        .get(&url)
+        .call()
+        .map_err(|e| UpdateError::Network(format!("fetch {}: {e}", file.path)))?;
+    // No capacity hint from the manifest: a hostile manifest could claim a
+    // multi-GB size and force an allocation. read_to_end grows on demand.
+    let mut bytes = Vec::new();
+    response
+        .into_reader()
+        .read_to_end(&mut bytes)
+        .map_err(|e| UpdateError::Network(format!("read {}: {e}", file.path)))?;
+    Ok(bytes)
+}
+
+/// True when `path` is a safe relative path for a slot file: POSIX-style,
+/// no absolute prefix, no `.`/`..`/empty segments, no backslashes. Manifest
+/// paths come from the (signed) CI generator, but the slot writer still
+/// refuses anything that could escape the slot directory.
+fn is_unsafe_rel_path(path: &str) -> bool {
+    path.is_empty()
+        || path.starts_with('/')
+        || path.starts_with('\\')
+        || path.contains('\\')
+        || path.split('/').any(|seg| seg.is_empty() || seg == "." || seg == "..")
+}
+
+/// Clears the INACTIVE slot and fills it with the manifest's files:
+/// every file is fetched through `fetch_file`, hash-verified BEFORE it is
+/// written, and placed at `slots/<slot>/<path>`. The exact (signed) manifest
+/// bytes are stored as the slot's `manifest.json`.
+///
+/// The pointer is deliberately NOT touched here — a failed or interrupted
+/// download can only leave a stale inactive slot, never poison the active
+/// install. Flipping is an explicit `promote_inactive_slot` call.
+pub fn download_to_inactive_slot<F>(
+    base_dir: &Path,
+    manifest: &UpdateManifest,
+    manifest_bytes: &[u8],
+    file_base_url: &str,
+    fetch_file: F,
+) -> Result<SlotId, UpdateError>
+where
+    F: Fn(&UpdateFile) -> Result<Vec<u8>, UpdateError>,
+{
+    assert_https(file_base_url)?;
+    let slot = inactive_slot(base_dir)?;
+    let dir = slot_dir(base_dir, slot);
+
+    // Start the slot from scratch so a stale previous build can never leak
+    // files into the new one.
+    if dir.exists() {
+        fs::remove_dir_all(&dir).map_err(|e| UpdateError::Network(format!("clearing slot: {e}")))?;
+    }
+    fs::create_dir_all(&dir).map_err(|e| UpdateError::Network(format!("creating slot: {e}")))?;
+
+    for file in &manifest.files {
+        if is_unsafe_rel_path(&file.path) {
+            return Err(UpdateError::InvalidInput(format!(
+                "unsafe path in manifest: {:?}",
+                file.path
+            )));
+        }
+        let bytes = fetch_file(file)?;
+        if bytes.len() as u64 != file.size {
+            return Err(UpdateError::Hash(format!(
+                "size mismatch for {}: manifest says {} bytes, got {}",
+                file.path,
+                file.size,
+                bytes.len()
+            )));
+        }
+        // Verify BEFORE writing: a tampered download never touches the disk.
+        verify_file_hash(&bytes, &file.sha256)?;
+        let dest = dir.join(&file.path);
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| UpdateError::Network(format!("mkdir {}: {e}", file.path)))?;
+        }
+        fs::write(&dest, &bytes)
+            .map_err(|e| UpdateError::Network(format!("write {}: {e}", file.path)))?;
+    }
+
+    // Keep the signed artifact verbatim — the slot's own manifest.
+    fs::write(slot_manifest_path(base_dir, slot), manifest_bytes)
+        .map_err(|e| UpdateError::Network(format!("write slot manifest: {e}")))?;
+    Ok(slot)
+}
+
+/// Atomically flips the pointer to the INACTIVE slot (the one
+/// `download_to_inactive_slot` just filled and verified).
+pub fn promote_inactive_slot(base_dir: &Path) -> Result<SlotId, UpdateError> {
+    let next = inactive_slot(base_dir)?;
+    write_pointer_atomic(
+        base_dir,
+        &SlotPointer {
+            active: next,
+            updated_at: None,
+        },
+    )?;
+    Ok(next)
+}
+
 // ─── Tests (known-key fixture, no network) ───────────────────────────────────
 
 #[cfg(test)]
@@ -438,5 +721,199 @@ mod tests {
         assert_eq!(UpdateChannel::Nightly.pointer_file(), "nightly.json");
         assert_eq!(UpdateChannel::Beta.pointer_file(), "beta.json");
         assert_eq!(UpdateChannel::Stable.pointer_file(), "stable.json");
+    }
+}
+
+// ─── A/B slot tests (O1-03) ──────────────────────────────────────────────────
+
+#[cfg(test)]
+mod slot_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static TMP_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    /// Unique per-test base dir under the OS temp dir.
+    fn temp_base() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "lh-update-o1-03-{}-{}",
+            std::process::id(),
+            TMP_COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&dir).expect("create temp base dir");
+        dir
+    }
+
+    fn file_entry(path: &str, content: &[u8]) -> UpdateFile {
+        UpdateFile {
+            path: path.to_string(),
+            sha256: hash_hex(content),
+            size: content.len() as u64,
+        }
+    }
+
+    fn test_manifest(files: Vec<UpdateFile>) -> (UpdateManifest, Vec<u8>) {
+        let manifest = UpdateManifest {
+            manifest_version: 1,
+            channel: UpdateChannel::Nightly,
+            version: "nightly-20261123-f00ba12".to_string(),
+            build_sha: "f00ba12".to_string(),
+            created_at: "2026-11-23T10:00:00.000Z".to_string(),
+            min_native_version: "0.1.0".to_string(),
+            requires_native: false,
+            files,
+            patches: vec![],
+            full_package_url: "https://example.com/releases/app.zip".to_string(),
+        };
+        let bytes =
+            serde_json::to_vec(&manifest).expect("serialize test manifest");
+        (manifest, bytes)
+    }
+
+    #[test]
+    fn pointer_defaults_to_slot_a_and_flips_atomically() {
+        let base = temp_base();
+        // First run: no pointer file — A active, B is the download target.
+        assert_eq!(active_slot(&base).unwrap(), SlotId::A);
+        assert_eq!(inactive_slot(&base).unwrap(), SlotId::B);
+        // Flip — and flip again over an existing pointer (Windows rename path).
+        assert_eq!(promote_inactive_slot(&base).unwrap(), SlotId::B);
+        assert_eq!(active_slot(&base).unwrap(), SlotId::B);
+        assert_eq!(promote_inactive_slot(&base).unwrap(), SlotId::A);
+        // Atomic write leaves no tmp file behind.
+        assert!(!pointer_path(&base).with_extension("json.tmp").exists());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn download_fills_inactive_slot_and_list_current_reports_versions() {
+        let base = temp_base();
+        let (manifest, manifest_bytes) = test_manifest(vec![
+            file_entry("index.html", b"<html>hi</html>"),
+            file_entry("_next/static/app.js", b"console.log(1)"),
+        ]);
+        let slot = download_to_inactive_slot(
+            &base,
+            &manifest,
+            &manifest_bytes,
+            "https://example.com/rel",
+            |f| {
+                Ok(match f.path.as_str() {
+                    "index.html" => b"<html>hi</html>".to_vec(),
+                    _ => b"console.log(1)".to_vec(),
+                })
+            },
+        )
+        .expect("download succeeds");
+        assert_eq!(slot, SlotId::B);
+        assert!(slot_dir(&base, SlotId::B).join("index.html").exists());
+        assert_eq!(
+            fs::read(slot_dir(&base, SlotId::B).join("_next/static/app.js")).unwrap(),
+            b"console.log(1)"
+        );
+        // The signed manifest is stored verbatim in the slot.
+        assert_eq!(fs::read(slot_manifest_path(&base, SlotId::B)).unwrap(), manifest_bytes);
+        // A download NEVER flips the pointer by itself.
+        assert_eq!(active_slot(&base).unwrap(), SlotId::A);
+
+        let status = list_current(&base).unwrap();
+        assert_eq!(status.active, SlotId::A);
+        assert_eq!(status.inactive, SlotId::B);
+        assert_eq!(status.active_version, None);
+        assert_eq!(
+            status.inactive_version.as_deref(),
+            Some("nightly-20261123-f00ba12")
+        );
+
+        // Promotion makes the new build current; the old slot becomes empty.
+        assert_eq!(promote_inactive_slot(&base).unwrap(), SlotId::B);
+        let status = list_current(&base).unwrap();
+        assert_eq!(status.active_version.as_deref(), Some("nightly-20261123-f00ba12"));
+        assert_eq!(status.inactive_version, None);
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn download_rejects_tampered_file_and_keeps_pointer() {
+        let base = temp_base();
+        let (manifest, manifest_bytes) = test_manifest(vec![file_entry("index.html", b"good")]);
+        let err = download_to_inactive_slot(
+            &base,
+            &manifest,
+            &manifest_bytes,
+            "https://example.com/rel",
+            |_| Ok(b"evil".to_vec()),
+        )
+        .unwrap_err();
+        assert!(matches!(err, UpdateError::Hash(_)));
+        // Pointer untouched, no slot manifest written on failure.
+        assert_eq!(active_slot(&base).unwrap(), SlotId::A);
+        assert!(!slot_manifest_path(&base, SlotId::B).exists());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn download_rejects_size_mismatch() {
+        let base = temp_base();
+        let (manifest, manifest_bytes) = test_manifest(vec![UpdateFile {
+            path: "a.txt".to_string(),
+            sha256: hash_hex(b"good"),
+            size: 4,
+        }]);
+        let err = download_to_inactive_slot(
+            &base,
+            &manifest,
+            &manifest_bytes,
+            "https://example.com/rel",
+            |_| Ok(b"good!".to_vec()), // 5 bytes — manifest says 4
+        )
+        .unwrap_err();
+        assert!(matches!(err, UpdateError::Hash(_)));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn download_rejects_unsafe_paths() {
+        let base = temp_base();
+        for evil in ["../evil.txt", "/etc/passwd", "a\\b", "a//b", ""] {
+            let (manifest, manifest_bytes) = test_manifest(vec![UpdateFile {
+                path: evil.to_string(),
+                sha256: hash_hex(b"x"),
+                size: 1,
+            }]);
+            assert!(
+                matches!(
+                    download_to_inactive_slot(
+                        &base,
+                        &manifest,
+                        &manifest_bytes,
+                        "https://example.com/rel",
+                        |_| Ok(b"x".to_vec()),
+                    ),
+                    Err(UpdateError::InvalidInput(_))
+                ),
+                "path {evil:?} must be rejected"
+            );
+        }
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn safe_rel_paths_are_accepted() {
+        assert!(!is_unsafe_rel_path("_next/static/chunk.js"));
+        assert!(!is_unsafe_rel_path("index.html"));
+        assert!(is_unsafe_rel_path(".."));
+        assert!(is_unsafe_rel_path("."));
+        assert!(is_unsafe_rel_path("C:\\evil"));
+    }
+
+    #[test]
+    fn files_base_url_strips_manifest_segment() {
+        assert_eq!(
+            files_base_url("https://example.com/rel/manifest.json").unwrap(),
+            "https://example.com/rel"
+        );
+        assert!(files_base_url("https://example.com/other.json").is_err());
+        assert!(files_base_url("http://example.com/manifest.json").is_err());
     }
 }
