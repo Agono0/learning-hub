@@ -291,9 +291,9 @@ with `scripts/update-manifest.mjs --prev` exactly the way the CI job diffs
 fixture scale — NOT the real `.next-tauri` export number, which lands in this
 table from the first CI dispatch after merge.
 
-| Probe run                                                                                                    | Patch bundle                              | Size     |
-| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | -------- |
-| _(first CI dispatch — record the step-summary number here)_                                                  | —                                         | —        |
+| Probe run                                                                                                     | Patch bundle                              | Size                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| _(first CI dispatch — record the step-summary number here)_                                                   | —                                         | —                                                                                                                          |
 | Local fixture dry-run (W3, 2026-11-22): 4-file / 0.3 KB bundle, one-line `app.js` change, `--prev` diff O1-07 | `patch-nightly-…-aaaa1111-…-bbbb2222.zip` | **178 B (0.2 KB)** — zip (deflate) of the single 78-byte changed file; sha256 recorded in the emitted manifest patch entry |
 
 **Target and deviation policy.** Target: **< 50 KB** for a one-line change. If
