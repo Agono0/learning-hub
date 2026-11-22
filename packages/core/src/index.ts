@@ -144,3 +144,6 @@ export * from './design-tokens'
 
 // ── Accessibility & WCAG 2.2 AAA Engine ──
 export * from './a11y'
+
+// ── OTA update contracts (manifest, pointer, channels) ──
+export * from './update'
