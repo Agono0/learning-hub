@@ -49,7 +49,25 @@ describe('Projects glue — ordering, totals, payloads', () => {
   // taskItemSchema keeps the fixture honest when the model grows).
   const task = (overrides: Record<string, unknown>): TaskItem =>
     taskItemSchema.parse({
+      id: 0,
+      parentId: null,
+      projectId: null,
+      tagIds: [],
       title: 'Task',
+      notes: null,
+      priority: 'none',
+      estimateMs: null,
+      timeSpentOnDay: {},
+      due: null,
+      dueWithTime: false,
+      deadline: null,
+      isDone: false,
+      doneAt: null,
+      wonthado: false,
+      repeatCfgId: null,
+      order: 0,
+      createdAt: '2026-03-10T00:00:00.000Z',
+      updatedAt: '2026-03-10T00:00:00.000Z',
       ...overrides,
     })
   const tasks = {
