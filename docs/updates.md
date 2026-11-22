@@ -293,7 +293,7 @@ table from the first CI dispatch after merge.
 
 | Probe run                                                                                                     | Patch bundle                              | Size                                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| _(first CI dispatch — record the step-summary number here)_                                                   | —                                         | —                                                                                                                          |
+| **First CI dispatch (probe, 2026-11-23): one-line `layout.tsx` change — WORST CASE**                          | `patch-00000000-base-00000000-probe.zip`  | **2352.4 KB (2.3 MB) — DEVIATION vs the 50 KB target**, cause: the root layout module re-hashes → most page chunks re-hash → dozens of changed files in the bundle. Run 45075083079, job "Measure hot patch size". |
 | Local fixture dry-run (W3, 2026-11-22): 4-file / 0.3 KB bundle, one-line `app.js` change, `--prev` diff O1-07 | `patch-nightly-…-aaaa1111-…-bbbb2222.zip` | **178 B (0.2 KB)** — zip (deflate) of the single 78-byte changed file; sha256 recorded in the emitted manifest patch entry |
 
 **Target and deviation policy.** Target: **< 50 KB** for a one-line change. If
@@ -303,6 +303,17 @@ version-stable module IDs) before shipping the nightly. The fixture dry-run is
 two orders of magnitude under target and demonstrates the mechanics (only the
 changed file is re-zipped); the authoritative number is still the first CI
 dispatch on the real export.
+
+### Deviation analysis (2026-11-23 probe)
+
+The 2.3 MB worst case is the root-layout edit: every page chunk imports the
+root layout, so one line there re-hashes most of the export and the bundle
+re-zips all of them. Typical leaf changes (a page component, a widget) hash
+independently and stay near the fixture's 0.2 KB scale. Mitigation path if
+worst cases matter in practice: stabilize Next module IDs across builds
+(`optimizeModuleIds`-style config or an extraction layer) so layout-only
+edits stop cascading — tracked as a future optimization, not a blocker: a
+2.3 MB hot update is still ~60× smaller than the 55 MB full export.
 
 ## Play policy note
 
