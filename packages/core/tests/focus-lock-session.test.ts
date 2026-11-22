@@ -10,6 +10,8 @@ import {
   CLOCK_TAMPER_TOLERANCE_MS,
   COOLDOWN_SECONDS,
   MAX_FOCUS_HARD_CAP_MINUTES,
+  DEFAULT_BATTERY_UNLOCK_THRESHOLD,
+  shouldAutoUnlockBattery,
   advanceSession,
   confirmSessionExit,
   extendMaxSession,
@@ -380,5 +382,116 @@ describe('tamper detection (M2-20) — permissions revoked + friction reasons', 
     expect(tamperFrictionReason(missing)).toBe('permissions revoked: device_admin, usage_stats')
     // The tamper end is terminal (idempotent advance).
     expect(advanceSession(ended, clockAt(180_000)).events).toEqual([])
+  })
+})
+
+describe('max focus session — full transition matrix (M2-26)', () => {
+  it('matrix: every state × every operation converges to the documented outcome', () => {
+    const states = {
+      locked: startSession(25),
+      cooldown: requestSessionExit(startSession(25), clockAt(0)),
+      can_confirm: advanceSession(requestSessionExit(startSession(25), clockAt(0)), {
+        wallMs: START_MS + (COOLDOWN_SECONDS + 1) * 1000,
+        monoMs: ANCHOR_MS + (COOLDOWN_SECONDS + 1) * 1000,
+      }).session,
+      ended: advanceSession(startSession(10), clockAt(10 * 60_000)).session,
+    } as const
+
+    for (const [stateName, session] of Object.entries(states)) {
+      // advance (honest clocks, mid-window): only cooldown → can_confirm moves.
+      const advanced = advanceSession(session, clockAt(60_000))
+      if (stateName === 'cooldown') {
+        expect(advanced.session.state).toBe('can_confirm')
+        expect(advanced.events).toContain('cooldown_elapsed')
+      } else {
+        expect(advanced.session.state).toBe(session.state)
+        expect(advanced.events).toEqual([])
+      }
+
+      // requestExit: only locked moves; everything else unchanged.
+      const requested = requestSessionExit(session, clockAt(60_000))
+      if (stateName === 'locked') {
+        expect(requested.state).toBe('cooldown')
+      } else {
+        expect(requested).toEqual(session)
+      }
+
+      // confirm(pin): only can_confirm ends with reason pin.
+      const confirmed = confirmSessionExit(session, clockAt(60_000), { pinVerified: true })
+      if (stateName === 'can_confirm') {
+        expect(confirmed.state).toBe('ended')
+        expect(confirmed.unlockReason).toBe('pin')
+      } else {
+        expect(confirmed).toEqual(session)
+      }
+
+      // forceUnlock: any non-ended state ends with the given reason; ended keeps its first reason.
+      const forced = forceUnlockSession(session, clockAt(60_000), 'failure')
+      if (stateName === 'ended') {
+        expect(forced).toEqual(session)
+        expect(forced.unlockReason).toBe('timer')
+      } else {
+        expect(forced.state).toBe('ended')
+        expect(forced.unlockReason).toBe('failure')
+      }
+
+      // extend: only locked changes the planned end.
+      const extended = extendMaxSession(session, clockAt(60_000), { extraMinutes: 5 })
+      if (stateName === 'locked') {
+        expect(extended.plannedEndMs).toBe(session.plannedEndMs + 5 * 60_000)
+      } else {
+        expect(extended).toEqual(session)
+      }
+    }
+  })
+
+  it('battery gate → force-unlock end-to-end: low battery on battery power ends with reason battery', () => {
+    // The M2-19 gate (core/focus-lock/battery.ts) decides; the machine executes.
+    const levelPct = 12
+    const pluggedIn = false
+    const gateFires = !pluggedIn && levelPct <= DEFAULT_BATTERY_UNLOCK_THRESHOLD
+    expect(gateFires).toBe(true)
+    const ended = forceUnlockSession(startSession(120), clockAt(90 * 60_000), 'battery')
+    expect(ended.state).toBe('ended')
+    expect(ended.unlockReason).toBe('battery')
+    // Charging device at the same level: gate stays closed, session continues.
+    expect(shouldAutoUnlockBattery(levelPct, true)).toBe(false)
+    expect(shouldAutoUnlockBattery(levelPct + 10, pluggedIn)).toBe(false)
+  })
+
+  it('clock tamper mid-exit-flow ends the session with tamper (before the gate can win)', () => {
+    const requested = requestSessionExit(startSession(25), clockAt(0))
+    const tampered = advanceSession(requested, {
+      wallMs: START_MS + 3_600_000, // wall jumped an hour
+      monoMs: ANCHOR_MS + 1_000, // monotonic barely moved
+    })
+    expect(tampered.session.state).toBe('ended')
+    expect(tampered.session.unlockReason).toBe('tamper')
+    expect(tampered.events).toEqual(['session_ended'])
+  })
+
+  it('resume equivalence: a fresh-anchored resumed session behaves like a started one (M2-24)', () => {
+    // startMaxFocusSession at T with anchor A; the resumed twin at T+60min has
+    // anchor = its own "now". Same wall deadline → same end behavior.
+    const original = startSession(120)
+    const resumedTwin = startMaxFocusSession({
+      sessionId: original.sessionId,
+      startedAtMs: original.startedAtMs + 60 * 60_000,
+      minutes: 60,
+      monoAnchorMs: ANCHOR_MS + 60 * 60_000,
+    })
+    // Both end at the same absolute instant with reason timer.
+    const wallEnd = START_MS + 120 * 60_000 + 1_000
+    const endOriginal = advanceSession(original, {
+      wallMs: wallEnd,
+      monoMs: ANCHOR_MS + 120 * 60_000 + 1_000,
+    })
+    const endResumed = advanceSession(resumedTwin, {
+      wallMs: wallEnd,
+      monoMs: ANCHOR_MS + 60 * 60_000 + 1_000,
+    })
+    expect(endOriginal.session.unlockReason).toBe('timer')
+    expect(endResumed.session.unlockReason).toBe('timer')
+    expect(endResumed.session.endedAtMs).toBe(endOriginal.session.endedAtMs)
   })
 })
