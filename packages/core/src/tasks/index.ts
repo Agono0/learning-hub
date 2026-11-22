@@ -392,3 +392,6 @@ export function validateTask(task: TaskItem): TaskValidation {
 
 // Subtask model (S3-04) — re-exported so hosts consume one entry.
 export * from './subtasks'
+
+// Project model (S3-05) — re-exported so hosts consume one entry.
+export * from './projects'

@@ -35,7 +35,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-21 | OTA | Android bsdiff delta APK (stretch): CI generates per-ABI patch vs previous release; client applies + re-signs via persisted keystore | measured sizes; fallback to full APK | scripts, Kotlin apply, native.yml | O1-13 |
 - [x] O1-22 | OTA | Keystore persistence: docs + workflow guard requiring ANDROID_KEYSTORE_BASE64 secret; local keytool fallback only for dev | docs + workflow check step | .github/workflows/native.yml (LEAD), docs/updates.md | P0-1 |
 - [x] O1-23 | OTA | docs/updates.md: architecture, channels, key ceremony, rollback, Play policy note | doc complete | docs/updates.md | O1-08 |
-- [ ] O1-24 | OTA | LIMITATIONS.md: Ctrl+Alt+Del, Play hot-patch policy, Android silent-install limits | doc exists | docs/LIMITATIONS.md | O1-13, M2-07 |
+- [x] O1-24 | OTA | LIMITATIONS.md: Ctrl+Alt+Del, Play hot-patch policy, Android silent-install limits | doc exists | docs/LIMITATIONS.md | O1-13, M2-07 |
 
 ## Epic 2 — Max Focus device lock (M2)
 
@@ -45,10 +45,10 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [ ] M2-04 | LOCK | Handlers: start/status/extend/exit(+reason+pin verify)/history via withRoute + zod | integration tests | apps/web/src/server/handlers/focus/max/…, hub registry | M2-03 |
 - [x] M2-05 | LOCK | Windows Rust: topmost fullscreen window across ALL monitors | code + CI compile | apps/native/src-tauri/src/lock_win.rs | M2-01 |
 - [x] M2-06 | LOCK | Windows Rust: low-level keyboard hooks (Win, Alt+Tab, Alt+F4, Ctrl+Esc) scoped to session | code + docs | apps/native/src-tauri/src/lock_win.rs | M2-05 |
-- [ ] M2-07 | LOCK | Windows: Task Manager/desktop-switch detect + immediate refocus loop | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
+- [x] M2-07 | LOCK | Windows: Task Manager/desktop-switch detect + immediate refocus loop | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
 - [ ] M2-08 | LOCK | Windows admin tier: optional elevation → DisableTaskMgr + watchdog process; ALWAYS restored on end (guarantee via drop guard) | code + docs | apps/native/src-tauri/src/lock_win.rs, lock_watchdog | M2-07 |
-- [ ] M2-09 | LOCK | Windows allowlisted app switching (user can open allowlisted exes only) | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
-- [ ] M2-10 | LOCK | Android Kotlin: Device Owner provisioning helper + exact ADB dpm command emitted by setup wizard | wizard shows command; docs | apps/native/src-tauri/gen/android (Kotlin), apps/web/app/focus/page.tsx section | M2-01 |
+- [x] M2-09 | LOCK | Windows allowlisted app switching (user can open allowlisted exes only) | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
+- [~W3] M2-10 | LOCK | Android Kotlin: Device Owner provisioning helper + exact ADB dpm command emitted by setup wizard | wizard shows command; docs | apps/native/src-tauri/gen/android (Kotlin), apps/web/app/focus/page.tsx section | M2-01 |
 - [ ] M2-11 | LOCK | Android Kotlin: Lock Task Mode plugin (startLockTask + allowlisted packages + lock-task features) | code + docs | gen/android Kotlin plugin + Cargo bridge | M2-10 |
 - [ ] M2-12 | LOCK | Android Kotlin Tier 2: AccessibilityService foreground-app watcher + return-to-focus | code + disclosure screen | gen/android Kotlin + manifest | M2-01 |
 - [ ] M2-13 | LOCK | Android Kotlin Tier 2: full-screen overlay (SYSTEM_ALERT_WINDOW) + UsageStats backup detector | code | gen/android | M2-12 |
@@ -79,7 +79,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-02 | SP | DB schema batch B (LEAD applies): taskTimeLogs (per task/day/session ms), taskSections, taskAttachments, taskArchiveTiers, simpleCounters, metricDays, taskViews(boards) JSON | migration + types | packages/db/src/schema.ts + migrations/0xx-sp-views.ts | S3-01 |
 - [x] S3-03 | SP | Core task domain: model + ops (create/update/complete/reopen/duplicate/bulk/validate) pure functions | unit tests | packages/core/src/tasks/index.ts + tests | S3-01 |
 - [x] S3-04 | SP | Core subtasks: one nesting level, parent aggregates time/estimate | unit tests | packages/core/src/tasks/subtasks.ts | S3-03 |
-- [~W2] S3-05 | SP | Core projects: CRUD, backlog flag, archive/duplicate, notes field | unit tests | packages/core/src/tasks/projects.ts | S3-03 |
+- [x] S3-05 | SP | Core projects: CRUD, backlog flag, archive/duplicate, notes field | unit tests | packages/core/src/tasks/projects.ts | S3-03 |
 - [ ] S3-06 | SP | Core tags: CRUD, colors, OR/AND filter, "no tags", Today virtual tag | unit tests | packages/core/src/tasks/tags.ts | S3-03 |
 - [ ] S3-07 | SP | Core repeat engine: cycles d/w/m/y + interval + start/end + skip dates + re-anchor modes + projections | unit tests (SP parity cases) | packages/core/src/tasks/repeat.ts | S3-03 |
 - [ ] S3-08 | SP | Core reminders: per-task reminder planner (reuse core/reminders patterns), exact-alarm note (Android) | unit tests | packages/core/src/tasks/reminders.ts | S3-03, S3-02 |
