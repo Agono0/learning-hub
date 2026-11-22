@@ -389,3 +389,6 @@ export function validateTask(task: TaskItem): TaskValidation {
 
   return { ok: errors.length === 0, errors, warnings }
 }
+
+// Subtask model (S3-04) — re-exported so hosts consume one entry.
+export * from './subtasks'
