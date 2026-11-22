@@ -287,3 +287,45 @@ describe('/api/focus/max/history', () => {
     expect(bad.status).toBe(400)
   })
 })
+
+describe('route coverage (M2-29) — the max focus slice in the hub registry', () => {
+  it('every focus/max route shim method is registered for the native hub', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs')
+    const { join, relative, resolve, sep } = await import('node:path')
+    const { registeredRoutes } = await import('@/hub/handlers-registry')
+
+    const maxDir = resolve(__dirname, '../app/api/focus/max')
+    const walk = (dir: string): string[] => {
+      const out: string[] = []
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry)
+        if (statSync(full).isDirectory()) out.push(...walk(full))
+        else if (entry === 'route.ts') out.push(full)
+      }
+      return out
+    }
+    const methodsOf = (file: string): string[] =>
+      ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].filter((m) =>
+        new RegExp(
+          `export\s+(?:const|async\s+function|function)\s+${m}\b|export\s*\{[^}]*\b${m}\b`,
+        ).test(readFileSync(file, 'utf8')),
+      )
+
+    const registered = new Set(registeredRoutes().map((r) => `${r.method} ${r.path}`))
+    const missing: string[] = []
+    for (const file of walk(maxDir)) {
+      const rel = relative(resolve(maxDir), file).split(sep).slice(0, -1).join('/')
+      const path = `/api/focus/max/${rel}`.replace(/\/$/, '')
+      for (const method of methodsOf(file)) {
+        if (!registered.has(`${method} ${path}`)) missing.push(`${method} ${path}`)
+      }
+    }
+    // start/status, exit, extend, history — every shim the epic adds
+    expect(missing).toEqual([])
+    expect(registered.has('GET /api/focus/max')).toBe(true)
+    expect(registered.has('POST /api/focus/max')).toBe(true)
+    expect(registered.has('POST /api/focus/max/exit')).toBe(true)
+    expect(registered.has('POST /api/focus/max/extend')).toBe(true)
+    expect(registered.has('GET /api/focus/max/history')).toBe(true)
+  })
+})
