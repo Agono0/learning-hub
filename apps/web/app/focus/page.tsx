@@ -46,6 +46,7 @@ import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
+import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
 import {
   DEVICE_OWNER_ADB_COMMAND,
   deviceOwnerStatus,
@@ -1329,6 +1330,11 @@ export default function FocusPage() {
       {/* ─── DEVICE OWNER PROVISIONING (M2-10) ───────────────────────────── */}
       <Reveal>
         <DeviceOwnerPanel />
+      </Reveal>
+
+      {/* ─── EMERGENCY DIALER (M2-15) ────────────────────────────────────── */}
+      <Reveal>
+        <EmergencyDialerTile />
       </Reveal>
 
       {/* ─── DETOX WIZARD (One-Time) ──────────────────────────────────────── */}

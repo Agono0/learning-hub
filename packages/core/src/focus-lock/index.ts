@@ -299,3 +299,6 @@ export type FocusAllowlistInput = z.infer<typeof focusAllowlistInputSchema>
 
 // Session state machine (M2-01) — re-exported so hosts consume one entry.
 export * from './session'
+
+// Emergency dialer always-allowed set (M2-15) — the safety invariant.
+export * from './emergency'
