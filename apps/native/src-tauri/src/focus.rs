@@ -398,6 +398,11 @@ pub struct MaxSessionSnapshot {
     /// Session allowlist (ALREADY enforced/merged web-side with the emergency
     /// dialer set, M2-15 — the native layer never widens it).
     pub allowed_apps: Vec<String>,
+    /// The enforcement tier (M2-08): `windows-admin` opts into the
+    /// DisableTaskMgr + watchdog hardening (lock_watchdog). Defaults to None
+    /// for payloads sent before the field existed (older session files).
+    #[serde(default)]
+    pub tier: Option<String>,
 }
 
 static MAX_SESSION: OnceLock<std::sync::Mutex<Option<MaxSessionSnapshot>>> = OnceLock::new();
@@ -477,7 +482,12 @@ pub async fn focus_session_apply(
     app: tauri::AppHandle,
     snapshot: MaxSessionSnapshot,
 ) -> Result<serde_json::Value, String> {
-    lock_win::apply_lock_windows_with_allowlist(&app, &snapshot.allowed_apps)?;
+    let admin_hardening = snapshot.tier.as_deref() == Some("windows-admin");
+    lock_win::apply_lock_windows_with_allowlist_and_tier(
+        &app,
+        &snapshot.allowed_apps,
+        admin_hardening,
+    )?;
     {
         let mut current = max_session().lock().map_err(|_| "max session state poisoned")?;
         *current = Some(snapshot.clone());
@@ -581,6 +591,7 @@ mod max_session_tests {
             hard_cap_at_ms: 3,
             mono_anchor_ms: 4,
             allowed_apps: vec!["com.android.dialer".into()],
+            tier: None,
         };
         write_session_file(&path, &snapshot).expect("write failed");
         let back = read_session_file(&path).expect("restore failed");
@@ -604,6 +615,7 @@ mod max_session_tests {
             hard_cap_at_ms: 3_000,
             mono_anchor_ms: 7,
             allowed_apps: vec!["com.android.dialer".into(), "code".into()],
+            tier: None,
         };
         let json = serde_json::to_string(&snapshot).unwrap();
         let back: MaxSessionSnapshot = serde_json::from_str(&json).unwrap();

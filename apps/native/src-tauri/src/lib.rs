@@ -11,6 +11,10 @@ mod idle;
 // Max Focus lock windows (M2-05) — commands are wired in M2-23.
 #[allow(dead_code)]
 mod lock_win;
+
+// M2-08 admin-tier hardening: DisableTaskMgr policy + watchdog (Windows).
+#[allow(dead_code)]
+mod lock_watchdog;
 mod update;
 
 /// Updates base dir under app data: `<app_data_dir>/updates` (A/B slots plus

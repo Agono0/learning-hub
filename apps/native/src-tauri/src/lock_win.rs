@@ -39,7 +39,23 @@ pub fn apply_lock_windows_with_allowlist(
     app: &AppHandle,
     allowed_apps: &[String],
 ) -> Result<(), String> {
+    apply_lock_windows_with_allowlist_and_tier(app, allowed_apps, false)
+}
+
+/// [`apply_lock_windows_with_allowlist`] with the M2-08 tier-2 decision:
+/// `admin_hardening` (session tier `windows-admin`) additionally enables
+/// the DisableTaskMgr policy + watchdog (lock_watchdog), restored on
+/// release. Hardening is best-effort: a failed policy write proceeds at
+/// tier 1.
+pub fn apply_lock_windows_with_allowlist_and_tier(
+    app: &AppHandle,
+    allowed_apps: &[String],
+    admin_hardening: bool,
+) -> Result<(), String> {
     release_lock_windows(app)?;
+    if admin_hardening {
+        crate::lock_watchdog::acquire_hardening(true);
+    }
     let monitors = app
         .available_monitors()
         .map_err(|e| format!("max focus: enumerating monitors failed: {e}"))?;
@@ -86,6 +102,9 @@ pub fn apply_lock_windows_with_allowlist(
 /// Closes every lock window and lifts the keyboard suppression. Idempotent
 /// (no-op when none exist) — the M2-24 resume path relies on that.
 pub fn release_lock_windows(app: &AppHandle) -> Result<(), String> {
+    // M2-08: the hardening guard lives for the session — release drops it
+    // (restore guarantee via the Drop impl), a no-op when not hardened.
+    crate::lock_watchdog::release_hardening();
     #[cfg(windows)]
     refocus::stop().map_err(|e| format!("max focus: refocus guard stop failed: {e}"))?;
     #[cfg(windows)]
