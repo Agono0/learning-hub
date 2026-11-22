@@ -87,6 +87,7 @@ HeroUI is a one-line follow-up.
 10. **Micro-type inside kit** — `text-[10px]`/`text-[11px]` remain in HUD components (out of this branch's reach); same 12px floor should apply.
 11. **Dark-hardcoded HUDs** — `SleepConsolidationHUD.tsx:63,106` leaks light-mode values.
 12. **`viewport.themeColor` hardcodes `#fafafa`/`#0a0a0b`** (`layout.tsx`) — matches no token; derive from `--hub-bg`.
+13. **`Sheet.tsx` was missing the default `import React`** — with the modern JSX transform off in the kit's tsconfig, every `Sheet` consumer (15+ surfaces: dialogs, the task detail panel, repeat/reminders dialogs) crashed on SSR render. W1 fixed it on `feature/mega-run` (default `import React` restored at the top of `src/ui/Sheet.tsx`); the kit owner should KEEP that fix when merging — and grep the other kit files for the same omission (`src/ui/*.tsx` with JSX but no React import).
 
 ## 4. Known remaining gaps (deliberate scope decisions)
 
