@@ -44,8 +44,12 @@ describe('WorklogPage (SSR-safe)', () => {
     expect(html).toContain('Today')
     expect(html).toContain('This week')
     expect(html).toContain('Export CSV')
-    // The correction contract is visible in the header copy.
-    expect(html).toContain('re-derived automatically')
+    // Ranges are effect-set (client-only), so the queries are still disabled
+    // at SSR → the honest empty state renders; the rollups and the
+    // corrections copy appear once data lands client-side.
+    expect(html).toContain('No tracked time yet')
+    expect(html).not.toContain('re-derived automatically')
+    expect(html).not.toContain('Sessions (')
   })
 
   it('does not call the clock during render (hydration-safe ranges)', () => {
