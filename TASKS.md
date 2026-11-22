@@ -87,7 +87,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-10 | SP | Time-tracking core: current task, per-day maps, merge/conflict | unit tests | packages/core/src/tasks/time-tracking.ts | S3-03 |
 - [x] S3-11 | SP | Archive core: young/old tiers, auto-archive config, restore | unit tests | packages/core/src/tasks/archive.ts | S3-03 |
 - [x] S3-12 | SP | Recently-deleted trash (30-day, device-local) | unit tests | packages/core/src/tasks/trash.ts | S3-03 |
-- [~W2] S3-13 | SP | Undo core: last-op undo stack for task ops | unit tests | packages/core/src/tasks/undo.ts | S3-03 |
+- [x] S3-13 | SP | Undo core: last-op undo stack for task ops | unit tests | packages/core/src/tasks/undo.ts | S3-03 |
 - [ ] S3-14 | SP | Search core: task+note search incl. done/archived option | unit tests | packages/core/src/tasks/search.ts | S3-03 |
 - [ ] S3-15 | SP | DB repos: tasks+projects+tags+repeat+reminders+logs (all queries reusable) | repo tests | packages/db/src/repos/tasks.ts | S3-02, S3-03 |
 - [ ] S3-16 | SP | Handlers batch A: tasks CRUD + bulk + duplicate + move-to-project + archive/restore | integration tests | apps/web/src/server/handlers/tasks/…, hub registry | S3-15 |
@@ -180,7 +180,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards/planner | S3-24
 - [ ] O1-25 | OTA | Update check interval + Wi-Fi-only honored by Rust scheduler | code + tests | update.rs | O1-14
 - [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
-- [ ] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
+- [~W3] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
 - [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
 - [ ] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
 - [ ] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12

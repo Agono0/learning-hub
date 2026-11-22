@@ -431,3 +431,6 @@ export * from './archive'
 
 // Recently-deleted trash (S3-12) — re-exported so hosts consume one entry.
 export * from './trash'
+
+// Undo stack (S3-13) — re-exported so hosts consume one entry.
+export * from './undo'
