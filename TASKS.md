@@ -116,7 +116,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |  W1: Tasks/Schedule shortLabels added (pages exist); Projects/Tags entries DEFERRED to S3-22/S3-23 — their pages do not exist yet and nav law forbids dead links
 - [ ] S3-40 | SP | Onboarding addition: SP first-run steps (create project, add task via short syntax) | wizard step | OnboardingWizard | S3-20 |
 - [ ] S3-41 | SP | Docs: docs/tasks.md (data model, shortcuts, parity map) | doc complete | docs/tasks.md | S3-39 |
-- [~W3] S3-42 | SP | Integration tests: renderToString for every new page (today/boards/schedule/worklog/metrics) | tests green | apps/web/tests/sp-*-integration.test.ts (W1: tasks/planner/schedule landed; W3 filling boards/worklog/metrics + planner calendar section) | S3-20..S3-30 |
+- [x] S3-42 | SP | Integration tests: renderToString for every new page (today/boards/schedule/worklog/metrics) | tests green | apps/web/tests/sp-*-integration.test.ts (7 files, 47/47: W1 tasks/planner/schedule + W3 boards/worklog/metrics + planner calendar-mount; handoff docs/handoffs/S3-42.md) | S3-20..S3-30 |
 - [x] S3-43 | SP | WorkContext totals: per project/tag today-time, tracked-title (document title shows current task + time) | core + UI | core/tasks/work-context.ts | S3-10 |  W1: workContextTotals (per-project/per-tag today-time, multi-tag attribution, inbox=null) + trackedTitle + apps/web/src/lib/use-tracked-title.ts hook (effect-only, restores default on unmount); 9 unit tests
 - [x] S3-44 | SP | Task-view customizer: show/hide/sort/group per view + "save as view" | component + core | core/boards.ts extension | S3-24 |  W2: TaskViewCustomizer.tsx (show/hide five columns + sort/group selects + save-as-view flow) over lib/task-view-settings (device-local, zod-validated) — UI component per lane brief, no core/boards.ts edits
 - [x] S3-45 | SP | Estimated-vs-spent indicators, priority indicators, deadline badges across lists | components | tasks components | S3-20 |  W2: TaskIndicators.tsx (EstimateSpentBadge/PriorityBadge/DeadlineBadge + pure tone/urgency math) wired into TaskRow; page-integration copy updated to the shared contract (landed via 262a34d/1cae11b sweeps)
@@ -176,7 +176,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-96 | SP | UI: impact stars + lazy chart components | component | metrics | S3-30
 - [ ] S3-97 | SP | Docs: keyboard shortcut default map table in docs/tasks.md | doc section | docs/tasks.md | S3-35
 - [ ] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42
-- [ ] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
+- [~W1] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
 - [x] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards page (focusable quadrants+cards with --ac-strong rings, list semantics, live hints; planner side is W1's S3-25 surface) | S3-24
 - [x] O1-25 | OTA | Update check interval + Wi-Fi-only honored by the check scheduler | code + tests | apps/web/src/lib/updates.ts client service (scheduler owns the loop; settings are webview-local; Rust keeps download/promote) | O1-14 |
 - [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
