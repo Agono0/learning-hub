@@ -97,13 +97,14 @@ inertness). Four NEW honest limits the run surfaced:
   the reminders scheduler task (S3-19 read + S3-48 UI are landed; the
   native delivery hop is the remaining work).
 
-- **Idle detection is desktop-only (and not yet landed).** There is no
-  `idle.rs` in `apps/native/src-tauri/src/` — S3-33 tracks it. Mobile
-  OSes expose no user-mode global idle signal at all (no Android
-  equivalent of `GetLastInputInfo`), so idle classification will be
-  Windows/macOS-only by construction; mobile tracking keeps manual
+- **Idle detection is desktop-only by construction.** S3-33 landed
+  (`apps/native/src-tauri/src/idle.rs` — the `system_idle_ms` command;
+  core gate `packages/core/src/tasks/idle.ts` + the
+  `IdleClassifyDialog.tsx` UI). Windows reports real system idle via
+  `GetLastInputInfo`; mobile OSes expose no user-mode global idle signal
+  at all (no Android equivalent), so mobile tracking keeps manual
   start/stop. Max Focus sessions intentionally suppress idle handling
-  (S3-33's spec).
+  while a lock is live.
 
 - **SP device-local stores do not roam.** The user's Phase-1 scope
   decision skipped sync, and several mega-run surfaces persist
