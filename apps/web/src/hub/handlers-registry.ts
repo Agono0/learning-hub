@@ -52,7 +52,9 @@ import * as focusAllowlistsId from '../server/handlers/focus/allowlists/[id]/rou
 import * as focusAllowlists from '../server/handlers/focus/allowlists/route'
 import * as focusBridge from '../server/handlers/focus/bridge/route'
 import * as focusId from '../server/handlers/focus/[id]/route'
+import * as focusMaxExtend from '../server/handlers/focus/max/extend/route'
 import * as focusMaxExit from '../server/handlers/focus/max/exit/route'
+import * as focusMaxHistory from '../server/handlers/focus/max/history/route'
 import * as focusMax from '../server/handlers/focus/max/route'
 import * as focus from '../server/handlers/focus/route'
 import * as friction from '../server/handlers/friction/route'
@@ -71,6 +73,16 @@ import * as calendar from '../server/handlers/calendar/route'
 import * as push from '../server/handlers/push/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
+import * as tasksId from '../server/handlers/tasks/[id]/route'
+import * as tasksArchive from '../server/handlers/tasks/[id]/archive/route'
+import * as tasksComplete from '../server/handlers/tasks/[id]/complete/route'
+import * as tasksDuplicate from '../server/handlers/tasks/[id]/duplicate/route'
+import * as tasksReopen from '../server/handlers/tasks/[id]/reopen/route'
+import * as tasksRestore from '../server/handlers/tasks/[id]/restore/route'
+import * as tasksTags from '../server/handlers/tasks/[id]/tags/route'
+import * as tasksBulk from '../server/handlers/tasks/bulk/route'
+import * as tasksOrder from '../server/handlers/tasks/order/route'
+import * as tasks from '../server/handlers/tasks/route'
 import * as graph from '../server/handlers/graph/route'
 import * as habitsCheckin from '../server/handlers/habits/checkin/route'
 import * as habitsId from '../server/handlers/habits/[id]/route'
@@ -196,6 +208,7 @@ import * as conceptualChange from '../server/handlers/conceptual-change/route'
 import * as deliberate from '../server/handlers/deliberate/route'
 import * as scaffolding from '../server/handlers/scaffolding/route'
 import * as updateNotes from '../server/handlers/update/notes/route'
+import * as calendarImport from '../server/handlers/calendar/import/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -271,12 +284,24 @@ add('focus/allowlists/[id]', focusAllowlistsId)
 add('focus/bridge', focusBridge)
 add('focus/max', focusMax)
 add('focus/max/exit', focusMaxExit)
+add('focus/max/extend', focusMaxExtend)
+add('focus/max/history', focusMaxHistory)
 add('friction', friction)
 add('fsrs/optimize', fsrsOptimize)
 add('games', games)
 add('games/boss', gamesBoss)
 add('goals', goals)
 add('goals/[id]', goalsId)
+add('tasks', tasks)
+add('tasks/[id]', tasksId)
+add('tasks/[id]/archive', tasksArchive)
+add('tasks/[id]/complete', tasksComplete)
+add('tasks/[id]/duplicate', tasksDuplicate)
+add('tasks/[id]/reopen', tasksReopen)
+add('tasks/[id]/restore', tasksRestore)
+add('tasks/[id]/tags', tasksTags)
+add('tasks/bulk', tasksBulk)
+add('tasks/order', tasksOrder)
 add('graph', graph)
 add('habits', habits)
 add('habits/checkin', habitsCheckin)
@@ -413,6 +438,7 @@ add('conceptual-change', conceptualChange)
 add('deliberate', deliberate)
 add('scaffolding', scaffolding)
 add('update/notes', updateNotes)
+add('calendar/import', calendarImport)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
