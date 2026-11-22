@@ -47,6 +47,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
 import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
+import { MaxFocusReportCard } from '@/components/MaxFocusReportCard'
 import {
   DEVICE_OWNER_ADB_COMMAND,
   deviceOwnerStatus,
@@ -1336,6 +1337,9 @@ export default function FocusPage() {
       <Reveal>
         <EmergencyDialerTile />
       </Reveal>
+
+      {/* ─── SESSION REPORT CARD (M2-34) ─────────────────────────────────── */}
+      <MaxFocusReportCard />
 
       {/* ─── DETOX WIZARD (One-Time) ──────────────────────────────────────── */}
       {detox.data && !detox.data.done && (
