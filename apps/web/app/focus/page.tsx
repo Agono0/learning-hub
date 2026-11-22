@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle,
   CheckCircle2,
   Copy,
   Globe,
@@ -11,7 +10,6 @@ import {
   Phone,
   Plus,
   Shield,
-  ShieldAlert,
   Timer,
   TreePine,
   X,
@@ -47,6 +45,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
 import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
+import { MaxFocusExitGate } from '@/components/MaxFocusExitGate'
 import { MaxFocusReportCard } from '@/components/MaxFocusReportCard'
 import {
   DEVICE_OWNER_ADB_COMMAND,
@@ -307,7 +306,6 @@ export default function FocusPage() {
   const [extraApps, setExtraApps] = useState<string[]>([])
   const [newDomain, setNewDomain] = useState('')
   const [newApp, setNewApp] = useState('')
-  const [earlyExitReflection, setEarlyExitReflection] = useState('')
   const [copiedToken, setCopiedToken] = useState(false)
 
   // ── running session state ──
@@ -499,70 +497,28 @@ export default function FocusPage() {
     },
   })
 
-  const requestEarlyExitMutation = useMutation({
-    mutationFn: () =>
-      apiSend<{ ok: boolean; lock: FocusLockData }>('/api/focus/max/exit', 'POST', {
-        action: 'request',
-      }),
-    onSuccess: () => {
-      void releaseFocusPresentation()
-      toast({
-        title: 'Exit Cooldown Started',
-        description: 'Take 60 seconds to reflect before breaking your focus.',
-        tone: 'warning',
-      })
-      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, tone: 'danger' })
-    },
-  })
+  // M2-18: the early-exit arc (request → 60s cooldown → PIN-confirmed exit)
+  // lives in <MaxFocusExitGate> — PIN setup, PIN entry and the mandatory
+  // reason are its internals. The page only refetches on change and releases
+  // the native watchdog once a confirmed exit actually lands.
+  const exitGateChanged = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
+    void qc.invalidateQueries({ queryKey: queryKeys.focus })
+  }, [qc])
 
-  const confirmEarlyExitMutation = useMutation({
-    mutationFn: async (reflection: string) => {
-      const res = await apiSend<{ ok: boolean; session: FocusSession; lock: FocusLockData }>(
-        '/api/focus/max/exit',
-        'POST',
-        { action: 'confirm', reflection },
-      )
-      if (isTauriDesktop) {
+  const exitGateExited = useCallback(() => {
+    void releaseFocusPresentation()
+    if (isTauriDesktop) {
+      void (async () => {
         try {
           const { invoke } = await import('@tauri-apps/api/core')
           await invoke('focus_lock_release', { token: bridge.data?.pairingToken ?? '' })
-        } catch {}
-      }
-      return res
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Max Focus Session Ended',
-        description: 'Session ended early. Reflection recorded in friction log.',
-        tone: 'neutral',
-      })
-      setEarlyExitReflection('')
-      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-      void qc.invalidateQueries({ queryKey: queryKeys.focus })
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, tone: 'danger' })
-    },
-  })
-
-  const cancelEarlyExitMutation = useMutation({
-    mutationFn: () =>
-      apiSend<{ ok: boolean; lock: FocusLockData }>('/api/focus/max/exit', 'POST', {
-        action: 'cancel',
-      }),
-    onSuccess: () => {
-      toast({
-        title: 'Impulse Resisted!',
-        description: 'Great choice staying with your focus. Timer restored.',
-        tone: 'success',
-      })
-      setEarlyExitReflection('')
-      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-    },
-  })
+        } catch {
+          /* native bridge optional — the server already ended the session */
+        }
+      })()
+    }
+  }, [bridge.data?.pairingToken])
 
   const armGate = (trigger: FrictionTrigger) => {
     if (!session) return
@@ -1006,88 +962,12 @@ export default function FocusPage() {
                   </div>
                 </div>
 
-                {/* Early Exit Gate State Machine */}
-                {activeLock.exitState === 'locked' && (
-                  <div className="pt-2">
-                    <Button
-                      variant="ghost"
-                      className="border border-rose-500/30 text-danger-text hover:bg-rose-950/20 text-xs"
-                      onClick={() => requestEarlyExitMutation.mutate()}
-                      disabled={requestEarlyExitMutation.isPending}
-                    >
-                      Request Early Exit (Initiates 60s reflection delay)
-                    </Button>
-                  </div>
-                )}
-
-                {activeLock.exitState === 'cooldown' && (
-                  <div className="mx-auto max-w-md space-y-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 text-left">
-                    <div className="flex items-center gap-2 text-status-warning-text font-semibold text-sm">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      Early Exit Cooldown: {activeLock.cooldownRemainingSec}s remaining
-                    </div>
-                    <p className="text-xs text-tertiary">
-                      Take a slow breath. Ulysses contracts separate sudden impulses from deliberate
-                      actions. Why do you want to break focus?
-                    </p>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-(--hub-border)">
-                      {/* Transform-only motion law: the cooldown bar scales
-                          along X instead of animating layout width. */}
-                      <div
-                        className="h-full w-full origin-left bg-amber-400 transition-transform duration-1000"
-                        style={{
-                          transform: `scaleX(${Math.max(0, 1 - activeLock.cooldownRemainingSec / 60)})`,
-                        }}
-                      />
-                    </div>
-                    <Button
-                      variant="primary"
-                      className="w-full text-xs font-semibold"
-                      onClick={() => cancelEarlyExitMutation.mutate()}
-                    >
-                      Resist Impulse & Return to Flow
-                    </Button>
-                  </div>
-                )}
-
-                {activeLock.exitState === 'can_confirm' && (
-                  <div className="mx-auto max-w-md space-y-3 rounded-xl border border-rose-500/40 bg-rose-950/20 p-4 text-left">
-                    <div className="flex items-center gap-2 text-danger-text font-semibold text-sm">
-                      <ShieldAlert className="h-4 w-4 shrink-0" />
-                      Cooldown Complete — State Your Reflection
-                    </div>
-                    <p className="text-xs text-tertiary">
-                      Type at least 20 characters explaining the reason for ending early. It will be
-                      logged to your friction history.
-                    </p>
-                    <textarea
-                      className="input min-h-24 w-full text-xs font-mono"
-                      placeholder="Why are you breaking focus? (minimum 20 chars)"
-                      value={earlyExitReflection}
-                      onChange={(e) => setEarlyExitReflection(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="btn-danger flex-1 text-xs"
-                        disabled={
-                          earlyExitReflection.trim().length < 20 ||
-                          confirmEarlyExitMutation.isPending
-                        }
-                        onClick={() => confirmEarlyExitMutation.mutate(earlyExitReflection.trim())}
-                      >
-                        Confirm Early Exit
-                      </button>
-                      <Button
-                        variant="ghost"
-                        className="text-xs"
-                        onClick={() => cancelEarlyExitMutation.mutate()}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                {/* Early Exit Gate — request, 60s reflection, PIN + reason (M2-18) */}
+                <MaxFocusExitGate
+                  lock={activeLock}
+                  onChanged={exitGateChanged}
+                  onExited={exitGateExited}
+                />
               </div>
             ) : (
               /* Max Focus Session Configurator */
