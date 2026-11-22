@@ -425,3 +425,6 @@ export * from './wontdo'
 
 // Time-tracking core (S3-10) — re-exported so hosts consume one entry.
 export * from './time-tracking'
+
+// Archive tiers (S3-11) — re-exported so hosts consume one entry.
+export * from './archive'
