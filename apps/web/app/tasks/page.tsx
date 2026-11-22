@@ -15,6 +15,7 @@
  * touches window/localStorage at render time (mirrors /boards).
  */
 import React, { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ListChecks } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
@@ -275,7 +276,16 @@ export default function TasksPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-24 pt-4">
-      <PageHeader title="Tasks" subtitle="Today and Inbox — one calm list" />
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader title="Tasks" subtitle="Today and Inbox — one calm list" />
+        <Link
+          href="/tasks/finish-day"
+          className="btn-ghost min-h-[44px] shrink-0 px-3 leading-[44px]"
+          aria-label="Open the finish-day flow"
+        >
+          Finish the day
+        </Link>
+      </div>
 
       {loadError !== null && (
         <div className="mb-4">
