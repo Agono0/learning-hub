@@ -52,10 +52,10 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] M2-11 | LOCK | Android Kotlin: Lock Task Mode plugin (startLockTask + allowlisted packages + lock-task features) | code + docs | gen/android Kotlin plugin + Cargo bridge | M2-10 |
 - [x] M2-12 | LOCK | Android Kotlin Tier 2: AccessibilityService foreground-app watcher + return-to-focus | code + disclosure screen | gen/android Kotlin + manifest | M2-01 |
 - [x] M2-13 | LOCK | Android Kotlin Tier 2: full-screen overlay (SYSTEM_ALERT_WINDOW) + UsageStats backup detector | code | gen/android | M2-12 |
-- [ ] M2-14 | LOCK | Android Kotlin: Device Admin anti-uninstall + BOOT_COMPLETED resume + foreground service with elapsedRealtime | code + manifest perms | gen/android | M2-11, M2-13 |
-- [ ] M2-15 | LOCK | Emergency dialer always reachable: SYSTEM_ALLOWED_APPS enforcement on both platforms; dialer tile during session | tests + UI | packages/core focus-lock SYSTEM_ALLOWED_APPS, lock UIs | M2-05, M2-11 |
+- [x] M2-14 | LOCK | Android Kotlin: Device Admin anti-uninstall + BOOT_COMPLETED resume + foreground service with elapsedRealtime | code + manifest perms | gen/android | M2-11, M2-13 |
+- [x] M2-15 | LOCK | Emergency dialer always reachable: SYSTEM_ALLOWED_APPS enforcement on both platforms; dialer tile during session | tests + UI | packages/core focus-lock SYSTEM_ALLOWED_APPS, lock UIs | M2-05, M2-11 |
 - [ ] M2-16 | LOCK | Pre-session checklist UI: permission audit, what-will-be-blocked list, explicit confirm | page section + integration test | apps/web/app/focus/page.tsx | M2-04 |
-- [ ] M2-17 | LOCK | Accessibility + Device Admin disclosure screens (store-policy compliant copy) | screens exist | apps/web/src/components/MaxFocusDisclosures.tsx | M2-12, M2-14 |
+- [~W3] M2-17 | LOCK | Accessibility + Device Admin disclosure screens (store-policy compliant copy) | screens exist | apps/web/src/components/MaxFocusDisclosures.tsx | M2-12, M2-14 |
 - [ ] M2-18 | LOCK | Early-exit flow UI: PIN entry + mandatory reason → POST exit (logged) | component + test | apps/web/src/components/MaxFocusExitGate.tsx | M2-04, M2-02 |
 - [ ] M2-19 | LOCK | Hard-cap + battery auto-unlock: monitor battery (Tauri), unlock + log on threshold | code + unit tests | core session + Rust + Kotlin | M2-01 |
 - [x] M2-20 | LOCK | Tamper detection: clock change (monotonic mismatch), permission revoked → end session + friction log | core logic + tests | packages/core/src/focus-lock/session.ts | M2-01 |
@@ -83,7 +83,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-06 | SP | Core tags: CRUD, colors, OR/AND filter, "no tags", Today virtual tag | unit tests | packages/core/src/tasks/tags.ts | S3-03 |
 - [x] S3-07 | SP | Core repeat engine: cycles d/w/m/y + interval + start/end + skip dates + re-anchor modes + projections | unit tests (SP parity cases) | packages/core/src/tasks/repeat.ts | S3-03 |
 - [x] S3-08 | SP | Core reminders: per-task reminder planner (reuse core/reminders patterns), exact-alarm note (Android) | unit tests | packages/core/src/tasks/reminders.ts | S3-03, S3-02 |
-- [~W2] S3-09 | SP | Short-syntax parser: #tag +project 10m/1h @date @every p1..3 !deadline + autocomplete token model | exhaustive unit tests | packages/core/src/tasks/short-syntax.ts | S3-07 |
+- [x] S3-09 | SP | Short-syntax parser: #tag +project 10m/1h @date @every p1..3 !deadline + autocomplete token model | exhaustive unit tests | packages/core/src/tasks/short-syntax.ts | S3-07 |
 - [ ] S3-10 | SP | Time-tracking core: current task, per-day maps, merge/conflict | unit tests | packages/core/src/tasks/time-tracking.ts | S3-03 |
 - [ ] S3-11 | SP | Archive core: young/old tiers, auto-archive config, restore | unit tests | packages/core/src/tasks/archive.ts | S3-03 |
 - [ ] S3-12 | SP | Recently-deleted trash (30-day, device-local) | unit tests | packages/core/src/tasks/trash.ts | S3-03 |
