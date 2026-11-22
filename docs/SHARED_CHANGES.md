@@ -292,10 +292,10 @@ export const taskViews = table('task_views', {
 ```
 
 - [Rust tests never run in CI] `.github/workflows/native.yml` (and/or ci.yml)
-→ add a `cargo test` step for `apps/native/src-tauri` (e.g.
-`cargo test --manifest-path apps/native/src-tauri/Cargo.toml --release` on the
-windows job). Why: today native.yml only BUILDs (`npm run app:build`), and
-`cargo build` does not even compile `#[cfg(test)]` code — so all the Rust
-unit tests written by O1-02/O1-03/O1-05/O1-16/O1-17/O1-18/O1-19 (update.rs)
-and lock_win.rs are never executed or compile-checked. One step closes the
-gap the mega-run's "tests green" acceptances rely on.
+  → add a `cargo test` step for `apps/native/src-tauri` (e.g.
+  `cargo test --manifest-path apps/native/src-tauri/Cargo.toml --release` on the
+  windows job). Why: today native.yml only BUILDs (`npm run app:build`), and
+  `cargo build` does not even compile `#[cfg(test)]` code — so all the Rust
+  unit tests written by O1-02/O1-03/O1-05/O1-16/O1-17/O1-18/O1-19 (update.rs)
+  and lock_win.rs are never executed or compile-checked. One step closes the
+  gap the mega-run's "tests green" acceptances rely on.
