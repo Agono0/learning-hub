@@ -115,6 +115,8 @@ pub fn run() {
             update_android_device_info,
             update_install_android_apk,
             focus_android_provision_status,
+            focus_android_start_lock_task,
+            focus_android_stop_lock_task,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -381,6 +383,10 @@ fn focus_android_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
             let handle =
                 api.register_android_plugin("dev.learninghub.app", "MaxFocusAndroidPlugin")?;
             app.manage(MaxFocusAndroid(handle));
+            // Lock Task Mode (M2-11) — separate class, same plugin family.
+            let lock_task =
+                api.register_android_plugin("dev.learninghub.app", "MaxFocusLockTask")?;
+            app.manage(MaxFocusLockTask(lock_task));
             Ok(())
         })
         .build()
@@ -405,6 +411,58 @@ pub async fn focus_android_provision_status(app: tauri::AppHandle) -> Result<ser
     {
         let _ = app;
         Err("device owner status is Android-only".to_string())
+    }
+}
+
+/// Managed handle to the Kotlin `MaxFocusLockTask` class (M2-11).
+#[cfg(target_os = "android")]
+#[derive(Clone)]
+struct MaxFocusLockTask(tauri::plugin::PluginHandle<tauri::Wry>);
+
+/// Pins the foreground to the session's allowlisted packages (M2-11, Tier 1:
+/// Device Owner only — the Kotlin side rejects otherwise). The emergency
+/// dialer package MUST be part of `packages` (M2-15).
+#[tauri::command]
+pub async fn focus_android_start_lock_task(
+    app: tauri::AppHandle,
+    packages: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusLockTask>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "startLockTask",
+                serde_json::json!({ "packages": packages }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, packages);
+        Err("Lock Task Mode is Android-only".to_string())
+    }
+}
+
+/// Unpins the foreground (session end / emergency exit). Idempotent.
+#[tauri::command]
+pub async fn focus_android_stop_lock_task(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusLockTask>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("stopLockTask", ())
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("Lock Task Mode is Android-only".to_string())
     }
 }
 
