@@ -54,7 +54,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] M2-13 | LOCK | Android Kotlin Tier 2: full-screen overlay (SYSTEM_ALERT_WINDOW) + UsageStats backup detector | code | gen/android | M2-12 |
 - [x] M2-14 | LOCK | Android Kotlin: Device Admin anti-uninstall + BOOT_COMPLETED resume + foreground service with elapsedRealtime | code + manifest perms | gen/android | M2-11, M2-13 |
 - [x] M2-15 | LOCK | Emergency dialer always reachable: SYSTEM_ALLOWED_APPS enforcement on both platforms; dialer tile during session | tests + UI | packages/core focus-lock SYSTEM_ALLOWED_APPS, lock UIs | M2-05, M2-11 |
-- [ ] M2-16 | LOCK | Pre-session checklist UI: permission audit, what-will-be-blocked list, explicit confirm | page section + integration test | apps/web/app/focus/page.tsx | M2-04 |
+- [x] M2-16 | LOCK | Pre-session checklist UI: permission audit, what-will-be-blocked list, explicit confirm | page section + integration test | apps/web/app/focus/page.tsx | M2-04 | W2: MaxFocusPrecheck.tsx (blocked-list chips from resolved allowlist, platform permission audit, explicit confirm gating the start button) + SSR test
 - [x] M2-17 | LOCK | Accessibility + Device Admin disclosure screens (store-policy compliant copy) | screens exist | apps/web/src/components/MaxFocusDisclosures.tsx | M2-12, M2-14 |
 - [x] M2-18 | LOCK | Early-exit flow UI: PIN entry + mandatory reason → POST exit (logged) | component + test | apps/web/src/components/MaxFocusExitGate.tsx | M2-04, M2-02 | W2: MaxFocusExitGate.tsx owns request/cooldown/PIN-setup/PIN+reason arc (device-local vault via core createPinVault) + SSR test; replaces the page inline flow (old confirm had no PIN and would 400 against M2-04)
 - [x] M2-19 | LOCK | Hard-cap + battery auto-unlock: monitor battery (Tauri), unlock + log on threshold | code + unit tests | core session + Rust + Kotlin | M2-01 |
@@ -184,7 +184,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
 - [x] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
 - [ ] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12
-- [ ] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16
+- [x] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16 W2: core/focus-lock/tiers.ts — TIER_REQUIREMENTS + tierChecklist + bestAvailableTier + labels, unit-tested; rendered by the M2-16 precheck
 - [x] M2-33 | LOCK | Windows: session state persisted + restored after app restart (not just reboot) | code + tests | lock_win.rs | M2-24
 - [x] M2-34 | LOCK | Both: "session ended by cap/battery" post-session report card | UI + handler | focus page | M2-19
 - [ ] M2-35 | LOCK | Docs: admin/watchdog security notes in docs/max-focus.md (no secrets, restore guarantees) | doc section | docs/max-focus.md | M2-08
