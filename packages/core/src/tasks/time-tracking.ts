@@ -15,7 +15,7 @@
  * Ticks are quantized to whole seconds (SP rounds ticks); breaks never
  * count (S3-81's guard lives here as `applyTick` refusing break sources).
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** Where a tracked session came from. */
 export type TimeLogSource = 'manual' | 'focus' | 'idle'

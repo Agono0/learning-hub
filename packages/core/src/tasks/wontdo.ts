@@ -9,7 +9,7 @@
  * This module is the count-exclusion authority so callers cannot
  * accidentally count won't-do tasks.
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** True when the task is written off (excluded from all counts). */
 export function isWontDo(task: Pick<TaskItem, 'wonthado'>): boolean {

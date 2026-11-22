@@ -12,7 +12,7 @@
  * conflict the sync layer never sees.
  */
 import { z } from 'zod'
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** Max undo depth (SP parity: enough to walk back a working session). */
 export const UNDO_STACK_LIMIT = 20

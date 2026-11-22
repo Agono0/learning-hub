@@ -10,7 +10,7 @@
  * Pure functions over the S3-03 domain; illegal transitions throw
  * {@link TaskDomainError} like the rest of the domain.
  */
-import { TaskDomainError, type TaskItem } from './index'
+import { TaskDomainError, type TaskItem } from './shared'
 
 // ── Nesting rules ───────────────────────────────────────────────────────────
 

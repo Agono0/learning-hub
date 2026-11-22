@@ -10,7 +10,7 @@
  * Pure; S3-45 renders the badges, S3-24/S3-20 sort with
  * {@link compareByEffectivePriority}.
  */
-import type { TaskItem, TaskPriority } from './index'
+import type { TaskItem, TaskPriority } from './shared'
 
 /** Sort rank of a priority (higher = more urgent). */
 export function priorityRank(priority: TaskPriority): number {

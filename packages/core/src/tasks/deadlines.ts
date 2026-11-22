@@ -11,7 +11,7 @@
  * Pure: `today` comes in as a `YYYY-MM-DD` string (S3-65 owns the real
  * today key; tests inject). No clock reads.
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** How urgent the deadline is, for badge rendering (S3-45). */
 export type DeadlineUrgency = 'none' | 'past' | 'today' | 'soon' | 'later'

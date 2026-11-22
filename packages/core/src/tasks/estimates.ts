@@ -7,7 +7,7 @@
  * math rolls the task's per-day tracked time (S3-10 writes it) against the
  * estimate. Pure, no I/O.
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** Upper bound for a single estimate: 50h (SP's practical cap). */
 export const ESTIMATE_MAX_MS = 50 * 3_600_000

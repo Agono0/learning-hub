@@ -8,7 +8,7 @@
  * mutates. Won't-do tasks are excluded by the tasks passed in — these
  * helpers group what they see (S3-66 filters upstream).
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** One named group with its members (input order preserved). */
 export interface TaskGroup<T extends TaskItem = TaskItem> {

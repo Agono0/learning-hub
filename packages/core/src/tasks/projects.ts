@@ -7,7 +7,7 @@
  * renders it. Pure model + ops, immutable, no I/O — `now` is injected.
  */
 import { z } from 'zod'
-import { TaskDomainError } from './index'
+import { TaskDomainError } from './shared'
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 

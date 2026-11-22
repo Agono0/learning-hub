@@ -10,7 +10,7 @@
  * Pure: `today` arrives as `YYYY-MM-DD` (callers inject; the UI passes the
  * device-local day). No clock reads.
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 const DAY_MS = 86_400_000
 

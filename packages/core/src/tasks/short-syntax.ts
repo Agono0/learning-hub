@@ -19,7 +19,7 @@
  */
 import { parseEstimateMs } from './estimates'
 import { addCycle, repeatCycleSchema, type RepeatCycle } from './repeat'
-import type { TaskPriority } from './index'
+import type { TaskPriority } from './shared'
 
 // ── Result shapes ───────────────────────────────────────────────────────────
 

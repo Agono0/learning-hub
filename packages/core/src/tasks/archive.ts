@@ -14,7 +14,7 @@
  * pure fold over tasks + existing tiers; the S3-16 handler persists rows
  * transactionally.
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** Archive tiers, coldest last. */
 export type ArchiveTier = 'young' | 'old'

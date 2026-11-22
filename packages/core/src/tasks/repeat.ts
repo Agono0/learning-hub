@@ -21,7 +21,7 @@
  * persists the config; S3-47 renders the dialog.
  */
 import { z } from 'zod'
-import { dayKeySchema } from './index'
+import { dayKeySchema } from './shared'
 
 /** SP repeat cycles. */
 export const repeatCycleSchema = z.enum(['d', 'w', 'm', 'y'])

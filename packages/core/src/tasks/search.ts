@@ -12,7 +12,7 @@
  * Today bar's live feel) and include archived/trashed (default off).
  * Won't-do tasks never match (S3-66: excluded from everything).
  */
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 /** What a search backend must expose for one searchable row. */
 export interface SearchDoc {

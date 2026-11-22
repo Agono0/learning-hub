@@ -16,7 +16,7 @@
  */
 import { z } from 'zod'
 import { extractTimeHHMM, isQuietHours } from '../reminders'
-import type { TaskItem } from './index'
+import type { TaskItem } from './shared'
 
 // ── Model ───────────────────────────────────────────────────────────────────
 
