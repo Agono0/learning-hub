@@ -1,0 +1,5 @@
+<resources>
+    <!-- Added app-side (M2-13): shown on the full-screen overlay while the
+         watcher returns the user to the session. -->
+    <string name="max_focus_overlay_message">"Max Focus session in progress — taking you back."</string>
+</resources>

@@ -44,6 +44,9 @@ class MaxFocusAccessibilityService : AccessibilityService() {
         val allowed = prefs.getStringSet(KEY_PACKAGES, emptySet()) ?: emptySet()
         if (pkg in allowed) return
 
+        // Visual backstop (M2-13): full-screen banner while we return focus.
+        MaxFocusOverlay.show(this, applicationInfo.loadLabel(packageManager).toString())
+
         // Bring the session back in front (Tier 2's "return-to-focus").
         val launch = packageManager.getLaunchIntentForPackage(packageName)
         if (launch != null) {
@@ -58,6 +61,7 @@ class MaxFocusAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        MaxFocusOverlay.dismiss(this)
         runningInstance = null
         super.onDestroy()
     }

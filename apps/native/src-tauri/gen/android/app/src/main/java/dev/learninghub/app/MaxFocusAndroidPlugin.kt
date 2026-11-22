@@ -66,6 +66,14 @@ class MaxFocusAndroidPlugin(private val activity: Activity) : Plugin(activity) {
             .putBoolean(MaxFocusAccessibilityService.KEY_ACTIVE, args.active)
             .putStringSet(MaxFocusAccessibilityService.KEY_PACKAGES, args.packages.filter { it.isNotBlank() }.toSet())
             .apply()
+        // Overlay + UsageStats backstops (M2-13) follow the session state.
+        val appLabel = activity.applicationInfo.loadLabel(activity.packageManager).toString()
+        val service = MaxFocusAccessibilityService.runningInstance
+        if (args.active) {
+            service?.let { MaxFocusOverlay.show(it, appLabel) }
+        } else {
+            service?.let { MaxFocusOverlay.dismiss(it) }
+        }
         val data = JSObject()
         data.put("active", args.active)
         data.put("watcherConnected", MaxFocusAccessibilityService.isRunning)
