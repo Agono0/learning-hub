@@ -302,3 +302,6 @@ export * from './session'
 
 // Emergency dialer always-allowed set (M2-15) — the safety invariant.
 export * from './emergency'
+
+// Battery auto-unlock gate (M2-19) — pure decision behind the native monitors.
+export * from './battery'

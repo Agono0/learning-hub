@@ -122,6 +122,7 @@ pub fn run() {
             focus_android_session_service,
             focus_android_session_elapsed,
             focus_android_set_anti_uninstall,
+            focus_android_battery_status,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -590,6 +591,29 @@ pub async fn focus_android_set_anti_uninstall(
     {
         let _ = (app, enabled);
         Err("anti-uninstall is Android-only".to_string())
+    }
+}
+
+/// Battery reading for the M2-19 auto-unlock gate (Android: the sticky
+/// battery broadcast; Windows: GetSystemPowerStatus behind the
+/// Win32_System_Power feature request in docs/SHARED_CHANGES.md). The caller
+/// runs the pure core gate `shouldAutoUnlockBattery` and, when it fires,
+/// calls `forceUnlockSession(session, clock, 'battery')`.
+#[tauri::command]
+pub async fn focus_android_battery_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("batteryStatus", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("the battery monitor is Android-only (Windows lands with the power feature)".to_string())
     }
 }
 

@@ -309,3 +309,19 @@ export const taskViews = table('task_views', {
   uploads `dist/delta` with the release assets. The webview KEEPS the full-APK
   fallback (O1-13) until the measured ratios justify an on-device patch path
   (decision recorded in docs/updates.md §"Android sideload consent flow").
+
+- [M2-08] `apps/native/src-tauri/Cargo.toml` → add
+  `"Win32_System_Registry"` to the existing `windows` dependency features
+  (the `[target.'cfg(windows)'.dependencies]` block). Why: the admin tier's
+  `DisableTaskMgr` policy is a per-user registry value
+  (`HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System`);
+  without the feature the M2-08 worker code cannot compile and the Rust CI
+  job fails. The watchdog's TerminateProcess path needs no new feature.
+
+- [M2-19] `apps/native/src-tauri/Cargo.toml` → add
+  `"Win32_System_Power"` to the existing `windows` dependency features. Why:
+  the Windows side of the battery auto-unlock monitor reads
+  `GetSystemPowerStatus` (battery % + AC state) from
+  `Win32::System::Power`; without the feature the Rust battery monitor
+  cannot compile. The Android monitor (battery broadcast) needs no feature
+  and is already wired (`focus_android_battery_status`).

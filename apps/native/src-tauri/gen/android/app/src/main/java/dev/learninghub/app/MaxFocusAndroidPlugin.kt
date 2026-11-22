@@ -2,6 +2,8 @@ package dev.learninghub.app
 
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.content.Intent
 import android.os.Build
 import android.os.SystemClock
@@ -158,6 +160,30 @@ class MaxFocusAndroidPlugin(private val activity: Activity) : Plugin(activity) {
         )
         val data = JSObject()
         data.put("uninstallBlocked", args.enabled)
+        invoke.resolve(data)
+    }
+
+    /**
+     * Battery reading (M2-19): the OS sticky ACTION_BATTERY_CHANGED broadcast
+     * — no permission needed. The web/Rust layer feeds {levelPct, pluggedIn}
+     * into the core gate `shouldAutoUnlockBattery` and force-unlocks with
+     * reason `battery` when it fires (core/focus-lock/battery.ts).
+     */
+    @Command
+    fun batteryStatus(invoke: Invoke) {
+        val intent = activity.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL
+        val data = JSObject()
+        if (level >= 0 && scale > 0) {
+            data.put("levelPct", Math.round(level * 100f / scale))
+        } else {
+            data.put("levelPct", -1)
+        }
+        data.put("pluggedIn", charging)
         invoke.resolve(data)
     }
 }
