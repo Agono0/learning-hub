@@ -83,6 +83,17 @@ import * as tasksTags from '../server/handlers/tasks/[id]/tags/route'
 import * as tasksBulk from '../server/handlers/tasks/bulk/route'
 import * as tasksOrder from '../server/handlers/tasks/order/route'
 import * as tasks from '../server/handlers/tasks/route'
+import * as tasksProjectsId from '../server/handlers/tasks-projects/[id]/route'
+import * as tasksProjectsArchive from '../server/handlers/tasks-projects/[id]/archive/route'
+import * as tasksProjectsDuplicate from '../server/handlers/tasks-projects/[id]/duplicate/route'
+import * as tasksProjectsRestore from '../server/handlers/tasks-projects/[id]/restore/route'
+import * as tasksProjects from '../server/handlers/tasks-projects/route'
+import * as tasksSectionsId from '../server/handlers/tasks-sections/[id]/route'
+import * as tasksSections from '../server/handlers/tasks-sections/route'
+import * as tasksTagsId from '../server/handlers/tasks-tags/[id]/route'
+import * as tasksTagsRoot from '../server/handlers/tasks-tags/route'
+import * as tasksViewsId from '../server/handlers/tasks-views/[id]/route'
+import * as tasksViews from '../server/handlers/tasks-views/route'
 import * as graph from '../server/handlers/graph/route'
 import * as habitsCheckin from '../server/handlers/habits/checkin/route'
 import * as habitsId from '../server/handlers/habits/[id]/route'
@@ -302,6 +313,17 @@ add('tasks/[id]/restore', tasksRestore)
 add('tasks/[id]/tags', tasksTags)
 add('tasks/bulk', tasksBulk)
 add('tasks/order', tasksOrder)
+add('tasks-projects', tasksProjects)
+add('tasks-projects/[id]', tasksProjectsId)
+add('tasks-projects/[id]/archive', tasksProjectsArchive)
+add('tasks-projects/[id]/duplicate', tasksProjectsDuplicate)
+add('tasks-projects/[id]/restore', tasksProjectsRestore)
+add('tasks-sections', tasksSections)
+add('tasks-sections/[id]', tasksSectionsId)
+add('tasks-tags', tasksTagsRoot)
+add('tasks-tags/[id]', tasksTagsId)
+add('tasks-views', tasksViews)
+add('tasks-views/[id]', tasksViewsId)
 add('graph', graph)
 add('habits', habits)
 add('habits/checkin', habitsCheckin)

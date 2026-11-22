@@ -924,6 +924,26 @@ export function restoreTaskProjectRow(id: number, database?: DbOrTx): TaskProjec
 }
 
 /**
+ * Delete a project WITHOUT touching its tasks (SP semantics): the tasks
+ * move to the inbox (projectId nulled) and the row is removed. Subtask
+ * parents keep their children — only the project scope changes.
+ */
+export function deleteTaskProjectRow(id: number, database?: DbOrTx): boolean {
+  return txRun((conn) => {
+    const existing = conn.select().from(taskProjects).where(eq(taskProjects.id, id)).get()
+    if (!existing) return false
+    const now = new Date().toISOString()
+    conn
+      .update(taskItems)
+      .set({ projectId: null, updatedAt: now })
+      .where(eq(taskItems.projectId, id))
+      .run()
+    conn.delete(taskProjects).where(eq(taskProjects.id, id)).run()
+    return true
+  }, database)
+}
+
+/**
  * Duplicate a project with its OPEN top-level tasks (done/won't-do tasks
  * and time logs stay behind — SP copies the work plan, not the history),
  * including subtasks and tag links.
