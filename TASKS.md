@@ -30,7 +30,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-16 | OTA | Rust download: resumable ranges, progress events to webview | unit tests for range math | apps/native/src-tauri/src/update.rs | O1-03 |
 - [x] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
 - [x] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
-- [~W1] O1-19 | OTA | Upgrade-from-N test: apply patches from each of last 5 manifests (fixture chain) | tests green | tests in update.rs + fixtures | O1-07 |
+- [x] O1-19 | OTA | Upgrade-from-N test: apply patches from each of last 5 manifests (fixture chain) | tests green | tests in update.rs + fixtures | O1-07 |
 - [x] O1-20 | OTA | Measured patch size: CI job applies a one-line web change → records hot patch KB into release notes + docs/updates.md | <50 KB recorded or deviation explained | .github/workflows/nightly.yml, docs/updates.md | O1-08 |
 - [ ] O1-21 | OTA | Android bsdiff delta APK (stretch): CI generates per-ABI patch vs previous release; client applies + re-signs via persisted keystore | measured sizes; fallback to full APK | scripts, Kotlin apply, native.yml | O1-13 |
 - [x] O1-22 | OTA | Keystore persistence: docs + workflow guard requiring ANDROID_KEYSTORE_BASE64 secret; local keytool fallback only for dev | docs + workflow check step | .github/workflows/native.yml (LEAD), docs/updates.md | P0-1 |
@@ -76,7 +76,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 Schema batches are LEAP-applied by lead after worker writes migration file.
 
 - [x] S3-01 | SP | DB schema batch A (LEAD applies migration): taskProjects, taskTags, taskItems (parentId, projectId, tagIds JSON?→link table, estimateMs, timeSpentOnDay JSON, due, dueWithTime, deadline, priority, isDone, doneAt, wonthado, repeatCfgId, notes, order), taskRepeatCfgs, taskReminders | migration idempotent; drizzle types export | packages/db/src/schema.ts + migrations/0xx-sp-tasks.ts | W2: migration 031 + tests + SHARED_CHANGES paste; LEAD applies schema.ts batch |
-- [ ] S3-02 | SP | DB schema batch B (LEAD applies): taskTimeLogs (per task/day/session ms), taskSections, taskAttachments, taskArchiveTiers, simpleCounters, metricDays, taskViews(boards) JSON | migration + types | packages/db/src/schema.ts + migrations/0xx-sp-views.ts | S3-01 |
+- [~W2] S3-02 | SP | DB schema batch B (LEAD applies): taskTimeLogs (per task/day/session ms), taskSections, taskAttachments, taskArchiveTiers, simpleCounters, metricDays, taskViews(boards) JSON | migration + types | packages/db/src/schema.ts + migrations/0xx-sp-views.ts | S3-01 |
 - [ ] S3-03 | SP | Core task domain: model + ops (create/update/complete/reopen/duplicate/bulk/validate) pure functions | unit tests | packages/core/src/tasks/index.ts + tests | S3-01 |
 - [ ] S3-04 | SP | Core subtasks: one nesting level, parent aggregates time/estimate | unit tests | packages/core/src/tasks/subtasks.ts | S3-03 |
 - [ ] S3-05 | SP | Core projects: CRUD, backlog flag, archive/duplicate, notes field | unit tests | packages/core/src/tasks/projects.ts | S3-03 |

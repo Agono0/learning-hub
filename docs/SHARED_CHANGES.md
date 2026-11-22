@@ -164,3 +164,10 @@ export const taskReminders = table('task_reminders', {
 `primaryKey` must be imported from 'drizzle-orm/sqlite-core' in schema.ts if
 not already (check the existing import line — `uniqueIndex` is already
 imported).
+
+- [O1-19] `apps/native/src-tauri/Cargo.toml` → add
+  `zip = { version = "2", default-features = false, features = ["deflate"] }`
+  to the same desktop/mobile-agnostic `[dependencies]` block as the O1-02
+  crates. Why: `update.rs::apply_patch_bundle` (O1-19) unpacks the hot-patch
+  bundles emitted by `scripts/update-manifest.mjs` (fflate zips of changed
+  files, deflate). Without it the patch path cannot compile.

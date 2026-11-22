@@ -852,6 +852,126 @@ impl RangeFetcher for HttpRangeFetcher {
     }
 }
 
+// ─── Hot-patch application (O1-19) ───────────────────────────────────────────
+
+/// Applies a hot-patch bundle (the zip of CHANGED files emitted by
+/// `scripts/update-manifest.mjs`, O1-07) plus the target manifest into the
+/// INACTIVE slot, returning the slot id. The pointer is not touched —
+/// promotion stays an explicit, gated (`O1-06`) flip.
+///
+/// Fill order, then reconciliation:
+/// 1. the inactive slot is cleared (deletions between versions are handled
+///    by this — no stale file can survive into the new slot);
+/// 2. UNCHANGED files (same path + sha256 + size in `installed` and
+///    `target`) are copied from the ACTIVE slot — zero bandwidth;
+/// 3. every patch zip entry is verified against the TARGET manifest (path
+///    listed, size + sha256 match) BEFORE it is written;
+/// 4. any target file with no source (neither unchanged nor in the patch)
+///    is a hard error — a truncated bundle can never yield a half-updated
+///    slot.
+///
+/// Callers must verify the patch bundle's OWN sha256 against the
+/// `target.patches` entry (via {@link verify_file_hash}) and the manifest's
+/// signature before invoking this.
+pub fn apply_patch_bundle(
+    base_dir: &Path,
+    installed: &UpdateManifest,
+    target: &UpdateManifest,
+    manifest_bytes: &[u8],
+    patch_bytes: &[u8],
+) -> Result<SlotId, UpdateError> {
+    let slot = inactive_slot(base_dir)?;
+    let dir = slot_dir(base_dir, slot);
+    if dir.exists() {
+        fs::remove_dir_all(&dir).map_err(|e| UpdateError::Network(format!("clearing slot: {e}")))?;
+    }
+    fs::create_dir_all(&dir).map_err(|e| UpdateError::Network(format!("creating slot: {e}")))?;
+
+    let mut handled: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    // 2. Zero-bandwidth reuse of unchanged files from the active slot.
+    let active_dir = slot_dir(base_dir, active_slot(base_dir)?);
+    for file in &target.files {
+        if let Some(prev) = installed.files.iter().find(|f| f.path == file.path) {
+            if prev.sha256 == file.sha256 && prev.size == file.size {
+                let src = active_dir.join(&file.path);
+                let dest = dir.join(&file.path);
+                if let Some(parent) = dest.parent() {
+                    fs::create_dir_all(parent)
+                        .map_err(|e| UpdateError::Network(format!("mkdir {}: {e}", file.path)))?;
+                }
+                fs::copy(&src, &dest).map_err(|e| {
+                    UpdateError::Parse(format!(
+                        "unchanged file {} missing from active slot: {e}",
+                        file.path
+                    ))
+                })?;
+                handled.insert(file.path.clone());
+            }
+        }
+    }
+
+    // 3. Patch entries — verify against the target manifest, then write.
+    let reader = std::io::Cursor::new(patch_bytes);
+    let mut archive = zip::ZipArchive::new(reader)
+        .map_err(|e| UpdateError::Parse(format!("patch bundle: {e}")))?;
+    for i in 0..archive.len() {
+        let mut entry = archive
+            .by_index(i)
+            .map_err(|e| UpdateError::Parse(format!("patch entry {i}: {e}")))?;
+        let name = entry.name().to_string();
+        if is_unsafe_rel_path(&name) {
+            return Err(UpdateError::InvalidInput(format!(
+                "unsafe path in patch bundle: {name:?}"
+            )));
+        }
+        let target_file = target
+            .files
+            .iter()
+            .find(|f| f.path == name)
+            .ok_or_else(|| {
+                UpdateError::Parse(format!(
+                    "patch contains {name:?} which is not in the target manifest"
+                ))
+            })?;
+        let mut bytes = Vec::new();
+        entry
+            .read_to_end(&mut bytes)
+            .map_err(|e| UpdateError::Parse(format!("patch entry {name}: {e}")))?;
+        if bytes.len() as u64 != target_file.size {
+            return Err(UpdateError::Hash(format!(
+                "patch file {name}: got {} bytes, manifest says {}",
+                bytes.len(),
+                target_file.size
+            )));
+        }
+        verify_file_hash(&bytes, &target_file.sha256)?;
+        let dest = dir.join(&name);
+        if let Some(parent) = dest.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| UpdateError::Network(format!("mkdir {name}: {e}")))?;
+        }
+        fs::write(&dest, &bytes)
+            .map_err(|e| UpdateError::Network(format!("write {name}: {e}")))?;
+        handled.insert(name);
+    }
+
+    // 4. Every target file must have had a source.
+    for file in &target.files {
+        if !handled.contains(&file.path) {
+            return Err(UpdateError::Parse(format!(
+                "no source for {}: neither unchanged in the active slot nor present in the patch bundle",
+                file.path
+            )));
+        }
+    }
+
+    // The signed manifest rides along verbatim.
+    fs::write(slot_manifest_path(base_dir, slot), manifest_bytes)
+        .map_err(|e| UpdateError::Network(format!("write slot manifest: {e}")))?;
+    Ok(slot)
+}
+
 /// Bytes of `rel_path` inside the ACTIVE slot — the serving seam used by the
 /// custom URI-scheme protocol (O1-04, `serve_slot_protocol` in `lib.rs`).
 ///
@@ -1535,5 +1655,206 @@ mod download_tests {
             Err(UpdateError::Hash(_))
         ));
         fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+}
+
+// ─── Hot-patch chain tests (O1-19) ───────────────────────────────────────────
+
+#[cfg(test)]
+mod patch_tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    fn temp_base() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "lh-update-o1-19-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&dir).expect("create temp base dir");
+        dir
+    }
+
+    /// Builds a zip bundle exactly like `scripts/update-manifest.mjs` emits:
+    /// changed files at their export-relative paths (fflate-compatible zip).
+    fn zip_bundle(files: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        for (name, content) in files {
+            writer
+                .start_file(*name, zip::write::SimpleFileOptions::default())
+                .expect("zip start_file");
+            std::io::Write::write_all(&mut writer, content).expect("zip write");
+        }
+        writer.finish().expect("zip finish").into_inner()
+    }
+
+    fn manifest_for(version: &str, files: Vec<(&str, &[u8])>) -> (UpdateManifest, Vec<u8>) {
+        let manifest = UpdateManifest {
+            manifest_version: 1,
+            channel: UpdateChannel::Nightly,
+            version: version.to_string(),
+            build_sha: "chain00".to_string(),
+            created_at: "2026-11-23T12:00:00.000Z".to_string(),
+            min_native_version: "0.1.0".to_string(),
+            requires_native: false,
+            files: files
+                .into_iter()
+                .map(|(path, content)| UpdateFile {
+                    path: path.to_string(),
+                    sha256: hash_hex(content),
+                    size: content.len() as u64,
+                })
+                .collect(),
+            patches: vec![],
+            full_package_url: "https://example.com/releases/app.zip".to_string(),
+        };
+        let bytes = serde_json::to_vec(&manifest).expect("serialize manifest");
+        (manifest, bytes)
+    }
+
+    /// path → sha256 of every file under `dir` (recursive).
+    fn hash_slot(dir: &Path) -> BTreeMap<String, String> {
+        fn walk(dir: &Path, prefix: &str, map: &mut BTreeMap<String, String>) {
+            for entry in fs::read_dir(dir).expect("read_dir") {
+                let entry = entry.expect("dir entry");
+                let path = entry.path();
+                let rel = format!(
+                    "{}{}",
+                    prefix,
+                    entry.file_name().to_string_lossy()
+                );
+                if path.is_dir() {
+                    walk(&path, &format!("{rel}/"), map);
+                } else {
+                    map.insert(rel, hash_hex(&fs::read(&path).expect("read file")));
+                }
+            }
+        }
+        let mut map = BTreeMap::new();
+        walk(dir, "", &mut map);
+        map
+    }
+
+    /// The O1-19 acceptance: apply patches from each of the last 5 manifests.
+    #[test]
+    fn upgrade_chain_applies_patches_across_five_manifests() {
+        let base = temp_base();
+
+        // v1 — the starting build, installed fully via download_to_inactive_slot.
+        let (m1, bytes1) = manifest_for(
+            "20261121-chain01",
+            vec![("a.txt", b"A1"), ("b.txt", b"B1")],
+        );
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |f| {
+            Ok(match f.path.as_str() {
+                "a.txt" => b"A1".to_vec(),
+                _ => b"B1".to_vec(),
+            })
+        })
+        .expect("v1 download");
+        promote_inactive_slot(&base).expect("v1 promote");
+
+        // (version, target files, patch contents) — the CI emits patches with
+        // ONLY added/changed files (O1-07); deletions ride on the slot clear.
+        let steps: [(&str, Vec<(&str, &[u8])>, Vec<(&str, &[u8])>); 4] = [
+            (
+                "20261122-chain02",
+                vec![("a.txt", b"A2"), ("b.txt", b"B1")],
+                vec![("a.txt", b"A2")],
+            ),
+            (
+                "20261123-chain03",
+                vec![("a.txt", b"A2"), ("b.txt", b"B2"), ("c.txt", b"C1")],
+                vec![("b.txt", b"B2"), ("c.txt", b"C1")],
+            ),
+            // v4 modifies a.txt and DELETES b.txt — the clear handles deletions.
+            (
+                "20261124-chain04",
+                vec![("a.txt", b"A3"), ("c.txt", b"C1")],
+                vec![("a.txt", b"A3")],
+            ),
+            (
+                "20261125-chain05",
+                vec![("a.txt", b"A3"), ("c.txt", b"C3"), ("d.txt", b"D1")],
+                vec![("c.txt", b"C3"), ("d.txt", b"D1")],
+            ),
+        ];
+
+        let mut installed = m1;
+        for (i, (version, files, patch_files)) in steps.iter().enumerate() {
+            let (target, target_bytes) = manifest_for(version, files.clone());
+            let patch = zip_bundle(patch_files);
+
+            // (v5 is the fifth manifest counting v1 — the "last 5" window.)
+            let slot = apply_patch_bundle(&base, &installed, &target, &target_bytes, &patch)
+                .unwrap_or_else(|e| panic!("apply step {} failed: {e}", i + 2));
+            assert_eq!(slot, if i % 2 == 0 { SlotId::B } else { SlotId::A });
+
+            // The filled slot matches the target manifest EXACTLY (additions,
+            // modifications and deletions all reconciled).
+            let expected: BTreeMap<String, String> = target
+                .files
+                .iter()
+                .map(|f| (f.path.clone(), f.sha256.clone()))
+                .collect();
+            assert_eq!(hash_slot(&slot_dir(&base, slot)), expected, "step {}", i + 2);
+
+            promote_inactive_slot(&base).expect("step promote");
+            installed = target;
+        }
+
+        let status = list_current(&base).unwrap();
+        assert_eq!(status.active_version.as_deref(), Some("20261125-chain05"));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn patch_with_file_missing_from_target_manifest_is_rejected() {
+        let base = temp_base();
+        let (m1, bytes1) = manifest_for("20261121-chain01", vec![("a.txt", b"A1")]);
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |_| {
+            Ok(b"A1".to_vec())
+        })
+        .unwrap();
+        promote_inactive_slot(&base).unwrap();
+
+        // Target only lists a.txt; the patch smuggles an extra file.
+        let (target, target_bytes) = manifest_for("20261122-chain02", vec![("a.txt", b"A2")]);
+        let patch = zip_bundle(&[("a.txt", b"A2"), ("evil.txt", b"payload")]);
+        assert!(matches!(
+            apply_patch_bundle(&base, &m1, &target, &target_bytes, &patch),
+            Err(UpdateError::Parse(_))
+        ));
+        // Pointer untouched, target slot still empty of the smuggled file.
+        assert_eq!(active_slot(&base).unwrap(), SlotId::A);
+        assert!(!slot_dir(&base, SlotId::B).join("evil.txt").exists());
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn patch_missing_a_changed_file_is_rejected() {
+        let base = temp_base();
+        let (m1, bytes1) = manifest_for("20261121-chain01", vec![("a.txt", b"A1")]);
+        download_to_inactive_slot(&base, &m1, &bytes1, "https://example.com/rel", |_| {
+            Ok(b"A1".to_vec())
+        })
+        .unwrap();
+        promote_inactive_slot(&base).unwrap();
+
+        // Target changes a.txt AND adds b.txt, but the patch only has b.txt —
+        // a.txt has no source (changed ⇒ not copied, absent ⇒ not patched).
+        let (target, target_bytes) = manifest_for(
+            "20261122-chain02",
+            vec![("a.txt", b"A2"), ("b.txt", b"B1")],
+        );
+        let patch = zip_bundle(&[("b.txt", b"B1")]);
+        assert!(matches!(
+            apply_patch_bundle(&base, &m1, &target, &target_bytes, &patch),
+            Err(UpdateError::Parse(_))
+        ));
+        fs::remove_dir_all(&base).ok();
     }
 }
