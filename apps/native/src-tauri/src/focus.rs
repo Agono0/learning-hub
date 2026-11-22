@@ -596,7 +596,7 @@ pub async fn focus_session_release(
     use tauri::Emitter;
     let _ = app.emit(
         "max-focus://released",
-        serde_json::json!({ "reason": reason, "sessionId": session.as_ref().map(|s| s.session_id) }),
+        serde_json::json!({ "reason": reason, "sessionId": session.as_ref().map(|s| s.session_id.clone()) }),
     );
     Ok(serde_json::json!({ "released": true, "reason": reason }))
 }

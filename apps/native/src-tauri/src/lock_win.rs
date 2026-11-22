@@ -527,6 +527,12 @@ pub mod refocus {
         Ok(())
     }
 
+    /// Whether the guard loop is currently running (focus.rs status reads
+    /// this — M2-07's refocus-active signal for the session status payload).
+    pub fn active() -> bool {
+        REFOCUS_ACTIVE.load(Ordering::Acquire)
+    }
+
     /// Stop the guard loop (idempotent) — called by `release_lock_windows`.
     pub fn stop() -> Result<(), String> {
         let mut guard = REFOCUS_THREAD.lock().map_err(|_| "refocus state poisoned")?;
