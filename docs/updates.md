@@ -117,6 +117,31 @@ keystore so store and sideload artifacts share an identity where policy allows.
    Wi-Fi-only (Android), changelog panel; banner prompts with patch-vs-full
    size (O1-15); download is resumable with progress events (O1-16).
 
+## Measured hot patch size (O1-20)
+
+**Method.** Dispatch `Nightly OTA` with `measure_patch = true`. The
+`measure-patch` job builds the web export twice: once as the baseline, then
+after appending a single comment line to `apps/web/app/layout.tsx` (a real
+one-line web change), regenerating the export both times. The second export is
+diffed against the first via `scripts/update-manifest.mjs --prev` (O1-07), so
+the measured artifact is exactly the hot patch a nightly would ship for a
+one-line edit: only re-hashed chunks, zipped. The job prints the patch size in
+KB, fails loudly when the probe changes no files, and writes the number to the
+workflow run summary — copy it into the nightly release notes.
+
+**Recorded results.**
+
+| Probe run                                                   | Patch bundle | Size |
+| ----------------------------------------------------------- | ------------ | ---- |
+| _(first CI dispatch — record the step-summary number here)_ | —            | —    |
+
+**Target and deviation policy.** Target: **< 50 KB** for a one-line change. If
+a probe exceeds it, the DEVIATION line in the run summary points here — record
+the number, then explain the cause (e.g. a shared chunk invalidated by
+version-stable module IDs) before shipping the nightly. Local machines never
+produce this number (rule 17: builds run in CI only), so this table is filled
+from CI dispatch runs, not from a workstation.
+
 ## Play policy note
 
 Google Play requires that apps distributed through the Store update

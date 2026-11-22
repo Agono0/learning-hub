@@ -32,6 +32,10 @@ on:
         description: 'Build and list artifacts but do NOT create the tag/release'
         type: boolean
         default: false
+      measure_patch:
+        description: 'O1-20 patch-size probe: build twice (one-line change) and report hot patch KB instead of releasing'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -43,6 +47,8 @@ concurrency:
 jobs:
   nightly:
     name: Build, sign, publish nightly
+    # The measurement dispatch is a separate probe job — never release from it.
+    if: ${{ !inputs.measure_patch }}
     runs-on: windows-latest
     timeout-minutes: 60
     env:
@@ -243,3 +249,83 @@ jobs:
           name: nightly-${{ steps.meta.outputs.version }}
           path: dist/nightly
           if-no-files-found: error
+
+  # O1-20 patch-size probe (manual dispatch only, `measure_patch=true`):
+  # builds the export twice — baseline, then a ONE-LINE change — and measures
+  # the hot patch a nightly would actually ship for that change. The number is
+  # printed in KB and written to the run summary; copy it into the release
+  # notes and docs/updates.md §"Measured hot patch size". Target: < 50 KB.
+  measure-patch:
+    name: Measure hot patch size (one-line change)
+    runs-on: ubuntu-latest
+    if: ${{ inputs.measure_patch }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/web/.next/cache
+            apps/web/.next-tauri/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            nextjs-${{ runner.os }}-
+
+      - run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build baseline export
+        run: npm run web:tauri
+
+      - name: Snapshot baseline manifest
+        run: >-
+          node scripts/update-manifest.mjs
+          --dir apps/web/.next-tauri
+          --out dist/measure/base-manifest.json
+          --channel nightly --version 00000000-base --build-sha 0000000000
+          --min-native-version 0.0.0
+          --full-package-url https://example.invalid/patch-probe
+
+      - name: Apply a one-line web change
+        run: printf '\n// nightly patch-size probe %s\n' "$(date -u +%FT%TZ)" >> apps/web/app/layout.tsx
+
+      - name: Rebuild export with the change
+        run: npm run web:tauri
+
+      - name: Generate patch vs baseline and report size
+        run: >-
+          node scripts/update-manifest.mjs
+          --dir apps/web/.next-tauri
+          --out dist/measure/probe-manifest.json
+          --channel nightly --version 00000000-probe --build-sha 0000000001
+          --min-native-version 0.0.0
+          --full-package-url https://example.invalid/patch-probe
+          --prev dist/measure/base-manifest.json
+
+      - name: Report measured patch size
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const { execSync } = require("node:child_process");
+            const manifest = JSON.parse(fs.readFileSync("dist/measure/probe-manifest.json", "utf8"));
+            const patch = manifest.patches[0];
+            if (!patch) throw new Error("probe produced no patch — the one-line change changed no export files");
+            const kb = patch.size / 1024;
+            const listing = execSync("unzip -l dist/measure/patch-00000000-base-00000000-probe.zip", { encoding: "utf8" });
+            const count = listing.match(/^\s*(\d+)\s+files\s*$/m);
+            const files = count ? Number(count[1]) : 0;
+            const line = kb <= 50
+              ? `PASS: hot patch for a one-line change = ${kb.toFixed(1)} KB (< 50 KB target)`
+              : `DEVIATION: hot patch = ${kb.toFixed(1)} KB exceeds the 50 KB target — investigate (see docs/updates.md)`;
+            console.log(line);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## O1-20 hot patch size\n\n${line} (${files} files in bundle)\n`);
+          '
