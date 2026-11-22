@@ -94,8 +94,8 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-17 | SP | Handlers batch B: projects/tags/sections + views(boards) persistence | integration tests | handlers + registry | S3-15 |
 - [x] S3-18 | SP | Handlers batch C: time-tracking tick/stop + worklog + export CSV + finish-day | integration tests | handlers | S3-15, S3-10 |
 - [x] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
-- [~W1] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
-- [ ] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
+- [x] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
+- [~W1] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
 - [ ] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
 - [ ] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
 - [x] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | core/boards.ts engine + app/boards/page.tsx + lib/board-views (device-local custom views) + nav entry | S3-17 |

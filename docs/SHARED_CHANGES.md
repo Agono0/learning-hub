@@ -335,3 +335,12 @@ export const taskViews = table('task_views', {
   (`reminderFromRow` is the single decode point). With a real column the repo
   decode changes in one place; repeat-cfg `title` is lower priority (SP
   titles are generated).
+
+- [S3-20] `packages/db/src/schema.ts` + `packages/db/src/migrations/0xx-sp-sections.ts`
+  (future batch) → add a nullable `section_id INTEGER REFERENCES
+task_sections(id)` column to `task_items`. Why: SP's Today list sections
+  are header rows tasks belong to; the applied schema has
+  `task_sections` but no task→section link, so S3-20 renders sections as a
+  management strip (honest UI) instead of true list dividers. With the
+  column, `apps/web/app/tasks/page.tsx` renders section headers inline and
+  drag-into-section works.
