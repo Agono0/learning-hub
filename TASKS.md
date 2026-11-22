@@ -113,7 +113,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts | S3-03 |
 - [ ] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 |
 - [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
-- [ ] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |
+- [~W1] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 |
 - [ ] S3-40 | SP | Onboarding addition: SP first-run steps (create project, add task via short syntax) | wizard step | OnboardingWizard | S3-20 |
 - [ ] S3-41 | SP | Docs: docs/tasks.md (data model, shortcuts, parity map) | doc complete | docs/tasks.md | S3-39 |
 - [ ] S3-42 | SP | Integration tests: renderToString for every new page (today/boards/schedule/worklog/metrics) | tests green | apps/web/tests/sp-*-integration.test.ts | S3-20..S3-30 |
@@ -123,7 +123,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-46 | SP | Task summary tables + per-project rollup | components | tasks | S3-43 |  W2: TaskSummaryTable.tsx — leaf-only per-task table + sumByProject rollup over S3-88 math + honest empty state; SSR tests (landed via 1cae11b sweep)
 - [x] S3-47 | SP | Repeating-task UI: repeat config dialog (cycle/interval/anchor modes) | component | tasks components | S3-07 | W2: RepeatConfigDialog.tsx (cycle/interval/start-end/skip dates/re-anchor + 034 title) over the repeat-cfgs routes; handler title passthrough wired (POST+PATCH — flagged cross-file touch in W1 lane, additive)
 - [x] S3-48 | SP | Reminder UI: per-task reminders dialog + global toggles | component | tasks | S3-08 | W2: TaskRemindersDialog.tsx — list/add/remove at_time+relative reminders (offset presets, exact-alarm flag) + global policy section (master toggle via the single settings PUT) + label/validation/SSR tests
-- [ ] S3-49 | SP | "Add tasks for tomorrow" + today-planning sync (Today/Planner exclusivity) | UI + core | tasks | S3-29 |
+- [x] S3-49 | SP | "Add tasks for tomorrow" + today-planning sync (Today/Planner exclusivity) | UI + core | tasks | S3-29 | W2: core planForTomorrow/tomorrowsTasks (due-only exclusivity is structural, idempotent patches) + PlanTomorrow.tsx panel (short-syntax capture due tomorrow, pull-back-to-today) + core/UI tests
 - [ ] S3-50 | SP | Evaluation sheet: reflection note, impact 1-4, energy 1-3 per day | UI + handler | metrics | S3-30 |
 - [ ] S3-51 | SP | Tracking reminder dialog for untracked counters/metrics | UI | metrics | S3-31 |
 - [ ] S3-52 | SP | Matrix final pass: every row done or skipped-by-user; publish doc | doc updated | docs/SUPER_PRODUCTIVITY_FEATURE_MATRIX.md | S3-50 |

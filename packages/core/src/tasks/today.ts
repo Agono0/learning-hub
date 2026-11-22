@@ -64,3 +64,33 @@ export function overdueTasks(tasks: TaskItem[], today: string): TaskItem[] {
 export function todayCount(tasks: TaskItem[], today: string): number {
   return todaysTasks(tasks, today).length
 }
+
+// ─── Tomorrow planning (S3-49) ──────────────────────────────────────────────
+
+/**
+ * Open tasks due exactly TOMORROW — the "planned for tomorrow" list. The
+ * Today/Planner exclusivity is STRUCTURAL here: membership is due-day only,
+ * so a task planned for tomorrow can never appear in Today (and after the
+ * day rolls over, it simply becomes today's — no sync step, one rule).
+ */
+export function tomorrowsTasks(tasks: TaskItem[], today: string): TaskItem[] {
+  const tomorrow = tomorrowKey(today)
+  return tasks.filter((t) => isTodayTask(t, tomorrow) && !t.isDone && !t.wonthado)
+}
+
+/**
+ * Due patches that plan the given open tasks for tomorrow (S3-49 add-tasks-
+ * for-tomorrow math). Tasks already due tomorrow, done, or won't-do produce
+ * no patch (idempotent — re-running the planning action is a no-op). The
+ * caller persists each patch through the task update route.
+ */
+export function planForTomorrow(
+  tasks: TaskItem[],
+  ids: readonly number[],
+  today: string,
+): Array<{ id: number; due: string }> {
+  const tomorrow = tomorrowKey(today)
+  return tasks
+    .filter((t) => ids.includes(t.id) && !t.isDone && !t.wonthado && dueDayOf(t) !== tomorrow)
+    .map((t) => ({ id: t.id, due: tomorrow }))
+}
