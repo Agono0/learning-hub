@@ -14,15 +14,12 @@ const stars = (impact: number | null): string =>
 
 const chart = (props: { defaultOpen?: boolean; ready?: boolean }): string =>
   renderToString(
-    React.createElement(
-      LazyChart,
-      {
-        label: 'tracked chart',
-        ready: props.ready ?? true,
-        defaultOpen: props.defaultOpen ?? false,
-      },
-      React.createElement('svg', { 'data-probe': 'chart' }),
-    ),
+    React.createElement(LazyChart, {
+      label: 'tracked chart',
+      ready: props.ready ?? true,
+      defaultOpen: props.defaultOpen ?? false,
+      children: React.createElement('svg', { 'data-probe': 'chart' }),
+    }),
   ).replace(/<!-- -->/g, '')
 
 describe('ImpactStars (existing, pinned)', () => {

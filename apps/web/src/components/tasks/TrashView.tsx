@@ -49,7 +49,7 @@ export function TrashView({ today, onRestored }: TrashViewProps) {
   const restore = useMutation({
     mutationFn: (taskId: number) => {
       if (today === null) throw new Error('Clock not ready — try again.')
-      return restoreFromTrash(taskId, today)
+      return restoreFromTrash(taskId)
     },
     onSuccess: (next, taskId) => {
       setEntries(next)

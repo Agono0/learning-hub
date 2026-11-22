@@ -38,7 +38,7 @@ describe('task trash store (device-local contract)', () => {
     expect(putTrashEntry(entry, TODAY)).toEqual([entry]) // returned list, nothing persisted
     expect(removeTrashEntry(1)).toEqual([])
     expect(purgeExpiredEntries(TODAY)).toEqual([])
-    void restoreFromTrash(1, TODAY).catch(() => {}) // dynamic import of transport is safe in node
+    void restoreFromTrash(1).catch(() => {}) // dynamic import of transport is safe in node
   })
 })
 

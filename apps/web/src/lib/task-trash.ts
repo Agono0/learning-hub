@@ -77,7 +77,7 @@ export function purgeExpiredEntries(now: string): number[] {
 }
 
 /** Restore via POST /api/tasks/[id]/restore, then drop the entry locally. */
-export async function restoreFromTrash(taskId: number, now: string): Promise<TrashEntry[]> {
+export async function restoreFromTrash(taskId: number): Promise<TrashEntry[]> {
   const { apiSend } = await import('./transport')
   await apiSend(`/api/tasks/${taskId}/restore`, 'POST', {})
   return removeTrashEntry(taskId)
