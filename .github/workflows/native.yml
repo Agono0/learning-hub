@@ -163,6 +163,8 @@ jobs:
           # O1-12/O1-30: play-flavor builds bake self-update off (Play policy
           # forbids self-downloading APK updates); sideload builds keep it on.
           LH_UPDATE_CHANNEL_FLAVOR: ${{ inputs.flavor || 'sideload' }}
+          # Strong keystore password (KEYSTORE-PASSWORD.txt in the keys backup).
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: npm run android:build -- --target ${{ matrix.tauri-target }}
 
       # O1-21: generate a bsdiff delta APK against the previous release's APK
