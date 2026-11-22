@@ -52,6 +52,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
 import { MaxFocusExitGate } from '@/components/MaxFocusExitGate'
 import { MaxFocusPrecheck } from '@/components/MaxFocusPrecheck'
+import { MaxFocusAllowlistEditor } from '@/components/MaxFocusAllowlistEditor'
 import { MaxFocusReportCard } from '@/components/MaxFocusReportCard'
 import {
   DEVICE_OWNER_ADB_COMMAND,
@@ -1153,6 +1154,10 @@ export default function FocusPage() {
                     Engage Max Focus ({maxMinutes} min)
                   </Button>
                 </div>
+
+                {/* Allowlist editor (M2-22): presets CRUD — a preset chosen
+                    at start is frozen into the lock snapshot. */}
+                <MaxFocusAllowlistEditor />
 
                 {/* Companion Chrome Extension Bridge Card */}
                 <div className="panel space-y-3 text-xs">
