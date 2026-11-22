@@ -17,6 +17,7 @@ S3-74 project bookmarks persist device-local
 handler-side (W2) — both note a LEAD migration option in their handoffs.
 
 ## Requests
+
 - [S3-33] apps/native/src-tauri/Cargo.toml → OPTIONAL upgrade (current code compiles WITHOUT it): idle.rs binds GetLastInputInfo/GetTickCount via self-contained externs. If the kit owner prefers crate bindings, add "Win32_UI_Input_KeyboardAndMouse" and "Win32_System_SystemInformation" to the windows features array and swap the externs for windows::Win32 imports.
 
 - [O1-22] `.github/workflows/native.yml` → add a fail-fast guard step in the
