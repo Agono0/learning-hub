@@ -11,6 +11,10 @@ import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { MaxFocusPrecheck } from '../src/components/MaxFocusPrecheck'
 
+/** renderToString splits interpolated JSX text with comment markers —
+ * strip them so assertions see the visible text. */
+const cleanHtml = (html: string): string => html.replace(/<!-- -->/g, '')
+
 const render = (props: {
   allowedDomains?: string[]
   allowedApps?: string[]
@@ -28,15 +32,15 @@ const render = (props: {
 describe('MaxFocusPrecheck', () => {
   it('renders the checklist frame with the explicit confirm toggle', () => {
     const html = render({})
-    expect(html).toContain('Before you commit')
-    expect(html).toContain('I understand: this device stays locked')
+    expect(cleanHtml(html)).toContain('Before you commit')
+    expect(cleanHtml(html)).toContain('I understand: this device stays locked')
   })
 
   it('lists what stays reachable as chips from the resolved allowlist', () => {
     const html = render({ allowedDomains: ['my-uni.edu'], allowedApps: ['code.exe'] })
-    expect(html).toContain('my-uni.edu')
-    expect(html).toContain('app: code.exe')
-    expect(html).toContain('Only these stay reachable')
+    expect(cleanHtml(html)).toContain('my-uni.edu')
+    expect(cleanHtml(html)).toContain('app: code.exe')
+    expect(cleanHtml(html)).toContain('Only these stay reachable')
   })
 
   it('shows the honest empty note when nothing extra is selected', () => {
@@ -45,7 +49,7 @@ describe('MaxFocusPrecheck', () => {
 
   it('the platform audit is pending on the server (never a guessed tier)', () => {
     const html = render({})
-    expect(html).toContain('Checking what this device can enforce')
-    expect(html).not.toContain('granted')
+    expect(cleanHtml(html)).toContain('Checking what this device can enforce')
+    expect(cleanHtml(html)).not.toContain('granted')
   })
 })

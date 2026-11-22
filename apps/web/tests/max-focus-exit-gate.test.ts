@@ -23,6 +23,10 @@ const lock = (
   cooldownRemainingSec: cooldown,
 })
 
+/** renderToString splits interpolated JSX text with comment markers —
+ * strip them so assertions see the visible text. */
+const cleanHtml = (html: string): string => html.replace(/<!-- -->/g, '')
+
 const render = (lockShape: MaxFocusExitGateLock | null): string =>
   renderToString(React.createElement(MaxFocusExitGate, { lock: lockShape }))
 
@@ -35,22 +39,22 @@ describe('MaxFocusExitGate rendering', () => {
 
   it('locked: shows only the reflection request affordance', () => {
     const html = render(lock('locked'))
-    expect(html).toContain('Request early exit')
-    expect(html).toContain('60-second reflection')
-    expect(html).not.toContain('Confirm early exit')
+    expect(cleanHtml(html)).toContain('Request early exit')
+    expect(cleanHtml(html)).toContain('60-second reflection')
+    expect(cleanHtml(html)).not.toContain('Confirm early exit')
   })
 
   it('cooldown: shows the reflection timer and the resistance action', () => {
     const html = render(lock('cooldown', 42))
-    expect(html).toContain('42s remaining')
-    expect(html).toContain('Resist impulse and return to focus')
-    expect(html).not.toContain('Confirm early exit')
+    expect(cleanHtml(html)).toContain('42s remaining')
+    expect(cleanHtml(html)).toContain('Resist impulse and return to focus')
+    expect(cleanHtml(html)).not.toContain('Confirm early exit')
   })
 
   it('can_confirm on the server: honest PIN-setup placeholder (vault lives client-side)', () => {
     const html = render(lock('can_confirm'))
-    expect(html).toContain('Checking PIN setup')
-    expect(html).not.toContain('Confirm early exit')
+    expect(cleanHtml(html)).toContain('Checking PIN setup')
+    expect(cleanHtml(html)).not.toContain('Confirm early exit')
   })
 
   it('the device-local vault key is pinned (contract for handlers + extension)', () => {

@@ -488,7 +488,11 @@ describe('max focus session — full transition matrix (M2-26)', () => {
     })
     const endResumed = advanceSession(resumedTwin, {
       wallMs: wallEnd,
-      monoMs: ANCHOR_MS + 60 * 60_000 + 1_000,
+      // The twin's monotonic clock keeps ticking from ITS anchor: it was
+      // re-based at start (fresh anchor), and by wallEnd it has advanced the
+      // twin's full wall elapsed (60min + 1s). A stale reading trips the
+      // tamper gate BY DESIGN — that is exactly what M2-20 detects.
+      monoMs: ANCHOR_MS + 120 * 60_000 + 1_000,
     })
     expect(endOriginal.session.unlockReason).toBe('timer')
     expect(endResumed.session.unlockReason).toBe('timer')
