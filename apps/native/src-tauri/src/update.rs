@@ -138,6 +138,8 @@ pub enum UpdateError {
     Signature(String),
     /// A sha256 digest did not match the manifest's content address.
     Hash(String),
+    /// The operation was refused by policy (e.g. Max Focus session active).
+    Refused(String),
     /// An argument was malformed before any I/O happened.
     InvalidInput(String),
 }
@@ -149,6 +151,7 @@ impl fmt::Display for UpdateError {
             UpdateError::Parse(m) => write!(f, "update document parse error: {m}"),
             UpdateError::Signature(m) => write!(f, "update signature error: {m}"),
             UpdateError::Hash(m) => write!(f, "update hash error: {m}"),
+            UpdateError::Refused(m) => write!(f, "update refused: {m}"),
             UpdateError::InvalidInput(m) => write!(f, "update input error: {m}"),
         }
     }
@@ -660,6 +663,36 @@ pub fn confirm_boot_ready(base_dir: &Path) -> Result<(), UpdateError> {
     Ok(())
 }
 
+// ─── Never-apply-during-Max-Focus (O1-06) ────────────────────────────────────
+
+/// Whether a pending update may be applied (promote + restart) right now.
+///
+/// Locked policy: ask-first, apply on restart — and NEVER while a Max Focus
+/// session is active (an apply swaps the webview payload under the lock and
+/// can kill the session machinery mid-flight). The web layer reports session
+/// liveness via the focus session commands (M2-23); this pure gate is the
+/// Rust mirror of `updateApplyGate` in
+/// `packages/core/src/focus-lock/session.ts`.
+pub fn can_apply_update(session_active: bool) -> Result<(), UpdateError> {
+    if session_active {
+        Err(UpdateError::Refused(
+            "Max Focus session is active — apply deferred until it ends".into(),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+/// `promote_inactive_slot` behind the O1-06 policy gate: refuses with the
+/// pointer untouched while a Max Focus session is active.
+pub fn promote_inactive_slot_if_allowed(
+    base_dir: &Path,
+    session_active: bool,
+) -> Result<SlotId, UpdateError> {
+    can_apply_update(session_active)?;
+    promote_inactive_slot(base_dir)
+}
+
 /// Bytes of `rel_path` inside the ACTIVE slot — the serving seam used by the
 /// custom URI-scheme protocol (O1-04, `serve_slot_protocol` in `lib.rs`).
 ///
@@ -1101,6 +1134,27 @@ mod slot_tests {
         // And the boot flow upgrades it in place.
         assert_eq!(boot_reconcile(&base).unwrap(), SlotId::B);
         assert_eq!(read_pointer(&base).unwrap().missed_confirmations, Some(1));
+        fs::remove_dir_all(&base).ok();
+    }
+
+    #[test]
+    fn apply_gate_refuses_during_session_and_allows_after() {
+        assert!(can_apply_update(false).is_ok());
+        assert!(matches!(can_apply_update(true), Err(UpdateError::Refused(_))));
+    }
+
+    #[test]
+    fn gated_promotion_leaves_pointer_untouched_during_session() {
+        let base = temp_base();
+        // Active A (default); a gated promote mid-session is refused, pointer A.
+        assert!(matches!(
+            promote_inactive_slot_if_allowed(&base, true),
+            Err(UpdateError::Refused(_))
+        ));
+        assert_eq!(active_slot(&base).unwrap(), SlotId::A);
+        // Once the session has ended, the same call promotes slot B.
+        assert_eq!(promote_inactive_slot_if_allowed(&base, false).unwrap(), SlotId::B);
+        assert_eq!(active_slot(&base).unwrap(), SlotId::B);
         fs::remove_dir_all(&base).ok();
     }
 }

@@ -18,6 +18,7 @@ import {
   maxSessionStartSchema,
   requestSessionExit,
   startMaxFocusSession,
+  updateApplyGate,
   type MaxFocusSession,
   type SessionClock,
 } from '../src/focus-lock'
@@ -306,5 +307,39 @@ describe('max focus session — clock boundary validation', () => {
     expect(() => advanceSession(s, { wallMs: -1, monoMs: 0 })).toThrow()
     expect(() => advanceSession(s, { wallMs: Number.NaN, monoMs: 0 })).toThrow()
     expect(() => advanceSession(s, { wallMs: 0, monoMs: Number.POSITIVE_INFINITY })).toThrow()
+  })
+})
+
+describe('update-apply gate (O1-06) — never apply during Max Focus', () => {
+  it('allows apply with no session at all', () => {
+    expect(updateApplyGate(null)).toEqual({ allowed: true, reason: 'no-session' })
+  })
+
+  it('allows apply once the session has ended (nothing left to protect)', () => {
+    const ended = advanceSession(startSession(10), clockAt(10 * 60_000)).session
+    expect(updateApplyGate(ended)).toEqual({ allowed: true, reason: 'session-ended' })
+    const pinned = confirmSessionExit(
+      advanceSession(
+        requestSessionExit(startSession(25), clockAt(0)),
+        clockAt(COOLDOWN_SECONDS * 1000),
+      ).session,
+      clockAt(COOLDOWN_SECONDS * 1000 + 1_000),
+      { pinVerified: true },
+    )
+    expect(updateApplyGate(pinned)).toEqual({ allowed: true, reason: 'session-ended' })
+  })
+
+  it('refuses apply in every running phase (locked / cooldown / can_confirm)', () => {
+    const locked = startSession(25)
+    expect(updateApplyGate(locked)).toEqual({ allowed: false, reason: 'session-active' })
+    const cooldown = requestSessionExit(locked, clockAt(0))
+    expect(updateApplyGate(cooldown)).toEqual({ allowed: false, reason: 'session-active' })
+    const canConfirm = advanceSession(cooldown, clockAt(COOLDOWN_SECONDS * 1000)).session
+    expect(updateApplyGate(canConfirm)).toEqual({ allowed: false, reason: 'session-active' })
+  })
+
+  it('refuses apply for a hard-cap-extended session that is still running', () => {
+    const extended = extendMaxSession(startSession(200), clockAt(0), { extraMinutes: 40 })
+    expect(updateApplyGate(extended)).toEqual({ allowed: false, reason: 'session-active' })
   })
 })

@@ -277,3 +277,31 @@ export function extendMaxSession(
     plannedEndMs: Math.min(proposed, session.hardCapAtMs),
   }
 }
+
+// ─── Update-apply gate (O1-06) ──────────────────────────────────────────────
+
+/** Result of {@link updateApplyGate} — why the updater may or may not apply. */
+export interface UpdateApplyDecision {
+  /** True when the updater may promote/apply a pending update now. */
+  allowed: boolean
+  /** `no-session`/`session-ended` → allowed; `session-active` → blocked. */
+  reason: 'no-session' | 'session-ended' | 'session-active'
+}
+
+/**
+ * Whether the updater may apply (promote + restart) a pending update now.
+ *
+ * Locked Phase-1 policy: ask-first, apply on restart — and NEVER while a Max
+ * Focus session is active. Applying swaps the webview payload under a lock,
+ * which can kill the session machinery mid-flight; an `ended` session has
+ * nothing left to protect, so it does not block.
+ *
+ * Pure so both the client service and the native layer run the identical
+ * rule — the Rust mirror is `can_apply_update` in
+ * `apps/native/src-tauri/src/update.rs`.
+ */
+export function updateApplyGate(session: MaxFocusSession | null): UpdateApplyDecision {
+  if (!session) return { allowed: true, reason: 'no-session' }
+  if (session.state === 'ended') return { allowed: true, reason: 'session-ended' }
+  return { allowed: false, reason: 'session-active' }
+}
