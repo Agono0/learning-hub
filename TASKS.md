@@ -89,8 +89,8 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-12 | SP | Recently-deleted trash (30-day, device-local) | unit tests | packages/core/src/tasks/trash.ts | S3-03 |
 - [x] S3-13 | SP | Undo core: last-op undo stack for task ops | unit tests | packages/core/src/tasks/undo.ts | S3-03 |
 - [x] S3-14 | SP | Search core: task+note search incl. done/archived option | unit tests | packages/core/src/tasks/search.ts | S3-03 |
-- [~W1] S3-15 | SP | DB repos: tasks+projects+tags+repeat+reminders+logs (all queries reusable) | repo tests | packages/db/src/repos/tasks.ts | S3-02, S3-03 |
-- [ ] S3-16 | SP | Handlers batch A: tasks CRUD + bulk + duplicate + move-to-project + archive/restore | integration tests | apps/web/src/server/handlers/tasks/…, hub registry | S3-15 |
+- [x] S3-15 | SP | DB repos: tasks+projects+tags+repeat+reminders+logs (all queries reusable) | repo tests | packages/db/src/repos/tasks.ts | S3-02, S3-03 |
+- [~W1] S3-16 | SP | Handlers batch A: tasks CRUD + bulk + duplicate + move-to-project + archive/restore | integration tests | apps/web/src/server/handlers/tasks/…, hub registry | S3-15 |
 - [ ] S3-17 | SP | Handlers batch B: projects/tags/sections + views(boards) persistence | integration tests | handlers + registry | S3-15 |
 - [ ] S3-18 | SP | Handlers batch C: time-tracking tick/stop + worklog + export CSV + finish-day | integration tests | handlers | S3-15, S3-10 |
 - [ ] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
@@ -139,7 +139,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 
 - [x] S3-60 | SP | Core: task ordering/ordinal per list + drag-reorder math | unit tests | packages/core/src/tasks/order.ts | S3-03
 - [x] S3-61 | SP | Core: task-grouping (by project/tag/date) pure helpers | unit tests | packages/core/src/tasks/grouping.ts | S3-03
-- [~W2] S3-62 | SP | Core: estimate parsing/validation (10m/1h/1h30m) + remaining math | unit tests | packages/core/src/tasks/estimates.ts | S3-03
+- [x] S3-62 | SP | Core: estimate parsing/validation (10m/1h/1h30m) + remaining math | unit tests | packages/core/src/tasks/estimates.ts | S3-03 W2: committed in 3af7caa (estimates.ts + tests + handoff); marker flip missed on quota cut
 - [x] S3-63 | SP | Core: deadline vs due semantics (past-deadline flagging) | unit tests | packages/core/src/tasks/deadlines.ts | S3-03
 - [x] S3-64 | SP | Core: priority model (p1..p3 + strategies via tags) | unit tests | packages/core/src/tasks/priority.ts | S3-06
 - [x] S3-65 | SP | Core: today membership = due date only (virtual tag math) | unit tests | packages/core/src/tasks/today.ts | S3-03
