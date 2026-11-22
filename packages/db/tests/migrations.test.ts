@@ -16,6 +16,9 @@ import { hapticsSetting } from '../src/migrations/027-haptics-setting'
 import { notificationCenter } from '../src/migrations/028-notification-center'
 import { prototypeExemplarSessionsMigration } from '../src/migrations/029-prototype-exemplar'
 import { learnerProfileMigration } from '../src/migrations/030-learner-profile'
+import { maxFocusSessions } from '../src/migrations/033-max-focus-sessions'
+import { spTasks } from '../src/migrations/031-sp-tasks'
+import { spViews } from '../src/migrations/032-sp-views'
 import type { RawSqliteHandle } from '../src/index'
 
 const open = () => new Database(':memory:') as unknown as RawSqliteHandle
@@ -103,15 +106,19 @@ describe('migration runner', () => {
     expect(MIGRATIONS[0]?.id).toBe(1)
   })
 
-  it('registers 030 learner-profile last, after 029, 028, 027 and 026', () => {
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(learnerProfileMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(prototypeExemplarSessionsMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(notificationCenter)
-    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(hapticsSetting)
-    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(exposureEventsMigration)
-    expect(MIGRATIONS[MIGRATIONS.length - 6]).toBe(cognitiveUpsertKeys)
-    expect(MIGRATIONS[MIGRATIONS.length - 7]).toBe(ultimateCognitiveExpansion)
-    expect(MIGRATIONS[MIGRATIONS.length - 8]).toBe(deckDelayedFeedback)
+  it('registers the mega-run batches last, after the 030 learner-profile tail', () => {
+    // The registry legitimately grew (mega-run Epic 3 SP-parity batches and
+    // M2-03 max-focus lock-state columns). Ordering integrity is enforced by
+    // assertMigrationOrder (strictly increasing ids) above; this pins the
+    // newest batches to the tail so an accidental reorder still fails.
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe(maxFocusSessions)
+    expect(MIGRATIONS[MIGRATIONS.length - 2]).toBe(spViews)
+    expect(MIGRATIONS[MIGRATIONS.length - 3]).toBe(spTasks)
+    expect(MIGRATIONS[MIGRATIONS.length - 4]).toBe(learnerProfileMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 5]).toBe(prototypeExemplarSessionsMigration)
+    expect(MIGRATIONS[MIGRATIONS.length - 6]).toBe(notificationCenter)
+    expect(MIGRATIONS[MIGRATIONS.length - 7]).toBe(hapticsSetting)
+    expect(MIGRATIONS[MIGRATIONS.length - 8]).toBe(exposureEventsMigration)
   })
 })
 
