@@ -180,7 +180,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30 W2: core/tasks/summary.ts — dailySummaryText (honest zero state, leaf-aware top tasks via S3-88, evaluation line) deterministic share text, 4 unit tests; share-sheet UI wiring left to the metrics page owner
 - [x] S3-80 | SP | UI: countdown default = task remaining estimate | glue | focus-modes | S3-32 W2: countdownMinutesFor — countdown defaults to the task remaining estimate (floor 5m, null without estimate); picker surfaces it; core-tested
 - [x] S3-81 | SP | UI: break-time never logged to task (guard) | core test | time-tracking | S3-32 W2 audit: guard shipped in core time-tracking applyTick (break sources refused) + test exists (tasks-time-tracking.test.ts:142)
-- [ ] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26
+- [x] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26  W1: tap-to-arm chips + tap-to-place day columns/rows on the planner board and schedule page — the SAME drop path as HTML5 drag (touch has none); armed chip ring + aria-pressed (e48b905)
 - [x] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27 W2 audit: DONE via S3-27 (CalendarSubscriptions has per-subscription color dot palette + visibility Toggle persisting via updateSubscription)
 - [x] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | app/boards/page.tsx (arrow-key grid walk, X/Enter pick+drop, Escape, aria-live) | S3-24
 - [x] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44 W2: SaveViewBar.tsx — capture any filtered list (filter+sort+group) as a task_views row via POST /api/tasks-views, confirm-in-place; page wiring left to boards/tasks owners
@@ -192,8 +192,8 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
 - [x] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
 - [x] S3-93 | SP | Handlers: notes-project linking (project notes) | integration tests | handlers + notes | S3-05 W2: notes GET ?projectId filter (json_extract over fields.projectId — no schema change; the existing PATCH fields path maintains the link) + 4-test integration (filter, query-combine, PATCH maintain + null-clear, malformed-filter fallback)
-- [ ] S3-94 | SP | UI: planner capacity % + over-budget indicators | component | planner | S3-25
-- [ ] S3-95 | SP | UI: schedule "from previous days" row + deadline flags | component | schedule | S3-26
+- [x] S3-94 | SP | UI: planner capacity % + over-budget indicators | component | planner | S3-25  W1: planner board has the capacity control (device-local minutes, S3-25) + per-column capacityPct badges (warning >80, danger >100, unit-tested) — the over-budget indicator is the same math (986b9b8)
+- [x] S3-95 | SP | UI: schedule "from previous days" row + deadline flags | component | schedule | S3-26  W1: schedule page has the From-previous-days overdue section (one-tap -> today) + deadlinePassed danger flags — landed with S3-26 (fa15c55)
 - [x] S3-96 | SP | UI: impact stars + lazy chart components | component | metrics | S3-30 W2 audit: ImpactStars existed (starFill matrix, metrics page consumes it); W2 added LazyChart.tsx (visible show/hide affordance, ready-gated, 5 combined SSR tests) — the charts themselves are S3-30 hand-rolled SVGs
 - [x] S3-97 | SP | Docs: keyboard shortcut default map table in docs/tasks.md | doc section | docs/tasks.md | S3-35 W2 audit: the default-map table ships in docs/tasks.md §8 (eisenhower nav + the S3-35 core map the settings section renders); S3-35 core landed fd5c3d9
 - [x] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42 | W1: audited my SP pages — Tasks (empty list EmptyState + loading skeleton + error Callout + new empty-section hint), Schedule (tray/timeline EmptyState + overdue empty + skeleton), planner board (tray/Open day lines), TaskDetail (subtasks/reminders/attachments empty lines). W3 pages (boards/worklog/metrics) are its lane
@@ -208,7 +208,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16 W2: core/focus-lock/tiers.ts — TIER_REQUIREMENTS + tierChecklist + bestAvailableTier + labels, unit-tested; rendered by the M2-16 precheck
 - [x] M2-33 | LOCK | Windows: session state persisted + restored after app restart (not just reboot) | code + tests | lock_win.rs | M2-24
 - [x] M2-34 | LOCK | Both: "session ended by cap/battery" post-session report card | UI + handler | focus page | M2-19
-- [ ] M2-35 | LOCK | Docs: admin/watchdog security notes in docs/max-focus.md (no secrets, restore guarantees) | doc section | docs/max-focus.md | M2-08
+- [x] M2-35 | LOCK | Docs: admin/watchdog security notes in docs/max-focus.md (no secrets, restore guarantees) | doc section | docs/max-focus.md | M2-08  audit: docs/max-focus.md carries the notes — tier table (T1 hardened: DisableTaskMgr + watchdog, ALWAYS restored), the admin-token caveat, session-notification guarantees; the M2-08 code landed in 4fff02c
 
 ## Worker protocol reminders
 
