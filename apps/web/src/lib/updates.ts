@@ -270,17 +270,26 @@ interface NavigatorConnection {
 /**
  * Probe whether the current connection is unmetered (Wi-Fi-only policy, O1-25).
  *
+ * `host` is injectable so tests (and platform bridges) don't have to fight
+ * global-stub semantics for `navigator` — undefined reads the real global.
+ *
  * Returns `null` when the platform exposes no information (desktop Firefox/
- * Safari, SSR, tests): callers MUST treat `null` as "unknown", not as a
- * denial — see {@link decideUpdateCheck} for the asymmetry (unknown allows
- * the cheap pointer check but still gates the download in
- * {@link requestUpdateDownload}, which is the byte-heavy operation the
- * setting actually protects). `saveData` is honored as metered: the user
- * told the browser to save data, which outranks our guess.
+ * Safari, SSR, a global without the Network Information API): callers MUST
+ * treat `null` as "unknown", not as a denial — see {@link decideUpdateCheck}
+ * for the asymmetry (unknown allows the cheap pointer check but still gates
+ * the download in {@link requestUpdateDownload}, which is the byte-heavy
+ * operation the setting actually protects). `saveData` is honored as
+ * metered: the user told the browser to save data, which outranks our guess.
  */
-export function isConnectionUnmetered(): boolean | null {
-  if (typeof navigator === 'undefined') return null
-  const conn = (navigator as Navigator & { connection?: NavigatorConnection }).connection
+export function isConnectionUnmetered(
+  host?: { connection?: NavigatorConnection } | undefined,
+): boolean | null {
+  const nav: { connection?: NavigatorConnection } | undefined =
+    host ??
+    (typeof navigator === 'undefined'
+      ? undefined
+      : (navigator as { connection?: NavigatorConnection }))
+  const conn = nav?.connection
   if (!conn) return null
   if (conn.saveData === true) return false
   if (conn.type === 'wifi' || conn.type === 'ethernet') return true
@@ -382,17 +391,21 @@ export interface UpdateDownloadRequest {
  * updater — same constant the banner checks), the native shell (a browser tab
  * cannot download into app data), and the Wi-Fi-only policy — here the
  * **unknown** connection also defers, because this is the byte-heavy
- * transfer the setting exists to protect. The Rust side re-validates the
- * destination path and the sha256 (defense in depth); progress events arrive
- * via `update://download-progress` (O1-27 glue).
+ * transfer the setting exists to protect. `opts.unmetered` injects the
+ * probe result (tests / platform bridges); undefined runs the real probe.
+ * The Rust side re-validates the destination path and the sha256 (defense
+ * in depth); progress events arrive via `update://download-progress`
+ * (O1-27 glue).
  */
 export async function requestUpdateDownload(
   file: UpdateDownloadRequest,
+  opts?: { unmetered?: boolean | null },
 ): Promise<UpdateDownloadStartResult> {
   if (!SELF_UPDATE_ENABLED) return { started: false, reason: 'self-update-disabled' }
   if (!isTauri) return { started: false, reason: 'native-shell-required' }
   const settings = loadUpdateSettings()
-  if (settings.wifiOnly && isConnectionUnmetered() !== true) {
+  const unmetered = opts && 'unmetered' in opts ? opts.unmetered : isConnectionUnmetered()
+  if (settings.wifiOnly && unmetered !== true) {
     return { started: false, reason: 'metered-connection' }
   }
   try {

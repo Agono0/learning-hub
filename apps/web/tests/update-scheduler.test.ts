@@ -30,12 +30,18 @@ import {
   type UpdateCheckResult,
 } from '../src/lib/updates'
 
-/** Transport seam: every test controls what the pointer fetch returns. */
+/** Transport seam: every test controls what the pointer fetch returns, and
+ * `isTauri` is exposed through a GETTER so per-test reassignment is visible
+ * to the module under test (a factory-copied primitive freezes at the
+ * import-time value — CI showed `native-shell-required` where the test set
+ * `isTauri = true`). */
 const transportMocks = vi.hoisted(() => ({ apiGet: vi.fn(), isTauri: false }))
 
 vi.mock('@/lib/transport', () => ({
   apiGet: transportMocks.apiGet,
-  isTauri: transportMocks.isTauri,
+  get isTauri() {
+    return transportMocks.isTauri
+  },
 }))
 
 /** Tauri command seam for the download path. */
@@ -49,8 +55,15 @@ const DEFAULTS: UpdateSettings = updateSettingsSchema.parse({})
 /** Hour in ms — keeps the interval arithmetic readable below. */
 const HOUR_MS = 60 * 60 * 1000
 
-function stubNavigator(connection: unknown): void {
-  vi.stubGlobal('navigator', { connection })
+/**
+ * Import the module FRESH with `LH_APP_VERSION` applied: `APP_VERSION` is a
+ * module-level constant, so `vi.stubEnv` on a statically imported module
+ * can never change the verdict (CI: 'up-to-date' where 'available' was
+ * expected). The `@/lib/transport` mock applies to fresh imports too.
+ */
+async function freshUpdates(): Promise<typeof import('../src/lib/updates')> {
+  vi.resetModules()
+  return (await import('../src/lib/updates')) as typeof import('../src/lib/updates')
 }
 
 describe('decideUpdateCheck (pure scheduling policy)', () => {
@@ -109,36 +122,34 @@ describe('decideUpdateCheck (pure scheduling policy)', () => {
 })
 
 describe('isConnectionUnmetered (Network Information API probe)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+  // The probe takes an INJECTED host (`{ connection }`) instead of relying
+  // on global-navigator stubbing — `vi.stubGlobal('navigator', …)` is
+  // unreliable in the node env (CI: probe returned `null` for every stubbed
+  // shape), and injection keeps the matrix deterministic on every runner.
 
   it('wifi and ethernet are unmetered', () => {
-    stubNavigator({ connection: { type: 'wifi' } })
-    expect(isConnectionUnmetered()).toBe(true)
-    stubNavigator({ connection: { type: 'ethernet' } })
-    expect(isConnectionUnmetered()).toBe(true)
+    expect(isConnectionUnmetered({ connection: { type: 'wifi' } })).toBe(true)
+    expect(isConnectionUnmetered({ connection: { type: 'ethernet' } })).toBe(true)
   })
 
   it('cellular is metered', () => {
-    stubNavigator({ connection: { type: 'cellular' } })
-    expect(isConnectionUnmetered()).toBe(false)
+    expect(isConnectionUnmetered({ connection: { type: 'cellular' } })).toBe(false)
   })
 
   it('saveData outranks the type — the user asked the browser to save data', () => {
-    stubNavigator({ connection: { type: 'wifi', saveData: true } })
-    expect(isConnectionUnmetered()).toBe(false)
+    expect(isConnectionUnmetered({ connection: { type: 'wifi', saveData: true } })).toBe(false)
   })
 
   it('missing type is unknown, not a guess', () => {
-    stubNavigator({ connection: {} })
-    expect(isConnectionUnmetered()).toBeNull()
-    stubNavigator({})
-    expect(isConnectionUnmetered()).toBeNull()
+    expect(isConnectionUnmetered({ connection: {} })).toBeNull()
+    expect(isConnectionUnmetered({})).toBeNull()
   })
 
-  it('no navigator at all (SSR / webview without the API) is unknown', () => {
-    vi.stubGlobal('navigator', undefined)
+  it('no host at all (SSR / webview without the API) is unknown', () => {
+    // Explicit undefined falls back to the real global — in the node env the
+    // global navigator (when present at all) has no `connection`, so the
+    // honest answer is `null` on every CI runner.
+    expect(isConnectionUnmetered(undefined)).toBeNull()
     expect(isConnectionUnmetered()).toBeNull()
   })
 })
@@ -151,7 +162,8 @@ describe('checkForUpdate (pointer fetch + version verdict)', () => {
   it('reports up-to-date when the pointer version matches the build', async () => {
     vi.stubEnv('LH_APP_VERSION', '1.0.0')
     transportMocks.apiGet.mockResolvedValue({ version: '1.0.0', publishedAt: '', notes: null })
-    const result = await checkForUpdate()
+    const { checkForUpdate: fresh } = await freshUpdates()
+    const result = await fresh()
     expect(result.status).toBe('up-to-date')
     expect(result.pointerVersion).toBe('1.0.0')
     expect(result.offer).toBeNull()
@@ -162,7 +174,8 @@ describe('checkForUpdate (pointer fetch + version verdict)', () => {
   it('reports available with an offer when the channel moved ahead', async () => {
     vi.stubEnv('LH_APP_VERSION', '1.0.0')
     transportMocks.apiGet.mockResolvedValue({ version: '2.0.0', publishedAt: '', notes: 'fixes' })
-    const result = await checkForUpdate()
+    const { checkForUpdate: fresh } = await freshUpdates()
+    const result = await fresh()
     expect(result.status).toBe('available')
     expect(result.offer).toEqual({ version: '2.0.0', notes: 'fixes' })
     vi.unstubAllEnvs()
@@ -177,7 +190,8 @@ describe('checkForUpdate (pointer fetch + version verdict)', () => {
   it('dev builds (empty APP_VERSION) never self-offer', async () => {
     vi.stubEnv('LH_APP_VERSION', '')
     transportMocks.apiGet.mockResolvedValue({ version: '9.9.9', publishedAt: '', notes: null })
-    const result = await checkForUpdate()
+    const { checkForUpdate: fresh } = await freshUpdates()
+    const result = await fresh()
     expect(result.status).toBe('up-to-date')
     vi.unstubAllEnvs()
   })
@@ -251,17 +265,24 @@ describe('requestUpdateDownload (apply-path gates + Tauri invoke)', () => {
 
   it('defers on an unknown connection when wifi-only is on (the heavy transfer)', async () => {
     transportMocks.isTauri = true
-    vi.stubGlobal('navigator', {})
-    const result = await requestUpdateDownload(FILE)
+    // Injected `null` = unknown: the byte-heavy transfer defers even though
+    // the cheap pointer check would have been allowed.
+    const result = await requestUpdateDownload(FILE, { unmetered: null })
+    expect(result).toEqual({ started: false, reason: 'metered-connection' })
+    expect(invokeMock).not.toHaveBeenCalled()
+  })
+
+  it('also defers on a KNOWN metered connection', async () => {
+    transportMocks.isTauri = true
+    const result = await requestUpdateDownload(FILE, { unmetered: false })
     expect(result).toEqual({ started: false, reason: 'metered-connection' })
     expect(invokeMock).not.toHaveBeenCalled()
   })
 
   it('invokes update_download_file when unmetered and in the shell', async () => {
     transportMocks.isTauri = true
-    stubNavigator({ connection: { type: 'wifi' } })
     invokeMock.mockResolvedValue(undefined)
-    const result = await requestUpdateDownload(FILE)
+    const result = await requestUpdateDownload(FILE, { unmetered: true })
     expect(result).toEqual({ started: true })
     expect(invokeMock).toHaveBeenCalledWith('update_download_file', {
       url: FILE.url,
@@ -273,10 +294,18 @@ describe('requestUpdateDownload (apply-path gates + Tauri invoke)', () => {
 
   it('maps a native download failure to an honest, non-crashing result', async () => {
     transportMocks.isTauri = true
-    stubNavigator({ connection: { type: 'wifi' } })
     invokeMock.mockRejectedValue(new Error('sha mismatch'))
-    const result = await requestUpdateDownload(FILE)
+    const result = await requestUpdateDownload(FILE, { unmetered: true })
     expect(result).toEqual({ started: false, reason: 'download-failed' })
+  })
+
+  it('without an injected probe it defers in the node env (unknown connection)', async () => {
+    // No navigator.connection in the node env → the real probe returns null
+    // → the heavy transfer defers (wifi-only defaults on).
+    transportMocks.isTauri = true
+    const result = await requestUpdateDownload(FILE)
+    expect(result).toEqual({ started: false, reason: 'metered-connection' })
+    expect(invokeMock).not.toHaveBeenCalled()
   })
 
   it('play builds never invoke the updater, whatever the connection', async () => {
@@ -284,8 +313,7 @@ describe('requestUpdateDownload (apply-path gates + Tauri invoke)', () => {
     vi.stubEnv('LH_UPDATE_CHANNEL', 'play')
     const mod = (await import('../src/lib/updates')) as typeof import('../src/lib/updates')
     transportMocks.isTauri = true
-    stubNavigator({ connection: { type: 'wifi' } })
-    const result = await mod.requestUpdateDownload(FILE)
+    const result = await mod.requestUpdateDownload(FILE, { unmetered: true })
     expect(result).toEqual({ started: false, reason: 'self-update-disabled' })
     expect(invokeMock).not.toHaveBeenCalled()
     vi.unstubAllEnvs()
