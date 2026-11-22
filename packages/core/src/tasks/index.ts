@@ -382,6 +382,7 @@ export * from './undo'
 
 // Task search (S3-14) — re-exported so hosts consume one entry.
 export * from './search'
+export * from './markdown'
 
 // Ordering math (S3-60) — re-exported so hosts consume one entry.
 export * from './order'
