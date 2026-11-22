@@ -38,6 +38,7 @@ export const NOTIFICATION_CHANNEL_IDS = [
   'exam_countdown',
   'focus_complete',
   'break_complete',
+  'max_focus',
   'achievement',
 ] as const
 
@@ -106,6 +107,15 @@ export const NOTIFICATION_CHANNELS: Readonly<
     id: 'break_complete',
     title: 'Break over',
     description: 'Nudges you back when a scheduled break ends.',
+    category: 'focus',
+    defaultEnabled: true,
+    defaultViaOs: true,
+  },
+  max_focus: {
+    id: 'max_focus',
+    title: 'Max Focus lock',
+    description:
+      'Fires when a Max Focus lock engages and when it unlocks — timer, PIN exit, battery or tamper (M2-31).',
     category: 'focus',
     defaultEnabled: true,
     defaultViaOs: true,
