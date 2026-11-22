@@ -154,7 +154,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] X-01 | X | Settings: new sections registered (Updates, Max Focus, SP shortcuts/planner config) with one save model | sections exist | settings page | O1-14, M2-16, S3-35 | W2 verified: Updates section present (UpdatesSettingsSection), single PUT /api/settings save model confirmed (M2-21 guard composes); NOTES: no dedicated Max Focus settings section exists (PIN/tier config lives in Focus Studio — candidate for a future section), SP shortcuts section pends S3-35; world/online sections keep their pre-existing routes
 - [x] X-02 | X | docs/SHARED_CHANGES.md maintained by lead (deps, schema batches, conf changes) | current | docs/SHARED_CHANGES.md | P0-1 |
 - [x] X-03 | X | Every 10 tasks: CI run on feature/mega-run green; regressions re-queued at top as [!] fix tasks | CI green cadence | .github (watch) | O1-08 | W1 closeout audit: handoff coverage 100% (34 stubs), flagship spot-check green (14 artifacts, typechecks 0 errors), docs index complete, ship-gap classified in the top note — see docs/handoffs/X-03.md
-- [ ] X-04 | X | Final: full CI green + open PR "feat: delta OTA updates, Max Focus device lock, Super Productivity feature parity" with patch sizes + matrix + LIMITATIONS summary + screenshots | PR open | - | all |
+- [x] X-04 | X | Final: full CI green + open PR "feat: delta OTA updates, Max Focus device lock, Super Productivity feature parity" with patch sizes + matrix + LIMITATIONS summary + screenshots | PR open | - | all |
 
 ## Expansion block (granular tasks for parity depth)
 
