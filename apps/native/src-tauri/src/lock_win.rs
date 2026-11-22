@@ -28,6 +28,17 @@ pub const LOCK_WINDOW_PREFIX: &str = "max-focus-lock";
 /// session) are closed first, so apply-after-crash converges to exactly one
 /// window per monitor.
 pub fn apply_lock_windows(app: &AppHandle) -> Result<(), String> {
+    apply_lock_windows_with_allowlist(app, &[])
+}
+
+/// [`apply_lock_windows`] with the session's allowlisted executables
+/// (M2-09): allowlisted apps may take the foreground during the session,
+/// everything else is refocused by the guard. The allowlist arrives from the
+/// web session (`FocusLockPayload.apps` via the M2-23 commands).
+pub fn apply_lock_windows_with_allowlist(
+    app: &AppHandle,
+    allowed_apps: &[String],
+) -> Result<(), String> {
     release_lock_windows(app)?;
     let monitors = app
         .available_monitors()
@@ -66,7 +77,8 @@ pub fn apply_lock_windows(app: &AppHandle) -> Result<(), String> {
     #[cfg(windows)]
     key_hooks::install().map_err(|e| format!("max focus: keyboard hook install failed: {e}"))?;
     #[cfg(windows)]
-    refocus::start(app.clone()).map_err(|e| format!("max focus: refocus guard failed: {e}"))?;
+    refocus::start(app.clone(), allowed_apps)
+        .map_err(|e| format!("max focus: refocus guard failed: {e}"))?;
 
     Ok(())
 }
@@ -150,12 +162,49 @@ pub fn should_swallow_key(vk_code: u32, alt_down: bool, ctrl_down: bool, win_key
 /// Task Manager's image name (M2-07's refocus trigger).
 pub const TASKMGR_PROCESS: &str = "taskmgr.exe";
 
+/// Normalize a process image name for allowlist comparisons: lowercase,
+/// `.exe` suffix stripped (the session allowlist is authored without it).
+pub fn normalize_process_name(process: &str) -> String {
+    let lower = process.trim().to_ascii_lowercase();
+    lower.strip_suffix(".exe").unwrap_or(&lower).to_string()
+}
+
+/// Pure allowlist match (M2-09): true when the foreground process may keep
+/// focus. Exact match on the normalized name against the session allowlist
+/// (the `apps` array of `FocusLockPayload`); an empty allowlist allows
+/// nothing — the lock window is the only permitted foreground.
+pub fn app_is_allowed(process: &str, allowed_apps: &[String]) -> bool {
+    if allowed_apps.is_empty() {
+        return false;
+    }
+    let normalized = normalize_process_name(process);
+    if normalized.is_empty() {
+        return false;
+    }
+    allowed_apps
+        .iter()
+        .any(|app| normalize_process_name(app) == normalized)
+}
+
 /// Pure decision for the M2-07 foreground guard: yank focus back to the lock
 /// when the foreground window is NOT one of our lock windows, OR when Task
 /// Manager is in front (Ctrl+Alt+Del cannot be hooked at any tier; tier 1
 /// steals focus back, M2-08's admin tier also disables the process).
 pub fn needs_refocus(foreground_process: &str, foreground_is_lock_window: bool) -> bool {
-    !foreground_is_lock_window || foreground_process == TASKMGR_PROCESS
+    should_refocus(foreground_process, foreground_is_lock_window, &[])
+}
+
+/// M2-09 refinement of [`needs_refocus`]: allowlisted apps may take the
+/// foreground freely (the user can open exactly the sessions' `apps`), every
+/// other foreign window is refocused, and Task Manager ALWAYS triggers — it
+/// can never be allowlisted into legitimacy (tier 1; M2-08 disables it).
+pub fn should_refocus(
+    foreground_process: &str,
+    foreground_is_lock_window: bool,
+    allowed_apps: &[String],
+) -> bool {
+    foreground_process == TASKMGR_PROCESS
+        || (!foreground_is_lock_window && !app_is_allowed(foreground_process, allowed_apps))
 }
 
 /// Lowercased file-name tail of a full image path (C:\...\Taskmgr.exe ->
@@ -328,6 +377,20 @@ mod tests {
     }
 
     #[test]
+    fn allowlist_matching_is_exact_and_case_insensitive() {
+        use super::{app_is_allowed, normalize_process_name};
+        let allow = vec!["code".to_string(), "firefox.exe".to_string()];
+        assert!(app_is_allowed("code.exe", &allow));
+        assert!(app_is_allowed("Code.EXE", &allow));
+        assert!(app_is_allowed("firefox", &allow));
+        assert!(!app_is_allowed("taskmgr.exe", &allow));
+        assert!(!app_is_allowed("code2", &allow)); // prefix must not match
+        assert!(!app_is_allowed("", &allow));
+        assert!(!app_is_allowed("code", &[])); // empty allowlist allows nothing
+        assert_eq!(normalize_process_name("  Code.exe  "), "code");
+    }
+
+    #[test]
     fn refocus_triggers_on_foreign_or_taskmgr_foreground() {
         assert!(!needs_refocus("explorer.exe", true)); // lock window on top: fine
         assert!(needs_refocus("explorer.exe", false)); // anything else: refocus
@@ -417,13 +480,16 @@ pub mod refocus {
     static REFOCUS_ACTIVE: AtomicBool = AtomicBool::new(false);
     static REFOCUS_THREAD: std::sync::Mutex<Option<JoinHandle<()>>> = std::sync::Mutex::new(None);
 
-    /// Start the guard loop (idempotent). The loop self-terminates when
-    /// [`stop`] flips the active flag or the app handle dies.
-    pub fn start(app: AppHandle) -> Result<(), String> {
+    /// Start the guard loop (idempotent). `allowed_apps` is the session's
+    /// allowlisted executables (normalized here once) — those may take the
+    /// foreground; everything else is refocused (M2-09). The loop
+    /// self-terminates when [`stop`] flips the active flag.
+    pub fn start(app: AppHandle, allowed_apps: &[String]) -> Result<(), String> {
         let mut guard = REFOCUS_THREAD.lock().map_err(|_| "refocus state poisoned")?;
         if guard.is_some() {
             return Ok(());
         }
+        let allowed: Vec<String> = allowed_apps.to_vec();
         REFOCUS_ACTIVE.store(true, Ordering::Release);
         let (tx, rx) = mpsc::channel();
         let handle = std::thread::Builder::new()
@@ -431,7 +497,7 @@ pub mod refocus {
             .spawn(move || {
                 let _ = tx.send(());
                 while REFOCUS_ACTIVE.load(Ordering::Acquire) {
-                    poll_once(&app);
+                    poll_once(&app, &allowed);
                     std::thread::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS));
                 }
             })
@@ -455,7 +521,7 @@ pub mod refocus {
     /// One poll tick: if the foreground window is not a lock window — or the
     /// foreground process is Task Manager — put the topmost lock window back
     /// in front and foreground it.
-    fn poll_once(app: &AppHandle) {
+    fn poll_once(app: &AppHandle, allowed_apps: &[String]) {
         let lock_hwnds: Vec<isize> = app
             .webview_windows()
             .into_iter()
@@ -473,7 +539,7 @@ pub mod refocus {
             }
             let foreground_is_lock = lock_hwnds.contains(&(foreground.0 as isize));
             let process = foreground_process_name(foreground);
-            if !needs_refocus(&process, foreground_is_lock) {
+            if !should_refocus(&process, foreground_is_lock, allowed_apps) {
                 return;
             }
             if process == TASKMGR_PROCESS {
