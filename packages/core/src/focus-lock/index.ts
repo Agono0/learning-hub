@@ -7,7 +7,9 @@
  */
 import { z } from 'zod'
 
-export const COOLDOWN_SECONDS = 60
+import { COOLDOWN_SECONDS } from './session'
+
+export { COOLDOWN_SECONDS }
 
 export const DEFAULT_ALLOWED_DOMAINS = [
   'youtube.com',
@@ -294,3 +296,6 @@ export const focusAllowlistInputSchema = z.object({
 })
 
 export type FocusAllowlistInput = z.infer<typeof focusAllowlistInputSchema>
+
+// Session state machine (M2-01) — re-exported so hosts consume one entry.
+export * from './session'
