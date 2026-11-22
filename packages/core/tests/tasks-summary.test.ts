@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { dailySummaryText } from '../src/tasks/summary'
+import type { TimeLog } from '../src/tasks/time-tracking'
 import type { TaskItem } from '../src/tasks'
 
 const DAY = '2026-11-22'
@@ -34,14 +35,14 @@ function task(over: Partial<TaskItem> = {}): TaskItem {
   } as TaskItem
 }
 
-const log = (
-  taskId: number,
-  sessionMs: number,
-): { id: number; taskId: number; day: string; sessionMs: number } => ({
+const log = (taskId: number, sessionMs: number): TimeLog => ({
   id: taskId * 10,
   taskId,
   day: DAY,
   sessionMs,
+  startedAt: null,
+  source: 'manual',
+  createdAt: `${DAY}T00:00:00.000Z`,
 })
 
 describe('dailySummaryText', () => {
