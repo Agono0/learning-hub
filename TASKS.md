@@ -41,7 +41,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 
 - [x] M2-01 | LOCK | Session state machine in core: locked→cooldown→can_confirm→ended + hardCapAt, unlock reasons (timer/pin/battery/failure/tamper), monotonic anchor vs wall clock | unit tests all transitions | packages/core/src/focus-lock/session.ts, tests | P0-1 |
 - [x] M2-02 | LOCK | PIN vault: PBKDF2 hash (web crypto) + salt in userSettings JSON; first-use set + security-question recovery; verify API | unit tests | packages/core/src/focus-lock/pin.ts + tests, handler | M2-01 |
-- [ ] M2-03 | LOCK | maxFocusSessions table + migration (LEAD applies): tier, deviceId, startedAt, plannedEnd, hardCapAt, state, exitReason | migration + repo CRUD + tests | packages/db/src/schema.ts, migrations/0xx-max-focus.ts, repos/focus-lock.ts | M2-01 |
+- [~W2] M2-03 | LOCK | maxFocusSessions table + migration (LEAD applies): tier, deviceId, startedAt, plannedEnd, hardCapAt, state, exitReason | migration + repo CRUD + tests | packages/db/src/schema.ts, migrations/0xx-max-focus.ts, repos/focus-lock.ts | M2-01 |
 - [ ] M2-04 | LOCK | Handlers: start/status/extend/exit(+reason+pin verify)/history via withRoute + zod | integration tests | apps/web/src/server/handlers/focus/max/…, hub registry | M2-03 |
 - [x] M2-05 | LOCK | Windows Rust: topmost fullscreen window across ALL monitors | code + CI compile | apps/native/src-tauri/src/lock_win.rs | M2-01 |
 - [x] M2-06 | LOCK | Windows Rust: low-level keyboard hooks (Win, Alt+Tab, Alt+F4, Ctrl+Esc) scoped to session | code + docs | apps/native/src-tauri/src/lock_win.rs | M2-05 |
