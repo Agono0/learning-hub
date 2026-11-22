@@ -22,6 +22,13 @@ const ROUTES = [
   ['focus', 'focus'],
   ['games', 'games'],
   ['metacognition', 'studio'],
+  // SP parity pages (mega-run Epic 3) — X-04 PR screenshots.
+  ['tasks', 'tasks'],
+  ['boards', 'boards'],
+  ['schedule', 'schedule'],
+  ['worklog', 'worklog'],
+  ['metrics', 'metrics'],
+  ['planner', 'planner'],
   ['definitely-not-a-route', '404'],
 ]
 const LIGHT_PAGES = new Set(['dashboard', 'review', 'settings', 'decks'])

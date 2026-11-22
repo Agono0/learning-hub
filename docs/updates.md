@@ -279,16 +279,30 @@ workflow run summary — copy it into the nightly release notes.
 
 **Recorded results.**
 
-| Probe run                                                   | Patch bundle | Size |
-| ----------------------------------------------------------- | ------------ | ---- |
-| _(first CI dispatch — record the step-summary number here)_ | —            | —    |
+**CI probe status (mega-run closeout):** the probe has not produced a CI
+number yet — `nightly.yml` (which owns the `measure_patch` dispatch) is not
+on the default branch until the mega-run PR merges, so it has never run; the
+green mega-run CI runs (45058525253, 45059713066) are `ci.yml` jobs without a
+probe step. The row below is therefore a **local fixture dry-run**, measured
+with `scripts/update-manifest.mjs --prev` exactly the way the CI job diffs
+(O1-07 machinery, no app build involved): two 4-file / 0.3 KB fixture exports
+(`index.html`, `app.js`, `styles.css`, `sub/chunks.js`) differing by a single
+`app.js` line. It is the honest equivalent of the probe's mechanics at
+fixture scale — NOT the real `.next-tauri` export number, which lands in this
+table from the first CI dispatch after merge.
+
+| Probe run                                                                                                    | Patch bundle                              | Size     |
+| ------------------------------------------------------------------------------------------------------------ | ----------------------------------------- | -------- |
+| _(first CI dispatch — record the step-summary number here)_                                                  | —                                         | —        |
+| Local fixture dry-run (W3, 2026-11-22): 4-file / 0.3 KB bundle, one-line `app.js` change, `--prev` diff O1-07 | `patch-nightly-…-aaaa1111-…-bbbb2222.zip` | **178 B (0.2 KB)** — zip (deflate) of the single 78-byte changed file; sha256 recorded in the emitted manifest patch entry |
 
 **Target and deviation policy.** Target: **< 50 KB** for a one-line change. If
 a probe exceeds it, the DEVIATION line in the run summary points here — record
 the number, then explain the cause (e.g. a shared chunk invalidated by
-version-stable module IDs) before shipping the nightly. Local machines never
-produce this number (rule 17: builds run in CI only), so this table is filled
-from CI dispatch runs, not from a workstation.
+version-stable module IDs) before shipping the nightly. The fixture dry-run is
+two orders of magnitude under target and demonstrates the mechanics (only the
+changed file is re-zipped); the authoritative number is still the first CI
+dispatch on the real export.
 
 ## Play policy note
 
