@@ -140,7 +140,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-60 | SP | Core: task ordering/ordinal per list + drag-reorder math | unit tests | packages/core/src/tasks/order.ts | S3-03
 - [ ] S3-61 | SP | Core: task-grouping (by project/tag/date) pure helpers | unit tests | packages/core/src/tasks/grouping.ts | S3-03
 - [~W2] S3-62 | SP | Core: estimate parsing/validation (10m/1h/1h30m) + remaining math | unit tests | packages/core/src/tasks/estimates.ts | S3-03
-- [ ] S3-63 | SP | Core: deadline vs due semantics (past-deadline flagging) | unit tests | packages/core/src/tasks/deadlines.ts | S3-03
+- [~W2] S3-63 | SP | Core: deadline vs due semantics (past-deadline flagging) | unit tests | packages/core/src/tasks/deadlines.ts | S3-03
 - [ ] S3-64 | SP | Core: priority model (p1..p3 + strategies via tags) | unit tests | packages/core/src/tasks/priority.ts | S3-06
 - [ ] S3-65 | SP | Core: today membership = due date only (virtual tag math) | unit tests | packages/core/src/tasks/today.ts | S3-03
 - [ ] S3-66 | SP | Core: won't-do state exclusions from counts | unit tests | packages/core/src/tasks/wontdo.ts | S3-03
