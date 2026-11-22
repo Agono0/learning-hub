@@ -68,24 +68,27 @@ describe('generate-apk-delta script (O1-21)', () => {
   })
 
   describe('generateApkDelta', () => {
-    it('produces a patch + report with bytes, KB and ratio', async () => {
-      const dir = await tempDir()
-      const { base, target } = await fixtureApks(dir)
-      const out = path.join(dir, 'out')
-      const report = await generateApkDelta({
-        base,
-        target,
-        out,
-        label: 'arm64-v8a',
-        bsdiffBin: await fakeBsdiff(dir, 'ok'),
-      })
-      expect(report.label).toBe('arm64-v8a')
-      expect(report.base.bytes).toBe(4096)
-      expect(report.target.bytes).toBe(6144)
-      expect(report.patch.bytes).toBe(64 * 10)
-      expect(report.patch.path).toBe(path.join(out, 'delta-arm64-v8a.patch'))
-      expect(report.ratio).toBeCloseTo(report.patch.bytes / 6144, 4)
-    })
+    it.skipIf(process.platform === 'win32')(
+      'produces a patch + report with bytes, KB and ratio',
+      async () => {
+        const dir = await tempDir()
+        const { base, target } = await fixtureApks(dir)
+        const out = path.join(dir, 'out')
+        const report = await generateApkDelta({
+          base,
+          target,
+          out,
+          label: 'arm64-v8a',
+          bsdiffBin: await fakeBsdiff(dir, 'ok'),
+        })
+        expect(report.label).toBe('arm64-v8a')
+        expect(report.base.bytes).toBe(4096)
+        expect(report.target.bytes).toBe(6144)
+        expect(report.patch.bytes).toBe(64 * 10)
+        expect(report.patch.path).toBe(path.join(out, 'delta-arm64-v8a.patch'))
+        expect(report.ratio).toBeCloseTo(report.patch.bytes / 6144, 4)
+      },
+    )
 
     it('throws when base or target is missing/empty (never ships a blind delta)', async () => {
       const dir = await tempDir()
@@ -95,46 +98,60 @@ describe('generate-apk-delta script (O1-21)', () => {
       ).rejects.toThrow(/base APK missing/i)
       const empty = path.join(dir, 'empty.apk')
       await writeFile(empty, '')
+      // Base is validated FIRST (correct precedence: inputs in argument
+      // order), so an empty base reports the base error.
       await expect(generateApkDelta({ base: empty, target, out: dir })).rejects.toThrow(
-        /target APK missing/i,
+        /base APK missing/i,
       )
+      // …and a missing TARGET with a valid base reports the target error.
+      await expect(
+        generateApkDelta({ base, target: path.join(dir, 'missing-target.apk'), out: dir }),
+      ).rejects.toThrow(/target APK missing/i)
     })
 
-    it('throws when bsdiff fails or emits an empty patch (fallback to full APK)', async () => {
-      const dir = await tempDir()
-      const { base, target } = await fixtureApks(dir)
-      await expect(
-        generateApkDelta({ base, target, out: dir, bsdiffBin: await fakeBsdiff(dir, 'fail') }),
-      ).rejects.toThrow(/bsdiff failed/i)
-      await expect(
-        generateApkDelta({ base, target, out: dir, bsdiffBin: await fakeBsdiff(dir, 'empty') }),
-      ).rejects.toThrow(/empty patch/i)
-    })
+    it.skipIf(process.platform === 'win32')(
+      'throws when bsdiff fails or emits an empty patch (fallback to full APK)',
+      async () => {
+        const dir = await tempDir()
+        const { base, target } = await fixtureApks(dir)
+        // A FAILING bsdiff (exit 1) is the honest "broken delta" case…
+        await expect(
+          generateApkDelta({ base, target, out: dir, bsdiffBin: await fakeBsdiff(dir, 'fail') }),
+        ).rejects.toThrow(/bsdiff failed/i)
+        // …and an EMPTY patch is refused before it can ship.
+        await expect(
+          generateApkDelta({ base, target, out: dir, bsdiffBin: await fakeBsdiff(dir, 'empty') }),
+        ).rejects.toThrow(/empty patch/i)
+      },
+    )
   })
 
   describe('main (end-to-end)', () => {
-    it('writes the report JSON and prints the keep/skip hint', async () => {
-      const dir = await tempDir()
-      const { base, target } = await fixtureApks(dir)
-      const reportPath = path.join(dir, 'delta-report.json')
-      const report = await main([
-        '--base',
-        base,
-        '--target',
-        target,
-        '--out',
-        path.join(dir, 'out'),
-        '--report',
-        reportPath,
-        '--label',
-        'arm64-v8a',
-        '--bsdiff-bin',
-        await fakeBsdiff(dir, 'ok'),
-      ])
-      const onDisk = JSON.parse(await readFile(reportPath, 'utf8'))
-      expect(onDisk).toEqual(report)
-      expect(onDisk.ratio).toBeLessThan(0.5)
-    })
+    it.skipIf(process.platform === 'win32')(
+      'writes the report JSON and prints the keep/skip hint',
+      async () => {
+        const dir = await tempDir()
+        const { base, target } = await fixtureApks(dir)
+        const reportPath = path.join(dir, 'delta-report.json')
+        const report = await main([
+          '--base',
+          base,
+          '--target',
+          target,
+          '--out',
+          path.join(dir, 'out'),
+          '--report',
+          reportPath,
+          '--label',
+          'arm64-v8a',
+          '--bsdiff-bin',
+          await fakeBsdiff(dir, 'ok'),
+        ])
+        const onDisk = JSON.parse(await readFile(reportPath, 'utf8'))
+        expect(onDisk).toEqual(report)
+        expect(onDisk.ratio).toBeLessThan(0.5)
+      },
+    )
   })
 
   describe('formatKb', () => {

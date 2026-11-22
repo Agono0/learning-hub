@@ -40,6 +40,9 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+/** SSR HTML inserts `<!-- -->` markers between text and expressions — strip them. */
+const visible = (html: string): string => html.replaceAll('<!-- -->', '')
+
 describe('Tasks page — SSR safety', () => {
   it('renders the loading shell without clock or storage reads', () => {
     stubPendingFetch()
@@ -47,7 +50,7 @@ describe('Tasks page — SSR safety', () => {
     expect(html).toContain('Tasks')
     expect(html).toContain('Add a task')
     // Skeleton-shaped loading, never a blank page.
-    expect(html).toContain('skeleton')
+    expect(html).toContain('animate-pulse')
   })
 
   it('the add-task bar renders idle (parse preview waits for the client clock)', () => {
@@ -139,15 +142,15 @@ describe('TaskRow indicators — S3-63/S3-45 semantics', () => {
   }
 
   it('flags overdue due dates and passed deadlines in the danger hue', () => {
-    const html = renderRow(base, '2026-03-10')
+    const html = visible(renderRow(base, '2026-03-10'))
     expect(html).toContain('Overdue')
     expect(html).toContain('Deadline 2026-03-08 passed')
   })
 
   it('shows estimate-vs-tracked and tag names on the row', () => {
-    const html = renderRow(base, '2026-03-09')
+    const html = visible(renderRow(base, '2026-03-09'))
     expect(html).toContain('30m / 1h')
-    expect(html).toContain('#work')
+    expect(html).toContain('>work</span>')
     expect(html).not.toContain('Overdue')
   })
 

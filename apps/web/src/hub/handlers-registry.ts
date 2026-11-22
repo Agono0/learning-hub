@@ -74,6 +74,7 @@ import * as push from '../server/handlers/push/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
 import * as tasksId from '../server/handlers/tasks/[id]/route'
+import * as tasksAttachmentsId from '../server/handlers/tasks-attachments/[id]/route'
 import * as tasksArchive from '../server/handlers/tasks/[id]/archive/route'
 import * as tasksComplete from '../server/handlers/tasks/[id]/complete/route'
 import * as tasksDuplicate from '../server/handlers/tasks/[id]/duplicate/route'
@@ -81,6 +82,7 @@ import * as tasksReopen from '../server/handlers/tasks/[id]/reopen/route'
 import * as tasksRestore from '../server/handlers/tasks/[id]/restore/route'
 import * as tasksTags from '../server/handlers/tasks/[id]/tags/route'
 import * as tasksBulk from '../server/handlers/tasks/bulk/route'
+import * as tasksAttachments from '../server/handlers/tasks/[id]/attachments/route'
 import * as tasksOrder from '../server/handlers/tasks/order/route'
 import * as tasks from '../server/handlers/tasks/route'
 import * as tasksProjectsId from '../server/handlers/tasks-projects/[id]/route'
@@ -322,6 +324,7 @@ add('goals', goals)
 add('goals/[id]', goalsId)
 add('tasks', tasks)
 add('tasks/[id]', tasksId)
+add('tasks/[id]/attachments', tasksAttachments)
 add('tasks/[id]/archive', tasksArchive)
 add('tasks/[id]/complete', tasksComplete)
 add('tasks/[id]/duplicate', tasksDuplicate)
@@ -329,6 +332,7 @@ add('tasks/[id]/reopen', tasksReopen)
 add('tasks/[id]/restore', tasksRestore)
 add('tasks/[id]/tags', tasksTags)
 add('tasks/bulk', tasksBulk)
+add('tasks-attachments/[id]', tasksAttachmentsId)
 add('tasks/order', tasksOrder)
 add('tasks-projects', tasksProjects)
 add('tasks-projects/[id]', tasksProjectsId)

@@ -12,6 +12,7 @@
  * - `Unknown tag ids: …` → 400;
  * - anything else rethrows (withRoute sanitizes to a 500).
  */
+import { z } from 'zod'
 import { TaskDomainError } from '@learning-hub/core'
 
 /** Route context for `[id]` handlers (Next passes params as a Promise). */
@@ -30,6 +31,18 @@ export async function routeId(ctx: IdContext): Promise<number | null> {
 export function taskErrorResponse(err: unknown): Response {
   if (err instanceof TaskDomainError) {
     return Response.json({ error: err.message, code: err.code }, { status: 400 })
+  }
+  if (err instanceof z.ZodError) {
+    return Response.json(
+      {
+        error: 'Invalid request body',
+        detail: err.issues.map((i) => ({
+          path: i.path.map(String).join('.'),
+          message: i.message,
+        })),
+      },
+      { status: 400 },
+    )
   }
   if (err instanceof Error) {
     if (/not found$/i.test(err.message)) {

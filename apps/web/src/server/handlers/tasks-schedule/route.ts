@@ -33,8 +33,11 @@ export async function GET(req: Request) {
   const open = listTaskItems({ projectId: 'any', parentId: 'any' })
   const byDay = new Map<string, typeof open>()
   for (const task of open) {
-    if (task.due === null) continue
-    const day = dayOf(task.due)
+    // Anchor on the due day; deadline-only tasks (no due) surface on their
+    // deadline day so the timeline shows the hard date (S3-63 semantics).
+    const anchor = task.due !== null ? dayOf(task.due) : task.deadline
+    if (anchor === null) continue
+    const day = anchor.slice(0, 10)
     const bucket = byDay.get(day) ?? []
     bucket.push(task)
     byDay.set(day, bucket)

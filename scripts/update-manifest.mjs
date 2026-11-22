@@ -233,9 +233,31 @@ export async function writeOutputs(outPath, { manifest, patchArtifacts }) {
   return absOut
 }
 
+/** Flags parseArgs understands — unknown flags are rejected BEFORE values
+ * are consumed, so `--nope` reports "Unknown option" (never a confusing
+ * "Missing value" because it swallowed the next token as its value). */
+const KNOWN_FLAGS = new Set([
+  'dir',
+  'out',
+  'channel',
+  'version',
+  'build-sha',
+  'min-native-version',
+  'full-package-url',
+  'patch-base-url',
+  'created-at',
+  'requires-native',
+  'prev',
+])
+
 /**
- * Parse and validate CLI flags (see the header for the full usage). Throws on
- * missing/invalid options so CI fails loudly instead of publishing garbage.
+ * Parse CLI flags (see the header for the full usage). SYNTAX + per-flag
+ * FORMAT validation only: kebab flags, `--flag=value`, repeated `--prev`,
+ * and the boolean `--requires-native` (with or without an explicit value)
+ * all parse; a PROVIDED value is format-checked immediately (unknown flag,
+ * channel enum, https, sha length) so CI fails loudly at the exact flag.
+ * Required-option PRESENCE is a separate concern — {@link validateOpts} —
+ * so partial parses (tests, --help-style probes) never blow up on absence.
  */
 export function parseArgs(argv) {
   const opts = { prev: [], channel: 'nightly', requiresNative: false }
@@ -244,6 +266,7 @@ export function parseArgs(argv) {
     if (!arg.startsWith('--')) throw new Error(`Unexpected argument: ${arg}`)
     const eq = arg.indexOf('=')
     const key = eq >= 0 ? arg.slice(2, eq) : arg.slice(2)
+    if (!KNOWN_FLAGS.has(key)) throw new Error(`Unknown option --${key}`)
     let value
     if (eq >= 0) {
       value = arg.slice(eq + 1)
@@ -260,24 +283,40 @@ export function parseArgs(argv) {
     switch (key) {
       case 'dir':
       case 'out':
-      case 'channel':
       case 'version':
         opts[key] = value
         break
+      case 'channel':
+        opts.channel = value
+        if (!CHANNELS.includes(opts.channel)) {
+          throw new Error(
+            `Invalid channel "${opts.channel}" — expected one of ${CHANNELS.join(', ')}`,
+          )
+        }
+        break
       case 'build-sha':
         opts.buildSha = value
+        if (opts.buildSha.length < 7 || opts.buildSha.length > 40) {
+          throw new Error('--build-sha must be 7–40 characters')
+        }
         break
       case 'min-native-version':
         opts.minNativeVersion = value
         break
       case 'full-package-url':
         opts.fullPackageUrl = value
+        assertHttpsUrl(opts.fullPackageUrl, 'full-package-url')
         break
       case 'patch-base-url':
         opts.patchBaseUrl = value
+        assertHttpsUrl(opts.patchBaseUrl, 'patch-base-url')
+        if (!opts.patchBaseUrl.endsWith('/')) opts.patchBaseUrl += '/'
         break
       case 'created-at':
         opts.createdAt = value
+        if (Number.isNaN(Date.parse(opts.createdAt))) {
+          throw new Error('--created-at must be an RFC 3339 timestamp')
+        }
         break
       case 'requires-native':
         opts.requiresNative = String(value) === 'true'
@@ -289,6 +328,15 @@ export function parseArgs(argv) {
         throw new Error(`Unknown option --${key}`)
     }
   }
+  return opts
+}
+
+/**
+ * Required-option PRESENCE check (separate from {@link parseArgs} so a
+ * partial parse is expressible). CI calls this from {@link main} right
+ * after parsing — missing flags must fail the job before any upload.
+ */
+export function validateOpts(opts) {
   const requiredFlags = [
     ['dir', 'dir'],
     ['out', 'out'],
@@ -300,20 +348,6 @@ export function parseArgs(argv) {
   for (const [prop, flag] of requiredFlags) {
     if (opts[prop] === undefined) throw new Error(`Missing required option --${flag}`)
   }
-  if (!CHANNELS.includes(opts.channel)) {
-    throw new Error(`Invalid channel "${opts.channel}" — expected one of ${CHANNELS.join(', ')}`)
-  }
-  assertHttpsUrl(opts.fullPackageUrl, 'full-package-url')
-  if (opts.buildSha.length < 7 || opts.buildSha.length > 40) {
-    throw new Error('--build-sha must be 7–40 characters')
-  }
-  if (opts.createdAt !== undefined && Number.isNaN(Date.parse(opts.createdAt))) {
-    throw new Error('--created-at must be an RFC 3339 timestamp')
-  }
-  if (opts.patchBaseUrl !== undefined) {
-    assertHttpsUrl(opts.patchBaseUrl, 'patch-base-url')
-    if (!opts.patchBaseUrl.endsWith('/')) opts.patchBaseUrl += '/'
-  }
   return opts
 }
 
@@ -322,7 +356,7 @@ export function parseArgs(argv) {
  * generation result (with `outPath`) so tests can drive it in-process.
  */
 export async function main(argv = process.argv.slice(2)) {
-  const opts = parseArgs(argv)
+  const opts = validateOpts(parseArgs(argv))
   const { manifest, patchArtifacts } = await generateManifest(opts)
   const outPath = await writeOutputs(opts.out, { manifest, patchArtifacts })
   const totalBytes = manifest.files.reduce((sum, f) => sum + f.size, 0)

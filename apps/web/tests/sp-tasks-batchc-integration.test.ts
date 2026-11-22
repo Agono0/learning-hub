@@ -232,8 +232,9 @@ describe('GET /api/tasks-worklog/export — CSV', () => {
     const lines = body.split('\r\n')
     expect(lines[0]).toBe('task_id,title,day,minutes,source,started_at')
     expect(lines[1]).toContain('"Quoted, ""task"""')
-    expect(lines[1]).toContain('2026-02-03')
-    expect(lines[1].split(',')[3]).toBe('2') // 90s → 2 whole minutes (rounded)
+    // RFC 4180 quoting means naive comma-splitting is wrong — assert the
+    // field run after the quoted title (day, whole minutes, source).
+    expect(lines[1]).toMatch(/,2026-02-03,2,manual,/)
   })
 })
 
