@@ -78,6 +78,37 @@ the new build never reports ready.
 | Android Play     | Store updates only                                                                                      | **Off** — `LH_UPDATE_CHANNEL=play` bakes self-update off (O1-12) |
 | Web (browser)    | Not applicable — reload is the update                                                                   | n/a                                                              |
 
+## Android sideload consent flow (O1-13)
+
+Sideload installs of a new full per-ABI APK go through Android's
+`PackageInstaller` (`MaxUpdatePlugin.kt` in the app's `gen/android` sources,
+registered by the Rust shell as the `max-update` plugin). The flow is
+consent-first at EVERY stage — nothing installs silently:
+
+1. **Pick.** `update_android_device_info` returns the device's primary ABI
+   (`Build.SUPPORTED_ABIS[0]`, e.g. `arm64-v8a`) and whether the per-app
+   "install unknown apps" grant is already given. The update service downloads
+   the matching APK (or `android-universal` when unknown) via the verified
+   `update_download_file` pipeline (sha256-checked, confined to the updates dir).
+2. **Consent (per-app grant).** `installSideloadApk` → `installApk`: when
+   `canRequestPackageInstalls()` is false, the plugin opens
+   `ACTION_MANAGE_UNKNOWN_APP_SOURCES` for THIS package and resolves
+   `{ consentRequired: true }` — the UI explains what the grant does and the
+   user re-taps after granting. No install is attempted without it.
+3. **Consent (system dialog).** With the grant, the plugin streams the APK
+   into a `MODE_FULL_INSTALL` PackageInstaller session and commits it with an
+   intent back into the app. Android then shows ITS OWN install confirmation —
+   the user still has to press "Install".
+4. **Result.** The system installer reports into the app (session id carried
+   in the callback intent); failures surface as a retry in the update UI, and
+   the old app version keeps running untouched until Android itself swaps the
+   package.
+
+Notes: `REQUEST_INSTALL_PACKAGES` in the manifest is what makes the per-app
+grant screen available — it is never a silent-install permission. Play-distributed
+builds never reach this flow (self-update baked off, O1-12). Pre-Android-8
+global "unknown sources" toggles (`sdkInt < 26`) are treated as granted.
+
 ## Slots & the webview origin (O1-04)
 
 The active slot is served over a custom URI scheme (`lhslot`) registered in

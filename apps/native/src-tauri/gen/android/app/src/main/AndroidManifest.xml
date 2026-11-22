@@ -2,6 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Sideload updates (O1-13): full per-ABI APK installs via PackageInstaller.
+         REQUEST_INSTALL_PACKAGES is only the consent gate for the per-app
+         "install unknown apps" grant — the flow never installs silently
+         (docs/updates.md §"Platform matrix"). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
