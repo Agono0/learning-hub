@@ -99,3 +99,27 @@ exports.
 - eslint: 0 errors on touched files (3 pre-existing warnings in
   `tasks/index.ts` imports, unchanged by this batch).
 - prettier: clean on all touched files.
+
+---
+
+## Follow-up batch (`b58fade`) — two more failures found while re-verifying my suites
+
+### 10. max-focus-exit-gate / max-focus-precheck SSR tests (2)
+
+renderToString inserts `<!-- -->` markers between interpolated JSX text
+nodes, so `toContain('42s remaining')` / `toContain('app: code.exe')`
+failed on the comment seams. **Fix (test-side, assertion intent
+unchanged):** a `cleanHtml` helper strips the markers before matching.
+Verified from the `apps/web` workspace (`cd apps/web && npx vitest run
+tests/…`) — web tests need the workspace's `@/` alias, so scoped runs MUST
+run from that workspace, not the repo root.
+
+### 11. focus-lock-session resume-equivalence fixture (1)
+
+The M2-24 fixture advanced the resumed twin with a monotonic reading 60
+minutes STALE (its anchor was re-based at the twin's start, so by wallEnd
+mono must have advanced 60min + 1s FROM the twin's anchor). The machine's
+tamper response was CORRECT — the fixture's clock pair was inconsistent.
+**Fix (fixture):** the twin's mono reading now advances with its own
+elapsed wall time; a comment documents why a stale reading trips tamper by
+design. 43/43 green.
