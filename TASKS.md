@@ -163,7 +163,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27
 - [ ] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | boards | S3-24
 - [ ] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44
-- [ ] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
+- [~W2] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
 - [ ] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36
 - [ ] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
 - [ ] S3-89 | SP | Core: activity heatmap data builder | unit tests | metrics | S3-30
