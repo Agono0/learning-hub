@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Course certificate (?id= course): claim it once the course rules are met,
  * then print it or save it as PDF (the app chrome is hidden when printing).
@@ -11,8 +13,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award, Printer } from 'lucide-react'
 import { curriculumApi, curriculumKeys } from '@/lib/curriculum-api'
 import { useIdParam } from '@/lib/use-id-param'
-import { Button, Callout, EmptyState, PageHeader, Panel } from '@/ui'
+import { Button, Callout, EmptyState, PageHeader, Panel, Skeleton } from '@/ui'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
+import { PartyPopper } from 'lucide-react'
+
+/**
+ * GSAP moment for this page: the lessons count on the issued certificate
+ * counts up to its final value. SSR and reduced-motion render the final
+ * number (the hook only rewrites textContent client-side when motionOK()).
+ */
+function CountUp({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return <span ref={ref}>{value}</span>
+}
 
 function Certificate() {
   const id = useIdParam()
@@ -38,7 +52,13 @@ function Certificate() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
+  if (isLoading)
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading certificate">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
   if (error || !data) return <Callout tone="danger">{error?.message ?? 'Course not found'}</Callout>
 
   const issued = data.issued ?? claim.data?.issued ?? null
@@ -85,8 +105,11 @@ function Certificate() {
       {!issued && data.eligible && (
         <ClayIn delayS={staggerDelay(1)}>
           <Panel>
-            <p className="text-sm">
-              You’ve met every requirement of <strong>{data.course.title}</strong>. 🎉
+            <p className="flex items-center gap-2 text-sm">
+              <PartyPopper className="h-4 w-4 text-status-warning-text" aria-hidden />
+              <span>
+                You’ve met every requirement of <strong>{data.course.title}</strong>.
+              </span>
             </p>
             <Button
               icon={<Award className="h-4 w-4" />}
@@ -119,7 +142,8 @@ function Certificate() {
                 {snap.title ?? data.course.title}
               </h2>
               <p className="mt-4 text-sm text-neutral-600">
-                completed in Learning HUB — {snap.lessons ?? '—'} lessons
+                completed in Learning HUB —{' '}
+                {typeof snap.lessons === 'number' ? <CountUp value={snap.lessons} /> : '—'} lessons
                 {snap.estHours ? `, ~${snap.estHours} hours of study` : ''}
                 {typeof snap.examScore === 'number'
                   ? `, final exam ${Math.round(snap.examScore * 100)}%`
@@ -142,7 +166,7 @@ function Certificate() {
                   <div>Certificate code</div>
                 </div>
               </div>
-              <p className="mt-8 text-[10px] text-faint">
+              <p className="mt-8 text-xs text-faint">
                 A personal record of self-directed study, not an accredited qualification.
               </p>
             </section>
@@ -163,7 +187,14 @@ function Certificate() {
 
 export default function CertificatePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
+    <Suspense
+      fallback={
+        <div className="space-y-4" aria-hidden>
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
       <Certificate />
     </Suspense>
   )

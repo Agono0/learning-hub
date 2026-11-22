@@ -9,7 +9,7 @@
  * - Pre-exam expressive writing & mock checkpoint (Ramirez & Beilock 2011)
  * - Workload balancing based on real course progress and exam proximity
  */
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   AlertTriangle,
   CalendarCheck,

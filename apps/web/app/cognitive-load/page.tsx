@@ -17,11 +17,16 @@ import React from 'react'
 import { Activity, Cpu, Flame, Sparkles } from 'lucide-react'
 import { PageHeader, Panel } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { CognitiveLoadStudio } from '@/components/CognitiveLoadStudio'
 
 export default function CognitiveLoadPage() {
+  // GSAP moment for this page: the studio workbench rises in with a capped
+  // stagger when it scrolls into view (a different node from the ClayIn
+  // container — one animation owner per element).
+  const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title="Cognitive Load & Flow State Balancer"
@@ -44,8 +49,10 @@ export default function CognitiveLoadPage() {
         }
       />
 
-      {/* Main Interactive Studio */}
-      <CognitiveLoadStudio />
+      {/* Main Interactive Studio — GSAP moment (see ref below). */}
+      <div ref={studioRevealRef}>
+        <CognitiveLoadStudio />
+      </div>
 
       {/* Cognitive Science Foundations */}
       <Panel className="p-6 rounded-2xl border border-neutral-200 dark:border-(--hub-border) bg-neutral-50/50 dark:bg-(--hub-panel)/40 space-y-4">

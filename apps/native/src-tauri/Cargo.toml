@@ -25,6 +25,11 @@ tauri-plugin-notification = "2"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+# OTA update layer (O1-02/O1-19): manifest fetch + verify + patch unpack.
+minisign-verify = "0.2"
+sha2 = "0.10"
+ureq = { version = "2", default-features = false, features = ["tls"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
@@ -32,6 +37,8 @@ windows = { version = "0.62", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Threading",
     "Win32_System_ProcessStatus",
+    "Win32_System_Registry",
+    "Win32_System_Power",
 ] }
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
@@ -41,6 +48,8 @@ tauri-plugin-haptics = "2"
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
+# Desktop-only updater (O1-10): Android updates go through A/B slots / Play.
+tauri-plugin-updater = "2"
 
 [profile.release]
 codegen-units = 1

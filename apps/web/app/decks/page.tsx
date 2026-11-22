@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Decks & Cards: deck management, card browser with filters, a
  * full per-format card editor (incl. image-occlusion rect drawing with
@@ -25,6 +27,7 @@ import {
   Upload,
   Wand2,
   X,
+  Hourglass,
 } from 'lucide-react'
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import type { LintResult } from '@learning-hub/core/linter'
@@ -44,10 +47,22 @@ import {
   SelectField,
   Skeleton,
   Toggle,
+  EmptyState,
   type LeitnerBoxData,
 } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface DeckInfo {
   id: number
@@ -108,7 +123,7 @@ const BOX_TONE = [
 function BoxChip({ box }: { box: 1 | 2 | 3 | 4 | 5 }) {
   return (
     <span
-      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-bold ${BOX_TONE[box - 1]}`}
+      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${BOX_TONE[box - 1]}`}
       title={`Leitner box ${box} (${BOX_LABEL[box - 1]})`}
     >
       {box}
@@ -129,6 +144,16 @@ export default function DecksPage() {
   const [doctorDeckId, setDoctorDeckId] = useState<number | null>(null)
   const [interleaveOpen, setInterleaveOpen] = useState(false)
   const [shareNote, setShareNote] = useState<string | null>(null)
+  // GSAP reveal ref for the card-browser rows (the browser panel itself is
+  // a ClayIn beat — the rows are a different node; one owner per element).
+  const cardRowsRevealRef = useGsapReveal<HTMLDivElement>()
+  // Destructive actions confirm through the alert dialog before mutating.
+  const [confirmAction, setConfirmAction] = useState<
+    | { kind: 'deck'; id: number; name: string }
+    | { kind: 'card'; id: number }
+    | { kind: 'weights'; id: number; name: string }
+    | null
+  >(null)
 
   // Share this deck as an lh-share/v1 string (F-08②): the import side lives
   // on the Online page; export mirrors its hint copy.
@@ -382,11 +407,11 @@ export default function DecksPage() {
             }}
             className={`rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
               activeDeck === null
-                ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-secondary'
+                ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
+                : 'border-(--hub-border) text-secondary'
             }`}
           >
-            📚 All decks
+            <Layers className="h-3.5 w-3.5" aria-hidden /> All decks
           </button>
           {(decks.data?.decks ?? []).map((d, deckIdx) => (
             <StaggerItem
@@ -394,8 +419,8 @@ export default function DecksPage() {
               index={deckIdx + 1}
               className={`group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 activeDeck === d.id
-                  ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
-                  : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-secondary'
+                  ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
+                  : 'border-(--hub-border) text-secondary'
               }`}
             >
               <button
@@ -410,27 +435,27 @@ export default function DecksPage() {
                   {d.due}/{d.total} due
                 </span>
                 {d.desiredRetention !== null && (
-                  <span className="ml-1.5 rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] text-indigo-400">
+                  <span className="ml-1.5 rounded bg-indigo-500/15 px-1.5 py-0.5 text-xs text-indigo-600 dark:text-indigo-400">
                     {Math.round(d.desiredRetention * 100)}%
                   </span>
                 )}
                 {d.hasCustomWeights && (
-                  <span className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-status-success-text">
+                  <span className="ml-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-xs text-status-success-text">
                     21w
                   </span>
                 )}
                 {d.delayedFeedback && (
                   <span
-                    className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-status-warning-text"
+                    className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-xs text-status-warning-text"
                     title="Delayed feedback (Butler & Roediger 2008): grades are committed blind; corrections restudied next session"
                   >
-                    ⏳ blind
+                    <Hourglass className="h-3.5 w-3.5" aria-hidden /> blind
                   </span>
                 )}
               </button>
               <IconButton
                 label="Delete deck"
-                onClick={() => deleteDeck.mutate(d.id)}
+                onClick={() => setConfirmAction({ kind: 'deck', id: d.id, name: d.name })}
                 className="hover:text-danger-text"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -441,9 +466,7 @@ export default function DecksPage() {
 
         {selectedDeckObj && (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)">
-            <span className="font-medium text-neutral-700 dark:text-secondary">
-              Deck FSRS-6 preset:
-            </span>
+            <span className="font-medium text-secondary">Deck FSRS-6 preset:</span>
             <SelectField
               label="Retention"
               className="w-40"
@@ -490,7 +513,13 @@ export default function DecksPage() {
                 variant="ghost"
                 className="py-1 text-xs"
                 disabled={optimizeDeck.isPending}
-                onClick={() => optimizeDeck.mutate({ deckId: selectedDeckObj.id, mode: 'reset' })}
+                onClick={() =>
+                  setConfirmAction({
+                    kind: 'weights',
+                    id: selectedDeckObj.id,
+                    name: selectedDeckObj.name,
+                  })
+                }
               >
                 Reset weights
               </Button>
@@ -505,7 +534,7 @@ export default function DecksPage() {
               <Upload className="h-3.5 w-3.5" /> Share…
             </Button>
             {deckFsrsNote && <span className="text-tertiary">{deckFsrsNote}</span>}
-            {shareNote && <span className="text-indigo-400">{shareNote}</span>}
+            {shareNote && <span className="text-indigo-600 dark:text-indigo-300">{shareNote}</span>}
           </div>
         )}
       </ClayIn>
@@ -548,11 +577,16 @@ export default function DecksPage() {
             onSelectBox={(lvl) => setSelectedBox((prev) => (prev === lvl ? undefined : lvl))}
           />
         )}
-        <div className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
+        {/* GSAP moment for this page: card rows rise in with a capped stagger
+            when the browser list scrolls into view. */}
+        <div
+          ref={cardRowsRevealRef}
+          className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)"
+        >
           {displayedCards.map((card) => (
             <div key={card.id} className="flex items-center gap-3 py-2 text-sm">
               <BoxChip box={leitnerBox(card)} />
-              <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
+              <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
                 {card.type}
               </span>
               <span className="min-w-0 flex-1 truncate">{cardPreview(card.content)}</span>
@@ -570,16 +604,16 @@ export default function DecksPage() {
               <Button
                 variant="ghost"
                 className="px-2 py-1 hover:text-danger-text"
-                onClick={() => deleteCard.mutate(card.id)}
+                onClick={() => setConfirmAction({ kind: 'card', id: card.id })}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
           ))}
           {cards.data && cards.data.cards.length === 0 && (
-            <div className="py-6 text-center text-sm text-tertiary">
-              no cards match — create one or loosen the filters
-            </div>
+            <EmptyState title="No cards here" icon={<Layers className="h-8 w-8" />}>
+              No cards match — create one or loosen the filters.
+            </EmptyState>
           )}
         </div>
       </ClayIn>
@@ -617,6 +651,56 @@ export default function DecksPage() {
         isOpen={interleaveOpen}
         onClose={() => setInterleaveOpen(false)}
       />
+
+      <AlertDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.kind === 'card'
+                ? 'Delete card?'
+                : confirmAction?.kind === 'weights'
+                  ? 'Reset deck weights?'
+                  : 'Delete deck?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.kind === 'deck' &&
+                `Deleting “${confirmAction.name}” removes its cards. Your review history is kept.`}
+              {confirmAction?.kind === 'card' &&
+                'This card is removed from the deck and stops returning in reviews.'}
+              {confirmAction?.kind === 'weights' &&
+                `Resetting “${confirmAction.name}” reverts it to the global FSRS-6 weights. You can re-optimize any time.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                const action = confirmAction
+                setConfirmAction(null)
+                if (!action) return
+                if (action.kind === 'deck') deleteDeck.mutate(action.id)
+                else if (action.kind === 'card') deleteCard.mutate(action.id)
+                else optimizeDeck.mutate({ deckId: action.id, mode: 'reset' })
+              }}
+              disabled={
+                confirmAction?.kind === 'weights'
+                  ? optimizeDeck.isPending
+                  : confirmAction?.kind === 'deck'
+                    ? deleteDeck.isPending
+                    : deleteCard.isPending
+              }
+            >
+              {confirmAction?.kind === 'weights' ? 'Reset weights' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -1239,7 +1323,7 @@ function OcclusionEditor({
                   setDraft({ occlusion: { imageId: occ.imageId, rects: next } })
                 }}
               />
-              <span className="text-neutral-600">
+              <span className="text-tertiary">
                 x{rect.x.toFixed(2)} y{rect.y.toFixed(2)} w{rect.w.toFixed(2)} h{rect.h.toFixed(2)}
               </span>
               <Button

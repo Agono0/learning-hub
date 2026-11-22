@@ -13,31 +13,33 @@
 
 import React from 'react'
 import { Award, Compass, Flame, Sparkles } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { Badge, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { DesirableDifficultyStudio } from '@/components/DesirableDifficultyStudio'
 
 export default function GenerationStudioPage() {
+  // GSAP moment: the evidence section rises in on scroll (framer owns the
+  // page container; reduced-motion skips GSAP entirely).
+  const revealRef = useGsapReveal()
+
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       {/* Page Header */}
       <PageHeader
         title="Desirable Difficulties & Generative Retrieval Studio"
         subtitle="Harness Bjork's New Theory of Disuse: maximize storage strength gains by retrieving under low accessibility across Slamecka's 4-rung generative difficulty ladder."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text">
-              <Flame className="h-3.5 w-3.5 text-status-warning-text" />
-              <span>Slamecka (1978)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
-              <Compass className="h-3.5 w-3.5 text-status-info-text" />
-              <span>Bjork & Bjork (2011)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
-              <Award className="h-3.5 w-3.5 text-status-success-text" />
-              <span>Roediger (2006)</span>
-            </span>
+            <Badge tone="warning" icon={<Flame className="h-3.5 w-3.5" />}>
+              Slamecka (1978)
+            </Badge>
+            <Badge tone="cyan" icon={<Compass className="h-3.5 w-3.5" />}>
+              Bjork & Bjork (2011)
+            </Badge>
+            <Badge tone="success" icon={<Award className="h-3.5 w-3.5" />}>
+              Roediger (2006)
+            </Badge>
           </div>
         }
       />
@@ -46,7 +48,10 @@ export default function GenerationStudioPage() {
       <DesirableDifficultyStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md">
+      <div
+        ref={revealRef}
+        className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md"
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <Sparkles className="h-5 w-5 text-ac-text" />
           <h3 className="text-sm font-bold text-strong">

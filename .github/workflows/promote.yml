@@ -1,0 +1,150 @@
+name: Promote channel
+
+# Channel promotion (Epic O1-11): point `beta` or `stable` at an already-built,
+# already-signed release (typically a nightly) WITHOUT rebuilding anything —
+# "re-tag the pointer, keep the artifacts".
+#
+# Pointer model (docs/updates.md): a fixed GitHub release with tag
+# `channel-pointers` holds the mutable pointer assets clients poll:
+#   https://github.com/<owner>/<repo>/releases/download/channel-pointers/nightly.json
+#   .../beta.json
+#   .../stable.json
+# Each pointer (`updatePointerSchema` in packages/core/src/update) names the
+# channel's current version and the https URL of its SIGNED manifest. The
+# nightly workflow (O1-08) refreshes `nightly.json` there on every nightly;
+# this workflow refreshes `beta.json` / `stable.json` on demand.
+#
+# Because promotion copies the manifest, the copy's `channel` field must match
+# the target channel — so the manifest is rewritten (`channel: <target>`) and
+# RE-SIGNED (the old signature is invalid for changed bytes; signature
+# verification on the client is never disabled). Patch bundles and installers
+# stay on the source release and are referenced by their original URLs —
+# promotion never rebuilds or re-uploads multi-MB artifacts.
+#
+# Rollback = run this workflow again pointing at an older build's tag (the
+# pointer is the only thing that moves; O1-05 covers on-device rollback).
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: 'Release tag to promote (e.g. nightly-20261122-abc1234)'
+        required: true
+        type: string
+      channel:
+        description: 'Target channel'
+        required: true
+        type: choice
+        options:
+          - beta
+          - stable
+      notes:
+        description: 'Optional notes for the channel pointer (changelog line)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Point ${{ inputs.channel }} at ${{ inputs.source_tag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      SOURCE_TAG: ${{ inputs.source_tag }}
+      TARGET_CHANNEL: ${{ inputs.channel }}
+      PROMOTE_NOTES: ${{ inputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # The Tauri CLI (devDependency) provides the minisign signer.
+      - run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Validate source release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$SOURCE_TAG" --json tagName --jq '.tagName'
+          gh release view "$SOURCE_TAG" --json assets --jq '[.assets[].name] | join(",")' | grep -q manifest.json
+
+      - name: Download source manifest + pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/promote
+          gh release download "$SOURCE_TAG" --pattern 'manifest.json' --output dist/promote/manifest.json
+          gh release download "$SOURCE_TAG" --pattern 'nightly.json' --output dist/promote/source-pointer.json
+
+      - name: Rewrite manifest + pointer for the target channel
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const manifest = JSON.parse(fs.readFileSync("dist/promote/manifest.json", "utf8"));
+            const sourcePointer = JSON.parse(fs.readFileSync("dist/promote/source-pointer.json", "utf8"));
+            const channel = process.env.TARGET_CHANNEL;
+            if (!["beta", "stable"].includes(channel)) throw new Error("channel must be beta or stable");
+            const rewritten = { ...manifest, channel };
+            fs.writeFileSync(`dist/promote/manifest-${channel}.json`, JSON.stringify(rewritten, null, 2) + "\n");
+            const notes = process.env.PROMOTE_NOTES || sourcePointer.notes || `Promoted ${manifest.version} to ${channel}`;
+            const pointer = {
+              channel,
+              version: manifest.version,
+              manifestUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/channel-pointers/manifest-${channel}.json`,
+              publishedAt: new Date().toISOString(),
+              notes,
+            };
+            fs.writeFileSync(`dist/promote/${channel}.json`, JSON.stringify(pointer, null, 2) + "\n");
+            console.log(`promoting ${manifest.version} -> ${channel}`);
+          '
+
+      - name: Sign rewritten manifest + pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret is not set — publishing UNSIGNED pointer (client will refuse it). Configure the O1-09 keys."
+            exit 0
+          fi
+          npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" -p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" "dist/promote/manifest-${TARGET_CHANNEL}.json"
+          npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" -p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" "dist/promote/${TARGET_CHANNEL}.json"
+
+      - name: Update the channel-pointers release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view channel-pointers >/dev/null 2>&1; then
+            gh release create channel-pointers \
+              --title "Update channel pointers" \
+              --notes "Mutable pointer assets (nightly.json / beta.json / stable.json) and per-channel signed manifests. This is the stable URL set clients poll. Never delete this release." \
+              --latest=false
+          fi
+          for f in "${TARGET_CHANNEL}.json" "${TARGET_CHANNEL}.json.sig" "manifest-${TARGET_CHANNEL}.json" "manifest-${TARGET_CHANNEL}.json.sig"; do
+            if [ -e "dist/promote/$f" ]; then
+              gh release delete-asset channel-pointers "$f" -y || true
+              gh release upload channel-pointers "dist/promote/$f"
+            fi
+          done
+
+      - name: Summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "JSON.parse(require('node:fs').readFileSync('dist/promote/${TARGET_CHANNEL}.json','utf8')).version")"
+          echo "Channel **${TARGET_CHANNEL}** now points at **${VERSION}** (source ${SOURCE_TAG})."
+          echo "Pointer: https://github.com/${GITHUB_REPOSITORY}/releases/download/channel-pointers/${TARGET_CHANNEL}.json"

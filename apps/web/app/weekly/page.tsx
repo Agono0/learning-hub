@@ -22,8 +22,10 @@ import {
   TrendingDown,
   Zap,
 } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { PageHeader, StatCard, Callout, Skeleton } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { SectionHeader } from '@/components/ui/section-header'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 
 interface WeeklyResponse {
   metrics: {
@@ -90,6 +92,41 @@ const TILES: Record<string, typeof Zap> = {
   upcoming: BarChart3,
 }
 
+/**
+ * One weekly metric tile (kit `StatCard`). Numeric values mount through
+ * {@link useGsapCountUp} — the per-page motion mandate — rewriting the number
+ * in a client effect; SSR and the integration tests keep the static value.
+ * Non-numeric values ("—" while loading) render as-is and skip the tween.
+ */
+function StatTile({
+  k,
+  label,
+  value,
+  sub,
+  danger,
+}: {
+  k: keyof typeof TILES
+  label: string
+  value: number | string
+  sub: string
+  danger?: boolean
+}) {
+  const Icon = TILES[k]!
+  const isNum = typeof value === 'number'
+  const valueRef = useGsapCountUp(isNum ? value : 0)
+  return (
+    <StatCard
+      variant="standard"
+      className={danger ? 'ring-1 ring-amber-500/60' : undefined}
+      accent={danger ? 'amber' : 'indigo'}
+      icon={<Icon aria-hidden className="h-4 w-4" />}
+      label={label}
+      hint={sub || undefined}
+      value={isNum ? <span ref={valueRef}>{value}</span> : value}
+    />
+  )
+}
+
 export default function WeeklyPage() {
   const q = useQuery({
     queryKey: ['weekly'],
@@ -123,7 +160,7 @@ export default function WeeklyPage() {
   const forecastMax = Math.max(1, ...(m?.forecast ?? []).map((f) => f.count))
 
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<BarChart3 className="h-6 w-6 text-indigo-400" />}
         title="Weekly Review"
@@ -131,6 +168,12 @@ export default function WeeklyPage() {
           m ? `${m.weekStart} → ${m.weekEnd} · your last 7 local days` : 'Loading your week…'
         }
       />
+
+      {q.isError ? (
+        <Callout tone="danger" title="Couldn't compute your week">
+          {(q.error as Error | null)?.message ?? 'Please try again in a moment.'}
+        </Callout>
+      ) : null}
 
       {/* metric tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -169,84 +212,90 @@ export default function WeeklyPage() {
             sub: 'upcoming load',
           },
         ].map((t) => {
-          const Icon = TILES[t.k]!
           const danger = t.k === 'streak' && m?.streak.atRisk
           return (
-            <div
+            <StatTile
               key={t.k}
-              className={`panel space-y-1 ${danger ? 'ring-1 ring-amber-500/60' : ''}`}
-            >
-              <Icon
-                className={`h-4 w-4 ${danger ? 'text-status-warning-text' : 'text-indigo-400'}`}
-              />
-              <p className="text-2xl font-bold tabular-nums">{t.value}</p>
-              <p className="text-[11px] leading-tight text-tertiary">
-                <span className="font-medium text-faint">{t.label}</span>
-                {t.sub ? ` — ${t.sub}` : ''}
-              </p>
-            </div>
+              k={t.k}
+              label={t.label}
+              value={t.value}
+              sub={t.sub}
+              danger={danger}
+            />
           )
         })}
       </div>
 
       {/* retention / volume trend */}
       <div className="panel space-y-2">
-        <p className="label">Trend — reviews & retention per day</p>
-        <div className="flex h-24 items-end gap-1">
-          {(m?.days ?? []).map((d) => (
-            <div
-              key={d.date}
-              className="group relative flex-1"
-              title={`${d.date}: ${d.reviews} reviews, ${d.correct} passed`}
-            >
-              <div
-                className={`w-full rounded-t-sm ${d.reviews > 0 && d.correct / d.reviews >= 0.9 ? 'bg-emerald-500' : d.reviews > 0 ? 'bg-indigo-500' : 'bg-neutral-700'}`}
-                style={{ height: `${Math.max(4, (d.reviews / dayMax) * 100)}%` }}
-              />
+        <p className="label">Trend — reviews &amp; retention per day</p>
+        {q.isLoading ? (
+          <Skeleton className="h-24 w-full" aria-hidden />
+        ) : (
+          <>
+            <div className="flex h-24 items-end gap-1">
+              {(m?.days ?? []).map((d) => (
+                <div
+                  key={d.date}
+                  className="group relative flex-1"
+                  title={`${d.date}: ${d.reviews} reviews, ${d.correct} passed`}
+                >
+                  <div
+                    className={`w-full rounded-t-sm ${d.reviews > 0 && d.correct / d.reviews >= 0.9 ? 'bg-emerald-500' : d.reviews > 0 ? 'bg-indigo-500' : 'bg-(--hub-border)'}`}
+                    style={{ height: `${Math.max(4, (d.reviews / dayMax) * 100)}%` }}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="flex justify-between text-[10px] text-neutral-600">
-          {(m?.days ?? []).map((d) => (
-            <span key={d.date}>{dayLabel(d.date)}</span>
-          ))}
-        </div>
-        <table className="w-full text-left text-xs">
-          <thead className="text-tertiary">
-            <tr>
-              <th className="py-1 pr-3">day</th>
-              <th className="py-1 pr-3">reviews</th>
-              <th className="py-1 pr-3">correct</th>
-              <th className="py-1 pr-3">daily retention</th>
-              <th className="py-1 pr-3">xp</th>
-              <th className="py-1">focus min</th>
-            </tr>
-          </thead>
-          <tbody className="text-secondary">
-            {(m?.days ?? []).map((d) => (
-              <tr key={d.date} className="border-t border-neutral-200 dark:border-(--hub-border)">
-                <td className="py-1.5 pr-3">
-                  {d.date} ({dayLabel(d.date)})
-                </td>
-                <td className="py-1.5 pr-3 tabular-nums">{d.reviews}</td>
-                <td className="py-1.5 pr-3 tabular-nums">{d.correct}</td>
-                <td className="py-1.5 pr-3 tabular-nums">
-                  {d.reviews === 0 ? '—' : pct(d.correct / d.reviews)}
-                </td>
-                <td className="py-1.5 pr-3 tabular-nums">{d.xp}</td>
-                <td className="py-1.5 tabular-nums">{d.focusMinutes}</td>
+            <div className="flex justify-between text-xs text-faint">
+              {(m?.days ?? []).map((d) => (
+                <span key={d.date}>{dayLabel(d.date)}</span>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="scroll-x">
+          <table className="w-full text-left text-xs">
+            <thead className="text-tertiary">
+              <tr>
+                <th className="py-1 pr-3">day</th>
+                <th className="py-1 pr-3">reviews</th>
+                <th className="py-1 pr-3">correct</th>
+                <th className="py-1 pr-3">daily retention</th>
+                <th className="py-1 pr-3">xp</th>
+                <th className="py-1">focus min</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="text-secondary">
+              {(m?.days ?? []).map((d) => (
+                <tr key={d.date} className="border-t border-neutral-200 dark:border-(--hub-border)">
+                  <td className="py-1.5 pr-3">
+                    {d.date} ({dayLabel(d.date)})
+                  </td>
+                  <td className="py-1.5 pr-3 tabular-nums">{d.reviews}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{d.correct}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">
+                    {d.reviews === 0 ? '—' : pct(d.correct / d.reviews)}
+                  </td>
+                  <td className="py-1.5 pr-3 tabular-nums">{d.xp}</td>
+                  <td className="py-1.5 tabular-nums">{d.focusMinutes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="text-xs text-tertiary">green bar = ≥90% passed that day</p>
       </div>
 
       {/* weakest cards */}
       <div className="panel space-y-2">
-        <p className="label flex items-center gap-2">
-          <TrendingDown className="h-3.5 w-3.5" /> Weakest cards — lowest retrievability first
-        </p>
+        <SectionHeader
+          icon={TrendingDown}
+          title="Weakest cards"
+          action={
+            <span className="text-xs normal-case text-faint">lowest retrievability first</span>
+          }
+        />
         {(m?.weakestCards.length ?? 0) === 0 ? (
           <p className="text-sm text-tertiary">
             No reviewed cards yet — weak spots appear once you log reviews.
@@ -272,9 +321,11 @@ export default function WeeklyPage() {
 
       {/* 7-day due forecast */}
       <div className="panel space-y-2">
-        <p className="label flex items-center gap-2">
-          <BarChart3 className="h-3.5 w-3.5" /> Upcoming load — cards due, next 7 days
-        </p>
+        <SectionHeader
+          icon={BarChart3}
+          title="Upcoming load"
+          action={<span className="text-xs normal-case text-faint">cards due, next 7 days</span>}
+        />
         <div className="flex h-24 items-end gap-1">
           {(m?.forecast ?? []).map((f) => (
             <div
@@ -289,7 +340,7 @@ export default function WeeklyPage() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-[10px] text-neutral-600">
+        <div className="flex justify-between text-xs text-faint">
           <span>today</span>
           <span>+3d</span>
           <span>+6d</span>
@@ -298,22 +349,23 @@ export default function WeeklyPage() {
 
       {/* suggestions: AI or manual, plus the prompt-transport envelope */}
       <div className="panel space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="label mb-0 flex items-center gap-2">
-            <Bot className="h-3.5 w-3.5" /> Coach suggestions
-          </p>
-          {s && (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                s.mode === 'ai'
-                  ? 'bg-indigo-500/15 text-indigo-300'
-                  : 'bg-neutral-500/15 text-faint'
-              }`}
-            >
-              {s.mode === 'ai' ? 'AI coach' : 'manual mode (rule-based)'}
-            </span>
-          )}
-        </div>
+        <SectionHeader
+          icon={Bot}
+          title="Coach suggestions"
+          action={
+            s ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${
+                  s.mode === 'ai'
+                    ? 'bg-indigo-500/15 text-hub-accent'
+                    : 'bg-neutral-500/15 text-faint'
+                }`}
+              >
+                {s.mode === 'ai' ? 'AI coach' : 'manual mode (rule-based)'}
+              </span>
+            ) : undefined
+          }
+        />
         {s?.error && <p className="text-xs text-status-warning-text">{s.error}</p>}
         {q.isLoading && <p className="text-sm text-tertiary">Computing your week…</p>}
         {(transport?.ok ? transport.suggestions! : (s?.suggestions ?? [])).map((sug, i) => (
@@ -357,13 +409,13 @@ export default function WeeklyPage() {
                 Copy envelope
               </button>
             </div>
-            <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-[11px] whitespace-pre-wrap text-neutral-600 dark:bg-(--hub-sunken) dark:text-secondary">
+            <pre className="max-h-40 overflow-y-auto rounded bg-neutral-100 p-2 text-xs whitespace-pre-wrap text-tertiary dark:bg-(--hub-sunken) dark:text-secondary">
               {s.envelope.system}
               {'\n\n── user ──\n'}
               {s.envelope.prompt}
             </pre>
             {s.envelope.schema && (
-              <p className="text-[11px] text-tertiary">
+              <p className="text-xs text-tertiary">
                 Expected reply shape: <code>{s.envelope.schema}</code>
               </p>
             )}
@@ -382,7 +434,7 @@ export default function WeeklyPage() {
                 <ClipboardPaste className="h-3.5 w-3.5" />{' '}
                 {validate.isPending ? 'Validating…' : 'Validate & use'}
               </button>
-              <span className="text-[11px] text-tertiary">
+              <span className="text-xs text-tertiary">
                 POSTs <code>{'{ feature: "coach", result }'}</code> to /api/ai/transport
               </span>
             </div>

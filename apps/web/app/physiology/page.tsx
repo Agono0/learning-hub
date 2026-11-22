@@ -10,6 +10,8 @@ import { CardiacCoherenceHUD, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
 import { CircadianAlertnessStudio } from '@/components/CircadianAlertnessStudio'
+import { KeyMetricRow } from '@/components/ui/key-metric-row'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface PhysioLog {
   id: number
@@ -85,8 +87,12 @@ export default function PhysiologyPage() {
 
   const i = data.data?.insights
 
+  // GSAP reveal (per-page motion mandate): the view switcher's buttons rise in
+  // on scroll — motionOK-gated; SSR/tests keep the static content.
+  const switcherRef = useGsapReveal<HTMLDivElement>()
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<Activity className="h-6 w-6 text-indigo-400" />}
         title="Physiology & Autonomic Resonance"
@@ -94,14 +100,14 @@ export default function PhysiologyPage() {
       />
 
       {/* View Mode Switcher */}
-      <div className="flex gap-2 border-b border-white/10 pb-3">
+      <div ref={switcherRef} className="flex gap-2 border-b border-(--hub-border) pb-3">
         <button
           type="button"
           onClick={() => setActiveView('circadian')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
             activeView === 'circadian'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
+              ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:bg-hub-accent/5 hover:text-body'
           }`}
         >
           <Sun className="h-4 w-4" />
@@ -111,10 +117,10 @@ export default function PhysiologyPage() {
         <button
           type="button"
           onClick={() => setActiveView('coherence')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
             activeView === 'coherence'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
+              ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:bg-hub-accent/5 hover:text-body'
           }`}
         >
           <Wind className="h-4 w-4" />
@@ -124,10 +130,10 @@ export default function PhysiologyPage() {
         <button
           type="button"
           onClick={() => setActiveView('log')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
             activeView === 'log'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
+              ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:bg-hub-accent/5 hover:text-body'
           }`}
         >
           <Activity className="h-4 w-4" />
@@ -246,36 +252,44 @@ export default function PhysiologyPage() {
 
           {/* insight cards */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="panel space-y-1">
+            <div className="panel space-y-2">
               <p className="label">Sleep vs retention</p>
-              <p className="text-sm text-neutral-200">{i?.sleep.insight ?? 'Loading…'}</p>
-              <p className="text-xs text-tertiary">
-                &lt;6h days: {i?.sleep.nShort ?? 0} · rested days: {i?.sleep.nRest ?? 0}
-                {i?.sleep.deltaPct != null
-                  ? ` · gap ${Math.abs(i.sleep.deltaPct).toFixed(1)} pp`
-                  : ''}
-              </p>
+              <p className="text-sm text-body">{i?.sleep.insight ?? 'Loading…'}</p>
+              <KeyMetricRow
+                columns={3}
+                metrics={[
+                  { label: '<6h days', value: String(i?.sleep.nShort ?? 0) },
+                  { label: 'Rested days', value: String(i?.sleep.nRest ?? 0) },
+                  {
+                    label: 'Retention gap',
+                    value:
+                      i?.sleep.deltaPct != null
+                        ? `${Math.abs(i.sleep.deltaPct).toFixed(1)} pp`
+                        : '—',
+                  },
+                ]}
+              />
             </div>
-            <div className="panel space-y-1">
+            <div className="panel space-y-2">
               <p className="label">Exercise timing (van Dongen 2016)</p>
-              <p className="text-sm text-neutral-200">{i?.exercise.nudge ?? 'Loading…'}</p>
+              <p className="text-sm text-body">{i?.exercise.nudge ?? 'Loading…'}</p>
               <p className="text-xs text-tertiary">
                 {i?.exercise.hoursAfterLearning != null
                   ? `last logged: T+${i.exercise.hoursAfterLearning}h`
                   : 'no exercise logged yet'}
               </p>
             </div>
-            <div className="panel space-y-1">
+            <div className="panel space-y-2">
               <p className="label">Caffeine cutoff (8h rule)</p>
-              <p className="text-sm text-neutral-200">{i?.caffeine.advice ?? 'Loading…'}</p>
+              <p className="text-sm text-body">{i?.caffeine.advice ?? 'Loading…'}</p>
               <p className="text-xs text-tertiary">
                 assumes bedtime {data.data?.bedtimeHour ?? 23}:00 — keep your cutoff hour in the
                 daily log for precision
               </p>
             </div>
-            <div className="panel space-y-1">
+            <div className="panel space-y-2">
               <p className="label">Yerkes-Dodson zone</p>
-              <p className="text-sm capitalize text-neutral-200">
+              <p className="text-sm capitalize text-body">
                 {i?.arousal.zone ?? '—'}
                 {i?.arousal.value != null ? ` (arousal ${i.arousal.value}/10)` : ''}
               </p>

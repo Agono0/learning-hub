@@ -6,8 +6,22 @@ import { CalendarCheck, Coffee, Link2, PartyPopper, Plus, Trash2 } from 'lucide-
 import { DOPAMINE_MENU, type DopamineType } from '@learning-hub/core/src/habits'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
-import { IconButton, PageHeader } from '@/ui'
+import { Callout, EmptyState, IconButton, PageHeader, Skeleton } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { SectionHeader } from '@/components/ui/section-header'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
+import { SimpleCounters } from '@/components/tasks/SimpleCounters'
 
 interface Habit {
   id: number
@@ -58,6 +72,8 @@ export default function HabitsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [celebrated, setCelebrated] = useState<number | null>(null)
   const [dopamineFilter, setDopamineFilter] = useState<DopamineType | 'all'>('all')
+  // Habit id awaiting destructive confirmation (AlertDialog) — null = none.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   const habitsQ = useQuery({
     queryKey: ['habits'],
@@ -108,8 +124,12 @@ export default function HabitsPage() {
       ? DOPAMINE_MENU
       : DOPAMINE_MENU.filter((d) => d.type === dopamineFilter)
 
+  // GSAP count-up (per-page motion mandate): the "today: N/M" header counter.
+  // Rewrites textContent in a client effect — SSR/tests keep the static number.
+  const doneTodayRef = useGsapCountUp(doneToday)
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<CalendarCheck className="h-6 w-6 text-indigo-400" />}
         title="Habits"
@@ -118,7 +138,7 @@ export default function HabitsPage() {
           <p className="text-sm text-tertiary">
             today:{' '}
             <span className="font-semibold text-indigo-400">
-              {doneToday}/{habits.length}
+              <span ref={doneTodayRef}>{doneToday}</span>/{habits.length}
             </span>
           </p>
         }
@@ -126,18 +146,29 @@ export default function HabitsPage() {
 
       {/* today's checklist with stacking-chain order + celebrate */}
       <div className="panel space-y-2">
-        <p className="label flex items-center gap-2">
-          <Link2 className="h-3.5 w-3.5" /> Today — the stack, in chain order
-        </p>
-        {habits.length === 0 ? (
-          <p className="text-sm text-tertiary">No habits yet. Create the first tiny one below.</p>
+        <SectionHeader icon={Link2} title="Today — the stack, in chain order" />
+        {habitsQ.isLoading ? (
+          <div className="space-y-2" aria-hidden>
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+            <Skeleton className="h-10" />
+          </div>
+        ) : habitsQ.isError ? (
+          <Callout tone="danger" title="Couldn't load habits">
+            {(habitsQ.error as Error | null)?.message ?? 'Please try again in a moment.'}
+          </Callout>
+        ) : habits.length === 0 ? (
+          <EmptyState
+            icon={<CalendarCheck className="h-6 w-6" aria-hidden />}
+            title="No habits yet"
+          >
+            Create the first tiny one below — two minutes counts as showing up.
+          </EmptyState>
         ) : (
           <ul className="space-y-2">
             {habits.map((h, i) => (
               <li key={h.id} className="flex items-center gap-3">
-                <span className="w-5 text-center text-xs text-neutral-600">
-                  {i === 0 ? '┌' : '└'}
-                </span>
+                <span className="w-5 text-center text-xs text-faint">{i === 0 ? '┌' : '└'}</span>
                 <IconButton
                   label={`check in ${h.name}`}
                   size="sm"
@@ -174,16 +205,14 @@ export default function HabitsPage() {
                       style={{ width: `${Math.min(100, (h.solidifying.days / 60) * 100)}%` }}
                     />
                   </div>
-                  <p
-                    className={`mt-0.5 text-right text-[10px] ${STAGE_COLOR[h.solidifying.stage]}`}
-                  >
+                  <p className={`mt-0.5 text-right text-xs ${STAGE_COLOR[h.solidifying.stage]}`}>
                     {h.solidifying.stage} · {h.solidifying.days}d
                   </p>
                 </div>
                 <IconButton
                   label={`delete ${h.name}`}
-                  onClick={() => removeHabit.mutate(h.id)}
-                  className="text-neutral-600"
+                  onClick={() => setConfirmDeleteId(h.id)}
+                  className="text-faint hover:text-danger-text"
                 >
                   <Trash2 className="h-4 w-4" />
                 </IconButton>
@@ -195,7 +224,7 @@ export default function HabitsPage() {
 
       {/* 90-day heatmap grid */}
       {habits.length > 0 && (
-        <div className="panel space-y-2 overflow-x-auto">
+        <div className="panel space-y-2 scroll-x">
           <p className="label">Last 90 days</p>
           <div className="space-y-1">
             {habits.map((h) => (
@@ -221,9 +250,7 @@ export default function HabitsPage() {
 
       {/* create habit */}
       <div className="panel space-y-3">
-        <p className="label flex items-center gap-2">
-          <Plus className="h-3.5 w-3.5" /> New habit (the full loop)
-        </p>
+        <SectionHeader icon={Plus} title="New habit (the full loop)" />
         <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input"
@@ -273,7 +300,11 @@ export default function HabitsPage() {
             onChange={(e) => setForm({ ...form, anchor: e.target.value })}
           />
         </div>
-        {formError && <p className="text-sm text-danger-text">{formError}</p>}
+        {formError && (
+          <Callout tone="danger" title="Couldn't create habit">
+            {formError}
+          </Callout>
+        )}
         <button
           className="btn"
           onClick={() => createHabit.mutate()}
@@ -285,18 +316,19 @@ export default function HabitsPage() {
 
       {/* dopamine menu */}
       <div className="panel space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="label mr-auto">Dopamine menu — pick before the urge hits</p>
-          {(['all', 'move', 'create', 'connect', 'soothe'] as const).map((t) => (
-            <button
-              key={t}
-              className={`rounded-full px-3 py-1 text-xs ${dopamineFilter === t ? 'bg-indigo-600 text-white' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-              onClick={() => setDopamineFilter(t)}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        <SectionHeader
+          title="Dopamine menu"
+          action={<span className="text-xs normal-case text-faint">pick before the urge hits</span>}
+        />
+        <ChipPicker<DopamineType | 'all'>
+          label="Filter the dopamine menu"
+          items={(['all', 'move', 'create', 'connect', 'soothe'] as const).map((t) => ({
+            value: t,
+            label: t,
+          }))}
+          value={dopamineFilter}
+          onChange={setDopamineFilter}
+        />
         <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {dopamine.map((d, i) => (
             <li
@@ -311,6 +343,38 @@ export default function HabitsPage() {
           ))}
         </ul>
       </div>
+
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this habit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The habit and its 90-day log are permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep habit</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (confirmDeleteId !== null) removeHabit.mutate(confirmDeleteId)
+                setConfirmDeleteId(null)
+              }}
+            >
+              Delete habit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* S3-31: SP simple counters — free-floating tap counters with
+          streaks, under the habits loop (habits stay untouched). */}
+      <SimpleCounters today={null} />
     </ClayIn>
   )
 }

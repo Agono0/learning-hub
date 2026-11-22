@@ -17,9 +17,12 @@ import {
   Battery,
   BatteryLow,
   Check,
+  Compass,
   Eye,
   Headphones,
   Home,
+  Layers,
+  ListChecks,
   Mic,
   RotateCcw,
   Sparkles,
@@ -66,6 +69,7 @@ import { ExercisePractice, type PracticeResponse } from '@/ui/exercises'
 import {
   Button,
   CognitiveLoadMeter,
+  EmptyState,
   InkPad,
   MetacognitionRadar,
   MetacognitiveCalibrationCard,
@@ -73,6 +77,10 @@ import {
   SelectField,
   Skeleton,
 } from '@/ui'
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { SectionHeader } from '@/components/ui/section-header'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
 import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
 import { Wind } from 'lucide-react'
@@ -199,11 +207,22 @@ interface SettingsProfilePayload {
   }
 }
 
+/**
+ * Grade-button fills. AA note (audit T6): the fills use the 500 steps, which
+ * globals.css aliases onto the mode-aware `-strong` tokens
+ * (`bg-rose-500`→--danger-strong, `bg-amber-500`→--status-warning-strong,
+ * `bg-emerald-500`→--status-success-strong) — white-on-500 passes AA where the
+ * raw 600 steps failed. `bg-indigo-600` stays: it is already aliased to
+ * --ac-strong (AA-tested). Hovers sit on the 400 steps (aliased `-text`
+ * tokens) so hover stays a visible mode-aware delta — with the previous
+ * `bg-rose-600`+`hover:bg-rose-500` pair both resolving to the same token,
+ * hover was a no-op.
+ */
 const GRADES: { grade: Grade; label: string; color: string }[] = [
-  { grade: 1, label: 'Again', color: 'bg-rose-600 hover:bg-rose-500' },
-  { grade: 2, label: 'Hard', color: 'bg-amber-600 hover:bg-amber-500' },
+  { grade: 1, label: 'Again', color: 'bg-rose-500 hover:bg-rose-400' },
+  { grade: 2, label: 'Hard', color: 'bg-amber-500 hover:bg-amber-400' },
   { grade: 3, label: 'Good', color: 'bg-indigo-600 hover:bg-indigo-500' },
-  { grade: 4, label: 'Easy', color: 'bg-emerald-600 hover:bg-emerald-500' },
+  { grade: 4, label: 'Easy', color: 'bg-emerald-500 hover:bg-emerald-400' },
 ]
 
 /** Front/prompt text of a card (voice review + the corrections restudy list). */
@@ -216,6 +235,16 @@ function getCardVoicePrompt(card: { content: CardContent; reps?: number }): stri
   if (card.content.cloze?.text) return card.content.cloze.text
   if (card.content.mcq?.question) return card.content.mcq.question
   return 'Review item'
+}
+
+/** Max recap rows rendered in the summary before a "+N more" line takes over (audit S5). */
+const RECAP_CAP = 8
+
+/** One-line front snippet for recap rows (truncated, single line). */
+function frontSnippet(card: { content: CardContent; reps?: number } | undefined, max = 72): string {
+  if (!card) return 'Review item'
+  const text = getCardVoicePrompt(card).trim()
+  return text.length > max ? `${text.slice(0, max)}…` : text
 }
 
 function getCardVoiceAnswer(card: { content: CardContent }): string {
@@ -886,6 +915,72 @@ function ReviewPageInner() {
     }
   }, [results])
 
+  // GSAP count-ups (per-page GSAP mandate): each ref attaches to a summary
+  // span rendering ONLY its number. The hook rewrites `textContent` in a
+  // client effect (motionOK-gated; SSR/tests keep the static final number),
+  // re-running whenever the value changes — which is exactly when the summary
+  // mounts and its spans exist.
+  const reviewedCountRef = useGsapCountUp(stats.total)
+  const accuracyCountRef = useGsapCountUp(stats.accuracy)
+  const xpCountRef = useGsapCountUp(stats.xp)
+
+  // Audit S5: SessionResult[] (per-card grade/interval) was previously
+  // discarded by the summary. Dedupe by card keeping the LAST grade (retries
+  // refine the outcome), misses first — feeds the "This session's cards" recap.
+  const recap = useMemo(() => {
+    const byCard = new Map<number, SessionResult>()
+    for (const r of results) byCard.set(r.cardId, r)
+    const rows = [...byCard.values()]
+    const missed = rows.filter((r) => r.grade === 1)
+    const passed = rows.filter((r) => r.grade > 1)
+    const ordered = [...missed, ...passed]
+    return {
+      rows: ordered.slice(0, RECAP_CAP),
+      hidden: Math.max(0, ordered.length - RECAP_CAP),
+      missedCount: missed.length,
+    }
+  }, [results])
+
+  /** Card rows seen this session (for the recap's front snippets). */
+  const cardsById = useMemo(
+    () => new Map<number, CardRow>(queue.map((c) => [c.id, c] as const)),
+    [queue],
+  )
+
+  /**
+   * Cognitive-load readout for the summary meter, derived ONLY from recorded
+   * session events — the previous hardcoded `intrinsicLoad={35}` /
+   * `extraneousLoad={10}` inputs were fabricated psychometrics (audit S8).
+   * Mapping (shares of graded reviews; documented, no fake precision):
+   *  - intrinsic: Again/Hard retrievals — the material genuinely demanded effort.
+   *  - germane: clean recalls (grade ≥ 3) — the consolidation work.
+   *  - extraneous: friction — re-attempted cards plus blind grades (feedback
+   *    withheld). The carried-over corrections restudy list is deliberately NOT
+   *    folded in: those reviews belong to the previous session's revlog, and
+   *    mixing sessions would re-introduce fake precision.
+   * intrinsic and germane partition the session; extraneous overlaps them by
+   * nature (a re-attempt is also an effortful retrieval), so the meter's bars
+   * read as independent shares, not a strict decomposition. totalLoad is the
+   * demand side (intrinsic + extraneous). Null for an empty session (the call
+   * site also guards on `stats.total > 0`).
+   */
+  const loadReadout = useMemo(() => {
+    const total = stats.total
+    if (total === 0) return null
+    const effortful = results.filter((r) => r.grade === 1 || r.grade === 2).length
+    const clean = results.filter((r) => r.grade >= 3).length
+    const uniqueCards = new Set(results.map((r) => r.cardId)).size
+    const retries = results.length - uniqueCards
+    const pct = (n: number) => Math.round((n / total) * 100)
+    const extraneous = pct(retries + blindGraded.length)
+    return {
+      intrinsicLoad: pct(effortful),
+      germaneLoad: pct(clean),
+      extraneousLoad: extraneous,
+      totalLoad: Math.min(100, pct(effortful) + extraneous),
+    }
+  }, [results, stats.total, blindGraded.length])
+
   /**
    * Real metacognitive calibration for THIS session, derived from the
    * confidence rating the user attached to every graded review (revlog
@@ -916,23 +1011,30 @@ function ReviewPageInner() {
         <ClayIn>
           <PageHeader title="Review" />
         </ClayIn>
-        <ClayIn delayS={staggerDelay(1)} className="panel space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="label mb-0">Deck Selection</div>
-              <button
-                type="button"
-                onClick={() => {
-                  setMultiDeckMode(!multiDeckMode)
-                  if (!multiDeckMode && deckId !== null) {
-                    setSelectedDeckIds([deckId])
-                  }
-                }}
-                className="inline-flex items-center text-xs font-medium text-indigo-400 hover:text-indigo-300 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
-              >
-                {multiDeckMode ? '← Back to single deck' : '⇄ Interleave multiple decks'}
-              </button>
-            </div>
+        {/* Audit R-setup: the dense one-panel mix is now three labeled groups
+            (deck selection → session mode → length & options) with the primary
+            CTA isolated full-width below and Audio Digest / Workload demoted to
+            a ghost secondary row. Handlers and state are byte-identical. */}
+        <ClayIn delayS={staggerDelay(1)} className="panel space-y-6">
+          <section className="space-y-3" aria-label="Deck selection">
+            <SectionHeader
+              icon={Layers}
+              title="Deck selection"
+              action={
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMultiDeckMode(!multiDeckMode)
+                    if (!multiDeckMode && deckId !== null) {
+                      setSelectedDeckIds([deckId])
+                    }
+                  }}
+                  className="inline-flex items-center text-xs font-medium text-indigo-400 hover:text-indigo-300 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-2"
+                >
+                  {multiDeckMode ? '← Back to single deck' : '⇄ Interleave multiple decks'}
+                </button>
+              }
+            />
             {!multiDeckMode ? (
               <div className="flex flex-wrap gap-2">
                 <button
@@ -997,114 +1099,129 @@ function ReviewPageInner() {
                 </p>
               </div>
             )}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <div className="label mb-2">Mode</div>
-              <div className="flex flex-wrap gap-2">
-                {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
-                  <Button
-                    key={m}
-                    onClick={() => setMode(m)}
-                    variant={mode === m ? 'secondary' : 'ghost'}
-                  >
-                    {m === 'commute' ? '🎧 commute' : m}
-                  </Button>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-tertiary">
-                {mode === 'normal' &&
-                  'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
-                {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
-                {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
-                {mode === 'commute' &&
-                  'Hands-free audio loop: prompts read aloud, voice answer recognized & fuzzy graded.'}
-              </p>
+          </section>
+
+          {/* Group 2 — session mode (audit R-setup) */}
+          <section className="space-y-3" aria-label="Session mode">
+            <SectionHeader icon={Compass} title="Session mode" />
+            <div className="flex flex-wrap gap-2">
+              {(['normal', 'pretest', 'cram', 'commute'] as const).map((m) => (
+                <Button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  variant={mode === m ? 'secondary' : 'ghost'}
+                >
+                  {m === 'commute' ? '🎧 commute' : m}
+                </Button>
+              ))}
             </div>
-            <div>
-              <div className="label mb-2">Session size</div>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={limit}
-                onChange={(e) => setLimit(Number(e.target.value))}
-                className="input"
-              />
-              <SelectField
-                label={
-                  <>
-                    Retrieval criterion{' '}
-                    <span className="font-normal normal-case tracking-normal">
-                      (correct recalls after a mistake)
-                    </span>
-                  </>
-                }
-                value={srCriterion}
-                onChange={(e) => setSrCriterion(Number(e.target.value))}
-              >
-                {Array.from({ length: MAX_SR_CRITERION }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {n} — {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
-                  </option>
-                ))}
-              </SelectField>
-              <p className="mt-2 text-xs text-tertiary">
-                Successive relearning: a failed card repeats (spaced) until it has been recalled
-                correctly this many times (Rawson &amp; Dunlosky 2011).
-              </p>
-            </div>
-          </div>
-          <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3 bg-neutral-50/50 dark:bg-neutral-900/30">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-status-warning-text" />
-                <span className="text-sm font-medium">⚡ Speed Drill Mode</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSpeedDrillActive(!speedDrillActive)}
-                className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${
-                  speedDrillActive
-                    ? 'border-amber-500 bg-amber-500/20 text-status-warning-text'
-                    : 'border-neutral-300 dark:border-neutral-700 text-tertiary hover:text-secondary'
-                }`}
-              >
-                {speedDrillActive ? 'Enabled' : 'Disabled'}
-              </button>
-            </div>
-            <p className="text-xs text-tertiary mb-2">
-              Timed retrieval sprints (Kornell 2009): enforces rapid active recall before surface
-              cues take over.
+            <p className="text-xs text-tertiary">
+              {mode === 'normal' &&
+                'Due cards, most overdue first. Confident-wrong answers retry first (hypercorrection).'}
+              {mode === 'pretest' && 'Test before study: never-reviewed cards surface first.'}
+              {mode === 'cram' && 'Ignore due dates — weakest memories first.'}
+              {mode === 'commute' &&
+                'Hands-free audio loop: prompts read aloud, voice answer recognized & fuzzy graded.'}
             </p>
-            {speedDrillActive && (
-              <div className="flex items-center gap-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border) text-xs">
-                <span className="text-faint">Time per card:</span>
-                {[5, 8, 10, 15].map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSpeedLimitSec(s)}
-                    className={`rounded px-2 py-0.5 border focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 inline-flex items-center justify-center ${
-                      speedLimitSec === s
-                        ? 'border-amber-500 bg-amber-500/20 text-status-warning-text font-bold'
-                        : 'border-neutral-300 dark:border-neutral-700 text-faint'
-                    }`}
-                  >
-                    {s}s
-                  </button>
-                ))}
+          </section>
+
+          {/* Group 3 — length & options: session size, retrieval criterion, speed drill */}
+          <section className="space-y-3" aria-label="Session length and options">
+            <SectionHeader icon={Sliders} title="Length &amp; options" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="label mb-2">Session size</div>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={limit}
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="input"
+                />
               </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="primary"
-              disabled={(decksData?.decks ?? []).length === 0}
-              onClick={() => setStarted(true)}
-            >
-              <Zap className="h-4 w-4" /> Start session
-            </Button>
+              <div>
+                <SelectField
+                  label={
+                    <>
+                      Retrieval criterion{' '}
+                      <span className="font-normal normal-case tracking-normal">
+                        (correct recalls after a mistake)
+                      </span>
+                    </>
+                  }
+                  value={srCriterion}
+                  onChange={(e) => setSrCriterion(Number(e.target.value))}
+                >
+                  {Array.from({ length: MAX_SR_CRITERION }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} — {n === 1 ? 'one verification recall' : `${n} spaced correct recalls`}
+                    </option>
+                  ))}
+                </SelectField>
+                <p className="mt-2 text-xs text-tertiary">
+                  Successive relearning: a failed card repeats (spaced) until it has been recalled
+                  correctly this many times (Rawson &amp; Dunlosky 2011).
+                </p>
+              </div>
+            </div>
+            {/* Speed Drill sub-panel (unchanged handlers) */}
+            <div className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3 bg-neutral-50/50 dark:bg-neutral-900/30">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-status-warning-text" />
+                  <span className="text-sm font-medium">⚡ Speed Drill Mode</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSpeedDrillActive(!speedDrillActive)}
+                  className={`rounded px-2.5 py-1 text-xs font-medium border transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${
+                    speedDrillActive
+                      ? 'border-amber-500 bg-amber-500/20 text-status-warning-text'
+                      : 'border-neutral-300 dark:border-neutral-700 text-tertiary hover:text-secondary'
+                  }`}
+                >
+                  {speedDrillActive ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+              <p className="text-xs text-tertiary mb-2">
+                Timed retrieval sprints (Kornell 2009): enforces rapid active recall before surface
+                cues take over.
+              </p>
+              {speedDrillActive && (
+                <div className="flex items-center gap-2 pt-1 border-t border-neutral-200 dark:border-(--hub-border) text-xs">
+                  <span className="text-faint">Time per card:</span>
+                  {[5, 8, 10, 15].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSpeedLimitSec(s)}
+                      className={`rounded px-2 py-0.5 border focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 inline-flex items-center justify-center ${
+                        speedLimitSec === s
+                          ? 'border-amber-500 bg-amber-500/20 text-status-warning-text font-bold'
+                          : 'border-neutral-300 dark:border-neutral-700 text-faint'
+                      }`}
+                    >
+                      {s}s
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Primary CTA — isolated on its own full-width row (audit R-setup) */}
+          <Button
+            variant="primary"
+            className="w-full"
+            disabled={(decksData?.decks ?? []).length === 0}
+            onClick={() => setStarted(true)}
+          >
+            <Zap className="h-4 w-4" /> Start session
+          </Button>
+
+          {/* Secondary row: Audio Digest / Workload are clearly not the main path */}
+          <div className="flex flex-wrap items-center justify-center gap-3 border-t border-neutral-200 pt-4 dark:border-(--hub-border)">
             <Button
               variant="ghost"
               className="text-xs flex items-center gap-1.5"
@@ -1176,10 +1293,16 @@ function ReviewPageInner() {
           <div className="flex items-center gap-3">
             <Sparkles className="h-8 w-8 text-status-warning-text" />
             <div>
+              {/* Stat numbers are count-up spans (GSAP mandate): each span
+                  renders ONLY its number; the hook rewrites textContent
+                  client-side (motionOK-gated), SSR keeps the static values. */}
               <div className="text-lg font-bold">
-                {stats.correct} / {stats.total} recalled ({stats.accuracy}%)
+                {stats.correct} / <span ref={reviewedCountRef}>{stats.total}</span> recalled (
+                <span ref={accuracyCountRef}>{stats.accuracy}</span>%)
               </div>
-              <div className="text-sm text-tertiary">+{stats.xp} XP earned</div>
+              <div className="text-sm text-tertiary">
+                +<span ref={xpCountRef}>{stats.xp}</span> XP earned
+              </div>
               {worldCoins > 0 && (
                 <div className="text-xs text-status-warning-text">
                   +{worldCoins} Study Coins from verified reviews (anti-cheat checked)
@@ -1228,10 +1351,23 @@ function ReviewPageInner() {
             </a>
           </div>
         </ClayPop>
+        {/* Audit S5: per-card recap — the SessionResult[] collected during the
+            session was previously discarded by the summary. Missed cards first
+            (front snippet + the grade given), then clean recalls, capped with
+            "+N more". GSAP scroll-reveal owns the row entrances; the framer
+            ClayIn owns only the panel (one animation owner per element). */}
         {stats.total > 0 && (
           <ClayIn delayS={staggerDelay(1)}>
+            <SessionRecap recap={recap} cardsById={cardsById} />
+          </ClayIn>
+        )}
+        {/* Audit S8: the meter is fed ONLY honest, session-derived shares
+            (loadReadout) — the fabricated intrinsic 35 / extraneous 10 inputs
+            are gone; the zone/recommendation stay keyed to real accuracy. */}
+        {stats.total > 0 && loadReadout && (
+          <ClayIn delayS={staggerDelay(2)}>
             <CognitiveLoadMeter
-              totalLoad={Math.min(100, Math.max(20, Math.round(100 - (stats.accuracy - 50) * 0.8)))}
+              totalLoad={loadReadout.totalLoad}
               zone={
                 stats.accuracy >= 80
                   ? 'optimal_flow'
@@ -1239,9 +1375,9 @@ function ReviewPageInner() {
                     ? 'overload'
                     : 'underload'
               }
-              germaneLoad={Math.round((stats.accuracy / 100) * 45)}
-              intrinsicLoad={35}
-              extraneousLoad={10}
+              germaneLoad={loadReadout.germaneLoad}
+              intrinsicLoad={loadReadout.intrinsicLoad}
+              extraneousLoad={loadReadout.extraneousLoad}
               recommendation={
                 stats.accuracy >= 80
                   ? 'High schema integration achieved. Your working memory was in an optimal consolidation window.'
@@ -1253,7 +1389,7 @@ function ReviewPageInner() {
           </ClayIn>
         )}
         {calibrationReport && (
-          <ClayIn delayS={staggerDelay(2)}>
+          <ClayIn delayS={staggerDelay(3)}>
             <MetacognitionRadar
               brierScore={calibrationReport.brierScore}
               bias={calibrationReport.bias}
@@ -1265,7 +1401,7 @@ function ReviewPageInner() {
           </ClayIn>
         )}
         {stats.total > 0 && (
-          <ClayIn delayS={staggerDelay(3)}>
+          <ClayIn delayS={staggerDelay(4)}>
             <MetacognitiveCalibrationCard
               deckName={deckId ? decksData?.decks?.find((d) => d.id === deckId)?.name : undefined}
               className="mt-4"
@@ -1346,7 +1482,7 @@ function ReviewPageInner() {
                   void runVoiceReviewForCurrentCard(current)
                 }
               }}
-              className="flex items-center gap-1 text-[11px] py-1 px-2 border border-indigo-400/30"
+              className="flex items-center gap-1 text-xs py-1 px-2 border border-indigo-400/30"
             >
               <Mic
                 className={`h-3.5 w-3.5 ${isListening ? 'text-danger-text animate-pulse' : ''}`}
@@ -1356,7 +1492,7 @@ function ReviewPageInner() {
             <Button
               variant="ghost"
               onClick={() => setCommuteAutoPlay(!commuteAutoPlay)}
-              className="text-[11px] py-1 px-2 border border-indigo-400/30"
+              className="text-xs py-1 px-2 border border-indigo-400/30"
             >
               {commuteAutoPlay ? 'Pause Loop' : 'Resume Loop'}
             </Button>
@@ -1382,7 +1518,7 @@ function ReviewPageInner() {
           transition={{ duration: 0.16, ease: 'easeOut' }}
         >
           <div className="panel min-h-[280px] space-y-4">
-            <div className="flex gap-2 text-[10px] uppercase tracking-widest text-tertiary">
+            <div className="flex gap-2 text-xs uppercase tracking-widest text-tertiary">
               <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
                 {current.type}
               </span>
@@ -1442,7 +1578,7 @@ function ReviewPageInner() {
                       </button>
                     </div>
                     <p className="mt-1 text-xs text-amber-200/90">{hyperNotice.prompt}</p>
-                    <p className="mt-1 text-[11px] italic text-status-warning-text/75">
+                    <p className="mt-1 text-xs italic text-status-warning-text/75">
                       {hyperNotice.contrastNote}
                     </p>
                   </div>
@@ -1457,7 +1593,7 @@ function ReviewPageInner() {
                     </div>
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
                       <div
-                        className={`h-full transition-all duration-1000 ${
+                        className={`h-full transition-[width] duration-1000 ${
                           speedSecondsLeft > 4
                             ? 'bg-emerald-500'
                             : speedSecondsLeft > 2
@@ -1518,7 +1654,7 @@ function ReviewPageInner() {
                             >
                               <span>{g.label}</span>
                               {nextLabel && !current.blind && (
-                                <span className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-[11px] opacity-90">
+                                <span className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-xs opacity-90">
                                   {nextLabel}
                                 </span>
                               )}
@@ -1590,9 +1726,16 @@ function ReviewPageInner() {
         </motion.div>
       </AnimatePresence>
 
-      <div className="flex items-center gap-2 text-xs text-tertiary">
+      {/* Session toolbar (audit R-exit): "End session" was a ghost pushed to
+          the row's far edge next to the keyboard legend — now it is a visible
+          .btn-secondary action (kit `secondary` variant) at the row end, and
+          undo is raised from ghost to a proper secondary button that keeps its
+          `e` keyboard hint. Handlers, including the dashboard/timeline sync on
+          end, are unchanged. */}
+      <div className="flex flex-wrap items-center gap-2">
         <Button
-          variant="ghost"
+          variant="secondary"
+          className="disabled:opacity-50 disabled:pointer-events-none"
           disabled={undoStack.length === 0 || undoMutation.isPending}
           onClick={() => {
             const last = undoStack[undoStack.length - 1]
@@ -1605,10 +1748,10 @@ function ReviewPageInner() {
             }
           }}
         >
-          <Undo2 className="h-3.5 w-3.5" /> undo <span className="opacity-70">e</span>
+          <Undo2 className="h-3.5 w-3.5" /> Undo <span className="opacity-70">e</span>
         </Button>
         {current.type !== 'exercise' && (
-          <span>
+          <span className="text-xs text-tertiary">
             {current.blind
               ? 'keys: 1-4 grade blind · e undo (delayed feedback — no reveal)'
               : 'keys: 1-4 grade · space reveal/Good · e undo'}
@@ -1624,7 +1767,7 @@ function ReviewPageInner() {
           <span>Coherence Priming</span>
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           className="ml-auto"
           onClick={() => {
             setStarted(false)
@@ -1650,25 +1793,31 @@ function ReviewPageInner() {
         />
       )}
 
-      {coherenceModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <div className="w-full max-w-2xl">
-            <BreathingCoherenceStudio
-              onCompleteSession={() => {}}
-              onNavigateToReview={() => setCoherenceModalOpen(false)}
-            />
-            <div className="mt-3 text-center">
-              <button
-                type="button"
-                onClick={() => setCoherenceModalOpen(false)}
-                className="inline-flex items-center text-xs text-faint hover:text-white focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3"
-              >
-                Close and return to review
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Audit R-coherence: the hand-rolled fixed overlay had no Escape
+          handling, no focus trap and a text-only close link. The Dialog family
+          brings Radix focus trapping + Escape + scroll lock and the clay
+          entrance (motion-gated inside the component). The breathing/audio
+          logic is untouched, and every close path — Escape, overlay, X, footer
+          button, the studio's own navigate-back — wires to the same
+          `coherenceModalOpen` state. Rendered unconditionally: a closed Dialog
+          mounts nothing (portal output is empty), so SSR is unaffected. */}
+      <Dialog open={coherenceModalOpen} onOpenChange={setCoherenceModalOpen}>
+        <DialogContent
+          title="Coherence priming"
+          description="0.1 Hz baroreflex resonance breathing before or between reviews"
+          className="max-w-2xl"
+        >
+          <BreathingCoherenceStudio
+            onCompleteSession={() => {}}
+            onNavigateToReview={() => setCoherenceModalOpen(false)}
+          />
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setCoherenceModalOpen(false)}>
+              Close and return to review
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -1713,15 +1862,17 @@ function CorrectionsScreen({
           You committed these blind — read question and answer together now. Butler &amp; Roediger
           (2008): feedback after the attempt sticks better than feedback during it.
         </p>
-        <ul className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
+        {/* Audit R-corrections: the restudy list is unbounded — cap it so the
+            CTA stays reachable without scrolling past every row. */}
+        <ul className="max-h-80 divide-y divide-neutral-100 overflow-y-auto dark:divide-(--hub-panel-2)">
           {corrections.map((c) => (
             <li key={c.id} className="space-y-1 py-3 text-sm">
               <div className="flex items-center gap-2">
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
+                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs uppercase tracking-wide text-tertiary dark:bg-(--hub-panel-2)">
                   {c.type}
                 </span>
                 <span
-                  className={`text-[10px] ${c.rating === 1 ? 'text-danger-text' : 'text-status-warning-text'}`}
+                  className={`text-xs ${c.rating === 1 ? 'text-danger-text' : 'text-status-warning-text'}`}
                 >
                   {c.rating === 1 ? 'graded again' : 'graded hard'}
                 </span>
@@ -1739,6 +1890,80 @@ function CorrectionsScreen({
   )
 }
 
+/** Per-grade recap chip text/tone (status-hue text tokens, AA mode-aware). */
+const RECAP_GRADE: Record<Grade, { label: string; tone: string }> = {
+  1: { label: 'Again', tone: 'text-danger-text' },
+  2: { label: 'Hard', tone: 'text-status-warning-text' },
+  3: { label: 'Good', tone: 'text-secondary' },
+  4: { label: 'Easy', tone: 'text-status-success-text' },
+}
+
+/**
+ * "This session's cards" recap (audit S5): a compact per-card list — missed
+ * cards first with the grade the learner gave, then the clean recalls, capped
+ * at {@link RECAP_CAP} rows with an honest "+N more" line. Rows reveal on
+ * scroll via {@link useGsapReveal} (motionOK-gated, stagger-capped; the panel
+ * itself is owned by the framer ClayIn at the call site — one animation owner
+ * per element).
+ *
+ * Rows are deduped by card id keeping the LAST grade (retries refine the
+ * outcome) in the `recap` memo at the call site; this component is
+ * presentation only.
+ */
+function SessionRecap({
+  recap,
+  cardsById,
+}: {
+  recap: { rows: SessionResult[]; hidden: number; missedCount: number }
+  cardsById: Map<number, CardRow>
+}) {
+  const listRef = useGsapReveal<HTMLUListElement>({ stagger: 0.04 })
+  const { rows, hidden, missedCount } = recap
+  return (
+    <div className="panel space-y-3">
+      <SectionHeader icon={ListChecks} title="This session's cards" count={rows.length + hidden} />
+      {missedCount === 0 ? (
+        <EmptyState
+          icon={<Check className="h-6 w-6" aria-hidden />}
+          title="Nothing missed this session"
+        >
+          Every card was recalled — no restudy list to carry forward.
+        </EmptyState>
+      ) : (
+        <>
+          <p className="text-xs text-tertiary">
+            {missedCount} missed — shown first, with the grade you gave. Clean recalls follow.
+          </p>
+          <ul className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)" ref={listRef}>
+            {rows.map((r) => {
+              const g = RECAP_GRADE[r.grade]
+              return (
+                <li key={r.cardId} className="flex items-baseline gap-2 py-2 text-sm">
+                  <span className="min-w-0 flex-1 truncate">
+                    {frontSnippet(cardsById.get(r.cardId))}
+                  </span>
+                  <span className={`shrink-0 text-xs font-medium ${g.tone}`}>{g.label}</span>
+                  <span className="shrink-0 text-xs text-faint tabular-nums">
+                    {r.intervalDays > 0 ? `${r.intervalDays}d` : 'relearn'}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          {hidden > 0 && <p className="text-xs text-tertiary">+{hidden} more cards this session</p>}
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Session energy meter. Accessibility (audit R-energy): the icon+dots meter
+ * previously announced nothing (title-only tooltip). The container is now
+ * `role="img"` with an explicit "Energy: N of M" aria-label (plus the drain
+ * explanation), while the icon and dots are aria-hidden presentation —
+ * assistive tech gets the state, not a row of unnamed dots.
+ */
 function EnergyBar({ energy }: { energy: number }) {
   const low = energy <= 1
   const Icon = low ? BatteryLow : Battery
@@ -1746,11 +1971,14 @@ function EnergyBar({ energy }: { energy: number }) {
     <span
       className={`flex items-center gap-1 ${low ? 'text-danger-text' : 'text-status-success-text'}`}
       title="session energy — mistakes drain it"
+      role="img"
+      aria-label={`Energy: ${energy} of ${MAX_ENERGY} — mistakes drain it`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-4 w-4" aria-hidden />
       {Array.from({ length: MAX_ENERGY }, (_, i) => (
         <span
           key={i}
+          aria-hidden
           className={`h-2 w-2 rounded-full ${i < energy ? (low ? 'bg-rose-400' : 'bg-emerald-400') : 'bg-neutral-300 dark:bg-(--hub-border)'}`}
         />
       ))}
@@ -2014,7 +2242,7 @@ function CardFront(props: {
             <>What justifies step {ps.stepIndex + 1}?</>
           )}
         </div>
-        <div className="text-[10px] uppercase tracking-widest text-neutral-600">{fade.label}</div>
+        <div className="text-xs uppercase tracking-widest text-neutral-600">{fade.label}</div>
       </div>
     )
   }

@@ -4,7 +4,7 @@
  * Implements Luhmann's Zettelkasten slip-box principles (Luhmann 1981) and
  * networked thought graphs with bi-directional wikilinks.
  */
-import { and, desc, eq, like, or } from 'drizzle-orm'
+import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm'
 import { bulletSyncPlan, extractBacklinks, parseBullets, wikilinkParse } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import { noteBullets, noteLinks, notes } from '../schema'
@@ -45,6 +45,8 @@ export interface NoteDetail {
 export function listNotes(
   opts: {
     query?: string | null
+    /** S3-93: only notes whose `fields.projectId` links to this task project. */
+    projectId?: number
     limit?: number
     db?: LearningHubDB
   } = {},
@@ -53,11 +55,23 @@ export function listNotes(
   const q = opts.query?.trim()
   const limit = opts.limit ?? 100
 
+  // S3-93: notes-project linking rides the typed-supertag fields JSON
+  // (`fields.projectId = String(project.id)`) — no schema change, and the
+  // existing PATCH fields path maintains it.
+  const conditions: SQL[] = []
+  if (opts.projectId !== undefined) {
+    conditions.push(sql`json_extract(${notes.fields}, '$.projectId') = ${String(opts.projectId)}`)
+  }
+
   if (q) {
+    conditions.push(or(like(notes.title, `%${q}%`), like(notes.content, `%${q}%`))!)
+  }
+
+  if (conditions.length > 0) {
     return db
       .select()
       .from(notes)
-      .where(or(like(notes.title, `%${q}%`), like(notes.content, `%${q}%`)))
+      .where(and(...conditions))
       .orderBy(desc(notes.updatedAt))
       .limit(limit)
       .all()

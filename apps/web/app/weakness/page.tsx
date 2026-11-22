@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -28,6 +30,7 @@ import Link from 'next/link'
 import { GenerationPracticeModal } from '@/components/GenerationPracticeModal'
 import { DualCodingCanvasStudio } from '@/components/DualCodingCanvasStudio'
 import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface WeaknessV2Data {
   ok: boolean
@@ -36,6 +39,34 @@ interface WeaknessV2Data {
   leechDecompositions: LeechDecomposition[]
   totalCards: number
   leechCount: number
+}
+
+/** One proposed atomic replacement card. */
+function ReplacementCard({ cand }: { cand: LeechDecomposition['candidates'][number] }) {
+  return (
+    <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5 text-xs dark:border-indigo-950/60 dark:bg-indigo-950/20">
+      <div className="font-semibold text-indigo-700 dark:text-indigo-300">{cand.front}</div>
+      <div className="mt-1 text-secondary">{cand.back}</div>
+      <div className="mt-1.5 text-xs italic text-faint">{cand.rationale}</div>
+    </div>
+  )
+}
+
+/**
+ * GSAP moment for this page: the proposed atomic replacement cards rise in
+ * with a capped stagger when a leech panel scrolls into view — the panel list
+ * itself is the framer Stagger's owner, so this inner grid is a different
+ * node (one animation owner per element).
+ */
+function ReplacementGrid({ candidates }: { candidates: LeechDecomposition['candidates'] }) {
+  const revealRef = useGsapReveal<HTMLDivElement>()
+  return (
+    <div ref={revealRef} className="grid gap-2 sm:grid-cols-2">
+      {candidates.map((cand, idx) => (
+        <ReplacementCard key={idx} cand={cand} />
+      ))}
+    </div>
+  )
 }
 
 export default function WeaknessRadarPage() {
@@ -89,7 +120,7 @@ export default function WeaknessRadarPage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl space-y-6 py-6">
+      <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Weakness Radar v2"
           subtitle="Semantic interference, forward topic decay forecasts, and atomic leech decomposition."
@@ -101,17 +132,17 @@ export default function WeaknessRadarPage() {
 
   if (isError || !data) {
     return (
-      <div className="container max-w-4xl space-y-6 py-6">
+      <div className="mx-auto max-w-4xl space-y-6">
         <PageHeader
           title="Weakness Radar v2"
           subtitle="Semantic interference, forward topic decay forecasts, and atomic leech decomposition."
         />
-        <EmptyState
-          title="Failed to load weakness data"
-          action={<Button onClick={() => void refetch()}>Retry</Button>}
-        >
-          Could not connect to the memory analytics engine. Please retry.
-        </EmptyState>
+        <Callout tone="danger" title="Failed to load weakness data">
+          <div className="mt-1 flex items-center gap-3">
+            <span>Could not connect to the memory analytics engine.</span>
+            <Button onClick={() => void refetch()}>Retry</Button>
+          </div>
+        </Callout>
       </div>
     )
   }
@@ -125,7 +156,7 @@ export default function WeaknessRadarPage() {
     // state; the animation is client-only, so hydration output is unchanged.
     // Loading skeleton and error EmptyState above stay instant — never
     // animated.
-    <div className="container max-w-4xl space-y-6 py-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <ClayIn>
         <PageHeader
           title="Weakness Radar v2"
@@ -300,7 +331,7 @@ export default function WeaknessRadarPage() {
 
                         <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
                           <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                            <div className="text-[10px] text-faint">In 7 Days</div>
+                            <div className="text-xs text-faint">In 7 Days</div>
                             <div
                               className={`font-semibold ${d7 >= 80 ? 'text-status-success-text' : 'text-status-warning-text'}`}
                             >
@@ -308,7 +339,7 @@ export default function WeaknessRadarPage() {
                             </div>
                           </div>
                           <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                            <div className="text-[10px] text-faint">In 14 Days</div>
+                            <div className="text-xs text-faint">In 14 Days</div>
                             <div
                               className={`font-semibold ${d14 >= 75 ? 'text-status-success-text' : 'text-status-warning-text'}`}
                             >
@@ -316,7 +347,7 @@ export default function WeaknessRadarPage() {
                             </div>
                           </div>
                           <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
-                            <div className="text-[10px] text-faint">In 30 Days</div>
+                            <div className="text-xs text-faint">In 30 Days</div>
                             <div
                               className={`font-semibold ${d30 >= 70 ? 'text-status-warning-text' : 'text-danger-text'}`}
                             >
@@ -425,10 +456,8 @@ export default function WeaknessRadarPage() {
 
                       <div className="rounded-lg bg-neutral-50 p-3 text-xs dark:bg-neutral-900/50">
                         <div className="font-semibold text-faint mb-1">Overloaded Leech:</div>
-                        <div className="font-medium text-sm text-neutral-800 dark:text-neutral-200">
-                          {leech.originalFront}
-                        </div>
-                        <div className="mt-1 text-neutral-600 dark:text-faint border-t border-neutral-200 pt-1 dark:border-neutral-800">
+                        <div className="text-sm font-medium text-body">{leech.originalFront}</div>
+                        <div className="mt-1 border-t border-(--hub-border) pt-1 text-tertiary">
                           {leech.originalBack}
                         </div>
                       </div>
@@ -437,24 +466,7 @@ export default function WeaknessRadarPage() {
                         <div className="text-xs font-semibold uppercase tracking-wider text-tertiary">
                           Proposed Atomic Replacements:
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {leech.candidates.map((cand, idx) => (
-                            <div
-                              key={idx}
-                              className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5 text-xs dark:border-indigo-950/60 dark:bg-indigo-950/20"
-                            >
-                              <div className="font-semibold text-indigo-700 dark:text-indigo-300">
-                                {cand.front}
-                              </div>
-                              <div className="mt-1 text-neutral-700 dark:text-secondary">
-                                {cand.back}
-                              </div>
-                              <div className="mt-1.5 text-[10px] text-faint italic">
-                                {cand.rationale}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <ReplacementGrid candidates={leech.candidates} />
                       </div>
                     </Panel>
                   </StaggerItem>

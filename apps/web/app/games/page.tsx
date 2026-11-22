@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Games: matching pairs built with dnd-kit, Solo Boss Battles derived
  * from spaced repetition review log, and decentralized Gist friend leaderboard.
@@ -24,6 +26,8 @@ import {
   Copy,
   Flame,
   Heart,
+  Lightbulb,
+  Medal,
   PartyPopper,
   Plus,
   RefreshCw,
@@ -35,6 +39,7 @@ import {
   Trash2,
   Trophy,
   Users,
+  Zap,
 } from 'lucide-react'
 import { evaluateMatchingGame } from '@learning-hub/core/games'
 import { BOSS_ROSTER, type BossProfile } from '@learning-hub/core/boss'
@@ -47,14 +52,30 @@ import { apiGet, apiSend } from '@/lib/transport'
 import {
   Badge,
   Button,
+  Callout,
+  EmptyState,
   GenerationMatrixHUD,
   IconButton,
   PageHeader,
   Panel,
   ProgressBar,
+  Skeleton,
   Tabs,
   TextField,
 } from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { KeyMetricRow } from '@/components/ui/key-metric-row'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { queryKeys } from '@/lib/query-keys'
 
 type GameTab = 'matching' | 'generation' | 'boss' | 'duels' | 'social'
@@ -189,23 +210,40 @@ function MatchingGameSection() {
     <div className="space-y-4">
       <Panel>
         <div className="label mb-2">Choose a deck to play its cards</div>
-        <div className="flex flex-wrap gap-2">
-          {(decks.data?.decks ?? []).map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setDeckId(d.id)}
-              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                deckId === d.id
-                  ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300 font-medium'
-                  : 'border-neutral-200 text-neutral-600 dark:border-(--hub-border) dark:text-secondary hover:border-neutral-300 dark:hover:border-neutral-600'
-              }`}
-            >
-              {d.emoji} {d.name}
-            </button>
-          ))}
-        </div>
+        {decks.isError ? (
+          <Callout tone="danger" title="Couldn't load decks">
+            Deck list unavailable — check that the backend is running.
+          </Callout>
+        ) : decks.isPending ? (
+          <div className="flex flex-wrap gap-2" aria-hidden="true">
+            <Skeleton className="h-11 w-32" />
+            <Skeleton className="h-11 w-40" />
+            <Skeleton className="h-11 w-28" />
+          </div>
+        ) : (decks.data?.decks ?? []).length === 0 ? (
+          <EmptyState title="No decks yet">
+            Create a deck in the Cards tab, then come back to play it.
+          </EmptyState>
+        ) : (
+          <ChipPicker<string>
+            label="Deck to play"
+            items={(decks.data?.decks ?? []).map((d) => ({
+              value: String(d.id),
+              label: `${d.emoji ?? ''} ${d.name}`.trim(),
+            }))}
+            value={deckId === null ? null : String(deckId)}
+            onChange={(v) => setDeckId(Number(v))}
+          />
+        )}
       </Panel>
 
+      {deckId !== null && game.isPending && (
+        <div className="panel space-y-2" aria-hidden="true">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-4/5" />
+        </div>
+      )}
       {deckId !== null && game.data?.pairs && (
         <MatchingBoard
           key={game.data.pairs.map((p) => p.cardId).join('-')}
@@ -215,9 +253,9 @@ function MatchingGameSection() {
         />
       )}
       {deckId !== null && game.data && game.data.pairs.length === 0 && (
-        <Panel className="text-sm text-tertiary">
-          No playable (textual) cards in this deck — matching needs basic/cloze/mcq/typein cards.
-        </Panel>
+        <EmptyState title="No playable cards in this deck">
+          Matching needs basic/cloze/mcq/typein cards — add some in the Cards tab.
+        </EmptyState>
       )}
     </div>
   )
@@ -485,31 +523,22 @@ function GenerationLadderSection() {
   return (
     <div className="space-y-4">
       <Panel className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-tertiary">
             Choose a concept to generate from memory:
           </span>
-          <div className="flex flex-wrap gap-1.5">
-            {presets.map((p) => (
-              <button
-                key={p.concept}
-                type="button"
-                onClick={() => {
-                  setConcept(p.concept)
-                  setExplanation(p.explanation)
-                  setEvaluationResult(null)
-                  setStartTime(Date.now())
-                }}
-                className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  concept === p.concept
-                    ? 'border-indigo-500 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
-                    : 'border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-faint'
-                }`}
-              >
-                {p.concept}
-              </button>
-            ))}
-          </div>
+          <ChipPicker<string>
+            label="Concept preset"
+            items={presets.map((p) => ({ value: p.concept, label: p.concept }))}
+            value={concept}
+            onChange={(v) => {
+              const preset = presets.find((p) => p.concept === v)
+              setConcept(v)
+              if (preset) setExplanation(preset.explanation)
+              setEvaluationResult(null)
+              setStartTime(Date.now())
+            }}
+          />
         </div>
       </Panel>
 
@@ -557,9 +586,18 @@ function BossBattleSection() {
 
   const active = bossQuery.data?.active
   const roster = bossQuery.data?.roster ?? Object.values(BOSS_ROSTER)
+  // GSAP moment: the boss roster cards rise in with a capped stagger as the
+  // grid scrolls into view (reduced-motion keeps the static layout).
+  const rosterRef = useGsapReveal()
 
   return (
     <div className="space-y-6">
+      {bossQuery.isError && (
+        <Callout tone="danger" title="Boss battle service unreachable">
+          Active-battle state could not be loaded — the roster below still shows the built-in
+          bosses.
+        </Callout>
+      )}
       {active && (
         <Panel className="space-y-4 border-indigo-500/30">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -567,7 +605,7 @@ function BossBattleSection() {
               <div className="flex items-center gap-2">
                 <span className="text-3xl">{BOSS_ROSTER[active.bossKey]?.avatar ?? '⚔️'}</span>
                 <div>
-                  <h2 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+                  <h2 className="text-xl font-bold tracking-tight text-strong">
                     {active.bossName}
                   </h2>
                   <p className="text-xs text-tertiary">
@@ -637,10 +675,13 @@ function BossBattleSection() {
           </div>
 
           {active.status === 'active' ? (
-            <p className="text-xs text-faint">
-              💡 Review cards normally in the Study tab. Correct answers (Good/Easy) deal damage and
-              trigger critical strikes. Incorrect answers (Again) leave you open to boss
-              counterattacks!
+            <p className="flex items-start gap-1.5 text-xs text-faint">
+              <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                Review cards normally in the Study tab. Correct answers (Good/Easy) deal damage and
+                trigger critical strikes. Incorrect answers (Again) leave you open to boss
+                counterattacks!
+              </span>
             </p>
           ) : active.status === 'victory' ? (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-center">
@@ -677,8 +718,13 @@ function BossBattleSection() {
                       <span>
                         Turn {t.turn}: {t.description}
                       </span>
-                      <span className="font-mono text-status-success-text">
-                        -{t.playerDamage} HP {t.isCrit ? '💥 CRIT' : ''}
+                      <span className="inline-flex items-center gap-1 font-mono text-status-success-text">
+                        -{t.playerDamage} HP
+                        {t.isCrit ? (
+                          <>
+                            <Zap className="h-3 w-3" aria-hidden="true" /> CRIT
+                          </>
+                        ) : null}
                       </span>
                     </div>
                   ))}
@@ -692,7 +738,7 @@ function BossBattleSection() {
         <h3 className="mb-3 text-lg font-bold tracking-tight">
           {active?.status === 'active' ? 'Boss Roster' : 'Choose Your Boss Challenge'}
         </h3>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div ref={rosterRef} className="grid gap-4 sm:grid-cols-3">
           {roster.map((boss) => (
             <Panel key={boss.key} className="flex flex-col justify-between space-y-3">
               <div>
@@ -745,6 +791,8 @@ function SocialLeaderboardSection() {
   const [alias, setAlias] = useState('')
   const [gistUrl, setGistUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  // Destructive confirm — removing a friend only happens through the dialog.
+  const [friendToRemove, setFriendToRemove] = useState<{ id: number; alias: string } | null>(null)
 
   const socialQuery = useQuery<SocialResponse>({
     queryKey: ['social-leaderboard'],
@@ -819,9 +867,7 @@ function SocialLeaderboardSection() {
       <Panel className="space-y-4">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
-            <h3 className="font-bold text-neutral-900 dark:text-neutral-100">
-              Decentralized Friends & Gist Sync
-            </h3>
+            <h3 className="font-bold text-strong">Decentralized Friends & Gist Sync</h3>
             <p className="text-xs text-tertiary">
               No central server required. Share your signed study stats envelope via a GitHub Gist
               URL with friends.
@@ -848,30 +894,28 @@ function SocialLeaderboardSection() {
           </div>
         </div>
 
-        {userStats && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
-              <div className="label">Weekly XP</div>
-              <div className="text-xl font-bold text-status-warning-text">{userStats.weeklyXp}</div>
-            </div>
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
-              <div className="label">Current Streak</div>
-              <div className="text-xl font-bold text-status-warning-text flex items-center gap-1">
-                <Flame className="h-4 w-4" /> {userStats.streak}d
-              </div>
-            </div>
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
-              <div className="label">Cards Reviewed</div>
-              <div className="text-xl font-bold text-indigo-400">{userStats.totalReviews}</div>
-            </div>
-            <div className="rounded-lg bg-neutral-100 p-3 dark:bg-(--hub-panel)">
-              <div className="label">Learner Level</div>
-              <div className="text-xl font-bold text-status-success-text">
-                Lv. {userStats.level}
-              </div>
-            </div>
+        {socialQuery.isPending ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-hidden="true">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
           </div>
-        )}
+        ) : socialQuery.isError ? (
+          <Callout tone="danger" title="Couldn't load your stats">
+            The leaderboard endpoint did not respond — add-friend still works once it is back.
+          </Callout>
+        ) : userStats ? (
+          <KeyMetricRow
+            columns={4}
+            metrics={[
+              { label: 'Weekly XP', value: String(userStats.weeklyXp) },
+              { label: 'Current Streak', value: `${userStats.streak}d` },
+              { label: 'Cards Reviewed', value: String(userStats.totalReviews) },
+              { label: 'Learner Level', value: `Lv. ${userStats.level}` },
+            ]}
+          />
+        ) : null}
       </Panel>
 
       {/* Add Friend Form */}
@@ -932,11 +976,17 @@ function SocialLeaderboardSection() {
                 >
                   <td className="py-2.5">
                     {idx === 0 ? (
-                      <span className="text-status-warning-text font-bold">🥇 1</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-status-warning-text">
+                        <Trophy className="h-3.5 w-3.5" aria-hidden="true" /> 1
+                      </span>
                     ) : idx === 1 ? (
-                      <span className="text-faint font-bold">🥈 2</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-faint">
+                        <Medal className="h-3.5 w-3.5" aria-hidden="true" /> 2
+                      </span>
                     ) : idx === 2 ? (
-                      <span className="text-status-warning-text font-bold">🥉 3</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-status-warning-text">
+                        <Medal className="h-3.5 w-3.5" aria-hidden="true" /> 3
+                      </span>
                     ) : (
                       <span className="text-tertiary">#{idx + 1}</span>
                     )}
@@ -951,8 +1001,8 @@ function SocialLeaderboardSection() {
                   <td className="py-2.5 text-right">
                     {!entry.isSelf && (
                       <IconButton
-                        label="Remove friend"
-                        onClick={() => deleteFriendMutation.mutate(entry.id)}
+                        label={`Remove ${entry.name}`}
+                        onClick={() => setFriendToRemove({ id: entry.id, alias: entry.name })}
                         className="hover:text-danger-text"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -961,15 +1011,44 @@ function SocialLeaderboardSection() {
                   </td>
                 </tr>
               ))}
-              {syncFailed.length > 0 && (
-                <p className="px-1 text-[11px] text-status-warning-text">
-                  Could not sync: {syncFailed.map((f) => `${f.alias} (${f.reason})`).join(', ')}
-                </p>
-              )}
             </tbody>
           </table>
         </div>
+        {syncFailed.length > 0 && (
+          <Callout tone="warning" title="Could not sync">
+            {syncFailed.map((f) => `${f.alias} (${f.reason})`).join(', ')}
+          </Callout>
+        )}
       </Panel>
+
+      {/* Destructive confirm — DELETE fires only from the dialog action. */}
+      <AlertDialog
+        open={friendToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setFriendToRemove(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {friendToRemove?.alias}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They disappear from your leaderboard. Their own gist stats are untouched — you can
+              re-add the gist URL later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep friend</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (friendToRemove) deleteFriendMutation.mutate(friendToRemove.id)
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -1118,9 +1197,9 @@ function DuelsArenaSection() {
 
         {/* Active Duel Arena */}
         {inMatch && (
-          <div className="rounded-xl border border-indigo-500/40 bg-indigo-950/20 p-5 space-y-4">
+          <div className="rounded-xl border border-indigo-500/40 bg-hub-accent/5 p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-indigo-400">
+              <span className="text-xs font-semibold uppercase text-hub-accent">
                 Round {round} of 5
               </span>
               <div className="flex items-center gap-4 text-sm font-bold">
@@ -1130,15 +1209,15 @@ function DuelsArenaSection() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4 space-y-3">
-              <div className="text-base font-medium text-neutral-100">{currentPrompt.q}</div>
+            <div className="space-y-3 rounded-lg border border-(--hub-border) bg-(--hub-panel-2) p-4">
+              <div className="text-base font-medium text-strong">{currentPrompt.q}</div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+              <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
                 {currentPrompt.options.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => handlePickOption(opt)}
-                    className="rounded-lg border border-neutral-700/80 bg-neutral-800/80 p-3 text-left text-xs font-medium text-neutral-200 hover:border-indigo-500 hover:bg-indigo-600/20 transition-all"
+                    className="rounded-lg border border-(--hub-border) bg-(--hub-panel) p-3 text-left text-xs font-medium text-secondary transition-colors hover:border-indigo-500 hover:bg-indigo-600/10 hover:text-strong"
                   >
                     {opt}
                   </button>
@@ -1150,7 +1229,7 @@ function DuelsArenaSection() {
 
         {/* Duel Result Celebration */}
         {matchDone && (
-          <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-5 text-center space-y-3">
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 text-center space-y-3">
             <div className="text-2xl font-bold flex items-center justify-center gap-2">
               <Trophy className="h-7 w-7 text-status-warning-text" />
               <span>{winner === 'You' ? 'Victory!' : winner === 'Tie' ? 'Draw!' : 'Defeat!'}</span>
@@ -1175,22 +1254,32 @@ function DuelsArenaSection() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
             Recent Match History ({recentDuels.length})
           </h3>
-          {recentDuels.length === 0 ? (
-            <div className="rounded-lg border border-neutral-800 p-6 text-center text-xs text-tertiary">
-              No recent duels recorded. Start a 1v1 duel above to test your recall speed.
+          {duelsQuery.isPending ? (
+            <div className="space-y-1" aria-hidden="true">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-2/3" />
             </div>
+          ) : duelsQuery.isError ? (
+            <Callout tone="danger" title="Match history unavailable">
+              Recent duels could not be loaded.
+            </Callout>
+          ) : recentDuels.length === 0 ? (
+            <EmptyState title="No duels yet">
+              Start a 1v1 duel above to test your recall speed.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-neutral-800 text-tertiary">
+                  <tr className="border-b border-(--hub-border) text-tertiary">
                     <th className="pb-2 font-medium">Match</th>
                     <th className="pb-2 font-medium">Score</th>
                     <th className="pb-2 font-medium">Winner</th>
                     <th className="pb-2 font-medium text-right">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-800/60">
+                <tbody className="divide-y divide-(--hub-border)">
                   {recentDuels.map((d) => (
                     <tr key={d.id} className="py-2.5">
                       <td className="py-2.5 font-medium">

@@ -26,6 +26,7 @@ import {
   type ProfileKnobChange,
 } from '@learning-hub/core/learner-profile'
 import { applyThemePreference, normalizeThemePreference, type ThemePreference } from './ThemeSync'
+import { SpFirstRunStep } from './onboarding/SpFirstRunStep'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Sheet, useToast } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
@@ -120,7 +121,13 @@ export function OnboardingWizard() {
     s?.onboardingCompleted === false &&
     s?.isEmptyWorkspace === true
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
+  // S3-40: the SP step's short-syntax dates resolve against the client day
+  // (null until mounted — hydration-safe, same pattern as the timer page).
+  const [todayIso, setTodayIso] = useState<string | null>(null)
+  useEffect(() => {
+    setTodayIso(new Date().toISOString().slice(0, 10))
+  }, [])
   const [theme, setTheme] = useState<ThemePreference>(() =>
     normalizeThemePreference(s?.theme ?? 'dark'),
   )
@@ -329,14 +336,14 @@ export function OnboardingWizard() {
             {step > 1 && (
               <Button
                 variant="ghost"
-                onClick={() => setStep((prev) => (prev === 4 ? 3 : prev === 3 ? 2 : 1))}
+                onClick={() => setStep((prev) => Math.max(1, prev - 1) as 1 | 2 | 3 | 4 | 5)}
                 disabled={finishMutation.isPending}
               >
                 Back
               </Button>
             )}
-            {step < 4 ? (
-              <Button onClick={() => setStep((prev) => (prev === 1 ? 2 : prev === 2 ? 3 : 4))}>
+            {step < 5 ? (
+              <Button onClick={() => setStep((prev) => Math.min(5, prev + 1) as 1 | 2 | 3 | 4 | 5)}>
                 Continue
               </Button>
             ) : (
@@ -351,7 +358,7 @@ export function OnboardingWizard() {
     >
       <div className="space-y-4">
         <div className="flex items-center gap-1.5 text-xs text-tertiary">
-          {[1, 2, 3, 4].map((n) => (
+          {[1, 2, 3, 4, 5].map((n) => (
             <span
               key={n}
               className={`h-1.5 flex-1 rounded-full transition-colors ${
@@ -359,7 +366,7 @@ export function OnboardingWizard() {
               }`}
             />
           ))}
-          <span className="ml-2 tabular-nums">Step {step}/4</span>
+          <span className="ml-2 tabular-nums">Step {step}/5</span>
         </div>
 
         {step === 1 && (
@@ -389,7 +396,7 @@ export function OnboardingWizard() {
                         setTheme(opt.key)
                         applyThemePreference(opt.key)
                       }}
-                      className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors ${
+                      className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
                           : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
@@ -419,7 +426,7 @@ export function OnboardingWizard() {
                       key={opt.min}
                       type="button"
                       onClick={() => setSessionMinutes(opt.min)}
-                      className={`rounded-xl border p-3 text-left transition-colors ${
+                      className={`rounded-xl border p-3 text-left transition-colors [@media(pointer:coarse)]:min-h-11 ${
                         active
                           ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
                           : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
@@ -596,7 +603,7 @@ export function OnboardingWizard() {
                     key={course.slug}
                     type="button"
                     onClick={() => toggleSlug(course.slug)}
-                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                    className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors [@media(pointer:coarse)]:min-h-11 ${
                       checked
                         ? 'border-indigo-500 bg-indigo-600/10'
                         : 'border-neutral-200 hover:bg-neutral-50 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2)'
@@ -758,6 +765,13 @@ export function OnboardingWizard() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Step 5 — SP first run (S3-40): project + first task via short syntax. */}
+        {step === 5 && (
+          <div className="space-y-4">
+            <SpFirstRunStep todayIso={todayIso} />
           </div>
         )}
       </div>

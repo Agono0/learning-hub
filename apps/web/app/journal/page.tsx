@@ -9,6 +9,8 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { MetacognitiveJournalStudio } from '@/components/MetacognitiveJournalStudio'
+import { KeyMetricRow } from '@/components/ui/key-metric-row'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface JournalEntry {
   id: number
@@ -134,8 +136,12 @@ export default function JournalPage() {
   // prefill from existing entry once loaded
   const shownMood = mood ?? existingToday?.mood ?? null
 
+  // GSAP reveal (per-page motion mandate): the view switcher's buttons rise in
+  // on scroll — motionOK-gated; SSR/tests keep the static content.
+  const switcherRef = useGsapReveal<HTMLDivElement>()
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<PenLine className="h-6 w-6 text-indigo-400" />}
         title="Journal"
@@ -143,14 +149,14 @@ export default function JournalPage() {
       />
 
       {/* View Mode Switcher */}
-      <div className="flex gap-2 border-b border-white/10 pb-3">
+      <div ref={switcherRef} className="flex gap-2 border-b border-(--hub-border) pb-3">
         <button
           type="button"
           onClick={() => setViewMode('metacognitive')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
             viewMode === 'metacognitive'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
+              ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:bg-hub-accent/5 hover:text-body'
           }`}
         >
           <Sparkles className="h-4 w-4" />
@@ -160,10 +166,10 @@ export default function JournalPage() {
         <button
           type="button"
           onClick={() => setViewMode('daily')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
             viewMode === 'daily'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
+              ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:bg-hub-accent/5 hover:text-body'
           }`}
         >
           <PenLine className="h-4 w-4" />
@@ -173,10 +179,10 @@ export default function JournalPage() {
         <button
           type="button"
           onClick={() => setViewMode('weekly')}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
             viewMode === 'weekly'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-              : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
+              ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:bg-hub-accent/5 hover:text-body'
           }`}
         >
           <Calendar className="h-4 w-4" />
@@ -278,7 +284,7 @@ export default function JournalPage() {
 
           {aiResult && (
             <div
-              className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-100' : 'border-amber-500/40 bg-amber-500/5 text-status-warning-text'}`}
+              className={`rounded-lg border p-3 text-sm ${aiResult.ok ? 'border-indigo-500/40 bg-indigo-500/10 text-hub-accent' : 'border-amber-500/40 bg-amber-500/5 text-status-warning-text'}`}
             >
               <Sparkles className="mr-2 inline h-4 w-4" />
               {aiResult.text}
@@ -296,11 +302,11 @@ export default function JournalPage() {
                   key={d.date}
                   className={`rounded-lg p-2 ${d.date === today ? 'bg-indigo-600/15' : ''}`}
                 >
-                  <p className="text-[10px] text-tertiary">{d.date.slice(8)}</p>
+                  <p className="text-xs text-tertiary">{d.date.slice(8)}</p>
                   <p className="text-lg">
                     {d.mood != null ? MOODS[Math.min(4, Math.max(0, d.mood - 1))] : '·'}
                   </p>
-                  <p className="text-[10px] text-tertiary">{d.reviews} rev</p>
+                  <p className="text-xs text-tertiary">{d.reviews} rev</p>
                 </div>
               ))}
             </div>
@@ -309,23 +315,19 @@ export default function JournalPage() {
           {/* weekly review (auto-summary from real data) */}
           <div className="panel space-y-3">
             <p className="label">Weekly review — computed, not remembered</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {[
-                { k: 'reviews', v: weekly.data?.totals.reviews ?? 0 },
-                { k: 'XP', v: weekly.data?.totals.xp ?? 0 },
-                { k: 'focus min', v: weekly.data?.totals.focusMinutes ?? 0 },
-                { k: 'habits', v: weekly.data?.totals.habitsDone ?? 0 },
-                { k: 'mood avg', v: weekly.data?.moodAvg ?? '—' },
-              ].map((s) => (
-                <div
-                  key={s.k}
-                  className="rounded-lg border border-neutral-200 p-2 text-center dark:border-(--hub-border)"
-                >
-                  <p className="text-xl font-bold tabular-nums">{s.v}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-tertiary">{s.k}</p>
-                </div>
-              ))}
-            </div>
+            <KeyMetricRow
+              columns={3}
+              metrics={[
+                { label: 'Reviews', value: String(weekly.data?.totals.reviews ?? 0) },
+                { label: 'XP', value: String(weekly.data?.totals.xp ?? 0) },
+                { label: 'Focus min', value: String(weekly.data?.totals.focusMinutes ?? 0) },
+                { label: 'Habits', value: String(weekly.data?.totals.habitsDone ?? 0) },
+                {
+                  label: 'Mood avg',
+                  value: weekly.data?.moodAvg != null ? String(weekly.data.moodAvg) : '—',
+                },
+              ]}
+            />
             <ul className="space-y-1.5">
               {/* static server-derived prompt list for the week — never mutated, index keys are safe */}
               {weekly.data?.prompts.map((p, i) => (

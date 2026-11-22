@@ -16,9 +16,14 @@
  * forecast bars grow from their bottom edge via an SSR-safe `scaleY` entrance.
  * Both animate client-side only when `motionOK()` — reduced-motion, e-ink and
  * no-JS users get the static render, and the SSR HTML always shows the final
- * state.
+ * state. (One mechanism per container: the heatmap keeps its `Stagger`; the
+ * GSAP scroll-reveal mandate applies to the timeline/insights containers.)
+ *
+ * Accessibility (audit G4): the heatmap squares and forecast bars expose
+ * their data as `role="img"` + `aria-label` ("date: N") instead of relying on
+ * the hover-only `title` attribute — the `title`s stay for sighted hover.
  */
-import { useEffect, useLayoutEffect } from 'react'
+import React, { useEffect, useLayoutEffect } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { motion, useAnimationControls } from 'framer-motion'
@@ -26,6 +31,7 @@ import { Activity } from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import { Stagger, StaggerItem, claySpring, motionOK, staggerDelay } from '@/lib/motion'
 import { Callout, Skeleton } from '@/ui'
+import { SectionHeader } from '@/components/ui/section-header'
 import { HoverLiftSection } from './widgets'
 import type { WidgetProps } from './widgets'
 
@@ -122,14 +128,15 @@ export function AnalyticsGlimpseWidget(_props: WidgetProps) {
 
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-          <Activity className="h-3.5 w-3.5" /> Momentum
-        </div>
-        <Link href="/analytics" className="text-[10px] text-ac-text hover:underline">
-          analytics →
-        </Link>
-      </div>
+      <SectionHeader
+        icon={Activity}
+        title="Momentum"
+        action={
+          <Link href="/analytics" className="text-xs text-ac-text hover:underline">
+            analytics →
+          </Link>
+        }
+      />
 
       {isLoading ? (
         <div className="mt-3 space-y-3">
@@ -146,7 +153,8 @@ export function AnalyticsGlimpseWidget(_props: WidgetProps) {
           {/* 30-day heatmap — the analytics page's tinted-span style, compact.
               The .scroll-x wrapper stays on its own element; the inner flex row
               doubles as the Stagger container so the cells rise in sequence
-              (index stagger capped at 260ms handles the 30-child overflow). */}
+              (index stagger capped at 260ms handles the 30-child overflow).
+              Each square is a role="img" with a date+count aria-label (G4). */}
           <div className="scroll-x mt-3">
             <Stagger className="flex min-w-max gap-1">
               {heatmap.map((h, i) => (
@@ -155,6 +163,8 @@ export function AnalyticsGlimpseWidget(_props: WidgetProps) {
                       sits inside the StaggerItem's flex-item div (a non-flex
                       inline span would ignore h-5/w-5). */}
                   <span
+                    role="img"
+                    aria-label={`${h.date}: ${h.count} reviews`}
                     title={`${h.date}: ${h.count} reviews`}
                     className="block h-5 w-5 rounded-[3px]"
                     style={{
@@ -167,27 +177,41 @@ export function AnalyticsGlimpseWidget(_props: WidgetProps) {
             </Stagger>
           </div>
 
-          {/* next-7-days forecast — mini histogram, hub-accent bars */}
+          {/* next-7-days forecast — mini histogram, hub-accent bars. Each bar
+              carries a role="img" + date/count aria-label so the chart is not
+              hover-only (G4). With no forecast data the bar row and the
+              "today / +7d" axis labels hide entirely — an empty plot between
+              two axis labels reads like a broken chart; only the honest
+              empty-state copy remains. */}
           <div className="mt-4">
-            <p className="text-[10px] text-tertiary">Cards due — next 7 days</p>
-            <div className="mt-1 flex h-16 items-end gap-px">
-              {forecast.map((f, i) => (
-                <div key={f.date} className="group relative flex-1" title={`${f.date}: ${f.count}`}>
-                  <ForecastBar
-                    index={i}
-                    heightPct={(f.count / forecastMax) * 100}
-                    minHeightPx={f.count > 0 ? 2 : 0}
-                  />
+            <p className="text-xs text-tertiary">Cards due — next 7 days</p>
+            {forecast.length === 0 ? (
+              <p className="mt-1 text-sm text-tertiary">Nothing scheduled yet.</p>
+            ) : (
+              <>
+                <div className="mt-1 flex h-16 items-end gap-px">
+                  {forecast.map((f, i) => (
+                    <div
+                      key={f.date}
+                      role="img"
+                      aria-label={`${f.date}: ${f.count} cards due`}
+                      title={`${f.date}: ${f.count}`}
+                      className="group relative flex-1"
+                    >
+                      <ForecastBar
+                        index={i}
+                        heightPct={(f.count / forecastMax) * 100}
+                        minHeightPx={f.count > 0 ? 2 : 0}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {forecast.length === 0 && (
-                <p className="text-sm text-tertiary">Nothing scheduled yet.</p>
-              )}
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-neutral-600 dark:text-faint">
-              <span>today</span>
-              <span>+{FORECAST_DAYS}d</span>
-            </div>
+                <div className="mt-1 flex justify-between text-xs text-neutral-600 dark:text-faint">
+                  <span>today</span>
+                  <span>+{FORECAST_DAYS}d</span>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

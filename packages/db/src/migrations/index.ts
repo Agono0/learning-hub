@@ -40,6 +40,11 @@ import { hapticsSetting } from './027-haptics-setting'
 import { notificationCenter } from './028-notification-center'
 import { prototypeExemplarSessionsMigration } from './029-prototype-exemplar'
 import { learnerProfileMigration } from './030-learner-profile'
+import { spTasks } from './031-sp-tasks'
+import { spViews } from './032-sp-views'
+import { maxFocusSessions } from './033-max-focus-sessions'
+import { spTaskColumns } from './034-sp-task-columns'
+import { taskFts } from './035-task-fts'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -73,6 +78,11 @@ export const MIGRATIONS: readonly Migration[] = [
   notificationCenter,
   prototypeExemplarSessionsMigration,
   learnerProfileMigration,
+  spTasks,
+  spViews,
+  maxFocusSessions,
+  spTaskColumns,
+  taskFts,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'

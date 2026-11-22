@@ -7,7 +7,10 @@
  */
 import { z } from 'zod'
 
-export const COOLDOWN_SECONDS = 60
+import { pinVaultSchema } from './pin'
+import { COOLDOWN_SECONDS } from './session'
+
+export { COOLDOWN_SECONDS }
 
 export const DEFAULT_ALLOWED_DOMAINS = [
   'youtube.com',
@@ -249,6 +252,23 @@ export const maxFocusStartSchema = z.object({
 
 export type MaxFocusStartInput = z.infer<typeof maxFocusStartSchema>
 
+/**
+ * Enforcement tier a Max Focus session actually reached (M2-03; mirrors the
+ * `tier` column written by migration 033):
+ *
+ * - `owner` — Android Device Owner + Lock Task Mode (Tier 1, M2-11)
+ * - `accessibility` — Android Tier 2 watcher + overlay (M2-12/M2-13)
+ * - `windows-admin` — Windows elevated: hooks + DisableTaskMgr + watchdog (M2-08)
+ * - `windows-basic` — Windows hooks + refocus loop only (M2-05…M2-07)
+ *
+ * The native layer reports which tier it achieved; the session row keeps it
+ * so the report card and test plan can reason about the actual enforcement.
+ */
+export const FOCUS_TIERS = ['owner', 'accessibility', 'windows-admin', 'windows-basic'] as const
+
+/** The {@link FOCUS_TIERS} union. */
+export type FocusSessionTier = (typeof FOCUS_TIERS)[number]
+
 export const focusLockStatusSchema = z.object({
   active: z.boolean(),
   sessionId: z.number().nullable(),
@@ -264,6 +284,12 @@ export const focusLockStatusSchema = z.object({
   }),
   lastHeartbeatAt: z.string().nullable(),
   task: z.string().nullable(),
+  /** M2-03: persisted lock phase of the session row (null when no max session). */
+  state: z.enum(['locked', 'cooldown', 'can_confirm', 'ended']).nullable().optional(),
+  /** M2-03: enforcement tier reached (null when unknown / no max session). */
+  tier: z.enum(FOCUS_TIERS).nullable().optional(),
+  /** M2-03: absolute hard-cap timestamp (ISO) past which the session auto-unlocks. */
+  hardCapAt: z.string().nullable().optional(),
 })
 
 export type FocusLockStatus = z.infer<typeof focusLockStatusSchema>
@@ -278,6 +304,13 @@ export const focusExitActionSchema = z.discriminatedUnion('action', [
       .string()
       .trim()
       .min(20, 'Reflection must be at least 20 characters before early exit.'),
+    /**
+     * M2-04: the PIN attempt + the device-held vault record to verify it
+     * against. Optional here so older clients still parse; the exit HANDLER
+     * requires both on `confirm` and verifies via {@link verifyPin}.
+     */
+    pin: z.string().max(12).optional(),
+    vault: pinVaultSchema.optional(),
   }),
   z.object({
     action: z.literal('cancel'),
@@ -294,3 +327,22 @@ export const focusAllowlistInputSchema = z.object({
 })
 
 export type FocusAllowlistInput = z.infer<typeof focusAllowlistInputSchema>
+
+// Session state machine (M2-01) — re-exported so hosts consume one entry.
+export * from './session'
+
+// Emergency dialer always-allowed set (M2-15) — the safety invariant.
+export * from './emergency'
+
+// Battery auto-unlock gate (M2-19) — pure decision behind the native monitors.
+export * from './battery'
+
+// Boot/kill resume (M2-24) — persisted-session contract + fresh-anchor rule.
+export * from './resume'
+
+// Per-tier permission checklist (M2-32) — granted-vs-needed matrix the
+// pre-session checklist (M2-16) renders.
+export * from './tiers'
+
+// PIN vault (M2-02) — PBKDF2 hashing + verification for the exit gate (M2-04).
+export * from './pin'

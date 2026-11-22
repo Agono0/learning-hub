@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Hands-Free Auditory Spaced Repetition (Commute & Walking Engine).
  *
@@ -19,6 +21,8 @@ import { AudioCommuteStudio } from '@/components/AudioCommuteStudio'
 import { Button, Callout, EmptyState, PageHeader, Panel, SelectField, Skeleton } from '@/ui'
 import { AudioDigestCard } from '@/components/AudioDigestCard'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import { ChipPicker } from '@/components/ui/chip-picker'
 
 interface AudioCue {
   cardId: number
@@ -80,6 +84,9 @@ function getAudioContext(ref: { current: AudioContext | null }): AudioContext | 
 }
 
 export default function AudioCommutePage() {
+  // GSAP moment: the active cue card body rises in when the classic view
+  // mounts (a different node from the ClayIn beat wrappers).
+  const cardRevealRef = useGsapReveal<HTMLDivElement>()
   const [viewMode, setViewMode] = useState<'studio' | 'classic'>('studio')
   const [binauralMode, setBinauralMode] = useState<BinauralMode>('none')
   const [isPlaying, setIsPlaying] = useState(false)
@@ -296,7 +303,7 @@ export default function AudioCommutePage() {
   const current = cues[currentIndex]
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       {/* Entrance beats: header → mode switcher → digest → active view. The
           classic playback state machine re-rises only when the view mounts
           (mode switch / new round); phase changes inside it never re-animate.
@@ -312,32 +319,24 @@ export default function AudioCommutePage() {
 
       {/* Studio View Mode Switcher */}
       <ClayIn delayS={staggerDelay(1)}>
-        <div className="flex gap-2 border-b border-white/10 pb-3">
-          <button
-            type="button"
-            onClick={() => setViewMode('studio')}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-              viewMode === 'studio'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <Mic className="h-4 w-4" />
-            <span>Hands-Free Voice Studio</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setViewMode('classic')}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-              viewMode === 'classic'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                : 'bg-white/5 text-faint hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <Headphones className="h-4 w-4" />
-            <span>Classic Audio & Beats</span>
-          </button>
+        <div className="border-b border-(--hub-border) pb-3">
+          <ChipPicker<'studio' | 'classic'>
+            label="Audio commute view"
+            items={[
+              {
+                value: 'studio',
+                label: 'Hands-Free Voice Studio',
+                icon: <Mic className="h-4 w-4" aria-hidden />,
+              },
+              {
+                value: 'classic',
+                label: 'Classic Audio & Beats',
+                icon: <Headphones className="h-4 w-4" aria-hidden />,
+              },
+            ]}
+            value={viewMode}
+            onChange={setViewMode}
+          />
         </div>
       </ClayIn>
 
@@ -426,6 +425,7 @@ export default function AudioCommutePage() {
                 }
               >
                 <div
+                  ref={cardRevealRef}
                   className="flex flex-col items-center gap-4 py-4 text-center"
                   aria-live="polite"
                 >
@@ -435,9 +435,7 @@ export default function AudioCommutePage() {
                         <div className="font-mono text-2xl font-bold text-ac-text">
                           {(pauseRemainingMs / 1000).toFixed(1)}s
                         </div>
-                        <div className="text-[10px] uppercase tracking-wider text-tertiary">
-                          recall
-                        </div>
+                        <div className="text-xs uppercase tracking-wider text-tertiary">recall</div>
                       </div>
                     ) : phase === 'prompt' ? (
                       <Volume2 className="h-9 w-9 animate-pulse text-ac-text" />

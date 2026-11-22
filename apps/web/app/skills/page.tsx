@@ -19,11 +19,15 @@ import React from 'react'
 import { Flame, ShieldCheck, Sparkles, Terminal } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { SkillsStudio } from '@/components/SkillsStudio'
 
 export default function SkillsStudioPage() {
+  // GSAP reveal (per-page motion mandate): the foundations columns rise in on
+  // scroll — motionOK-gated; SSR/tests keep the static content.
+  const foundationsRef = useGsapReveal<HTMLDivElement>({ y: 12 })
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-5">
       {/* Page Header */}
       <PageHeader
         title="Agent Skills & Autonomous Engineering Studio"
@@ -50,18 +54,19 @@ export default function SkillsStudioPage() {
       <SkillsStudio />
 
       {/* Autonomous Engineering Foundations Card */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
+      <div className="rounded-2xl border border-(--hub-border) bg-(--hub-panel-2) p-6">
         <div className="flex items-center gap-2.5 mb-3">
           <Sparkles className="h-5 w-5 text-indigo-400" />
-          <h3 className="text-sm font-bold text-white">
+          <h3 className="text-sm font-bold text-strong">
             Autonomous Agent Engineering & Learning Science Foundations
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-tertiary leading-relaxed">
+        <div
+          ref={foundationsRef}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-tertiary leading-relaxed"
+        >
           <div className="space-y-1">
-            <span className="font-semibold text-neutral-200">
-              The Idea-to-Ship Spine (Pocock 2024)
-            </span>
+            <span className="font-semibold text-strong">The Idea-to-Ship Spine (Pocock 2024)</span>
             <p>
               Rather than unstructured code generation, elite engineering workflows follow a
               disciplined pipeline: interview the design tree until ambiguity is zero (
@@ -73,7 +78,7 @@ export default function SkillsStudioPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-neutral-200">
+            <span className="font-semibold text-strong">
               Deliberate Practice at the Boundary (Ericsson 1993)
             </span>
             <p>
@@ -84,7 +89,7 @@ export default function SkillsStudioPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-neutral-200">
+            <span className="font-semibold text-strong">
               Zero-Regression Invariant Gates (AGENTS.md)
             </span>
             <p>

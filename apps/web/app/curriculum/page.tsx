@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Curriculum: tracks → courses → units → lessons checklist, AI course
  * generation (topic or imported source), skill tree with unlock states,
@@ -16,9 +18,10 @@ import type { MockExam } from '@learning-hub/core/curriculum'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { RemedialPanel } from '@/components/RemedialPanel'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader, useToast } from '@/ui'
+import { PageHeader, Skeleton, useToast } from '@/ui'
 import { motion, useAnimationControls } from 'framer-motion'
 import { ClayIn, clayPopVariants, motionOK, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 /**
  * Clay pop-in for CLIENT-STATE-triggered surfaces: scale 0.96 → 1 + fade on the
@@ -357,6 +360,10 @@ export default function CurriculumPage() {
     onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
 
+  // GSAP moment: the "Study next" recommendation rows rise in with a capped
+  // stagger when they scroll into view (rows are not framer-animated; the
+  // page beats are ClayIn's — one animation owner per element).
+  const recommendationsRevealRef = useGsapReveal<HTMLUListElement>()
   const elapsedMin = startedAt ? Math.floor((Date.now() - startedAt) / 60_000) : 0
   const remaining = mock ? Math.max(0, mock.minutes - elapsedMin) : 0
 
@@ -582,8 +589,14 @@ export default function CurriculumPage() {
               ))}
             </div>
           ))}
-          {(tree?.tracks ?? []).length === 0 && (
+          {tree && tree.tracks.length === 0 && (
             <p className="px-1 text-sm text-tertiary">No courses yet — generate one.</p>
+          )}
+          {!tree && (
+            <div className="space-y-2" aria-hidden>
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
           )}
         </aside>
 
@@ -614,7 +627,7 @@ export default function CurriculumPage() {
                           {l.title}
                         </span>
                         {l.bloomVerb && (
-                          <span className="ml-2 rounded bg-indigo-600/10 px-1.5 py-0.5 text-[10px] font-medium uppercase text-indigo-400">
+                          <span className="ml-2 rounded bg-indigo-600/10 px-1.5 py-0.5 text-xs font-medium uppercase text-indigo-400">
                             {l.bloomVerb}
                           </span>
                         )}
@@ -631,7 +644,7 @@ export default function CurriculumPage() {
           {skillData?.recommendations && skillData.recommendations.length > 0 && (
             <div className="panel space-y-2">
               <h2 className="text-sm font-semibold">Study next</h2>
-              <ul className="space-y-1.5 text-sm">
+              <ul ref={recommendationsRevealRef} className="space-y-1.5 text-sm">
                 {skillData.recommendations.map((r) => (
                   <li key={r.skillId} className="flex items-baseline gap-2">
                     <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
@@ -714,7 +727,7 @@ export default function CurriculumPage() {
                     style={{
                       left: `${x}%`,
                       top: `${y}px`,
-                      borderColor: s.unlocked ? 'rgb(99 102 241)' : 'rgb(38 38 43)',
+                      borderColor: s.unlocked ? 'var(--ac-strong)' : 'var(--hub-border)',
                     }}
                   >
                     <div className="flex items-center gap-1 font-medium">
@@ -731,7 +744,7 @@ export default function CurriculumPage() {
                         style={{ width: `${Math.round(s.pKnown * 100)}%` }}
                       />
                     </div>
-                    <div className="mt-1 flex justify-between text-[10px] text-tertiary">
+                    <div className="mt-1 flex justify-between text-xs text-tertiary">
                       <span>
                         {s.masteryLabel} · {Math.round(s.pKnown * 100)}%
                       </span>

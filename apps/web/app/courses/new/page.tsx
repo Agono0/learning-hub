@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Create a course with ANY AI, or import one.
  *
@@ -30,8 +32,10 @@ import {
   Tabs,
   TextArea,
   TextField,
+  Skeleton,
 } from '@/ui'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 type Mode = 'create' | 'import'
 
@@ -181,7 +185,7 @@ function PromptBuilder() {
           <textarea
             readOnly
             aria-label="Generated prompt"
-            className="input h-40 font-mono text-[12px] leading-5"
+            className="input h-40 font-mono text-xs leading-5"
             value={prompt}
           />
           <p className="text-xs text-tertiary">
@@ -191,6 +195,114 @@ function PromptBuilder() {
         </div>
       )}
     </Panel>
+  )
+}
+
+/**
+ * Validated-course preview (shown after a successful dry run). GSAP moment for
+ * this page: the preview rows and stat cards rise in with a capped stagger
+ * when the block appears — the container children carry no framer animation of
+ * their own (one animation owner per element; the page beats are ClayIn's).
+ */
+function CheckedPreview({
+  checked,
+  doImport,
+}: {
+  checked: ImportResponse & { ok: true }
+  doImport: { isPending: boolean; mutate: () => void; error: Error | null }
+}) {
+  const revealRef = useGsapReveal<HTMLDivElement>()
+  return (
+    <div
+      ref={revealRef}
+      className="space-y-3 border-t border-neutral-200 pt-3 dark:border-(--hub-border)"
+    >
+      <div className="flex items-start gap-3">
+        <span className="text-3xl" aria-hidden>
+          {checked.preview.emoji ?? '📘'}
+        </span>
+        <div className="min-w-0">
+          <div className="font-semibold">{checked.preview.title}</div>
+          {checked.preview.subtitle && (
+            <div className="text-sm text-tertiary">{checked.preview.subtitle}</div>
+          )}
+          <div className="mt-1 flex flex-wrap gap-1">
+            {checked.preview.level && <Badge>{checked.preview.level}</Badge>}
+            {checked.preview.track && <Badge>{checked.preview.track}</Badge>}
+            {checked.preview.updatesExisting && (
+              <Badge tone="warning">Updates your existing course — progress is kept</Badge>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <StatCard label="Lessons" value={checked.preview.stats.lessons} variant="standard" />
+        <StatCard
+          label="Exercises"
+          value={checked.preview.stats.exercises}
+          hint={`${Object.keys(checked.preview.stats.exerciseTypes).length} types`}
+          variant="standard"
+        />
+        <StatCard label="Projects" value={checked.preview.stats.projects} variant="standard" />
+        <StatCard
+          label="Est. time"
+          value={
+            checked.preview.stats.estMinutes
+              ? `${Math.round(checked.preview.stats.estMinutes / 60)} h`
+              : '—'
+          }
+          variant="standard"
+        />
+      </div>
+      <details className="text-sm">
+        <summary className="cursor-pointer font-medium">Outline</summary>
+        <ol className="mt-2 list-decimal space-y-1 pl-5">
+          {checked.preview.outline.map((m, i) => (
+            <li key={i}>
+              {m.title} <span className="text-xs text-tertiary">({m.lessons.length} lessons)</span>
+            </li>
+          ))}
+        </ol>
+      </details>
+      {checked.warnings.length > 0 && (
+        <details className="text-sm">
+          <summary className="flex cursor-pointer items-center gap-1 text-status-warning-text dark:text-status-warning-text">
+            <AlertTriangle className="h-4 w-4" /> {checked.warnings.length} suggestion(s) to make it
+            a better course
+          </summary>
+          <ul className="mt-2 space-y-1 text-xs">
+            {checked.warnings.map((w, i) => (
+              <li key={i}>
+                <code>{w.path}</code> {w.message}
+                {w.hint ? ` — ${w.hint}` : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {checked.fixes.length > 0 && (
+        <details className="text-xs text-tertiary">
+          <summary className="cursor-pointer">
+            {checked.fixes.length} small thing(s) were repaired automatically
+          </summary>
+          <ul className="mt-1 space-y-0.5">
+            {checked.fixes.slice(0, 40).map((f, i) => (
+              <li key={i}>
+                {f.path && <code>{f.path}</code>} {f.message}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <Button
+        icon={<Sparkles className="h-4 w-4" />}
+        loading={doImport.isPending}
+        onClick={() => doImport.mutate()}
+      >
+        {checked.preview.updatesExisting ? 'Update course' : 'Import course'}
+      </Button>
+      {doImport.error && <Callout tone="danger">{doImport.error.message}</Callout>}
+    </div>
   )
 }
 
@@ -245,7 +357,7 @@ function ImportPanel({ step }: { step?: number }) {
         <TextArea
           label="Course (JSON, YAML or Markdown)"
           hint={filename ? `Loaded ${filename}` : 'Paste here, or drop a file onto this box.'}
-          className="[&_textarea]:h-48 [&_textarea]:font-mono [&_textarea]:text-[12px]"
+          className="[&_textarea]:h-48 [&_textarea]:font-mono [&_textarea]:text-xs"
           value={text}
           onChange={(e) => {
             setText(e.target.value)
@@ -299,96 +411,7 @@ function ImportPanel({ step }: { step?: number }) {
         </Callout>
       )}
 
-      {checked?.ok && (
-        <div className="space-y-3 border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
-          <div className="flex items-start gap-3">
-            <span className="text-3xl" aria-hidden>
-              {checked.preview.emoji ?? '📘'}
-            </span>
-            <div className="min-w-0">
-              <div className="font-semibold">{checked.preview.title}</div>
-              {checked.preview.subtitle && (
-                <div className="text-sm text-tertiary">{checked.preview.subtitle}</div>
-              )}
-              <div className="mt-1 flex flex-wrap gap-1">
-                {checked.preview.level && <Badge>{checked.preview.level}</Badge>}
-                {checked.preview.track && <Badge>{checked.preview.track}</Badge>}
-                {checked.preview.updatesExisting && (
-                  <Badge tone="warning">Updates your existing course — progress is kept</Badge>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <StatCard label="Lessons" value={checked.preview.stats.lessons} variant="standard" />
-            <StatCard
-              label="Exercises"
-              value={checked.preview.stats.exercises}
-              hint={`${Object.keys(checked.preview.stats.exerciseTypes).length} types`}
-              variant="standard"
-            />
-            <StatCard label="Projects" value={checked.preview.stats.projects} variant="standard" />
-            <StatCard
-              label="Est. time"
-              value={
-                checked.preview.stats.estMinutes
-                  ? `${Math.round(checked.preview.stats.estMinutes / 60)} h`
-                  : '—'
-              }
-              variant="standard"
-            />
-          </div>
-          <details className="text-sm">
-            <summary className="cursor-pointer font-medium">Outline</summary>
-            <ol className="mt-2 list-decimal space-y-1 pl-5">
-              {checked.preview.outline.map((m, i) => (
-                <li key={i}>
-                  {m.title}{' '}
-                  <span className="text-xs text-tertiary">({m.lessons.length} lessons)</span>
-                </li>
-              ))}
-            </ol>
-          </details>
-          {checked.warnings.length > 0 && (
-            <details className="text-sm">
-              <summary className="flex cursor-pointer items-center gap-1 text-status-warning-text dark:text-status-warning-text">
-                <AlertTriangle className="h-4 w-4" /> {checked.warnings.length} suggestion(s) to
-                make it a better course
-              </summary>
-              <ul className="mt-2 space-y-1 text-xs">
-                {checked.warnings.map((w, i) => (
-                  <li key={i}>
-                    <code>{w.path}</code> {w.message}
-                    {w.hint ? ` — ${w.hint}` : ''}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-          {checked.fixes.length > 0 && (
-            <details className="text-xs text-tertiary">
-              <summary className="cursor-pointer">
-                {checked.fixes.length} small thing(s) were repaired automatically
-              </summary>
-              <ul className="mt-1 space-y-0.5">
-                {checked.fixes.slice(0, 40).map((f, i) => (
-                  <li key={i}>
-                    {f.path && <code>{f.path}</code>} {f.message}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-          <Button
-            icon={<Sparkles className="h-4 w-4" />}
-            loading={doImport.isPending}
-            onClick={() => doImport.mutate()}
-          >
-            {checked.preview.updatesExisting ? 'Update course' : 'Import course'}
-          </Button>
-          {doImport.error && <Callout tone="danger">{doImport.error.message}</Callout>}
-        </div>
-      )}
+      {checked?.ok && <CheckedPreview checked={checked} doImport={doImport} />}
     </Panel>
   )
 }
@@ -436,7 +459,14 @@ function NewCourse() {
 
 export default function NewCoursePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
+    <Suspense
+      fallback={
+        <div className="space-y-4" aria-hidden>
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      }
+    >
       <NewCourse />
     </Suspense>
   )

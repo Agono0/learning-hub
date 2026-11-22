@@ -1,4 +1,19 @@
+import { readFileSync } from 'node:fs'
 import type { NextConfig } from 'next'
+
+/**
+ * App version baked into the bundle for Settings > Updates (O1-14). Read from
+ * `apps/web/package.json` at config time; falls back to `''` (the UI shows a
+ * neutral "dev" label) when the file cannot be read.
+ */
+function appVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync('./package.json', 'utf8')) as { version?: string }
+    return pkg.version ?? ''
+  } catch {
+    return ''
+  }
+}
 
 /**
  * ONE app, two build targets — selected by LEARNING_HUB_TARGET:
@@ -35,7 +50,15 @@ const nextConfig: NextConfig = {
   // Transpile the workspace TS packages (no build step needed)
   transpilePackages: ['@learning-hub/core', '@learning-hub/db'],
   devIndicators: false,
-  env: { NEXT_PUBLIC_LEARNING_HUB_TARGET: isTauri ? 'tauri' : 'web' },
+  env: {
+    NEXT_PUBLIC_LEARNING_HUB_TARGET: isTauri ? 'tauri' : 'web',
+    // Build-time update flavor (O1-12): CI sets LH_UPDATE_CHANNEL=play for
+    // store builds (self-update off); unset/unknown → 'nightly', self-update
+    // on (sideload/dev default). Read once in src/lib/updates.ts.
+    LH_UPDATE_CHANNEL: process.env.LH_UPDATE_CHANNEL ?? '',
+    // App version shown in Settings > Updates (O1-14); '' → "dev" label.
+    LH_APP_VERSION: appVersion(),
+  },
   turbopack: { resolveAlias: browserAliases },
   ...(isTauri
     ? {

@@ -35,6 +35,9 @@ export * from './freshStart'
 export * from './habits'
 export * from './focus'
 export * from './focus-lock'
+export * from './tasks'
+export * from './boards'
+export * from './metrics'
 export * from './journal'
 export * from './quotes'
 export * from './physio'
@@ -144,3 +147,6 @@ export * from './design-tokens'
 
 // ── Accessibility & WCAG 2.2 AAA Engine ──
 export * from './a11y'
+
+// ── OTA update contracts (manifest, pointer, channels) ──
+export * from './update'

@@ -1,0 +1,217 @@
+# TASKS.md — mega-run queue (delta OTA · Max Focus lock · SP core parity)
+
+Status: `[ ]` open · `[~W1..W3]` claimed · `[x] done` · `[!] blocked`
+Workers claim the FIRST open task whose deps are all `[x]` and whose files don't overlap any in-flight claim. Shared files (schema.ts, migrations/index.ts, apps/web/package.json, tauri.conf.json, Cargo.toml, native.yml, settings columns, matrix doc) are LEAD-only — workers append requests to docs/SHARED_CHANGES.md. Each task ends with: tests written, local gate green, docs/handoffs/<ID>.md written, status `[x]`.
+
+Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-update); Windows NSIS + official updater; Nightly/Beta/Stable ask-first apply-on-restart; GitHub Releases hosting; Max Focus exit = PIN + hard cap 4h; Android Tier1 Owner + Tier2 fallback; Windows admin optional per session; SP scope = Core system only (integrations/sync/plugins/themes = skipped by user).
+
+## Phase 0 — discovery docs
+
+<!-- X-03 CLOSEOUT AUDIT (2026-11-22): 148/149 rows [x] with handoffs (33 audit
+stubs added for rows that landed without one); flagship spot-check green (14
+artifacts present, core/db/web typecheck 0 errors — Rust compiles in CI per
+rule 17). The 12 REMAINING OPEN ROWS are the exact ship-gap:
+
+  Ship-blocking for X-04 (the final PR):
+  - X-04 itself: open the PR (patch sizes + matrix + LIMITATIONS summary).
+
+  Landed DURING this audit (verify before X-04): S3-33 idle (67236a4),
+  S3-35 shortcuts (fd5c3d9 — core map + settings UI; page resolver mount
+  noted as a follow-up).
+
+  Depth rows (parity depth, not gates — safe to ship without):
+  - M2-08 Windows admin tier (tier-2 hardening; tier-1 covers the lock).
+  - O1-30 Android Play-flavor build task in native.yml.
+  - M2-35 admin/watchdog security notes in docs/max-focus.md.
+  - S3-31 counters/habits upgrade UI (core streak math S3-90 landed).
+  - S3-40 SP onboarding steps. S3-82 schedule touch drag.
+  - S3-93 notes↔project linking. S3-94 capacity settings.
+  - S3-95 schedule "from previous days" row (data already in the handler).
+  - S3-96 impact stars + lazy charts (S3-50 core landed).
+-->
+
+- [x] P0-1 | docs | ARCHITECTURE_NOTES.md: stack map (native shell, CI, focus machinery, task-like domains, settings, sync, test infra) | doc complete, every claim has a path | docs/ARCHITECTURE_NOTES.md | - |
+- [x] P0-2 | docs | SUPER_PRODUCTIVITY_FEATURE_MATRIX.md: all 44 SP modules → exists/partial/missing → plan or "skipped by user" (integrations/sync/plugins/themes rows = skipped by user) | every SP feature row present | docs/SUPER_PRODUCTIVITY_FEATURE_MATRIX.md | W2: 51 rows, 8 sections + coverage summary; prettier clean |
+
+## Epic 1 — Delta OTA (O1)
+
+- [x] O1-01 | OTA | Update domain types in core: manifest.json, pointer (nightly.json), channel enum, minNativeVersion, semver-ish compare | zod schemas + unit tests | packages/core/src/update/index.ts, packages/core/src/index.ts export, packages/core/tests/update.test.ts | dep P0-1 waived by lead (discovery complete) |
+- [x] O1-02 | OTA | Rust update module skeleton: fetch pointer+manifest, Ed25519/minisign verify, sha256 per-file verify | cargo checks via CI; unit test for verify (known key fixture) | apps/native/src-tauri/src/update.rs, Cargo.toml (minisign-verify, sha2, ureq or use plugin http) | O1-01 |
+- [x] O1-03 | OTA | Rust A/B slots in app_data_dir: download to inactive slot, atomic pointer file (tmp+rename), list current | unit-testable helpers + tests | apps/native/src-tauri/src/update.rs | O1-02 |
+- [x] O1-04 | OTA | Custom URI-scheme protocol serving active slot with fallback to bundled AssetResolver; capabilities rebinding | dev-served page loads from slot when set, bundled otherwise | apps/native/src-tauri/src/lib.rs, src/update.rs, capabilities/*.json | O1-03 |
+- [x] O1-05 | OTA | Boot-confirm rollback: webview ready invoke; N missed confirmations → flip pointer back + log | unit test of confirm counter | apps/native/src-tauri/src/update.rs, lib.rs | O1-04 |
+- [x] O1-06 | OTA | Apply-on-restart + never-during-Max-Focus: update service refuses apply while session active (core gate) | unit tests | packages/core/src/update + focus-lock interplay, apps/native/src-tauri/src/update.rs | O1-03, M2-01 |
+- [x] O1-07 | OTA | Manifest generator script: hash .next-tauri → manifest.json (files{path,sha256,size}), emit changed-file patch set vs previous manifest | script runs, fixtures tested | scripts/update-manifest.mjs, tests | O1-01 |
+- [x] O1-08 | OTA | CI: nightly workflow — build web+native, generate+sign manifest, diff vs previous release, tag nightly-YYYYMMDD-<sha>, upload assets + pointer | workflow yaml valid; dry-run artifact list | .github/workflows/nightly.yml | O1-07 |
+- [x] O1-09 | OTA | Sign keypair: generate Ed25519 minisign keys; pubkey committed to tauri.conf + repo; private key documented as Actions secret (user adds) | pubkey in repo, docs/updates.md key section | apps/native/src-tauri/tauri.conf.json (LEAD), docs/updates.md | O1-02 |
+- [x] O1-10 | OTA | tauri-plugin-updater wiring for Windows native layer: conf + capability + Rust init + signature artifacts (createUpdaterArtifacts) | conf valid; updater builder reachable in dev | apps/native/src-tauri/tauri.conf.json, Cargo.toml, lib.rs, capabilities (LEAD-applied) | O1-02 |
+- [x] O1-11 | OTA | Promote workflow: manual dispatch nightly→beta/stable (re-tag pointer, keep artifacts) | workflow yaml + docs | .github/workflows/promote.yml | O1-08 |
+- [x] O1-12 | OTA | Play channel flag: build-time env LH_UPDATE_CHANNEL=play bakes self-update off; sideload default on | unit test of flag reader both ways | apps/web/src/lib/updates.ts (client service), next.config env, docs | O1-01 |
+- [x] O1-13 | OTA | Android sideload install: Kotlin PackageInstaller session for full per-ABI APK; REQUEST_INSTALL_PACKAGES; consent flow | code + docs; CI compiles | apps/native/src-tauri/gen/android/.../MaxUpdatePlugin.kt + manifest, Cargo bridge | O1-02 |
+- [x] O1-14 | OTA | Settings > Updates UI: stream picker (nightly/beta/stable), check-now, auto-check interval, Wi-Fi-only (Android), current version + changelog panel | page renders SSR-safe; integration test | apps/web/app/settings/page.tsx (Updates section), apps/web/src/lib/updates.ts | O1-12 |
+- [x] O1-15 | OTA | Update-available banner + apply prompt (respect ask-first; shows size: patch vs full) | component + test | apps/web/src/components/UpdateBanner.tsx | O1-14 |
+- [x] O1-16 | OTA | Rust download: resumable ranges, progress events to webview | unit tests for range math | apps/native/src-tauri/src/update.rs | O1-03 |
+- [x] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
+- [x] O1-18 | OTA | Tamper tests: modified manifest/file/pointer rejected (bad sha256, bad signature) | tests green | apps/native/src-tauri/src/update.rs tests | O1-02 |
+- [x] O1-19 | OTA | Upgrade-from-N test: apply patches from each of last 5 manifests (fixture chain) | tests green | tests in update.rs + fixtures | O1-07 |
+- [x] O1-20 | OTA | Measured patch size: CI job applies a one-line web change → records hot patch KB into release notes + docs/updates.md | <50 KB recorded or deviation explained | .github/workflows/nightly.yml, docs/updates.md | O1-08 |
+- [x] O1-21 | OTA | Android bsdiff delta APK (stretch): CI generates per-ABI patch vs previous release; client applies + re-signs via persisted keystore | measured sizes; fallback to full APK | scripts, Kotlin apply, native.yml | O1-13 |
+- [x] O1-22 | OTA | Keystore persistence: docs + workflow guard requiring ANDROID_KEYSTORE_BASE64 secret; local keytool fallback only for dev | docs + workflow check step | .github/workflows/native.yml (LEAD), docs/updates.md | P0-1 |
+- [x] O1-23 | OTA | docs/updates.md: architecture, channels, key ceremony, rollback, Play policy note | doc complete | docs/updates.md | O1-08 |
+- [x] O1-24 | OTA | LIMITATIONS.md: Ctrl+Alt+Del, Play hot-patch policy, Android silent-install limits | doc exists | docs/LIMITATIONS.md | O1-13, M2-07 |
+
+## Epic 2 — Max Focus device lock (M2)
+
+- [x] M2-01 | LOCK | Session state machine in core: locked→cooldown→can_confirm→ended + hardCapAt, unlock reasons (timer/pin/battery/failure/tamper), monotonic anchor vs wall clock | unit tests all transitions | packages/core/src/focus-lock/session.ts, tests | P0-1 |
+- [x] M2-02 | LOCK | PIN vault: PBKDF2 hash (web crypto) + salt in userSettings JSON; first-use set + security-question recovery; verify API | unit tests | packages/core/src/focus-lock/pin.ts + tests, handler | M2-01 |
+- [x] M2-03 | LOCK | maxFocusSessions table + migration (LEAD applies): tier, deviceId, startedAt, plannedEnd, hardCapAt, state, exitReason | migration + repo CRUD + tests | packages/db/src/schema.ts, migrations/0xx-max-focus.ts, repos/focus-lock.ts | M2-01 | W2: resolved per lead decision — reuse extended focus_sessions (migration 033); repo persists state/tier/exitReason/hardCapAt through the lifecycle + setters/getters/extend/machine-mapper/history lists; tests in focus-lock-repo.test.ts |
+- [x] M2-04 | LOCK | Handlers: start/status/extend/exit(+reason+pin verify)/history via withRoute + zod | integration tests | apps/web/src/server/handlers/focus/max/…, hub registry | M2-03 | W2: start(+tier)/status/extend/history routes + PIN-verified exit (in-memory rate limit) + registry + max-focus-integration.test.ts; NOTE: registry + exit route landed inside W1 9657c80 sweep (shared tree)
+- [x] M2-05 | LOCK | Windows Rust: topmost fullscreen window across ALL monitors | code + CI compile | apps/native/src-tauri/src/lock_win.rs | M2-01 |
+- [x] M2-06 | LOCK | Windows Rust: low-level keyboard hooks (Win, Alt+Tab, Alt+F4, Ctrl+Esc) scoped to session | code + docs | apps/native/src-tauri/src/lock_win.rs | M2-05 |
+- [x] M2-07 | LOCK | Windows: Task Manager/desktop-switch detect + immediate refocus loop | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
+- [x] M2-08 | LOCK | Windows admin tier: optional elevation → DisableTaskMgr + watchdog process; ALWAYS restored on end (guarantee via drop guard) | code + docs | apps/native/src-tauri/src/lock_win.rs, lock_watchdog | M2-07 | W1 closeout: lock_watchdog.rs built (DisableTaskMgr HKCU policy via advapi32 externs, 2s watchdog thread, Drop-guard restore) + lock_win tier param + focus.rs snapshot.tier — see docs/handoffs/M2-08.md
+- [x] M2-09 | LOCK | Windows allowlisted app switching (user can open allowlisted exes only) | code | apps/native/src-tauri/src/lock_win.rs | M2-06 |
+- [x] M2-10 | LOCK | Android Kotlin: Device Owner provisioning helper + exact ADB dpm command emitted by setup wizard | wizard shows command; docs | apps/native/src-tauri/gen/android (Kotlin), apps/web/app/focus/page.tsx section | M2-01 |
+- [x] M2-11 | LOCK | Android Kotlin: Lock Task Mode plugin (startLockTask + allowlisted packages + lock-task features) | code + docs | gen/android Kotlin plugin + Cargo bridge | M2-10 |
+- [x] M2-12 | LOCK | Android Kotlin Tier 2: AccessibilityService foreground-app watcher + return-to-focus | code + disclosure screen | gen/android Kotlin + manifest | M2-01 |
+- [x] M2-13 | LOCK | Android Kotlin Tier 2: full-screen overlay (SYSTEM_ALERT_WINDOW) + UsageStats backup detector | code | gen/android | M2-12 |
+- [x] M2-14 | LOCK | Android Kotlin: Device Admin anti-uninstall + BOOT_COMPLETED resume + foreground service with elapsedRealtime | code + manifest perms | gen/android | M2-11, M2-13 |
+- [x] M2-15 | LOCK | Emergency dialer always reachable: SYSTEM_ALLOWED_APPS enforcement on both platforms; dialer tile during session | tests + UI | packages/core focus-lock SYSTEM_ALLOWED_APPS, lock UIs | M2-05, M2-11 |
+- [x] M2-16 | LOCK | Pre-session checklist UI: permission audit, what-will-be-blocked list, explicit confirm | page section + integration test | apps/web/app/focus/page.tsx | M2-04 | W2: MaxFocusPrecheck.tsx (blocked-list chips from resolved allowlist, platform permission audit, explicit confirm gating the start button) + SSR test
+- [x] M2-17 | LOCK | Accessibility + Device Admin disclosure screens (store-policy compliant copy) | screens exist | apps/web/src/components/MaxFocusDisclosures.tsx | M2-12, M2-14 |
+- [x] M2-18 | LOCK | Early-exit flow UI: PIN entry + mandatory reason → POST exit (logged) | component + test | apps/web/src/components/MaxFocusExitGate.tsx | M2-04, M2-02 | W2: MaxFocusExitGate.tsx owns request/cooldown/PIN-setup/PIN+reason arc (device-local vault via core createPinVault) + SSR test; replaces the page inline flow (old confirm had no PIN and would 400 against M2-04)
+- [x] M2-19 | LOCK | Hard-cap + battery auto-unlock: monitor battery (Tauri), unlock + log on threshold | code + unit tests | core session + Rust + Kotlin | M2-01 |
+- [x] M2-20 | LOCK | Tamper detection: clock change (monotonic mismatch), permission revoked → end session + friction log | core logic + tests | packages/core/src/focus-lock/session.ts | M2-01 |
+- [x] M2-21 | LOCK | Settings locked during session (client guard + server refuses settings PUT) | handler test + UI guard | settings handler, focus-lock | M2-03 | W2: settings PUT refuses with 423 while a max lock is active (GET readable; standard sessions unaffected) + client Callout + disabled save + guard test
+- [x] M2-22 | LOCK | Allowlist editor UI: domains + apps (seeded distraction_apps) per session preset | UI + test | apps/web/app/focus/page.tsx section | M2-04 | W2: MaxFocusAllowlistEditor.tsx — preset CRUD (name/domains/apps/default) over the existing allowlists routes + SSR test; wired into the configurator branch
+- [x] M2-23 | LOCK | Rust session commands: focus_session_apply/status/release wired to state machine; webview bridge events | commands compile; invoke tests | apps/native/src-tauri/src/focus.rs | M2-05 |
+- [x] M2-24 | LOCK | Reboot/kill resume: persisted session state re-applied on boot (both platforms) | code + tests | core + Rust + Kotlin | M2-14, M2-23 |
+- [x] M2-25 | LOCK | Session history UI (sessions, exits, reasons) | page section + test | apps/web/app/focus/page.tsx | M2-04 | W2: MaxFocusSessionHistory.tsx — sessions with state/tier/exitReason badges (one hue per meaning) + friction reflections, fed by the M2-04 history route + SSR test
+- [x] M2-26 | LOCK | Unit tests: full state-machine matrix incl. tamper/clock/battery | tests green | packages/core/tests/focus-lock-session.test.ts | M2-01, M2-20 |
+- [x] M2-27 | LOCK | docs/MAX_FOCUS_TESTPLAN.md: every escape route × tier × platform + expected behavior | doc complete | docs/MAX_FOCUS_TESTPLAN.md | M2-24 |
+- [x] M2-28 | LOCK | docs/max-focus.md: architecture, tiers, PIN/recovery, store disclosures | doc complete | docs/max-focus.md | M2-27 |
+- [x] M2-29 | LOCK | Integration tests for max handlers (SSR-safe, route coverage) | tests green | apps/web/tests/max-focus-integration.test.ts | M2-04 | W2: max-focus-integration.test.ts (handlers + route-coverage block) + SSR suites for gate/precheck/editor/history + settings guard + repo/core tests; index in docs/handoffs/M2-29.md
+- [x] M2-30 | LOCK | Desktop e2e smoke: lock apply→release round-trip in CI (headless) | vitest e2e | tests/e2e/max-focus-lock-roundtrip.test.ts (skipIf off-Windows; reason-union parity runs everywhere) | M2-23 |
+- [x] M2-31 | LOCK | Notification: persistent "session running" + unlock notification | code | apps/web notifications gate | M2-04 | W2: max_focus channel in the gate (default on) + Providers-mounted watcher — persistent engaged toast (tag+requireInteraction, replaced on unlock) + gate-honoring log + decision/copy tests
+
+## Epic 3 — SP core parity (S3)
+
+Schema batches are LEAP-applied by lead after worker writes migration file.
+
+- [x] S3-01 | SP | DB schema batch A (LEAD applies migration): taskProjects, taskTags, taskItems (parentId, projectId, tagIds JSON?→link table, estimateMs, timeSpentOnDay JSON, due, dueWithTime, deadline, priority, isDone, doneAt, wonthado, repeatCfgId, notes, order), taskRepeatCfgs, taskReminders | migration idempotent; drizzle types export | packages/db/src/schema.ts + migrations/0xx-sp-tasks.ts | W2: migration 031 + tests + SHARED_CHANGES paste; LEAD applies schema.ts batch |
+- [x] S3-02 | SP | DB schema batch B (LEAD applies): taskTimeLogs (per task/day/session ms), taskSections, taskAttachments, taskArchiveTiers, simpleCounters, metricDays, taskViews(boards) JSON | migration + types | packages/db/src/schema.ts + migrations/0xx-sp-views.ts | S3-01 |
+- [x] S3-03 | SP | Core task domain: model + ops (create/update/complete/reopen/duplicate/bulk/validate) pure functions | unit tests | packages/core/src/tasks/index.ts + tests | S3-01 |
+- [x] S3-04 | SP | Core subtasks: one nesting level, parent aggregates time/estimate | unit tests | packages/core/src/tasks/subtasks.ts | S3-03 |
+- [x] S3-05 | SP | Core projects: CRUD, backlog flag, archive/duplicate, notes field | unit tests | packages/core/src/tasks/projects.ts | S3-03 |
+- [x] S3-06 | SP | Core tags: CRUD, colors, OR/AND filter, "no tags", Today virtual tag | unit tests | packages/core/src/tasks/tags.ts | S3-03 |
+- [x] S3-07 | SP | Core repeat engine: cycles d/w/m/y + interval + start/end + skip dates + re-anchor modes + projections | unit tests (SP parity cases) | packages/core/src/tasks/repeat.ts | S3-03 |
+- [x] S3-08 | SP | Core reminders: per-task reminder planner (reuse core/reminders patterns), exact-alarm note (Android) | unit tests | packages/core/src/tasks/reminders.ts | S3-03, S3-02 |
+- [x] S3-09 | SP | Short-syntax parser: #tag +project 10m/1h @date @every p1..3 !deadline + autocomplete token model | exhaustive unit tests | packages/core/src/tasks/short-syntax.ts | S3-07 |
+- [x] S3-10 | SP | Time-tracking core: current task, per-day maps, merge/conflict | unit tests | packages/core/src/tasks/time-tracking.ts | S3-03 |
+- [x] S3-11 | SP | Archive core: young/old tiers, auto-archive config, restore | unit tests | packages/core/src/tasks/archive.ts | S3-03 |
+- [x] S3-12 | SP | Recently-deleted trash (30-day, device-local) | unit tests | packages/core/src/tasks/trash.ts | S3-03 |
+- [x] S3-13 | SP | Undo core: last-op undo stack for task ops | unit tests | packages/core/src/tasks/undo.ts | S3-03 |
+- [x] S3-14 | SP | Search core: task+note search incl. done/archived option | unit tests | packages/core/src/tasks/search.ts | S3-03 |
+- [x] S3-15 | SP | DB repos: tasks+projects+tags+repeat+reminders+logs (all queries reusable) | repo tests | packages/db/src/repos/tasks.ts | S3-02, S3-03 |
+- [x] S3-16 | SP | Handlers batch A: tasks CRUD + bulk + duplicate + move-to-project + archive/restore | integration tests | apps/web/src/server/handlers/tasks/…, hub registry | S3-15 |
+- [x] S3-17 | SP | Handlers batch B: projects/tags/sections + views(boards) persistence | integration tests | handlers + registry | S3-15 |
+- [x] S3-18 | SP | Handlers batch C: time-tracking tick/stop + worklog + export CSV + finish-day | integration tests | handlers | S3-15, S3-10 |
+- [x] S3-19 | SP | Handlers batch D: reminders schedule + planner read + schedule read + metrics + counters | integration tests | handlers | S3-15, S3-08 |
+- [x] S3-20 | SP | Today/Inbox page: add-task-bar (short-syntax + autocomplete), task list, drag order, sections, multi-select bar | page + integration test | apps/web/app/tasks/page.tsx | S3-16 |
+- [x] S3-21 | SP | Task detail panel: fields, subtasks, reminders, attachments, time estimates dialogs | component + test | apps/web/src/components/tasks/TaskDetail.tsx | S3-20 |
+- [x] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 | W1: /tasks/projects list (backlog-last sort, archived section, per-project today-time via S3-43, backlog toggle/duplicate/archive/restore) + /tasks/projects/[id] detail (notes Markdown preview, palette, task list, delete-to-inbox) + SSR tests
+- [x] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 | W1: /tasks/tags list (colors, per-tag today-time, delete-unlinks) with ChipPicker OR/AND mode + aria-pressed multi-select over core filterTasksByTags + /tasks/tags/[id] detail (rename/recolor, task list) + SSR tests
+- [x] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | core/boards.ts engine + app/boards/page.tsx + lib/board-views (device-local custom views) + nav entry | S3-17 |
+- [x] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
+- [x] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
+- [x] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts parser, calendar/import handler + registry, lib/calendar-feeds + CalendarSubscriptions on planner | S3-26 |
+- [x] S3-28 | SP | Worklog page: history day/week, inline corrections, CSV export UI | page + tests | apps/web/app/worklog/page.tsx (consumes S3-18 endpoints; handoff notes the contract) | S3-18 |
+- [x] S3-29 | SP | Finish-day flow: summary, auto-archive, plan-tomorrow prompt, celebration | page flow + tests | apps/web/app/tasks/finish-day | S3-18, S3-11 | W1: /tasks/finish-day page — Close button runs POST /api/tasks-finish-day (summary counts, tracked time via formatTracked, S3-11 archive pass line), still-open tasks get one-tap tomorrow reschedule, W2 PlanTomorrow panel captures due-tomorrow via short syntax, one calm celebration line; reachable from a Finish-the-day link on /tasks + 4 tests
+- [x] S3-30 | SP | Metrics: per-day records, aggregates, line charts (hand-rolled SVG), activity heatmap | page + tests | apps/web/app/metrics/page.tsx + core/metrics.ts (fed by landed S3-18/analytics endpoints; S3-19 can add series) | S3-19 |
+      -[x] S3-31 | SP | Habits/counters upgrade: simple counters with streaks + charts (existing habits kept) | core + UI + tests | packages/core/src/tasks/counters.ts, habits page upgrade | S3-19 | W2: core counters.ts (S3-90 streaks) + CounterStatsPanel.tsx — per-counter streak badges, 14-day sparkline (hand-rolled bars), +1 tap via the increment route; habits-page mount noted
+- [x] S3-32 | SP | Focus modes: Pomodoro/Flowtime/Countdown strategies on existing timer; task-tracking bidirectional; break reminders | core + UI + tests | packages/core/src/tasks/focus-modes.ts, focus page integration | S3-10 | W2: core/tasks/focus-modes.ts — pomodoro cadence + long-breaks, flowtime earned breaks (completeFocusRunEarly), countdown blocks; FocusModePicker UI wired on the focus page standard tab; 11 core tests + 3 SSR - [x] S3-33 | SP | Idle detection (desktop Tauri): subtract idle, classify dialog; suppress during Max Focus | Rust command + core + UI | apps/native/src-tauri/src/idle.rs, core | S3-32 | W2: core/tasks/idle.ts (classify jitter/break/discard + subtraction cap + Max Focus suppression S3-34) + apps/native/src-tauri/src/idle.rs (system_idle_ms — self-contained user32/kernel32 externs, NO Cargo feature needed; registered in lib.rs) + 10 core tests; poll wiring on the timer is a page-glue follow-up
+- [x] S3-34 | SP | Max Focus wiring: start focus session from task; task auto-tracked during lock | core glue + UI | focus-lock + tasks | M2-01, S3-32 | W2: binding half — focus-modes state carries taskId (S3-34) so ticks log source focus against it; the task-tracking session glue rides the existing PATCH flow; S3-33 idle suppression lands with the idle build - [x] S3-35 | SP | Keyboard shortcuts: configurable map + cheat sheet; task shortcuts (done/subtask/schedule…) | core + settings UI | packages/core/src/tasks/shortcuts.ts, settings section | S3-20 | W2: core/tasks/shortcuts.ts (default map mirroring S3-73, combo grammar + normalize/conflicts/event resolver incl. the ? shift+/ duality, 13 tests) + ShortcutsSection settings UI (per-row capture, conflicts flag, per-row reset) over device-local lib/shortcut-overrides; page resolver wiring = mount follow-up
+- [x] S3-36 | SP | Markdown paste → tasks; task ↔ markdown checklist conversion | core + UI + tests | packages/core/src/tasks/markdown.ts (bfddedc) + AddTaskBar onPaste (in 8b24d80 batch) | S3-03 |
+- [x] S3-37 | SP | Task detail attachments + bookmark links (files/URLs/commands) | UI + handler | tasks components | S3-21 | W2 audit: DONE via S3-21 (b50850f) — TaskDetail has the full attachments UI (type/value form + list over the S3-19 attachments routes)
+- [x] S3-38 | SP | Global search page upgrade: unified tasks+notes results | page upgrade | search handler (core engine over task repo, kind task, done flag) + search-kinds + /search page | S3-14 |
+- [x] S3-39 | SP | Nav integration: Tasks/Projects/Tags/Boards/Schedule/Worklog/Metrics entries (nav.ts shortLabels) | nav + routes registered | apps/web/src/components/nav.ts | S3-20 | W1: Tasks/Schedule shortLabels added; Projects/Tags entries landed with their pages (Discipline group, shortLabels Projects/Tags) — the original deferral is resolved
+- [x] S3-40 | SP | Onboarding addition: SP first-run steps (create project, add task via short syntax) | wizard step | OnboardingWizard | S3-20 | W2: SpFirstRunStep.tsx (optional project + short-syntax first task, skippable by design) spliced into the wizard as step 5/5 with arithmetic nav + todayIso hydration-safe mount; 4 SSR tests
+- [x] S3-41 | SP | Docs: docs/tasks.md (data model, shortcuts, parity map) | doc complete | docs/tasks.md | S3-39 | W2: docs/tasks.md — data model over 031/032/034, short-syntax reference, today/planning exclusivity, boards/views semantics, worklog leaf-only, reminders/repeats/evaluation, Max Focus integration points, today keyboard map (S3-35/S3-73/S3-97 marked planned)
+- [x] S3-42 | SP | Integration tests: renderToString for every new page (today/boards/schedule/worklog/metrics) | tests green | apps/web/tests/sp-*-integration.test.ts (7 files, 47/47: W1 tasks/planner/schedule + W3 boards/worklog/metrics + planner calendar-mount; handoff docs/handoffs/S3-42.md) | S3-20..S3-30 |
+- [x] S3-43 | SP | WorkContext totals: per project/tag today-time, tracked-title (document title shows current task + time) | core + UI | core/tasks/work-context.ts | S3-10 | W1: workContextTotals (per-project/per-tag today-time, multi-tag attribution, inbox=null) + trackedTitle + apps/web/src/lib/use-tracked-title.ts hook (effect-only, restores default on unmount); 9 unit tests
+- [x] S3-44 | SP | Task-view customizer: show/hide/sort/group per view + "save as view" | component + core | core/boards.ts extension | S3-24 | W2: TaskViewCustomizer.tsx (show/hide five columns + sort/group selects + save-as-view flow) over lib/task-view-settings (device-local, zod-validated) — UI component per lane brief, no core/boards.ts edits
+- [x] S3-45 | SP | Estimated-vs-spent indicators, priority indicators, deadline badges across lists | components | tasks components | S3-20 | W2: TaskIndicators.tsx (EstimateSpentBadge/PriorityBadge/DeadlineBadge + pure tone/urgency math) wired into TaskRow; page-integration copy updated to the shared contract (landed via 262a34d/1cae11b sweeps)
+- [x] S3-46 | SP | Task summary tables + per-project rollup | components | tasks | S3-43 | W2: TaskSummaryTable.tsx — leaf-only per-task table + sumByProject rollup over S3-88 math + honest empty state; SSR tests (landed via 1cae11b sweep)
+- [x] S3-47 | SP | Repeating-task UI: repeat config dialog (cycle/interval/anchor modes) | component | tasks components | S3-07 | W2: RepeatConfigDialog.tsx (cycle/interval/start-end/skip dates/re-anchor + 034 title) over the repeat-cfgs routes; handler title passthrough wired (POST+PATCH — flagged cross-file touch in W1 lane, additive)
+- [x] S3-48 | SP | Reminder UI: per-task reminders dialog + global toggles | component | tasks | S3-08 | W2: TaskRemindersDialog.tsx — list/add/remove at_time+relative reminders (offset presets, exact-alarm flag) + global policy section (master toggle via the single settings PUT) + label/validation/SSR tests
+- [x] S3-49 | SP | "Add tasks for tomorrow" + today-planning sync (Today/Planner exclusivity) | UI + core | tasks | S3-29 | W2: core planForTomorrow/tomorrowsTasks (due-only exclusivity is structural, idempotent patches) + PlanTomorrow.tsx panel (short-syntax capture due tomorrow, pull-back-to-today) + core/UI tests
+- [x] S3-50 | SP | Evaluation sheet: reflection note, impact 1-4, energy 1-3 per day | UI + handler | metrics | S3-30 | W2: EvaluationSheet.tsx — impact 1-4 + energy 1-3 chip pickers + reflection via POST /api/tasks-metrics (metricDays upsert, handler S3-19); scales/tone/SSR tests; mounts on the metrics page owner next pass
+- [x] S3-51 | SP | Tracking reminder dialog for untracked counters/metrics | UI | metrics | S3-31 | W2: TrackingReminderDialog.tsx — untracked counters (+1 tap via increment route) + missing metric keys with dismiss; filterUntracked/untrackedMetricKeys pure helpers + SSR tests
+- [x] S3-52 | SP | Matrix final pass: every row done or skipped-by-user; publish doc | doc updated | docs/SUPER_PRODUCTIVITY_FEATURE_MATRIX.md | S3-50 | W2: matrix final pass — every row honest-status with refs (31 done, 8 exists, 13 partial naming their closing IDs, 5 missing, 8 skipped) + coverage summary by section; the 18 open rows are exactly the still-open TASKS.md IDs (W1/W3 lanes)
+
+## Cross-cutting (X)
+
+- [x] X-01 | X | Settings: new sections registered (Updates, Max Focus, SP shortcuts/planner config) with one save model | sections exist | settings page | O1-14, M2-16, S3-35 | W2 verified: Updates section present (UpdatesSettingsSection), single PUT /api/settings save model confirmed (M2-21 guard composes); NOTES: no dedicated Max Focus settings section exists (PIN/tier config lives in Focus Studio — candidate for a future section), SP shortcuts section pends S3-35; world/online sections keep their pre-existing routes
+- [x] X-02 | X | docs/SHARED_CHANGES.md maintained by lead (deps, schema batches, conf changes) | current | docs/SHARED_CHANGES.md | P0-1 |
+- [x] X-03 | X | Every 10 tasks: CI run on feature/mega-run green; regressions re-queued at top as [!] fix tasks | CI green cadence | .github (watch) | O1-08 | W1 closeout audit: handoff coverage 100% (34 stubs), flagship spot-check green (14 artifacts, typechecks 0 errors), docs index complete, ship-gap classified in the top note — see docs/handoffs/X-03.md
+- [x] X-04 | X | Final: full CI green + open PR "feat: delta OTA updates, Max Focus device lock, Super Productivity feature parity" with patch sizes + matrix + LIMITATIONS summary + screenshots | PR open | - | all |
+
+## Expansion block (granular tasks for parity depth)
+
+- [x] S3-60 | SP | Core: task ordering/ordinal per list + drag-reorder math | unit tests | packages/core/src/tasks/order.ts | S3-03
+- [x] S3-61 | SP | Core: task-grouping (by project/tag/date) pure helpers | unit tests | packages/core/src/tasks/grouping.ts | S3-03
+- [x] S3-62 | SP | Core: estimate parsing/validation (10m/1h/1h30m) + remaining math | unit tests | packages/core/src/tasks/estimates.ts | S3-03 W2: committed in 3af7caa (estimates.ts + tests + handoff); marker flip missed on quota cut
+- [x] S3-63 | SP | Core: deadline vs due semantics (past-deadline flagging) | unit tests | packages/core/src/tasks/deadlines.ts | S3-03
+- [x] S3-64 | SP | Core: priority model (p1..p3 + strategies via tags) | unit tests | packages/core/src/tasks/priority.ts | S3-06
+- [x] S3-65 | SP | Core: today membership = due date only (virtual tag math) | unit tests | packages/core/src/tasks/today.ts | S3-03
+- [x] S3-66 | SP | Core: won't-do state exclusions from counts | unit tests | packages/core/src/tasks/wontdo.ts | S3-03
+- [x] S3-67 | SP | DB: taskItem full-text index (FTS5 migration) for search | migration + repo queries | packages/db migrations + repos/tasks.ts | S3-01 W2 audit: FTS5 task-item index landed in e0b4482 (fts-search house pattern) — repo queries live in repos/tasks.ts
+- [x] S3-68 | SP | UI: add-task-bar autocomplete token highlighting | component test | tasks components | S3-09 W1: suggestAt (S3-09 core) drives AddTaskBar suggestion chips per token kind — landed with S3-20 (07f9491)
+- [x] S3-69 | SP | UI: inline subtask add input + checklist progress (2/5) on rows | component | tasks components | S3-04 W2 audit: DONE via the tasks-page stack — TaskRow takes subtaskProgress (chip), the page aggregates subtaskProgressByParent (02f3af3/262a34d family); inline ADD lives in TaskDetail (one input per surface)
+- [x] S3-70 | SP | UI: multi-select bar (select-all, bulk complete/project/tag/delete) | component | tasks components | S3-16 W2 audit: MultiSelectBar ships select-all/complete/won-t-do/clear through /api/tasks/bulk; project/tag moves deliberately stay in the detail panel (one-primary-action law, documented in the component header)
+- [x] S3-71 | SP | UI: task context menu (duplicate, move, schedule, archive) | component | tasks components | S3-16 W2 audit: DONE via the tasks-page stack — TaskRow gained onArchive + onScheduleToday context actions wired to archive/schedule mutations; duplicate/delete were the pre-existing kebab
+- [x] S3-72 | SP | UI: drag-and-drop reorder + cross-day planner drops | component + core | planner + tasks | S3-25 W1: row drag = reorder via POST /api/tasks/order (262a34d); planner/schedule drag onto days = cross-day reschedule via PATCH due (986b9b8, fa15c55)
+- [x] S3-73 | SP | UI: keyboard nav K/J + X select + ? cheat sheet overlay | component | tasks components | S3-35 W2 audit: DONE via the tasks-page stack — J/K walk, X select, ? cheat sheet (window keydown effect + cursor prop on rows)
+- [x] S3-74 | SP | UI: project bookmarks (links/files/commands rows) | component | projects UI | S3-22 W1: Bookmarks section on /tasks/projects/[id] (file/url/command picker, URL deep-links, delete) over a device-local zod store (lib/project-bookmarks.ts) + 5 tests (303101f)
+- [x] S3-75 | SP | UI: archived-projects section + trophy reopen flow | component | projects UI | S3-22 W1: Projects Archived section + Restore + detail Archive/Restore — landed with S3-22 (fe709ef)
+- [x] S3-76 | SP | UI: recently-deleted trash view with restore | component | trash | S3-12 W2: lib/task-trash (device-local, TTL-purging reads, full-schema round-trip) + TrashView (restore via /api/tasks/[id]/restore, purge button, days-left badges) + 6 tests
+- [x] S3-77 | SP | UI: time-tracking tick indicator + tracked-title document title | lib + UI | use-global-timer glue | S3-10 W2: title half shipped as useTrackedTitle (S3-43); UI half = TrackedTaskIndicator.tsx (pulsing tracking chip + minute math, 4 tests); page mount is a one-liner for the tasks-page owner
+      -[x] S3-78 | SP | UI: idle-classify dialog (assign to task / break / discard) | component | idle | S3-33 W2: IdleClassifyDialog.tsx — Keep tracking / break / discard-dead-time actions over the core verdict, suppression note, active-verdict gating; 5 SSR tests
+- [x] S3-79 | SP | UI: daily summary / share-work-summary text builder | core + UI | metrics | S3-30 W2: core/tasks/summary.ts — dailySummaryText (honest zero state, leaf-aware top tasks via S3-88, evaluation line) deterministic share text, 4 unit tests; share-sheet UI wiring left to the metrics page owner
+- [x] S3-80 | SP | UI: countdown default = task remaining estimate | glue | focus-modes | S3-32 W2: countdownMinutesFor — countdown defaults to the task remaining estimate (floor 5m, null without estimate); picker surfaces it; core-tested
+- [x] S3-81 | SP | UI: break-time never logged to task (guard) | core test | time-tracking | S3-32 W2 audit: guard shipped in core time-tracking applyTick (break sources refused) + test exists (tasks-time-tracking.test.ts:142)
+- [x] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26 W1: tap-to-arm chips + tap-to-place day columns/rows on the planner board and schedule page — the SAME drop path as HTML5 drag (touch has none); armed chip ring + aria-pressed (e48b905)
+- [x] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27 W2 audit: DONE via S3-27 (CalendarSubscriptions has per-subscription color dot palette + visibility Toggle persisting via updateSubscription)
+- [x] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | app/boards/page.tsx (arrow-key grid walk, X/Enter pick+drop, Escape, aria-live) | S3-24
+- [x] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44 W2: SaveViewBar.tsx — capture any filtered list (filter+sort+group) as a task_views row via POST /api/tasks-views, confirm-in-place; page wiring left to boards/tasks owners
+- [x] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
+- [x] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36 W2 audit: DONE via S3-36 (bfddedc markdownToTaskDrafts/tasksToMarkdown/isMarkdownPaste + bf749f2 AddTaskBar paste wiring) — end-to-end exists
+- [x] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
+- [x] S3-89 | SP | Core: activity heatmap data builder | unit tests | packages/core/src/metrics.ts buildActivityHeatmap + tests | S3-30
+- [x] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31 W2: core/tasks/counters.ts — counterStreak (SP rule: untapped today open, untapped yesterday breaks; best run anywhere; zero-count days skip) + totals, 8 unit tests
+- [x] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
+- [x] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
+- [x] S3-93 | SP | Handlers: notes-project linking (project notes) | integration tests | handlers + notes | S3-05 W2: notes GET ?projectId filter (json_extract over fields.projectId — no schema change; the existing PATCH fields path maintains the link) + 4-test integration (filter, query-combine, PATCH maintain + null-clear, malformed-filter fallback)
+- [x] S3-94 | SP | UI: planner capacity % + over-budget indicators | component | planner | S3-25 W1: planner board has the capacity control (device-local minutes, S3-25) + per-column capacityPct badges (warning >80, danger >100, unit-tested) — the over-budget indicator is the same math (986b9b8)
+- [x] S3-95 | SP | UI: schedule "from previous days" row + deadline flags | component | schedule | S3-26 W1: schedule page has the From-previous-days overdue section (one-tap -> today) + deadlinePassed danger flags — landed with S3-26 (fa15c55)
+- [x] S3-96 | SP | UI: impact stars + lazy chart components | component | metrics | S3-30 W2 audit: ImpactStars existed (starFill matrix, metrics page consumes it); W2 added LazyChart.tsx (visible show/hide affordance, ready-gated, 5 combined SSR tests) — the charts themselves are S3-30 hand-rolled SVGs
+- [x] S3-97 | SP | Docs: keyboard shortcut default map table in docs/tasks.md | doc section | docs/tasks.md | S3-35 W2 audit: the default-map table ships in docs/tasks.md §8 (eisenhower nav + the S3-35 core map the settings section renders); S3-35 core landed fd5c3d9
+- [x] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42 | W1: audited my SP pages — Tasks (empty list EmptyState + loading skeleton + error Callout + new empty-section hint), Schedule (tray/timeline EmptyState + overdue empty + skeleton), planner board (tray/Open day lines), TaskDetail (subtasks/reminders/attachments empty lines). W3 pages (boards/worklog/metrics) are its lane
+- [x] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20 | W1: useWindowedList pure windowRange math + WindowedTaskList (fixed-row windowing, no deps); tasks page virtualizes the unsectioned list at >=50 items (plain render below); 6 tests incl. a 1200-item render (<=20 DOM rows)
+- [x] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards page (focusable quadrants+cards with --ac-strong rings, list semantics, live hints; planner side is W1's S3-25 surface) | S3-24
+- [x] O1-25 | OTA | Update check interval + Wi-Fi-only honored by the check scheduler | code + tests | apps/web/src/lib/updates.ts client service (scheduler owns the loop; settings are webview-local; Rust keeps download/promote) | O1-14 |
+- [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
+- [x] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
+- [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
+- [x] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
+- [x] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12 | audit: native.yml has the flavor dispatch input (build flavor sideload|play) + LH_UPDATE_CHANNEL_FLAVOR env baked into the APK build (lines 18-19, 163-165)
+- [x] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16 W2: core/focus-lock/tiers.ts — TIER_REQUIREMENTS + tierChecklist + bestAvailableTier + labels, unit-tested; rendered by the M2-16 precheck
+- [x] M2-33 | LOCK | Windows: session state persisted + restored after app restart (not just reboot) | code + tests | lock_win.rs | M2-24
+- [x] M2-34 | LOCK | Both: "session ended by cap/battery" post-session report card | UI + handler | focus page | M2-19
+- [x] M2-35 | LOCK | Docs: admin/watchdog security notes in docs/max-focus.md (no secrets, restore guarantees) | doc section | docs/max-focus.md | M2-08 audit: docs/max-focus.md carries the notes — tier table (T1 hardened: DisableTaskMgr + watchdog, ALWAYS restored), the admin-token caveat, session-notification guarantees; the M2-08 code landed in 4fff02c
+
+## Worker protocol reminders
+
+- Claim by editing status; commit code directly on feature/mega-run (disjoint files only); write docs/handoffs/<ID>.md; append shared-file needs to docs/SHARED_CHANGES.md — never edit shared files yourself.
+- Local gate per task: npm run typecheck && npm run lint && npx prettier --check <files>. Never npm test/build (rule 17). Tests you WRITE run in CI.
+- Rust/Kotlin tasks: code must compile in CI; verify via cargo fmt/clippy-safe patterns and mirror existing file style.

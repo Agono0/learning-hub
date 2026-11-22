@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Feynman teach-back: pick a concept → explain it → the AI plays a confused
  * 12-year-old (2-3 follow-ups) → grade → coverage, misconceptions, and the
@@ -20,6 +22,8 @@ import { apiGet, apiSend, apiStream } from '@/lib/transport'
 import { FeynmanExplanationCard, IconButton, PageHeader } from '@/ui'
 import { FeynmanSocraticStudio } from '@/components/FeynmanSocraticStudio'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 
 interface Msg {
   /** stable client-side identity — the message list grows during a session */
@@ -44,7 +48,20 @@ function useManualMode(feature: string, enabled: boolean) {
   })
 }
 
+/**
+ * GSAP count-up for the teach-back coverage score (the page's headline
+ * number). SSR and reduced-motion render the final number.
+ */
+function CountUp({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return <span ref={ref}>{value}</span>
+}
+
 export default function FeynmanPage() {
+  // GSAP moment for this page: the manual self-assessment rubric rows rise in
+  // with a capped stagger on scroll into view (rows carry no framer animation
+  // of their own — the page beats are ClayIn's).
+  const rubricRevealRef = useGsapReveal<HTMLDivElement>()
   const { data: aiStatus } = useAiStatus()
   const manual = aiStatus?.configured === false
   const { data: studentManual } = useManualMode('feynman-student', manual)
@@ -304,8 +321,8 @@ export default function FeynmanPage() {
                   onClick={() => setViewMode('studio')}
                   className={`rounded-md px-3 py-1 text-xs font-medium transition ${
                     viewMode === 'studio'
-                      ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
+                      ? 'bg-white font-semibold text-strong shadow-xs dark:bg-neutral-700'
+                      : 'text-secondary hover:text-strong dark:text-faint dark:hover:text-neutral-200'
                   }`}
                 >
                   Socratic Studio
@@ -315,8 +332,8 @@ export default function FeynmanPage() {
                   onClick={() => setViewMode('dialogue')}
                   className={`rounded-md px-3 py-1 text-xs font-medium transition ${
                     viewMode === 'dialogue'
-                      ? 'bg-white font-semibold text-neutral-900 shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                      : 'text-neutral-600 hover:text-neutral-900 dark:text-faint dark:hover:text-neutral-200'
+                      ? 'bg-white font-semibold text-strong shadow-xs dark:bg-neutral-700'
+                      : 'text-secondary hover:text-strong dark:text-faint dark:hover:text-neutral-200'
                   }`}
                 >
                   AI Dialogue
@@ -471,13 +488,13 @@ export default function FeynmanPage() {
           )}
           {feynmanReport && feynmanReport.socraticProbes.length > 0 && !grade && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-neutral-100 pt-2 dark:border-(--hub-border)">
-              <span className="text-[11px] font-medium text-faint">Socratic probes:</span>
+              <span className="text-xs font-medium text-faint">Socratic probes:</span>
               {feynmanReport.socraticProbes.slice(0, 2).map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => setInput(p.prompt)}
-                  className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary"
+                  className="max-w-[260px] truncate rounded-md border border-neutral-200 bg-white px-2 py-0.5 text-xs text-neutral-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-(--hub-border) dark:bg-(--hub-panel-2) dark:text-secondary"
                   title={p.prompt}
                 >
                   {p.prompt}
@@ -520,50 +537,52 @@ export default function FeynmanPage() {
               Self-assessment rubric — grade substance, not style
             </h2>
             <p className="text-xs text-tertiary">{graderManual.manual.summary}</p>
-            {graderManual.manual.rubric?.map((r) => (
-              <div key={r.key}>
-                <label className="label mb-1 block">{r.label}</label>
-                <p className="mb-1 text-[11px] text-tertiary">{r.hint}</p>
-                {r.key === 'coverage' ? (
-                  <input
-                    className="input w-32"
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={selfCoverage}
-                    onChange={(e) =>
-                      setSelfCoverage(
-                        e.target.value === ''
-                          ? ''
-                          : Math.max(0, Math.min(100, Number(e.target.value))),
-                      )
-                    }
-                    placeholder="0–100"
-                  />
-                ) : (
-                  <textarea
-                    className="input min-h-16 text-xs"
-                    value={
-                      r.key === 'misconceptions'
-                        ? selfMisconceptions
-                        : r.key === 'gaps'
-                          ? selfGaps
-                          : selfCards
-                    }
-                    onChange={(e) => {
-                      if (r.key === 'misconceptions') setSelfMisconceptions(e.target.value)
-                      else if (r.key === 'gaps') setSelfGaps(e.target.value)
-                      else setSelfCards(e.target.value)
-                    }}
-                    placeholder={
-                      r.key === 'suggestedCards'
-                        ? 'What is ____? :: A single-idea answer'
-                        : 'One per line…'
-                    }
-                  />
-                )}
-              </div>
-            ))}
+            <div ref={rubricRevealRef} className="space-y-3">
+              {graderManual.manual.rubric?.map((r) => (
+                <div key={r.key}>
+                  <label className="label mb-1 block">{r.label}</label>
+                  <p className="mb-1 text-xs text-tertiary">{r.hint}</p>
+                  {r.key === 'coverage' ? (
+                    <input
+                      className="input w-32"
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={selfCoverage}
+                      onChange={(e) =>
+                        setSelfCoverage(
+                          e.target.value === ''
+                            ? ''
+                            : Math.max(0, Math.min(100, Number(e.target.value))),
+                        )
+                      }
+                      placeholder="0–100"
+                    />
+                  ) : (
+                    <textarea
+                      className="input min-h-16 text-xs"
+                      value={
+                        r.key === 'misconceptions'
+                          ? selfMisconceptions
+                          : r.key === 'gaps'
+                            ? selfGaps
+                            : selfCards
+                      }
+                      onChange={(e) => {
+                        if (r.key === 'misconceptions') setSelfMisconceptions(e.target.value)
+                        else if (r.key === 'gaps') setSelfGaps(e.target.value)
+                        else setSelfCards(e.target.value)
+                      }}
+                      placeholder={
+                        r.key === 'suggestedCards'
+                          ? 'What is ____? :: A single-idea answer'
+                          : 'One per line…'
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
             <button className="btn text-sm" disabled={selfCoverage === ''} onClick={applySelfGrade}>
               Apply my self-grade
             </button>
@@ -582,7 +601,9 @@ export default function FeynmanPage() {
               />
             )}
             <div className="flex items-center gap-4">
-              <div className="text-4xl font-bold text-ac-text">{grade.coverage}%</div>
+              <div className="text-4xl font-bold text-ac-text">
+                <CountUp value={grade.coverage} />%
+              </div>
               <div className="text-sm text-tertiary">
                 {manual ? 'concept coverage (self-graded)' : 'concept coverage'}
               </div>

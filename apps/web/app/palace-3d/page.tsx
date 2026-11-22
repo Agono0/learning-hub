@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * 3D Memory Palace — walk one of your memory palaces in three dimensions.
  *
@@ -49,6 +51,8 @@ import {
   SelectField,
   Skeleton,
 } from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface PalaceListResponse {
   palaces: Array<{ palace: { id: number; name: string }; items: unknown[] }>
@@ -305,41 +309,28 @@ export default function Palace3dPage() {
     : null
   const padBtn =
     'flex h-11 w-11 items-center justify-center rounded-lg bg-neutral-800 text-white hover:bg-neutral-700'
+  // GSAP moment: header + active view rise in (SSR-safe; reduced-motion skips).
+  const pageRef = useGsapReveal<HTMLDivElement>()
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+    <div ref={pageRef} className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="3D Memory Palace"
           subtitle="Walk the loci of your memory palaces in three dimensions. Each pedestal is one of your palace's places."
           icon={<Box className="h-5 w-5" />}
         />
-        <div className="flex items-center gap-1 rounded-xl border border-neutral-800 bg-neutral-900/90 p-1 text-xs shrink-0">
-          <button
-            type="button"
-            onClick={() => setViewMode('studio')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
-              viewMode === 'studio'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-faint hover:text-white'
-            }`}
-          >
-            <Move3d className="h-3.5 w-3.5" />
-            <span>Studio Workbench</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('classic')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
-              viewMode === 'classic'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-faint hover:text-white'
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span>Classic Walker</span>
-          </button>
-        </div>
+        {/* View switcher — kit ChipPicker (choose-one mode row) */}
+        <ChipPicker<'studio' | 'classic'>
+          className="shrink-0"
+          label="Palace view mode"
+          items={[
+            { value: 'studio', label: 'Studio Workbench', icon: <Move3d /> },
+            { value: 'classic', label: 'Classic Walker', icon: <Layers /> },
+          ]}
+          value={viewMode}
+          onChange={setViewMode}
+        />
       </div>
 
       {palaces.isLoading ? (
@@ -416,7 +407,9 @@ export default function Palace3dPage() {
               </Button>
             </div>
             {saveLayout.isError ? (
-              <p className="text-xs text-danger-text">{errorText(saveLayout.error)}</p>
+              <Callout tone="danger" title="Layout not saved">
+                {errorText(saveLayout.error)}
+              </Callout>
             ) : saveLayout.isSuccess ? (
               <p className="text-xs text-tertiary">
                 Layout saved (including your current position as the start).
@@ -436,7 +429,7 @@ export default function Palace3dPage() {
             <>
               <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-950 dark:border-(--hub-border)">
                 <div ref={mountRef} className="h-[340px] w-full md:h-[460px]" />
-                <div className="absolute left-2 top-2 flex items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-[11px] text-neutral-300">
+                <div className="absolute left-2 top-2 flex items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-xs text-neutral-300">
                   <Compass className="h-3.5 w-3.5 text-status-info-text" />
                   <span>
                     ({cameraPos[0]}, {cameraPos[2]}) ·{' '}
@@ -444,7 +437,7 @@ export default function Palace3dPage() {
                   </span>
                 </div>
                 {attenuation ? (
-                  <div className="absolute right-2 top-2 flex max-w-[60%] items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-[11px] text-status-success-text">
+                  <div className="absolute right-2 top-2 flex max-w-[60%] items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1.5 font-mono text-xs text-status-success-text">
                     <Volume2 className="h-3.5 w-3.5 shrink-0" />
                     <span>
                       {attenuation.distance} m · gain {Math.round(attenuation.gain * 100)}% · pan{' '}
@@ -508,7 +501,7 @@ export default function Palace3dPage() {
                           <span className="truncate font-semibold">
                             {i + 1}. {loc.title}
                           </span>
-                          <span className="shrink-0 font-mono text-[10px] text-tertiary">
+                          <span className="shrink-0 font-mono text-xs text-tertiary">
                             [{loc.position[0]}, {loc.position[2]}]
                           </span>
                         </div>

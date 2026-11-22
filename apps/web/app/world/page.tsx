@@ -23,7 +23,19 @@ import {
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { usePalette } from '@/components/ThemeSync'
-import { Badge, EmptyState, IconButton, PageHeader, Panel, Tabs, useToast } from '@/ui'
+import {
+  Badge,
+  Callout,
+  EmptyState,
+  IconButton,
+  PageHeader,
+  Panel,
+  Skeleton,
+  Tabs,
+  useToast,
+} from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 import type { WorldCanvasHandle } from '@/ui/WorldCanvas'
 import { ItemPreviewModal } from '@/ui/ItemPreviewModal'
 
@@ -98,7 +110,7 @@ const CATEGORY_ICON: Record<MarketItem['category'], typeof User> = {
 
 /** Rarity-tinted card glow — echoes the 3D preview pedestal ring. */
 const RARITY_CARD: Record<MarketItem['rarity'], string> = {
-  common: 'border-slate-700/60 hover:border-slate-500',
+  common: 'border-(--hub-border) hover:border-indigo-400/60',
   rare: 'border-sky-500/30 hover:border-sky-400/60',
   epic: 'border-indigo-500/30 hover:border-indigo-400/60',
   legendary: 'border-amber-500/30 hover:border-amber-400/60',
@@ -116,6 +128,7 @@ export default function WorldPage() {
   const [worldState, setWorldState] = useState<WorldState | null>(null)
   const [catalog, setCatalog] = useState<MarketItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [categoryFilter, setCategoryFilter] =
     useState<(typeof CATEGORY_FILTERS)[number]['key']>('all')
   const [previewItem, setPreviewItem] = useState<MarketItem | null>(null)
@@ -153,6 +166,7 @@ export default function WorldPage() {
         }
       } catch (err) {
         console.error('Failed to load world data:', err)
+        if (mounted) setLoadError(true)
       } finally {
         if (mounted) setLoading(false)
       }
@@ -393,10 +407,20 @@ export default function WorldPage() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
+  // GSAP moment: the Study Coins balance counts up when the world loads
+  // (SSR-safe — the final number renders normally; reduced-motion keeps it).
+  const balance = worldState?.balance ?? 0
+  const balanceRef = useGsapCountUp(balance)
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+      <div className="space-y-6" aria-hidden="true">
+        <Skeleton className="h-16 w-full max-w-xl" />
+        <Skeleton className="h-10 w-full" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-56 w-full md:col-span-2" />
+          <Skeleton className="h-56 w-full" />
+        </div>
       </div>
     )
   }
@@ -411,13 +435,22 @@ export default function WorldPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-status-warning-text font-medium">
             <Coins className="w-5 h-5 text-status-warning-text" />
-            <span>{worldState?.balance ?? 0}</span>
+            <span ref={balanceRef} className="tabular-nums">
+              {balance}
+            </span>
             <span className="text-xs text-status-warning-text/80 uppercase tracking-wider font-semibold">
               Coins
             </span>
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <Callout tone="danger" title="World data unavailable">
+          The forest state and marketplace could not be loaded. Controls below still work and sync
+          once the backend is reachable.
+        </Callout>
+      )}
 
       <Tabs
         label="3D World Navigation"
@@ -530,34 +563,19 @@ export default function WorldPage() {
                 </div>
               }
             >
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                {[
-                  { id: 'tree', label: 'Growing Tree', icon: TreePine },
-                  { id: 'hourglass', label: 'Hourglass', icon: Hourglass },
-                  { id: 'campfire', label: 'Campfire', icon: Flame },
-                  { id: 'clockwork', label: 'Clockwork', icon: Compass },
-                  { id: 'crystal', label: 'Mystic Crystal', icon: Sparkles },
-                ].map((t) => {
-                  const Icon = t.icon
-                  const active = selectedTheme === t.id
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => handleChangeTheme(t.id as typeof selectedTheme)}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-medium text-left transition-all ${
-                        active
-                          ? 'bg-emerald-500/15 border-emerald-500/40 text-status-success-text'
-                          : 'bg-slate-800/40 border-slate-700/40 text-tertiary hover:bg-slate-800/80 hover:text-slate-200'
-                      }`}
-                    >
-                      <Icon
-                        className={`w-4 h-4 ${active ? 'text-status-success-text' : 'text-faint'}`}
-                      />
-                      <span>{t.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
+              <ChipPicker<string>
+                className="mt-3"
+                label="3D timer theme"
+                items={[
+                  { id: 'tree', label: 'Growing Tree', icon: <TreePine /> },
+                  { id: 'hourglass', label: 'Hourglass', icon: <Hourglass /> },
+                  { id: 'campfire', label: 'Campfire', icon: <Flame /> },
+                  { id: 'clockwork', label: 'Clockwork', icon: <Compass /> },
+                  { id: 'crystal', label: 'Mystic Crystal', icon: <Sparkles /> },
+                ].map(({ id, label, icon }) => ({ value: id, label, icon }))}
+                value={selectedTheme}
+                onChange={(theme) => handleChangeTheme(theme as typeof selectedTheme)}
+              />
             </Panel>
 
             <Panel
@@ -567,26 +585,18 @@ export default function WorldPage() {
                 </div>
               }
             >
-              <div className="flex flex-wrap gap-2 mt-3">
-                {[
+              <ChipPicker<string>
+                className="mt-3"
+                label="Focus sprint duration"
+                items={[
                   { label: 'Pomodoro (25m)', mins: 25 },
                   { label: 'Deep Focus (50m)', mins: 50 },
                   { label: 'Sprint (15m)', mins: 15 },
                   { label: 'Power Hour (60m)', mins: 60 },
-                ].map((dur) => (
-                  <button
-                    key={dur.mins}
-                    onClick={() => handleSelectDuration(dur.mins)}
-                    className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                      plannedMinutes === dur.mins
-                        ? 'bg-emerald-600 text-white border-emerald-500 font-semibold'
-                        : 'btn-ghost border-slate-700 text-secondary'
-                    }`}
-                  >
-                    {dur.label}
-                  </button>
-                ))}
-              </div>
+                ].map((dur) => ({ value: String(dur.mins), label: dur.label }))}
+                value={String(plannedMinutes)}
+                onChange={(v) => handleSelectDuration(Number(v))}
+              />
               <p className="text-xs text-faint mt-3 leading-relaxed">
                 Completing a verified study block earns{' '}
                 <strong className="text-status-warning-text">+30 Study Coins</strong> and plants a
@@ -604,13 +614,13 @@ export default function WorldPage() {
               <div className="space-y-3 mt-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-faint">Character:</span>
-                  <span className="font-semibold text-slate-200 capitalize">
+                  <span className="font-semibold text-strong capitalize">
                     {worldState?.avatar.characterId.replace('char_', '')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-faint">Headwear:</span>
-                  <span className="font-semibold text-slate-200 capitalize">
+                  <span className="font-semibold text-strong capitalize">
                     {worldState?.avatar.equippedHead
                       ? worldState.avatar.equippedHead.replace('head_', '').replace('_', ' ')
                       : 'None'}
@@ -618,7 +628,7 @@ export default function WorldPage() {
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-faint">Handheld:</span>
-                  <span className="font-semibold text-slate-200 capitalize">
+                  <span className="font-semibold text-strong capitalize">
                     {worldState?.avatar.equippedHand
                       ? worldState.avatar.equippedHand.replace('hand_', '')
                       : 'None'}
@@ -635,11 +645,11 @@ export default function WorldPage() {
                       {worldState.avatar.equippedCompanion.replace('comp_', '')} ×
                     </button>
                   ) : (
-                    <span className="font-semibold text-slate-200 capitalize">None</span>
+                    <span className="font-semibold text-strong capitalize">None</span>
                   )}
                 </div>
                 <button
-                  className="btn-ghost border border-slate-700 text-xs w-full py-2 mt-2 flex items-center justify-center rounded-lg"
+                  className="btn-ghost w-full rounded-lg border border-(--hub-border) py-2 mt-2 text-xs"
                   onClick={() => setActiveTab('market')}
                 >
                   <ShoppingBag className="w-3.5 h-3.5 mr-1.5" /> Open Marketplace
@@ -652,110 +662,103 @@ export default function WorldPage() {
 
       {activeTab === 'market' && (
         <div className="space-y-5">
-          {/* Category filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {CATEGORY_FILTERS.map((f) => {
+          {/* Category filters — kit ChipPicker (choose-one) */}
+          <ChipPicker<(typeof CATEGORY_FILTERS)[number]['key']>
+            label="Marketplace category"
+            items={CATEGORY_FILTERS.map((f) => {
               const count =
                 f.key === 'all'
                   ? catalog.length
                   : catalog.filter((i) => i.category === f.key).length
-              const active = categoryFilter === f.key
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => setCategoryFilter(f.key)}
-                  className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                    active
-                      ? 'bg-emerald-600 text-white border-emerald-500 font-semibold'
-                      : 'btn-ghost border-slate-700 text-secondary'
-                  }`}
-                >
-                  {f.label}
-                  <span className={`ml-1.5 ${active ? 'text-emerald-100' : 'text-tertiary'}`}>
-                    {count}
-                  </span>
-                </button>
-              )
+              return { value: f.key, label: `${f.label} (${count})` }
             })}
-          </div>
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCatalog.map((item) => {
-              const Icon = CATEGORY_ICON[item.category] ?? Sparkles
-              const isUnlocked = isItemUnlocked(item)
-              const isEquipped = isItemEquipped(item)
-              const canAfford = (worldState?.balance ?? 0) >= item.priceCoins
+          {filteredCatalog.length === 0 ? (
+            <EmptyState icon={<ShoppingBag className="h-8 w-8" />} title="Nothing in this aisle">
+              The marketplace has no items in this category yet.
+            </EmptyState>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredCatalog.map((item) => {
+                const Icon = CATEGORY_ICON[item.category] ?? Sparkles
+                const isUnlocked = isItemUnlocked(item)
+                const isEquipped = isItemEquipped(item)
+                const canAfford = (worldState?.balance ?? 0) >= item.priceCoins
 
-              return (
-                <div
-                  key={item.id}
-                  className={`bg-slate-900 border ${RARITY_CARD[item.rarity]} rounded-2xl overflow-hidden flex flex-col shadow-sm transition-colors`}
-                >
-                  {/* Thumbnail — tap to open the 3D preview portal */}
-                  <button
-                    onClick={() => setPreviewItem(item)}
-                    className={`relative h-28 w-full bg-gradient-to-br ${RARITY_THUMB[item.rarity]} flex items-center justify-center group cursor-pointer`}
-                    aria-label={`Preview ${item.name} in 3D`}
+                return (
+                  <div
+                    key={item.id}
+                    className={`border ${RARITY_CARD[item.rarity]} rounded-2xl overflow-hidden flex flex-col bg-(--hub-panel) shadow-sm transition-colors`}
                   >
-                    <Icon className="w-10 h-10 opacity-70 group-hover:scale-110 transition-transform" />
-                    <span className="absolute bottom-2 right-2 text-[10px] uppercase tracking-wider font-bold opacity-80 bg-slate-950/60 px-1.5 py-0.5 rounded">
-                      {item.rarity}
-                    </span>
-                    <span className="absolute bottom-2 left-2 text-[10px] uppercase tracking-wider font-bold opacity-80 bg-slate-950/60 px-1.5 py-0.5 rounded">
-                      {item.category.replace('_', ' ')}
-                    </span>
-                  </button>
+                    {/* Thumbnail — tap to open the 3D preview portal */}
+                    <button
+                      onClick={() => setPreviewItem(item)}
+                      className={`relative h-28 w-full bg-gradient-to-br ${RARITY_THUMB[item.rarity]} flex items-center justify-center group cursor-pointer`}
+                      aria-label={`Preview ${item.name} in 3D`}
+                    >
+                      <Icon className="w-10 h-10 opacity-70 group-hover:scale-110 transition-transform" />
+                      <span className="absolute bottom-2 right-2 rounded bg-slate-950/60 px-1.5 py-0.5 text-xs uppercase tracking-wider font-bold opacity-80">
+                        {item.rarity}
+                      </span>
+                      <span className="absolute bottom-2 left-2 rounded bg-slate-950/60 px-1.5 py-0.5 text-xs uppercase tracking-wider font-bold opacity-80">
+                        {item.category.replace('_', ' ')}
+                      </span>
+                    </button>
 
-                  <div className="p-4 flex flex-col justify-between flex-1 space-y-3">
-                    <div className="space-y-1.5">
-                      <h3 className="font-semibold text-sm text-slate-100">{item.name}</h3>
-                      <p className="text-xs text-faint leading-relaxed">{item.description}</p>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-status-warning-text font-bold text-sm">
-                        <Coins className="w-4 h-4" />
-                        {item.priceCoins === 0 ? 'Free' : item.priceCoins}
+                    <div className="flex flex-1 flex-col justify-between space-y-3 p-4">
+                      <div className="space-y-1.5">
+                        <h3 className="text-sm font-semibold text-strong">{item.name}</h3>
+                        <p className="text-xs leading-relaxed text-faint">{item.description}</p>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setPreviewItem(item)}
-                          className="btn-ghost border border-slate-700 text-xs px-2.5 py-1.5 rounded-lg"
-                        >
-                          Preview
-                        </button>
-                        {isEquipped ? (
-                          <Badge tone="success">Equipped</Badge>
-                        ) : isUnlocked ? (
-                          item.category !== 'tree' &&
-                          item.category !== 'decor' &&
-                          item.category !== 'timer_theme' ? (
-                            <button
-                              className="btn-ghost border border-slate-700 text-xs px-3 py-1.5 rounded-lg"
-                              onClick={() => handleEquipItem(item)}
-                            >
-                              Equip
-                            </button>
-                          ) : (
-                            <Badge tone="neutral">Owned</Badge>
-                          )
-                        ) : (
+                      <div className="flex items-center justify-between gap-2 border-t border-(--hub-border) pt-2">
+                        <div className="flex items-center gap-1.5 text-sm font-bold text-status-warning-text">
+                          <Coins className="w-4 h-4" />
+                          {item.priceCoins === 0 ? 'Free' : item.priceCoins}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
                           <button
-                            disabled={!canAfford}
-                            onClick={() => handlePurchase(item.id)}
-                            className="btn text-xs bg-amber-600 hover:bg-amber-500 text-white font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"
+                            onClick={() => setPreviewItem(item)}
+                            className="btn-ghost rounded-lg border border-(--hub-border) px-2.5 py-1.5 text-xs"
                           >
-                            Buy
+                            Preview
                           </button>
-                        )}
+                          {isEquipped ? (
+                            <Badge tone="success">Equipped</Badge>
+                          ) : isUnlocked ? (
+                            item.category !== 'tree' &&
+                            item.category !== 'decor' &&
+                            item.category !== 'timer_theme' ? (
+                              <button
+                                className="btn-ghost rounded-lg border border-(--hub-border) px-3 py-1.5 text-xs"
+                                onClick={() => handleEquipItem(item)}
+                              >
+                                Equip
+                              </button>
+                            ) : (
+                              <Badge tone="neutral">Owned</Badge>
+                            )
+                          ) : (
+                            <button
+                              disabled={!canAfford}
+                              onClick={() => handlePurchase(item.id)}
+                              className="btn rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+                            >
+                              Buy
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -771,10 +774,7 @@ export default function WorldPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {worldState?.plots.map((plot) => (
-                <div
-                  key={plot.id}
-                  className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2"
-                >
+                <div key={plot.id} className="panel space-y-2 rounded-2xl p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-status-success-text font-medium text-sm capitalize">
                       {plot.treeType.replace('tree_', '').replace('_', ' ')}

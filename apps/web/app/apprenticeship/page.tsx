@@ -13,11 +13,16 @@ import React from 'react'
 import { Brain, Compass, Layers, Users } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { CognitiveApprenticeshipStudio } from '@/components/CognitiveApprenticeshipStudio'
 
 export default function CognitiveApprenticeshipPage() {
+  // GSAP moment for this page: the studio workbench rises in with a capped
+  // stagger when it scrolls into view (a different node from the ClayIn
+  // container — one animation owner per element).
+  const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title="Cognitive Apprenticeship & Expert Modeling Studio"
@@ -44,8 +49,10 @@ export default function CognitiveApprenticeshipPage() {
         }
       />
 
-      {/* Main Studio Body */}
-      <CognitiveApprenticeshipStudio />
+      {/* Main Studio Body — GSAP moment (see ref below). */}
+      <div ref={studioRevealRef}>
+        <CognitiveApprenticeshipStudio />
+      </div>
     </ClayIn>
   )
 }

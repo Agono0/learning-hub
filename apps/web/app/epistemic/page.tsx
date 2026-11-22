@@ -12,31 +12,33 @@
 
 import React from 'react'
 import { Network, GitGraph, Compass, Sparkles } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { Badge, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { EpistemicNetworkStudio } from '@/components/EpistemicNetworkStudio'
 
 export default function EpistemicNetworkPage() {
+  // GSAP moment: the evidence section rises in on scroll (framer owns the
+  // page container; reduced-motion skips GSAP entirely).
+  const revealRef = useGsapReveal()
+
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       {/* Page Header */}
       <PageHeader
         title="Epistemic Network Analysis Studio"
         subtitle="Model how conceptual principles, empirical observations, and metacognitive monitoring interlock in learning discourse using moving stanza windows, sphere normalization, and SVD dimensional reduction."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-600 dark:text-blue-400">
-              <Network className="h-3.5 w-3.5" />
-              <span>Shaffer (2016) Quantitative Ethnography</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text dark:text-status-success-text">
-              <GitGraph className="h-3.5 w-3.5" />
-              <span>Moving Stanza Co-occurrence</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs font-bold text-ac-text dark:text-ac-text">
-              <Compass className="h-3.5 w-3.5" />
-              <span>SVD 2D Epistemic Space</span>
-            </span>
+            <Badge tone="accent" icon={<Network className="h-3.5 w-3.5" />}>
+              Shaffer (2016) Quantitative Ethnography
+            </Badge>
+            <Badge tone="success" icon={<GitGraph className="h-3.5 w-3.5" />}>
+              Moving Stanza Co-occurrence
+            </Badge>
+            <Badge tone="accent" icon={<Compass className="h-3.5 w-3.5" />}>
+              SVD 2D Epistemic Space
+            </Badge>
           </div>
         }
       />
@@ -45,7 +47,10 @@ export default function EpistemicNetworkPage() {
       <EpistemicNetworkStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-6">
+      <div
+        ref={revealRef}
+        className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-6"
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           <h2 className="text-base font-bold text-strong">
@@ -61,7 +66,7 @@ export default function EpistemicNetworkPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div className="rounded-lg bg-white dark:bg-(--hub-panel) p-3 border border-neutral-200 dark:border-(--hub-border)">
             <div className="font-semibold text-strong mb-1 flex items-center gap-1.5">
-              <GitGraph className="h-4 w-4 text-blue-500" />
+              <GitGraph className="h-4 w-4 text-status-info-text" />
               Moving Stanzas
             </div>
             <p className="text-secondary leading-relaxed">

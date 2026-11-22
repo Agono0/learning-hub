@@ -28,12 +28,23 @@ import {
   RefreshCw,
   ShieldCheck,
   Upload,
-  X,
 } from 'lucide-react'
-import { IconButton, PageHeader } from '@/ui'
+import { Callout, EmptyState, PageHeader, Skeleton } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { getDeviceIdentity } from '@/lib/device'
 import { queryKeys } from '@/lib/query-keys'
+import { SectionHeader } from '@/components/ui/section-header'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 
 type SyncProviderKind = 'none' | 'dropbox' | 'github' | 'gdrive' | 'webdav'
 
@@ -389,8 +400,12 @@ export default function BackupPage() {
 
   const lastSynced = syncQuery.data?.sync.lastSyncedAt
 
+  // GSAP count-up (per-page motion mandate): the export-deck counter. Rewrites
+  // textContent in a client effect — SSR/tests keep the static number.
+  const deckCountRef = useGsapCountUp(decks.data?.decks.length ?? 0)
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         title="Backup, Sync & Import/Export"
         subtitle="Free multi-device Cloud Sync, non-destructive Smart Merge, Anki import, and full snapshots"
@@ -419,7 +434,7 @@ export default function BackupPage() {
             <Cloud className="h-4 w-4 text-indigo-400" />
             <span className="text-sm font-semibold">Free Cloud Sync</span>
             {encryptionEnabled && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-status-success-text">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-status-success-text">
                 <Lock className="h-3 w-3" /> AES-256-GCM E2EE
               </span>
             )}
@@ -446,17 +461,17 @@ export default function BackupPage() {
                     <Laptop className="h-3.5 w-3.5 shrink-0 text-faint" />
                     <span className="truncate font-medium">{d.name}</span>
                     {d.platform && (
-                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-tertiary dark:bg-(--hub-panel-2)">
+                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-tertiary dark:bg-(--hub-panel-2)">
                         {d.platform}
                       </span>
                     )}
                     {d.isThisDevice && (
-                      <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-400">
+                      <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-medium text-hub-accent">
                         this device
                       </span>
                     )}
                   </span>
-                  <span className="text-[11px] text-tertiary">
+                  <span className="text-xs text-tertiary">
                     {d.lastPushAt
                       ? `pushed ${new Date(d.lastPushAt).toLocaleString()}`
                       : d.lastPullAt
@@ -761,7 +776,7 @@ export default function BackupPage() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-[11px] text-tertiary">
+        <div className="flex items-center gap-2 text-xs text-tertiary">
           <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-status-success-text" />
           <span>
             Sync tokens, passphrases, and AI API keys stay strictly on this device and are stripped
@@ -773,15 +788,17 @@ export default function BackupPage() {
 
       {/* import drop zone */}
       <div className="panel space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm font-medium">Import</span>
-          <input
-            className="input max-w-[240px]"
-            placeholder="deck name override (optional)"
-            value={deckName}
-            onChange={(e) => setDeckName(e.target.value)}
-          />
-        </div>
+        <SectionHeader
+          title="Import"
+          action={
+            <input
+              className="input max-w-[240px] text-xs"
+              placeholder="deck name override (optional)"
+              value={deckName}
+              onChange={(e) => setDeckName(e.target.value)}
+            />
+          }
+        />
         <div
           className={`flex flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
             dragging
@@ -816,7 +833,7 @@ export default function BackupPage() {
             backup .json lets you choose Smart Merge or Full Replace
           </div>
           <button
-            className="btn-ghost"
+            className="btn-ghost [@media(pointer:coarse)]:min-h-11"
             onClick={() => fileRef.current?.click()}
             disabled={importMutation.isPending}
           >
@@ -855,55 +872,73 @@ export default function BackupPage() {
 
       {/* per-deck export */}
       <div className="panel space-y-3">
-        <div className="flex items-center gap-2">
-          <Download className="h-4 w-4 text-tertiary" />
-          <span className="text-sm font-medium">Export decks</span>
-          <span className="ml-auto text-xs text-tertiary">
-            {decks.data?.decks.length ?? 0} decks
-          </span>
-        </div>
-        <div className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
-          {(decks.data?.decks ?? []).map((d) => (
-            <div key={d.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-              <span className="min-w-0 flex-1 truncate">
-                {d.emoji} {d.name}
+        <SectionHeader
+          icon={Download}
+          title="Export decks"
+          count={decks.data?.decks.length}
+          action={
+            decks.isError ? undefined : (
+              <span className="text-xs text-tertiary">
+                <span ref={deckCountRef}>{decks.data?.decks.length ?? 0}</span> decks
               </span>
-              <span className="text-xs text-tertiary">{d.total} cards</span>
-              <button
-                className="btn-ghost"
-                onClick={() =>
-                  void apiDownload(`/api/export?deckId=${d.id}&format=txt`, `${d.name}.anki.txt`)
-                }
-              >
-                <FileUp className="h-3.5 w-3.5" /> Anki txt
-              </button>
-              <button
-                className="btn-ghost"
-                onClick={() =>
-                  void apiDownload(`/api/export?deckId=${d.id}&format=json`, `${d.name}.deck.json`)
-                }
-              >
-                <FileJson className="h-3.5 w-3.5" /> JSON
-              </button>
-            </div>
-          ))}
-          {decks.data && decks.data.decks.length === 0 && (
-            <div className="py-6 text-center text-sm text-tertiary">
-              no decks yet — import one above or create it on{' '}
-              <Link href="/decks" className="underline">
-                Decks & Cards
-              </Link>
-            </div>
-          )}
-        </div>
+            )
+          }
+        />
+        {decks.isLoading ? (
+          <div className="space-y-2" aria-hidden>
+            <Skeleton className="h-9" />
+            <Skeleton className="h-9" />
+            <Skeleton className="h-9" />
+          </div>
+        ) : decks.isError ? (
+          <Callout tone="danger" title="Couldn't load decks">
+            {(decks.error as Error | null)?.message ?? 'Please try again in a moment.'}
+          </Callout>
+        ) : (
+          <div className="divide-y divide-neutral-100 dark:divide-(--hub-panel-2)">
+            {(decks.data?.decks ?? []).map((d) => (
+              <div key={d.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate">
+                  {d.emoji} {d.name}
+                </span>
+                <span className="text-xs text-tertiary">{d.total} cards</span>
+                <button
+                  className="btn-ghost [@media(pointer:coarse)]:min-h-11"
+                  onClick={() =>
+                    void apiDownload(`/api/export?deckId=${d.id}&format=txt`, `${d.name}.anki.txt`)
+                  }
+                >
+                  <FileUp className="h-3.5 w-3.5" /> Anki txt
+                </button>
+                <button
+                  className="btn-ghost [@media(pointer:coarse)]:min-h-11"
+                  onClick={() =>
+                    void apiDownload(
+                      `/api/export?deckId=${d.id}&format=json`,
+                      `${d.name}.deck.json`,
+                    )
+                  }
+                >
+                  <FileJson className="h-3.5 w-3.5" /> JSON
+                </button>
+              </div>
+            ))}
+            {decks.data && decks.data.decks.length === 0 && (
+              <EmptyState icon={<Download className="h-6 w-6" aria-hidden />} title="No decks yet">
+                Import one above or create it on{' '}
+                <Link href="/decks" className="underline">
+                  Decks &amp; Cards
+                </Link>
+                .
+              </EmptyState>
+            )}
+          </div>
+        )}
       </div>
 
       {/* whole-db merge / restore */}
       <div className="panel space-y-3">
-        <div className="flex items-center gap-2">
-          <DatabaseBackup className="h-4 w-4 text-tertiary" />
-          <span className="text-sm font-medium">Smart Merge or Restore whole-database backup</span>
-        </div>
+        <SectionHeader icon={DatabaseBackup} title="Smart Merge or Restore whole-database backup" />
         <p className="text-xs text-tertiary">
           Pick any backup <code className="rounded px-1">.json</code> (plain or E2EE encrypted).
           <strong> Smart Merge</strong> unions your offline reviews, XP, notes, and decks without
@@ -911,7 +946,7 @@ export default function BackupPage() {
         </p>
         <div>
           <button
-            className="btn-ghost"
+            className="btn-ghost [@media(pointer:coarse)]:min-h-11"
             onClick={() => restoreRef.current?.click()}
             disabled={restoreMutation.isPending}
           >
@@ -932,90 +967,93 @@ export default function BackupPage() {
       </div>
 
       {/* confirm dialog with Smart Merge (Recommended) + Replace All */}
-      {pendingBackup && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
-          onClick={(e) => e.target === e.currentTarget && setPendingBackup(null)}
-        >
-          <div className="panel w-full max-w-lg space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                <GitMerge className="h-5 w-5 text-indigo-400" /> Import backup snapshot
-              </h2>
-              <IconButton label="Cancel import" onClick={() => setPendingBackup(null)}>
-                <X className="h-4 w-4" />
-              </IconButton>
-            </div>
-
-            {pendingBackup.encrypted ? (
-              <div className="space-y-2 text-sm text-faint">
-                <p>
-                  <span className="font-medium text-neutral-200">{pendingBackup.name}</span> is
-                  protected with <span className="text-status-success-text">AES-256-GCM E2EE</span>.
-                </p>
-                <input
-                  type="password"
-                  className="input w-full"
-                  placeholder="Enter encryption passphrase to unlock"
-                  value={restorePassphrase}
-                  onChange={(e) => setRestorePassphrase(e.target.value)}
-                />
-              </div>
+      <AlertDialog
+        open={pendingBackup !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingBackup(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <GitMerge className="h-5 w-5 text-indigo-400" /> Import backup snapshot
+            </AlertDialogTitle>
+            {pendingBackup?.encrypted ? (
+              <AlertDialogDescription>
+                <span className="font-medium text-strong">{pendingBackup.name}</span> is protected
+                with <span className="text-status-success-text">AES-256-GCM E2EE</span>. Enter the
+                encryption passphrase to unlock it below.
+              </AlertDialogDescription>
             ) : (
-              <p className="text-sm text-faint">
-                <span className="font-medium text-neutral-200">{pendingBackup.name}</span> contains{' '}
-                {pendingBackup.rows} rows across {pendingBackup.tables} tables. Choose how to apply
-                it:
-              </p>
+              <AlertDialogDescription>
+                <span className="font-medium text-strong">{pendingBackup?.name}</span> contains{' '}
+                {pendingBackup?.rows ?? 0} rows across {pendingBackup?.tables ?? 0} tables. Choose
+                how to apply it.
+              </AlertDialogDescription>
             )}
+          </AlertDialogHeader>
 
-            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs text-secondary">
-              <div className="font-semibold text-indigo-300">
-                Smart Merge (Recommended — Non-Destructive)
-              </div>
-              <div className="mt-1 text-faint">
-                Unions append-only review logs & XP, replays FSRS-6 intervals on cards reviewed on
-                both devices, and remaps colliding offline IDs without deleting local work.
-              </div>
+          {pendingBackup?.encrypted && (
+            <div className="space-y-2 text-sm">
+              <input
+                type="password"
+                className="input w-full"
+                placeholder="Enter encryption passphrase to unlock"
+                value={restorePassphrase}
+                onChange={(e) => setRestorePassphrase(e.target.value)}
+              />
             </div>
+          )}
 
-            <div className="flex flex-wrap justify-end gap-2">
-              <button className="btn-ghost" onClick={() => setPendingBackup(null)}>
-                Cancel
-              </button>
-              <button
-                className="btn-ghost text-danger-text hover:text-danger-text"
-                disabled={restoreMutation.isPending}
-                onClick={() =>
-                  pendingBackup &&
+          <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs text-secondary">
+            <div className="font-semibold text-hub-accent">
+              Smart Merge (Recommended — Non-Destructive)
+            </div>
+            <div className="mt-1 text-faint">
+              Unions append-only review logs &amp; XP, replays FSRS-6 intervals on cards reviewed on
+              both devices, and remaps colliding offline IDs without deleting local work.
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {/* preventDefault keeps the dialog open while the restore runs —
+                in-flight feedback stays visible (as the previous modal did). */}
+            <AlertDialogAction
+              variant="destructive"
+              disabled={restoreMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                if (pendingBackup) {
                   restoreMutation.mutate({
                     mode: 'replace',
                     data: pendingBackup.data,
                     passphrase: restorePassphrase || undefined,
                   })
                 }
-              >
-                <AlertTriangle className="h-3.5 w-3.5" /> Replace All (Destructive)
-              </button>
-              <button
-                className="btn"
-                disabled={restoreMutation.isPending}
-                onClick={() =>
-                  pendingBackup &&
+              }}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" /> Replace All (Destructive)
+            </AlertDialogAction>
+            <AlertDialogAction
+              disabled={restoreMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                if (pendingBackup) {
                   restoreMutation.mutate({
                     mode: 'merge',
                     data: pendingBackup.data,
                     passphrase: restorePassphrase || undefined,
                   })
                 }
-              >
-                <GitMerge className="h-4 w-4" />{' '}
-                {restoreMutation.isPending ? 'Merging…' : 'Smart Merge'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              }}
+            >
+              <GitMerge className="h-4 w-4" />{' '}
+              {restoreMutation.isPending ? 'Merging…' : 'Smart Merge'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClayIn>
   )
 }

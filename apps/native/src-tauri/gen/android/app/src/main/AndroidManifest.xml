@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Sideload updates (O1-13): full per-ABI APK installs via PackageInstaller.
+         REQUEST_INSTALL_PACKAGES is only the consent gate for the per-app
+         "install unknown apps" grant — the flow never installs silently
+         (docs/updates.md §"Platform matrix"). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Max Focus Tier 2 (M2-13): overlay fallback channel (the primary
+         overlay is TYPE_ACCESSIBILITY_OVERLAY from the accessibility grant)
+         and the UsageStats backup detector (appop granted via settings). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Max Focus session service + boot resume (M2-14): the persistent
+         "session running" notification (specialUse FGS, API 34+), BOOT_COMPLETED
+         relaunch (owner apps are exempt from background-start limits). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -33,5 +55,57 @@
             android:name="android.support.FILE_PROVIDER_PATHS"
             android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Device Admin / Device Owner target (M2-10): the receiver the ADB
+             provisioning command binds (`dpm set-device-owner`). Enabling admin
+             alone grants nothing; Owner status (Tier 1) enables Lock Task (M2-11). -->
+        <receiver
+            android:name=".MaxDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/max_device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Max Focus session service (M2-14): persistent session
+             notification + monotonic elapsedRealtime anchor. -->
+        <service
+            android:name=".MaxFocusForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Max Focus device-lock session guard" />
+        </service>
+
+        <!-- Boot resume (M2-14): relaunch the app when a session was active
+             at power-off; BOOT_COMPLETED is a protected system broadcast. -->
+        <receiver
+            android:name=".MaxFocusBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Max Focus Tier 2 watcher (M2-12): window transitions ONLY, no
+             content access (canRetrieveWindowContent=false) — disclosure copy
+             in MaxFocusDisclosures.tsx mirrors this exactly. -->
+        <service
+            android:name=".MaxFocusAccessibilityService"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/max_focus_accessibility" />
+        </service>
     </application>
 </manifest>

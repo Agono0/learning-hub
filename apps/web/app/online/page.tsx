@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Online Engagement Hub: Live study rooms with pomodoro sync & chat,
  * cooperative party boss raids, community deck/course library, and accountability buddies.
@@ -37,7 +39,21 @@ import {
 } from '@learning-hub/core/online'
 import { apiGet, apiSend } from '@/lib/transport'
 import { OnlineSocket } from '@/lib/online-socket'
-import { Badge, Button, PageHeader, Panel, ProgressBar, SelectField, Tabs, TextField } from '@/ui'
+import {
+  Badge,
+  Button,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  ProgressBar,
+  SelectField,
+  Skeleton,
+  Tabs,
+  TextField,
+} from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 import { queryKeys } from '@/lib/query-keys'
 
 type OnlineTab = 'rooms' | 'raids' | 'guilds' | 'library' | 'buddies'
@@ -366,12 +382,12 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
               ) : (
                 chatMessages.map((msg) => (
                   <div key={msg.id} className="flex flex-col">
-                    <div className="flex items-center gap-1 text-[10px] text-tertiary">
+                    <div className="flex items-center gap-1 text-xs text-tertiary">
                       <span className="font-semibold text-secondary">{msg.senderAlias}</span>
                       <span>·</span>
                       <span>{new Date(msg.sentAt).toLocaleTimeString()}</span>
                     </div>
-                    <div className="text-neutral-200 mt-0.5">{msg.content}</div>
+                    <div className="mt-0.5 text-secondary">{msg.content}</div>
                   </div>
                 ))
               )}
@@ -534,25 +550,22 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
               party members deals combined damage to the boss!
             </p>
 
-            <div className="grid gap-4 sm:grid-cols-3 pt-2">
-              {Object.values(BOSS_ROSTER).map((boss) => (
-                <div
-                  key={boss.key}
-                  onClick={() => setSelectedBoss(boss.key)}
-                  className={`cursor-pointer rounded-lg border p-4 transition-all ${
-                    selectedBoss === boss.key
-                      ? 'border-indigo-500 bg-indigo-500/10'
-                      : 'border-neutral-200 dark:border-(--hub-border) hover:border-neutral-300'
-                  }`}
-                >
-                  <div className="text-3xl mb-2">{boss.avatar}</div>
-                  <div className="font-bold">{boss.name}</div>
-                  <div className="text-xs text-tertiary">{boss.title}</div>
-                  <div className="mt-3 text-xs text-faint">
-                    Party HP Pool: <strong className="text-danger-text">{boss.maxHp * 3}</strong>
-                  </div>
-                </div>
-              ))}
+            <div className="pt-2">
+              <ChipPicker<string>
+                label="Raid boss"
+                items={Object.values(BOSS_ROSTER).map((boss) => ({
+                  value: boss.key,
+                  label: boss.name,
+                  hint: `${boss.title} · ${boss.maxHp * 3} HP`,
+                  icon: (
+                    <span className="text-lg leading-none" aria-hidden="true">
+                      {boss.avatar}
+                    </span>
+                  ),
+                }))}
+                value={selectedBoss}
+                onChange={setSelectedBoss}
+              />
             </div>
 
             <Button
@@ -642,7 +655,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
               {activeRaid.members.map((m) => (
                 <div
                   key={m.id}
-                  className="rounded-lg bg-neutral-100 p-2.5 dark:bg-(--hub-panel) text-xs flex justify-between items-center"
+                  className="flex items-center justify-between rounded-lg bg-neutral-100 p-2.5 text-xs dark:bg-(--hub-panel)"
                 >
                   <span className="font-medium">{m.alias}</span>
                   <span className="text-status-warning-text font-mono">+{m.damageDealt} dmg</span>
@@ -736,55 +749,73 @@ function CommunityLibrarySection() {
       </Panel>
 
       {/* Items Grid */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {items.map((item) => (
-          <Panel key={item.id} className="flex flex-col justify-between space-y-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <Badge tone={item.type === 'deck' ? 'accent' : 'success'}>
-                  {item.type === 'deck' ? 'Deck' : 'Course'}
-                </Badge>
-                <span className="text-xs text-tertiary">By {item.author}</span>
+      {libraryQuery.isPending ? (
+        <div className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
+          <Skeleton className="h-44 w-full" />
+          <Skeleton className="h-44 w-full" />
+          <Skeleton className="h-44 w-full" />
+          <Skeleton className="h-44 w-full" />
+        </div>
+      ) : libraryQuery.isError ? (
+        <Callout tone="danger" title="Library unavailable">
+          The community library could not be reached. Try refining your search or come back later.
+        </Callout>
+      ) : items.length === 0 ? (
+        <EmptyState icon={<BookOpen className="h-8 w-8" />} title="Nothing in the library yet">
+          No community materials match. Clear the search or share your own deck from the Library
+          share panel.
+        </EmptyState>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map((item) => (
+            <Panel key={item.id} className="flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <Badge tone={item.type === 'deck' ? 'accent' : 'success'}>
+                    {item.type === 'deck' ? 'Deck' : 'Course'}
+                  </Badge>
+                  <span className="text-xs text-tertiary">By {item.author}</span>
+                </div>
+                <h4 className="mt-2 text-base font-bold">{item.title}</h4>
+                <p className="mt-1 text-xs text-faint line-clamp-2">
+                  {item.description || 'No description provided.'}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {item.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-tertiary dark:bg-(--hub-panel)"
+                    >
+                      #{t}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <h4 className="mt-2 text-base font-bold">{item.title}</h4>
-              <p className="mt-1 text-xs text-faint line-clamp-2">
-                {item.description || 'No description provided.'}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1">
-                {item.tags.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-tertiary dark:bg-(--hub-panel)"
-                  >
-                    #{t}
-                  </span>
-                ))}
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
-              <span className="flex items-center gap-1 text-xs text-tertiary">
-                <Download className="h-3.5 w-3.5" /> {item.downloads} downloads
-              </span>
-              <Button
-                variant={importedId === item.id ? 'ghost' : 'primary'}
-                disabled={importMutation.isPending}
-                onClick={() => importMutation.mutate(item)}
-              >
-                {importedId === item.id ? (
-                  <>
-                    <Check className="h-4 w-4 text-status-success-text" /> Imported!
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" /> Import to Library
-                  </>
-                )}
-              </Button>
-            </div>
-          </Panel>
-        ))}
-      </div>
+              <div className="flex items-center justify-between border-t border-neutral-200 pt-3 dark:border-(--hub-border)">
+                <span className="flex items-center gap-1 text-xs text-tertiary">
+                  <Download className="h-3.5 w-3.5" /> {item.downloads} downloads
+                </span>
+                <Button
+                  variant={importedId === item.id ? 'ghost' : 'primary'}
+                  disabled={importMutation.isPending}
+                  onClick={() => importMutation.mutate(item)}
+                >
+                  {importedId === item.id ? (
+                    <>
+                      <Check className="h-4 w-4 text-status-success-text" /> Imported!
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" /> Import to Library
+                    </>
+                  )}
+                </Button>
+              </div>
+            </Panel>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -885,10 +916,19 @@ function BuddiesInboxSection(_props: { identity?: IdentityResponse['identity'] }
           <Bell className="h-4 w-4" /> Inbox & Study Nudges
         </h4>
 
-        {messages.length === 0 ? (
-          <div className="text-sm text-tertiary py-8 text-center">
-            No nudges or invitations received yet.
+        {inboxQuery.isPending ? (
+          <div className="space-y-2" aria-hidden="true">
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
           </div>
+        ) : inboxQuery.isError ? (
+          <Callout tone="danger" title="Inbox unavailable">
+            Nudges and invitations could not be loaded.
+          </Callout>
+        ) : messages.length === 0 ? (
+          <EmptyState icon={<Bell className="h-8 w-8" />} title="Inbox zero">
+            No nudges or invitations received yet. Send a study nudge to a buddy above.
+          </EmptyState>
         ) : (
           <div className="divide-y divide-neutral-200 dark:divide-(--hub-border)">
             {messages.map((msg) => (
@@ -1003,6 +1043,10 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
   })
 
   const guilds = guildsQuery.data?.guilds ?? []
+  // GSAP moment: the selected clan's pooled XP counts up when its banner opens
+  // (SSR renders the final number; reduced-motion keeps it static).
+  const clanXp = guildDetailQuery.data?.guild.totalXp ?? 0
+  const clanXpRef = useGsapCountUp(clanXp)
 
   return (
     <div className="space-y-6">
@@ -1021,7 +1065,7 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
         </div>
 
         {showCreate && (
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 space-y-3">
+          <div className="space-y-3 rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">
               Found a Study Clan
             </h3>
@@ -1055,60 +1099,80 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
         )}
 
         {/* Guilds List */}
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-2">
-          {guilds.map((g) => (
-            <div
-              key={g.id}
-              onClick={() => setSelectedGuildId(g.id)}
-              className={`rounded-xl border p-4 cursor-pointer transition-all ${
-                selectedGuildId === g.id
-                  ? 'border-indigo-500 bg-indigo-500/10'
-                  : 'border-neutral-800 bg-neutral-900/40 hover:border-neutral-700'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">{g.avatarEmoji}</span>
-                  <div>
-                    <div className="font-semibold text-sm flex items-center gap-1.5">
-                      <span>{g.name}</span>
-                      <span className="rounded bg-neutral-800 px-1.5 py-0.2 text-[10px] text-tertiary font-mono">
-                        [{g.tag}]
-                      </span>
+        {guildsQuery.isPending ? (
+          <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : guildsQuery.isError ? (
+          <Callout tone="danger" title="Clans unavailable">
+            The clan roster could not be loaded. Founding a clan still works once the service is
+            back.
+          </Callout>
+        ) : guilds.length === 0 ? (
+          <EmptyState icon={<Shield className="h-8 w-8" />} title="No clans yet">
+            Found the first study clan and invite your buddies to pool XP.
+          </EmptyState>
+        ) : (
+          <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-3">
+            {guilds.map((g) => (
+              <div
+                key={g.id}
+                onClick={() => setSelectedGuildId(g.id)}
+                className={`cursor-pointer rounded-xl border p-4 transition-colors ${
+                  selectedGuildId === g.id
+                    ? 'border-indigo-500 bg-indigo-500/10'
+                    : 'border-(--hub-border) bg-(--hub-panel-2) hover:border-indigo-400'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">{g.avatarEmoji}</span>
+                    <div>
+                      <div className="flex items-center gap-1.5 text-sm font-semibold">
+                        <span>{g.name}</span>
+                        <span className="rounded bg-(--hub-border) px-1.5 py-0.5 font-mono text-xs text-tertiary">
+                          [{g.tag}]
+                        </span>
+                      </div>
+                      <div className="text-xs text-faint">Level {g.level} Clan</div>
                     </div>
-                    <div className="text-[11px] text-faint">Level {g.level} Clan</div>
                   </div>
+                  <Badge tone="accent">+{g.level * 2}% XP</Badge>
                 </div>
-                <Badge tone="accent">+{g.level * 2}% XP</Badge>
-              </div>
 
-              {g.description && (
-                <p className="mt-2 text-xs text-faint line-clamp-2">{g.description}</p>
-              )}
+                {g.description && (
+                  <p className="mt-2 text-xs text-faint line-clamp-2">{g.description}</p>
+                )}
 
-              <div className="mt-3 flex items-center justify-between text-[11px] text-tertiary">
-                <span>{g.totalXp.toLocaleString()} Total XP</span>
-                <span className="text-indigo-400">View Roster →</span>
+                <div className="mt-3 flex items-center justify-between text-xs text-tertiary">
+                  <span>{g.totalXp.toLocaleString()} Total XP</span>
+                  <span className="text-hub-accent">View Roster →</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Panel>
 
       {/* Selected Guild Detail Modal / Banner */}
       {selectedGuildId && guildDetailQuery.data?.guild && (
-        <Panel className="space-y-4 border-indigo-500/40 bg-indigo-950/10">
+        <Panel className="space-y-4 border-indigo-500/40 bg-hub-accent/5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-3xl">{guildDetailQuery.data.guild.avatarEmoji}</span>
               <div>
-                <div className="text-lg font-bold flex items-center gap-2">
+                <div className="flex items-center gap-2 text-lg font-bold">
                   <span>{guildDetailQuery.data.guild.name}</span>
                   <Badge tone="accent">[{guildDetailQuery.data.guild.tag}]</Badge>
                 </div>
                 <p className="text-xs text-faint">
                   Level {guildDetailQuery.data.guild.level} Clan ·{' '}
-                  {guildDetailQuery.data.guild.totalXp} Cumulative Study XP
+                  <span ref={clanXpRef} className="tabular-nums">
+                    {guildDetailQuery.data.guild.totalXp}
+                  </span>{' '}
+                  Cumulative Study XP
                 </p>
               </div>
             </div>
@@ -1139,15 +1203,15 @@ function GuildsSection({ identity }: { identity?: IdentityResponse['identity'] }
               {(guildDetailQuery.data.members ?? []).map((m) => (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 p-2.5 text-xs"
+                  className="flex items-center justify-between rounded-lg border border-(--hub-border) bg-(--hub-panel-2) p-2.5 text-xs"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-neutral-200">{m.alias}</span>
-                    <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-tertiary uppercase">
+                    <span className="font-semibold text-strong">{m.alias}</span>
+                    <span className="rounded bg-(--hub-border) px-1.5 py-0.5 uppercase text-tertiary">
                       {m.role}
                     </span>
                   </div>
-                  <span className="text-indigo-400 font-mono text-[11px]">
+                  <span className="font-mono text-xs text-hub-accent">
                     {m.xpContributed.toLocaleString()} XP
                   </span>
                 </div>

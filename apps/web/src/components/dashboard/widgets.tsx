@@ -13,8 +13,11 @@
  * on hover ({@link HoverLiftSection}, reduced-motion aware), list-y widgets
  * stagger their rows in via the committed `Stagger`/`StaggerItem` foundation,
  * and the big numbers count up with `useGsapCountUp` (static final number when
- * motion is not allowed). Entrances stay SSR-safe — the HTML always shows the
- * final state; animation is client-side only.
+ * motion is not allowed). The activity timeline and insights body reveal on
+ * scroll with the `useGsapReveal` foundation instead (one mechanism per
+ * container — those two containers carry no `Stagger`). Entrances stay
+ * SSR-safe — the HTML always shows the final state; animation is client-side
+ * only.
  */
 import React from 'react'
 import Link from 'next/link'
@@ -30,6 +33,7 @@ import {
   CirclePlay,
   Coins,
   ExternalLink,
+  Eye,
   FileText,
   Flame,
   Pickaxe,
@@ -37,6 +41,7 @@ import {
   Repeat2,
   ShieldAlert,
   Shapes,
+  Snowflake,
   Sparkles,
   Sprout,
   Telescope,
@@ -47,7 +52,9 @@ import type { LucideIcon } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Stagger, StaggerItem, claySpring } from '@/lib/motion'
 import { useGsapCountUp } from '@/lib/useGsapCountUp'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { Badge, Callout, EmptyState, Skeleton, StatCard, useToast } from '@/ui'
+import { SectionHeader } from '@/components/ui/section-header'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
@@ -144,6 +151,7 @@ function StatsWidget({ data: d }: WidgetProps) {
         value={d.dueCount}
         icon={<Repeat2 className="h-4 w-4" />}
         accent={d.dueCount > 0 ? 'indigo' : 'emerald'}
+        variant="elevated"
         badge={
           d.dueCount > 0 ? (
             <Badge tone="accent" dot pulse>
@@ -167,6 +175,7 @@ function StatsWidget({ data: d }: WidgetProps) {
         }
         icon={<Flame className="h-4 w-4" />}
         accent="amber"
+        variant="elevated"
         badge={
           d.streak.current > 0 ? (
             <Badge tone="warning" dot pulse>
@@ -174,13 +183,29 @@ function StatsWidget({ data: d }: WidgetProps) {
             </Badge>
           ) : undefined
         }
-        hint={`❄️ ${d.streak.freezes} freezes ${d.streak.weekendAmulet ? '· 🧿 amulet' : ''}`}
+        hint={
+          /* Lucide icons instead of raw emoji (audit G5): the snowflake marks
+             streak freezes, the eye the weekend amulet — sized to the hint's
+             text (text-xs ⇒ 14px icons), meaning carried by the words. */
+          <span className="flex flex-wrap items-center gap-1">
+            <Snowflake className="h-3.5 w-3.5" aria-hidden />
+            <span>{d.streak.freezes} freezes</span>
+            {d.streak.weekendAmulet && (
+              <>
+                <span aria-hidden="true">·</span>
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                <span>amulet</span>
+              </>
+            )}
+          </span>
+        }
       />
       <StatCard
         label="Total XP"
         value={<CountUpValue value={d.xpTotal} />}
         icon={<Zap className="h-4 w-4" />}
         accent="indigo"
+        variant="elevated"
         progress={{
           value: progress,
           max: 1,
@@ -200,6 +225,7 @@ function StatsWidget({ data: d }: WidgetProps) {
         }
         icon={<Timer className="h-4 w-4" />}
         accent={questDone ? 'emerald' : 'neutral'}
+        variant="elevated"
         badge={
           questDone ? (
             <Badge tone="success" dot>
@@ -225,39 +251,48 @@ function StatsWidget({ data: d }: WidgetProps) {
 }
 
 function OpenLoopsWidget({ data: d }: WidgetProps) {
-  if (d.openLoops.length === 0) return null
   return (
     <section className="panel">
-      <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
-        Pick up where you left off
-      </div>
-      {/* Rows rise + fade in staggered (SSR-safe: Stagger renders the final
-          state and animates client-side only when motionOK). */}
-      <Stagger>
-        <ul className="mt-3 space-y-2">
-          {d.openLoops.map((loop, i) => (
-            <li key={loop.kind + loop.href}>
-              <StaggerItem index={i}>
-                <Link
-                  href={loop.href}
-                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
-                >
-                  {loop.kind === 'lesson' ? (
-                    <CirclePlay className="h-4 w-4 shrink-0 text-indigo-400" />
-                  ) : (
-                    <CalendarClock className="h-4 w-4 shrink-0 text-status-warning-text" />
-                  )}
-                  <span className="min-w-0 flex-1 truncate">
-                    {loop.title}
-                    <span className="text-tertiary"> · {loop.context}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-indigo-400">continue →</span>
-                </Link>
-              </StaggerItem>
-            </li>
-          ))}
-        </ul>
-      </Stagger>
+      <SectionHeader title="Pick up where you left off" count={d.openLoops.length} />
+      {/* Empty state instead of `return null` (audit S4): a vanished widget
+          shifted the whole dashboard column when the last loop was finished.
+          The kit EmptyState is compacted via child overrides — the kit itself
+          is untouched. Rows rise + fade in staggered (SSR-safe: Stagger
+          renders the final state and animates client-side only when
+          motionOK). */}
+      {d.openLoops.length === 0 ? (
+        <div className="mt-3 [&>div]:px-3 [&>div]:py-5">
+          <EmptyState icon={<CirclePlay className="h-6 w-6" aria-hidden />} title="Nothing open">
+            Lessons and exams you start will wait here until you finish them.
+          </EmptyState>
+        </div>
+      ) : (
+        <Stagger>
+          <ul className="mt-3 space-y-2">
+            {d.openLoops.map((loop, i) => (
+              <li key={loop.kind + loop.href}>
+                <StaggerItem index={i}>
+                  <Link
+                    href={loop.href}
+                    className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+                  >
+                    {loop.kind === 'lesson' ? (
+                      <CirclePlay className="h-4 w-4 shrink-0 text-indigo-400" />
+                    ) : (
+                      <CalendarClock className="h-4 w-4 shrink-0 text-status-warning-text" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate">
+                      {loop.title}
+                      <span className="text-tertiary"> · {loop.context}</span>
+                    </span>
+                    <span className="shrink-0 text-xs text-indigo-400">continue →</span>
+                  </Link>
+                </StaggerItem>
+              </li>
+            ))}
+          </ul>
+        </Stagger>
+      )}
     </section>
   )
 }
@@ -275,9 +310,7 @@ function QuoteWidget({ data: d }: WidgetProps) {
   })
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-        <QuoteIcon className="h-3.5 w-3.5" /> Daily quote
-      </div>
+      <SectionHeader icon={QuoteIcon} title="Daily quote" />
       {d.quote ? (
         <blockquote className="mt-3">
           <p className="text-base italic leading-relaxed">“{d.quote.text}”</p>
@@ -305,9 +338,10 @@ function QuoteWidget({ data: d }: WidgetProps) {
 function AgendaWidget({ data: d }: WidgetProps) {
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
-        Today&apos;s agenda
-      </div>
+      <SectionHeader
+        title="Today's agenda"
+        count={d.agenda.length > 0 ? d.agenda.length : undefined}
+      />
       {d.agenda.length > 0 ? (
         <Stagger>
           <ol className="mt-3 space-y-1.5 text-sm text-faint">
@@ -390,9 +424,40 @@ function relativeStamp(at: string): string {
   return new Date(at).toLocaleDateString(undefined, { weekday: 'short' })
 }
 
+/**
+ * The timeline rows, in their own component so the `useGsapReveal` ref always
+ * attaches to a mounted `<ul>` that already has its children: this component
+ * mounts only once entries exist, so the hook's mount effect finds its targets
+ * (an async list can't rely on a parent-level effect that ran before the data
+ * arrived). One mechanism per container (audit: GSAP mandate) — the rows
+ * reveal on scroll with the GSAP foundation, NOT `Stagger`. SSR-safe: the
+ * hook renders the final state and only animates client-side when motionOK;
+ * stagger stays under the 300ms motion-law cap (per-child delays clamp at
+ * 260ms inside the hook).
+ */
+function TimelineRows({ entries }: { entries: TimelineEntry[] }) {
+  const revealRef = useGsapReveal<HTMLUListElement>({ y: 12, stagger: 0.05 })
+  return (
+    <ul ref={revealRef} className="mt-3 space-y-1.5 text-sm">
+      {entries.map((e, i) => {
+        const meta = TIMELINE_KIND_META[e.kind] ?? TIMELINE_FALLBACK_META
+        const Icon = meta.icon
+        return (
+          <li key={`${e.at}-${i}`} className="flex items-baseline gap-2">
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${meta.className}`} aria-hidden />
+            <span className="w-14 shrink-0 text-xs text-faint">{relativeStamp(e.at)}</span>
+            <span className="min-w-0 flex-1 truncate">{e.title}</span>
+            {e.detail && <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 function ActivityTimelineWidget(_props: WidgetProps) {
   const [expanded, setExpanded] = React.useState(false)
-  const { data } = useQuery<{ entries: TimelineEntry[] }>({
+  const { data, isLoading, isError, error } = useQuery<{ entries: TimelineEntry[] }>({
     queryKey: ['timeline', 7],
     queryFn: () => apiGet('/api/timeline?days=7'),
     staleTime: 30_000,
@@ -401,46 +466,39 @@ function ActivityTimelineWidget(_props: WidgetProps) {
   const visible = expanded ? entries : entries.slice(0, TIMELINE_COLLAPSED_ROWS)
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-          <Activity className="h-3.5 w-3.5" /> Activity
+      <SectionHeader
+        icon={Activity}
+        title="Activity"
+        action={
+          <Link href="/analytics" className="text-xs text-indigo-400 hover:underline">
+            analytics →
+          </Link>
+        }
+      />
+      {/* Skeleton while loading; an honest failure branch (audit S3) so a dead
+          query can't masquerade as "you did nothing this week" — the same
+          Callout pattern as the categorization widget. */}
+      {isLoading ? (
+        <div className="mt-3 space-y-1.5" aria-hidden>
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
         </div>
-        <Link href="/analytics" className="text-[10px] text-indigo-400 hover:underline">
-          analytics →
-        </Link>
-      </div>
-      {entries.length === 0 ? (
+      ) : isError ? (
+        <div className="mt-3">
+          <Callout tone="danger">
+            Couldn&apos;t load your activity —{' '}
+            {error instanceof Error ? error.message : 'try again'}
+          </Callout>
+        </div>
+      ) : entries.length === 0 ? (
         <p className="mt-3 text-sm text-tertiary">
           Nothing logged in the last 7 days — your reviews, focus sessions and planted trees will
           appear here.
         </p>
       ) : (
         <>
-          <Stagger>
-            <ul className="mt-3 space-y-1.5 text-sm">
-              {visible.map((e, i) => {
-                const meta = TIMELINE_KIND_META[e.kind] ?? TIMELINE_FALLBACK_META
-                const Icon = meta.icon
-                return (
-                  <li key={`${e.at}-${i}`}>
-                    {/* StaggerItem takes the row's flex classes; the bare <li>
-                        keeps the key and list semantics (motion.div inside li is
-                        valid HTML, unlike a div child of ul). */}
-                    <StaggerItem index={i} className="flex items-baseline gap-2">
-                      <Icon className={`h-3.5 w-3.5 shrink-0 ${meta.className}`} aria-hidden />
-                      <span className="w-12 shrink-0 text-[10px] text-faint">
-                        {relativeStamp(e.at)}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">{e.title}</span>
-                      {e.detail && (
-                        <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>
-                      )}
-                    </StaggerItem>
-                  </li>
-                )
-              })}
-            </ul>
-          </Stagger>
+          <TimelineRows entries={visible} />
           {entries.length > TIMELINE_COLLAPSED_ROWS && (
             <button
               type="button"
@@ -456,8 +514,30 @@ function ActivityTimelineWidget(_props: WidgetProps) {
   )
 }
 
+/**
+ * The insights body in its own component so the `useGsapReveal` ref attaches
+ * only once the query resolved (see {@link TimelineRows} for why async lists
+ * need a mount-late component). One mechanism per container — GSAP reveal, no
+ * `Stagger` here; a single child rises once on scroll.
+ */
+function InsightsBody({ top }: { top: { statement: string } | null }) {
+  const revealRef = useGsapReveal<HTMLDivElement>({ y: 12 })
+  return (
+    <div ref={revealRef} className="mt-3">
+      {top ? (
+        <p className="text-sm leading-relaxed">{top.statement}</p>
+      ) : (
+        <p className="text-sm text-tertiary">
+          Keep logging sleep, exercise and mood — correlations with your retention will surface
+          here.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function InsightsWidget(_props: WidgetProps) {
-  const { data } = useQuery<{
+  const { data, isLoading, isError, error } = useQuery<{
     insights: Array<{ id: string; r: number | null; statement: string }>
   }>({
     queryKey: ['insights'],
@@ -467,21 +547,31 @@ function InsightsWidget(_props: WidgetProps) {
   const top = (data?.insights ?? []).find((i) => i.r != null && Math.abs(i.r) >= 0.3)
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-          <Telescope className="h-3.5 w-3.5" /> What helps you
+      <SectionHeader
+        icon={Telescope}
+        title="What helps you"
+        action={
+          <Link href="/analytics" className="text-xs text-indigo-400 hover:underline">
+            all insights →
+          </Link>
+        }
+      />
+      {/* Skeleton while loading; an honest failure branch (audit S3) so a dead
+          insights query can't read as "keep logging to see insights" — Callout,
+          same as the categorization widget. */}
+      {isLoading ? (
+        <div className="mt-3" aria-hidden>
+          <Skeleton className="h-4 w-full" />
         </div>
-        <Link href="/analytics" className="text-[10px] text-indigo-400 hover:underline">
-          all insights →
-        </Link>
-      </div>
-      {top ? (
-        <p className="mt-3 text-sm leading-relaxed">{top.statement}</p>
+      ) : isError ? (
+        <div className="mt-3">
+          <Callout tone="danger">
+            Couldn&apos;t load your insights —{' '}
+            {error instanceof Error ? error.message : 'try again'}
+          </Callout>
+        </div>
       ) : (
-        <p className="mt-3 text-sm text-tertiary">
-          Keep logging sleep, exercise and mood — correlations with your retention will surface
-          here.
-        </p>
+        <InsightsBody top={top ?? null} />
       )}
     </HoverLiftSection>
   )
@@ -516,9 +606,11 @@ function UntestedMaterialWidget(_props: WidgetProps) {
   const items = data?.items ?? []
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-        <BookOpen className="h-3.5 w-3.5" /> Read but never tested
-      </div>
+      <SectionHeader
+        icon={BookOpen}
+        title="Read but never tested"
+        count={items.length > 0 ? items.length : undefined}
+      />
       {isLoading ? (
         <p className="mt-3 text-sm text-tertiary">Checking what you never tested…</p>
       ) : items.length === 0 ? (
@@ -538,7 +630,7 @@ function UntestedMaterialWidget(_props: WidgetProps) {
                   )}
                   <span className="min-w-0 flex-1 truncate">{it.title}</span>
                   {it.lastOpenedAt && (
-                    <span className="shrink-0 text-[10px] text-faint">
+                    <span className="shrink-0 text-xs text-faint">
                       opened{' '}
                       {new Date(it.lastOpenedAt).toLocaleDateString(undefined, {
                         month: 'short',
@@ -563,7 +655,7 @@ function UntestedMaterialWidget(_props: WidgetProps) {
             ))}
           </ul>
           {items.length > UNTESTED_MAX_ROWS && (
-            <p className="mt-2 text-[10px] text-tertiary">
+            <p className="mt-2 text-xs text-tertiary">
               and {items.length - UNTESTED_MAX_ROWS} more read-but-untested items.
             </p>
           )}
@@ -635,14 +727,15 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
 
   return (
     <HoverLiftSection className="panel h-full">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
-          <Shapes className="h-3.5 w-3.5" /> Categorization
-        </div>
-        <Link href="/prototype-exemplar" className="text-[10px] text-ac-text hover:underline">
-          studio →
-        </Link>
-      </div>
+      <SectionHeader
+        icon={Shapes}
+        title="Categorization"
+        action={
+          <Link href="/prototype-exemplar" className="text-xs text-ac-text hover:underline">
+            studio →
+          </Link>
+        }
+      />
       {isLoading ? (
         <div className="mt-3 space-y-2">
           <Skeleton className="h-8 w-2/3" />
@@ -664,7 +757,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
             <Badge tone="neutral">
               {CATEGORIZATION_BAND_LABELS[last.metrics.maturityBand] ?? last.metrics.maturityBand}
             </Badge>
-            <span className="text-[10px] text-faint">
+            <span className="text-xs text-faint">
               {new Date(last.createdAt).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -757,7 +850,7 @@ function PluginWidget({ def }: { def: PluginWidgetDef }) {
 
   const inner = (
     <section className="panel h-full">
-      <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">{def.title}</div>
+      <SectionHeader title={def.title} />
       {body}
     </section>
   )

@@ -52,7 +52,9 @@ import * as focusAllowlistsId from '../server/handlers/focus/allowlists/[id]/rou
 import * as focusAllowlists from '../server/handlers/focus/allowlists/route'
 import * as focusBridge from '../server/handlers/focus/bridge/route'
 import * as focusId from '../server/handlers/focus/[id]/route'
+import * as focusMaxExtend from '../server/handlers/focus/max/extend/route'
 import * as focusMaxExit from '../server/handlers/focus/max/exit/route'
+import * as focusMaxHistory from '../server/handlers/focus/max/history/route'
 import * as focusMax from '../server/handlers/focus/max/route'
 import * as focus from '../server/handlers/focus/route'
 import * as friction from '../server/handlers/friction/route'
@@ -71,6 +73,48 @@ import * as calendar from '../server/handlers/calendar/route'
 import * as push from '../server/handlers/push/route'
 import * as goalsId from '../server/handlers/goals/[id]/route'
 import * as goals from '../server/handlers/goals/route'
+import * as tasksId from '../server/handlers/tasks/[id]/route'
+import * as tasksAttachmentsId from '../server/handlers/tasks-attachments/[id]/route'
+import * as tasksArchive from '../server/handlers/tasks/[id]/archive/route'
+import * as tasksComplete from '../server/handlers/tasks/[id]/complete/route'
+import * as tasksDuplicate from '../server/handlers/tasks/[id]/duplicate/route'
+import * as tasksSection from '../server/handlers/tasks/[id]/section/route'
+import * as tasksReopen from '../server/handlers/tasks/[id]/reopen/route'
+import * as tasksRestore from '../server/handlers/tasks/[id]/restore/route'
+import * as tasksTags from '../server/handlers/tasks/[id]/tags/route'
+import * as tasksBulk from '../server/handlers/tasks/bulk/route'
+import * as tasksAttachments from '../server/handlers/tasks/[id]/attachments/route'
+import * as tasksOrder from '../server/handlers/tasks/order/route'
+import * as tasks from '../server/handlers/tasks/route'
+import * as tasksProjectsId from '../server/handlers/tasks-projects/[id]/route'
+import * as tasksProjectsArchive from '../server/handlers/tasks-projects/[id]/archive/route'
+import * as tasksProjectsDuplicate from '../server/handlers/tasks-projects/[id]/duplicate/route'
+import * as tasksProjectsRestore from '../server/handlers/tasks-projects/[id]/restore/route'
+import * as tasksProjects from '../server/handlers/tasks-projects/route'
+import * as tasksSectionsId from '../server/handlers/tasks-sections/[id]/route'
+import * as tasksSections from '../server/handlers/tasks-sections/route'
+import * as tasksSectionsAssignments from '../server/handlers/tasks-sections/assignments/route'
+import * as tasksTagsId from '../server/handlers/tasks-tags/[id]/route'
+import * as tasksTagsRoot from '../server/handlers/tasks-tags/route'
+import * as tasksViewsId from '../server/handlers/tasks-views/[id]/route'
+import * as tasksViews from '../server/handlers/tasks-views/route'
+import * as tasksTimeId from '../server/handlers/tasks-time/[id]/route'
+import * as tasksTimeStop from '../server/handlers/tasks-time/stop/route'
+import * as tasksTimeTick from '../server/handlers/tasks-time/tick/route'
+import * as tasksTime from '../server/handlers/tasks-time/route'
+import * as tasksWorklogExport from '../server/handlers/tasks-worklog/export/route'
+import * as tasksWorklog from '../server/handlers/tasks-worklog/route'
+import * as tasksFinishDay from '../server/handlers/tasks-finish-day/route'
+import * as tasksRepeatCfgsId from '../server/handlers/tasks-repeat-cfgs/[id]/route'
+import * as tasksRepeatCfgs from '../server/handlers/tasks-repeat-cfgs/route'
+import * as tasksRemindersId from '../server/handlers/tasks-reminders/[id]/route'
+import * as tasksReminders from '../server/handlers/tasks-reminders/route'
+import * as tasksPlanner from '../server/handlers/tasks-planner/route'
+import * as tasksSchedule from '../server/handlers/tasks-schedule/route'
+import * as tasksMetrics from '../server/handlers/tasks-metrics/route'
+import * as tasksCountersIncrement from '../server/handlers/tasks-counters/[id]/increment/route'
+import * as tasksCountersId from '../server/handlers/tasks-counters/[id]/route'
+import * as tasksCounters from '../server/handlers/tasks-counters/route'
 import * as graph from '../server/handlers/graph/route'
 import * as habitsCheckin from '../server/handlers/habits/checkin/route'
 import * as habitsId from '../server/handlers/habits/[id]/route'
@@ -195,6 +239,8 @@ import * as apprenticeship from '../server/handlers/apprenticeship/route'
 import * as conceptualChange from '../server/handlers/conceptual-change/route'
 import * as deliberate from '../server/handlers/deliberate/route'
 import * as scaffolding from '../server/handlers/scaffolding/route'
+import * as updateNotes from '../server/handlers/update/notes/route'
+import * as calendarImport from '../server/handlers/calendar/import/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -270,12 +316,56 @@ add('focus/allowlists/[id]', focusAllowlistsId)
 add('focus/bridge', focusBridge)
 add('focus/max', focusMax)
 add('focus/max/exit', focusMaxExit)
+add('focus/max/extend', focusMaxExtend)
+add('focus/max/history', focusMaxHistory)
 add('friction', friction)
 add('fsrs/optimize', fsrsOptimize)
 add('games', games)
 add('games/boss', gamesBoss)
 add('goals', goals)
 add('goals/[id]', goalsId)
+add('tasks', tasks)
+add('tasks/[id]', tasksId)
+add('tasks/[id]/attachments', tasksAttachments)
+add('tasks/[id]/archive', tasksArchive)
+add('tasks/[id]/complete', tasksComplete)
+add('tasks/[id]/duplicate', tasksDuplicate)
+add('tasks/[id]/reopen', tasksReopen)
+add('tasks/[id]/section', tasksSection)
+add('tasks/[id]/restore', tasksRestore)
+add('tasks/[id]/tags', tasksTags)
+add('tasks/bulk', tasksBulk)
+add('tasks-attachments/[id]', tasksAttachmentsId)
+add('tasks/order', tasksOrder)
+add('tasks-projects', tasksProjects)
+add('tasks-projects/[id]', tasksProjectsId)
+add('tasks-projects/[id]/archive', tasksProjectsArchive)
+add('tasks-projects/[id]/duplicate', tasksProjectsDuplicate)
+add('tasks-projects/[id]/restore', tasksProjectsRestore)
+add('tasks-sections', tasksSections)
+add('tasks-sections/[id]', tasksSectionsId)
+add('tasks-sections/assignments', tasksSectionsAssignments)
+add('tasks-tags', tasksTagsRoot)
+add('tasks-tags/[id]', tasksTagsId)
+add('tasks-views', tasksViews)
+add('tasks-views/[id]', tasksViewsId)
+add('tasks-time', tasksTime)
+add('tasks-time/[id]', tasksTimeId)
+add('tasks-time/stop', tasksTimeStop)
+add('tasks-time/tick', tasksTimeTick)
+add('tasks-worklog', tasksWorklog)
+add('tasks-worklog/export', tasksWorklogExport)
+add('tasks-finish-day', tasksFinishDay)
+add('tasks-repeat-cfgs', tasksRepeatCfgs)
+add('tasks-repeat-cfgs/[id]', tasksRepeatCfgsId)
+add('tasks-reminders', tasksReminders)
+add('tasks-reminders/[id]', tasksRemindersId)
+add('tasks-planner', tasksPlanner)
+add('tasks-schedule', tasksSchedule)
+add('tasks-metrics', tasksMetrics)
+add('tasks-counters', tasksCounters)
+add('tasks-counters/[id]', tasksCountersId)
+add('tasks-counters/[id]/increment', tasksCountersIncrement)
 add('graph', graph)
 add('habits', habits)
 add('habits/checkin', habitsCheckin)
@@ -411,6 +501,8 @@ add('apprenticeship', apprenticeship)
 add('conceptual-change', conceptualChange)
 add('deliberate', deliberate)
 add('scaffolding', scaffolding)
+add('update/notes', updateNotes)
+add('calendar/import', calendarImport)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {

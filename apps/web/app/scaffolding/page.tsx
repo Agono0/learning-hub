@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Worked-Example Fading & Cognitive Load Scaffolding Studio.
  *
@@ -18,27 +20,31 @@
  */
 
 import { Brain, Layers, Sparkles } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { Badge, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { WorkedExampleStudio } from '@/components/WorkedExampleStudio'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 export default function ScaffoldingPage() {
+  // GSAP moment: the evidence card rises in on scroll (framer owns the page
+  // container; reduced-motion skips GSAP entirely).
+  const revealRef = useGsapReveal()
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       {/* Page Header with Cognitive Context */}
       <PageHeader
         title="Worked-Example Fading Studio"
         subtitle="Transition systematically from expert worked examples to independent problem solving using Cognitive Load Theory and the Renkl-Atkinson scaffolding continuum."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
-              <Brain className="h-3.5 w-3.5 text-indigo-400" />
+            <Badge tone="accent">
+              <Brain className="h-3.5 w-3.5" />
               <span>CLT Model (Sweller 2010)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
-              <Layers className="h-3.5 w-3.5 text-status-success-text" />
+            </Badge>
+            <Badge tone="success">
+              <Layers className="h-3.5 w-3.5" />
               <span>4-Stage Continuum</span>
-            </span>
+            </Badge>
           </div>
         }
       />
@@ -47,16 +53,16 @@ export default function ScaffoldingPage() {
       <WorkedExampleStudio initialProblemId="raft_leader_election" initialStage={2} />
 
       {/* Cognitive Science Foundations Accordion / Card */}
-      <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-6 backdrop-blur-md">
-        <div className="flex items-center gap-2.5 mb-3">
-          <Sparkles className="h-4 w-4 text-indigo-400" />
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+      <div ref={revealRef} className="panel rounded-2xl p-6">
+        <div className="mb-3 flex items-center gap-2.5">
+          <Sparkles className="h-4 w-4 text-hub-accent" />
+          <h3 className="text-sm font-bold uppercase tracking-wider text-strong">
             Evidence-Based Learning Architecture
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-secondary leading-relaxed">
-          <div className="rounded-xl border border-white/5 bg-slate-950/60 p-4">
-            <strong className="text-indigo-300 block mb-1">
+        <div className="grid grid-cols-1 gap-4 text-xs leading-relaxed text-secondary md:grid-cols-3">
+          <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-4">
+            <strong className="mb-1 block text-hub-accent">
               1. The Fading Effect (Renkl & Atkinson)
             </strong>
             <p>
@@ -65,8 +71,8 @@ export default function ScaffoldingPage() {
               preserving sub-goal schemas while reducing cognitive friction.
             </p>
           </div>
-          <div className="rounded-xl border border-white/5 bg-slate-950/60 p-4">
-            <strong className="text-indigo-300 block mb-1">
+          <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-4">
+            <strong className="mb-1 block text-hub-accent">
               2. Working Memory Budget (Sweller & Cowan)
             </strong>
             <p>
@@ -75,8 +81,8 @@ export default function ScaffoldingPage() {
               protecting against working memory saturation.
             </p>
           </div>
-          <div className="rounded-xl border border-white/5 bg-slate-950/60 p-4">
-            <strong className="text-indigo-300 block mb-1">
+          <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-4">
+            <strong className="mb-1 block text-hub-accent">
               3. The Expertise Reversal Effect (Kalyuga)
             </strong>
             <p>

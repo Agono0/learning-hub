@@ -15,7 +15,7 @@ import { ClayIn } from '@/lib/motion'
 
 export default function NotificationsPage() {
   return (
-    <ClayIn as="div" className="space-y-4 pb-8">
+    <ClayIn as="div" className="space-y-5 pb-8">
       <PageHeader
         title="Notification Center"
         subtitle="You decide what may reach you, when, and how much. Everything that was delivered — or held back — is listed honestly."

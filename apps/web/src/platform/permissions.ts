@@ -150,12 +150,25 @@ export async function requestPermission(id: PermissionId): Promise<PermissionSta
   return 'unsupported'
 }
 
+/** Web-only delivery refinements; ignored by hosts without the concept. */
+export interface LocalNotificationOptions {
+  /** Notifications sharing a tag replace each other — keeps ONE persistent
+   * "session running" toast instead of stacking (M2-31). */
+  tag?: string
+  /** Web hint to keep the toast on screen until the user dismisses it. */
+  requireInteraction?: boolean
+}
+
 /**
  * Send a one-off local notification without touching the reminder pipeline
  * (bell opt-in, test messages). Assumes permission is granted; returns false
  * when it is not or the platform cannot deliver.
  */
-export async function deliverLocalNotification(title: string, body: string): Promise<boolean> {
+export async function deliverLocalNotification(
+  title: string,
+  body: string,
+  opts?: LocalNotificationOptions,
+): Promise<boolean> {
   if (isTauri) {
     try {
       const plugin = await import('@tauri-apps/plugin-notification')
@@ -172,7 +185,12 @@ export async function deliverLocalNotification(title: string, body: string): Pro
     Notification.permission === 'granted'
   ) {
     try {
-      new Notification(title, { body, icon: '/icons/icon-192.png' })
+      new Notification(title, {
+        body,
+        icon: '/icons/icon-192.png',
+        tag: opts?.tag,
+        requireInteraction: opts?.requireInteraction,
+      })
       return true
     } catch {
       return false

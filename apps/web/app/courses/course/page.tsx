@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Course overview (?id=): what you'll learn, the syllabus with your progress,
  * projects (tick their checklists), the final exam and the certificate.
@@ -45,6 +47,17 @@ import {
   TextArea,
 } from '@/ui'
 import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 type Lesson = CourseOverview['modules'][number]['lessons'][number]
 
@@ -141,7 +154,7 @@ function ImproveSheet({
             <textarea
               readOnly
               aria-label="Improve prompt"
-              className="input h-32 font-mono text-[11px]"
+              className="input h-32 font-mono text-xs"
               value={build.data}
             />
           </div>
@@ -176,6 +189,10 @@ function Course() {
       router.push('/courses')
     },
   })
+  // GSAP moment: the syllabus module cards rise in with a capped stagger when
+  // the section scrolls into view. The section itself is owned by the framer
+  // <Reveal> above it — one animation owner per element.
+  const syllabusRevealRef = useGsapReveal<HTMLElement>()
 
   if (id === null)
     return (
@@ -299,7 +316,7 @@ function Course() {
       )}
 
       <Reveal>
-        <section className="space-y-3" aria-label="Syllabus">
+        <section ref={syllabusRevealRef} className="space-y-3" aria-label="Syllabus">
           <h2 className="text-lg font-semibold">Syllabus</h2>
           {modules.map((m, i) => {
             const done = m.lessons.filter((l) => l.status === 'completed').length
@@ -494,33 +511,30 @@ function Course() {
         </Panel>
       </Reveal>
 
-      <Sheet
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title="Delete course?"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              loading={remove.isPending}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete course?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deleting “{course.title}” removes its lessons, progress and exercise cards. Your
+              review history is kept.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={remove.isPending}
               onClick={() => {
                 setConfirmDelete(false)
                 remove.mutate()
               }}
             >
               Delete course
-            </Button>
-          </>
-        }
-      >
-        <p className="text-sm text-secondary">
-          Deleting “{course.title}” removes its lessons, progress and exercise cards. Your review
-          history is kept.
-        </p>
-      </Sheet>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <ImproveSheet courseId={course.id} open={improveOpen} onClose={() => setImproveOpen(false)} />
     </div>
   )
@@ -578,7 +592,15 @@ function GlossaryPanel({ courseId }: { courseId: number }) {
 
 export default function CoursePage() {
   return (
-    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
+    <Suspense
+      fallback={
+        <div className="space-y-4" aria-hidden>
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-4 w-80" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      }
+    >
       <Course />
     </Suspense>
   )

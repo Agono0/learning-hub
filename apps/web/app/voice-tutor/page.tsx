@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -7,8 +9,10 @@ import { HelpCircle, Mic, MicOff, RefreshCw, Send, Volume2, VolumeX } from 'luci
 import { apiGet, apiSend } from '@/lib/transport'
 import { hapticLight, hapticWarning } from '@/platform/haptics'
 import { listenForSpeech, playChime, speakText, stopSpeaking } from '@/lib/audio-engine'
-import { Button, Callout, IconButton, Markdown, PageHeader, Panel, useToast } from '@/ui'
+import { Button, Callout, IconButton, Markdown, PageHeader, Panel, Skeleton, useToast } from '@/ui'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import { ChipPicker } from '@/components/ui/chip-picker'
 
 interface DialogueTurn {
   role: 'user' | 'assistant'
@@ -186,12 +190,15 @@ function VoiceTutorContent() {
     }
   }
 
+  // GSAP reveal ref for the transcript turns (see the scroll area below).
+  const transcriptRevealRef = useGsapReveal<HTMLDivElement>()
+
   const askForHint = () => {
     void sendTurn("I'm not completely sure, could you give me a hint?")
   }
 
   return (
-    <div className="container max-w-3xl space-y-6 py-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       {/* Entrance beats: header → setup panel, and the whole session view rises
           in when a session starts. The dialogue transcript itself is never
           animated per-turn (chat UX). SSR-safe — ClayIn renders the final state
@@ -256,23 +263,13 @@ function VoiceTutorContent() {
                 />
               </div>
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                {[
-                  'Active Transport',
-                  'Newtonian Mechanics',
-                  'Bayesian Probability',
-                  'Photosynthesis',
-                ].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTopic(t)}
-                    className="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-secondary"
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              <ChipPicker
+                label="Suggested topics"
+                className="pt-1"
+                items={SUGGESTED_TOPICS}
+                value={SUGGESTED_TOPICS.some((t) => t.value === topic) ? topic : null}
+                onChange={setTopic}
+              />
 
               <Button
                 className="w-full sm:w-auto"
@@ -338,7 +335,7 @@ function VoiceTutorContent() {
                             : 'bg-neutral-50 text-faint dark:bg-neutral-900/50 dark:text-tertiary'
                       }`}
                     >
-                      <div className="text-[10px] uppercase">Rung {r.rung}</div>
+                      <div className="text-xs uppercase">Rung {r.rung}</div>
                       <div className="truncate">{r.name}</div>
                     </div>
                   )
@@ -349,7 +346,7 @@ function VoiceTutorContent() {
             {/* Visualizer & Mic Pulse */}
             <div className="flex flex-col items-center justify-center py-4">
               <div
-                className={`relative flex h-28 w-28 items-center justify-center rounded-full transition-all duration-300 ${
+                className={`relative flex h-28 w-28 items-center justify-center rounded-full transition-colors duration-300 ${
                   isListening
                     ? 'bg-rose-500/20 ring-4 ring-rose-500 animate-pulse'
                     : isSpeaking
@@ -386,32 +383,37 @@ function VoiceTutorContent() {
               </div>
             </div>
 
-            {/* Transcript Scroll Area */}
-            <Panel className="max-h-80 overflow-y-auto p-4 space-y-3">
-              {turns.map((t, idx) => (
-                <div
-                  key={idx}
-                  className={`flex flex-col ${t.role === 'user' ? 'items-end' : 'items-start'}`}
-                >
+            {/* Transcript Scroll Area — GSAP moment for this page: existing
+                turns rise in with a capped stagger on scroll into view; new
+                turns append un-animated (chat UX; one animation owner per
+                element — the session view wrapper is the ClayIn owner). */}
+            <Panel className="max-h-80 overflow-y-auto p-4">
+              <div ref={transcriptRevealRef} className="space-y-3">
+                {turns.map((t, idx) => (
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-xs ${
-                      t.role === 'user'
-                        ? 'bg-indigo-600 text-white'
-                        : 'border border-neutral-200 bg-neutral-50 text-neutral-900 dark:border-(--hub-border) dark:bg-neutral-900/60 dark:text-neutral-100'
-                    }`}
+                    key={idx}
+                    className={`flex flex-col ${t.role === 'user' ? 'items-end' : 'items-start'}`}
                   >
-                    {t.role === 'user' ? (
-                      <p className="whitespace-pre-wrap">{t.text}</p>
-                    ) : (
-                      <Markdown>{t.text}</Markdown>
-                    )}
-                    <span className="mt-1 block text-[10px] opacity-70 text-right">
-                      {t.timestamp}
-                    </span>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-xs ${
+                        t.role === 'user'
+                          ? 'bg-indigo-600 text-white'
+                          : 'border border-(--hub-border) bg-(--hub-panel-2) text-body'
+                      }`}
+                    >
+                      {t.role === 'user' ? (
+                        <p className="whitespace-pre-wrap">{t.text}</p>
+                      ) : (
+                        <Markdown>{t.text}</Markdown>
+                      )}
+                      <span className="mt-1 block text-xs opacity-70 text-right">
+                        {t.timestamp}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
-              <div ref={transcriptEndRef} />
+                ))}
+                <div ref={transcriptEndRef} />
+              </div>
             </Panel>
 
             {/* Fallback Text Input & Quick Actions */}
@@ -448,11 +450,22 @@ function VoiceTutorContent() {
   )
 }
 
+/** Quick-start topic suggestions rendered as a ChipPicker. */
+const SUGGESTED_TOPICS: { value: string; label: string }[] = [
+  { value: 'Active Transport', label: 'Active Transport' },
+  { value: 'Newtonian Mechanics', label: 'Newtonian Mechanics' },
+  { value: 'Bayesian Probability', label: 'Bayesian Probability' },
+  { value: 'Photosynthesis', label: 'Photosynthesis' },
+]
+
 export default function VoiceTutorPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-4xl py-6 text-sm text-faint">Loading Voice Tutor...</div>
+        <div className="mx-auto max-w-3xl space-y-4" aria-hidden>
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-48 w-full" />
+        </div>
       }
     >
       <VoiceTutorContent />

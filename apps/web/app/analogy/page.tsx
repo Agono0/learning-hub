@@ -15,11 +15,16 @@ import React from 'react'
 import { Brain, GitCompare, Layers, Sparkles, Target } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { AnalogicalTransferStudio } from '@/components/AnalogicalTransferStudio'
 
 export default function AnalogyPage() {
+  // GSAP moment for this page: the studio workbench rises in with a capped
+  // stagger when it scrolls into view (a different node from the ClayIn
+  // container — one animation owner per element).
+  const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title="Analogical Transfer & Schema Induction Studio"
@@ -30,7 +35,7 @@ export default function AnalogyPage() {
               <GitCompare className="h-3.5 w-3.5 text-status-info-text" />
               <span>Gentner (1983)</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-300">
               <Layers className="h-3.5 w-3.5 text-indigo-400" />
               <span>Gick & Holyoak (1983)</span>
             </span>
@@ -44,7 +49,7 @@ export default function AnalogyPage() {
 
       {/* Scientific Foundation Overview Banner */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+        <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel) p-4">
           <div className="flex items-center gap-2 font-bold text-xs text-status-info-text uppercase tracking-wider">
             <GitCompare className="h-4 w-4" />
             <span>Gentner Systematicity</span>
@@ -56,7 +61,7 @@ export default function AnalogyPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+        <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel) p-4">
           <div className="flex items-center gap-2 font-bold text-xs text-indigo-400 uppercase tracking-wider">
             <Brain className="h-4 w-4" />
             <span>Multi-Base Convergence</span>
@@ -68,7 +73,7 @@ export default function AnalogyPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+        <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel) p-4">
           <div className="flex items-center gap-2 font-bold text-xs text-status-success-text uppercase tracking-wider">
             <Sparkles className="h-4 w-4" />
             <span>Context-Free FSRS Stability</span>
@@ -81,8 +86,10 @@ export default function AnalogyPage() {
         </div>
       </div>
 
-      {/* Main Interactive Studio Workbench */}
-      <AnalogicalTransferStudio />
+      {/* Main Interactive Studio Workbench — GSAP moment (see ref below). */}
+      <div ref={studioRevealRef}>
+        <AnalogicalTransferStudio />
+      </div>
     </ClayIn>
   )
 }

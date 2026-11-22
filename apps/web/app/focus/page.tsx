@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle,
   CheckCircle2,
   Copy,
   Globe,
@@ -11,7 +10,6 @@ import {
   Phone,
   Plus,
   Shield,
-  ShieldAlert,
   Timer,
   TreePine,
   X,
@@ -28,17 +26,42 @@ import {
   createFrictionGate,
   type FrictionGate,
 } from '@learning-hub/core/src/focus'
+import {
+  DEFAULT_ALLOWED_DOMAINS,
+  normalizeDomain,
+  normalizeExeName,
+} from '@learning-hub/core/src/focus-lock'
 import type { FrictionTrigger } from '@learning-hub/core/src/types'
 import { apiGet, apiSend } from '@/lib/transport'
 import { requestFocusPresentation, releaseFocusPresentation } from '@/platform/pwa'
 import { Button, IconButton, PageHeader, SelectField, Toggle, useToast } from '@/ui'
+import { Callout, EmptyState, Skeleton } from '@/ui'
 import { motion } from 'framer-motion'
 import { ClayIn, Reveal, motionOK } from '@/lib/motion'
+import { KeyMetricRow } from '@/components/ui/key-metric-row'
+import { SectionHeader } from '@/components/ui/section-header'
+import { IconTile } from '@/components/ui/icon-tile'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 import { SoundscapeBar } from '@/components/SoundscapeBar'
 import { FlowStatePanel } from '@/components/FlowStatePanel'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { queryKeys } from '@/lib/query-keys'
+import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
+import { MaxFocusExitGate } from '@/components/MaxFocusExitGate'
+import { FocusModePicker } from '@/components/tasks/FocusModePicker'
+import { MaxFocusPrecheck } from '@/components/MaxFocusPrecheck'
+import { MaxFocusAllowlistEditor } from '@/components/MaxFocusAllowlistEditor'
+import { MaxFocusSessionHistory } from '@/components/MaxFocusSessionHistory'
+import { MaxFocusReportCard } from '@/components/MaxFocusReportCard'
+import {
+  DEVICE_OWNER_ADB_COMMAND,
+  deviceOwnerStatus,
+  type DeviceOwnerStatus,
+  deviceOwnerProvisioningSupported,
+} from '@/platform/device-owner'
 
 // The 3D presentation canvas is optional during focus sessions — keep three.js
 // out of the focus route's critical path (same pattern as /world and the graph).
@@ -103,6 +126,9 @@ interface BridgeInfo {
 
 const BREATH_LABELS = ['Breathe in…', 'Hold…', 'Breathe out…'] as const
 
+/** Precommitment duration choices for Max Focus (same set as before, extracted for ChipPicker). */
+const MAX_MINUTE_OPTIONS = [15, 25, 45, 60, 90, 120] as const
+
 function breathLabel(cycleSecond: number): string {
   if (cycleSecond < BREATH_SECONDS.inhale) return BREATH_LABELS[0]
   if (cycleSecond < BREATH_SECONDS.inhale + BREATH_SECONDS.hold) return BREATH_LABELS[1]
@@ -117,6 +143,70 @@ interface DistractionRow {
   id: number
   name: string
   kind: 'app' | 'website' | 'habit'
+}
+
+/**
+ * Device Owner provisioning panel (M2-10) — Max Focus Tier 1 on Android.
+ *
+ * Android + Tauri only (null otherwise, hydration-safe: platform detected
+ * after mount). Shows the EXACT one-time ADB provisioning command with a
+ * copy button (confirm-in-place "Copied") and the live provisioned state
+ * from the native plugin. Honest copy: provisioning needs a computer, and
+ * enabling device admin alone grants nothing.
+ */
+function DeviceOwnerPanel() {
+  const [supported, setSupported] = useState(false)
+  const [status, setStatus] = useState<DeviceOwnerStatus | null>(null)
+  const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setSupported(deviceOwnerProvisioningSupported())
+    void deviceOwnerStatus().then(setStatus)
+    return () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current)
+    }
+  }, [])
+
+  if (!supported) return null
+
+  const copy = () => {
+    void navigator.clipboard
+      .writeText(DEVICE_OWNER_ADB_COMMAND)
+      .then(() => {
+        setCopied(true)
+        if (copiedTimer.current) clearTimeout(copiedTimer.current)
+        copiedTimer.current = setTimeout(() => setCopied(false), 2000)
+      })
+      .catch(() => {
+        // clipboard blocked — the command is fully visible/selectable above
+      })
+  }
+
+  return (
+    <div className="panel space-y-3">
+      <p className="label">Device Owner provisioning — Max Focus Tier 1 (Android)</p>
+      <p className="text-xs text-secondary">
+        One-time setup from a computer with ADB, on a device that has no Google account yet. This
+        enables Lock Task Mode; enabling device admin alone grants nothing.
+      </p>
+      <code className="scroll-x block rounded-lg bg-neutral-100 px-3 py-2 text-xs break-all text-neutral-800 dark:bg-(--hub-sunken) dark:text-neutral-200">
+        {DEVICE_OWNER_ADB_COMMAND}
+      </code>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" onClick={copy}>
+          {copied ? 'Copied' : 'Copy command'}
+        </Button>
+        <span className="text-xs text-tertiary">
+          {status
+            ? status.isDeviceOwner
+              ? 'This device is provisioned — Lock Task Mode is available.'
+              : 'Not provisioned yet — run the command above, then reopen this page.'
+            : 'Provisioning state unknown until the native shell reports it.'}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -182,9 +272,7 @@ function DistractionAppsPanel() {
             <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0 truncate text-neutral-700 dark:text-neutral-200">
                 {r.name}
-                <span className="ml-2 text-[10px] uppercase tracking-wide text-tertiary">
-                  {r.kind}
-                </span>
+                <span className="ml-2 text-xs uppercase tracking-wide text-tertiary">{r.kind}</span>
               </span>
               <Button
                 variant="ghost"
@@ -227,8 +315,9 @@ export default function FocusPage() {
   const [extraApps, setExtraApps] = useState<string[]>([])
   const [newDomain, setNewDomain] = useState('')
   const [newApp, setNewApp] = useState('')
-  const [earlyExitReflection, setEarlyExitReflection] = useState('')
   const [copiedToken, setCopiedToken] = useState(false)
+  // M2-16: the explicit pre-session confirm — the start button gates on it.
+  const [precheckConfirmed, setPrecheckConfirmed] = useState(false)
 
   // ── running session state ──
   const [session, setSession] = useState<FocusSession | null>(null)
@@ -419,70 +508,28 @@ export default function FocusPage() {
     },
   })
 
-  const requestEarlyExitMutation = useMutation({
-    mutationFn: () =>
-      apiSend<{ ok: boolean; lock: FocusLockData }>('/api/focus/max/exit', 'POST', {
-        action: 'request',
-      }),
-    onSuccess: () => {
-      void releaseFocusPresentation()
-      toast({
-        title: 'Exit Cooldown Started',
-        description: 'Take 60 seconds to reflect before breaking your focus.',
-        tone: 'warning',
-      })
-      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, tone: 'danger' })
-    },
-  })
+  // M2-18: the early-exit arc (request → 60s cooldown → PIN-confirmed exit)
+  // lives in <MaxFocusExitGate> — PIN setup, PIN entry and the mandatory
+  // reason are its internals. The page only refetches on change and releases
+  // the native watchdog once a confirmed exit actually lands.
+  const exitGateChanged = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
+    void qc.invalidateQueries({ queryKey: queryKeys.focus })
+  }, [qc])
 
-  const confirmEarlyExitMutation = useMutation({
-    mutationFn: async (reflection: string) => {
-      const res = await apiSend<{ ok: boolean; session: FocusSession; lock: FocusLockData }>(
-        '/api/focus/max/exit',
-        'POST',
-        { action: 'confirm', reflection },
-      )
-      if (isTauriDesktop) {
+  const exitGateExited = useCallback(() => {
+    void releaseFocusPresentation()
+    if (isTauriDesktop) {
+      void (async () => {
         try {
           const { invoke } = await import('@tauri-apps/api/core')
           await invoke('focus_lock_release', { token: bridge.data?.pairingToken ?? '' })
-        } catch {}
-      }
-      return res
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Max Focus Session Ended',
-        description: 'Session ended early. Reflection recorded in friction log.',
-        tone: 'neutral',
-      })
-      setEarlyExitReflection('')
-      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-      void qc.invalidateQueries({ queryKey: queryKeys.focus })
-    },
-    onError: (err: Error) => {
-      toast({ title: err.message, tone: 'danger' })
-    },
-  })
-
-  const cancelEarlyExitMutation = useMutation({
-    mutationFn: () =>
-      apiSend<{ ok: boolean; lock: FocusLockData }>('/api/focus/max/exit', 'POST', {
-        action: 'cancel',
-      }),
-    onSuccess: () => {
-      toast({
-        title: 'Impulse Resisted!',
-        description: 'Great choice staying with your focus. Timer restored.',
-        tone: 'success',
-      })
-      setEarlyExitReflection('')
-      void qc.invalidateQueries({ queryKey: ['focus-max-lock'] })
-    },
-  })
+        } catch {
+          /* native bridge optional — the server already ended the session */
+        }
+      })()
+    }
+  }, [bridge.data?.pairingToken])
 
   const armGate = (trigger: FrictionTrigger) => {
     if (!session) return
@@ -581,11 +628,48 @@ export default function FocusPage() {
     setTimeout(() => setCopiedToken(false), 2000)
   }
 
+  // M2-16: resolved allowlist preview (defaults + preset + extras) — what
+  // stays reachable once the lock engages; everything else is blocked.
+  const precheckDomains = Array.from(
+    new Set(
+      [
+        ...DEFAULT_ALLOWED_DOMAINS,
+        ...(allowlists.data?.allowlists.find((p) => p.id === selectedPresetId)?.domains ?? []),
+        ...extraDomains,
+      ]
+        .map(normalizeDomain)
+        .filter(Boolean),
+    ),
+  )
+  const precheckApps = Array.from(
+    new Set(
+      [
+        ...(allowlists.data?.allowlists.find((p) => p.id === selectedPresetId)?.apps ?? []),
+        ...extraApps,
+      ]
+        .map(normalizeExeName)
+        .filter(Boolean),
+    ),
+  )
+
   const mm = Math.floor(secondsLeft / 60)
   const ss = secondsLeft % 60
 
+  // GSAP count-up (per-page motion mandate): the honest leak counter ticks up
+  // when a tab switch is caught. The hook rewrites textContent in a client
+  // effect — SSR and the integration tests keep the static final number.
+  const leaksCountRef = useGsapCountUp(leaks)
+
+  // Display-only aggregates for the session history panel — pure reductions
+  // over the already-fetched list, no data logic touched.
+  const sessions = history.data?.sessions ?? []
+  const totalMinutes = sessions.reduce((n, s) => n + (s.actualMinutes ?? s.plannedMinutes), 0)
+  const completedSessions = sessions.filter((s) => s.completed).length
+  const totalLeaks = sessions.reduce((n, s) => n + s.leaks, 0)
+  const avgMinutes = sessions.length > 0 ? Math.round(totalMinutes / sessions.length) : 0
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<Timer className="h-6 w-6 text-indigo-400" />}
         title="Focus Studio"
@@ -597,8 +681,8 @@ export default function FocusPage() {
               whileTap={motionOK() ? { scale: 0.97 } : undefined}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center ${
                 activeTab === 'standard'
-                  ? 'bg-white shadow text-neutral-900 dark:bg-(--hub-panel-2) dark:text-white'
-                  : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
+                  ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+                  : 'text-tertiary hover:text-body'
               }`}
               onClick={() => setActiveTab('standard')}
             >
@@ -609,8 +693,8 @@ export default function FocusPage() {
               whileTap={motionOK() ? { scale: 0.97 } : undefined}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                 activeTab === 'max'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-tertiary hover:text-neutral-800 dark:hover:text-neutral-200'
+                  ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+                  : 'text-tertiary hover:text-body'
               }`}
               onClick={() => setActiveTab('max')}
             >
@@ -623,7 +707,7 @@ export default function FocusPage() {
           </div>
         }
       />
-      <FlowStatePanel className="mt-4" />
+      <FlowStatePanel />
 
       {xpToast && (
         <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-sm text-indigo-300">
@@ -639,6 +723,17 @@ export default function FocusPage() {
           {!running && (
             <Reveal>
               <div className="panel space-y-4">
+                {/* S3-32: focus strategies over the standard timer — the
+                    picker applies the strategy's focus length; countdown
+                    defaults to the bound task's remaining estimate (S3-80,
+                    S3-34 binding via the task input below). */}
+                <FocusModePicker
+                  today={new Date().toISOString().slice(0, 10)}
+                  boundTask={
+                    task.trim().length > 0 ? { estimateMs: null, timeSpentOnDay: {} } : null
+                  }
+                  onApplyMinutes={setMinutes}
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   {POMODORO_PRESETS.map((p) => (
                     <Button
@@ -673,7 +768,9 @@ export default function FocusPage() {
                 />
 
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-status-success-text" aria-live="polite">
+                  {/* ETA is quiet info, not a second control — the Start button
+                      below is the one primary action for starting a session. */}
+                  <p className="text-sm text-secondary" aria-live="polite">
                     {finishLine}
                   </p>
                   <Button
@@ -720,7 +817,7 @@ export default function FocusPage() {
                     </Button>
                     <Link
                       href="/world"
-                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-faint transition-colors hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
+                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-2.5 py-1 text-xs font-medium text-tertiary transition-colors hover:bg-neutral-100 dark:border-(--hub-border) dark:hover:bg-(--hub-panel-2) [@media(pointer:coarse)]:min-h-11"
                     >
                       3D Sanctuary →
                     </Link>
@@ -750,7 +847,10 @@ export default function FocusPage() {
                 <div className="flex items-center justify-center gap-6 text-sm text-tertiary">
                   <span>
                     tab switches:{' '}
-                    <span className={leaks > 0 ? 'font-semibold text-status-warning-text' : ''}>
+                    <span
+                      ref={leaksCountRef}
+                      className={leaks > 0 ? 'font-semibold text-status-warning-text' : ''}
+                    >
                       {leaks}
                     </span>{' '}
                     (honest count via Page Visibility)
@@ -778,7 +878,10 @@ export default function FocusPage() {
           )}
 
           {gate && (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-6 text-center backdrop-blur">
+            /* The gate is an always-dark ritual surface: scoping the `dark`
+               class here flips the mode tokens for its subtree, so token text
+               stays readable on the black backdrop in light mode too. */
+            <div className="dark fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-6 text-center backdrop-blur">
               {gate.state.phase === 'countdown' && (
                 <div className="space-y-4">
                   <p className="text-lg text-secondary">
@@ -805,7 +908,7 @@ export default function FocusPage() {
 
               {gate.state.phase === 'reflection' && (
                 <div className="w-full max-w-md space-y-4">
-                  <p className="text-lg font-medium text-neutral-200">{FRICTION_PROMPT}</p>
+                  <p className="text-lg font-medium text-secondary">{FRICTION_PROMPT}</p>
                   <textarea
                     className="input min-h-32"
                     placeholder="Write it — a concrete next action inside the app."
@@ -823,13 +926,13 @@ export default function FocusPage() {
                     </Button>
                     <Button
                       variant="ghost"
-                      className="text-faint"
+                      className="text-tertiary"
                       onClick={() => void finishGate(false)}
                     >
                       <XCircle className="h-4 w-4" /> Abort the session
                     </Button>
                   </div>
-                  <p className="text-xs text-neutral-600">
+                  <p className="text-xs text-tertiary">
                     Proceeding requires a written reflection — that is the whole point.
                   </p>
                 </div>
@@ -853,7 +956,7 @@ export default function FocusPage() {
           <div className="space-y-4">
             {isMaxFocusActive && activeLock ? (
               /* Active Max Focus Screen */
-              <div className="panel space-y-6 border-indigo-500/40 bg-gradient-to-b from-indigo-950/20 to-neutral-900/40 p-6 text-center">
+              <div className="panel space-y-6 border-indigo-500/40 bg-gradient-to-b from-indigo-950/20 to-(--hub-panel) p-6 text-center">
                 <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 text-xs font-semibold text-indigo-400">
                   <Shield className="h-4 w-4" />
                   Max Focus Lockdown Active
@@ -863,19 +966,19 @@ export default function FocusPage() {
                   <h2 className="text-2xl font-bold tracking-tight text-white">
                     {activeLock.task || 'Deep Learning Lockdown'}
                   </h2>
-                  <p className="text-sm text-faint mt-1">
+                  <p className="text-sm text-secondary mt-1">
                     Committed until {new Date(activeLock.endsAt ?? '').toLocaleTimeString()}
                   </p>
                 </div>
 
                 {/* Allowlist Snapshot Notice */}
-                <div className="mx-auto max-w-lg rounded-xl border border-neutral-800 bg-neutral-950/60 p-3.5 text-left text-xs">
+                <div className="mx-auto max-w-lg rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-3.5 text-left text-xs">
                   <div className="font-semibold text-secondary mb-1 flex items-center gap-1.5">
                     <Globe className="h-3.5 w-3.5 text-indigo-400" />
                     Allowed Destinations:
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-2">
-                    <span className="rounded bg-indigo-950 px-2 py-0.5 text-indigo-300 border border-indigo-800">
+                    <span className="rounded bg-hub-accent/10 px-2 py-0.5 text-hub-accent border border-hub-accent/20">
                       All of YouTube (learn & research)
                     </span>
                     {activeLock.allowlist.domains
@@ -889,7 +992,7 @@ export default function FocusPage() {
                       .map((d) => (
                         <span
                           key={d}
-                          className="rounded bg-neutral-800 px-2 py-0.5 text-neutral-300"
+                          className="rounded border border-(--hub-border) bg-(--hub-panel-2) px-2 py-0.5 text-secondary"
                         >
                           {d}
                         </span>
@@ -897,7 +1000,7 @@ export default function FocusPage() {
                     {activeLock.allowlist.apps.map((a) => (
                       <span
                         key={a}
-                        className="rounded bg-emerald-950 px-2 py-0.5 text-status-success-text border border-emerald-800"
+                        className="rounded bg-emerald-500/10 px-2 py-0.5 text-status-success-text border border-emerald-500/30"
                       >
                         app: {a}
                       </span>
@@ -905,100 +1008,24 @@ export default function FocusPage() {
                   </div>
                 </div>
 
-                {/* Early Exit Gate State Machine */}
-                {activeLock.exitState === 'locked' && (
-                  <div className="pt-2">
-                    <Button
-                      variant="ghost"
-                      className="border border-rose-500/30 text-danger-text hover:bg-rose-950/20 text-xs"
-                      onClick={() => requestEarlyExitMutation.mutate()}
-                      disabled={requestEarlyExitMutation.isPending}
-                    >
-                      Request Early Exit (Initiates 60s reflection delay)
-                    </Button>
-                  </div>
-                )}
-
-                {activeLock.exitState === 'cooldown' && (
-                  <div className="mx-auto max-w-md space-y-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 text-left">
-                    <div className="flex items-center gap-2 text-status-warning-text font-semibold text-sm">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      Early Exit Cooldown: {activeLock.cooldownRemainingSec}s remaining
-                    </div>
-                    <p className="text-xs text-faint">
-                      Take a slow breath. Ulysses contracts separate sudden impulses from deliberate
-                      actions. Why do you want to break focus?
-                    </p>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-                      <div
-                        className="h-full bg-amber-400 transition-all duration-1000"
-                        style={{
-                          width: `${Math.max(0, 100 - (activeLock.cooldownRemainingSec / 60) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <Button
-                      variant="primary"
-                      className="w-full text-xs font-semibold"
-                      onClick={() => cancelEarlyExitMutation.mutate()}
-                    >
-                      Resist Impulse & Return to Flow
-                    </Button>
-                  </div>
-                )}
-
-                {activeLock.exitState === 'can_confirm' && (
-                  <div className="mx-auto max-w-md space-y-3 rounded-xl border border-rose-500/40 bg-rose-950/20 p-4 text-left">
-                    <div className="flex items-center gap-2 text-danger-text font-semibold text-sm">
-                      <ShieldAlert className="h-4 w-4 shrink-0" />
-                      Cooldown Complete — State Your Reflection
-                    </div>
-                    <p className="text-xs text-faint">
-                      Type at least 20 characters explaining the reason for ending early. It will be
-                      logged to your friction history.
-                    </p>
-                    <textarea
-                      className="input min-h-24 w-full text-xs font-mono"
-                      placeholder="Why are you breaking focus? (minimum 20 chars)"
-                      value={earlyExitReflection}
-                      onChange={(e) => setEarlyExitReflection(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className="btn-danger flex-1 text-xs"
-                        disabled={
-                          earlyExitReflection.trim().length < 20 ||
-                          confirmEarlyExitMutation.isPending
-                        }
-                        onClick={() => confirmEarlyExitMutation.mutate(earlyExitReflection.trim())}
-                      >
-                        Confirm Early Exit
-                      </button>
-                      <Button
-                        variant="ghost"
-                        className="text-xs"
-                        onClick={() => cancelEarlyExitMutation.mutate()}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                {/* Early Exit Gate — request, 60s reflection, PIN + reason (M2-18) */}
+                <MaxFocusExitGate
+                  lock={activeLock}
+                  onChanged={exitGateChanged}
+                  onExited={exitGateExited}
+                />
               </div>
             ) : (
               /* Max Focus Session Configurator */
               <div className="space-y-4">
                 <div className="panel space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="rounded-lg bg-indigo-600/20 p-2 text-indigo-400">
-                      <Shield className="h-5 w-5" />
-                    </div>
+                    <IconTile icon={Shield} tone="accent" />
                     <div>
-                      <h2 className="text-base font-bold text-neutral-100">
+                      <h2 className="text-base font-bold text-strong">
                         Precommitment Ulysses Lockdown
                       </h2>
-                      <p className="text-xs text-faint mt-0.5">
+                      <p className="text-xs text-tertiary mt-0.5">
                         Chrome opens only allowlisted domains and learning video on YouTube. Windows
                         watchdog minimizes all other desktop apps.
                       </p>
@@ -1008,22 +1035,15 @@ export default function FocusPage() {
                   {/* Duration Picker */}
                   <div>
                     <label className="label mb-1.5 block">Committed Duration</label>
-                    <div className="flex flex-wrap gap-2">
-                      {[15, 25, 45, 60, 90, 120].map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold border transition inline-flex items-center focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
-                            maxMinutes === m
-                              ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300'
-                              : 'border-neutral-200 text-faint hover:border-neutral-300 dark:border-(--hub-border)'
-                          }`}
-                          onClick={() => setMaxMinutes(m)}
-                        >
-                          {m} min
-                        </button>
-                      ))}
-                    </div>
+                    <ChipPicker
+                      label="Committed duration"
+                      items={MAX_MINUTE_OPTIONS.map((m) => ({
+                        value: String(m),
+                        label: `${m} min`,
+                      }))}
+                      value={String(maxMinutes)}
+                      onChange={(v) => setMaxMinutes(Number(v))}
+                    />
                   </div>
 
                   {/* Task Input */}
@@ -1073,7 +1093,7 @@ export default function FocusPage() {
                         {extraDomains.map((d) => (
                           <span
                             key={d}
-                            className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
+                            className="inline-flex items-center gap-1 rounded border border-(--hub-border) bg-(--hub-panel-2) px-2 py-0.5 text-xs text-secondary"
                           >
                             {d}
                             <IconButton
@@ -1111,7 +1131,7 @@ export default function FocusPage() {
                         {extraApps.map((a) => (
                           <span
                             key={a}
-                            className="inline-flex items-center gap-1 rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300"
+                            className="inline-flex items-center gap-1 rounded border border-(--hub-border) bg-(--hub-panel-2) px-2 py-0.5 text-xs text-secondary"
                           >
                             {a}
                             <IconButton
@@ -1127,11 +1147,20 @@ export default function FocusPage() {
                     )}
                   </div>
 
-                  {/* Start Button */}
+                  {/* Pre-session checklist (M2-16): permission audit + what
+                      will be blocked + the explicit confirm. */}
+                  <MaxFocusPrecheck
+                    allowedDomains={precheckDomains}
+                    allowedApps={precheckApps}
+                    confirmed={precheckConfirmed}
+                    onConfirmedChange={setPrecheckConfirmed}
+                  />
+
+                  {/* Start Button — gated on the explicit confirm */}
                   <Button
                     variant="primary"
                     className="w-full py-2.5 text-sm font-bold shadow-lg"
-                    disabled={startMaxSessionMutation.isPending}
+                    disabled={startMaxSessionMutation.isPending || !precheckConfirmed}
                     onClick={() => startMaxSessionMutation.mutate()}
                   >
                     <Shield className="h-4 w-4 mr-1.5" />
@@ -1139,27 +1168,29 @@ export default function FocusPage() {
                   </Button>
                 </div>
 
+                {/* Allowlist editor (M2-22): presets CRUD — a preset chosen
+                    at start is frozen into the lock snapshot. */}
+                <MaxFocusAllowlistEditor />
+
                 {/* Companion Chrome Extension Bridge Card */}
-                <div className="panel space-y-3 border-neutral-800 text-xs">
+                <div className="panel space-y-3 text-xs">
                   <div className="flex items-center justify-between">
-                    <div className="font-semibold text-neutral-200 flex items-center gap-2">
+                    <div className="font-semibold text-strong flex items-center gap-2">
                       <Monitor className="h-4 w-4 text-indigo-400" />
                       Chrome Extension Companion Status
                     </div>
                     {bridge.data?.lastHeartbeatAt ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950 px-2 py-0.5 text-[11px] text-status-success-text border border-emerald-800">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-status-success-text border border-emerald-500/30">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                         Extension Connected
                       </span>
                     ) : (
-                      <span className="text-tertiary text-[11px]">
-                        Awaiting Extension Heartbeat
-                      </span>
+                      <span className="text-tertiary text-xs">Awaiting Extension Heartbeat</span>
                     )}
                   </div>
-                  <p className="text-faint text-[11px] leading-relaxed">
+                  <p className="text-tertiary text-xs leading-relaxed">
                     Install the Learning HUB companion extension in Chrome from{' '}
-                    <code className="text-neutral-300 bg-neutral-800 px-1 py-0.5 rounded">
+                    <code className="text-secondary bg-(--hub-panel-2) px-1 py-0.5 rounded">
                       apps/extension/dist
                     </code>
                     . Paste this pairing token into the extension popup:
@@ -1185,51 +1216,74 @@ export default function FocusPage() {
 
       {/* ─── SESSION HISTORY (Shared) ─────────────────────────────────────── */}
       <Reveal>
-        <div className="panel">
-          <p className="label mb-3">Session history</p>
+        <div className="panel space-y-3">
+          <SectionHeader
+            icon={Timer}
+            title="Session history"
+            count={history.data?.sessions.length}
+          />
           {history.isLoading ? (
-            <p className="text-sm text-tertiary">Loading…</p>
-          ) : (history.data?.sessions.length ?? 0) === 0 ? (
-            <p className="text-sm text-tertiary">
-              No sessions yet — start your first protected block.
-            </p>
+            <div className="space-y-2" aria-hidden>
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+              <Skeleton className="h-12" />
+            </div>
+          ) : history.isError ? (
+            <Callout tone="danger" title="Couldn't load session history">
+              {(history.error as Error | null)?.message ?? 'Please try again in a moment.'}
+            </Callout>
+          ) : sessions.length === 0 ? (
+            <EmptyState icon={<Timer className="h-6 w-6" aria-hidden />} title="No sessions yet">
+              Start your first protected block above — completed blocks and honest leak counts land
+              here.
+            </EmptyState>
           ) : (
-            <ul className="divide-y divide-neutral-200 text-sm dark:divide-(--hub-border)">
-              {history.data?.sessions.map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-neutral-700 dark:text-neutral-200 flex items-center gap-2">
-                      {s.mode === 'max' && (
-                        <span className="rounded bg-indigo-950 px-1.5 py-0.2 text-[10px] font-bold text-indigo-400 border border-indigo-800">
-                          MAX
-                        </span>
-                      )}
-                      {s.task ?? 'Focus session'}
-                    </p>
-                    <p className="text-xs text-tertiary">
-                      {new Date(s.startedAt).toLocaleString()} · planned {s.plannedMinutes}m
-                      {s.actualMinutes != null ? ` · actual ${s.actualMinutes}m` : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3 text-xs">
-                    <span className={s.leaks > 0 ? 'text-status-warning-text' : 'text-tertiary'}>
-                      {s.leaks} leaks
-                    </span>
-                    <span className={s.completed ? 'text-status-success-text' : 'text-tertiary'}>
-                      {s.completed ? 'completed' : 'ended early'}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              <KeyMetricRow
+                columns={4}
+                metrics={[
+                  {
+                    label: 'Focus minutes',
+                    value: String(Math.round(totalMinutes)),
+                    hint: 'across all logged sessions',
+                  },
+                  { label: 'Completed', value: `${completedSessions} of ${sessions.length}` },
+                  { label: 'Avg session', value: `${avgMinutes}m` },
+                  {
+                    label: 'Tab switches',
+                    value: String(totalLeaks),
+                    hint: 'honest Page Visibility count',
+                  },
+                ]}
+              />
+              <SessionHistoryRows sessions={sessions} />
+            </>
           )}
         </div>
+      </Reveal>
+
+      {/* ─── MAX FOCUS HISTORY (M2-25) ───────────────────────────────────── */}
+      <Reveal>
+        <MaxFocusSessionHistory />
       </Reveal>
 
       {/* ─── DISTRACTION APPS (F-08③) ───────────────────────────────────── */}
       <Reveal>
         <DistractionAppsPanel />
       </Reveal>
+
+      {/* ─── DEVICE OWNER PROVISIONING (M2-10) ───────────────────────────── */}
+      <Reveal>
+        <DeviceOwnerPanel />
+      </Reveal>
+
+      {/* ─── EMERGENCY DIALER (M2-15) ────────────────────────────────────── */}
+      <Reveal>
+        <EmergencyDialerTile />
+      </Reveal>
+
+      {/* ─── SESSION REPORT CARD (M2-34) ─────────────────────────────────── */}
+      <MaxFocusReportCard />
 
       {/* ─── DETOX WIZARD (One-Time) ──────────────────────────────────────── */}
       {detox.data && !detox.data.done && (
@@ -1273,5 +1327,46 @@ export default function FocusPage() {
         </Reveal>
       )}
     </ClayIn>
+  )
+}
+
+/**
+ * Session history rows (presentation only — the parent owns the data). Rows
+ * reveal on scroll via {@link useGsapReveal} (motionOK-gated, stagger-capped;
+ * the panel itself is owned by the framer `Reveal` at the call site — one
+ * animation owner per element). Extracted as a component so the reveal hook
+ * mounts exactly when rows exist.
+ */
+function SessionHistoryRows({ sessions }: { sessions: FocusSession[] }) {
+  const listRef = useGsapReveal<HTMLUListElement>({ stagger: 0.04 })
+  return (
+    <ul className="divide-y divide-neutral-200 text-sm dark:divide-(--hub-border)" ref={listRef}>
+      {sessions.map((s) => (
+        <li key={s.id} className="flex items-center justify-between gap-3 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-neutral-700 dark:text-neutral-200 flex items-center gap-2">
+              {s.mode === 'max' && (
+                <span className="rounded bg-hub-accent/10 px-1.5 py-0.5 text-xs font-bold text-hub-accent border border-hub-accent/20">
+                  MAX
+                </span>
+              )}
+              {s.task ?? 'Focus session'}
+            </p>
+            <p className="text-xs text-tertiary">
+              {new Date(s.startedAt).toLocaleString()} · planned {s.plannedMinutes}m
+              {s.actualMinutes != null ? ` · actual ${s.actualMinutes}m` : ''}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3 text-xs">
+            <span className={s.leaks > 0 ? 'text-status-warning-text' : 'text-tertiary'}>
+              {s.leaks} leaks
+            </span>
+            <span className={s.completed ? 'text-status-success-text' : 'text-tertiary'}>
+              {s.completed ? 'completed' : 'ended early'}
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }

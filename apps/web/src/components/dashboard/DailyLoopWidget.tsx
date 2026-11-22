@@ -13,13 +13,14 @@
  * Display-only by design law: no CTAs here, the page's primary action stays
  * in the header.
  */
+import React, { useEffect, useState } from 'react'
+import type { ReactElement } from 'react'
 import Link from 'next/link'
 import { FOCUS_TARGET_MINUTES } from '@learning-hub/core'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import { useMotionValueEvent, useSpring } from 'framer-motion'
-import { useEffect, useState } from 'react'
-import type { ReactElement } from 'react'
 import { Badge, ProgressRing } from '@/ui'
+import { SectionHeader } from '@/components/ui/section-header'
 import { motionOK, Stagger, StaggerItem } from '@/lib/motion'
 import { useGsapCountUp } from '@/lib/useGsapCountUp'
 import type { WidgetProps } from './widgets'
@@ -160,21 +161,23 @@ export function DailyLoopWidget({ data: d }: WidgetProps) {
 
   return (
     <section className="panel" aria-label="Daily loop">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
-          The daily loop
-        </div>
-        {d.runningFocus && (
-          <Link
-            href="/focus"
-            className="inline-flex min-h-[44px] items-center rounded-full hover:opacity-80"
-          >
-            <Badge tone="accent" dot pulse>
-              Focus running · {d.runningFocus.plannedMinutes} min
-            </Badge>
-          </Link>
-        )}
-      </div>
+      {/* Kit SectionHeader (audit L5); the live-focus badge rides the action
+          slot and keeps its 44px touch target. */}
+      <SectionHeader
+        title="The daily loop"
+        action={
+          d.runningFocus ? (
+            <Link
+              href="/focus"
+              className="inline-flex min-h-[44px] items-center rounded-full hover:opacity-80"
+            >
+              <Badge tone="accent" dot pulse>
+                Focus running · {d.runningFocus.plannedMinutes} min
+              </Badge>
+            </Link>
+          ) : undefined
+        }
+      />
       <Stagger className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         {tiles.map((t, i) => (
           <StaggerItem

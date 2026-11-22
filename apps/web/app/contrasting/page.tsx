@@ -8,20 +8,25 @@
 
 import React from 'react'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import { PageHeader } from '@/ui'
 import { ContrastingCasesStudio } from '@/components/ContrastingCasesStudio'
 
 export default function ContrastingCasesPage() {
+  // GSAP moment for this page: the studio workbench rises in with a capped
+  // stagger when it scrolls into view (a different node from the ClayIn
+  // container — one animation owner per element).
+  const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-strong">Contrasting Cases Studio</h1>
-        <p className="text-sm text-secondary">
-          Preparation for Future Learning (PFL): Invent mathematical invariants from contrasting
-          examples before expert lecture delivery (Schwartz &amp; Bransford 1998, 2004).
-        </p>
-      </header>
+    <ClayIn as="div" className="container mx-auto space-y-6">
+      <PageHeader
+        title="Contrasting Cases Studio"
+        subtitle="Preparation for Future Learning (PFL): invent mathematical invariants from contrasting examples before expert lecture delivery (Schwartz & Bransford 1998, 2004)."
+      />
 
-      <ContrastingCasesStudio />
+      <div ref={studioRevealRef}>
+        <ContrastingCasesStudio />
+      </div>
     </ClayIn>
   )
 }

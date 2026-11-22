@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "desktop",
-  "description": "Desktop-only permissions (window geometry persistence).",
+  "description": "Desktop-only permissions (window geometry persistence; shell self-updater O1-10).",
   "windows": ["main"],
   "platforms": ["windows", "macOS", "linux"],
-  "permissions": ["window-state:default"]
+  "permissions": ["window-state:default", "updater:default"]
 }

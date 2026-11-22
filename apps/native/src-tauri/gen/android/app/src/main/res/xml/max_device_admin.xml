@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Device Admin policies declared for MaxDeviceAdminReceiver (M2-10).
+     force-lock is the minimum for Max Focus; Lock Task Mode (M2-11) needs
+     Device OWNER status (ADB provisioning), not extra policies here. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />
+    </uses-policies>
+</device-admin>

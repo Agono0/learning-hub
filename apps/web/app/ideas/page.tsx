@@ -14,8 +14,11 @@ import { brainwritingMerge, scamperLenses, scamperPrompt } from '@learning-hub/c
 import type { IdeaStage } from '@learning-hub/core/types'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader, useToast } from '@/ui'
+import { Callout, EmptyState, PageHeader, Skeleton, useToast } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { SectionHeader } from '@/components/ui/section-header'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface Idea {
   id: number
@@ -182,6 +185,10 @@ export default function IdeasPage() {
     )
   }
 
+  // GSAP reveal (per-page motion mandate): the four stage columns rise in on
+  // scroll — motionOK-gated; SSR/tests keep the static content.
+  const boardRef = useGsapReveal<HTMLDivElement>()
+
   return (
     <ClayIn as="div" className="space-y-5">
       <PageHeader
@@ -189,7 +196,7 @@ export default function IdeasPage() {
         subtitle="Capture, combine, interrogate, and let stale ideas resurface themselves."
       />
 
-      {error && <div className="panel text-sm text-status-warning-text">{error}</div>}
+      {error && <Callout tone="warning">{error}</Callout>}
 
       <div className="panel flex flex-wrap gap-2">
         <input
@@ -240,53 +247,68 @@ export default function IdeasPage() {
         </span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        {STAGES.map((stage) => (
-          <div key={stage} className="space-y-2">
-            <div className="label px-1">
-              {STAGE_LABEL[stage]} ({ideas.filter((i) => i.stage === stage).length})
-            </div>
-            {ideas
-              .filter((i) => i.stage === stage)
-              .map((idea) => (
-                <div
-                  key={idea.id}
-                  className={`panel cursor-pointer transition-colors ${selected.includes(idea.id) ? 'border-indigo-500' : ''}`}
-                  onClick={() => toggleSelect(idea.id)}
-                >
-                  <div className="text-sm font-medium">{idea.title}</div>
-                  {idea.content && (
-                    <div className="mt-1 line-clamp-2 text-xs text-tertiary">{idea.content}</div>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
-                    <button className="btn-ghost text-[10px]" onClick={() => setCouncilIdea(idea)}>
-                      <Users className="h-3 w-3" /> Council
-                    </button>
-                    {stage !== 'project' && (
-                      <button
-                        className="btn-ghost text-[10px]"
-                        onClick={() =>
-                          patchIdea.mutate({
-                            id: idea.id,
-                            patch: { stage: STAGES[Math.min(3, STAGES.indexOf(stage) + 1)] },
-                          })
-                        }
-                      >
-                        stage →
-                      </button>
+      {data === undefined ? (
+        <div className="grid gap-3 md:grid-cols-4" aria-hidden>
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
+      ) : ideas.length === 0 ? (
+        <EmptyState icon={<Rocket className="h-6 w-6" aria-hidden />} title="No ideas yet">
+          Capture your first seed above — every project started as a messy thought.
+        </EmptyState>
+      ) : (
+        <div ref={boardRef} className="grid gap-3 md:grid-cols-4">
+          {STAGES.map((stage) => (
+            <div key={stage} className="space-y-2">
+              <SectionHeader
+                title={STAGE_LABEL[stage]}
+                count={ideas.filter((i) => i.stage === stage).length}
+                className="px-1"
+              />
+              {ideas
+                .filter((i) => i.stage === stage)
+                .map((idea) => (
+                  <div
+                    key={idea.id}
+                    className={`panel cursor-pointer transition-colors ${selected.includes(idea.id) ? 'border-indigo-500' : ''}`}
+                    onClick={() => toggleSelect(idea.id)}
+                  >
+                    <div className="text-sm font-medium">{idea.title}</div>
+                    {idea.content && (
+                      <div className="mt-1 line-clamp-2 text-xs text-tertiary">{idea.content}</div>
                     )}
-                    <button
-                      className="btn-ghost text-[10px]"
-                      onClick={() => patchIdea.mutate({ id: idea.id, patch: { promote: true } })}
-                    >
-                      <Rocket className="h-3 w-3" /> Project
-                    </button>
+                    <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button className="btn-ghost text-xs" onClick={() => setCouncilIdea(idea)}>
+                        <Users className="h-3 w-3" /> Council
+                      </button>
+                      {stage !== 'project' && (
+                        <button
+                          className="btn-ghost text-xs"
+                          onClick={() =>
+                            patchIdea.mutate({
+                              id: idea.id,
+                              patch: { stage: STAGES[Math.min(3, STAGES.indexOf(stage) + 1)] },
+                            })
+                          }
+                        >
+                          stage →
+                        </button>
+                      )}
+                      <button
+                        className="btn-ghost text-xs"
+                        onClick={() => patchIdea.mutate({ id: idea.id, patch: { promote: true } })}
+                      >
+                        <Rocket className="h-3 w-3" /> Project
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-          </div>
-        ))}
-      </div>
+                ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         <section className="panel space-y-3">
@@ -409,28 +431,19 @@ export default function IdeasPage() {
       </div>
 
       {councilIdea && (
-        <div
-          className="fixed inset-0 z-30 grid place-items-center bg-black/60 p-4"
-          onClick={() => {
-            setCouncilIdea(null)
-            setCouncil(null)
+        <Dialog
+          open={councilIdea !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCouncilIdea(null)
+              setCouncil(null)
+            }
           }}
         >
-          <div className="panel w-full max-w-4xl space-y-3" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-2 font-semibold">
-                <Gavel className="h-4 w-4" /> Council on: {councilIdea.title}
-              </h3>
-              <button
-                className="btn-ghost"
-                onClick={() => {
-                  setCouncilIdea(null)
-                  setCouncil(null)
-                }}
-              >
-                ×
-              </button>
-            </div>
+          <DialogContent className="max-w-4xl">
+            <DialogTitle className="flex items-center gap-2 font-semibold">
+              <Gavel className="h-4 w-4" /> Council on: {councilIdea.title}
+            </DialogTitle>
             {!council && !manual && (
               <button
                 className="btn"
@@ -497,8 +510,8 @@ export default function IdeasPage() {
                 ))}
               </div>
             )}
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {lensPrompt && (

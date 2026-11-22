@@ -15,11 +15,15 @@ import React from 'react'
 import { Award, BookOpen, Brain, Flame, Repeat, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { SuccessiveRelearningStudio } from '@/components/SuccessiveRelearningStudio'
 
 export default function SuccessiveRelearningPage() {
+  // GSAP reveal (per-page motion mandate): the foundations columns rise in on
+  // scroll — motionOK-gated; SSR/tests keep the static content.
+  const foundationsRef = useGsapReveal<HTMLDivElement>({ y: 12 })
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-5">
       {/* Page Header */}
       <PageHeader
         title="Successive Relearning Studio"
@@ -53,7 +57,10 @@ export default function SuccessiveRelearningPage() {
             Successive Relearning &amp; Memory Durability Science
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-secondary leading-relaxed">
+        <div
+          ref={foundationsRef}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-secondary leading-relaxed"
+        >
           <div className="space-y-1">
             <span className="font-semibold text-strong flex items-center gap-1.5">
               <Brain className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />

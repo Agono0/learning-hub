@@ -16,7 +16,7 @@ import { ClayIn } from '@/lib/motion'
 
 export default function PermissionsPage() {
   return (
-    <ClayIn as="div" className="space-y-4 pb-8">
+    <ClayIn as="div" className="space-y-5 pb-8">
       <PageHeader
         title="Permissions"
         subtitle="What Learning HUB may ask of this device, why, and what keeps working if you say no."

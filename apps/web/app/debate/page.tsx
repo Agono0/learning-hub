@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Dialectic Debate Arena & Protégé Peer.
  *
@@ -28,6 +30,7 @@ import {
   Tabs,
   TextArea,
 } from '@/ui'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 type FallacyKey =
   | 'straw_man'
@@ -172,6 +175,10 @@ export default function DebateArenaPage() {
       }),
   })
 
+  // GSAP moment: the page's two top-level blocks (header + active view) rise
+  // in with a capped stagger (SSR-safe; reduced-motion keeps the static page).
+  const pageRef = useGsapReveal()
+
   // A different debate opened → reset the per-debate UI (only on id change).
   const openedId = debate?.id
   const firstTurnId = debate?.transcript[0]?.id ?? ''
@@ -212,7 +219,7 @@ export default function DebateArenaPage() {
   )
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-6">
+    <div ref={pageRef} className="mx-auto max-w-4xl space-y-6">
       <PageHeader
         title="Debate Arena & Protégé"
         subtitle="Judge opposing arguments, expose fallacies, build Toulmin argument graphs, and test theorems with Lakatos Socratic methods."
@@ -250,7 +257,9 @@ export default function DebateArenaPage() {
         <>
           <Panel>{casePicker}</Panel>
           {startCase.isError ? (
-            <p className="text-xs text-danger-text">{errorText(startCase.error)}</p>
+            <Callout tone="danger" title="Could not open the case">
+              {errorText(startCase.error)}
+            </Callout>
           ) : null}
 
           {!debate ? (
@@ -332,7 +341,9 @@ export default function DebateArenaPage() {
                       ))}
                     </div>
                     {flag.isError ? (
-                      <p className="text-xs text-danger-text">{errorText(flag.error)}</p>
+                      <Callout tone="danger" title="Flag not recorded">
+                        {errorText(flag.error)}
+                      </Callout>
                     ) : null}
                     {flagResult ? (
                       <div
@@ -378,7 +389,9 @@ export default function DebateArenaPage() {
                       {debate.learnerVerdict ? 'Revise ruling' : 'Submit ruling'}
                     </Button>
                     {submitVerdict.isError ? (
-                      <p className="text-xs text-danger-text">{errorText(submitVerdict.error)}</p>
+                      <Callout tone="danger" title="Ruling not saved">
+                        {errorText(submitVerdict.error)}
+                      </Callout>
                     ) : null}
                     {submitVerdict.data ? (
                       <Callout
@@ -421,7 +434,9 @@ export default function DebateArenaPage() {
                     Explain to Alex
                   </Button>
                   {protege.isError ? (
-                    <p className="text-xs text-danger-text">{errorText(protege.error)}</p>
+                    <Callout tone="danger" title="Alex is unreachable">
+                      {errorText(protege.error)}
+                    </Callout>
                   ) : null}
                   {protege.data ? (
                     <Callout

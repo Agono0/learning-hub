@@ -1,0 +1,6 @@
+<resources>
+    <!-- Added app-side (M2-12): the system accessibility settings screen shows
+         this description verbatim — keep it aligned with the disclosure copy in
+         apps/web/src/components/MaxFocusDisclosures.tsx. -->
+    <string name="max_focus_accessibility_description">"Max Focus watcher: during an active Max Focus session, observes which app comes to the foreground (window transitions only — never screen content) and brings Learning HUB back in front when a non-allowlisted app appears."</string>
+</resources>

@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Memory Palace (Agent A): palace list, builder (loci items with vivid images
  * and card attachment) and a full-screen walk-through review mode that plays
@@ -14,7 +16,18 @@ import { Box, Eye, EyeOff, Map, MapPin, Play, Plus, Save, Trash2, X } from 'luci
 import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { palaceWalkOrder } from '@learning-hub/core/memory'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { Button, Callout, EmptyState, IconButton, PageHeader, Skeleton } from '@/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface PalaceRow {
   id: number
@@ -70,6 +83,10 @@ export default function MemoryPalacePage() {
   const [activeId, setActiveId] = useState<number | null>(null)
   const [newName, setNewName] = useState('')
   const [walking, setWalking] = useState(false)
+  // Destructive confirm — palace DELETE only fires from the dialog action.
+  const [palaceToRemove, setPalaceToRemove] = useState<PalaceRow | null>(null)
+  // GSAP moment: header + workspace rise in (SSR-safe; reduced-motion skips).
+  const pageRef = useGsapReveal<HTMLDivElement>()
 
   const list = useQuery<{ palaces: PalaceFull[] }>({
     queryKey: ['palaces'],
@@ -162,14 +179,14 @@ export default function MemoryPalacePage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={pageRef} className="space-y-4">
       <PageHeader
         icon={<Map className="h-5 w-5" />}
         title="Memory Palace"
         actions={
           <Link
             href="/palace-3d"
-            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-status-warning-text hover:bg-amber-500/20 transition-all shadow-sm"
+            className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-status-warning-text shadow-sm transition-colors hover:bg-amber-500/20"
           >
             <Box className="h-3.5 w-3.5" />
             <span>3D Palace Studio</span>
@@ -203,18 +220,18 @@ export default function MemoryPalacePage() {
             {(list.data?.palaces ?? []).map((p) => (
               <div
                 key={p.palace.id}
-                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm ${activeId === p.palace.id ? 'bg-indigo-600/10 text-indigo-300' : 'text-neutral-600 hover:bg-neutral-100 dark:text-secondary dark:hover:bg-(--hub-panel-2)'}`}
+                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm ${activeId === p.palace.id ? 'bg-indigo-600/10 text-indigo-600 dark:text-indigo-300' : 'text-neutral-600 hover:bg-neutral-100 dark:text-secondary dark:hover:bg-(--hub-panel-2)'}`}
               >
                 <button
-                  className="min-w-0 flex-1 truncate text-left"
+                  className="min-w-0 flex-1 truncate text-left [@media(pointer:coarse)]:min-h-11"
                   onClick={() => setActiveId(p.palace.id)}
                 >
                   {p.palace.name}
                   <span className="ml-2 text-xs text-tertiary">{p.items.length} loci</span>
                 </button>
                 <IconButton
-                  label="Delete palace"
-                  onClick={() => deletePalace.mutate(p.palace.id)}
+                  label={`Delete ${p.palace.name}`}
+                  onClick={() => setPalaceToRemove(p.palace)}
                   className="hover:text-danger-text"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -222,9 +239,9 @@ export default function MemoryPalacePage() {
               </div>
             ))}
             {list.data && list.data.palaces.length === 0 && (
-              <div className="py-4 text-center text-xs text-tertiary">
-                no palaces yet — method of loci beats re-reading
-              </div>
+              <EmptyState title="No palaces yet">
+                Method of loci beats re-reading — create your first above.
+              </EmptyState>
             )}
           </div>
         </div>
@@ -232,9 +249,9 @@ export default function MemoryPalacePage() {
         {/* builder */}
         <div className="panel space-y-4">
           {!active ? (
-            <div className="py-10 text-center text-sm text-tertiary">
+            <EmptyState icon={<Map className="h-8 w-8" />} title="No palace open">
               Pick or create a palace to edit its loci.
-            </div>
+            </EmptyState>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">
@@ -350,6 +367,35 @@ export default function MemoryPalacePage() {
           onClose={() => setWalking(false)}
         />
       )}
+
+      {/* Destructive confirm — the DELETE request only fires from here. */}
+      <AlertDialog
+        open={palaceToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setPalaceToRemove(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {palaceToRemove?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently removes the palace and all of its loci. Attached cards stay in their
+              decks.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (palaceToRemove) deletePalace.mutate(palaceToRemove.id)
+              }}
+            >
+              Delete palace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

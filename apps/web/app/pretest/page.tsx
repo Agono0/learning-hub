@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * /pretest — Pretesting & Errorful Generation Lab.
  *
@@ -9,10 +11,11 @@
  * that pairing, not in failing for its own sake.
  */
 import { useQuery } from '@tanstack/react-query'
-import { FlaskConical, Sparkles } from 'lucide-react'
+import { FlaskConical, Lightbulb } from 'lucide-react'
 import { PretestingLab, type PretestCandidate } from '@/components/PretestingLab'
-import { PageHeader } from '@/ui'
+import { Callout, EmptyState, PageHeader, Skeleton } from '@/ui'
 import { apiGet } from '@/lib/transport'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface PretestingPayload {
   ok: boolean
@@ -30,9 +33,11 @@ export default function PretestPage() {
     queryKey: ['cognitive-pretesting'],
     queryFn: () => apiGet<PretestingPayload>('/api/cognitive/pretesting'),
   })
+  // GSAP moment: header + lab rise in as the page enters (SSR-safe).
+  const pageRef = useGsapReveal()
 
   return (
-    <div className="space-y-4 pb-8">
+    <div ref={pageRef} className="space-y-4 pb-8">
       <PageHeader
         title="Pretest Lab"
         subtitle="Guess before you study: failed retrieval attempts are encoding events, not wasted time (Kornell, Hays & Bjork 2009)."
@@ -40,19 +45,19 @@ export default function PretestPage() {
       />
 
       {q.isError ? (
-        <div className="panel text-sm text-danger-text dark:text-danger-text">
-          Could not load pretest candidates.
-        </div>
+        <Callout tone="danger" title="Could not load pretest candidates">
+          The ranking endpoint did not respond. Try again in a moment.
+        </Callout>
       ) : q.isLoading || !q.data ? (
-        <div className="panel text-sm text-tertiary dark:text-faint">
-          Ranking your young, fragile cards…
+        <div className="space-y-3" aria-hidden="true">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-40 w-full" />
         </div>
       ) : q.data.sampleSize === 0 ? (
-        <div className="panel text-sm text-tertiary dark:text-faint">
-          <Sparkles className="mr-1.5 inline h-4 w-4 text-indigo-400" />
-          No young cards to pretest yet — the protocol targets new material (stability &lt; 3 days).
-          Import or create cards, then come back.
-        </div>
+        <EmptyState icon={<Lightbulb className="h-8 w-8" />} title="No young cards to pretest yet">
+          The protocol targets new material (stability &lt; 3 days). Import or create cards, then
+          come back.
+        </EmptyState>
       ) : (
         <>
           <PretestingLab candidates={q.data.candidates} />

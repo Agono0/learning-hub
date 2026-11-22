@@ -15,6 +15,18 @@ import { InteractiveMindmapStudio } from '@/components/InteractiveMindmapStudio'
 import { Button, Callout, IconButton, PageHeader, Panel, Skeleton } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { queryKeys } from '@/lib/query-keys'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface MindmapRow {
   id: number
@@ -57,6 +69,8 @@ export default function MindmapPage() {
   const [selectedDeckId, setSelectedDeckId] = useState<number | null>(null)
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [exportResult, setExportResult] = useState<string | null>(null)
+  // Mindmap id awaiting destructive confirmation (AlertDialog) — null = none.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
 
   // Fetch mindmaps
   const mindmaps = useQuery<{ ok: boolean; mindmaps: MindmapRow[] }>({
@@ -205,9 +219,13 @@ export default function MindmapPage() {
     setMarkdown(DEFAULT_MARKDOWN)
   }
 
+  // GSAP reveal (per-page motion mandate): the studio-mode toggle bar rises in
+  // on scroll — motionOK-gated; SSR/tests keep the static content.
+  const modeToggleRef = useGsapReveal<HTMLDivElement>()
+
   if (mindmaps.isError) {
     return (
-      <ClayIn as="div" className="space-y-6">
+      <ClayIn as="div" className="space-y-5">
         <PageHeader
           title="Mind Maps"
           subtitle="Visualize concept structures, explore knowledge hierarchies, and generate flashcards directly into your review queue."
@@ -225,7 +243,7 @@ export default function MindmapPage() {
   }
 
   return (
-    <ClayIn as="div" className="space-y-6">
+    <ClayIn as="div" className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Mind Maps"
@@ -261,15 +279,15 @@ export default function MindmapPage() {
         />
       </div>
 
-      <div className="flex items-center justify-end">
-        <div className="flex items-center gap-1 rounded-xl border border-neutral-800 bg-neutral-900/90 p-1 text-xs">
+      <div ref={modeToggleRef} className="flex items-center justify-end">
+        <div className="flex items-center gap-1 rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-1 text-xs">
           <button
             type="button"
             onClick={() => setStudioMode('studio')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
               studioMode === 'studio'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-faint hover:text-white'
+                ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+                : 'text-faint hover:text-body'
             }`}
           >
             <Move3d className="h-3.5 w-3.5" />
@@ -278,10 +296,10 @@ export default function MindmapPage() {
           <button
             type="button"
             onClick={() => setStudioMode('classic')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-colors [@media(pointer:coarse)]:min-h-11 ${
               studioMode === 'classic'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-faint hover:text-white'
+                ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong)'
+                : 'text-faint hover:text-body'
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
@@ -292,7 +310,7 @@ export default function MindmapPage() {
 
       {studioMode === 'studio' ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-800 bg-neutral-900/50 px-4 py-2.5">
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-(--hub-border) bg-(--hub-panel-2) px-4 py-2.5">
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-faint">
                 Selected Map:
@@ -305,7 +323,7 @@ export default function MindmapPage() {
                   if (map) handleSelectMindmap(map)
                   else handleNew()
                 }}
-                className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs text-neutral-200"
+                className="rounded-lg border border-(--hub-border) bg-(--hub-panel-2) px-3 py-1.5 text-xs text-secondary"
               >
                 <option value="">(New Draft Map)</option>
                 {mindmapsData?.mindmaps?.map((m) => (
@@ -323,7 +341,7 @@ export default function MindmapPage() {
               {selectedId && (
                 <Button
                   variant="ghost"
-                  onClick={() => deleteMutation.mutate(selectedId)}
+                  onClick={() => setConfirmDeleteId(selectedId)}
                   className="text-danger-text hover:text-danger-text"
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -388,7 +406,7 @@ export default function MindmapPage() {
                     className={`group flex items-center justify-between rounded-lg px-3 py-2 text-xs cursor-pointer transition-colors ${
                       isSelected
                         ? 'bg-indigo-600/20 text-indigo-300 font-medium border border-indigo-500/30'
-                        : 'text-faint hover:bg-neutral-800/60 hover:text-neutral-200'
+                        : 'text-faint hover:bg-(--hub-panel-2) hover:text-body'
                     }`}
                   >
                     <span className="truncate flex-1">{m.title}</span>
@@ -396,7 +414,7 @@ export default function MindmapPage() {
                       label="Delete map"
                       onClick={(e) => {
                         e.stopPropagation()
-                        deleteMutation.mutate(m.id)
+                        setConfirmDeleteId(m.id)
                       }}
                       className="hover:text-danger-text"
                     >
@@ -424,14 +442,14 @@ export default function MindmapPage() {
                   className="input text-base font-semibold max-w-sm"
                 />
 
-                <div className="flex items-center gap-1 rounded-lg bg-neutral-800/60 p-1 text-xs">
+                <div className="flex items-center gap-1 rounded-lg bg-(--hub-panel-2) p-1 text-xs">
                   <button
                     type="button"
                     onClick={() => setViewMode('visual')}
-                    className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
+                    className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors [@media(pointer:coarse)]:min-h-11 ${
                       viewMode === 'visual'
-                        ? 'bg-indigo-600 text-white font-medium'
-                        : 'text-faint hover:text-neutral-200'
+                        ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong) font-medium'
+                        : 'text-faint hover:text-body'
                     }`}
                   >
                     <Network className="h-3.5 w-3.5" />
@@ -440,10 +458,10 @@ export default function MindmapPage() {
                   <button
                     type="button"
                     onClick={() => setViewMode('outline')}
-                    className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${
+                    className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors [@media(pointer:coarse)]:min-h-11 ${
                       viewMode === 'outline'
-                        ? 'bg-indigo-600 text-white font-medium'
-                        : 'text-faint hover:text-neutral-200'
+                        ? 'bg-hub-accent/10 text-hub-accent ring-2 ring-(--ac-strong) font-medium'
+                        : 'text-faint hover:text-body'
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5" />
@@ -465,7 +483,10 @@ export default function MindmapPage() {
                   />
                 </div>
               ) : (
-                <div className="relative h-[540px] w-full overflow-hidden rounded-xl border border-neutral-800 bg-[#0e0e11]">
+                /* The graph canvas is a deliberately dark, isolated surface
+                   (SVG node fills/text are hardcoded for dark bg) — scoping
+                   the `dark` class keeps token-based children correct. */
+                <div className="dark relative h-[540px] w-full overflow-hidden rounded-xl border border-(--hub-border) bg-[#0e0e11]">
                   <svg className="h-full w-full" viewBox="0 0 1000 800">
                     {/* Connecting Bezier Edges */}
                     {mindmap.edges?.map((edge) => {
@@ -485,7 +506,7 @@ export default function MindmapPage() {
                           stroke="#374151"
                           strokeWidth="2"
                           strokeDasharray="none"
-                          className="transition-all hover:stroke-indigo-400"
+                          className="hover:stroke-indigo-400"
                         />
                       )
                     })}
@@ -533,7 +554,7 @@ export default function MindmapPage() {
                     })}
                   </svg>
 
-                  <div className="absolute bottom-3 right-3 rounded bg-neutral-900/90 px-2.5 py-1 text-[11px] text-tertiary border border-neutral-800">
+                  <div className="absolute bottom-3 right-3 rounded bg-(--hub-panel-2) px-2.5 py-1 text-xs text-tertiary border border-(--hub-border)">
                     {mindmap.nodes.length} nodes · Radial layout
                   </div>
                 </div>
@@ -544,63 +565,89 @@ export default function MindmapPage() {
       )}
 
       {/* Export to Deck Modal */}
-      {isExportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-neutral-700 bg-neutral-900 p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-neutral-100 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-status-warning-text" />
-              Generate Flashcards
-            </h3>
-            <p className="text-xs text-faint">
-              Extract high-yield definition cards and subtopic recall cards directly into one of
-              your spaced repetition decks.
-            </p>
+      <Dialog open={isExportModalOpen} onOpenChange={setIsExportModalOpen}>
+        <DialogContent>
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+            <Sparkles className="h-5 w-5 text-status-warning-text" />
+            Generate Flashcards
+          </DialogTitle>
+          <DialogDescription className="text-xs text-faint">
+            Extract high-yield definition cards and subtopic recall cards directly into one of your
+            spaced repetition decks.
+          </DialogDescription>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-secondary block">
-                Select target deck:
-              </label>
-              <select
-                className="input text-xs"
-                value={selectedDeckId ?? ''}
-                onChange={(e) => setSelectedDeckId(Number(e.target.value) || null)}
-              >
-                <option value="">-- Choose deck --</option>
-                {decksData?.decks?.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} ({d.cardCount} cards)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {exportResult && (
-              <p
-                className={`text-xs p-2 rounded-lg ${
-                  exportResult.includes('Success')
-                    ? 'bg-emerald-950/60 text-status-success-text border border-emerald-800/60'
-                    : 'bg-rose-950/60 text-danger-text border border-rose-800/60'
-                }`}
-              >
-                {exportResult}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" onClick={() => setIsExportModalOpen(false)}>
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                disabled={!selectedDeckId || exportCardsMutation.isPending}
-                onClick={() => exportCardsMutation.mutate()}
-              >
-                {exportCardsMutation.isPending ? 'Generating…' : 'Generate Cards'}
-              </Button>
-            </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-secondary block">
+              Select target deck:
+            </label>
+            <select
+              className="input text-xs"
+              value={selectedDeckId ?? ''}
+              onChange={(e) => setSelectedDeckId(Number(e.target.value) || null)}
+            >
+              <option value="">-- Choose deck --</option>
+              {decksData?.decks?.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} ({d.cardCount} cards)
+                </option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          {exportResult && (
+            <p
+              className={`text-xs p-2 rounded-lg ${
+                exportResult.includes('Success')
+                  ? 'bg-emerald-500/10 text-status-success-text border border-emerald-500/30'
+                  : 'bg-rose-500/10 text-danger-text border border-rose-500/30'
+              }`}
+            >
+              {exportResult}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setIsExportModalOpen(false)}>
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!selectedDeckId || exportCardsMutation.isPending}
+              onClick={() => exportCardsMutation.mutate()}
+            >
+              {exportCardsMutation.isPending ? 'Generating…' : 'Generate Cards'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this mind map?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The map and its nodes are permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep map</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (confirmDeleteId !== null) deleteMutation.mutate(confirmDeleteId)
+                setConfirmDeleteId(null)
+              }}
+            >
+              Delete map
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClayIn>
   )
 }

@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Knowledge Constellation — Graph Knowledge Tracing over a prerequisite DAG.
  *
@@ -27,6 +29,8 @@ import {
   Skeleton,
   TextField,
 } from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface GktNodeData {
   id: string
@@ -355,9 +359,11 @@ export default function ConstellationPage() {
 
   const prerequisites = selected ? edges.filter((e) => e.dependentId === selected.id) : []
   const dependents = selected ? edges.filter((e) => e.prerequisiteId === selected.id) : []
+  // GSAP moment: header + active view rise in (SSR-safe; reduced-motion skips).
+  const pageRef = useGsapReveal<HTMLDivElement>()
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+    <div ref={pageRef} className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <PageHeader
           title="Knowledge Constellation"
@@ -365,32 +371,17 @@ export default function ConstellationPage() {
           icon={<Sparkles className="h-5 w-5" />}
         />
 
-        <div className="flex items-center rounded-xl border border-white/10 bg-slate-900/60 p-1 text-xs backdrop-blur-md self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setViewMode('studio')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
-              viewMode === 'studio'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-faint hover:text-white'
-            }`}
-          >
-            <Move3d className="h-3.5 w-3.5" />
-            <span>Studio Workbench</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('classic')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold transition-all ${
-              viewMode === 'classic'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-faint hover:text-white'
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span>Classic Canvas</span>
-          </button>
-        </div>
+        {/* View switcher — kit ChipPicker (choose-one mode row) */}
+        <ChipPicker<'studio' | 'classic'>
+          className="self-start sm:self-auto"
+          label="Constellation view mode"
+          items={[
+            { value: 'studio', label: 'Studio Workbench', icon: <Move3d /> },
+            { value: 'classic', label: 'Classic Canvas', icon: <Layers /> },
+          ]}
+          value={viewMode}
+          onChange={setViewMode}
+        />
       </div>
 
       {isLoading ? (
@@ -423,7 +414,7 @@ export default function ConstellationPage() {
             aria-label="Concept graph. Use the concept list below to inspect concepts with a keyboard."
             role="img"
           />
-          <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-3 rounded-lg bg-black/60 px-3 py-1.5 text-[11px] text-neutral-300">
+          <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-3 rounded-lg bg-black/60 px-3 py-1.5 text-xs text-neutral-300">
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> Mastered (&gt; 80%)
             </span>
@@ -499,7 +490,9 @@ export default function ConstellationPage() {
             </Button>
           </div>
           {evaluate.isError ? (
-            <p className="text-xs text-danger-text">{errorText(evaluate.error)}</p>
+            <Callout tone="danger" title="Could not record the attempt">
+              {errorText(evaluate.error)}
+            </Callout>
           ) : null}
           {alert ? (
             <Callout tone="warning" title="Review a prerequisite first">
@@ -624,7 +617,11 @@ export default function ConstellationPage() {
             </Button>
           </form>
         ) : null}
-        {formError ? <p className="text-xs text-danger-text">{formError}</p> : null}
+        {formError ? (
+          <Callout tone="danger" title="Graph edit rejected">
+            {formError}
+          </Callout>
+        ) : null}
       </Panel>
     </div>
   )

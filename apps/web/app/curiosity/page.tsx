@@ -14,11 +14,16 @@ import React from 'react'
 import { Brain, Compass, Sparkles, Zap } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { InformationGapStudio } from '@/components/InformationGapStudio'
 
 export default function EpistemicCuriosityPage() {
+  // GSAP moment for this page: the studio workbench rises in with a capped
+  // stagger when it scrolls into view (a different node from the ClayIn
+  // container — one animation owner per element).
+  const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title="Epistemic Curiosity & Information Gap Studio"
@@ -45,8 +50,10 @@ export default function EpistemicCuriosityPage() {
         }
       />
 
-      {/* Main Studio Body */}
-      <InformationGapStudio />
+      {/* Main Studio Body — GSAP moment (see ref below). */}
+      <div ref={studioRevealRef}>
+        <InformationGapStudio />
+      </div>
     </ClayIn>
   )
 }
