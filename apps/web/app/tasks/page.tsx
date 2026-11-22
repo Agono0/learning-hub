@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ListChecks } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Callout, EmptyState, PageHeader, Panel, Skeleton } from '@/ui'
+import { Callout, EmptyState, PageHeader, Panel, Sheet, Skeleton } from '@/ui'
 import { Button, TextField } from '@/ui'
 import { AddTaskBar, type ProjectRow, type TagRow } from '@/components/tasks/AddTaskBar'
 import { MultiSelectBar } from '@/components/tasks/MultiSelectBar'
@@ -33,7 +33,7 @@ import { TaskDetail } from '@/components/tasks/TaskDetail'
 const WINDOW_THRESHOLD = 50
 
 interface TasksResponse {
-  tasks: TaskRowTask[]
+  tasks: Array<TaskRowTask & { parentId: number | null }>
 }
 interface TagsResponse {
   tags: TagRow[]
@@ -46,6 +46,9 @@ interface SectionsResponse {
 }
 interface AssignmentsResponse {
   assignments: Array<{ taskId: number; sectionId: number }>
+}
+interface SubtasksResponse {
+  tasks: Array<TaskRowTask & { parentId: number | null; isDone: boolean }>
 }
 
 export default function TasksPage() {
@@ -80,6 +83,10 @@ export default function TasksPage() {
   const assignmentsQ = useQuery({
     queryKey: ['tasks-sections', 'assignments'],
     queryFn: () => apiGet<AssignmentsResponse>('/api/tasks-sections/assignments'),
+  })
+  const subtasksQ = useQuery({
+    queryKey: ['tasks', 'subtask-counts'],
+    queryFn: () => apiGet<SubtasksResponse>('/api/tasks?parentId=any&includeDone=1'),
   })
 
   function invalidate(): void {
@@ -153,6 +160,19 @@ export default function TasksPage() {
     onError: (e) => setPageError(e instanceof Error ? e.message : 'Could not move the task'),
   })
 
+  const archiveM = useMutation({
+    mutationFn: (id: number) => apiSend(`/api/tasks/${id}/archive`, 'POST'),
+    onSuccess: invalidate,
+    onError: (e) => setPageError(e instanceof Error ? e.message : 'Could not archive the task'),
+  })
+
+  const scheduleTodayM = useMutation({
+    mutationFn: (id: number) =>
+      apiSend(`/api/tasks/${id}`, 'PATCH', { due: today, dueWithTime: false }),
+    onSuccess: invalidate,
+    onError: (e) => setPageError(e instanceof Error ? e.message : 'Could not schedule the task'),
+  })
+
   const tasks = tasksQ.data?.tasks ?? []
   const tagNames = useMemo(() => {
     const map = new Map<number, string>()
@@ -171,6 +191,31 @@ export default function TasksPage() {
     [sectionsQ.data],
   )
   const unsectioned = useMemo(() => tasks.filter((t) => !sectionOf.has(t.id)), [tasks, sectionOf])
+  const subtaskProgressByParent = useMemo(() => {
+    const map = new Map<number, { done: number; total: number }>()
+    for (const t of subtasksQ.data?.tasks ?? []) {
+      if (t.parentId === null || t.parentId === undefined) continue
+      const entry = map.get(t.parentId) ?? { done: 0, total: 0 }
+      entry.total += 1
+      if (t.isDone) entry.done += 1
+      map.set(t.parentId, entry)
+    }
+    return map
+  }, [subtasksQ.data])
+
+  // S3-73 keyboard nav: the cursor walks the DISPLAY order (unsectioned,
+  // then each section's tasks) — the same order the page renders.
+  const displayTasks = useMemo(
+    () => [
+      ...unsectioned,
+      ...sections.flatMap((sec) => tasks.filter((t) => sectionOf.get(t.id) === sec.id)),
+    ],
+    [unsectioned, sections, tasks, sectionOf],
+  )
+  const [cursorIndex, setCursorIndex] = useState(0)
+  const [cheatOpen, setCheatOpen] = useState(false)
+  const clampedCursor = Math.max(0, Math.min(cursorIndex, displayTasks.length - 1))
+  const cursorTask = displayTasks[clampedCursor]
 
   function move(id: number, direction: -1 | 1): void {
     const idx = ids.indexOf(id)
@@ -192,6 +237,38 @@ export default function TasksPage() {
       return next
     })
   }
+
+  // S3-73: J/K walk the list, X selects, ? opens the cheat sheet. Skipped
+  // while typing in an input or reading the detail sheet.
+  useEffect(() => {
+    function onKey(event: KeyboardEvent): void {
+      const target = event.target as HTMLElement | null
+      const tag = target?.tagName ?? ''
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (openTaskId !== null) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (event.key === 'j' || event.key === 'J') {
+        event.preventDefault()
+        setCursorIndex((i) => Math.min(i + 1, displayTasks.length - 1))
+      } else if (event.key === 'k' || event.key === 'K') {
+        event.preventDefault()
+        setCursorIndex((i) => Math.max(0, i - 1))
+      } else if (event.key === 'x' || event.key === 'X') {
+        const task = displayTasks[Math.max(0, Math.min(cursorIndex, displayTasks.length - 1))]
+        if (task !== undefined) {
+          event.preventDefault()
+          toggleSelect(task.id)
+        }
+      } else if (event.key === '?') {
+        event.preventDefault()
+        setCheatOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint supersedes: displayTasks/cursorIndex are the live inputs.
+    // (react-hooks/exhaustive-deps is not a registered rule in this repo.)
+  }, [displayTasks, cursorIndex, openTaskId])
 
   const loading = tasksQ.isLoading || tagsQ.isLoading || projectsQ.isLoading || sectionsQ.isLoading
   const loadError = tasksQ.error ?? tagsQ.error ?? projectsQ.error ?? sectionsQ.error
@@ -256,6 +333,12 @@ export default function TasksPage() {
                     onDragStart={setDraggingId}
                     onDropOnto={dropOnto}
                     dragging={draggingId === task.id}
+                    subtaskProgress={subtaskProgressByParent.get(task.id)}
+                    onArchive={archiveM.isPending ? undefined : (id) => archiveM.mutate(id)}
+                    onScheduleToday={
+                      scheduleTodayM.isPending ? undefined : (id) => scheduleTodayM.mutate(id)
+                    }
+                    cursor={cursorTask !== undefined && cursorTask.id === task.id}
                   />
                 </div>
               )}
@@ -278,6 +361,12 @@ export default function TasksPage() {
                   onDragStart={setDraggingId}
                   onDropOnto={dropOnto}
                   dragging={draggingId === task.id}
+                  subtaskProgress={subtaskProgressByParent.get(task.id)}
+                  onArchive={archiveM.isPending ? undefined : (id) => archiveM.mutate(id)}
+                  onScheduleToday={
+                    scheduleTodayM.isPending ? undefined : (id) => scheduleTodayM.mutate(id)
+                  }
+                  cursor={cursorTask !== undefined && cursorTask.id === task.id}
                 />
               ))}
             </ul>
@@ -335,6 +424,12 @@ export default function TasksPage() {
                             ? undefined
                             : (id) => sectionAssignM.mutate({ id, sectionId: null })
                         }
+                        subtaskProgress={subtaskProgressByParent.get(task.id)}
+                        onArchive={archiveM.isPending ? undefined : (id) => archiveM.mutate(id)}
+                        onScheduleToday={
+                          scheduleTodayM.isPending ? undefined : (id) => scheduleTodayM.mutate(id)
+                        }
+                        cursor={cursorTask !== undefined && cursorTask.id === task.id}
                       />
                     ))}
                   </ul>
@@ -379,6 +474,43 @@ export default function TasksPage() {
         onWontdo={() => bulkM.mutate({ op: { op: 'wontdo' } })}
         onClear={() => setSelected(new Set())}
       />
+
+      <Sheet open={cheatOpen} onClose={() => setCheatOpen(false)} title="Keyboard shortcuts">
+        <ul className="flex flex-col gap-2 text-sm">
+          <li className="flex justify-between gap-4">
+            <kbd className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-(--hub-panel-2)">
+              J
+            </kbd>
+            <span className="min-w-0 flex-1 text-right text-body">Next task</span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <kbd className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-(--hub-panel-2)">
+              K
+            </kbd>
+            <span className="min-w-0 flex-1 text-right text-body">Previous task</span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <kbd className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-(--hub-panel-2)">
+              X
+            </kbd>
+            <span className="min-w-0 flex-1 text-right text-body">
+              Select / deselect the cursor task
+            </span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <kbd className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-(--hub-panel-2)">
+              ?
+            </kbd>
+            <span className="min-w-0 flex-1 text-right text-body">Toggle this cheat sheet</span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <kbd className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs dark:bg-(--hub-panel-2)">
+              Esc
+            </kbd>
+            <span className="min-w-0 flex-1 text-right text-body">Close panels</span>
+          </li>
+        </ul>
+      </Sheet>
 
       <TaskDetail
         taskId={openTaskId ?? 0}
