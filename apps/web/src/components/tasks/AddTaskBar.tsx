@@ -14,6 +14,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Plus } from 'lucide-react'
 import {
+  isMarkdownPaste,
+  markdownToTaskDrafts,
   parseShortSyntax,
   suggestAt,
   type ShortSyntaxSuggestion,
@@ -185,6 +187,64 @@ export function AddTaskBar({ todayIso, tags, projects, onCreated }: AddTaskBarPr
     }
   }
 
+  /**
+   * S3-36: create one task from a pasted markdown line, running the SAME
+   * short-syntax pipeline as typed input (`#tag +project @due p1` in pasted
+   * lines behave identically). `parentId` nests subtasks (one level, S3-04).
+   */
+  async function createFromLine(line: string, parentId: number | null): Promise<void> {
+    const p = todayIso ? parseShortSyntax(line, `${todayIso}T12:00:00.000Z`) : null
+    const title = (p?.title ?? line).trim()
+    if (title.length === 0) return
+    const tagIds: number[] = []
+    for (const name of p?.tags ?? []) tagIds.push(await ensureTag(name))
+    const projectId = p?.project ? await ensureProject(p.project) : null
+    const repeatCfgId = await ensureRepeat(p?.repeat ?? null)
+    await apiSend('/api/tasks', 'POST', {
+      title,
+      tagIds,
+      projectId,
+      estimateMs: p?.estimateMs ?? null,
+      due: p?.due?.day ?? null,
+      deadline: p?.deadline?.day ?? null,
+      priority: p?.priority ?? 'none',
+      repeatCfgId,
+      parentId,
+    } satisfies CreateTaskBody & { parentId: number | null })
+  }
+
+  /**
+   * Markdown paste (S3-36): a pasted list becomes tasks — top-level drafts
+   * first, then their subtasks nested via `parentId`. Drafts always create
+   * OPEN tasks (a paste never silently checks work off, even for `[x]`
+   * lines). Capped by the core parser (200 tasks).
+   */
+  async function pasteTasks(text: string): Promise<void> {
+    if (!todayIso || busy) return
+    const drafts = markdownToTaskDrafts(text)
+    if (drafts.length === 0) return
+    setBusy(true)
+    setError(null)
+    try {
+      for (const draft of drafts) {
+        const parentId = await createFromLine(draft.title, null)
+        for (const sub of draft.subtasks) {
+          await createFromLine(sub.title, parentId ?? null)
+        }
+      }
+      setInput('')
+      onCreated()
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? `Paste created some tasks, then failed: ${e.message}`
+          : 'Paste created some tasks, then failed — try again.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const kindLabel: Record<ShortSyntaxTokenKind, string> = {
     text: 'Text',
     due: 'Due',
@@ -215,9 +275,15 @@ export function AddTaskBar({ todayIso, tags, projects, onCreated }: AddTaskBarPr
             setInput(e.target.value)
             setCaret(e.target.selectionStart ?? e.target.value.length)
           }}
+          onPaste={(e) => {
+            const text = e.clipboardData?.getData('text/plain') ?? ''
+            if (!isMarkdownPaste(text)) return
+            e.preventDefault()
+            void pasteTasks(text)
+          }}
           onKeyUp={(e) => setCaret(e.currentTarget.selectionStart ?? input.length)}
           placeholder="Draft spec #work 1h @tom p1"
-          hint="Short syntax: #tag +project 10m @today @every 3d p1 !2026-12-01"
+          hint="Short syntax: #tag +project 10m @today @every 3d p1 !2026-12-01 — pasting a markdown list creates one task per line"
           disabled={busy}
         />
         <Button
