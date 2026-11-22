@@ -401,3 +401,6 @@ export * from './tags'
 
 // Repeat engine (S3-07) — re-exported so hosts consume one entry.
 export * from './repeat'
+
+// Per-task reminder planner (S3-08) — re-exported so hosts consume one entry.
+export * from './reminders'
