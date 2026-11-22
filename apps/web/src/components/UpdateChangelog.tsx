@@ -14,7 +14,7 @@
  * Notes are CI-authored but UNTRUSTED content: rendered through `<Markdown>`,
  * never raw HTML.
  */
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { fetchChannelNotes, type ChannelNotes } from '@/lib/updates'
 import type { UpdateChannel } from '@learning-hub/core/update'
 import { Markdown, Skeleton } from '@/ui'
