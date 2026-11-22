@@ -432,6 +432,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/focus', label: 'Focus', icon: Timer, primary: true },
       { href: '/tasks', label: 'Tasks', icon: ListTodo },
+      { href: '/schedule', label: 'Schedule', icon: CalendarRange },
       { href: '/habits', label: 'Habits', icon: CalendarCheck },
       { href: '/motivation', label: 'Motivation', icon: Flame },
       { href: '/journal', label: 'Journal', icon: Sparkles },
