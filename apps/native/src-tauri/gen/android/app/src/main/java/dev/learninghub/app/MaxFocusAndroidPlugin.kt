@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.SystemClock
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.provider.Settings
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
