@@ -89,7 +89,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-12 | SP | Recently-deleted trash (30-day, device-local) | unit tests | packages/core/src/tasks/trash.ts | S3-03 |
 - [x] S3-13 | SP | Undo core: last-op undo stack for task ops | unit tests | packages/core/src/tasks/undo.ts | S3-03 |
 - [x] S3-14 | SP | Search core: task+note search incl. done/archived option | unit tests | packages/core/src/tasks/search.ts | S3-03 |
-- [ ] S3-15 | SP | DB repos: tasks+projects+tags+repeat+reminders+logs (all queries reusable) | repo tests | packages/db/src/repos/tasks.ts | S3-02, S3-03 |
+- [~W1] S3-15 | SP | DB repos: tasks+projects+tags+repeat+reminders+logs (all queries reusable) | repo tests | packages/db/src/repos/tasks.ts | S3-02, S3-03 |
 - [ ] S3-16 | SP | Handlers batch A: tasks CRUD + bulk + duplicate + move-to-project + archive/restore | integration tests | apps/web/src/server/handlers/tasks/…, hub registry | S3-15 |
 - [ ] S3-17 | SP | Handlers batch B: projects/tags/sections + views(boards) persistence | integration tests | handlers + registry | S3-15 |
 - [ ] S3-18 | SP | Handlers batch C: time-tracking tick/stop + worklog + export CSV + finish-day | integration tests | handlers | S3-15, S3-10 |
@@ -178,7 +178,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-98 | SP | UI: empty/first-run states for all new pages (honest EmptyState) | sweep | new pages | S3-42
 - [ ] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
 - [ ] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards/planner | S3-24
-- [ ] O1-25 | OTA | Update check interval + Wi-Fi-only honored by Rust scheduler | code + tests | update.rs | O1-14
+- [x] O1-25 | OTA | Update check interval + Wi-Fi-only honored by the check scheduler | code + tests | apps/web/src/lib/updates.ts client service (scheduler owns the loop; settings are webview-local; Rust keeps download/promote) | O1-14 |
 - [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [x] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
 - [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01

@@ -28,6 +28,7 @@ import { SectionHeader } from '@/components/ui/section-header'
 import { getDeviceIdentity } from '@/lib/device'
 import {
   APP_VERSION,
+  checkForUpdate,
   loadUpdateSettings,
   saveUpdateSettings,
   SELF_UPDATE_ENABLED,
@@ -60,6 +61,12 @@ const INTERVAL_OPTIONS: Array<{ value: number; label: string }> = [
 const DEFAULTS: UpdateSettings = updateSettingsSchema.parse({})
 
 /**
+ * Manual-check states (O1-25): idle before the first press, then the honest
+ * outcome of the last run. Rendered in the status line under "Check now".
+ */
+type ManualCheckState = 'idle' | 'checking' | 'up-to-date' | 'available' | 'unavailable'
+
+/**
  * The Updates section as rendered on `/settings`. Renders its own
  * `<section id="settings-updates">` panel so the page only composes it.
  */
@@ -68,6 +75,8 @@ export function UpdatesSettingsSection(): React.ReactElement {
   const [isAndroid, setIsAndroid] = useState(false)
   const [savedTick, setSavedTick] = useState(0)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [checkState, setCheckState] = useState<ManualCheckState>('idle')
+  const [checkVersion, setCheckVersion] = useState<string | null>(null)
 
   // Hydration-safe loads (device.ts pattern): storage and platform are read
   // after mount only, so SSR markup (defaults, no Android toggle) matches the
@@ -94,6 +103,32 @@ export function UpdatesSettingsSection(): React.ReactElement {
   }
 
   const readOnly = !SELF_UPDATE_ENABLED
+
+  /** Run one manual check (O1-25) and surface the honest outcome inline. */
+  const runManualCheck = () => {
+    if (checkState === 'checking') return
+    setCheckState('checking')
+    setCheckVersion(null)
+    void checkForUpdate()
+      .then((result) => {
+        setCheckState(result.status)
+        setCheckVersion(result.pointerVersion)
+      })
+      .catch(() => setCheckState('unavailable'))
+  }
+
+  /**
+   * Status line for the manual check — never a spinner-only dead end; every
+   * terminal state says what happened and what happens next.
+   */
+  const checkStatusText = (() => {
+    if (checkState === 'checking') return 'Checking for updates…'
+    if (checkState === 'up-to-date') return 'You are on the latest build for this channel.'
+    if (checkState === 'available' && checkVersion)
+      return `${checkVersion} is available — restart after download to apply.`
+    if (checkState === 'unavailable') return 'The channel pointer is unreachable right now.'
+    return 'Automatic checks also run on app start, honoring the interval and Wi-Fi policy above.'
+  })()
 
   return (
     <section id="settings-updates" className="panel scroll-mt-32 space-y-4 md:scroll-mt-24">
@@ -160,13 +195,16 @@ export function UpdatesSettingsSection(): React.ReactElement {
       )}
 
       <div className="flex flex-wrap items-center gap-3 pt-1">
-        <Button variant="secondary" disabled onClick={() => undefined}>
+        <Button
+          variant="secondary"
+          disabled={readOnly}
+          loading={checkState === 'checking'}
+          onClick={runManualCheck}
+        >
           Check now
         </Button>
         <span className="text-xs text-tertiary">
-          {savedTick > 0
-            ? 'Saved on this device'
-            : 'Update checks run on app start — manual checks arrive with the native updater service.'}
+          {savedTick > 0 ? 'Saved on this device' : checkStatusText}
         </span>
       </div>
     </section>
