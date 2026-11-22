@@ -17,6 +17,7 @@
  * Unknown `@…`/`!…` tokens stay OUT of the title but land in
  * `warnings` (honest feedback beats silent drops).
  */
+import { parseEstimateMs } from './estimates'
 import { addCycle, repeatCycleSchema, type RepeatCycle } from './repeat'
 import type { TaskPriority } from './index'
 
@@ -58,26 +59,6 @@ export interface ShortSyntaxResult {
   /** Non-fatal token problems (unknown dates, bad estimates) — surfaced in the UI. */
   warnings: string[]
 }
-
-// ── Estimate grammar (shared with S3-62) ────────────────────────────────────
-
-/**
- * Parse a time-estimate token chain (`10m`, `1h`, `1h30m`, `45m`, `2h`).
- * Returns ms, or null when the text is not an estimate. S3-62 reuses this
- * plus {@link ESTIMATE_MAX_MS} for validation.
- */
-export function parseEstimateMs(token: string): number | null {
-  const m = /^(\d{1,3}h)?(\d{1,3}m)?$/i.exec(token.trim())
-  if (!m || (!m[1] && !m[2])) return null
-  const hours = m[1] ? Number.parseInt(m[1], 10) : 0
-  const minutes = m[2] ? Number.parseInt(m[2], 10) : 0
-  const ms = hours * 3_600_000 + minutes * 60_000
-  if (ms <= 0 || ms > ESTIMATE_MAX_MS) return null
-  return ms
-}
-
-/** Upper bound for a single estimate: 50h (SP's practical cap). */
-export const ESTIMATE_MAX_MS = 50 * 3_600_000
 
 // ── Date grammar ────────────────────────────────────────────────────────────
 
@@ -365,3 +346,7 @@ export function parseShortSyntax(input: string, now: string): ShortSyntaxResult 
   result.title = result.title.replace(/\s+/g, ' ').trim()
   return result
 }
+
+// Estimate grammar lives in ./estimates (S3-62) — re-exported so the bar's
+// consumers keep one import path.
+export { parseEstimateMs, ESTIMATE_MAX_MS } from './estimates'

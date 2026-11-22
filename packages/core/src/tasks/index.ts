@@ -407,3 +407,6 @@ export * from './reminders'
 
 // Short-syntax parser (S3-09) — re-exported so hosts consume one entry.
 export * from './short-syntax'
+
+// Estimate math (S3-62) — re-exported so hosts consume one entry.
+export * from './estimates'

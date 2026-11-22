@@ -55,13 +55,13 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] M2-14 | LOCK | Android Kotlin: Device Admin anti-uninstall + BOOT_COMPLETED resume + foreground service with elapsedRealtime | code + manifest perms | gen/android | M2-11, M2-13 |
 - [x] M2-15 | LOCK | Emergency dialer always reachable: SYSTEM_ALLOWED_APPS enforcement on both platforms; dialer tile during session | tests + UI | packages/core focus-lock SYSTEM_ALLOWED_APPS, lock UIs | M2-05, M2-11 |
 - [ ] M2-16 | LOCK | Pre-session checklist UI: permission audit, what-will-be-blocked list, explicit confirm | page section + integration test | apps/web/app/focus/page.tsx | M2-04 |
-- [~W3] M2-17 | LOCK | Accessibility + Device Admin disclosure screens (store-policy compliant copy) | screens exist | apps/web/src/components/MaxFocusDisclosures.tsx | M2-12, M2-14 |
+- [x] M2-17 | LOCK | Accessibility + Device Admin disclosure screens (store-policy compliant copy) | screens exist | apps/web/src/components/MaxFocusDisclosures.tsx | M2-12, M2-14 |
 - [ ] M2-18 | LOCK | Early-exit flow UI: PIN entry + mandatory reason → POST exit (logged) | component + test | apps/web/src/components/MaxFocusExitGate.tsx | M2-04, M2-02 |
-- [ ] M2-19 | LOCK | Hard-cap + battery auto-unlock: monitor battery (Tauri), unlock + log on threshold | code + unit tests | core session + Rust + Kotlin | M2-01 |
+- [x] M2-19 | LOCK | Hard-cap + battery auto-unlock: monitor battery (Tauri), unlock + log on threshold | code + unit tests | core session + Rust + Kotlin | M2-01 |
 - [x] M2-20 | LOCK | Tamper detection: clock change (monotonic mismatch), permission revoked → end session + friction log | core logic + tests | packages/core/src/focus-lock/session.ts | M2-01 |
 - [ ] M2-21 | LOCK | Settings locked during session (client guard + server refuses settings PUT) | handler test + UI guard | settings handler, focus-lock | M2-03 |
 - [ ] M2-22 | LOCK | Allowlist editor UI: domains + apps (seeded distraction_apps) per session preset | UI + test | apps/web/app/focus/page.tsx section | M2-04 |
-- [ ] M2-23 | LOCK | Rust session commands: focus_session_apply/status/release wired to state machine; webview bridge events | commands compile; invoke tests | apps/native/src-tauri/src/focus.rs | M2-05 |
+- [~W3] M2-23 | LOCK | Rust session commands: focus_session_apply/status/release wired to state machine; webview bridge events | commands compile; invoke tests | apps/native/src-tauri/src/focus.rs | M2-05 |
 - [ ] M2-24 | LOCK | Reboot/kill resume: persisted session state re-applied on boot (both platforms) | code + tests | core + Rust + Kotlin | M2-14, M2-23 |
 - [ ] M2-25 | LOCK | Session history UI (sessions, exits, reasons) | page section + test | apps/web/app/focus/page.tsx | M2-04 |
 - [ ] M2-26 | LOCK | Unit tests: full state-machine matrix incl. tamper/clock/battery | tests green | packages/core/tests/focus-lock-session.test.ts | M2-01, M2-20 |
