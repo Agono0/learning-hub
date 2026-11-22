@@ -30,6 +30,16 @@ class MaxDeviceAdminReceiver : DeviceAdminReceiver() {
         Log.i(TAG, "device admin disabled")
     }
 
+    /**
+     * Anti-uninstall UX (M2-14): when admin is active, disabling shows this
+     * warning first. The HARD guarantee (uninstall blocked entirely) is the
+     * owner-only `setUninstallBlocked` policy via the plugin command; this
+     * message covers the non-owner path honestly.
+     */
+    override fun onDisableRequested(context: Context, intent: Intent): CharSequence {
+        return context.getString(R.string.max_focus_disable_warning)
+    }
+
     companion object {
         private const val TAG = "MaxDeviceAdmin"
     }

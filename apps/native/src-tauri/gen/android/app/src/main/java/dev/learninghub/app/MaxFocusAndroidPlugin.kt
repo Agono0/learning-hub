@@ -2,6 +2,10 @@ package dev.learninghub.app
 
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
+import android.content.Intent
+import android.os.Build
+import android.os.SystemClock
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -34,6 +38,11 @@ import app.tauri.plugin.Plugin
  */
 @TauriPlugin
 class MaxFocusAndroidPlugin(private val activity: Activity) : Plugin(activity) {
+
+    @InvokeArg
+    class EnableArgs {
+        var enabled: Boolean = false
+    }
 
     @InvokeArg
     class WatchStateArgs {
@@ -85,5 +94,70 @@ class MaxFocusAndroidPlugin(private val activity: Activity) : Plugin(activity) {
     fun openAccessibilitySettings(invoke: Invoke) {
         activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         invoke.resolve()
+    }
+
+    /**
+     * Start the persistent session service (M2-14): the "session running"
+     * notification + monotonic elapsedRealtime anchor. Also marks
+     * KEY_RESUME_EXPECTED so a reboot during the session relaunches the app
+     * (MaxFocusBootReceiver).
+     */
+    @Command
+    fun sessionServiceStart(invoke: Invoke) {
+        activity.getSharedPreferences(MaxFocusAccessibilityService.PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(MaxFocusBootReceiver.KEY_RESUME_EXPECTED, true)
+            .apply()
+        val intent = Intent(activity, MaxFocusForegroundService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            activity.startForegroundService(intent)
+        } else {
+            activity.startService(intent)
+        }
+        invoke.resolve()
+    }
+
+    /** Stop the session service; clears the boot-resume expectation. */
+    @Command
+    fun sessionServiceStop(invoke: Invoke) {
+        activity.getSharedPreferences(MaxFocusAccessibilityService.PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(MaxFocusBootReceiver.KEY_RESUME_EXPECTED, false)
+            .apply()
+        activity.stopService(Intent(activity, MaxFocusForegroundService::class.java))
+        invoke.resolve()
+    }
+
+    /** Monotonic elapsed ms since the session anchor (0 when none running). */
+    @Command
+    fun sessionElapsed(invoke: Invoke) {
+        val data = JSObject()
+        data.put("elapsedRealtimeMs", MaxFocusForegroundService.elapsedSinceAnchor(activity))
+        data.put("deviceElapsedRealtimeMs", SystemClock.elapsedRealtime())
+        invoke.resolve(data)
+    }
+
+    /**
+     * Anti-uninstall hard gate (M2-14, Device Owner only): blocks uninstall of
+     * Learning HUB while a session is protected. The web layer MUST clear this
+     * at session end (release path always pairs set/unset; the policy is
+     * per-user-visible in settings and M2-24's boot reconcile re-asserts it).
+     */
+    @Command
+    fun setAntiUninstall(invoke: Invoke) {
+        val dpm = activity.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!dpm.isDeviceOwnerApp(activity.packageName)) {
+            invoke.reject("uninstall blocking requires Device Owner (Tier 1)")
+            return
+        }
+        val args = invoke.parseArgs(EnableArgs::class.java)
+        dpm.setUninstallBlocked(
+            ComponentName(activity, MaxDeviceAdminReceiver::class.java),
+            activity.packageName,
+            args.enabled,
+        )
+        val data = JSObject()
+        data.put("uninstallBlocked", args.enabled)
+        invoke.resolve(data)
     }
 }

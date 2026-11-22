@@ -119,6 +119,9 @@ pub fn run() {
             focus_android_stop_lock_task,
             focus_android_set_watch_state,
             focus_android_open_accessibility_settings,
+            focus_android_session_service,
+            focus_android_session_elapsed,
+            focus_android_set_anti_uninstall,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -515,6 +518,78 @@ pub async fn focus_android_open_accessibility_settings(app: tauri::AppHandle) ->
     {
         let _ = app;
         Err("accessibility settings are Android-only".to_string())
+    }
+}
+
+/// Start/stop the Max Focus session foreground service (M2-14): the persistent
+/// "session running" notification + boot-resume expectation. `active=true`
+/// starts (with KEY_RESUME_EXPECTED), `false` stops and clears it.
+#[tauri::command]
+pub async fn focus_android_session_service(app: tauri::AppHandle, active: bool) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                if active { "sessionServiceStart" } else { "sessionServiceStop" },
+                (),
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, active);
+        Err("the session service is Android-only".to_string())
+    }
+}
+
+/// Monotonic elapsed ms since the running session's anchor (M2-14/M2-20):
+/// elapsedRealtime is sleep-inclusive and wall-clock-tamper-proof.
+#[tauri::command]
+pub async fn focus_android_session_elapsed(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("sessionElapsed", ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("the session clock is Android-only".to_string())
+    }
+}
+
+/// Anti-uninstall hard gate (M2-14, Device Owner only): blocks uninstalling
+/// Learning HUB during a protected session. The release path ALWAYS pairs
+/// this with `active=false`; M2-24's boot reconcile re-asserts the state.
+#[tauri::command]
+pub async fn focus_android_set_anti_uninstall(
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "setAntiUninstall",
+                serde_json::json!({ "enabled": enabled }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, enabled);
+        Err("anti-uninstall is Android-only".to_string())
     }
 }
 

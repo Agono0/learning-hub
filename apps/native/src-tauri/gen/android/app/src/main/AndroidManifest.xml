@@ -16,6 +16,14 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- Max Focus session service + boot resume (M2-14): the persistent
+         "session running" notification (specialUse FGS, API 34+), BOOT_COMPLETED
+         relaunch (owner apps are exempt from background-start limits). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <!-- AndroidTV support -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
@@ -60,6 +68,27 @@
                 android:resource="@xml/max_device_admin" />
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Max Focus session service (M2-14): persistent session
+             notification + monotonic elapsedRealtime anchor. -->
+        <service
+            android:name=".MaxFocusForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Max Focus device-lock session guard" />
+        </service>
+
+        <!-- Boot resume (M2-14): relaunch the app when a session was active
+             at power-off; BOOT_COMPLETED is a protected system broadcast. -->
+        <receiver
+            android:name=".MaxFocusBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
 

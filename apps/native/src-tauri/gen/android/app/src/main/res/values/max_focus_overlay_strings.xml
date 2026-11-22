@@ -2,4 +2,8 @@
     <!-- Added app-side (M2-13): shown on the full-screen overlay while the
          watcher returns the user to the session. -->
     <string name="max_focus_overlay_message">"Max Focus session in progress — taking you back."</string>
+    <string name="max_focus_notification_channel">"Max Focus session"</string>
+    <string name="max_focus_notification_title">"Max Focus active"</string>
+    <string name="max_focus_notification_body">"Your Max Focus session is running. It ends automatically at the planned time."</string>
+    <string name="max_focus_disable_warning">"Max Focus uses device admin to protect an active session. Disable it only after your session has ended."</string>
 </resources>
