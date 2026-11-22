@@ -19,10 +19,12 @@
  * lands it can feed additional series — the record shape already fits.
  */
 import React, { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Activity, BarChart3 } from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import { Badge, EmptyState, PageHeader } from '@/ui'
+import { EvaluationSheet } from '@/components/tasks/EvaluationSheet'
+import { ImpactStars } from '@/components/tasks/ImpactStars'
 import { ClayIn } from '@/lib/motion'
 import {
   aggregateMetricDays,
@@ -137,6 +139,18 @@ export default function MetricsPage() {
       }),
     enabled: rangeStart !== '' && today !== '',
   })
+
+  const qc = useQueryClient()
+  const metricDaysQ = useQuery<{ days: Array<{ day: string; impact: number | null }> }>({
+    queryKey: ['tasks-metrics', 'strip', rangeStart, today],
+    queryFn: () =>
+      apiGet<{ days: Array<{ day: string; impact: number | null }> }>('/api/tasks-metrics', {
+        from: rangeStart,
+        to: today,
+      }),
+    enabled: rangeStart !== '' && today !== '',
+  })
+  const metricDayRows = metricDaysQ.data?.days
 
   const reviews = useQuery<{ heatmap: ReviewPoint[] }>({
     queryKey: ['analytics-heatmap', tzOffset],
@@ -337,6 +351,31 @@ export default function MetricsPage() {
                 </div>
               ) : null}
             </>
+          )}
+        </section>
+
+        {/* S3-96: the evaluation sheet for today + the impact-star strip
+            across the chart window (writes ride POST /api/tasks-metrics). */}
+        <section className="panel space-y-4" aria-label="Daily evaluation">
+          <h2 className="text-sm font-semibold text-strong">Daily evaluation</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            {(metricDayRows ?? []).slice(-7).map((row) => (
+              <span key={row.day} className="flex items-center gap-1.5 text-xs text-tertiary">
+                {row.day.slice(5)}
+                <ImpactStars impact={row.impact} />
+              </span>
+            ))}
+            {(metricDayRows ?? []).length === 0 && (
+              <span className="text-xs text-tertiary">
+                Rate a day below and the stars land here.
+              </span>
+            )}
+          </div>
+          {today !== '' && (
+            <EvaluationSheet
+              day={today}
+              onSaved={() => void qc.invalidateQueries({ queryKey: ['tasks-metrics'] })}
+            />
           )}
         </section>
       </ClayIn>
