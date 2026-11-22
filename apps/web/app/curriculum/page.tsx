@@ -6,7 +6,8 @@
  * exam countdown + mock exam runner (expressive writing BEFORE the timer,
  * format-matched questions, cram warning < 7 days), mastery bars.
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useLayoutEffect } from 'react'
+import type { ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarClock, GraduationCap, Lock, Sparkles, Timer, Unlock, Wand2 } from 'lucide-react'
 // subpath import (NOT the barrel) — keeps the client bundle free of the AI/db graph
@@ -16,6 +17,37 @@ import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { RemedialPanel } from '@/components/RemedialPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader, useToast } from '@/ui'
+import { motion, useAnimationControls } from 'framer-motion'
+import { ClayIn, clayPopVariants, motionOK, staggerDelay } from '@/lib/motion'
+
+/**
+ * Clay pop-in for CLIENT-STATE-triggered surfaces: scale 0.96 → 1 + fade on the
+ * clay spring (`clayPopVariants` — transform/opacity only).
+ *
+ * Gating: JS animations bypass the CSS `prefers-reduced-motion` / e-ink
+ * kill-switches, so the pop only runs when `motionOK()` is true — otherwise the
+ * content renders in place with no animation.
+ *
+ * Hydration safety (load-bearing): only mounted from client interaction state
+ * (the mock-exam result appears after submitting) — never in first-render
+ * server output — which is why `useLayoutEffect` (not an isomorphic fallback)
+ * is safe: the component never renders on the server. `initial={false}` keeps
+ * the first client frame identical to the settled state before the effect
+ * hides + starts the pop pre-paint.
+ */
+function ClayPop({ children, className }: { children: ReactNode; className?: string }) {
+  const controls = useAnimationControls()
+  useLayoutEffect(() => {
+    if (!motionOK()) return
+    controls.set('hidden')
+    controls.start('visible')
+  }, [controls])
+  return (
+    <motion.div initial={false} animate={controls} variants={clayPopVariants} className={className}>
+      {children}
+    </motion.div>
+  )
+}
 
 interface Lesson {
   id: number
@@ -329,23 +361,35 @@ export default function CurriculumPage() {
   const remaining = mock ? Math.max(0, mock.minutes - elapsedMin) : 0
 
   return (
+    // Entrance choreography: header and remedial strip rise in on the clay
+    // spring (beats 0/1, `staggerDelay`), the main two-column grid follows
+    // (beat 2) — totals <300ms, transform/opacity only, gated by `motionOK`.
+    // SSR renders the final state; animations are client-only, so hydration
+    // output is unchanged. Skill-tree nodes are absolutely positioned and stay
+    // un-animated (wrapping would disturb their coordinate space).
     <div className="space-y-5">
-      <PageHeader
-        title="Curriculum"
-        subtitle="Backward-designed courses, a gated skill DAG, and exam mode."
-        actions={
-          <button className="btn" onClick={() => setGenOpen(true)}>
-            <Wand2 className="h-4 w-4" /> Generate course
-          </button>
-        }
-      />
+      <ClayIn>
+        <PageHeader
+          title="Curriculum"
+          subtitle="Backward-designed courses, a gated skill DAG, and exam mode."
+          actions={
+            <button className="btn" onClick={() => setGenOpen(true)}>
+              <Wand2 className="h-4 w-4" /> Generate course
+            </button>
+          }
+        />
+      </ClayIn>
 
-      <RemedialPanel
-        concepts={(skillData?.skills ?? []).map((sk) => ({ id: sk.id, title: sk.name }))}
-      />
+      <ClayIn delayS={staggerDelay(1)}>
+        <RemedialPanel
+          concepts={(skillData?.skills ?? []).map((sk) => ({ id: sk.id, title: sk.name }))}
+        />
+      </ClayIn>
 
       {genOpen && (
-        <div className="panel space-y-3">
+        // Mounts when the learner opens the generator — ClayIn gives it a
+        // one-shot rise per open (client-state mount; never in SSR output).
+        <ClayIn className="panel space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">
               {manualBuild ? 'Manual curriculum builder (no AI)' : 'AI course generation'}
@@ -516,10 +560,10 @@ export default function CurriculumPage() {
               </p>
             </>
           )}
-        </div>
+        </ClayIn>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+      <ClayIn delayS={staggerDelay(2)} className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-2">
           <div className="label px-1">Tracks</div>
           {(tree?.tracks ?? []).map((t) => (
@@ -781,7 +825,8 @@ export default function CurriculumPage() {
             )}
 
             {mock && startedAt === null && (
-              <div className="space-y-2 rounded-lg border border-indigo-500/40 p-3">
+              // Mounts when a mock is loaded (client state) — one-shot rise.
+              <ClayIn className="space-y-2 rounded-lg border border-indigo-500/40 p-3">
                 <div className="text-sm font-medium">Before you start — 10-minute worry dump</div>
                 <p className="text-xs text-faint">{EXPRESSIVE_WRITING_PROMPT}</p>
                 <textarea
@@ -798,11 +843,12 @@ export default function CurriculumPage() {
                 >
                   <Sparkles className="h-4 w-4" /> Dump done — start the timer
                 </button>
-              </div>
+              </ClayIn>
             )}
 
             {mock && startedAt !== null && (
-              <div className="space-y-3">
+              // Mounts when the timer starts (client state) — one-shot rise.
+              <ClayIn className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="font-semibold">
                     {mock.title} — {mock.questions.length} questions
@@ -848,16 +894,22 @@ export default function CurriculumPage() {
                 >
                   Submit paper
                 </button>
-              </div>
+              </ClayIn>
             )}
             {mockResult && (
-              <div className="celebrate rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-status-success-text">
-                {mockResult}
-              </div>
+              // Client-state mount (only exists after submitting the mock) —
+              // never in SSR output — so the pop cannot mismatch the server
+              // HTML; the celebrate panel pops in on the clay spring, gated by
+              // `motionOK` (see ClayPop below).
+              <ClayPop>
+                <div className="celebrate rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-status-success-text">
+                  {mockResult}
+                </div>
+              </ClayPop>
             )}
           </div>
         </section>
-      </div>
+      </ClayIn>
     </div>
   )
 }

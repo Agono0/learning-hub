@@ -7,6 +7,7 @@ import { dayKey } from '@learning-hub/core/src/streaks'
 import { useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { MetacognitiveJournalStudio } from '@/components/MetacognitiveJournalStudio'
 
 interface JournalEntry {
@@ -134,7 +135,7 @@ export default function JournalPage() {
   const shownMood = mood ?? existingToday?.mood ?? null
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         icon={<PenLine className="h-6 w-6 text-indigo-400" />}
         title="Journal"
@@ -339,6 +340,6 @@ export default function JournalPage() {
           </div>
         </>
       )}
-    </div>
+    </ClayIn>
   )
 }

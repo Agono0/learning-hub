@@ -12,16 +12,17 @@
 import { ShieldCheck } from 'lucide-react'
 import { PermissionCenter } from '@/components/PermissionCenter'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 
 export default function PermissionsPage() {
   return (
-    <div className="space-y-4 pb-8">
+    <ClayIn as="div" className="space-y-4 pb-8">
       <PageHeader
         title="Permissions"
         subtitle="What Learning HUB may ask of this device, why, and what keeps working if you say no."
         icon={<ShieldCheck className="h-5 w-5" />}
       />
       <PermissionCenter />
-    </div>
+    </ClayIn>
   )
 }

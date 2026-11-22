@@ -4,6 +4,7 @@
  */
 
 import React from 'react'
+import { ClayIn } from '@/lib/motion'
 import { ReciprocalTeachingStudio } from '@/components/ReciprocalTeachingStudio'
 
 export const metadata = {
@@ -14,8 +15,8 @@ export const metadata = {
 
 export default function ReciprocalTeachingPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <ClayIn as="div" className="container mx-auto px-4 py-8">
       <ReciprocalTeachingStudio />
-    </div>
+    </ClayIn>
   )
 }

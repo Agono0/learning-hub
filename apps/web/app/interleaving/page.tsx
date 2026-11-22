@@ -15,11 +15,12 @@
 import React from 'react'
 import { Grid3X3, Shuffle, Target } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { InterleavingStudio } from '@/components/InterleavingStudio'
 
 export default function InterleavingPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Interleaved Problem Solving & Structural Invariance Studio"
@@ -89,6 +90,6 @@ export default function InterleavingPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ClayIn>
   )
 }

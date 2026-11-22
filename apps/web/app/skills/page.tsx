@@ -18,11 +18,12 @@
 import React from 'react'
 import { Flame, ShieldCheck, Sparkles, Terminal } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { SkillsStudio } from '@/components/SkillsStudio'
 
 export default function SkillsStudioPage() {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Agent Skills & Autonomous Engineering Studio"
@@ -95,6 +96,6 @@ export default function SkillsStudioPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ClayIn>
   )
 }

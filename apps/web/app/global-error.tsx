@@ -19,7 +19,9 @@ export default function GlobalError({
     <html lang="en" className="dark">
       <body className="bg-neutral-50 text-neutral-900 antialiased dark:bg-(--hub-bg) dark:text-neutral-100">
         <div className="flex min-h-screen items-center justify-center p-6">
-          <div className="panel celebrate max-w-md space-y-4 py-10 text-center">
+          {/* Last-resort boundary stays dependency-light (no framer-motion): the
+              entrance is the CSS-gated whitelisted utility from globals.css. */}
+          <div className="panel celebrate animate-fade-in-up max-w-md space-y-4 py-10 text-center">
             <AlertTriangle className="mx-auto h-10 w-10 text-status-warning-text" />
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>

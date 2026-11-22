@@ -14,11 +14,12 @@
 import React from 'react'
 import { Brain, Sparkles, Target, Zap } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { SelfExplanationStudio } from '@/components/SelfExplanationStudio'
 
 export default function SelfExplanationPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Self-Explanation & Schema Inversion Studio"
@@ -85,6 +86,6 @@ export default function SelfExplanationPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ClayIn>
   )
 }

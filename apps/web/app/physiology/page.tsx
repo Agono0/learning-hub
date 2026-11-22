@@ -7,6 +7,7 @@ import { Activity, BedDouble, Coffee, Dumbbell, Gauge, Sun, Wind } from 'lucide-
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
 import { CardiacCoherenceHUD, PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { BreathingCoherenceStudio } from '@/components/BreathingCoherenceStudio'
 import { CircadianAlertnessStudio } from '@/components/CircadianAlertnessStudio'
 
@@ -85,7 +86,7 @@ export default function PhysiologyPage() {
   const i = data.data?.insights
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         icon={<Activity className="h-6 w-6 text-indigo-400" />}
         title="Physiology & Autonomic Resonance"
@@ -329,6 +330,6 @@ export default function PhysiologyPage() {
           </div>
         </>
       )}
-    </div>
+    </ClayIn>
   )
 }

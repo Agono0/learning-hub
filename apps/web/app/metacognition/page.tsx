@@ -14,11 +14,12 @@
 import React from 'react'
 import { Brain, Flame, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { MetacognitionStudio } from '@/components/MetacognitionStudio'
 
 export default function MetacognitionPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header with Cognitive Context */}
       <PageHeader
         title="Metacognitive Calibration & Hypercorrection Studio"
@@ -81,6 +82,6 @@ export default function MetacognitionPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ClayIn>
   )
 }

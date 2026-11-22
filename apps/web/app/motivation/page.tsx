@@ -16,6 +16,7 @@ import {
 import { isFreshStartMoment } from '@learning-hub/core/src/motivation'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { queryKeys } from '@/lib/query-keys'
 
 interface StreakResponse {
@@ -184,7 +185,7 @@ export default function MotivationPage() {
   const unlockedCount = achievements.data?.catalog.filter((a) => a.unlocked).length ?? 0
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         icon={<Flame className="h-6 w-6 text-indigo-400" />}
         title="Motivation"
@@ -510,7 +511,7 @@ export default function MotivationPage() {
 
       {/* ── 30-Tier Seasonal Study Pass ── */}
       <SeasonalStudyPassSection />
-    </div>
+    </ClayIn>
   )
 }
 

@@ -47,6 +47,7 @@ import {
   type LeitnerBoxData,
 } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
+import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
 
 interface DeckInfo {
   id: number
@@ -302,51 +303,59 @@ export default function DecksPage() {
   }
 
   return (
+    // Entrance choreography: header (beat 0), deck rail (beat 1) and card
+    // browser (beat 2) rise + fade in on the clay spring (`staggerDelay`,
+    // total <300ms; motion law: transform/opacity only, gated by `motionOK`);
+    // the deck chips cascade via Stagger. SSR renders the final state; the
+    // animations are client-only, so hydration output is unchanged. Error
+    // callout and loading skeleton branches above stay instant.
     <div className="space-y-4">
-      <PageHeader
-        title="Decks & Cards"
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" onClick={() => setEditing('new')} disabled={!activeDeck}>
-              <Plus className="h-4 w-4" /> New card
-            </Button>
-            <Button variant="ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
-              <Wand2 className="h-4 w-4" /> AI generate
-            </Button>
-            <Menu
-              label="More deck tools"
-              disabled={!activeDeck}
-              items={[
-                {
-                  label: 'Bulk paste cards',
-                  icon: <FilePlus2 className="h-4 w-4" />,
-                  onSelect: () => setBulkOpen(true),
-                },
-                {
-                  label: 'Deck Doctor',
-                  icon: <Stethoscope className="h-4 w-4 text-ac-text" />,
-                  onSelect: () => setDoctorDeckId(activeDeck),
-                },
-                {
-                  label: 'Interleave decks',
-                  icon: <Shuffle className="h-4 w-4 text-status-success-text" />,
-                  onSelect: () => setInterleaveOpen(true),
-                },
-                {
-                  label: 'Workload balancer',
-                  icon: <Gauge className="h-4 w-4 text-status-info-text" />,
-                  onSelect: () => router.push('/workload'),
-                },
-              ]}
-            >
-              Tools
-            </Menu>
-          </div>
-        }
-      />
+      <ClayIn>
+        <PageHeader
+          title="Decks & Cards"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="primary" onClick={() => setEditing('new')} disabled={!activeDeck}>
+                <Plus className="h-4 w-4" /> New card
+              </Button>
+              <Button variant="ghost" onClick={() => setAiOpen(true)} disabled={!activeDeck}>
+                <Wand2 className="h-4 w-4" /> AI generate
+              </Button>
+              <Menu
+                label="More deck tools"
+                disabled={!activeDeck}
+                items={[
+                  {
+                    label: 'Bulk paste cards',
+                    icon: <FilePlus2 className="h-4 w-4" />,
+                    onSelect: () => setBulkOpen(true),
+                  },
+                  {
+                    label: 'Deck Doctor',
+                    icon: <Stethoscope className="h-4 w-4 text-ac-text" />,
+                    onSelect: () => setDoctorDeckId(activeDeck),
+                  },
+                  {
+                    label: 'Interleave decks',
+                    icon: <Shuffle className="h-4 w-4 text-status-success-text" />,
+                    onSelect: () => setInterleaveOpen(true),
+                  },
+                  {
+                    label: 'Workload balancer',
+                    icon: <Gauge className="h-4 w-4 text-status-info-text" />,
+                    onSelect: () => router.push('/workload'),
+                  },
+                ]}
+              >
+                Tools
+              </Menu>
+            </div>
+          }
+        />
+      </ClayIn>
 
-      {/* deck rail */}
-      <div className="panel space-y-3">
+      {/* deck rail — entrance beat 1 */}
+      <ClayIn delayS={staggerDelay(1)} className="panel space-y-3">
         <div className="flex gap-2">
           <input
             className="input"
@@ -362,7 +371,10 @@ export default function DecksPage() {
             Create
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* Deck chips cascade in (40ms steps, capped <300ms); StaggerItem is
+            the flex child so wrapping/spacing are unchanged. Decks created or
+            deleted later mount straight into the settled `visible` state. */}
+        <Stagger className="flex flex-wrap gap-2">
           <button
             onClick={() => {
               setActiveDeck(null)
@@ -376,9 +388,10 @@ export default function DecksPage() {
           >
             📚 All decks
           </button>
-          {(decks.data?.decks ?? []).map((d) => (
-            <span
+          {(decks.data?.decks ?? []).map((d, deckIdx) => (
+            <StaggerItem
               key={d.id}
+              index={deckIdx + 1}
               className={`group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 activeDeck === d.id
                   ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
@@ -422,9 +435,9 @@ export default function DecksPage() {
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </IconButton>
-            </span>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
 
         {selectedDeckObj && (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 p-2.5 text-xs dark:border-(--hub-border)">
@@ -495,10 +508,10 @@ export default function DecksPage() {
             {shareNote && <span className="text-indigo-400">{shareNote}</span>}
           </div>
         )}
-      </div>
+      </ClayIn>
 
-      {/* browser */}
-      <div className="panel space-y-3">
+      {/* browser — entrance beat 2 */}
+      <ClayIn delayS={staggerDelay(2)} className="panel space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Layers className="h-4 w-4 text-tertiary" />
           <span className="text-sm font-medium">
@@ -569,7 +582,7 @@ export default function DecksPage() {
             </div>
           )}
         </div>
-      </div>
+      </ClayIn>
 
       {editing && activeDeck && (
         <CardEditorModal

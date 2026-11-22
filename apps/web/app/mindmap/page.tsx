@@ -13,6 +13,7 @@ import { parseMarkdownOutline, type MindmapData, type MindmapNode } from '@learn
 import { apiGet, apiSend } from '@/lib/transport'
 import { InteractiveMindmapStudio } from '@/components/InteractiveMindmapStudio'
 import { Button, Callout, IconButton, PageHeader, Panel, Skeleton } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { queryKeys } from '@/lib/query-keys'
 
 interface MindmapRow {
@@ -206,7 +207,7 @@ export default function MindmapPage() {
 
   if (mindmaps.isError) {
     return (
-      <div className="space-y-6">
+      <ClayIn as="div" className="space-y-6">
         <PageHeader
           title="Mind Maps"
           subtitle="Visualize concept structures, explore knowledge hierarchies, and generate flashcards directly into your review queue."
@@ -219,12 +220,12 @@ export default function MindmapPage() {
             </Button>
           </div>
         </Callout>
-      </div>
+      </ClayIn>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <ClayIn as="div" className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Mind Maps"
@@ -600,6 +601,6 @@ export default function MindmapPage() {
           </div>
         </div>
       )}
-    </div>
+    </ClayIn>
   )
 }

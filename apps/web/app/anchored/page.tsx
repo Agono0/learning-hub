@@ -4,6 +4,7 @@
  */
 
 import React from 'react'
+import { ClayIn } from '@/lib/motion'
 import { AnchoredInstructionStudio } from '@/components/AnchoredInstructionStudio'
 
 export const metadata = {
@@ -14,8 +15,8 @@ export const metadata = {
 
 export default function AnchoredInstructionPage() {
   return (
-    <div className="container mx-auto px-4 py-6 max-w-7xl">
+    <ClayIn as="div" className="container mx-auto px-4 py-6 max-w-7xl">
       <AnchoredInstructionStudio />
-    </div>
+    </ClayIn>
   )
 }

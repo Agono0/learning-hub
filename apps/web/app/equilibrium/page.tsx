@@ -13,11 +13,12 @@
 import React from 'react'
 import { Brain, GitBranch, Network, Scale, Sparkles, Target } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { ReflectiveEquilibriumStudio } from '@/components/ReflectiveEquilibriumStudio'
 
 export default function EquilibriumPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Reflective Equilibrium & Epistemic Calibration Studio"
@@ -81,6 +82,6 @@ export default function EquilibriumPage() {
 
       {/* Main Interactive Studio Workbench */}
       <ReflectiveEquilibriumStudio />
-    </div>
+    </ClayIn>
   )
 }

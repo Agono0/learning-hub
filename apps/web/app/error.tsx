@@ -6,6 +6,7 @@
  */
 import { useEffect } from 'react'
 import { AlertTriangle, Home, RotateCcw } from 'lucide-react'
+import { ClayIn } from '@/lib/motion'
 
 export default function ErrorPage({
   error,
@@ -20,23 +21,28 @@ export default function ErrorPage({
   }, [error])
 
   return (
-    <div className="panel celebrate mx-auto max-w-md space-y-4 py-10 text-center">
-      <AlertTriangle className="mx-auto h-10 w-10 text-status-warning-text" />
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
-        <p className="mt-1 text-sm text-tertiary">
-          An unexpected error interrupted this page. Your data is safe — try again.
-        </p>
-        {error.digest && <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>}
+    // Gentle pop: the celebrate card rises 8px + fades once on mount. SSR-safe —
+    // ClayIn renders the final state server-side and animates client-side only
+    // when motionOK() allows (reduced-motion / e-ink users never see it).
+    <ClayIn y={8}>
+      <div className="panel celebrate mx-auto max-w-md space-y-4 py-10 text-center">
+        <AlertTriangle className="mx-auto h-10 w-10 text-status-warning-text" />
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Something went wrong</h1>
+          <p className="mt-1 text-sm text-tertiary">
+            An unexpected error interrupted this page. Your data is safe — try again.
+          </p>
+          {error.digest && <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>}
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <button className="btn" onClick={reset}>
+            <RotateCcw className="h-4 w-4" /> Try again
+          </button>
+          <a href="/" className="btn-ghost">
+            <Home className="h-4 w-4" /> Dashboard
+          </a>
+        </div>
       </div>
-      <div className="flex items-center justify-center gap-2">
-        <button className="btn" onClick={reset}>
-          <RotateCcw className="h-4 w-4" /> Try again
-        </button>
-        <a href="/" className="btn-ghost">
-          <Home className="h-4 w-4" /> Dashboard
-        </a>
-      </div>
-    </div>
+    </ClayIn>
   )
 }

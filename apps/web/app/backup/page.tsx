@@ -31,6 +31,7 @@ import {
   X,
 } from 'lucide-react'
 import { IconButton, PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { getDeviceIdentity } from '@/lib/device'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -389,7 +390,7 @@ export default function BackupPage() {
   const lastSynced = syncQuery.data?.sync.lastSyncedAt
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         title="Backup, Sync & Import/Export"
         subtitle="Free multi-device Cloud Sync, non-destructive Smart Merge, Anki import, and full snapshots"
@@ -1015,6 +1016,6 @@ export default function BackupPage() {
           </div>
         </div>
       )}
-    </div>
+    </ClayIn>
   )
 }

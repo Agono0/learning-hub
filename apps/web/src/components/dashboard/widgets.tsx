@@ -8,10 +8,19 @@
  * Plugin widgets are DECLARATIVE (title + optional link + optional dataHref
  * returning `{ items: [{ title, detail? }] }`) — they fetch and render plain
  * text; untrusted plugin content never renders as HTML.
+ *
+ * Motion (all transform/opacity, per the motion law): half-width tiles lift 2px
+ * on hover ({@link HoverLiftSection}, reduced-motion aware), list-y widgets
+ * stagger their rows in via the committed `Stagger`/`StaggerItem` foundation,
+ * and the big numbers count up with `useGsapCountUp` (static final number when
+ * motion is not allowed). Entrances stay SSR-safe — the HTML always shows the
+ * final state; animation is client-side only.
  */
 import React from 'react'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion, useReducedMotion } from 'framer-motion'
+import type { TargetAndTransition } from 'framer-motion'
 import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import {
   Activity,
@@ -36,6 +45,8 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
+import { Stagger, StaggerItem, claySpring } from '@/lib/motion'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 import { Badge, Callout, EmptyState, Skeleton, StatCard, useToast } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
@@ -66,6 +77,61 @@ interface PluginWidgetDef {
 }
 
 /* ── built-in widgets ─────────────────────────────────────────────────────── */
+
+/**
+ * Hover target for the half-width dashboard tiles: a 2px lift on the clay
+ * spring. `transition` lives INSIDE the `whileHover` target because framer's
+ * whileHover animation overrides the element-level `transition` prop. Transform
+ * only — the tile's shadow growth stays in CSS (`.panel-elevated:hover`), per
+ * the motion law (never animate box-shadow).
+ */
+const TILE_LIFT: TargetAndTransition = { y: -2, transition: claySpring }
+
+/**
+ * Root `<section>` for the half-width dashboard tiles with a shared hover
+ * micro-interaction: a 2px lift on the clay spring ({@link TILE_LIFT}).
+ *
+ * Reduced-motion gating (deliberate design) — this uses framer's REACTIVE
+ * `useReducedMotion` hook, not the synchronous `motionOK()` gate from
+ * `@/lib/motion`, because hover is a user-driven interaction rather than a
+ * mount entrance, and a prop flip after hydration is harmless here: SSR and the
+ * first client render always emit the same `whileHover` target (framer writes
+ * no styles for `whileHover` until the user actually hovers, so the SSR HTML is
+ * final-state and there is no hydration mismatch). When the hook later reports
+ * `prefers-reduced-motion: reduce`, the target flips to `undefined` and the
+ * tile simply stops lifting — only hover behavior changes, never the rendered
+ * markup or styles.
+ */
+export function HoverLiftSection({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  const reduced = useReducedMotion()
+  return (
+    <motion.section whileHover={reduced ? undefined : TILE_LIFT} className={className}>
+      {children}
+    </motion.section>
+  )
+}
+
+/**
+ * Count-up figure for the "Total XP" StatCard. StatCard's `value` prop accepts
+ * a ReactNode, so the number renders inside this span and the tween is driven
+ * by the committed `useGsapCountUp` foundation (used, never reimplemented
+ * here): SSR and the Node-env integration tests see the React-rendered final
+ * number, while the gsap tween rewrites the span's textContent client-side —
+ * and only when `motionOK()` inside the hook, so reduced-motion and e-ink
+ * users simply keep the static figure. React keeps rendering the
+ * locale-formatted string the card always showed; the tween's landing text is
+ * the foundation's documented non-negative-integer display contract.
+ */
+function CountUpValue({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return <span ref={ref}>{value.toLocaleString()}</span>
+}
 
 function StatsWidget({ data: d }: WidgetProps) {
   const level = levelFromXp(d.xpTotal)
@@ -112,7 +178,7 @@ function StatsWidget({ data: d }: WidgetProps) {
       />
       <StatCard
         label="Total XP"
-        value={d.xpTotal.toLocaleString()}
+        value={<CountUpValue value={d.xpTotal} />}
         icon={<Zap className="h-4 w-4" />}
         accent="indigo"
         progress={{
@@ -165,27 +231,33 @@ function OpenLoopsWidget({ data: d }: WidgetProps) {
       <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
         Pick up where you left off
       </div>
-      <ul className="mt-3 space-y-2">
-        {d.openLoops.map((loop) => (
-          <li key={loop.kind + loop.href}>
-            <Link
-              href={loop.href}
-              className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
-            >
-              {loop.kind === 'lesson' ? (
-                <CirclePlay className="h-4 w-4 shrink-0 text-indigo-400" />
-              ) : (
-                <CalendarClock className="h-4 w-4 shrink-0 text-status-warning-text" />
-              )}
-              <span className="min-w-0 flex-1 truncate">
-                {loop.title}
-                <span className="text-tertiary"> · {loop.context}</span>
-              </span>
-              <span className="shrink-0 text-xs text-indigo-400">continue →</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* Rows rise + fade in staggered (SSR-safe: Stagger renders the final
+          state and animates client-side only when motionOK). */}
+      <Stagger>
+        <ul className="mt-3 space-y-2">
+          {d.openLoops.map((loop, i) => (
+            <li key={loop.kind + loop.href}>
+              <StaggerItem index={i}>
+                <Link
+                  href={loop.href}
+                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+                >
+                  {loop.kind === 'lesson' ? (
+                    <CirclePlay className="h-4 w-4 shrink-0 text-indigo-400" />
+                  ) : (
+                    <CalendarClock className="h-4 w-4 shrink-0 text-status-warning-text" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate">
+                    {loop.title}
+                    <span className="text-tertiary"> · {loop.context}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-indigo-400">continue →</span>
+                </Link>
+              </StaggerItem>
+            </li>
+          ))}
+        </ul>
+      </Stagger>
     </section>
   )
 }
@@ -202,7 +274,7 @@ function QuoteWidget({ data: d }: WidgetProps) {
     onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
   })
   return (
-    <section className="panel h-full">
+    <HoverLiftSection className="panel h-full">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
         <QuoteIcon className="h-3.5 w-3.5" /> Daily quote
       </div>
@@ -226,33 +298,37 @@ function QuoteWidget({ data: d }: WidgetProps) {
           </button>
         </div>
       )}
-    </section>
+    </HoverLiftSection>
   )
 }
 
 function AgendaWidget({ data: d }: WidgetProps) {
   return (
-    <section className="panel h-full">
+    <HoverLiftSection className="panel h-full">
       <div className="text-xs font-semibold uppercase tracking-wide text-tertiary">
         Today&apos;s agenda
       </div>
       {d.agenda.length > 0 ? (
-        <ol className="mt-3 space-y-1.5 text-sm text-faint">
-          {d.agenda.map((item, i) => (
-            <li key={item.kind + item.href}>
-              <Link
-                href={item.href}
-                className="flex items-baseline gap-2 rounded px-1 py-0.5 hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
-              >
-                <span className="text-neutral-600 dark:text-tertiary">{i + 1} ·</span>
-                <span className="min-w-0 flex-1">
-                  {item.title}
-                  {item.detail && <span className="text-tertiary"> · {item.detail}</span>}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
+        <Stagger>
+          <ol className="mt-3 space-y-1.5 text-sm text-faint">
+            {d.agenda.map((item, i) => (
+              <li key={item.kind + item.href}>
+                <StaggerItem index={i}>
+                  <Link
+                    href={item.href}
+                    className="flex items-baseline gap-2 rounded px-1 py-0.5 hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)"
+                  >
+                    <span className="text-neutral-600 dark:text-tertiary">{i + 1} ·</span>
+                    <span className="min-w-0 flex-1">
+                      {item.title}
+                      {item.detail && <span className="text-tertiary"> · {item.detail}</span>}
+                    </span>
+                  </Link>
+                </StaggerItem>
+              </li>
+            ))}
+          </ol>
+        </Stagger>
       ) : (
         <p className="mt-3 text-sm text-tertiary">
           Everything done for today — rest consolidates it.
@@ -269,7 +345,7 @@ function AgendaWidget({ data: d }: WidgetProps) {
           <Sparkles className="h-4 w-4" /> Journal
         </Link>
       </div>
-    </section>
+    </HoverLiftSection>
   )
 }
 
@@ -324,7 +400,7 @@ function ActivityTimelineWidget(_props: WidgetProps) {
   const entries = data?.entries ?? []
   const visible = expanded ? entries : entries.slice(0, TIMELINE_COLLAPSED_ROWS)
   return (
-    <section className="panel h-full">
+    <HoverLiftSection className="panel h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
           <Activity className="h-3.5 w-3.5" /> Activity
@@ -340,22 +416,31 @@ function ActivityTimelineWidget(_props: WidgetProps) {
         </p>
       ) : (
         <>
-          <ul className="mt-3 space-y-1.5 text-sm">
-            {visible.map((e, i) => {
-              const meta = TIMELINE_KIND_META[e.kind] ?? TIMELINE_FALLBACK_META
-              const Icon = meta.icon
-              return (
-                <li key={`${e.at}-${i}`} className="flex items-baseline gap-2">
-                  <Icon className={`h-3.5 w-3.5 shrink-0 ${meta.className}`} aria-hidden />
-                  <span className="w-12 shrink-0 text-[10px] text-faint">
-                    {relativeStamp(e.at)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{e.title}</span>
-                  {e.detail && <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>}
-                </li>
-              )
-            })}
-          </ul>
+          <Stagger>
+            <ul className="mt-3 space-y-1.5 text-sm">
+              {visible.map((e, i) => {
+                const meta = TIMELINE_KIND_META[e.kind] ?? TIMELINE_FALLBACK_META
+                const Icon = meta.icon
+                return (
+                  <li key={`${e.at}-${i}`}>
+                    {/* StaggerItem takes the row's flex classes; the bare <li>
+                        keeps the key and list semantics (motion.div inside li is
+                        valid HTML, unlike a div child of ul). */}
+                    <StaggerItem index={i} className="flex items-baseline gap-2">
+                      <Icon className={`h-3.5 w-3.5 shrink-0 ${meta.className}`} aria-hidden />
+                      <span className="w-12 shrink-0 text-[10px] text-faint">
+                        {relativeStamp(e.at)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{e.title}</span>
+                      {e.detail && (
+                        <span className="shrink-0 text-xs text-tertiary">{e.detail}</span>
+                      )}
+                    </StaggerItem>
+                  </li>
+                )
+              })}
+            </ul>
+          </Stagger>
           {entries.length > TIMELINE_COLLAPSED_ROWS && (
             <button
               type="button"
@@ -367,7 +452,7 @@ function ActivityTimelineWidget(_props: WidgetProps) {
           )}
         </>
       )}
-    </section>
+    </HoverLiftSection>
   )
 }
 
@@ -381,7 +466,7 @@ function InsightsWidget(_props: WidgetProps) {
   })
   const top = (data?.insights ?? []).find((i) => i.r != null && Math.abs(i.r) >= 0.3)
   return (
-    <section className="panel h-full">
+    <HoverLiftSection className="panel h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
           <Telescope className="h-3.5 w-3.5" /> What helps you
@@ -398,7 +483,7 @@ function InsightsWidget(_props: WidgetProps) {
           here.
         </p>
       )}
-    </section>
+    </HoverLiftSection>
   )
 }
 
@@ -430,7 +515,7 @@ function UntestedMaterialWidget(_props: WidgetProps) {
   })
   const items = data?.items ?? []
   return (
-    <section className="panel h-full">
+    <HoverLiftSection className="panel h-full">
       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
         <BookOpen className="h-3.5 w-3.5" /> Read but never tested
       </div>
@@ -489,7 +574,7 @@ function UntestedMaterialWidget(_props: WidgetProps) {
         initialText={mineText ?? ''}
         onClose={() => setMineText(null)}
       />
-    </section>
+    </HoverLiftSection>
   )
 }
 
@@ -514,6 +599,26 @@ const CATEGORIZATION_BAND_LABELS: Record<string, string> = {
 }
 
 /**
+ * The categorization accuracy figure with the committed `useGsapCountUp`
+ * count-up. Extracted into its own component so the hook call satisfies the
+ * rules of hooks (unconditional, top level) even though the number only
+ * renders when a session exists. SSR and the Node-env integration tests see
+ * the React-rendered final number; the gsap tween rewrites the span's
+ * textContent client-side — and only when `motionOK()` inside the hook, so
+ * reduced-motion and e-ink users keep the static figure. The span renders ONLY
+ * the number (the hook's contract): the `% accuracy · last session` suffix is
+ * a static sibling and never animates.
+ */
+function AccuracyCountUp({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return (
+    <span ref={ref} className="text-3xl font-semibold tabular-nums">
+      {value}
+    </span>
+  )
+}
+
+/**
  * Categorization studio widget — the last completed categorization session
  * (accuracy + maturity band) with a deep link into the studio. Honest on every
  * state: skeleton while loading, Callout on failure, an EmptyState that says
@@ -529,7 +634,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
   const last = data?.lastSession ?? null
 
   return (
-    <section className="panel h-full">
+    <HoverLiftSection className="panel h-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-tertiary">
           <Shapes className="h-3.5 w-3.5" /> Categorization
@@ -551,7 +656,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
       ) : last ? (
         <>
           <p className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-3xl font-semibold tabular-nums">{last.accuracy}</span>
+            <AccuracyCountUp value={last.accuracy} />
             <span className="text-sm text-tertiary">% accuracy · last session</span>
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -585,7 +690,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
           </div>
         </>
       )}
-    </section>
+    </HoverLiftSection>
   )
 }
 

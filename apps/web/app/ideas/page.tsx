@@ -15,6 +15,7 @@ import type { IdeaStage } from '@learning-hub/core/types'
 import { TransportPanel, useAiStatus } from '@/components/TransportPanel'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader, useToast } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 
 interface Idea {
   id: number
@@ -182,7 +183,7 @@ export default function IdeasPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         title="Ideas"
         subtitle="Capture, combine, interrogate, and let stale ideas resurface themselves."
@@ -515,6 +516,6 @@ export default function IdeasPage() {
           </button>
         </div>
       )}
-    </div>
+    </ClayIn>
   )
 }

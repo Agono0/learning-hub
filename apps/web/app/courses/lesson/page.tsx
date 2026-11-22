@@ -27,6 +27,7 @@ import { curriculumApi, curriculumKeys, type LessonView } from '@/lib/curriculum
 import { useIdParam } from '@/lib/use-id-param'
 import { Badge, Button, Callout, EmptyState, Markdown, Panel } from '@/ui'
 import { ExercisePractice } from '@/ui/exercises'
+import { ClayIn, staggerDelay } from '@/lib/motion'
 
 type Content = NonNullable<LessonView['lesson']['content']>
 
@@ -67,79 +68,90 @@ function WorkedExample({
 }) {
   const [shown, setShown] = useState(0)
   const allShown = shown >= example.steps.length
+  // ClayIn gives the panel a one-shot rise on mount; the step-reveal state below
+  // never re-triggers it (delayS is stable). SSR-safe: final state rendered
+  // server-side, hidden state applied imperatively client-side only when
+  // motionOK() allows.
   return (
-    <Panel title={example.title ?? `Worked example ${index + 1}`}>
-      <Markdown>{example.problem}</Markdown>
-      <ol className="space-y-2">
-        {example.steps.slice(0, shown).map((step, i) => (
-          <li
-            key={i}
-            className="flex gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm dark:bg-(--hub-panel)"
-          >
-            <span className="font-semibold tabular-nums text-ac-text">{i + 1}.</span>
-            <Markdown className="min-w-0 flex-1">{step}</Markdown>
-          </li>
-        ))}
-      </ol>
-      {!allShown ? (
-        <div className="space-y-1">
-          <p className="text-xs text-tertiary">
-            Predict step {shown + 1} in your head first, then check.
-          </p>
-          <Button
-            variant="ghost"
-            icon={<Eye className="h-4 w-4" />}
-            onClick={() => setShown((s) => s + 1)}
-          >
-            Show step {shown + 1} of {example.steps.length}
-          </Button>
-        </div>
-      ) : (
-        example.answer && (
-          <Callout tone="success" title="Answer">
-            <Markdown>{example.answer}</Markdown>
-          </Callout>
-        )
-      )}
-    </Panel>
+    <ClayIn delayS={staggerDelay(1 + index)}>
+      <Panel title={example.title ?? `Worked example ${index + 1}`}>
+        <Markdown>{example.problem}</Markdown>
+        <ol className="space-y-2">
+          {example.steps.slice(0, shown).map((step, i) => (
+            <li
+              key={i}
+              className="flex gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-sm dark:bg-(--hub-panel)"
+            >
+              <span className="font-semibold tabular-nums text-ac-text">{i + 1}.</span>
+              <Markdown className="min-w-0 flex-1">{step}</Markdown>
+            </li>
+          ))}
+        </ol>
+        {!allShown ? (
+          <div className="space-y-1">
+            <p className="text-xs text-tertiary">
+              Predict step {shown + 1} in your head first, then check.
+            </p>
+            <Button
+              variant="ghost"
+              icon={<Eye className="h-4 w-4" />}
+              onClick={() => setShown((s) => s + 1)}
+            >
+              Show step {shown + 1} of {example.steps.length}
+            </Button>
+          </div>
+        ) : (
+          example.answer && (
+            <Callout tone="success" title="Answer">
+              <Markdown>{example.answer}</Markdown>
+            </Callout>
+          )
+        )}
+      </Panel>
+    </ClayIn>
   )
 }
 
 function KeyTerms({ terms }: { terms: NonNullable<Content['keyTerms']> }) {
   const [open, setOpen] = useState<Set<number>>(new Set())
+  // One-shot panel rise on mount (ClayIn); term toggles below never re-trigger
+  // it. SSR-safe: final state server-side, imperative hide client-side only
+  // when motionOK() allows.
   return (
-    <Panel
-      title={
-        <span className="flex items-center gap-2">
-          <BookMarked className="h-4 w-4" /> Key terms — recall, then tap to check
-        </span>
-      }
-    >
-      <dl className="grid gap-2 sm:grid-cols-2">
-        {terms.map((t, i) => (
-          <button
-            key={i}
-            type="button"
-            aria-expanded={open.has(i)}
-            onClick={() =>
-              setOpen((s) => new Set(s.has(i) ? [...s].filter((x) => x !== i) : [...s, i]))
-            }
-            className="rounded-xl border border-neutral-200 p-3 text-left dark:border-(--hub-border)"
-          >
-            <dt className="font-medium">{t.term}</dt>
-            <dd
-              className={
-                open.has(i)
-                  ? 'mt-1 text-sm text-neutral-600 dark:text-secondary'
-                  : 'mt-1 text-xs text-faint'
+    <ClayIn delayS={staggerDelay(1)}>
+      <Panel
+        title={
+          <span className="flex items-center gap-2">
+            <BookMarked className="h-4 w-4" /> Key terms — recall, then tap to check
+          </span>
+        }
+      >
+        <dl className="grid gap-2 sm:grid-cols-2">
+          {terms.map((t, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-expanded={open.has(i)}
+              onClick={() =>
+                setOpen((s) => new Set(s.has(i) ? [...s].filter((x) => x !== i) : [...s, i]))
               }
+              className="rounded-xl border border-neutral-200 p-3 text-left dark:border-(--hub-border)"
             >
-              {open.has(i) ? t.definition : 'What does it mean?'}
-            </dd>
-          </button>
-        ))}
-      </dl>
-    </Panel>
+              <dt className="font-medium">{t.term}</dt>
+              <dd
+                className={
+                  open.has(i)
+                    ? 'mt-1 text-sm text-neutral-600 dark:text-secondary'
+                    : 'mt-1 text-xs text-faint'
+                }
+              >
+                {open.has(i) ? t.definition : 'What does it mean?'}
+              </dd>
+            </button>
+          ))}
+        </dl>
+      </Panel>
+    </ClayIn>
   )
 }
 
@@ -201,23 +213,29 @@ function Lesson() {
         <span className="truncate">{module.title}</span>
       </nav>
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">{lesson.title}</h1>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge tone="accent">{lesson.type}</Badge>
-          {lesson.estMinutes && <Badge>{lesson.estMinutes} min</Badge>}
-          {done && (
-            <Badge tone="success">
-              <CheckCircle2 className="h-3 w-3" /> Completed
-            </Badge>
+      {/* Lesson rhythm: header is the first beat, then the step sections rise in
+          sequence. The pretest and practice areas stay instant (they hold the
+          interactive ExercisePractice components). SSR-safe: ClayIn renders the
+          final state server-side and animates client-side only when motionOK(). */}
+      <ClayIn>
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight">{lesson.title}</h1>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge tone="accent">{lesson.type}</Badge>
+            {lesson.estMinutes && <Badge>{lesson.estMinutes} min</Badge>}
+            {done && (
+              <Badge tone="success">
+                <CheckCircle2 className="h-3 w-3" /> Completed
+              </Badge>
+            )}
+          </div>
+          {lesson.objective && (
+            <p className="text-sm">
+              <span className="font-medium">Goal:</span> {lesson.objective}
+            </p>
           )}
-        </div>
-        {lesson.objective && (
-          <p className="text-sm">
-            <span className="font-medium">Goal:</span> {lesson.objective}
-          </p>
-        )}
-      </header>
+        </header>
+      </ClayIn>
 
       {data.locked && !done && (
         <Callout
@@ -233,9 +251,11 @@ function Lesson() {
       )}
 
       {content.summary && (
-        <Callout tone="accent" title="In a nutshell">
-          <Markdown>{content.summary}</Markdown>
-        </Callout>
+        <ClayIn delayS={staggerDelay(1)}>
+          <Callout tone="accent" title="In a nutshell">
+            <Markdown>{content.summary}</Markdown>
+          </Callout>
+        </ClayIn>
       )}
 
       {exercises.length > 0 && !done && (
@@ -295,11 +315,14 @@ function Lesson() {
         </section>
       )}
 
+      {/* Theory sections rise in sequence (index-capped delays keep the total
+          stagger under the motion law's 300ms budget). ClayIn as="section" keeps
+          the original semantic tag and classes. */}
       {(content.theory ?? []).map((section, i) => (
-        <section key={i} className="space-y-2">
+        <ClayIn key={i} as="section" className="space-y-2" delayS={staggerDelay(1 + i)}>
           {section.heading && <h2 className="text-lg font-semibold">{section.heading}</h2>}
           <Markdown>{section.body}</Markdown>
-        </section>
+        </ClayIn>
       ))}
 
       {(content.workedExamples ?? []).map((ex, i) => (
@@ -330,48 +353,52 @@ function Lesson() {
       )}
 
       {content.reflection && content.reflection.length > 0 && (
-        <Panel title="Reflect">
-          <p className="text-xs text-tertiary">
-            Explaining in your own words is one of the strongest ways to understand
-            (self-explanation).
-          </p>
-          {content.reflection.map((q, i) => (
-            <label key={i} className="block space-y-1">
-              <span className="text-sm font-medium">{q}</span>
-              <textarea
-                className="input min-h-20"
-                value={reflections[i] ?? data.progress?.reflections?.[i] ?? ''}
-                onChange={(e) =>
-                  setReflections((r) => {
-                    const next = [...r]
-                    next[i] = e.target.value
-                    return next
-                  })
-                }
-              />
-            </label>
-          ))}
-        </Panel>
+        <ClayIn delayS={staggerDelay(1)}>
+          <Panel title="Reflect">
+            <p className="text-xs text-tertiary">
+              Explaining in your own words is one of the strongest ways to understand
+              (self-explanation).
+            </p>
+            {content.reflection.map((q, i) => (
+              <label key={i} className="block space-y-1">
+                <span className="text-sm font-medium">{q}</span>
+                <textarea
+                  className="input min-h-20"
+                  value={reflections[i] ?? data.progress?.reflections?.[i] ?? ''}
+                  onChange={(e) =>
+                    setReflections((r) => {
+                      const next = [...r]
+                      next[i] = e.target.value
+                      return next
+                    })
+                  }
+                />
+              </label>
+            ))}
+          </Panel>
+        </ClayIn>
       )}
 
       {content.resources && content.resources.length > 0 && (
-        <Panel title="Go deeper">
-          <ul className="space-y-1 text-sm">
-            {content.resources.map((r, i) => (
-              <li key={i}>
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-indigo-600 underline underline-offset-2 dark:text-indigo-300"
-                >
-                  {r.title} <ExternalLink className="h-3 w-3" />
-                </a>
-                {r.kind && <span className="ml-1 text-xs text-tertiary">({r.kind})</span>}
-              </li>
-            ))}
-          </ul>
-        </Panel>
+        <ClayIn delayS={staggerDelay(2)}>
+          <Panel title="Go deeper">
+            <ul className="space-y-1 text-sm">
+              {content.resources.map((r, i) => (
+                <li key={i}>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-indigo-600 underline underline-offset-2 dark:text-indigo-300"
+                  >
+                    {r.title} <ExternalLink className="h-3 w-3" />
+                  </a>
+                  {r.kind && <span className="ml-1 text-xs text-tertiary">({r.kind})</span>}
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </ClayIn>
       )}
 
       <Panel>

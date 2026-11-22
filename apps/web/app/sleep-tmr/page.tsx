@@ -28,6 +28,7 @@ import {
   Skeleton,
   SleepConsolidationHUD,
 } from '@/ui'
+import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
 
 interface TmrCueItem {
   cardId: number
@@ -208,119 +209,136 @@ export default function SleepTmrPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
-      <PageHeader
-        title="Sleep Replay (TMR)"
-        subtitle="Soft audio cues paired with today's cards, replayed during sleep to support overnight consolidation."
-        icon={<Moon className="h-5 w-5" />}
-      />
+      {/* Entrance beats: header → tonight panel → studio → HUD rise in sequence;
+          the lower sections reveal on scroll. The night-mode overlay above is
+          deliberately untouched (OLED-black sleep screen, wake-locked). SSR-safe
+          — ClayIn/Reveal render the final state server-side and animate
+          client-side only when motionOK() allows. */}
+      <ClayIn>
+        <PageHeader
+          title="Sleep Replay (TMR)"
+          subtitle="Soft audio cues paired with today's cards, replayed during sleep to support overnight consolidation."
+          icon={<Moon className="h-5 w-5" />}
+        />
+      </ClayIn>
 
-      <TonightConsolidationPanel className="mt-2" />
+      <ClayIn delayS={staggerDelay(1)}>
+        <TonightConsolidationPanel className="mt-2" />
+      </ClayIn>
 
-      <SleepConsolidationStudio
-        cues={cues.map((c) => ({
-          cardId: c.cardId,
-          frontText: `Card #${c.cardId}`,
-          earcon: c.earconSignature,
-          difficulty: 0.5,
-          replaysToday: c.timesCuedSleep,
-        }))}
-        sleepHours={8}
-        onRecordSleepPlayback={(ids) => {
-          void apiSend('/api/audio/tmr/cues', 'POST', {
-            action: 'record_sleep_playback',
-            playedCardIds: ids,
-          }).catch(() => undefined)
-        }}
-      />
+      <ClayIn delayS={staggerDelay(2)}>
+        <SleepConsolidationStudio
+          cues={cues.map((c) => ({
+            cardId: c.cardId,
+            frontText: `Card #${c.cardId}`,
+            earcon: c.earconSignature,
+            difficulty: 0.5,
+            replaysToday: c.timesCuedSleep,
+          }))}
+          sleepHours={8}
+          onRecordSleepPlayback={(ids) => {
+            void apiSend('/api/audio/tmr/cues', 'POST', {
+              action: 'record_sleep_playback',
+              playedCardIds: ids,
+            }).catch(() => undefined)
+          }}
+        />
+      </ClayIn>
 
-      <SleepConsolidationHUD
-        activeCuesCount={cues.length}
-        playedCuesCount={playedCount}
-        currentFrequency={currentFreq}
-        isNightMode={nightMode}
-        onToggleNightMode={() => (nightMode ? exitNight() : void startNight())}
-        onMintQueue={() => mintRecent.mutate()}
-        isMinting={mintRecent.isPending}
-      />
+      <ClayIn delayS={staggerDelay(3)}>
+        <SleepConsolidationHUD
+          activeCuesCount={cues.length}
+          playedCuesCount={playedCount}
+          currentFrequency={currentFreq}
+          isNightMode={nightMode}
+          onToggleNightMode={() => (nightMode ? exitNight() : void startNight())}
+          onMintQueue={() => mintRecent.mutate()}
+          isMinting={mintRecent.isPending}
+        />
+      </ClayIn>
 
-      <Callout tone="accent" title="Set a safe volume first">
-        <span className="inline-flex items-start gap-2">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-          Press Preview on a cue and lower your device volume until it is barely audible. The app
-          cannot measure loudness — your device volume sets it. Evidence for sleep cueing comes from
-          lab studies (Rasch &amp; Born 2007); treat it as a small bonus, not a substitute for
-          review.
-        </span>
-      </Callout>
+      <Reveal>
+        <Callout tone="accent" title="Set a safe volume first">
+          <span className="inline-flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            Press Preview on a cue and lower your device volume until it is barely audible. The app
+            cannot measure loudness — your device volume sets it. Evidence for sleep cueing comes
+            from lab studies (Rasch &amp; Born 2007); treat it as a small bonus, not a substitute
+            for review.
+          </span>
+        </Callout>
+      </Reveal>
 
-      <Panel
-        title="Tonight's queue"
-        actions={
-          <Button
-            variant="ghost"
-            loading={mintRecent.isPending}
-            onClick={() => mintRecent.mutate()}
-          >
-            Queue today&apos;s reviews
-          </Button>
-        }
-      >
-        {mintRecent.data ? (
-          <p className="text-xs text-tertiary">
-            {mintRecent.data.minted > 0
-              ? `${mintRecent.data.minted} cards from the last 24 hours queued.`
-              : 'No reviews in the last 24 hours to queue.'}
-          </p>
-        ) : null}
-        {mintRecent.isError ? (
-          <p className="text-xs text-danger-text">Could not queue reviews — try again.</p>
-        ) : null}
-
-        {isLoading ? (
-          <Skeleton className="h-24" />
-        ) : isError ? (
-          <Callout tone="danger" title="Could not load cues">
-            <Button variant="ghost" onClick={() => void refetch()}>
-              Try again
+      <Reveal>
+        <Panel
+          title="Tonight's queue"
+          actions={
+            <Button
+              variant="ghost"
+              loading={mintRecent.isPending}
+              onClick={() => mintRecent.mutate()}
+            >
+              Queue today&apos;s reviews
             </Button>
-          </Callout>
-        ) : cues.length === 0 ? (
-          <EmptyState icon={<Moon className="h-6 w-6" />} title="Nothing queued yet">
-            Finish a commute audio session, or press “Queue today&apos;s reviews” after studying.
-          </EmptyState>
-        ) : (
-          <>
-            <Button className="w-full" icon={<Moon className="h-4 w-4" />} onClick={startNight}>
-              Start sleep replay ({cues.length} cues)
-            </Button>
-            <ul className="space-y-2">
-              {cues.map((c) => (
-                <li
-                  key={c.cardId}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 text-xs dark:border-(--hub-border)"
-                >
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="font-medium">Card #{c.cardId}</div>
-                    <div className="text-tertiary">
-                      {c.earconSignature.baseFrequency} Hz ·{' '}
-                      {c.earconSignature.harmonicType.replace('_', ' ')} · replayed{' '}
-                      {c.timesCuedSleep}×
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    icon={<Volume2 className="h-4 w-4" />}
-                    onClick={() => playEarcon(c.earconSignature)}
-                    aria-label={`Preview cue for card ${c.cardId}`}
+          }
+        >
+          {mintRecent.data ? (
+            <p className="text-xs text-tertiary">
+              {mintRecent.data.minted > 0
+                ? `${mintRecent.data.minted} cards from the last 24 hours queued.`
+                : 'No reviews in the last 24 hours to queue.'}
+            </p>
+          ) : null}
+          {mintRecent.isError ? (
+            <p className="text-xs text-danger-text">Could not queue reviews — try again.</p>
+          ) : null}
+
+          {isLoading ? (
+            <Skeleton className="h-24" />
+          ) : isError ? (
+            <Callout tone="danger" title="Could not load cues">
+              <Button variant="ghost" onClick={() => void refetch()}>
+                Try again
+              </Button>
+            </Callout>
+          ) : cues.length === 0 ? (
+            <EmptyState icon={<Moon className="h-6 w-6" />} title="Nothing queued yet">
+              Finish a commute audio session, or press “Queue today&apos;s reviews” after studying.
+            </EmptyState>
+          ) : (
+            <>
+              <Button className="w-full" icon={<Moon className="h-4 w-4" />} onClick={startNight}>
+                Start sleep replay ({cues.length} cues)
+              </Button>
+              <ul className="space-y-2">
+                {cues.map((c) => (
+                  <li
+                    key={c.cardId}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 text-xs dark:border-(--hub-border)"
                   >
-                    Preview
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </Panel>
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="font-medium">Card #{c.cardId}</div>
+                      <div className="text-tertiary">
+                        {c.earconSignature.baseFrequency} Hz ·{' '}
+                        {c.earconSignature.harmonicType.replace('_', ' ')} · replayed{' '}
+                        {c.timesCuedSleep}×
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      icon={<Volume2 className="h-4 w-4" />}
+                      onClick={() => playEarcon(c.earconSignature)}
+                      aria-label={`Preview cue for card ${c.cardId}`}
+                    >
+                      Preview
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Panel>
+      </Reveal>
     </div>
   )
 }

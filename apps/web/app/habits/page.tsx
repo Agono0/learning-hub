@@ -7,6 +7,7 @@ import { DOPAMINE_MENU, type DopamineType } from '@learning-hub/core/src/habits'
 import { dayKey } from '@learning-hub/core/src/streaks'
 import { apiGet, apiSend } from '@/lib/transport'
 import { IconButton, PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 
 interface Habit {
   id: number
@@ -108,7 +109,7 @@ export default function HabitsPage() {
       : DOPAMINE_MENU.filter((d) => d.type === dopamineFilter)
 
   return (
-    <div className="space-y-4">
+    <ClayIn as="div" className="space-y-4">
       <PageHeader
         icon={<CalendarCheck className="h-6 w-6 text-indigo-400" />}
         title="Habits"
@@ -310,6 +311,6 @@ export default function HabitsPage() {
           ))}
         </ul>
       </div>
-    </div>
+    </ClayIn>
   )
 }

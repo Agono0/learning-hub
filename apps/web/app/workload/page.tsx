@@ -15,37 +15,50 @@ import React from 'react'
 import { BarChart3, Calendar, ShieldCheck, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { WorkloadStudio } from '@/components/WorkloadStudio'
+import { ClayIn, staggerDelay } from '@/lib/motion'
 
 export default function WorkloadStudioPage() {
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
-      {/* Page Header */}
-      <PageHeader
-        title="Workload Balancer & Review Forecaster"
-        subtitle="Forecast 14 to 90-day review loads, smooth spike volumes with safe interval fuzzing, schedule rest days, and recover overdue backlogs gently."
-        actions={
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
-              <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
-              <span>90-Day Forecast</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
-              <ShieldCheck className="h-3.5 w-3.5 text-status-success-text" />
-              <span>Safe Fuzz Smoothing</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
-              <Calendar className="h-3.5 w-3.5 text-status-info-text" />
-              <span>Easy Days</span>
-            </span>
-          </div>
-        }
-      />
+    // Entrance choreography: three blocks rise + fade in on the clay spring,
+    // 40ms apart (`staggerDelay`), total <300ms (motion law: transform/opacity
+    // only, gated by `motionOK`). The old `animate-fade-in` class is dropped —
+    // ClayIn owns the entrance. SSR renders the final state; the animation is
+    // client-only, so hydration output is unchanged.
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+      {/* Page Header — entrance beat 0 */}
+      <ClayIn>
+        <PageHeader
+          title="Workload Balancer & Review Forecaster"
+          subtitle="Forecast 14 to 90-day review loads, smooth spike volumes with safe interval fuzzing, schedule rest days, and recover overdue backlogs gently."
+          actions={
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+                <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
+                <span>90-Day Forecast</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
+                <ShieldCheck className="h-3.5 w-3.5 text-status-success-text" />
+                <span>Safe Fuzz Smoothing</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
+                <Calendar className="h-3.5 w-3.5 text-status-info-text" />
+                <span>Easy Days</span>
+              </span>
+            </div>
+          }
+        />
+      </ClayIn>
 
-      {/* Main Interactive Studio */}
-      <WorkloadStudio />
+      {/* Main Interactive Studio — entrance beat 1 */}
+      <ClayIn delayS={staggerDelay(1)}>
+        <WorkloadStudio />
+      </ClayIn>
 
-      {/* Spaced Repetition Scheduling Foundations */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
+      {/* Spaced Repetition Scheduling Foundations — entrance beat 2 */}
+      <ClayIn
+        delayS={staggerDelay(2)}
+        className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md"
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <Sparkles className="h-5 w-5 text-indigo-400" />
           <h3 className="text-sm font-bold text-white">
@@ -82,7 +95,7 @@ export default function WorkloadStudioPage() {
             </p>
           </div>
         </div>
-      </div>
+      </ClayIn>
     </div>
   )
 }

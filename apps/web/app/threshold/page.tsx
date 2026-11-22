@@ -14,11 +14,12 @@
 import React from 'react'
 import { KeyRound, Sparkles, Layers, AlertTriangle, Compass } from 'lucide-react'
 import { PageHeader } from '@/ui'
+import { ClayIn } from '@/lib/motion'
 import { ThresholdStudio } from '@/components/ThresholdStudio'
 
 export default function ThresholdPage() {
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8 animate-fade-in">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
       {/* Page Header */}
       <PageHeader
         title="Threshold Concepts & Liminal Navigation Studio"
@@ -88,6 +89,6 @@ export default function ThresholdPage() {
           </div>
         </div>
       </div>
-    </div>
+    </ClayIn>
   )
 }

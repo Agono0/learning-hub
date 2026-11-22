@@ -15,6 +15,7 @@ import { apiGet, apiSend } from '@/lib/transport'
 import { IconButton, PageHeader, RelatedPanel } from '@/ui'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { queryKeys } from '@/lib/query-keys'
+import { ClayIn, Reveal, Stagger, StaggerItem } from '@/lib/motion'
 
 interface Note {
   id: number
@@ -133,175 +134,186 @@ export default function NotesPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Notes"
-        subtitle="Markdown notes with supertags, Cornell layouts, and backlinks."
-      />
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr_220px]">
-        <aside className="space-y-2">
-          <button className="btn w-full" onClick={() => createNote.mutate()}>
-            New note
-          </button>
-          <div className="space-y-1">
-            {(list?.notes ?? []).map((n) => (
-              <button
-                key={n.id}
-                className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${activeId === n.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-                onClick={() => setActiveId(n.id)}
-              >
-                {n.title}
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <section className="space-y-3">
-          {activeId == null ? (
-            <div className="panel text-sm text-tertiary">Pick or create a note.</div>
-          ) : (
-            <>
-              <div className="panel space-y-3">
-                <input
-                  className="input text-lg font-semibold"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-                <div className="flex flex-wrap items-center gap-1">
-                  <IconButton label="Bold" onClick={() => wrapSelection('**')}>
-                    <Bold className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton label="Heading" onClick={() => setContent((c) => `${c}\n## `)}>
-                    <Heading className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton label="Wikilink" onClick={() => setContent((c) => `${c}[[title]]`)}>
-                    <Link2 className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton label="Bullet" onClick={() => setContent((c) => `${c}\n- `)}>
-                    <List className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton
-                    label="Mine cards from this note"
-                    onClick={() => setMineText(content)}
-                  >
-                    <Pickaxe className="h-4 w-4" />
-                  </IconButton>
-                  <IconButton label="Paste text and mine cards" onClick={() => setMineText('')}>
-                    <Pickaxe className="h-4 w-4 opacity-50" />
-                  </IconButton>
-                  <select
-                    className="input ml-auto w-40 text-xs"
-                    value={supertag}
-                    onChange={(e) => e.target.value && applySupertag(e.target.value as SupertagKey)}
-                  >
-                    <option value="">Supertag…</option>
-                    {Object.values(SUPERTAG_TEMPLATES).map((t) => (
-                      <option key={t.key} value={t.key}>
-                        {t.emoji} {t.name}
-                      </option>
-                    ))}
-                  </select>
+      {/* Entrance: header beat, then the workspace grid reveals as one section;
+          the notes list staggers its rows (40ms steps, capped by the
+          foundation). SSR-safe — the motion components render the final state
+          server-side and animate client-side only when motionOK() allows. */}
+      <ClayIn>
+        <PageHeader
+          title="Notes"
+          subtitle="Markdown notes with supertags, Cornell layouts, and backlinks."
+        />
+      </ClayIn>
+      <Reveal>
+        <div className="grid gap-4 lg:grid-cols-[240px_1fr_220px]">
+          <aside className="space-y-2">
+            <button className="btn w-full" onClick={() => createNote.mutate()}>
+              New note
+            </button>
+            <Stagger className="space-y-1">
+              {(list?.notes ?? []).map((n, i) => (
+                <StaggerItem key={n.id} index={i}>
                   <button
-                    className="btn"
-                    onClick={() => saveNote.mutate()}
-                    disabled={saveNote.isPending}
+                    className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${activeId === n.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
+                    onClick={() => setActiveId(n.id)}
                   >
-                    <Save className="h-4 w-4" /> Save
+                    {n.title}
                   </button>
-                  <button
-                    className="btn-ghost text-xs text-danger-text"
-                    onClick={() => activeId && deleteNote.mutate(activeId)}
-                  >
-                    Delete
-                  </button>
-                </div>
-                <textarea
-                  className="input min-h-[40vh] font-mono text-sm"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                />
-              </div>
+                </StaggerItem>
+              ))}
+            </Stagger>
+          </aside>
 
-              {supertag && SUPERTAG_TEMPLATES[supertag as SupertagKey] && (
-                <div className="panel space-y-2">
-                  <div className="label">
-                    Supertag fields — {SUPERTAG_TEMPLATES[supertag as SupertagKey].name}
+          <section className="space-y-3">
+            {activeId == null ? (
+              <div className="panel text-sm text-tertiary">Pick or create a note.</div>
+            ) : (
+              <>
+                <div className="panel space-y-3">
+                  <input
+                    className="input text-lg font-semibold"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                  <div className="flex flex-wrap items-center gap-1">
+                    <IconButton label="Bold" onClick={() => wrapSelection('**')}>
+                      <Bold className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton label="Heading" onClick={() => setContent((c) => `${c}\n## `)}>
+                      <Heading className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton label="Wikilink" onClick={() => setContent((c) => `${c}[[title]]`)}>
+                      <Link2 className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton label="Bullet" onClick={() => setContent((c) => `${c}\n- `)}>
+                      <List className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton
+                      label="Mine cards from this note"
+                      onClick={() => setMineText(content)}
+                    >
+                      <Pickaxe className="h-4 w-4" />
+                    </IconButton>
+                    <IconButton label="Paste text and mine cards" onClick={() => setMineText('')}>
+                      <Pickaxe className="h-4 w-4 opacity-50" />
+                    </IconButton>
+                    <select
+                      className="input ml-auto w-40 text-xs"
+                      value={supertag}
+                      onChange={(e) =>
+                        e.target.value && applySupertag(e.target.value as SupertagKey)
+                      }
+                    >
+                      <option value="">Supertag…</option>
+                      {Object.values(SUPERTAG_TEMPLATES).map((t) => (
+                        <option key={t.key} value={t.key}>
+                          {t.emoji} {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn"
+                      onClick={() => saveNote.mutate()}
+                      disabled={saveNote.isPending}
+                    >
+                      <Save className="h-4 w-4" /> Save
+                    </button>
+                    <button
+                      className="btn-ghost text-xs text-danger-text"
+                      onClick={() => activeId && deleteNote.mutate(activeId)}
+                    >
+                      Delete
+                    </button>
                   </div>
-                  {Object.entries(SUPERTAG_TEMPLATES[supertag as SupertagKey].fields).map(
-                    ([field, placeholder]) => (
-                      <div key={field} className="flex items-center gap-2">
-                        <span className="w-28 shrink-0 text-xs text-tertiary">{field}</span>
-                        <input
-                          className="input text-sm"
-                          placeholder={placeholder}
-                          value={fields[field] ?? ''}
-                          onChange={(e) => setFields((f) => ({ ...f, [field]: e.target.value }))}
-                        />
-                      </div>
-                    ),
-                  )}
+                  <textarea
+                    className="input min-h-[40vh] font-mono text-sm"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                  />
                 </div>
-              )}
 
-              <div className="panel space-y-2">
-                <div className="label">Bullets — any bullet can BE a card</div>
-                {bullets.length === 0 && (
-                  <p className="text-sm text-tertiary">
-                    No bullets yet — write "- something" and save.
-                  </p>
-                )}
-                {bullets.map((b) => (
-                  <div key={b.id} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1">{b.content}</span>
-                    {b.cardId ? (
-                      <span className="text-xs text-status-success-text">card #{b.cardId}</span>
-                    ) : (
-                      <button
-                        className="btn-ghost text-xs"
-                        onClick={() => bulletToCard.mutate(b)}
-                        disabled={bulletToCard.isPending}
-                      >
-                        → card
-                      </button>
+                {supertag && SUPERTAG_TEMPLATES[supertag as SupertagKey] && (
+                  <div className="panel space-y-2">
+                    <div className="label">
+                      Supertag fields — {SUPERTAG_TEMPLATES[supertag as SupertagKey].name}
+                    </div>
+                    {Object.entries(SUPERTAG_TEMPLATES[supertag as SupertagKey].fields).map(
+                      ([field, placeholder]) => (
+                        <div key={field} className="flex items-center gap-2">
+                          <span className="w-28 shrink-0 text-xs text-tertiary">{field}</span>
+                          <input
+                            className="input text-sm"
+                            placeholder={placeholder}
+                            value={fields[field] ?? ''}
+                            onChange={(e) => setFields((f) => ({ ...f, [field]: e.target.value }))}
+                          />
+                        </div>
+                      ),
                     )}
                   </div>
-                ))}
-                {bulletToCard.isError && (
-                  <p className="text-xs text-status-warning-text">
-                    Card service not reachable (/api/cards/bullet may not be deployed yet).
-                  </p>
                 )}
-              </div>
-            </>
-          )}
-        </section>
 
-        <aside className="space-y-3">
-          <div className="panel">
-            <div className="label mb-2">Backlinks</div>
-            {backlinks.length === 0 && (
-              <p className="text-xs text-tertiary">Nothing links here yet.</p>
+                <div className="panel space-y-2">
+                  <div className="label">Bullets — any bullet can BE a card</div>
+                  {bullets.length === 0 && (
+                    <p className="text-sm text-tertiary">
+                      No bullets yet — write "- something" and save.
+                    </p>
+                  )}
+                  {bullets.map((b) => (
+                    <div key={b.id} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1">{b.content}</span>
+                      {b.cardId ? (
+                        <span className="text-xs text-status-success-text">card #{b.cardId}</span>
+                      ) : (
+                        <button
+                          className="btn-ghost text-xs"
+                          onClick={() => bulletToCard.mutate(b)}
+                          disabled={bulletToCard.isPending}
+                        >
+                          → card
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {bulletToCard.isError && (
+                    <p className="text-xs text-status-warning-text">
+                      Card service not reachable (/api/cards/bullet may not be deployed yet).
+                    </p>
+                  )}
+                </div>
+              </>
             )}
-            {backlinks.map((b) => (
-              <button
-                key={b.fromNoteId}
-                className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline"
-                onClick={() => setActiveId(b.fromNoteId)}
-              >
-                {b.fromTitle} <span className="text-tertiary">({b.type})</span>
-              </button>
-            ))}
-          </div>
-          <div className="panel">
-            {activeId != null && <RelatedPanel kind="note" refId={activeId} />}
-          </div>
-        </aside>
+          </section>
 
-        <CardMinerSheet
-          open={mineText !== null}
-          initialText={mineText ?? ''}
-          onClose={() => setMineText(null)}
-        />
-      </div>
+          <aside className="space-y-3">
+            <div className="panel">
+              <div className="label mb-2">Backlinks</div>
+              {backlinks.length === 0 && (
+                <p className="text-xs text-tertiary">Nothing links here yet.</p>
+              )}
+              {backlinks.map((b) => (
+                <button
+                  key={b.fromNoteId}
+                  className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline"
+                  onClick={() => setActiveId(b.fromNoteId)}
+                >
+                  {b.fromTitle} <span className="text-tertiary">({b.type})</span>
+                </button>
+              ))}
+            </div>
+            <div className="panel">
+              {activeId != null && <RelatedPanel kind="note" refId={activeId} />}
+            </div>
+          </aside>
+
+          <CardMinerSheet
+            open={mineText !== null}
+            initialText={mineText ?? ''}
+            onClose={() => setMineText(null)}
+          />
+        </div>
+      </Reveal>
     </div>
   )
 }

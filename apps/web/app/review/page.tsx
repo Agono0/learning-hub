@@ -8,7 +8,8 @@
  * CLIENT component — imports core via SUBPATHS only (never the barrel: it
  * drags ai.ts/better-sqlite3 into the client bundle).
  */
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -84,6 +85,40 @@ import {
   stopSpeaking,
 } from '@/lib/audio-engine'
 import { queryKeys } from '@/lib/query-keys'
+import { AnimatePresence, motion, useAnimationControls } from 'framer-motion'
+import { ClayIn, Stagger, StaggerItem, clayPopVariants, motionOK, staggerDelay } from '@/lib/motion'
+
+/**
+ * Clay pop-in for CLIENT-STATE-triggered surfaces: scale 0.96 → 1 + fade on the
+ * clay spring (`clayPopVariants` — transform/opacity only, stagger law N/A since
+ * it is a single beat).
+ *
+ * Gating: JS animations bypass the CSS `prefers-reduced-motion` / e-ink
+ * kill-switches, so the pop only runs when `motionOK()` is true — otherwise the
+ * content renders in place with no animation.
+ *
+ * Hydration safety (load-bearing): this component must only be mounted from
+ * client interaction state (a card reveal, a finished session, a graded exam) —
+ * never in first-render server output. That invariant holds for every use in
+ * this file (`revealed`, `finishedAt` and friends all start falsy before any
+ * user action), which is why `useLayoutEffect` (not the isomorphic fallback) is
+ * safe here: the component never renders on the server. `initial={false}` keeps
+ * the first client frame identical to the settled state before the effect hides
+ * + starts the pop pre-paint.
+ */
+function ClayPop({ children, className }: { children: ReactNode; className?: string }) {
+  const controls = useAnimationControls()
+  useLayoutEffect(() => {
+    if (!motionOK()) return
+    controls.set('hidden')
+    controls.start('visible')
+  }, [controls])
+  return (
+    <motion.div initial={false} animate={controls} variants={clayPopVariants} className={className}>
+      {children}
+    </motion.div>
+  )
+}
 
 interface CardRow {
   id: number
@@ -220,6 +255,13 @@ function ReviewPageInner() {
   const [commuteAutoPlay, setCommuteAutoPlay] = useState(true)
   const [isPlayingDigest, setIsPlayingDigest] = useState(false)
   const [digestStatus, setDigestStatus] = useState<string | null>(null)
+
+  // Motion permission for the card-commit transition, evaluated ONCE per
+  // component mount (hook order: must sit with the other hooks, above every
+  // conditional return). The active-card flow never renders on the server;
+  // reduced-motion / e-ink users get instant card swaps instead of the
+  // slide transition (motion law gating).
+  const motionAllowed = useMemo(() => motionOK(), [])
 
   const { data: decksData } = useQuery<{ decks: DeckInfo[] }>({
     queryKey: queryKeys.decks,
@@ -865,9 +907,16 @@ function ReviewPageInner() {
   // ─── Setup screen ───
   if (!started) {
     return (
+      // Entrance: header (beat 0) and the setup panel (beat 1) rise + fade on
+      // the clay spring (motion law: transform/opacity only, gated by
+      // `motionOK`). This screen CAN render on the server, so it uses the
+      // SSR-safe ClayIn (final state in the HTML; animation client-only) —
+      // never a hidden initial state.
       <div className="space-y-4">
-        <PageHeader title="Review" />
-        <div className="panel space-y-4">
+        <ClayIn>
+          <PageHeader title="Review" />
+        </ClayIn>
+        <ClayIn delayS={staggerDelay(1)} className="panel space-y-4">
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="label mb-0">Deck Selection</div>
@@ -1101,7 +1150,7 @@ function ReviewPageInner() {
             </Button>
             {digestStatus && <span className="text-xs text-faint">{digestStatus}</span>}
           </div>
-        </div>
+        </ClayIn>
         <WorkloadBalancerModal
           isOpen={showWorkloadModal}
           onClose={() => setShowWorkloadModal(false)}
@@ -1114,9 +1163,16 @@ function ReviewPageInner() {
   // ─── Session summary ───
   if (finishedAt !== null || (!current && results.length > 0)) {
     return (
+      // Summary choreography: the `.celebrate` panel pops in (ClayPop —
+      // client-state mount only, gated by `motionOK`), then the insight panels
+      // follow in 40ms beats (ClayIn, total <300ms; transform/opacity only).
+      // This view never renders on the server (it requires client session
+      // state), so the pop cannot mismatch SSR output.
       <div className="space-y-4">
-        <PageHeader title="Session complete" />
-        <div className="panel celebrate space-y-3">
+        <ClayIn>
+          <PageHeader title="Session complete" />
+        </ClayIn>
+        <ClayPop className="panel celebrate space-y-3">
           <div className="flex items-center gap-3">
             <Sparkles className="h-8 w-8 text-status-warning-text" />
             <div>
@@ -1171,44 +1227,50 @@ function ReviewPageInner() {
               <Home className="h-4 w-4" /> Dashboard
             </a>
           </div>
-        </div>
+        </ClayPop>
         {stats.total > 0 && (
-          <CognitiveLoadMeter
-            totalLoad={Math.min(100, Math.max(20, Math.round(100 - (stats.accuracy - 50) * 0.8)))}
-            zone={
-              stats.accuracy >= 80
-                ? 'optimal_flow'
-                : stats.accuracy <= 55
-                  ? 'overload'
-                  : 'underload'
-            }
-            germaneLoad={Math.round((stats.accuracy / 100) * 45)}
-            intrinsicLoad={35}
-            extraneousLoad={10}
-            recommendation={
-              stats.accuracy >= 80
-                ? 'High schema integration achieved. Your working memory was in an optimal consolidation window.'
-                : stats.accuracy <= 55
-                  ? 'High cognitive friction detected. Consider taking a 10-minute restorative pause before continuing.'
-                  : 'Moderate friction. Target retrieval cues for lapsed cards in your next session.'
-            }
-          />
+          <ClayIn delayS={staggerDelay(1)}>
+            <CognitiveLoadMeter
+              totalLoad={Math.min(100, Math.max(20, Math.round(100 - (stats.accuracy - 50) * 0.8)))}
+              zone={
+                stats.accuracy >= 80
+                  ? 'optimal_flow'
+                  : stats.accuracy <= 55
+                    ? 'overload'
+                    : 'underload'
+              }
+              germaneLoad={Math.round((stats.accuracy / 100) * 45)}
+              intrinsicLoad={35}
+              extraneousLoad={10}
+              recommendation={
+                stats.accuracy >= 80
+                  ? 'High schema integration achieved. Your working memory was in an optimal consolidation window.'
+                  : stats.accuracy <= 55
+                    ? 'High cognitive friction detected. Consider taking a 10-minute restorative pause before continuing.'
+                    : 'Moderate friction. Target retrieval cues for lapsed cards in your next session.'
+              }
+            />
+          </ClayIn>
         )}
         {calibrationReport && (
-          <MetacognitionRadar
-            brierScore={calibrationReport.brierScore}
-            bias={calibrationReport.bias}
-            status={calibrationReport.status}
-            difficultyAdjustment={calibrationReport.difficultyAdjustment}
-            guidance={calibrationReport.guidance}
-            sampleSize={calibrationReport.sampleSize}
-          />
+          <ClayIn delayS={staggerDelay(2)}>
+            <MetacognitionRadar
+              brierScore={calibrationReport.brierScore}
+              bias={calibrationReport.bias}
+              status={calibrationReport.status}
+              difficultyAdjustment={calibrationReport.difficultyAdjustment}
+              guidance={calibrationReport.guidance}
+              sampleSize={calibrationReport.sampleSize}
+            />
+          </ClayIn>
         )}
         {stats.total > 0 && (
-          <MetacognitiveCalibrationCard
-            deckName={deckId ? decksData?.decks?.find((d) => d.id === deckId)?.name : undefined}
-            className="mt-4"
-          />
+          <ClayIn delayS={staggerDelay(3)}>
+            <MetacognitiveCalibrationCard
+              deckName={deckId ? decksData?.decks?.find((d) => d.id === deckId)?.name : undefined}
+              className="mt-4"
+            />
+          </ClayIn>
         )}
         <WorkloadBalancerModal
           isOpen={showWorkloadModal}
@@ -1249,21 +1311,23 @@ function ReviewPageInner() {
   // ─── Active card ───
   return (
     <div className="space-y-4">
-      <PageHeader
-        title={session.data?.course ? 'Mixed practice' : 'Review'}
-        subtitle={session.data?.course ? session.data.course.title : undefined}
-        actions={
-          <div className="flex items-center gap-3 text-sm text-tertiary">
-            <span>
-              {idx + 1} / {queue.length}
-            </span>
-            <EnergyBar energy={energy} />
-          </div>
-        }
-      />
+      <ClayIn>
+        <PageHeader
+          title={session.data?.course ? 'Mixed practice' : 'Review'}
+          subtitle={session.data?.course ? session.data.course.title : undefined}
+          actions={
+            <div className="flex items-center gap-3 text-sm text-tertiary">
+              <span>
+                {idx + 1} / {queue.length}
+              </span>
+              <EnergyBar energy={energy} />
+            </div>
+          }
+        />
+      </ClayIn>
 
       {mode === 'commute' && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-300">
+        <ClayIn className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-3 text-xs text-indigo-300">
           <div className="flex items-center gap-2">
             <Headphones className="h-4 w-4 animate-pulse" />
             <span>
@@ -1297,206 +1361,234 @@ function ReviewPageInner() {
               {commuteAutoPlay ? 'Pause Loop' : 'Resume Loop'}
             </Button>
           </div>
-        </div>
+        </ClayIn>
       )}
 
-      <div className="panel min-h-[280px] space-y-4">
-        <div className="flex gap-2 text-[10px] uppercase tracking-widest text-tertiary">
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
-            {current.type}
-          </span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
-            reps {current.reps}
-          </span>
-          <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
-            stability {current.stability.toFixed(1)}d
-          </span>
-        </div>
+      {/* Card commit transition (signature moment 2): on grade commit the
+          outgoing card slides left + fades (≤200ms ease-out) and the next card
+          slides in from the right — AnimatePresence mode="wait" keyed by card
+          id, so exactly one card is ever mounted. Hydration-safe: the
+          active-card view never renders on the server, and AnimatePresence
+          `initial={false}` keeps the first card final-state. Gated: when
+          `motionAllowed` is false the props become no-ops (instant swap).
+          Logic untouched — this wraps the same panel; gradeMutation, undo and
+          keyboard flow are byte-identical. */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={current.id}
+          initial={motionAllowed ? { opacity: 0, x: 16 } : false}
+          animate={motionAllowed ? { opacity: 1, x: 0 } : undefined}
+          exit={motionAllowed ? { opacity: 0, x: -16 } : undefined}
+          transition={{ duration: 0.16, ease: 'easeOut' }}
+        >
+          <div className="panel min-h-[280px] space-y-4">
+            <div className="flex gap-2 text-[10px] uppercase tracking-widest text-tertiary">
+              <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
+                {current.type}
+              </span>
+              <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
+                reps {current.reps}
+              </span>
+              <span className="rounded bg-neutral-100 px-1.5 py-0.5 dark:bg-(--hub-panel-2)">
+                stability {current.stability.toFixed(1)}d
+              </span>
+            </div>
 
-        {current.type === 'exercise' && current.content.exercise ? (
-          <div className="space-y-3">
-            <ExercisePractice
-              key={`${current.id}-${idx}`}
-              cardId={current.id}
-              exercise={current.content.exercise}
-              onAnswered={setExerciseResult}
-            />
-            {exerciseResult && (
-              <Button variant="primary" onClick={advanceAfterExercise}>
-                Next card <ArrowRight className="h-4 w-4" />
-              </Button>
+            {current.type === 'exercise' && current.content.exercise ? (
+              <div className="space-y-3">
+                <ExercisePractice
+                  key={`${current.id}-${idx}`}
+                  cardId={current.id}
+                  exercise={current.content.exercise}
+                  onAnswered={setExerciseResult}
+                />
+                {exerciseResult && (
+                  <Button variant="primary" onClick={advanceAfterExercise}>
+                    Next card <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                {flowAlert && (
+                  <div className="mb-3 flex items-center justify-between rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-status-info-text shrink-0" />
+                      <div>
+                        <span className="font-semibold text-status-info-text">
+                          Flow Pacing Intervention
+                        </span>
+                        <p className="mt-0.5 text-xs text-sky-200/90">{flowAlert.message}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFlowAlert(null)}
+                      className="rounded px-2.5 py-1 text-xs text-status-info-text hover:bg-sky-500/20 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+                {hyperNotice && (
+                  <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                    <div className="flex items-center justify-between font-semibold text-status-warning-text">
+                      <span>Metacognitive Hypercorrection (Butterfield &amp; Metcalfe)</span>
+                      <button
+                        onClick={() => setHyperNotice(null)}
+                        className="text-xs text-status-warning-text hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 inline-flex items-center [@media(pointer:coarse)]:px-2"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                    <p className="mt-1 text-xs text-amber-200/90">{hyperNotice.prompt}</p>
+                    <p className="mt-1 text-[11px] italic text-status-warning-text/75">
+                      {hyperNotice.contrastNote}
+                    </p>
+                  </div>
+                )}
+                {speedDrillActive && (
+                  <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
+                    <div className="flex items-center justify-between text-xs font-semibold text-status-warning-text">
+                      <span className="flex items-center gap-1.5">
+                        <Zap className="h-3.5 w-3.5 text-status-warning-text" /> Speed Drill Sprint
+                      </span>
+                      <span className="font-mono text-sm">{speedSecondsLeft}s</span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                      <div
+                        className={`h-full transition-all duration-1000 ${
+                          speedSecondsLeft > 4
+                            ? 'bg-emerald-500'
+                            : speedSecondsLeft > 2
+                              ? 'bg-amber-500'
+                              : 'bg-rose-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, (speedSecondsLeft / speedLimitSec) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+                <CardFront
+                  card={current}
+                  revealed={revealed}
+                  typeinValue={typeinValue}
+                  setTypeinValue={setTypeinValue}
+                  mcqPick={mcqPick}
+                  setMcqPick={setMcqPick}
+                  clozeInput={clozeInput}
+                  setClozeInput={setClozeInput}
+                  inputRef={inputRef}
+                />
+
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  {!revealed && !current.blind ? (
+                    <>
+                      <Button variant="primary" onClick={reveal}>
+                        <Eye className="h-4 w-4" /> Reveal{' '}
+                        <span className="text-xs opacity-70">space</span>
+                      </Button>
+                      <Button
+                        variant={oralListening ? 'danger' : 'ghost'}
+                        onClick={() => void handleOralRecall()}
+                        title="Speak your answer aloud (Oral retrieval practice, generation effect)"
+                      >
+                        <Mic className="h-4 w-4" />
+                        {oralListening ? 'Listening…' : 'Say aloud'}
+                      </Button>
+                    </>
+                  ) : (
+                    /* Signature moment: grade buttons stagger in on reveal (40ms
+                   steps, capped <300ms, gated by `motionOK` inside Stagger).
+                   The Stagger remounts each time the reveal branch flips, so
+                   the cascade plays once per reveal; commit logic untouched. */
+                    <Stagger className="flex flex-wrap items-center gap-2">
+                      {GRADES.map((g, gradeIdx) => {
+                        const nextLabel = current.previews?.[g.grade]
+                        const isSuggested = suggestedOralGrade?.grade === g.grade
+                        return (
+                          <StaggerItem key={g.grade} index={gradeIdx}>
+                            <Button
+                              variant="bare"
+                              className={`${g.color} text-white ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
+                              onClick={() => commit(g.grade)}
+                              disabled={gradeMutation.isPending}
+                            >
+                              <span>{g.label}</span>
+                              {nextLabel && !current.blind && (
+                                <span className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-[11px] opacity-90">
+                                  {nextLabel}
+                                </span>
+                              )}
+                              <span className="text-xs opacity-65">{g.grade}</span>
+                            </Button>
+                          </StaggerItem>
+                        )
+                      })}
+                    </Stagger>
+                  )}
+                  {suggestedOralGrade && (
+                    <div className="mt-1 flex w-full items-center gap-1.5 text-xs text-status-warning-text">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>
+                        Spoken: &ldquo;{suggestedOralGrade.spoken}&rdquo; — suggested grade
+                        highlighted above.
+                      </span>
+                    </div>
+                  )}
+                  {current.blind && !revealed && (
+                    <span
+                      className="text-xs text-status-warning-text"
+                      title="Delayed feedback (Butler & Roediger 2008): committing a grade before seeing the answer beat immediate feedback on a final test. Your misses (rating 1–2) surface for restudy at the start of the next session."
+                    >
+                      graded blind — corrections at your next session
+                    </span>
+                  )}
+                  <div className="ml-auto flex items-center gap-1 text-xs">
+                    <span className="text-tertiary">confidence</span>
+                    <button
+                      onClick={() => setConfidence(1)}
+                      className={`rounded px-2 py-1 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${confidence === 1 ? 'bg-emerald-600/20 text-status-success-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
+                    >
+                      <Check className="inline h-3 w-3" /> sure
+                    </button>
+                    <button
+                      onClick={() => setConfidence(0)}
+                      className={`rounded px-2 py-1 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${confidence === 0 ? 'bg-amber-600/20 text-status-warning-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
+                    >
+                      <X className="inline h-3 w-3" /> unsure
+                    </button>
+                  </div>
+                  {revealed && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        const prompt = getCardVoicePrompt(current)
+                        const canon =
+                          typeof current.content.basic?.back === 'string'
+                            ? current.content.basic.back
+                            : prompt
+                        setGenerationTargetCard({
+                          concept: prompt,
+                          explanation: canon,
+                          cardId: current.id,
+                        })
+                        setGenerationModalOpen(true)
+                      }}
+                      className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
+                      title="Practice 4-tier active generation ladder (Slamecka & Graf 1978)"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" /> Generation Practice
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
           </div>
-        ) : (
-          <>
-            {flowAlert && (
-              <div className="mb-3 flex items-center justify-between rounded-lg border border-sky-500/40 bg-sky-500/10 p-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-status-info-text shrink-0" />
-                  <div>
-                    <span className="font-semibold text-status-info-text">
-                      Flow Pacing Intervention
-                    </span>
-                    <p className="mt-0.5 text-xs text-sky-200/90">{flowAlert.message}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFlowAlert(null)}
-                  className="rounded px-2.5 py-1 text-xs text-status-info-text hover:bg-sky-500/20 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 inline-flex items-center"
-                >
-                  Dismiss
-                </button>
-              </div>
-            )}
-            {hyperNotice && (
-              <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-                <div className="flex items-center justify-between font-semibold text-status-warning-text">
-                  <span>Metacognitive Hypercorrection (Butterfield &amp; Metcalfe)</span>
-                  <button
-                    onClick={() => setHyperNotice(null)}
-                    className="text-xs text-status-warning-text hover:text-amber-200 focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none rounded [@media(pointer:coarse)]:min-h-11 inline-flex items-center [@media(pointer:coarse)]:px-2"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-amber-200/90">{hyperNotice.prompt}</p>
-                <p className="mt-1 text-[11px] italic text-status-warning-text/75">
-                  {hyperNotice.contrastNote}
-                </p>
-              </div>
-            )}
-            {speedDrillActive && (
-              <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
-                <div className="flex items-center justify-between text-xs font-semibold text-status-warning-text">
-                  <span className="flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5 text-status-warning-text" /> Speed Drill Sprint
-                  </span>
-                  <span className="font-mono text-sm">{speedSecondsLeft}s</span>
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-                  <div
-                    className={`h-full transition-all duration-1000 ${
-                      speedSecondsLeft > 4
-                        ? 'bg-emerald-500'
-                        : speedSecondsLeft > 2
-                          ? 'bg-amber-500'
-                          : 'bg-rose-500'
-                    }`}
-                    style={{ width: `${Math.min(100, (speedSecondsLeft / speedLimitSec) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            <CardFront
-              card={current}
-              revealed={revealed}
-              typeinValue={typeinValue}
-              setTypeinValue={setTypeinValue}
-              mcqPick={mcqPick}
-              setMcqPick={setMcqPick}
-              clozeInput={clozeInput}
-              setClozeInput={setClozeInput}
-              inputRef={inputRef}
-            />
-
-            <div className="flex flex-wrap items-center gap-2 pt-2">
-              {!revealed && !current.blind ? (
-                <>
-                  <Button variant="primary" onClick={reveal}>
-                    <Eye className="h-4 w-4" /> Reveal{' '}
-                    <span className="text-xs opacity-70">space</span>
-                  </Button>
-                  <Button
-                    variant={oralListening ? 'danger' : 'ghost'}
-                    onClick={() => void handleOralRecall()}
-                    title="Speak your answer aloud (Oral retrieval practice, generation effect)"
-                  >
-                    <Mic className="h-4 w-4" />
-                    {oralListening ? 'Listening…' : 'Say aloud'}
-                  </Button>
-                </>
-              ) : (
-                GRADES.map((g) => {
-                  const nextLabel = current.previews?.[g.grade]
-                  const isSuggested = suggestedOralGrade?.grade === g.grade
-                  return (
-                    <Button
-                      key={g.grade}
-                      variant="bare"
-                      className={`${g.color} text-white ${isSuggested ? 'ring-2 ring-amber-400 ring-offset-2' : ''}`}
-                      onClick={() => commit(g.grade)}
-                      disabled={gradeMutation.isPending}
-                    >
-                      <span>{g.label}</span>
-                      {nextLabel && !current.blind && (
-                        <span className="rounded bg-black/20 px-1.5 py-0.5 font-mono text-[11px] opacity-90">
-                          {nextLabel}
-                        </span>
-                      )}
-                      <span className="text-xs opacity-65">{g.grade}</span>
-                    </Button>
-                  )
-                })
-              )}
-              {suggestedOralGrade && (
-                <div className="mt-1 flex w-full items-center gap-1.5 text-xs text-status-warning-text">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>
-                    Spoken: &ldquo;{suggestedOralGrade.spoken}&rdquo; — suggested grade highlighted
-                    above.
-                  </span>
-                </div>
-              )}
-              {current.blind && !revealed && (
-                <span
-                  className="text-xs text-status-warning-text"
-                  title="Delayed feedback (Butler & Roediger 2008): committing a grade before seeing the answer beat immediate feedback on a final test. Your misses (rating 1–2) surface for restudy at the start of the next session."
-                >
-                  graded blind — corrections at your next session
-                </span>
-              )}
-              <div className="ml-auto flex items-center gap-1 text-xs">
-                <span className="text-tertiary">confidence</span>
-                <button
-                  onClick={() => setConfidence(1)}
-                  className={`rounded px-2 py-1 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${confidence === 1 ? 'bg-emerald-600/20 text-status-success-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-                >
-                  <Check className="inline h-3 w-3" /> sure
-                </button>
-                <button
-                  onClick={() => setConfidence(0)}
-                  className={`rounded px-2 py-1 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:px-3 ${confidence === 0 ? 'bg-amber-600/20 text-status-warning-text' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-                >
-                  <X className="inline h-3 w-3" /> unsure
-                </button>
-              </div>
-              {revealed && (
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    const prompt = getCardVoicePrompt(current)
-                    const canon =
-                      typeof current.content.basic?.back === 'string'
-                        ? current.content.basic.back
-                        : prompt
-                    setGenerationTargetCard({
-                      concept: prompt,
-                      explanation: canon,
-                      cardId: current.id,
-                    })
-                    setGenerationModalOpen(true)
-                  }}
-                  className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300"
-                  title="Practice 4-tier active generation ladder (Slamecka & Graf 1978)"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> Generation Practice
-                </Button>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+        </motion.div>
+      </AnimatePresence>
 
       <div className="flex items-center gap-2 text-xs text-tertiary">
         <Button
@@ -1605,12 +1697,18 @@ function CorrectionsScreen({
   onDone: () => void
 }) {
   return (
+    // Entrance: header (beat 0) and restudy panel (beat 1) rise in on the clay
+    // spring (ClayIn — SSR-safe pattern, gated by `motionOK`; transform/opacity
+    // only). The correction rows themselves stay instant — reading them IS the
+    // correction.
     <div className="space-y-4">
-      <PageHeader
-        title="Correct these first"
-        subtitle="blind-graded misses from your last session"
-      />
-      <div className="panel space-y-3">
+      <ClayIn>
+        <PageHeader
+          title="Correct these first"
+          subtitle="blind-graded misses from your last session"
+        />
+      </ClayIn>
+      <ClayIn delayS={staggerDelay(1)} className="panel space-y-3">
         <p className="text-xs text-tertiary">
           You committed these blind — read question and answer together now. Butler &amp; Roediger
           (2008): feedback after the attempt sticks better than feedback during it.
@@ -1636,7 +1734,7 @@ function CorrectionsScreen({
         <Button variant="primary" onClick={onDone}>
           Got it — start the session <ArrowRight className="h-4 w-4" />
         </Button>
-      </div>
+      </ClayIn>
     </div>
   )
 }
@@ -1724,9 +1822,13 @@ function CardFront(props: {
           )}
         </div>
         {revealed && (
-          <div className="animate-fade-in-up border-t border-neutral-200 pt-4 text-lg text-ac-text dark:border-(--hub-border)">
+          // Signature moment — the answer lands: pop-in on the clay spring
+          // (ClayPop; mounts only after the user reveals, so it never renders
+          // on the server; gated by `motionOK`). Replaces the old CSS
+          // `animate-fade-in-up` so the entrance has exactly one owner.
+          <ClayPop className="border-t border-neutral-200 pt-4 text-lg text-ac-text dark:border-(--hub-border)">
             {content.basic.back}
-          </div>
+          </ClayPop>
         )}
       </div>
     )
@@ -1773,11 +1875,12 @@ function CardFront(props: {
           <div className="text-xs text-tertiary">hint: {content.cloze.hint}</div>
         )}
         {revealed && content.cloze.mode === 'typein' && (
-          <div
-            className={`animate-fade-in-up text-sm ${clozeCorrect ? 'text-status-success-text' : 'text-danger-text'}`}
+          // Answer lands (see ClayPop at the basic back) — one pop owner.
+          <ClayPop
+            className={`text-sm ${clozeCorrect ? 'text-status-success-text' : 'text-danger-text'}`}
           >
             {clozeCorrect ? 'correct' : `answer: ${content.cloze.answers.join(', ')}`}
-          </div>
+          </ClayPop>
         )}
       </div>
     )
@@ -1806,13 +1909,14 @@ function CardFront(props: {
           placeholder="type the answer, Enter to grade"
         />
         {revealed && (
-          <div
-            className={`animate-fade-in-up text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-status-success-text' : 'text-danger-text'}`}
+          // Answer lands (see ClayPop at the basic back) — one pop owner.
+          <ClayPop
+            className={`text-lg font-medium ${typeinCorrect(props.typeinValue, content) ? 'text-status-success-text' : 'text-danger-text'}`}
           >
             {typeinCorrect(props.typeinValue, content)
               ? 'correct'
               : content.typein.acceptedAnswers.join(' · ')}
-          </div>
+          </ClayPop>
         )}
       </div>
     )
@@ -1838,7 +1942,10 @@ function CardFront(props: {
           </div>
         )}
         {revealed && (
-          <div className="animate-fade-in-up space-y-2">
+          // Answer lands (see ClayPop at the basic back) — options pop as one
+          // group; per-option stagger would slow the reveal past the motion
+          // budget for long option lists.
+          <ClayPop className="space-y-2">
             {content.mcq.options.map((opt, i) => {
               const picked = props.mcqPick === i
               const isCorrect = i === content.mcq!.correctIndex
@@ -1862,7 +1969,7 @@ function CardFront(props: {
             {props.mcqPick !== null && content.mcq.rationale && (
               <div className="text-xs text-tertiary">{content.mcq.rationale}</div>
             )}
-          </div>
+          </ClayPop>
         )}
       </div>
     )
@@ -1950,13 +2057,17 @@ function CardFront(props: {
       <div className="space-y-2">
         <div className="label">matching set (play it in Games)</div>
         {revealed && (
-          <ul className="list-inside list-disc text-sm text-secondary">
-            {content.matching.pairs.map((p, i) => (
-              <li key={i}>
-                {p.left} → {p.right}
-              </li>
-            ))}
-          </ul>
+          // Answer lands (see ClayPop at the basic back). ClayPop wraps the ul
+          // from outside — a motion.div is never a direct child of a list.
+          <ClayPop>
+            <ul className="list-inside list-disc text-sm text-secondary">
+              {content.matching.pairs.map((p, i) => (
+                <li key={i}>
+                  {p.left} → {p.right}
+                </li>
+              ))}
+            </ul>
+          </ClayPop>
         )}
       </div>
     )
@@ -2071,7 +2182,9 @@ function SketchView({ card, revealed }: { card: CardRow; revealed: boolean }) {
       </div>
 
       {revealed && (
-        <div className="rounded-xl border border-neutral-700/80 bg-neutral-900/80 p-4 space-y-3">
+        // Reference solution pops with the same reveal moment (ClayPop —
+        // client-state mount, gated by `motionOK`).
+        <ClayPop className="rounded-xl border border-neutral-700/80 bg-neutral-900/80 p-4 space-y-3">
           <div className="text-xs font-bold uppercase tracking-wider text-status-success-text flex items-center gap-1.5">
             <Check className="h-4 w-4" />
             Reference Solution
@@ -2099,7 +2212,7 @@ function SketchView({ card, revealed }: { card: CardRow; revealed: boolean }) {
               </ul>
             </div>
           )}
-        </div>
+        </ClayPop>
       )}
     </div>
   )
