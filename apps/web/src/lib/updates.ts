@@ -29,6 +29,7 @@ import {
   type UpdateChannel,
   type UpdateSettings,
 } from '@learning-hub/core/update'
+import { apiGet } from '@/lib/transport'
 
 /**
  * Build-time env variable carrying the update flavor (`LH_UPDATE_CHANNEL`).
@@ -156,5 +157,40 @@ export function saveUpdateSettings(settings: UpdateSettings): void {
     window.localStorage.setItem(UPDATE_SETTINGS_KEY, JSON.stringify(valid))
   } catch {
     // storage unavailable (private mode / quota) — settings stay session-local
+  }
+}
+
+// ── Channel changelog (O1-26) ───────────────────────────────────────────────
+
+/** Release notes for a channel, as served by the /api/update/notes proxy. */
+export interface ChannelNotes {
+  /** Version the channel currently points at. */
+  version: string
+  /** RFC 3339 pointer publication timestamp. */
+  publishedAt: string
+  /** Notes body (may be null when the pointer carries no notes). */
+  notes: string | null
+}
+
+/**
+ * Fetch the changelog (release notes) for a channel through the hub transport
+ * (O1-26) — never fetch the pointer cross-origin from UI code (rule 1); the
+ * /api/update/notes handler proxies it and validates it through the core
+ * `parseUpdatePointer` (O1-28). Returns `null` when the pointer is
+ * unavailable or invalid — the UI shows an honest empty state, not an error
+ * dialog, since this is information, not a failed user action.
+ */
+export async function fetchChannelNotes(channel: UpdateChannel): Promise<ChannelNotes | null> {
+  const res = await apiGet<{
+    notes?: string | null
+    version?: string
+    publishedAt?: string
+    reason?: string
+  }>('/api/update/notes', { channel })
+  if (!res || typeof res.version !== 'string' || res.version === '') return null
+  return {
+    version: res.version,
+    publishedAt: typeof res.publishedAt === 'string' ? res.publishedAt : '',
+    notes: typeof res.notes === 'string' ? res.notes : null,
   }
 }

@@ -33,6 +33,7 @@ import {
   SELF_UPDATE_ENABLED,
   UPDATE_BUILD_FLAVOR,
 } from '@/lib/updates'
+import { UpdateChangelog } from '@/components/UpdateChangelog'
 import { Badge, Button, Callout, SelectField, Toggle } from '@/ui'
 
 /** Channel options in stable SP-parity order (most volatile first). */
@@ -145,6 +146,8 @@ export function UpdatesSettingsSection(): React.ReactElement {
           ))}
         </SelectField>
       </div>
+
+      {!readOnly && <UpdateChangelog channel={settings.channel} />}
 
       {isAndroid && (
         <Toggle

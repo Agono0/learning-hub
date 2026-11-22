@@ -195,6 +195,7 @@ import * as apprenticeship from '../server/handlers/apprenticeship/route'
 import * as conceptualChange from '../server/handlers/conceptual-change/route'
 import * as deliberate from '../server/handlers/deliberate/route'
 import * as scaffolding from '../server/handlers/scaffolding/route'
+import * as updateNotes from '../server/handlers/update/notes/route'
 
 /** Request→Response function as produced by `withRoute` (context optional). */
 export type HubHandler = (req: Request, context?: unknown) => Promise<Response>
@@ -411,6 +412,7 @@ add('apprenticeship', apprenticeship)
 add('conceptual-change', conceptualChange)
 add('deliberate', deliberate)
 add('scaffolding', scaffolding)
+add('update/notes', updateNotes)
 
 /** A registry match: the handler plus the resolved `[id]` params. */
 export interface HubRouteMatch {
