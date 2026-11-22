@@ -23,7 +23,14 @@ import { Button, TextField } from '@/ui'
 import { AddTaskBar, type ProjectRow, type TagRow } from '@/components/tasks/AddTaskBar'
 import { MultiSelectBar } from '@/components/tasks/MultiSelectBar'
 import { TaskRow, type TaskRowTask } from '@/components/tasks/TaskRow'
+import { WindowedTaskList } from '@/components/tasks/WindowedTaskList'
 import { TaskDetail } from '@/components/tasks/TaskDetail'
+
+/**
+ * Windowing threshold (S3-99): below it plain rendering keeps today's
+ * variable-height rows; at/above it the unsectioned list virtualizes.
+ */
+const WINDOW_THRESHOLD = 50
 
 interface TasksResponse {
   tasks: TaskRowTask[]
@@ -225,7 +232,35 @@ export default function TasksPage() {
         </EmptyState>
       ) : (
         <div className="flex flex-col gap-2">
-          {unsectioned.length > 0 && (
+          {unsectioned.length === 0 ? null : unsectioned.length >= WINDOW_THRESHOLD ? (
+            // 1000+-item lists window (S3-99): only the visible slice hits
+            // the DOM. Rows are fixed-height here — long content truncates.
+            <WindowedTaskList
+              items={unsectioned}
+              rowHeight={76}
+              height={640}
+              ariaLabel="Tasks"
+              renderItem={(task) => (
+                <div style={{ height: '100%', overflow: 'hidden' }}>
+                  <TaskRow
+                    task={task}
+                    tagNames={tagNames}
+                    today={today}
+                    selected={selected.has(task.id)}
+                    onToggleSelect={toggleSelect}
+                    onComplete={(id) => completeM.mutate(id)}
+                    onOpen={setOpenTaskId}
+                    onDuplicate={(id) => duplicateM.mutate(id)}
+                    onDelete={(id) => deleteM.mutate(id)}
+                    onMove={move}
+                    onDragStart={setDraggingId}
+                    onDropOnto={dropOnto}
+                    dragging={draggingId === task.id}
+                  />
+                </div>
+              )}
+            />
+          ) : (
             <ul className="flex flex-col gap-2">
               {unsectioned.map((task) => (
                 <TaskRow
