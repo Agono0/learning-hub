@@ -393,3 +393,6 @@ export * from './grouping'
 
 // Mention config (S3-86) — re-exported so hosts consume one entry.
 export * from './mentions'
+
+// Worklog rollups (S3-88) — re-exported so hosts consume one entry.
+export * from './worklog'
