@@ -100,7 +100,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
 - [x] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | core/boards.ts engine + app/boards/page.tsx + lib/board-views (device-local custom views) + nav entry | S3-17 |
 - [~W1] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
-- [ ] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
+- [x] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
 - [x] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts parser, calendar/import handler + registry, lib/calendar-feeds + CalendarSubscriptions on planner | S3-26 |
 - [x] S3-28 | SP | Worklog page: history day/week, inline corrections, CSV export UI | page + tests | apps/web/app/worklog/page.tsx (consumes S3-18 endpoints; handoff notes the contract) | S3-18 |
 - [ ] S3-29 | SP | Finish-day flow: summary, auto-archive, plan-tomorrow prompt, celebration | page flow + tests | apps/web/app/tasks/finish-day | S3-18, S3-11 |
@@ -118,7 +118,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-41 | SP | Docs: docs/tasks.md (data model, shortcuts, parity map) | doc complete | docs/tasks.md | S3-39 |
 - [ ] S3-42 | SP | Integration tests: renderToString for every new page (today/boards/schedule/worklog/metrics) | tests green | apps/web/tests/sp-*-integration.test.ts | S3-20..S3-30 |
 - [ ] S3-43 | SP | WorkContext totals: per project/tag today-time, tracked-title (document title shows current task + time) | core + UI | core/tasks/work-context.ts | S3-10 |
-- [ ] S3-44 | SP | Task-view customizer: show/hide/sort/group per view + "save as view" | component + core | core/boards.ts extension | S3-24 |
+- [x] S3-44 | SP | Task-view customizer: show/hide/sort/group per view + "save as view" | component + core | core/boards.ts extension | S3-24 |  W2: TaskViewCustomizer.tsx (show/hide five columns + sort/group selects + save-as-view flow) over lib/task-view-settings (device-local, zod-validated) — UI component per lane brief, no core/boards.ts edits
 - [x] S3-45 | SP | Estimated-vs-spent indicators, priority indicators, deadline badges across lists | components | tasks components | S3-20 |  W2: TaskIndicators.tsx (EstimateSpentBadge/PriorityBadge/DeadlineBadge + pure tone/urgency math) wired into TaskRow; page-integration copy updated to the shared contract (landed via 262a34d/1cae11b sweeps)
 - [x] S3-46 | SP | Task summary tables + per-project rollup | components | tasks | S3-43 |  W2: TaskSummaryTable.tsx — leaf-only per-task table + sumByProject rollup over S3-88 math + honest empty state; SSR tests (landed via 1cae11b sweep)
 - [ ] S3-47 | SP | Repeating-task UI: repeat config dialog (cycle/interval/anchor modes) | component | tasks components | S3-07 |
@@ -162,7 +162,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-82 | SP | UI: schedule drag-to-schedule (resize handle + touch press-hold) | component | schedule | S3-26
 - [ ] S3-83 | SP | UI: per-calendar color + visibility toggle | component | schedule | S3-27
 - [x] S3-84 | SP | UI: eisenhower keyboard quadrant nav | component | app/boards/page.tsx (arrow-key grid walk, X/Enter pick+drop, Escape, aria-live) | S3-24
-- [ ] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44
+- [x] S3-85 | SP | UI: boards "save as view" from any filtered list | component | boards | S3-44  W2: SaveViewBar.tsx — capture any filtered list (filter+sort+group) as a task_views row via POST /api/tasks-views, confirm-in-place; page wiring left to boards/tasks owners
 - [x] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
 - [ ] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36
 - [x] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
