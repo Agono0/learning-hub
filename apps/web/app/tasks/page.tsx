@@ -17,11 +17,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ListChecks } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Callout, EmptyState, PageHeader, Panel, Sheet, Skeleton } from '@/ui'
+import { Callout, EmptyState, PageHeader, Panel, Skeleton } from '@/ui'
 import { Button, TextField } from '@/ui'
 import { AddTaskBar, type ProjectRow, type TagRow } from '@/components/tasks/AddTaskBar'
 import { MultiSelectBar } from '@/components/tasks/MultiSelectBar'
 import { TaskRow, type TaskRowTask } from '@/components/tasks/TaskRow'
+import { TaskDetail } from '@/components/tasks/TaskDetail'
 
 interface TasksResponse {
   tasks: TaskRowTask[]
@@ -267,77 +268,13 @@ export default function TasksPage() {
         onClear={() => setSelected(new Set())}
       />
 
-      <Sheet
+      <TaskDetail
+        taskId={openTaskId ?? 0}
         open={openTask !== null}
         onClose={() => setOpenTaskId(null)}
-        title={openTask?.title ?? 'Task'}
-        footer={
-          openTask !== null ? (
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                className="min-h-[44px] flex-1"
-                onClick={() => {
-                  duplicateM.mutate(openTask.id)
-                  setOpenTaskId(null)
-                }}
-              >
-                Duplicate
-              </Button>
-              <Button
-                variant="danger"
-                className="min-h-[44px] flex-1"
-                onClick={() => {
-                  deleteM.mutate(openTask.id)
-                  setOpenTaskId(null)
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          ) : undefined
-        }
-      >
-        {openTask !== null && (
-          <dl className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-tertiary">Priority</dt>
-              <dd className="text-strong">{openTask.priority}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-tertiary">Estimate</dt>
-              <dd className="text-strong">
-                {openTask.estimateMs !== null
-                  ? `${Math.round(openTask.estimateMs / 60_000)}m`
-                  : '—'}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-tertiary">Due</dt>
-              <dd className="text-strong">{openTask.due ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-tertiary">Deadline</dt>
-              <dd className="text-strong">{openTask.deadline ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-tertiary">Tags</dt>
-              <dd className="flex flex-wrap justify-end gap-1">
-                {openTask.tagIds.length === 0
-                  ? '—'
-                  : openTask.tagIds.map((id) => (
-                      <span
-                        key={id}
-                        className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-(--hub-panel-2)"
-                      >
-                        {tagNames.get(id) ?? `#${id}`}
-                      </span>
-                    ))}
-              </dd>
-            </div>
-          </dl>
-        )}
-      </Sheet>
+        onChanged={invalidate}
+        onDeleted={invalidate}
+      />
     </div>
   )
 }
