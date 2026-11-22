@@ -428,3 +428,6 @@ export * from './time-tracking'
 
 // Archive tiers (S3-11) — re-exported so hosts consume one entry.
 export * from './archive'
+
+// Recently-deleted trash (S3-12) — re-exported so hosts consume one entry.
+export * from './trash'
