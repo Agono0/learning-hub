@@ -31,6 +31,7 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import {
   DEFAULT_ARCHIVE_CONFIG,
+  TaskDomainError,
   bulkApply,
   canHaveSubtasks,
   completeTask,
@@ -267,8 +268,8 @@ export interface ListTaskItemsOpts {
 export function listTaskItems(opts: ListTaskItemsOpts = {}): TaskItem[] {
   const conn = opts.database ?? getDb()
   const where: SQL[] = []
-  const projectScope = opts.projectId ?? 'any'
-  const parentScope = opts.parentId ?? 'any'
+  const projectScope = opts.projectId === undefined ? 'any' : opts.projectId
+  const parentScope = opts.parentId === undefined ? 'any' : opts.parentId
   if (projectScope !== 'any') {
     where.push(
       projectScope === null ? isNull(taskItems.projectId) : eq(taskItems.projectId, projectScope),
@@ -322,8 +323,9 @@ export function createTaskItem(input: CreateTaskInput, database?: DbOrTx): TaskI
       const parent = conn.select().from(taskItems).where(eq(taskItems.id, draft.parentId)).get()
       requireRow('task', draft.parentId, parent)
       if (!canHaveSubtasks(taskFromRow(conn, parent!))) {
-        throw new Error(
-          `Task #${draft.parentId} cannot receive subtasks ( nesting is limited to one level )`,
+        throw new TaskDomainError(
+          'subtask-depth',
+          `Task #${draft.parentId} cannot receive subtasks (nesting is limited to one level)`,
         )
       }
     }
@@ -431,7 +433,9 @@ export function updateTaskItem(
     const next = updateTask(current, patch, now)
 
     if (next.parentId !== null) {
-      if (next.parentId === id) throw new Error('A task cannot be its own parent.')
+      if (next.parentId === id) {
+        throw new TaskDomainError('subtask-self', 'A task cannot be its own parent.')
+      }
       const hasSubtasks = conn
         .select({ id: taskItems.id })
         .from(taskItems)
@@ -439,12 +443,18 @@ export function updateTaskItem(
         .limit(1)
         .get()
       if (hasSubtasks) {
-        throw new Error('A task with subtasks cannot become a subtask (one nesting level).')
+        throw new TaskDomainError(
+          'subtask-depth',
+          'A task with subtasks cannot become a subtask (one nesting level).',
+        )
       }
       const parent = conn.select().from(taskItems).where(eq(taskItems.id, next.parentId)).get()
       requireRow('task', next.parentId, parent)
       if (!canHaveSubtasks(taskFromRow(conn, parent!))) {
-        throw new Error(`Task #${next.parentId} cannot receive subtasks (one nesting level).`)
+        throw new TaskDomainError(
+          'subtask-depth',
+          `Task #${next.parentId} cannot receive subtasks (one nesting level).`,
+        )
       }
     }
     if (next.projectId !== null && next.projectId !== current.projectId) {
@@ -717,7 +727,7 @@ export function bulkApplyTaskItems(ids: number[], op: BulkOp, database?: DbOrTx)
     // bulkApply reports unknown selection entries as `id: 0` — remap them to
     // the real requested ids so the UI can point at the rows.
     const skipped = result.skipped.filter((s) => s.id !== 0)
-    const missing = ids.filter((id) => byId.get(id) === undefined)
+    const missing = ids.filter((id) => !byId.get(id))
     return {
       applied: result.applied,
       skipped: [...skipped, ...missing.map((id) => ({ id, reason: 'not found' }))],
@@ -953,7 +963,7 @@ export function duplicateTaskProjectRow(id: number, database?: DbOrTx): TaskProj
     const source = conn.select().from(taskProjects).where(eq(taskProjects.id, id)).get()
     if (!source) return null
     if (source.archivedAt !== null) {
-      throw new Error('Restore this project before duplicating it.')
+      throw new TaskDomainError('project-archived', 'Restore this project before duplicating it.')
     }
     const now = new Date().toISOString()
     const copy = conn

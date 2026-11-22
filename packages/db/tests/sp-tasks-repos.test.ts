@@ -350,7 +350,7 @@ describe('projects', () => {
     archiveTaskProjectRow(p.id) // idempotent
     expect(getTaskProject(p.id)!.archivedAt).toBe('2026-01-05T00:00:00.000Z')
     expect(restoreTaskProjectRow(p.id)!.archivedAt).toBeNull()
-    expect(createTaskProjectRow({ title: '   ' })).toThrow(/needs a title/)
+    expect(() => createTaskProjectRow({ title: '   ' })).toThrow(/needs a title/)
     expect(listTaskProjects().length).toBe(1)
   })
 
@@ -559,20 +559,29 @@ describe('archive tiers', () => {
 
     const first = runArchivePass(DEFAULT_ARCHIVE_CONFIG)
     expect(first.archived.sort()).toEqual([old.id, young.id].sort())
-    expect(first.promoted).toEqual([old.id])
+    // First pass only CREATES rows (both tiers land via toArchive); promotion
+    // is a second-pass transition.
+    expect(first.promoted).toEqual([])
     expect(getArchiveTier(young.id)!.tier).toBe('young')
     expect(getArchiveTier(old.id)!.tier).toBe('old')
 
-    // Second pass is idempotent.
+    // Second pass (same clock) is idempotent.
     expect(runArchivePass(DEFAULT_ARCHIVE_CONFIG)).toEqual({
       archived: [],
       promoted: [],
       restored: [],
     })
 
+    // A pass 61 days later ages the young row past oldAfterDays → promoted.
+    const later = new Date(Date.now() + 61 * 86_400_000).toISOString()
+    expect(runArchivePass(DEFAULT_ARCHIVE_CONFIG, later).promoted).toEqual([young.id])
+    expect(getArchiveTier(young.id)!.tier).toBe('old')
+
     // Disabling the config drops every existing row back (the toRestore path).
-    const reset = runArchivePass({ ...DEFAULT_ARCHIVE_CONFIG, enabled: false })
-    expect(reset.restored.sort()).toEqual([old.id, young.id].sort())
+    // The later pass also archived `fresh` (64 days old on that clock), so
+    // all three rows are dropped back.
+    const reset = runArchivePass({ ...DEFAULT_ARCHIVE_CONFIG, enabled: false }, later)
+    expect(reset.restored.sort()).toEqual([old.id, young.id, fresh.id].sort())
     expect(listArchiveTiers()).toEqual([])
   })
 })
