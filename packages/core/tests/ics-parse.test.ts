@@ -77,8 +77,11 @@ describe('parseCalendarFeed — VEVENT', () => {
   })
 
   it('unfolds folded lines (RFC 5545 §3.1) on CRLF and LF', () => {
+    // The fold point sits AFTER the original space (RFC lossless form: the
+    // fold whitespace is additive, so "was " + " folded" unfolds to
+    // "was folded" — a break directly before the space would consume it).
     const crlf =
-      'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fold-1\r\nSUMMARY:A very long title that was\r\n folded across two lines\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
+      'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:fold-1\r\nSUMMARY:A very long title that was \r\n folded across two lines\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'
     expect(parseCalendarFeed(crlf).events[0].title).toBe(
       'A very long title that was folded across two lines',
     )
@@ -86,6 +89,15 @@ describe('parseCalendarFeed — VEVENT', () => {
     expect(parseCalendarFeed(lf).events[0].title).toBe(
       'A very long title that was folded across two lines',
     )
+  })
+
+  it('the writer’s folds round-trip losslessly through the parser', () => {
+    // A >75-octet title with spaces at fold boundaries — the regression the
+    // space-aware fold() exists for.
+    const title =
+      'A very long study block title that definitely exceeds the seventy five octet folding limit and keeps going past it'
+    const parsed = parseCalendarFeed(toICS([{ date: '2026-12-01', title }]))
+    expect(parsed.events[0].title).toBe(title)
   })
 
   it('skips VALARM sub-components (nested BEGIN/END does not leak properties)', () => {

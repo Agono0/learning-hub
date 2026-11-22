@@ -19,12 +19,25 @@ function esc(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
 }
 
-/** Fold lines > 75 octets (RFC 5545 §3.1) on character boundaries. */
+/**
+ * Fold lines > 75 octets (RFC 5545 §3.1).
+ *
+ * Losslessness note: unfolding removes the CRLF AND the fold's single
+ * leading space, so a break inserted directly BEFORE an original space
+ * would consume it (…`was` ␍␊ ` folded` unfolds to `wasfolded`). The fold
+ * therefore never cuts directly before a space — when the octet at the
+ * boundary is a space it is kept at the END of the current part, so unfold
+ * restores the exact original text.
+ */
 function fold(line: string): string {
   if (line.length <= 75) return line
   const parts: string[] = [line.slice(0, 75)]
-  for (let i = 75; i < line.length; i += 74) {
-    parts.push(' ' + line.slice(i, i + 74))
+  let i = 75
+  while (i < line.length) {
+    let cut = Math.min(i + 74, line.length)
+    if (line[cut] === ' ') cut += 1
+    parts.push(' ' + line.slice(i, cut))
+    i = cut
   }
   return parts.join('\r\n')
 }
