@@ -35,7 +35,13 @@ const nextConfig: NextConfig = {
   // Transpile the workspace TS packages (no build step needed)
   transpilePackages: ['@learning-hub/core', '@learning-hub/db'],
   devIndicators: false,
-  env: { NEXT_PUBLIC_LEARNING_HUB_TARGET: isTauri ? 'tauri' : 'web' },
+  env: {
+    NEXT_PUBLIC_LEARNING_HUB_TARGET: isTauri ? 'tauri' : 'web',
+    // Build-time update flavor (O1-12): CI sets LH_UPDATE_CHANNEL=play for
+    // store builds (self-update off); unset/unknown → 'nightly', self-update
+    // on (sideload/dev default). Read once in src/lib/updates.ts.
+    LH_UPDATE_CHANNEL: process.env.LH_UPDATE_CHANNEL ?? '',
+  },
   turbopack: { resolveAlias: browserAliases },
   ...(isTauri
     ? {
