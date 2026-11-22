@@ -395,3 +395,6 @@ export * from './subtasks'
 
 // Project model (S3-05) — re-exported so hosts consume one entry.
 export * from './projects'
+
+// Tag model + SP tag filters (S3-06) — re-exported so hosts consume one entry.
+export * from './tags'
