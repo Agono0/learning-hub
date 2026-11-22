@@ -74,3 +74,52 @@ and Android _sideload_ only.
 - **Nightly artifacts are unsigned until the signing secret is configured**
   (O1-09): the client refuses unsigned manifests by design, so an unsigned
   nightly is inert, never silently trusted.
+
+## Mega-run additions (Epic S3 + run discoveries)
+
+Cross-checked during the docs consolidation pass (every pre-run claim above
+still holds — Ctrl+Alt+Del, Play hot-patch policy, Device-Owner gating,
+hook-drop/focus-steal caveats, per-slot webview origin, unsigned-nightly
+inertness). Four NEW honest limits the run surfaced:
+
+- **Exact-alarm delivery is advisory, not wired.** The reminder model flags
+  `exactAlarm` per task (`packages/core/src/tasks/reminders.ts`,
+  `supportsExactAlarms`), and the flag persists
+  (`task_reminders.exact_alarm`, migration 031). But the Android manifest
+  declares neither `SCHEDULE_EXACT_ALARM` nor `USE_EXACT_ALARM`, and no
+  `AlarmManager` wiring exists in
+  `apps/native/src-tauri/gen/android/app/src/main/java/` — so task
+  reminders fire through the in-app scheduler while the app is alive.
+  Wiring them needs BOTH the manifest permission and the AlarmManager
+  plugin path, and on Android 12+ `SCHEDULE_EXACT_ALARM` requires an
+  explicit user grant in system settings (`USE_EXACT_ALARM` is
+  install-time but Play-restricted to alarm/calendar apps). Tracked by
+  the reminders scheduler task (S3-19 read + S3-48 UI are landed; the
+  native delivery hop is the remaining work).
+
+- **Idle detection is desktop-only (and not yet landed).** There is no
+  `idle.rs` in `apps/native/src-tauri/src/` — S3-33 tracks it. Mobile
+  OSes expose no user-mode global idle signal at all (no Android
+  equivalent of `GetLastInputInfo`), so idle classification will be
+  Windows/macOS-only by construction; mobile tracking keeps manual
+  start/stop. Max Focus sessions intentionally suppress idle handling
+  (S3-33's spec).
+
+- **SP device-local stores do not roam.** The user's Phase-1 scope
+  decision skipped sync, and several mega-run surfaces persist
+  device-local JSON accordingly: board views
+  (`apps/web/src/lib/board-views.ts`), calendar feed caches
+  (`apps/web/src/lib/calendar-feeds.ts`), project bookmarks
+  (`apps/web/src/lib/project-bookmarks.ts`, S3-74), and the recently
+  deleted trash (S3-76). Entries are valid on the device that created
+  them; a future sync pass needs a LEAD migration per store
+  (`project_bookmarks` is the one already proposed in
+  docs/SHARED_CHANGES.md).
+
+- **Keyboard nav is a physical-keyboard affordance.** The task-list
+  shortcuts (J/K cursor, X select, ? cheat sheet — S3-73,
+  `apps/web/app/tasks/page.tsx`) have full touch parity through visible
+  buttons (the 44px law keeps them reachable), but the keys themselves do
+  nothing on mobile — there is no hardware-keyboard dispatch to intercept
+  there. Max Focus intentionally owns the chrome while a session runs
+  (the tracked-title hook is disabled by its `enabled` flag).
