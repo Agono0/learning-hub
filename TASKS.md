@@ -59,7 +59,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [ ] M2-18 | LOCK | Early-exit flow UI: PIN entry + mandatory reason → POST exit (logged) | component + test | apps/web/src/components/MaxFocusExitGate.tsx | M2-04, M2-02 |
 - [x] M2-19 | LOCK | Hard-cap + battery auto-unlock: monitor battery (Tauri), unlock + log on threshold | code + unit tests | core session + Rust + Kotlin | M2-01 |
 - [x] M2-20 | LOCK | Tamper detection: clock change (monotonic mismatch), permission revoked → end session + friction log | core logic + tests | packages/core/src/focus-lock/session.ts | M2-01 |
-- [ ] M2-21 | LOCK | Settings locked during session (client guard + server refuses settings PUT) | handler test + UI guard | settings handler, focus-lock | M2-03 |
+- [x] M2-21 | LOCK | Settings locked during session (client guard + server refuses settings PUT) | handler test + UI guard | settings handler, focus-lock | M2-03 | W2: settings PUT refuses with 423 while a max lock is active (GET readable; standard sessions unaffected) + client Callout + disabled save + guard test
 - [ ] M2-22 | LOCK | Allowlist editor UI: domains + apps (seeded distraction_apps) per session preset | UI + test | apps/web/app/focus/page.tsx section | M2-04 |
 - [x] M2-23 | LOCK | Rust session commands: focus_session_apply/status/release wired to state machine; webview bridge events | commands compile; invoke tests | apps/native/src-tauri/src/focus.rs | M2-05 |
 - [x] M2-24 | LOCK | Reboot/kill resume: persisted session state re-applied on boot (both platforms) | code + tests | core + Rust + Kotlin | M2-14, M2-23 |
