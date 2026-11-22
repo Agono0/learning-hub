@@ -325,3 +325,13 @@ export const taskViews = table('task_views', {
   `Win32::System::Power`; without the feature the Rust battery monitor
   cannot compile. The Android monitor (battery broadcast) needs no feature
   and is already wired (`focus_android_battery_status`).
+
+- [S3-15] `packages/db/src/schema.ts` + `packages/db/src/migrations/0xx-sp-tasks-fix.ts`
+  (future batch, low priority) → add a nullable `offset_ms INTEGER` column to
+  `task_reminders` (and optionally `title TEXT` to `task_repeat_cfgs`). Why:
+  the core model (S3-08) carries `offsetMs` for `relative` reminders, but the
+  applied 031 table has nowhere to put it — repos/tasks.ts currently encodes
+  the offset as a string inside the NOT NULL `remind_at` column
+  (`reminderFromRow` is the single decode point). With a real column the repo
+  decode changes in one place; repeat-cfg `title` is lower priority (SP
+  titles are generated).
