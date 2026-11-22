@@ -336,14 +336,16 @@ export function OnboardingWizard() {
             {step > 1 && (
               <Button
                 variant="ghost"
-                onClick={() => setStep((prev) => Math.max(1, prev - 1))}
+                onClick={() => setStep((prev) => Math.max(1, prev - 1) as 1 | 2 | 3 | 4 | 5)}
                 disabled={finishMutation.isPending}
               >
                 Back
               </Button>
             )}
             {step < 5 ? (
-              <Button onClick={() => setStep((prev) => Math.min(5, prev + 1))}>Continue</Button>
+              <Button onClick={() => setStep((prev) => Math.min(5, prev + 1) as 1 | 2 | 3 | 4 | 5)}>
+                Continue
+              </Button>
             ) : (
               <Button onClick={() => finishMutation.mutate()} disabled={finishMutation.isPending}>
                 <Sparkles className="h-4 w-4" />

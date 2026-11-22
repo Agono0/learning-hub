@@ -133,7 +133,7 @@ export function SpFirstRunStep({ todayIso, onCreated }: SpFirstRunStepProps) {
 export function parsedSpTask(
   todayIso: string | null,
   input: string,
-): ReturnType<typeof parseShortSyntax> {
+): ReturnType<typeof parseShortSyntax> | null {
   return todayIso !== null && input.trim().length > 0
     ? parseShortSyntax(input, `${todayIso}T12:00:00.000Z`)
     : null
