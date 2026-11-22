@@ -9,9 +9,10 @@
  * Destructive actions (duplicate / archive / restore / delete) sit in the
  * footer row; delete moves the tasks to the inbox (SP semantics).
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useIdParam } from '@/lib/use-id-param'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Archive, ArchiveRestore, Copy, Trash2 } from 'lucide-react'
 import { workContextTotals } from '@learning-hub/core'
@@ -74,10 +75,20 @@ function colorDot(color: string | null): string {
 }
 
 export default function ProjectDetailPage() {
-  const params = useParams<{ id: string }>()
+  // Static export cannot pre-render [id] segments — query params + Suspense
+  // (house pattern: courses/course?id=). useSearchParams requires the boundary.
+  return (
+    <Suspense fallback={null}>
+      <ProjectDetailPageInner />
+    </Suspense>
+  )
+}
+
+function ProjectDetailPageInner() {
+  const search = useSearchParams()
   const router = useRouter()
   const qc = useQueryClient()
-  const projectId = Number(params?.id)
+  const projectId = useIdParam() ?? 0
   const [today, setToday] = useState('')
   const [draft, setDraft] = useState<{
     title: string

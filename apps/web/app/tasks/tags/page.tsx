@@ -211,7 +211,7 @@ export default function TagsPage() {
                   className={cx('size-3 shrink-0 rounded-full', colorDot(tag.color))}
                 />
                 <Link
-                  href={`/tasks/tags/${tag.id}`}
+                  href={`/tasks/tags/detail?id=${tag.id}`}
                   className="min-w-0 flex-1 truncate text-sm font-medium text-strong hover:underline"
                 >
                   {tag.name}

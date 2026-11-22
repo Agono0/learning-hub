@@ -157,7 +157,7 @@ export default function ProjectsPage() {
             className={cx('size-3 shrink-0 rounded-full', colorDot(project.color))}
           />
           <Link
-            href={`/tasks/projects/${project.id}`}
+            href={`/tasks/projects/detail?id=${project.id}`}
             className="min-w-0 flex-1 truncate text-sm font-semibold text-strong hover:underline"
           >
             {project.title}

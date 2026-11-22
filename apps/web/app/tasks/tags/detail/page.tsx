@@ -7,9 +7,10 @@
  * the tag's TODAY time (S3-43 attribution), its open tasks, and delete
  * (unlinking every task — the repo owns that cascade).
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useIdParam } from '@/lib/use-id-param'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2 } from 'lucide-react'
 import { workContextTotals } from '@learning-hub/core'
@@ -48,10 +49,20 @@ function colorDot(color: string | null): string {
 }
 
 export default function TagDetailPage() {
-  const params = useParams<{ id: string }>()
+  // Static export cannot pre-render [id] segments — query params + Suspense
+  // (house pattern: courses/course?id=). useSearchParams requires the boundary.
+  return (
+    <Suspense fallback={null}>
+      <TagDetailPageInner />
+    </Suspense>
+  )
+}
+
+function TagDetailPageInner() {
+  const search = useSearchParams()
   const router = useRouter()
   const qc = useQueryClient()
-  const tagId = Number(params?.id)
+  const tagId = useIdParam() ?? 0
   const [today, setToday] = useState('')
   const [draft, setDraft] = useState<{ name: string; color: PaletteKey } | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
