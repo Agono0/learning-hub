@@ -69,7 +69,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] M2-28 | LOCK | docs/max-focus.md: architecture, tiers, PIN/recovery, store disclosures | doc complete | docs/max-focus.md | M2-27 |
 - [x] M2-29 | LOCK | Integration tests for max handlers (SSR-safe, route coverage) | tests green | apps/web/tests/max-focus-integration.test.ts | M2-04 | W2: max-focus-integration.test.ts (handlers + route-coverage block) + SSR suites for gate/precheck/editor/history + settings guard + repo/core tests; index in docs/handoffs/M2-29.md
 - [x] M2-30 | LOCK | Desktop e2e smoke: lock apply→release round-trip in CI (headless) | vitest e2e | tests/e2e/max-focus-lock-roundtrip.test.ts (skipIf off-Windows; reason-union parity runs everywhere) | M2-23 |
-- [ ] M2-31 | LOCK | Notification: persistent "session running" + unlock notification | code | apps/web notifications gate | M2-04 |
+- [x] M2-31 | LOCK | Notification: persistent "session running" + unlock notification | code | apps/web notifications gate | M2-04 | W2: max_focus channel in the gate (default on) + Providers-mounted watcher — persistent engaged toast (tag+requireInteraction, replaced on unlock) + gate-honoring log + decision/copy tests
 
 ## Epic 3 — SP core parity (S3)
 
