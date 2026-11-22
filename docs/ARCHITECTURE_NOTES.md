@@ -93,9 +93,9 @@ vitest.e2e.config.mjs`) → Playwright browser install → UI smoke
 Worker claims must keep both workflows compiling; Rust/Kotlin changes are
 compile-verified only in CI (rule 17).
 
-## 4. Update surface (current state)
+## 4. Update surface (PRE-RUN snapshot — superseded, see §12)
 
-What exists today, so Epic 1 knows its starting point:
+What existed before the mega-run, kept so Epic 1's starting point stays auditable:
 
 - **No updater anywhere.** `tauri.conf.json` has no `updater` block;
   `Cargo.toml` has no `tauri-plugin-updater`; no `createUpdaterArtifacts`.
@@ -190,9 +190,10 @@ Page: `apps/web/app/focus/page.tsx` — two tabs (`Standard Focus` /
 ## 6. Data model map (SP-relevant)
 
 All tables in `packages/db/src/schema.ts` (single file, drizzle `table()`,
-ISO-8601 date strings, JSON via `text({ mode: 'json' })`). **There are no
-`tasks`, `tags`, `worklog`, or per-item-reminder tables** — Epic 3 builds them.
-What exists today, by affinity:
+ISO-8601 date strings, JSON via `text({ mode: 'json' })`). **PRE-RUN NOTE:**
+the SP task tables now exist (migrations 031–035, see §12.1) — the "no
+tasks/tags/reminders tables" statement below describes the pre-run state only.
+What existed then, by affinity:
 
 | Domain             | Table(s)                                              | Shape                                                                                                                                                                   | Reuse for SP                                                              |
 | ------------------ | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -316,7 +317,7 @@ manual mode; never weaken a failing test (rule 13).
   manual mode in `ai/manual.ts`, `requireAI()` in the handler (rule 9).
 - **Commits** — Conventional Commits ≤ 100-char header (commitlint in CI).
 
-## 11. Implications for the three epics
+## 11. Implications for the three epics (pre-run analysis — outcomes in §12)
 
 **Epic 1 — Delta OTA.** The entire shipped web payload is the static export at
 `apps/web/.next-tauri` (`tauri.conf.json` `frontendDist`). A/B slots must live
@@ -352,3 +353,98 @@ patterns for per-task reminders (S3-08), `core/ics.ts` for calendar feeds
 (S3-32/S3-34), and `sync_tombstones` flows so the new tables sync correctly.
 Settings additions follow §7; nav entries go in
 `apps/web/src/components/nav.ts` (S3-39).
+
+## 12. Mega-run additions — where things live now
+
+Every claim below is a path that exists on `feature/mega-run` (verified before
+writing). The pre-run sections above are kept for the audit trail; this
+section is the current map.
+
+### 12.1 Task domain (Epic S3)
+
+- **Schema batches** — `packages/db/src/schema.ts` (task tables at the file
+  tail) + migrations `packages/db/src/migrations/031-sp-tasks.ts` (projects,
+  tags, items, link table, reminders, repeat cfgs), `032-sp-views.ts` (time
+  logs, sections, attachments, archive tiers, counters, metric days, saved
+  views), `033-max-focus-sessions.ts` (M2-03 state machine columns),
+  `034-sp-task-columns.ts` (`task_items.section_id`,
+  `task_repeat_cfgs.title`, `task_reminders.offset_ms` — the
+  SHARED_CHANGES requests), `035-task-fts.ts` (FTS5 shadow table
+  `fts_task_items` + sync triggers for task search, S3-67).
+- **Core domain** — `packages/core/src/tasks/` (27 modules: `index.ts`
+  model/ops, `subtasks`, `projects`, `tags`, `repeat`, `reminders`,
+  `short-syntax`, `time-tracking`, `archive`, `trash`, `undo`, `search`,
+  `order`, `grouping`, `estimates`, `deadlines`, `priority`, `today`,
+  `wontdo`, `mentions`, `worklog` (S3-88 rollups), `work-context` (S3-43
+  totals + tracked title)); the sibling `shared.ts` is the leaf-module
+  import target (the architecture guard forbids sibling→barrel imports).
+- **Persistence** — `packages/db/src/repos/tasks.ts` (~1900 lines): tasks
+  CRUD + subtask integrity, tag links, projects (archive/restore/duplicate/
+  delete-to-inbox), repeat cfgs, per-task reminders (`offset_ms` column +
+  legacy pre-034 decode fallback), time logs with the S3-10 map-recompute
+  rule, sections (`section_id` assignment), attachments, archive tiers
+  (`runArchivePass`), saved views, counters, metric days,
+  `buildTrashEntry`. Extensions to `repos/focus-lock.ts` carry the M2-03
+  session-state machine (`state`/`tier`/`exitReason`/`hardCapAt`).
+- **Handlers** — `apps/web/src/server/handlers/tasks/` plus the sibling
+  `tasks-projects`, `tasks-tags`, `tasks-sections`, `tasks-views`,
+  `tasks-time`, `tasks-worklog`, `tasks-repeat-cfgs`, `tasks-reminders`,
+  `tasks-planner`, `tasks-schedule`, `tasks-metrics`, `tasks-counters`,
+  `tasks-finish-day`, `tasks-attachments` folders: 42 route files, all
+  registered in `apps/web/src/hub/handlers-registry.ts` (route-safety test:
+  `apps/web/tests/hub-registry.test.ts`). Shared error mapping lives in
+  `handlers/tasks/_shared.ts` (`TaskDomainError` → 400 with a stable code,
+  repo integrity → 404, `ZodError` → 400).
+- **Pages** — `apps/web/app/tasks/page.tsx` (Today/Inbox: short-syntax
+  add-bar, inline sections, drag order, multi-select bar, keyboard nav
+  J/K/X/?, windowed list ≥50 rows), `tasks/projects/page.tsx` +
+  `tasks/projects/[id]/page.tsx` (S3-22), `tasks/tags/page.tsx` +
+  `tasks/tags/[id]/page.tsx` (S3-23, OR/AND filter via core
+  `filterTasksByTags`), `tasks/finish-day/page.tsx` (S3-29), plus the
+  planner board (`app/planner/page.tsx` S3-25 section), schedule timeline
+  (`app/schedule/page.tsx` S3-26), boards (`app/boards/page.tsx`, W3),
+  worklog and metrics (W3). Components under
+  `apps/web/src/components/tasks/` (`AddTaskBar`, `TaskRow`,
+  `TaskDetail`, `TaskPlannerBoard`, `MultiSelectBar`, `WindowedTaskList`,
+  `TaskIndicators`, `TaskSummaryTable`, `PlanTomorrow` — the last four by
+  W2). Device-local stores: `src/lib/project-bookmarks.ts` (S3-74),
+  `src/lib/use-tracked-title.ts` (S3-43), `src/lib/use-windowed-list.ts`
+  (S3-99).
+
+### 12.2 Update stack (Epic O1)
+
+- **Rust** — `apps/native/src-tauri/src/update.rs`: pointer/manifest
+  client (Ed25519-minisign verify + per-file sha256), A/B slots under
+  `app_data_dir` with an atomic pointer file, custom-protocol serving with
+  bundled-asset fallback (wired in `src/lib.rs`, O1-04), boot-confirm
+  rollback (O1-05), resumable range downloads with progress events (O1-16),
+  hot-patch bundle unpacking (O1-19). `tauri-plugin-updater` +
+  `createUpdaterArtifacts` + passive Windows `installMode` are wired in
+  `tauri.conf.json` / `Cargo.toml` (O1-10).
+- **CI** — `.github/workflows/nightly.yml` (build → manifest → sign →
+  diff → tag → upload, O1-07/O1-08/O1-20) and `promote.yml` (nightly →
+  beta/stable re-tag, O1-11); `native.yml` carries the keystore guard
+  (O1-22, fails fast without `ANDROID_KEYSTORE_BASE64`), a `cargo test
+--release` step (the SHARED_CHANGES request), and the O1-21 bsdiff
+  per-ABI delta step.
+- **Web client** — `apps/web/src/lib/updates.ts` (channel flag, check-now,
+  Wi-Fi-only), `apps/web/src/components/UpdateBanner.tsx` + the Updates
+  section in `app/settings/page.tsx` (O1-14/O1-15/O1-26/O1-27).
+
+### 12.3 Max Focus native layer (Epic M2)
+
+- **Windows** — `apps/native/src-tauri/src/lock_win.rs`: topmost fullscreen
+  across all monitors (M2-05), low-level keyboard hook (M2-06),
+  Task-Manager detect + refocus loop (M2-07), optional admin tier with
+  `DisableTaskMgr` + watchdog + unconditional drop-guard restore (M2-08),
+  allowlisted-app switching (M2-09); session persistence across restart
+  (M2-33).
+- **Android** — `apps/native/src-tauri/gen/android/app/src/main/java/
+dev/learninghub/app/`: `MaxFocusLockTask.kt` (Tier-1 lock task, M2-11),
+  `MaxFocusAccessibilityService.kt` (Tier-2 watcher, M2-12),
+  `MaxFocusOverlayService.kt` (Tier-2 overlay, M2-13),
+  `MaxDeviceAdminReceiver.kt` + `MaxFocusBootReceiver.kt` +
+  `MaxFocusForegroundService.kt` (M2-14 anti-uninstall/boot-resume/
+  elapsedRealtime), `MaxFocusAndroidPlugin.kt` (Cargo bridge). The
+  state machine half lives in `packages/core/src/focus-lock/session.ts`
+  (M2-01/M2-20/M2-26) and the repo in `repos/focus-lock.ts` (M2-03).
