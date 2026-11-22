@@ -80,6 +80,7 @@ import { apiGet, apiSend } from '@/lib/transport'
 import {
   Badge,
   Button,
+  Callout,
   EmptyState,
   PageHeader,
   PermissionGate,
@@ -371,6 +372,17 @@ export default function SettingsPage() {
     queryKey: ['fsrs-status', 'global'],
     queryFn: () => apiGet<FsrsStatusResponse>('/api/fsrs/optimize'),
   })
+  // M2-21: while a Max Focus session runs, the device is locked — the server
+  // refuses settings PUT (423) and the UI mirrors that rule so saving is
+  // visibly disabled instead of failing at submit.
+  const maxLockQuery = useQuery<{ ok: boolean; lock: { active: boolean; mode: string } }>({
+    queryKey: ['focus-max-lock'],
+    queryFn: () => apiGet('/api/focus/max'),
+    refetchInterval: 10000,
+  })
+  const settingsLocked = Boolean(
+    maxLockQuery.data?.lock?.active && maxLockQuery.data?.lock?.mode === 'max',
+  )
   const s = data?.settings
   const [provider, setProvider] = useState<AIProvider>('none')
   const [model, setModel] = useState('')
@@ -1127,8 +1139,18 @@ export default function SettingsPage() {
       </Reveal>
 
       <Reveal>
+        {settingsLocked && (
+          <Callout tone="warning" title="Settings are locked during Max Focus">
+            A Max Focus session is running — this device's settings are frozen until it ends. Exit
+            the session from Focus Studio to make changes.
+          </Callout>
+        )}
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => save.mutate(undefined)} loading={save.isPending}>
+          <Button
+            onClick={() => save.mutate(undefined)}
+            loading={save.isPending}
+            disabled={settingsLocked}
+          >
             Save settings
           </Button>
           <p className="text-xs text-tertiary">

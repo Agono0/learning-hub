@@ -8,7 +8,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { learnerProfileSchema } from '@learning-hub/core'
-import { cards, courses, db, userSettings } from '@learning-hub/db'
+import { cards, courses, db, getActiveFocusLock, userSettings } from '@learning-hub/db'
 import { fsrsWeightsSchema, getAIClient, type AIProvider } from '@learning-hub/core'
 import '@/lib/ai'
 import { ApiError, readJson, withRoute } from '@/lib/api'
@@ -126,6 +126,16 @@ export async function GET() {
 
 export const PUT = withRoute(async (req: Request) => {
   const body = await readJson(req, putSettingsSchema)
+  // M2-21: a running Max Focus lock owns the device — settings writes are
+  // refused until the session ends. GET stays readable (the client renders
+  // the locked state from it); the client-side guard mirrors this rule.
+  const lock = getActiveFocusLock()
+  if (lock.active && lock.mode === 'max') {
+    throw new ApiError(
+      423,
+      'Settings are locked while a Max Focus session is running. Exit the session to change settings.',
+    )
+  }
   const row = await getRow()
   const patch: Partial<typeof userSettings.$inferInsert> = { updatedAt: new Date().toISOString() }
   if (body.aiProvider !== undefined) patch.aiProvider = body.aiProvider as AIProvider
