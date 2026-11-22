@@ -1,0 +1,217 @@
+name: Nightly OTA
+
+# Nightly delta-OTA release pipeline (Epic O1-08).
+#
+# Every night (or on demand): build the web export + Windows installer,
+# hash the `.next-tauri` export into a signed content-addressed manifest via
+# scripts/update-manifest.mjs (O1-07), diff it against the previous nightly
+# release to emit hot-update patch bundles, then tag `nightly-YYYYMMDD-<sha>`
+# and publish everything (manifest + pointer + patches + installer) as a
+# GitHub prerelease. The pointer (`nightly.json`, shape `updatePointerSchema`
+# from packages/core/src/update) is what clients poll; the signed manifest is
+# the security boundary — signature verification on the client is NEVER
+# disabled (design law, docs/updates.md).
+#
+# Channels: this workflow always publishes `nightly`. Promotion to beta/stable
+# re-points those channels at an existing release (O1-11) — artifacts are never
+# rebuilt for promotion.
+#
+# Signing keys: TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+# repo secrets (O1-09 key ceremony). When the secrets are absent the workflow
+# still builds and publishes UNSIGNED with a loud warning — useful for dry
+# runs; production nights must have them configured (the client refuses
+# unsigned manifests by design, so an unsigned release is dead on arrival).
+
+on:
+  schedule:
+    # 02:30 UTC daily — after the day's merges have settled, before EU morning.
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build and list artifacts but do NOT create the tag/release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    name: Build, sign, publish nightly
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so we can diff native inputs against the previous tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
+      - run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/web/.next/cache
+            apps/web/.next-tauri/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            nextjs-${{ runner.os }}-
+
+      - name: Compute version, tag and native-change flag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          NIGHT_DATE="$(date -u +%Y%m%d)"
+          VERSION="${NIGHT_DATE}-${SHORT_SHA}"
+          TAG="nightly-${VERSION}"
+          NATIVE_VERSION="$(node -p "require('./apps/native/src-tauri/tauri.conf.json').version")"
+
+          # requires-native=true when the native shell itself changed since the
+          # previous nightly — a hot patch cannot update Rust/permissions.
+          REQUIRES_NATIVE=false
+          PREV_TAG="$(gh release list --limit 30 --json tagName --jq '[.[].tagName | select(startswith("nightly-"))][0] // ""')"
+          if [ -n "$PREV_TAG" ]; then
+            if [ -n "$(git diff --name-only "${PREV_TAG}" HEAD -- apps/native packages/db 2>/dev/null)" ]; then
+              REQUIRES_NATIVE=true
+            fi
+            mkdir -p dist/prev
+            gh release download "$PREV_TAG" --pattern 'manifest.json' --output dist/prev/manifest.json || true
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+            echo "short_sha=${SHORT_SHA}"
+            echo "native_version=${NATIVE_VERSION}"
+            echo "requires_native=${REQUIRES_NATIVE}"
+            echo "prev_tag=${PREV_TAG}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Nightly ${VERSION} (tag ${TAG}), prev=${PREV_TAG:-none}, requiresNative=${REQUIRES_NATIVE}"
+
+      - name: Build web export + Windows installer
+        run: |
+          npm run web:tauri
+          npm run app:build
+
+      - name: Resolve installer artifact name
+        id: installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          INSTALLER="$(ls apps/native/src-tauri/target/release/bundle/nsis/*.exe | head -n 1)"
+          echo "name=$(basename "$INSTALLER")" >> "$GITHUB_OUTPUT"
+          echo "path=$INSTALLER" >> "$GITHUB_OUTPUT"
+
+      - name: Generate manifest + patch bundles (diff vs previous release)
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+          NATIVE_VERSION: ${{ steps.meta.outputs.native_version }}
+          REQUIRES_NATIVE: ${{ steps.meta.outputs.requires_native }}
+        run: |
+          set -euo pipefail
+          FULL_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/${{ steps.installer.outputs.name }}"
+          ARGS=(
+            --dir apps/web/.next-tauri
+            --out dist/nightly/manifest.json
+            --channel nightly
+            --version "$VERSION"
+            --build-sha "$SHORT_SHA"
+            --min-native-version "$NATIVE_VERSION"
+            --requires-native="$REQUIRES_NATIVE"
+            --full-package-url "$FULL_URL"
+          )
+          if [ -f dist/prev/manifest.json ]; then
+            ARGS+=(--prev dist/prev/manifest.json)
+          fi
+          node scripts/update-manifest.mjs "${ARGS[@]}"
+
+      - name: Emit nightly pointer (nightly.json)
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const manifest = JSON.parse(fs.readFileSync("dist/nightly/manifest.json", "utf8"));
+            const pointer = {
+              channel: "nightly",
+              version: manifest.version,
+              manifestUrl: "https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/manifest.json",
+              publishedAt: new Date().toISOString(),
+              notes: "Nightly " + manifest.version + " — " + manifest.files.length + " files, " + manifest.patches.length + " patch path(s)",
+            };
+            fs.writeFileSync("dist/nightly/nightly.json", JSON.stringify(pointer, null, 2) + "\n");
+          '
+
+      - name: Sign manifest and pointer (minisign via Tauri CLI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY secret is not set — publishing UNSIGNED artifacts (client will refuse them; configure the O1-09 keys before a real nightly)."
+            exit 0
+          fi
+          PASS_ARGS=(-p "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}")
+          npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" "${PASS_ARGS[@]}" dist/nightly/manifest.json
+          npx tauri signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" "${PASS_ARGS[@]}" dist/nightly/nightly.json
+
+      - name: Dry-run artifact list
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          echo "Dry run — artifacts that WOULD be published to release ${{ steps.meta.outputs.tag }}:"
+          ls -l dist/nightly
+          echo "--- manifest head ---"
+          head -c 2000 dist/nightly/manifest.json
+
+      - name: Create tag + prerelease with assets
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSETS=(dist/nightly/manifest.json dist/nightly/nightly.json)
+          for f in dist/nightly/*.sig dist/nightly/patch-*.zip; do
+            if [ -e "$f" ]; then ASSETS+=("$f"); fi
+          done
+          ASSETS+=("${{ steps.installer.outputs.path }}")
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            --title "Nightly ${{ steps.meta.outputs.version }}" \
+            --notes "Automated nightly build ${{ steps.meta.outputs.version }} (commit ${{ github.sha }}). Ask-first updates: downloaded to the inactive slot, applied on restart after user confirmation." \
+            --prerelease \
+            "${ASSETS[@]}"
+
+      - name: Upload workflow artifact (always, for inspection)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ steps.meta.outputs.version }}
+          path: dist/nightly
+          if-no-files-found: error
