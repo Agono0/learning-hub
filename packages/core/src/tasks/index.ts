@@ -440,3 +440,6 @@ export * from './search'
 
 // Ordering math (S3-60) — re-exported so hosts consume one entry.
 export * from './order'
+
+// Grouping helpers (S3-61) — re-exported so hosts consume one entry.
+export * from './grouping'

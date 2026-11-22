@@ -138,7 +138,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 ## Expansion block (granular tasks for parity depth)
 
 - [x] S3-60 | SP | Core: task ordering/ordinal per list + drag-reorder math | unit tests | packages/core/src/tasks/order.ts | S3-03
-- [~W2] S3-61 | SP | Core: task-grouping (by project/tag/date) pure helpers | unit tests | packages/core/src/tasks/grouping.ts | S3-03
+- [x] S3-61 | SP | Core: task-grouping (by project/tag/date) pure helpers | unit tests | packages/core/src/tasks/grouping.ts | S3-03
 - [~W2] S3-62 | SP | Core: estimate parsing/validation (10m/1h/1h30m) + remaining math | unit tests | packages/core/src/tasks/estimates.ts | S3-03
 - [x] S3-63 | SP | Core: deadline vs due semantics (past-deadline flagging) | unit tests | packages/core/src/tasks/deadlines.ts | S3-03
 - [x] S3-64 | SP | Core: priority model (p1..p3 + strategies via tags) | unit tests | packages/core/src/tasks/priority.ts | S3-06
@@ -182,7 +182,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [x] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
 - [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
-- [~W3] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
+- [x] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
 - [ ] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12
 - [ ] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16
 - [x] M2-33 | LOCK | Windows: session state persisted + restored after app restart (not just reboot) | code + tests | lock_win.rs | M2-24
