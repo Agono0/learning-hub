@@ -168,6 +168,8 @@ jobs:
           # The keystore decode runs in tauri-android.mjs at BUILD time — the
           # guard step's env does not reach here (O1-22).
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          # The KEY's own password (PKCS12: same value as the store password).
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: npm run android:build -- --target ${{ matrix.tauri-target }}
 
       # O1-21: generate a bsdiff delta APK against the previous release's APK
