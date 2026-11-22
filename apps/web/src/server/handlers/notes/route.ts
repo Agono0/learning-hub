@@ -18,7 +18,12 @@ const createNoteSchema = z.object({
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const q = url.searchParams.get('q')
-  const rows = listNotes({ query: q, limit: 100 })
+  // S3-93: ?projectId=7 filters to notes linked to that task project
+  // (fields.projectId, maintained by the notes PATCH fields path).
+  const projectIdRaw = url.searchParams.get('projectId')
+  const projectId =
+    projectIdRaw !== null && /^\d+$/.test(projectIdRaw) ? Number(projectIdRaw) : undefined
+  const rows = listNotes({ query: q, projectId, limit: 100 })
   return Response.json({ notes: rows })
 }
 

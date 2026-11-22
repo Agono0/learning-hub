@@ -191,7 +191,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31 W2: core/tasks/counters.ts — counterStreak (SP rule: untapped today open, untapped yesterday breaks; best run anywhere; zero-count days skip) + totals, 8 unit tests
 - [x] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
 - [x] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
-- [ ] S3-93 | SP | Handlers: notes-project linking (project notes) | integration tests | handlers + notes | S3-05
+- [x] S3-93 | SP | Handlers: notes-project linking (project notes) | integration tests | handlers + notes | S3-05 W2: notes GET ?projectId filter (json_extract over fields.projectId — no schema change; the existing PATCH fields path maintains the link) + 4-test integration (filter, query-combine, PATCH maintain + null-clear, malformed-filter fallback)
 - [ ] S3-94 | SP | UI: planner capacity % + over-budget indicators | component | planner | S3-25
 - [ ] S3-95 | SP | UI: schedule "from previous days" row + deadline flags | component | schedule | S3-26
 - [ ] S3-96 | SP | UI: impact stars + lazy chart components | component | metrics | S3-30
