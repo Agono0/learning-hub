@@ -144,12 +144,14 @@ describe('TaskRow indicators — S3-63/S3-45 semantics', () => {
   it('flags overdue due dates and passed deadlines in the danger hue', () => {
     const html = visible(renderRow(base, '2026-03-10'))
     expect(html).toContain('Overdue')
-    expect(html).toContain('Deadline 2026-03-08 passed')
+    // S3-45 shared DeadlineBadge copy ("passed" now leads the label).
+    expect(html).toContain('Deadline passed 2026-03-08')
   })
 
   it('shows estimate-vs-tracked and tag names on the row', () => {
     const html = visible(renderRow(base, '2026-03-09'))
-    expect(html).toContain('30m / 1h')
+    // S3-45 shared EstimateSpentBadge copy ("spent of estimate").
+    expect(html).toContain('30m of 1h')
     expect(html).toContain('>work</span>')
     expect(html).not.toContain('Overdue')
   })

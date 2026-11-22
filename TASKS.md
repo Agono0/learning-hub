@@ -99,7 +99,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-22 | SP | Projects UI: project pages, backlog, notes, colors, archive/duplicate | pages + tests | apps/web/app/tasks/projects/… | S3-16, S3-05 |
 - [ ] S3-23 | SP | Tags UI: tag pages, filters, colors | pages + tests | apps/web/app/tasks/tags/… | S3-16, S3-06 |
 - [x] S3-24 | SP | Boards page: Kanban + Eisenhower built-ins + custom rule views (rule chips, drag applies rules) | page + tests | core/boards.ts engine + app/boards/page.tsx + lib/board-views (device-local custom views) + nav entry | S3-17 |
-- [ ] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
+- [~W1] S3-25 | SP | Planner upgrade: day columns, workload+capacity %, calendar events, drag-to-schedule, overdue row | upgrade existing planner page + tests | apps/web/app/planner/page.tsx, components/StudyPlannerMatrix upgrade | S3-17, S3-09 |
 - [ ] S3-26 | SP | Schedule view: 30-day timeline, blocks sized by estimate, tray mode | page + tests | apps/web/app/schedule/page.tsx | S3-25 |
 - [x] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts parser, calendar/import handler + registry, lib/calendar-feeds + CalendarSubscriptions on planner | S3-26 |
 - [x] S3-28 | SP | Worklog page: history day/week, inline corrections, CSV export UI | page + tests | apps/web/app/worklog/page.tsx (consumes S3-18 endpoints; handoff notes the contract) | S3-18 |
