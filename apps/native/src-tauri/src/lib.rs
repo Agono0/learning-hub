@@ -117,6 +117,8 @@ pub fn run() {
             focus_android_provision_status,
             focus_android_start_lock_task,
             focus_android_stop_lock_task,
+            focus_android_set_watch_state,
+            focus_android_open_accessibility_settings,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -463,6 +465,56 @@ pub async fn focus_android_stop_lock_task(app: tauri::AppHandle) -> Result<(), S
     {
         let _ = app;
         Err("Lock Task Mode is Android-only".to_string())
+    }
+}
+
+/// Arm/disarm the Tier 2 AccessibilityService watcher (M2-12) for the CURRENT
+/// session: `active` + the allowlisted packages. The web layer calls this on
+/// Max Focus start/end; the service stays inert whenever active=false.
+#[tauri::command]
+pub async fn focus_android_set_watch_state(
+    app: tauri::AppHandle,
+    active: bool,
+    packages: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>(
+                "setWatchState",
+                serde_json::json!({ "active": active, "packages": packages }),
+            )
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, active, packages);
+        Err("the accessibility watcher is Android-only".to_string())
+    }
+}
+
+/// Deep-link to the system accessibility settings (Tier 2 grant screen).
+/// The DISCLOSURE component (MaxFocusDisclosures.tsx) must be shown BEFORE
+/// this is invoked — store policy requires informed consent.
+#[tauri::command]
+pub async fn focus_android_open_accessibility_settings(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Manager;
+        let state = app.state::<MaxFocusAndroid>();
+        state
+            .0
+            .run_mobile_plugin::<serde_json::Value>("openAccessibilitySettings", ())
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = app;
+        Err("accessibility settings are Android-only".to_string())
     }
 }
 
