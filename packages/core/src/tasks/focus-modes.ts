@@ -48,9 +48,9 @@ export const countdownConfigSchema = z.object({
 /** The running-mode state (persisted by the timer glue, same as its own state). */
 export const focusModeStateSchema = z.object({
   strategy: z.enum(FOCUS_STRATEGIES),
-  pomodoro: pomodoroConfigSchema.default({}),
-  flowtime: flowtimeConfigSchema.default({}),
-  countdown: countdownConfigSchema.default({}),
+  pomodoro: pomodoroConfigSchema.prefault({}),
+  flowtime: flowtimeConfigSchema.prefault({}),
+  countdown: countdownConfigSchema.prefault({}),
   /** Current phase. */
   phase: z.enum(['focus', 'break']),
   /** Whether the current break is the long one (pomodoro). */
