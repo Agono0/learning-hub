@@ -398,6 +398,7 @@ export * from './worklog'
 export * from './counters'
 export * from './summary'
 export * from './focus-modes'
+export * from './idle'
 
 // Work context totals + tracked title (S3-43) — one entry for hosts.
 export * from './work-context'

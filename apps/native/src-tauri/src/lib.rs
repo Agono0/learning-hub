@@ -7,6 +7,7 @@
 //! notifications, haptics, logging and window management.
 
 mod focus;
+mod idle;
 // Max Focus lock windows (M2-05) — commands are wired in M2-23.
 #[allow(dead_code)]
 mod lock_win;
@@ -108,6 +109,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             focus::focus_lock_apply,
+            idle::system_idle_ms,
             focus::focus_lock_release,
             focus::focus_lock_status,
             update_confirm_boot_ready,
