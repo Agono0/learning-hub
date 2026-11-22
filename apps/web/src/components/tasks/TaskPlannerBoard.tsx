@@ -12,8 +12,10 @@
  *
  * Drag-to-schedule: unscheduled tasks (no due) sit in a TRAY above the
  * columns; dragging a chip onto a column PATCHes the task's `due` to that
- * day (re-scheduling between columns works the same way). The OVERDUE row
- * sits above everything with a one-tap "→ today" reschedule.
+ * day (re-scheduling between columns works the same way). S3-82 touch
+ * fallback: chips are ALSO tap-to-arm / columns tap-to-place — the same
+ * drop path, no HTML5 drag needed (touch has no draggable support). The
+ * OVERDUE row sits above everything with a one-tap "→ today" reschedule.
  *
  * SSR-safe: queries stay pending at render (skeleton), the capacity and
  * feed caches are localStorage reads confined to effects.
@@ -228,9 +230,11 @@ export function TaskPlannerBoard() {
               key={t.id}
               draggable
               onDragStart={() => setDraggingTaskId(t.id)}
+              onClick={() => setDraggingTaskId((prev) => (prev === t.id ? null : t.id))}
+              aria-pressed={draggingTaskId === t.id}
               className={cx(
                 'cursor-grab rounded-full bg-neutral-100 px-3 py-1.5 text-sm text-body dark:bg-(--hub-panel-2)',
-                draggingTaskId === t.id && 'opacity-50',
+                draggingTaskId === t.id && 'opacity-50 ring-2 ring-(--ac-strong)',
               )}
             >
               {t.title}
@@ -258,7 +262,8 @@ export function TaskPlannerBoard() {
                 key={col.day}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => dropOn(col.day)}
-                aria-label={`Day ${col.day} — drop tasks here to schedule`}
+                onClick={() => dropOn(col.day)}
+                aria-label={`Day ${col.day} — drop or tap a selected task here to schedule`}
                 className={cx(
                   'panel flex w-44 shrink-0 flex-col gap-1.5 rounded-xl px-2.5 py-2',
                   draggingTaskId !== null && 'ring-1 ring-(--ac-strong)',

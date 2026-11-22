@@ -11,8 +11,10 @@
  *
  * Tray mode: unscheduled tasks collapse into a tray above the timeline —
  * drag a chip onto a day row to schedule it (PATCH due), drag between days
- * to re-schedule. Calendar events (S3-27 feed cache, visible calendars)
- * underline their day's blocks.
+ * to re-schedule. S3-82 touch fallback: chips are tap-to-arm and day rows
+ * tap-to-place (the same drop path — touch has no HTML5 drag). Calendar
+ * events (S3-27 feed cache, visible calendars) underline their day's
+ * blocks.
  *
  * SSR-safe: queries pending → skeleton; the clock and feed caches are
  * effect-only reads.
@@ -160,9 +162,11 @@ export default function SchedulePage() {
                 key={t.id}
                 draggable
                 onDragStart={() => setDraggingTaskId(t.id)}
+                onClick={() => setDraggingTaskId((prev) => (prev === t.id ? null : t.id))}
+                aria-pressed={draggingTaskId === t.id}
                 className={cx(
                   'cursor-grab rounded-full bg-neutral-100 px-3 py-1.5 text-sm text-body dark:bg-(--hub-panel-2)',
-                  draggingTaskId === t.id && 'opacity-50',
+                  draggingTaskId === t.id && 'opacity-50 ring-2 ring-(--ac-strong)',
                 )}
               >
                 {t.title}
@@ -222,7 +226,8 @@ export default function SchedulePage() {
                 <div
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => dropOn(d.day)}
-                  aria-label={`Day ${d.day} — drop tasks here to schedule`}
+                  onClick={() => dropOn(d.day)}
+                  aria-label={`Day ${d.day} — drop or tap a selected task here to schedule`}
                   className={cx(
                     'panel rounded-xl px-3 py-2',
                     draggingTaskId !== null && 'ring-1 ring-(--ac-strong)',
