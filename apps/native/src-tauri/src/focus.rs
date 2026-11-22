@@ -367,3 +367,157 @@ pub fn focus_lock_status() -> Result<FocusLockStatus, String> {
         watchdog_active: s.watchdog_running,
     })
 }
+
+// ─── Max Focus session commands (M2-23) ─────────────────────────────────────
+//
+// The Max Focus lifecycle wired to the lock windows + their guards: the WEB
+// layer owns the session STATE MACHINE (M2-01, `packages/core/src/focus-lock/
+// session.ts` — pure TS); these commands are the platform ACTUATORS — apply
+// the lock windows for a session snapshot, report live status, release with a
+// logged reason. Persisting across reboots is M2-24; here the snapshot lives
+// in memory only.
+
+/// Unlock reasons accepted by `focus_session_release` — mirrors the M2-01
+/// `SessionUnlockReason` union (timer | pin | battery | failure | tamper).
+/// Pure + testable: the command rejects anything else so friction logs can
+/// never record an unknown reason.
+pub fn is_session_unlock_reason(reason: &str) -> bool {
+    matches!(reason, "timer" | "pin" | "battery" | "failure" | "tamper")
+}
+
+/// The session snapshot the web layer sends at apply time — mirrors
+/// `MaxFocusSession` (M2-01) field-for-field so the native layer can report
+/// and (M2-24) persist exactly what the machine computed.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MaxSessionSnapshot {
+    pub session_id: String,
+    pub started_at_ms: u64,
+    pub planned_end_ms: u64,
+    pub hard_cap_at_ms: u64,
+    pub mono_anchor_ms: u64,
+    /// Session allowlist (ALREADY enforced/merged web-side with the emergency
+    /// dialer set, M2-15 — the native layer never widens it).
+    pub allowed_apps: Vec<String>,
+}
+
+static MAX_SESSION: OnceLock<std::sync::Mutex<Option<MaxSessionSnapshot>>> = OnceLock::new();
+
+fn max_session() -> &'static std::sync::Mutex<Option<MaxSessionSnapshot>> {
+    MAX_SESSION.get_or_init(|| std::sync::Mutex::new(None))
+}
+
+/// Apply the Max Focus lock: fullscreen windows per monitor + keyboard hook +
+/// refocus guard (lock_win), scoped to the session's allowlisted apps.
+/// Idempotent per lock_win's contract; emits `max-focus://applied`.
+#[tauri::command]
+pub async fn focus_session_apply(
+    app: tauri::AppHandle,
+    snapshot: MaxSessionSnapshot,
+) -> Result<serde_json::Value, String> {
+    lock_win::apply_lock_windows_with_allowlist(&app, &snapshot.allowed_apps)?;
+    {
+        let mut current = max_session().lock().map_err(|_| "max session state poisoned")?;
+        *current = Some(snapshot.clone());
+    }
+    use tauri::Emitter;
+    let _ = app.emit("max-focus://applied", &snapshot);
+    Ok(serde_json::json!({
+        "applied": true,
+        "locked": lock_win::is_locked(&app),
+        "sessionId": snapshot.session_id,
+    }))
+}
+
+/// Live Max Focus status: window lock, guard states (Windows-only fields are
+/// false elsewhere) and the active snapshot (null when unlocked).
+#[tauri::command]
+pub async fn focus_session_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let current = max_session()
+        .lock()
+        .map_err(|_| "max session state poisoned")?
+        .clone();
+    Ok(serde_json::json!({
+        "locked": lock_win::is_locked(&app),
+        "keyboardHookActive": keyboard_hook_active(),
+        "refocusGuardActive": refocus_guard_active(),
+        "session": current,
+    }))
+}
+
+/// Release the Max Focus lock with a REASON (validated against the M2-01
+/// union — friction logs must never record an unknown reason). Emits
+/// `max-focus://released` with the reason for the web session flow.
+#[tauri::command]
+pub async fn focus_session_release(
+    app: tauri::AppHandle,
+    reason: String,
+) -> Result<serde_json::Value, String> {
+    if !is_session_unlock_reason(&reason) {
+        return Err(format!(
+            "unknown unlock reason '{reason}' — expected timer|pin|battery|failure|tamper"
+        ));
+    }
+    lock_win::release_lock_windows(&app)?;
+    let session = {
+        let mut current = max_session().lock().map_err(|_| "max session state poisoned")?;
+        current.take()
+    };
+    use tauri::Emitter;
+    let _ = app.emit(
+        "max-focus://released",
+        serde_json::json!({ "reason": reason, "sessionId": session.as_ref().map(|s| s.session_id) }),
+    );
+    Ok(serde_json::json!({ "released": true, "reason": reason }))
+}
+
+#[cfg(windows)]
+fn keyboard_hook_active() -> bool {
+    lock_win::key_hooks::active()
+}
+
+#[cfg(not(windows))]
+fn keyboard_hook_active() -> bool {
+    false
+}
+
+#[cfg(windows)]
+fn refocus_guard_active() -> bool {
+    lock_win::refocus::active()
+}
+
+#[cfg(not(windows))]
+fn refocus_guard_active() -> bool {
+    false
+}
+
+#[cfg(test)]
+mod max_session_tests {
+    use super::*;
+
+    #[test]
+    fn unlock_reasons_match_the_core_machine_union() {
+        for reason in ["timer", "pin", "battery", "failure", "tamper"] {
+            assert!(is_session_unlock_reason(reason));
+        }
+        for junk in ["", "PIN", "escape", "boredom", "pin "] {
+            assert!(!is_session_unlock_reason(junk));
+        }
+    }
+
+    #[test]
+    fn snapshot_round_trips_through_serde() {
+        let snapshot = MaxSessionSnapshot {
+            session_id: "s-1".into(),
+            started_at_ms: 1_000,
+            planned_end_ms: 2_000,
+            hard_cap_at_ms: 3_000,
+            mono_anchor_ms: 7,
+            allowed_apps: vec!["com.android.dialer".into(), "code".into()],
+        };
+        let json = serde_json::to_string(&snapshot).unwrap();
+        let back: MaxSessionSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.session_id, "s-1");
+        assert_eq!(back.allowed_apps.len(), 2);
+        assert_eq!(back.hard_cap_at_ms, 3_000);
+    }
+}

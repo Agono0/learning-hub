@@ -123,6 +123,9 @@ pub fn run() {
             focus_android_session_elapsed,
             focus_android_set_anti_uninstall,
             focus_android_battery_status,
+            focus_session_apply,
+            focus_session_status,
+            focus_session_release,
         ])
         .plugin(
             tauri_plugin_log::Builder::new()
