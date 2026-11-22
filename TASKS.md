@@ -63,7 +63,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] M2-22 | LOCK | Allowlist editor UI: domains + apps (seeded distraction_apps) per session preset | UI + test | apps/web/app/focus/page.tsx section | M2-04 | W2: MaxFocusAllowlistEditor.tsx — preset CRUD (name/domains/apps/default) over the existing allowlists routes + SSR test; wired into the configurator branch
 - [x] M2-23 | LOCK | Rust session commands: focus_session_apply/status/release wired to state machine; webview bridge events | commands compile; invoke tests | apps/native/src-tauri/src/focus.rs | M2-05 |
 - [x] M2-24 | LOCK | Reboot/kill resume: persisted session state re-applied on boot (both platforms) | code + tests | core + Rust + Kotlin | M2-14, M2-23 |
-- [ ] M2-25 | LOCK | Session history UI (sessions, exits, reasons) | page section + test | apps/web/app/focus/page.tsx | M2-04 |
+- [x] M2-25 | LOCK | Session history UI (sessions, exits, reasons) | page section + test | apps/web/app/focus/page.tsx | M2-04 | W2: MaxFocusSessionHistory.tsx — sessions with state/tier/exitReason badges (one hue per meaning) + friction reflections, fed by the M2-04 history route + SSR test
 - [x] M2-26 | LOCK | Unit tests: full state-machine matrix incl. tamper/clock/battery | tests green | packages/core/tests/focus-lock-session.test.ts | M2-01, M2-20 |
 - [x] M2-27 | LOCK | docs/MAX_FOCUS_TESTPLAN.md: every escape route × tier × platform + expected behavior | doc complete | docs/MAX_FOCUS_TESTPLAN.md | M2-24 |
 - [x] M2-28 | LOCK | docs/max-focus.md: architecture, tiers, PIN/recovery, store disclosures | doc complete | docs/max-focus.md | M2-27 |
