@@ -14,6 +14,7 @@ import {
   main,
   parseArgs,
   sha256Hex,
+  validateOpts,
 } from '../../../scripts/update-manifest.mjs'
 
 const FULL_URL = 'https://releases.example.com/download/nightly/setup.exe'
@@ -305,7 +306,11 @@ describe('update-manifest script (O1-07)', () => {
         '--min-native-version',
         '0.5.2',
       ]
-      expect(() => parseArgs([...base, '--full-package-url', FULL_URL])).toThrow(/build-sha/i)
+      // Presence is validateOpts' job (parseArgs validates syntax + the
+      // formats of PROVIDED values — see its doc comment).
+      expect(() => validateOpts(parseArgs([...base, '--full-package-url', FULL_URL]))).toThrow(
+        /build-sha/i,
+      )
       expect(() =>
         parseArgs([...base, '--build-sha', 'ab', '--full-package-url', FULL_URL]),
       ).toThrow(/build-sha/i)

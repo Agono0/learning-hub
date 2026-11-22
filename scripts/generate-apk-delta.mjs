@@ -106,6 +106,16 @@ export async function generateApkDelta(options) {
   try {
     await execFileAsync(bsdiffBin, [path.resolve(base), path.resolve(target), patchPath])
   } catch (error) {
+    // Distinguish "the tool isn't there / can't run" from "bsdiff ran and
+    // failed": a missing binary must never masquerade as a broken delta —
+    // CI skips the delta step and ships the full APK (O1-13) with a clear
+    // reason in the log instead of an "empty patch" red herring.
+    const code = error && typeof error.code === 'string' ? error.code : ''
+    if (['ENOENT', 'EACCES', 'EINVAL', 'ENOEXEC'].includes(code)) {
+      throw new Error(
+        `bsdiff unavailable ("${bsdiffBin}", ${code}) — full APK fallback; install bsdiff or pass --bsdiff-bin`,
+      )
+    }
     throw new Error(`bsdiff failed (${bsdiffBin}): ${error.message}`)
   }
 

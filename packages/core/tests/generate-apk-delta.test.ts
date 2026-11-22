@@ -92,7 +92,7 @@ describe('generate-apk-delta script (O1-21)', () => {
 
     it('throws when base or target is missing/empty (never ships a blind delta)', async () => {
       const dir = await tempDir()
-      const { target } = await fixtureApks(dir)
+      const { base, target } = await fixtureApks(dir)
       await expect(
         generateApkDelta({ base: path.join(dir, 'missing.apk'), target, out: dir }),
       ).rejects.toThrow(/base APK missing/i)

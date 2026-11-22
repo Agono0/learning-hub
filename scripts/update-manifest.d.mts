@@ -111,8 +111,11 @@ export declare function generateManifest(options: GenerateOptions): Promise<Gene
 /** Write manifest.json + patch zips; returns the absolute manifest path. */
 export declare function writeOutputs(outPath: string, result: GenerateResult): Promise<string>
 
-/** Parse + validate CLI flags (throws on missing/invalid). */
+/** Parse CLI flags (syntax + per-flag format validation; no presence check). */
 export declare function parseArgs(argv: readonly string[]): CliOptions
+
+/** Required-option presence check — CI runs this right after parseArgs. */
+export declare function validateOpts(opts: CliOptions): CliOptions
 
 /** Full CLI flow: parse → generate → write → print summary. */
 export declare function main(argv?: readonly string[]): Promise<MainResult>
