@@ -15,14 +15,22 @@
  * matches the installed version, otherwise the full package — the user always
  * knows what they are about to download before consenting.
  *
- * Presentation only: no fetch (data arrives via props from the update
- * service), no effects, SSR-safe — `renderToString` renders the same markup
- * the client hydrates.
+ * Presentation + one completion side effect: no fetch (data arrives via props
+ * from the update service); when a live download completes (O1-27 progress),
+ * the "update ready, restart to apply" OS notification fires ONCE through the
+ * shared notifications gate (O1-29 — permission requested, never assumed).
+ * SSR-safe: `renderToString` renders the same markup the client hydrates.
  */
+import { useEffect, useRef } from 'react'
 import { ArrowDownToLine } from 'lucide-react'
 import { Button, ProgressBar } from '@/ui'
 import { SELF_UPDATE_ENABLED } from '@/lib/updates'
-import { progressRatio, type UpdateDownloadProgress } from '@/platform/update-progress'
+import {
+  isDownloadComplete,
+  notifyUpdateReady,
+  progressRatio,
+  type UpdateDownloadProgress,
+} from '@/platform/update-progress'
 
 /** An available update, already verified by the update service. */
 export interface UpdateOffer {
@@ -72,6 +80,19 @@ export function UpdateBanner({
   applying = false,
   progress = null,
 }: UpdateBannerProps) {
+  // O1-29: fire the "update ready, restart to apply" notification exactly
+  // once per download; re-armed when the applying phase ends.
+  const notifiedRef = useRef(false)
+  useEffect(() => {
+    if (!applying || !isDownloadComplete(progress)) {
+      if (!applying) notifiedRef.current = false
+      return
+    }
+    if (notifiedRef.current) return
+    notifiedRef.current = true
+    void notifyUpdateReady()
+  }, [applying, progress])
+
   if (!SELF_UPDATE_ENABLED || !offer) return null
 
   const patchAvailable = !offer.requiresNative && offer.patchSize !== undefined

@@ -7,7 +7,12 @@ import { describe, expect, it } from 'vitest'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { UpdateBanner, type UpdateOffer } from '../src/components/UpdateBanner'
-import { progressRatio, useUpdateDownloadProgress } from '../src/platform/update-progress'
+import {
+  isDownloadComplete,
+  notifyUpdateReady,
+  progressRatio,
+  useUpdateDownloadProgress,
+} from '../src/platform/update-progress'
 
 const offer: UpdateOffer = {
   version: '20261122-abc1234',
@@ -25,6 +30,22 @@ describe('progressRatio (O1-27)', () => {
     expect(progressRatio({ downloaded: 10, total: 0 })).toBe(0)
     expect(progressRatio({ downloaded: Number.NaN, total: 100 })).toBe(0)
     expect(progressRatio(null)).toBe(0)
+  })
+})
+
+describe('isDownloadComplete + notifyUpdateReady (O1-29)', () => {
+  it('completion fires only at full arrival', () => {
+    expect(isDownloadComplete({ downloaded: 100, total: 100 })).toBe(true)
+    expect(isDownloadComplete({ downloaded: 99, total: 100 })).toBe(false)
+    expect(isDownloadComplete({ downloaded: 100, total: 0 })).toBe(false)
+    expect(isDownloadComplete(null)).toBe(false)
+    expect(isDownloadComplete({ downloaded: Number.NaN, total: 100 })).toBe(false)
+  })
+
+  it('notifyUpdateReady degrades gracefully off-Tauri (never throws)', async () => {
+    // The permissions adapter resolves to denied/unsupported in node — the
+    // notification is a bonus surface; the banner stays the contract.
+    await expect(notifyUpdateReady()).resolves.toBe(false)
   })
 })
 
