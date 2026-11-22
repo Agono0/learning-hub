@@ -475,7 +475,7 @@ mod tests {
 /// Manager itself. `needs_refocus` is the pure, testable decision.
 #[cfg(windows)]
 pub mod refocus {
-    use super::{file_name_tail, needs_refocus, LOCK_WINDOW_PREFIX};
+    use super::{file_name_tail, should_refocus, LOCK_WINDOW_PREFIX};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::mpsc;
     use std::thread::JoinHandle;
