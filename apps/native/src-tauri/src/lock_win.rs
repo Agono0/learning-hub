@@ -65,6 +65,8 @@ pub fn apply_lock_windows(app: &AppHandle) -> Result<(), String> {
     // are swallowed by the low-level hook until release.
     #[cfg(windows)]
     key_hooks::install().map_err(|e| format!("max focus: keyboard hook install failed: {e}"))?;
+    #[cfg(windows)]
+    refocus::start(app.clone()).map_err(|e| format!("max focus: refocus guard failed: {e}"))?;
 
     Ok(())
 }
@@ -72,6 +74,8 @@ pub fn apply_lock_windows(app: &AppHandle) -> Result<(), String> {
 /// Closes every lock window and lifts the keyboard suppression. Idempotent
 /// (no-op when none exist) — the M2-24 resume path relies on that.
 pub fn release_lock_windows(app: &AppHandle) -> Result<(), String> {
+    #[cfg(windows)]
+    refocus::stop().map_err(|e| format!("max focus: refocus guard stop failed: {e}"))?;
     #[cfg(windows)]
     key_hooks::remove().map_err(|e| format!("max focus: keyboard hook removal failed: {e}"))?;
 
@@ -141,6 +145,28 @@ pub fn should_swallow_key(vk_code: u32, alt_down: bool, ctrl_down: bool, win_key
         || (alt_down && vk_code == VK_TAB)
         || (alt_down && vk_code == VK_F4)
         || (ctrl_down && vk_code == VK_ESCAPE)
+}
+
+/// Task Manager's image name (M2-07's refocus trigger).
+pub const TASKMGR_PROCESS: &str = "taskmgr.exe";
+
+/// Pure decision for the M2-07 foreground guard: yank focus back to the lock
+/// when the foreground window is NOT one of our lock windows, OR when Task
+/// Manager is in front (Ctrl+Alt+Del cannot be hooked at any tier; tier 1
+/// steals focus back, M2-08's admin tier also disables the process).
+pub fn needs_refocus(foreground_process: &str, foreground_is_lock_window: bool) -> bool {
+    !foreground_is_lock_window || foreground_process == TASKMGR_PROCESS
+}
+
+/// Lowercased file-name tail of a full image path (C:\...\Taskmgr.exe ->
+/// "taskmgr.exe"); empty for empty input.
+pub fn file_name_tail(full_path: &str) -> String {
+    let tail = full_path
+        .rsplit(['\\', '/'])
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    tail.trim().to_string()
 }
 
 /// Session-scoped low-level keyboard hook (Windows only; compiles to nothing
@@ -302,6 +328,22 @@ mod tests {
     }
 
     #[test]
+    fn refocus_triggers_on_foreign_or_taskmgr_foreground() {
+        assert!(!needs_refocus("explorer.exe", true)); // lock window on top: fine
+        assert!(needs_refocus("explorer.exe", false)); // anything else: refocus
+        assert!(needs_refocus("taskmgr.exe", true)); // even over a lock window
+        assert!(needs_refocus("", false));
+    }
+
+    #[test]
+    fn file_name_tail_handles_windows_and_posix_paths() {
+        assert_eq!(file_name_tail("C:\\Windows\\System32\\Taskmgr.EXE"), "taskmgr.exe");
+        assert_eq!(file_name_tail("/usr/bin/explorer"), "explorer");
+        assert_eq!(file_name_tail("notepad.exe"), "notepad.exe");
+        assert_eq!(file_name_tail(""), "");
+    }
+
+    #[test]
     fn hook_swallows_exactly_the_session_escape_keys() {
         use super::{should_swallow_key, VK_ESCAPE, VK_F4, VK_LWIN, VK_RWIN, VK_TAB};
         // The four locked-decision escapes.
@@ -340,5 +382,151 @@ mod tests {
         let left = ((-1920.0, 0.0), (1920.0, 1080.0));
         assert!(covers_monitor(left.0, left.1, left.0, left.1));
         assert!(!covers_monitor(left.0, left.1, (0.0, 0.0), (1920.0, 1080.0)));
+    }
+}
+
+/// Foreground guard (M2-07, Windows): a light polling loop that keeps the
+/// lock windows visually on top when the OS shell escapes the hook —
+/// Task Manager (Ctrl+Alt+Del is unblockable at any tier) or any other window
+/// that stole focus. Tier 1 response = yank focus straight back to the
+/// topmost lock window; M2-08's admin tier hardens this by disabling Task
+/// Manager itself. `needs_refocus` is the pure, testable decision.
+#[cfg(windows)]
+pub mod refocus {
+    use super::{file_name_tail, needs_refocus, LOCK_WINDOW_PREFIX};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::mpsc;
+    use std::thread::JoinHandle;
+    use tauri::{AppHandle, Manager};
+    use windows::Win32::Foundation::{CloseHandle, HWND};
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowThreadProcessId, SetForegroundWindow, SetWindowPos,
+        HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW,
+    };
+
+    /// Poll cadence — light enough to be "immediate" to a human, cheap enough
+    /// to run for hours (one GetForegroundWindow + PID lookup per tick).
+    pub const POLL_INTERVAL_MS: u64 = 500;
+    /// Task Manager's image name (all Windows versions to date).
+    pub const TASKMGR_PROCESS: &str = "taskmgr.exe";
+
+    static REFOCUS_ACTIVE: AtomicBool = AtomicBool::new(false);
+    static REFOCUS_THREAD: std::sync::Mutex<Option<JoinHandle<()>>> = std::sync::Mutex::new(None);
+
+    /// Start the guard loop (idempotent). The loop self-terminates when
+    /// [`stop`] flips the active flag or the app handle dies.
+    pub fn start(app: AppHandle) -> Result<(), String> {
+        let mut guard = REFOCUS_THREAD.lock().map_err(|_| "refocus state poisoned")?;
+        if guard.is_some() {
+            return Ok(());
+        }
+        REFOCUS_ACTIVE.store(true, Ordering::Release);
+        let (tx, rx) = mpsc::channel();
+        let handle = std::thread::Builder::new()
+            .name("max-focus-refocus".into())
+            .spawn(move || {
+                let _ = tx.send(());
+                while REFOCUS_ACTIVE.load(Ordering::Acquire) {
+                    poll_once(&app);
+                    std::thread::sleep(std::time::Duration::from_millis(POLL_INTERVAL_MS));
+                }
+            })
+            .map_err(|e| format!("max focus: spawning refocus thread failed: {e}"))?;
+        // Best-effort handshake: don't proceed until the loop is live.
+        let _ = rx.recv_timeout(std::time::Duration::from_secs(5));
+        *guard = Some(handle);
+        Ok(())
+    }
+
+    /// Stop the guard loop (idempotent) — called by `release_lock_windows`.
+    pub fn stop() -> Result<(), String> {
+        let mut guard = REFOCUS_THREAD.lock().map_err(|_| "refocus state poisoned")?;
+        REFOCUS_ACTIVE.store(false, Ordering::Release);
+        if let Some(handle) = guard.take() {
+            let _ = handle.join();
+        }
+        Ok(())
+    }
+
+    /// One poll tick: if the foreground window is not a lock window — or the
+    /// foreground process is Task Manager — put the topmost lock window back
+    /// in front and foreground it.
+    fn poll_once(app: &AppHandle) {
+        let lock_hwnds: Vec<isize> = app
+            .webview_windows()
+            .into_iter()
+            .filter(|(label, _)| label.starts_with(LOCK_WINDOW_PREFIX))
+            .filter_map(|(_, window)| window.hwnd().ok())
+            .map(|hwnd| hwnd.0 as isize)
+            .collect();
+        if lock_hwnds.is_empty() {
+            return; // windows are going away (release in progress) — stand down
+        }
+        unsafe {
+            let foreground = GetForegroundWindow();
+            if foreground.is_invalid() {
+                return;
+            }
+            let foreground_is_lock = lock_hwnds.contains(&(foreground.0 as isize));
+            let process = foreground_process_name(foreground);
+            if !needs_refocus(&process, foreground_is_lock) {
+                return;
+            }
+            if process == TASKMGR_PROCESS {
+                log::info!("max focus: Task Manager took the foreground — refocusing lock");
+            }
+            // The isize round-trip is lossless: tauri's HWND IS a
+            // windows-0.62 HWND (same crate version), pointer-sized inside.
+            if let Some(&addr) = lock_hwnds.first() {
+                let lock_hwnd = HWND(addr as *mut core::ffi::c_void);
+                let _ = SetWindowPos(
+                    lock_hwnd,
+                    Some(HWND_TOPMOST),
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+                );
+                // Focus stealing is best-effort: without foreground rights the
+                // OS may refuse SetForegroundWindow — the TOPMOST z-order above
+                // still wins visually, and M2-08's elevated tier hardens this.
+                SetForegroundWindow(lock_hwnd);
+            }
+        }
+    }
+
+    /// Image name (lowercased tail, e.g. "taskmgr.exe") of `hwnd`'s process,
+    /// or "" when the process cannot be queried (system windows, elevation).
+    fn foreground_process_name(hwnd: HWND) -> String {
+        unsafe {
+            let mut pid = 0u32;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+            if pid == 0 {
+                return String::new();
+            }
+            let process = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
+                Ok(h) => h,
+                Err(_) => return String::new(),
+            };
+            let mut buf = [0u16; 512];
+            let mut len = buf.len() as u32;
+            let full = QueryFullProcessImageNameW(
+                process,
+                PROCESS_NAME_WIN32,
+                windows::core::PWSTR(buf.as_mut_ptr()),
+                &mut len,
+            )
+            .is_ok();
+            let _ = CloseHandle(process);
+            if !full {
+                return String::new();
+            }
+            file_name_tail(&String::from_utf16_lossy(&buf[..len as usize]))
+        }
     }
 }
