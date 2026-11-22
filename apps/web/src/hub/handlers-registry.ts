@@ -94,6 +94,13 @@ import * as tasksTagsId from '../server/handlers/tasks-tags/[id]/route'
 import * as tasksTagsRoot from '../server/handlers/tasks-tags/route'
 import * as tasksViewsId from '../server/handlers/tasks-views/[id]/route'
 import * as tasksViews from '../server/handlers/tasks-views/route'
+import * as tasksTimeId from '../server/handlers/tasks-time/[id]/route'
+import * as tasksTimeStop from '../server/handlers/tasks-time/stop/route'
+import * as tasksTimeTick from '../server/handlers/tasks-time/tick/route'
+import * as tasksTime from '../server/handlers/tasks-time/route'
+import * as tasksWorklogExport from '../server/handlers/tasks-worklog/export/route'
+import * as tasksWorklog from '../server/handlers/tasks-worklog/route'
+import * as tasksFinishDay from '../server/handlers/tasks-finish-day/route'
 import * as graph from '../server/handlers/graph/route'
 import * as habitsCheckin from '../server/handlers/habits/checkin/route'
 import * as habitsId from '../server/handlers/habits/[id]/route'
@@ -324,6 +331,13 @@ add('tasks-tags', tasksTagsRoot)
 add('tasks-tags/[id]', tasksTagsId)
 add('tasks-views', tasksViews)
 add('tasks-views/[id]', tasksViewsId)
+add('tasks-time', tasksTime)
+add('tasks-time/[id]', tasksTimeId)
+add('tasks-time/stop', tasksTimeStop)
+add('tasks-time/tick', tasksTimeTick)
+add('tasks-worklog', tasksWorklog)
+add('tasks-worklog/export', tasksWorklogExport)
+add('tasks-finish-day', tasksFinishDay)
 add('graph', graph)
 add('habits', habits)
 add('habits/checkin', habitsCheckin)
