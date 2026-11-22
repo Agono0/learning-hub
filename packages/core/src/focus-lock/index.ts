@@ -305,3 +305,6 @@ export * from './emergency'
 
 // Battery auto-unlock gate (M2-19) — pure decision behind the native monitors.
 export * from './battery'
+
+// Boot/kill resume (M2-24) — persisted-session contract + fresh-anchor rule.
+export * from './resume'
