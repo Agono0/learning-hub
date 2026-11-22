@@ -34,3 +34,17 @@ in batches. Format: `[task] file → change → why`.
   (per channel / store flavor). Why: O1-09 generated the keypair; the public
   key must be baked into the updater config before any signed nightly is
   shipped.
+- [O1-10] remaining LEAD pieces for the updater wiring (worker parts are
+  committed: `lib.rs` inits `tauri_plugin_updater` on desktop,
+  `capabilities/desktop.json` grants `updater:default`):
+  (a) `apps/native/src-tauri/Cargo.toml` → add `tauri-plugin-updater = "2"`
+  under `[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]`
+  (desktop-only — Android updates go through the A/B slots / Play, never the
+  plugin); (b) `tauri.conf.json` → add `"createUpdaterArtifacts": true` inside
+  the `bundle` object (CI then emits `.sig` artifacts next to the NSIS
+  installer) and the `plugins.updater` block described in the request above,
+  with `"windows": { "installMode": "passive" }` so shell updates install
+  without a modal UAC loop (ask-first still applies — the plugin only
+  downloads on prompt, installs on restart). Apply (a)+(b) together with the
+  pubkey/endpoints request above — partial wiring breaks the desktop build.
+

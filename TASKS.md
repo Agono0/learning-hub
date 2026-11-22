@@ -21,7 +21,7 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-07 | OTA | Manifest generator script: hash .next-tauri → manifest.json (files{path,sha256,size}), emit changed-file patch set vs previous manifest | script runs, fixtures tested | scripts/update-manifest.mjs, tests | O1-01 |
 - [x] O1-08 | OTA | CI: nightly workflow — build web+native, generate+sign manifest, diff vs previous release, tag nightly-YYYYMMDD-<sha>, upload assets + pointer | workflow yaml valid; dry-run artifact list | .github/workflows/nightly.yml | O1-07 |
 - [x] O1-09 | OTA | Sign keypair: generate Ed25519 minisign keys; pubkey committed to tauri.conf + repo; private key documented as Actions secret (user adds) | pubkey in repo, docs/updates.md key section | apps/native/src-tauri/tauri.conf.json (LEAD), docs/updates.md | O1-02 |
-- [~W1] O1-10 | OTA | tauri-plugin-updater wiring for Windows native layer: conf + capability + Rust init + signature artifacts (createUpdaterArtifacts) | conf valid; updater builder reachable in dev | apps/native/src-tauri/tauri.conf.json, Cargo.toml, lib.rs, capabilities (LEAD-applied) | O1-02 |
+- [x] O1-10 | OTA | tauri-plugin-updater wiring for Windows native layer: conf + capability + Rust init + signature artifacts (createUpdaterArtifacts) | conf valid; updater builder reachable in dev | apps/native/src-tauri/tauri.conf.json, Cargo.toml, lib.rs, capabilities (LEAD-applied) | O1-02 |
 - [x] O1-11 | OTA | Promote workflow: manual dispatch nightly→beta/stable (re-tag pointer, keep artifacts) | workflow yaml + docs | .github/workflows/promote.yml | O1-08 |
 - [x] O1-12 | OTA | Play channel flag: build-time env LH_UPDATE_CHANNEL=play bakes self-update off; sideload default on | unit test of flag reader both ways | apps/web/src/lib/updates.ts (client service), next.config env, docs | O1-01 |
 - [ ] O1-13 | OTA | Android sideload install: Kotlin PackageInstaller session for full per-ABI APK; REQUEST_INSTALL_PACKAGES; consent flow | code + docs; CI compiles | apps/native/src-tauri/gen/android/.../MaxUpdatePlugin.kt + manifest, Cargo bridge | O1-02 |
@@ -179,7 +179,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] S3-99 | SP | Perf: task list virtualization for 1000+ items | component | tasks | S3-20
 - [ ] S3-100 | SP | A11y: focus-visible + aria for board quadrants/drag handles | sweep | boards/planner | S3-24
 - [ ] O1-25 | OTA | Update check interval + Wi-Fi-only honored by Rust scheduler | code + tests | update.rs | O1-14
-- [ ] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
+- [~W3] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [ ] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
 - [x] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
 - [ ] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
