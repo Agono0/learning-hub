@@ -1,11 +1,14 @@
 'use client'
 
+import React from 'react'
+
 import { useQuery } from '@tanstack/react-query'
 import { BarChart3, Route, Target } from 'lucide-react'
 import { apiGet } from '@/lib/transport'
 import { InsightsSection } from '@/components/InsightsSection'
 import { Button, Callout, PageHeader, Skeleton } from '@/ui'
 import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 
 /** Response of GET /api/review/stats (append-only revlog aggregates). */
 interface ReviewStatsResponse {
@@ -116,6 +119,16 @@ function bestHoursSentence(hours: { hour: number; correctPct: number | null }[])
   return `You recall best around ${win(best.hour)} (${best.correctPct}% correct) and worst around ${win(worst.hour)} (${worst.correctPct}%).`
 }
 
+/**
+ * GSAP moment for this page: the week's headline learning score counts up to
+ * its final value. SSR and reduced-motion render the final number (the hook
+ * only rewrites textContent client-side when motionOK()).
+ */
+function CountUp({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return <span ref={ref}>{value}</span>
+}
+
 export default function AnalyticsPage() {
   const q = useQuery({
     queryKey: ['analytics'],
@@ -207,11 +220,11 @@ export default function AnalyticsPage() {
           <div
             className="grid h-28 w-28 shrink-0 place-items-center rounded-full"
             style={{
-              background: `conic-gradient(#6366f1 ${Math.round(score * 3.6)}deg, #26262b 0deg)`,
+              background: `conic-gradient(var(--ac-strong) ${Math.round(score * 3.6)}deg, var(--hub-border) 0deg)`,
             }}
           >
-            <div className="grid h-20 w-20 place-items-center rounded-full bg-neutral-50 dark:bg-(--hub-sunken) text-2xl font-bold tabular-nums">
-              {d?.learningScore.score ?? '…'}
+            <div className="grid h-20 w-20 place-items-center rounded-full bg-neutral-50 text-2xl font-bold tabular-nums dark:bg-(--hub-sunken)">
+              <CountUp value={d?.learningScore.score ?? 0} />
             </div>
           </div>
           <div className="min-w-0 flex-1 space-y-1.5 text-xs">
@@ -254,7 +267,7 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-[10px] text-neutral-600">
+        <div className="flex justify-between text-xs text-tertiary">
           <span>today</span>
           <span>+15d</span>
           <span>{d?.forecast.length === 31 ? 'later →' : '+30d'}</span>
@@ -285,7 +298,7 @@ export default function AnalyticsPage() {
       <Reveal className="panel space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="label font-bold text-neutral-100">
+            <p className="label font-bold text-strong">
               Metacognitive Calibration &amp; Reliability Diagram
             </p>
             <p className="text-xs text-tertiary">
@@ -295,17 +308,19 @@ export default function AnalyticsPage() {
           </div>
           {d?.calibrationMetrics?.brierScore != null && (
             <div className="flex items-center gap-2">
-              <span className="rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-semibold text-neutral-200">
+              <span className="rounded-lg bg-(--hub-panel-2) px-2.5 py-1 text-xs font-semibold text-body">
                 Brier Score:{' '}
-                <strong className="text-indigo-400">{d.calibrationMetrics.brierScore}</strong>
+                <strong className="text-indigo-600 dark:text-indigo-300">
+                  {d.calibrationMetrics.brierScore}
+                </strong>
               </span>
               <span
                 className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
                   d.calibrationMetrics.status === 'well-calibrated'
-                    ? 'bg-emerald-950 text-status-success-text border border-emerald-800/50'
+                    ? 'bg-emerald-500/15 text-status-success-text border border-emerald-500/40'
                     : d.calibrationMetrics.status === 'overconfident'
-                      ? 'bg-rose-950 text-danger-text border border-rose-800/50'
-                      : 'bg-indigo-950 text-indigo-300 border border-indigo-800/50'
+                      ? 'bg-rose-500/15 text-danger-text border border-rose-500/40'
+                      : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/40'
                 }`}
               >
                 {d.calibrationMetrics.bias != null
@@ -324,10 +339,10 @@ export default function AnalyticsPage() {
 
         {/* Visual Reliability Diagram (SVG: Expected vs Empirical Accuracy) */}
         {d && d.calibration.some((c) => c.actual != null) && (
-          <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-2">
+          <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel) p-4 space-y-2">
             <div className="flex items-center justify-between text-xs text-faint">
               <span>Reliability Curve (Dashed line = Ideal y=x calibration)</span>
-              <span className="text-[10px] text-tertiary">x: predicted | y: empirical</span>
+              <span className="text-xs text-tertiary">x: predicted | y: empirical</span>
             </div>
             <div className="h-40 w-full flex items-center justify-center">
               <svg
@@ -335,15 +350,22 @@ export default function AnalyticsPage() {
                 className="h-full w-full max-w-md overflow-visible select-none"
               >
                 {/* Grid lines */}
-                <line x1="30" y1="120" x2="220" y2="120" stroke="#333" strokeWidth="1" />
-                <line x1="30" y1="20" x2="30" y2="120" stroke="#333" strokeWidth="1" />
+                <line
+                  x1="30"
+                  y1="120"
+                  x2="220"
+                  y2="120"
+                  stroke="var(--hub-border)"
+                  strokeWidth="1"
+                />
+                <line x1="30" y1="20" x2="30" y2="120" stroke="var(--hub-border)" strokeWidth="1" />
                 {/* 45 degree perfect calibration line */}
                 <line
                   x1="30"
                   y1="120"
                   x2="220"
                   y2="20"
-                  stroke="#555"
+                  stroke="var(--text-faint)"
                   strokeWidth="1.5"
                   strokeDasharray="3 3"
                 />
@@ -361,15 +383,15 @@ export default function AnalyticsPage() {
                         cx={x}
                         cy={y}
                         r="4"
-                        fill="#818cf8"
-                        stroke="#312e81"
+                        fill="var(--ac-strong)"
+                        stroke="var(--hub-border)"
                         strokeWidth="1.5"
                       />
                       <text
                         x={x}
                         y={y - 7}
                         textAnchor="middle"
-                        fill="#c7d2fe"
+                        fill="var(--ac-text)"
                         fontSize="8"
                         className="font-mono"
                       >
@@ -379,16 +401,16 @@ export default function AnalyticsPage() {
                   )
                 })}
                 {/* Axes labels */}
-                <text x="30" y="132" fill="#777" fontSize="8">
+                <text x="30" y="132" fill="var(--text-faint)" fontSize="8">
                   50%
                 </text>
-                <text x="210" y="132" fill="#777" fontSize="8">
+                <text x="210" y="132" fill="var(--text-faint)" fontSize="8">
                   100%
                 </text>
-                <text x="12" y="24" fill="#777" fontSize="8">
+                <text x="12" y="24" fill="var(--text-faint)" fontSize="8">
                   100%
                 </text>
-                <text x="16" y="120" fill="#777" fontSize="8">
+                <text x="16" y="120" fill="var(--text-faint)" fontSize="8">
                   50%
                 </text>
               </svg>
@@ -477,7 +499,7 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-[10px] text-neutral-600">
+        <div className="flex justify-between text-xs text-tertiary">
           <span>00h</span>
           <span>06h</span>
           <span>12h</span>
@@ -502,7 +524,7 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-[10px] text-neutral-600">
+        <div className="flex justify-between text-xs text-tertiary">
           <span>00h</span>
           <span>06h</span>
           <span>12h</span>

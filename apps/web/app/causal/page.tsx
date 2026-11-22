@@ -14,11 +14,16 @@ import React from 'react'
 import { GitFork, Sparkles, Layers, Compass } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { CounterfactualStudio } from '@/components/CounterfactualStudio'
 
 export default function CausalCounterfactualPage() {
+  // GSAP moment for this page: the studio workbench rises in with a capped
+  // stagger when it scrolls into view (a different node from the ClayIn
+  // container — one animation owner per element).
+  const studioRevealRef = useGsapReveal<HTMLDivElement>()
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-6">
       {/* Page Header */}
       <PageHeader
         title="Structural Causal & Counterfactual Studio"
@@ -41,8 +46,10 @@ export default function CausalCounterfactualPage() {
         }
       />
 
-      {/* Main Studio Workbench */}
-      <CounterfactualStudio />
+      {/* Main Studio Workbench — GSAP moment (see ref below). */}
+      <div ref={studioRevealRef}>
+        <CounterfactualStudio />
+      </div>
 
       {/* Learning Science Foundations Card */}
       <div className="rounded-xl border border-neutral-200 dark:border-(--hub-border) bg-neutral-50 dark:bg-(--hub-sunken) p-6">

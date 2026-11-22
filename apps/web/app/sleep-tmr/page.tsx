@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Targeted Memory Reactivation (TMR) Sleep Consolidation Suite.
  *
@@ -29,6 +31,7 @@ import {
   SleepConsolidationHUD,
 } from '@/ui'
 import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface TmrCueItem {
   cardId: number
@@ -49,6 +52,8 @@ const FLUSH_EVERY = 5
 const EARCON_GAIN = 0.04
 
 export default function SleepTmrPage() {
+  // GSAP reveal ref for the tonight-queue rows (see the list below).
+  const queueRevealRef = useGsapReveal<HTMLUListElement>()
   const [nightMode, setNightMode] = useState(false)
   const [playedCount, setPlayedCount] = useState(0)
   const [currentFreq, setCurrentFreq] = useState<number | null>(null)
@@ -208,7 +213,7 @@ export default function SleepTmrPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       {/* Entrance beats: header → tonight panel → studio → HUD rise in sequence;
           the lower sections reveal on scroll. The night-mode overlay above is
           deliberately untouched (OLED-black sleep screen, wake-locked). SSR-safe
@@ -310,7 +315,10 @@ export default function SleepTmrPage() {
               <Button className="w-full" icon={<Moon className="h-4 w-4" />} onClick={startNight}>
                 Start sleep replay ({cues.length} cues)
               </Button>
-              <ul className="space-y-2">
+              {/* GSAP moment for this page: the sleep-cue rows rise in with a
+                  capped stagger when the queue scrolls into view (rows carry no
+                  framer animation of their own — one owner per element). */}
+              <ul ref={queueRevealRef} className="space-y-2">
                 {cues.map((c) => (
                   <li
                     key={c.cardId}

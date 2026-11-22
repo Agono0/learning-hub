@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Freeform canvas: absolute-positioned draggable note/card/excerpt cards +
  * an edges list, persisted as JSON via /api/canvas. Pointer-events based
@@ -9,7 +11,18 @@ import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { IconButton, PageHeader } from '@/ui'
+import { Callout, EmptyState, IconButton, PageHeader, Skeleton } from '@/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { DualCodingAnalyzer } from '@/components/DualCodingAnalyzer'
 
 interface CanvasItem {
@@ -36,11 +49,20 @@ interface CanvasRow {
 
 export default function CanvasPage() {
   const qc = useQueryClient()
-  const { data } = useQuery<{ canvases: CanvasRow[] }>({
+  const {
+    data,
+    isPending: listPending,
+    isError: listFailed,
+    refetch: refetchList,
+  } = useQuery<{ canvases: CanvasRow[] }>({
     queryKey: ['canvases'],
     queryFn: () => apiGet<{ canvases: CanvasRow[] }>('/api/canvas'),
   })
   const [activeId, setActiveId] = useState<number | null>(null)
+  // Destructive confirm — DELETE only fires from the dialog action.
+  const [confirmDeleteCanvas, setConfirmDeleteCanvas] = useState(false)
+  // GSAP moment: header + board rise in (SSR-safe; reduced-motion skips).
+  const pageRef = useGsapReveal<HTMLDivElement>()
   const active = data?.canvases.find((c) => c.id === activeId) ?? null
   const [items, setItems] = useState<CanvasItem[]>([])
   const [edges, setEdges] = useState<CanvasEdge[]>([])
@@ -180,7 +202,7 @@ export default function CanvasPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={pageRef} className="space-y-4">
       <PageHeader
         title="Canvas"
         subtitle="Spatial thinking: drag notes, cards, and excerpts; connect them; it all persists as JSON."
@@ -229,8 +251,20 @@ export default function CanvasPage() {
       />
       <DualCodingAnalyzer className="mt-4" />
 
-      {!activeId ? (
-        <div className="panel text-sm text-tertiary">Create or pick a canvas.</div>
+      {listFailed ? (
+        <Callout tone="danger" title="Couldn't load canvases">
+          <button className="underline underline-offset-2" onClick={() => void refetchList()}>
+            Retry
+          </button>
+        </Callout>
+      ) : !activeId ? (
+        listPending ? (
+          <Skeleton className="h-32 w-full" />
+        ) : (
+          <EmptyState title="No canvas open">
+            Create a new canvas or pick one from the dropdown above.
+          </EmptyState>
+        )
       ) : (
         <>
           <div className="mb-2 flex items-center gap-2 text-xs">
@@ -307,7 +341,7 @@ export default function CanvasPage() {
                       )
                     }
                   />
-                  <div className="flex justify-between text-[10px] text-faint">
+                  <div className="flex justify-between text-xs text-faint">
                     <span>{item.kind}</span>
                     <IconButton
                       label={`Delete node ${item.text.slice(0, 24)}`}
@@ -358,7 +392,7 @@ export default function CanvasPage() {
               <div className="pt-2">
                 <button
                   className="btn-ghost text-xs text-danger-text"
-                  onClick={() => activeId && deleteCanvas.mutate(activeId)}
+                  onClick={() => setConfirmDeleteCanvas(true)}
                 >
                   Delete canvas
                 </button>
@@ -367,6 +401,30 @@ export default function CanvasPage() {
           </div>
         </>
       )}
+
+      {/* Destructive confirm — the DELETE request only fires from here. */}
+      <AlertDialog open={confirmDeleteCanvas} onOpenChange={setConfirmDeleteCanvas}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete canvas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently removes “{active?.title ?? 'this canvas'}” with all of its items and
+              edges.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (activeId) deleteCanvas.mutate(activeId)
+              }}
+            >
+              Delete canvas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

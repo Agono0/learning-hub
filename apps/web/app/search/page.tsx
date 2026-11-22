@@ -11,7 +11,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Sparkles, X } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { EmptyState, IconButton, PageHeader, Panel } from '@/ui'
+import { Callout, EmptyState, IconButton, PageHeader, Panel, Skeleton } from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
 import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
 
 interface SearchHit {
@@ -108,7 +109,7 @@ function SearchPageInner() {
     return () => clearTimeout(t)
   }, [query])
 
-  const { data, isFetching } = useSearch(debounced)
+  const { data, isFetching, error: searchError } = useSearch(debounced)
 
   const presentKinds = useMemo(() => {
     const set = new Set<string>()
@@ -202,7 +203,13 @@ function SearchPageInner() {
             </button>
           </div>
 
-          {nlError && <p className="mt-2 text-xs text-danger-text">{nlError}</p>}
+          {nlError && (
+            <div className="mt-2">
+              <Callout tone="danger" title="Question planning failed">
+                {nlError}
+              </Callout>
+            </div>
+          )}
           {nl && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-tertiary">
               {nl.usedAI ? (
@@ -219,23 +226,18 @@ function SearchPageInner() {
           )}
           {nl?.needsSetup && <SearchTipsStrip />}
 
-          {/* Kind chips */}
+          {/* Kind chips — kit ChipPicker (choose-one, explicit "All" chip) */}
           {presentKinds.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {presentKinds.map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setActiveKind(activeKind === k ? 'all' : k)}
-                  className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
-                    activeKind === k || (activeKind === 'all' && presentKinds.length === 1)
-                      ? 'border-indigo-500 bg-indigo-600/10 text-indigo-600 dark:text-indigo-300'
-                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-(--hub-border) dark:text-faint'
-                  }`}
-                >
-                  {KIND_LABELS[k] ?? k}
-                </button>
-              ))}
-            </div>
+            <ChipPicker
+              className="mt-3"
+              label="Filter results by kind"
+              items={[
+                { value: 'all', label: 'All kinds' },
+                ...presentKinds.map((k) => ({ value: k, label: KIND_LABELS[k] ?? k })),
+              ]}
+              value={activeKind}
+              onChange={setActiveKind}
+            />
           )}
         </Panel>
       </ClayIn>
@@ -245,6 +247,11 @@ function SearchPageInner() {
           result set runs the same deterministic choreography instead of
           inheriting a finished animation. Keys/classes/onClick stay on the hit
           buttons; StaggerItem only wraps them. */}
+      {debounced && searchError && (
+        <Callout tone="danger" title="Search failed">
+          {searchError} — showing the last successful results.
+        </Callout>
+      )}
       {debounced ? (
         shown.length > 0 ? (
           <div className="space-y-2">
@@ -262,7 +269,7 @@ function SearchPageInner() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-sm">{hit.title || '(untitled)'}</span>
-                      <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-tertiary dark:bg-(--hub-panel-2)">
+                      <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-tertiary dark:bg-(--hub-panel-2)">
                         {KIND_LABELS[hit.kind] ?? hit.kind}
                       </span>
                     </div>
@@ -272,15 +279,19 @@ function SearchPageInner() {
               ))}
             </Stagger>
           </div>
+        ) : isFetching ? (
+          <div className="space-y-2" aria-hidden="true">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
         ) : (
-          !isFetching && (
-            <EmptyState title="No matches" icon={<Search className="h-10 w-10 text-faint" />}>
-              <p>
-                Nothing found for “{debounced}”. Try fewer words, a synonym — or use Ask above to
-                let the planner try several keyword angles.
-              </p>
-            </EmptyState>
-          )
+          <EmptyState title="No matches" icon={<Search className="h-10 w-10 text-faint" />}>
+            <p>
+              Nothing found for “{debounced}”. Try fewer words, a synonym — or use Ask above to let
+              the planner try several keyword angles.
+            </p>
+          </EmptyState>
         )
       ) : (
         <EmptyState title="Search your library" icon={<Search className="h-10 w-10 text-faint" />}>
@@ -294,22 +305,32 @@ function SearchPageInner() {
   )
 }
 
-function useSearch(q: string): { data: SearchResponse | undefined; isFetching: boolean } {
+function useSearch(q: string): {
+  data: SearchResponse | undefined
+  isFetching: boolean
+  error: string | null
+} {
   const [data, setData] = useState<SearchResponse | undefined>(undefined)
   const [isFetching, setIsFetching] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
     if (!q) {
       setData(undefined)
+      setError(null)
       return
     }
     setIsFetching(true)
     apiGet<SearchResponse>(`/api/search?q=${encodeURIComponent(q)}`)
       .then((res) => {
-        if (!cancelled) setData(res)
+        if (!cancelled) {
+          setData(res)
+          setError(null)
+        }
       })
-      .catch(() => {
-        /* keep previous results */
+      .catch((err: Error) => {
+        // Surface the failure but keep previous results on screen.
+        if (!cancelled) setError(err.message || 'Search failed')
       })
       .finally(() => {
         if (!cancelled) setIsFetching(false)
@@ -318,12 +339,12 @@ function useSearch(q: string): { data: SearchResponse | undefined; isFetching: b
       cancelled = true
     }
   }, [q])
-  return { data, isFetching }
+  return { data, isFetching, error }
 }
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="animate-pulse text-sm text-faint">Loading…</div>}>
+    <Suspense fallback={<Skeleton className="h-24 w-full" />}>
       <SearchPageInner />
     </Suspense>
   )

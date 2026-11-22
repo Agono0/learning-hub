@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Study planner (M4): minutes per week + rest day → an optimal weekly template built
  * from the REAL course workload (remaining hours, exam pressure). Exportable
@@ -11,6 +13,17 @@ import { CalendarPlus, CalendarCheck, Copy, Check } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
 import { PageHeader } from '@/ui'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   StudyPlannerMatrix,
   type PlannerCourse,
@@ -27,6 +40,8 @@ interface PlannerData {
 
 export default function PlannerPage() {
   const qc = useQueryClient()
+  // GSAP reveal ref for the planner matrix (see the wrapper below).
+  const matrixRevealRef = useGsapReveal<HTMLDivElement>()
   const { data } = useQuery<PlannerData>({
     queryKey: ['study-plan'],
     queryFn: () => apiGet<PlannerData>('/api/study-plan'),
@@ -44,6 +59,9 @@ export default function PlannerPage() {
   const [weeklyMinutes, setWeeklyMinutes] = useState(180)
   const [restDay, setRestDay] = useState<number | ''>('')
   const [touched, setTouched] = useState(false)
+  // Destructive confirmation (S6): removing the saved plan goes through
+  // an alert dialog before the DELETE mutation fires.
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   const savedPlan = data?.savedPlan ?? null
 
@@ -108,25 +126,55 @@ export default function PlannerPage() {
       )}
 
       <ClayIn delayS={staggerDelay(3)}>
-        <StudyPlannerMatrix
-          plan={savedPlan}
-          courses={data?.courses ?? []}
-          exams={data?.exams && data.exams.length > 0 ? data.exams : derivedExams}
-          weeklyMinutes={weeklyMinutes}
-          restDay={restDay}
-          onUpdateWeeklyMinutes={(mins) => {
-            setTouched(true)
-            setWeeklyMinutes(mins)
-          }}
-          onUpdateRestDay={(day) => {
-            setTouched(true)
-            setRestDay(day)
-          }}
-          onRebuildPlan={() => buildMutation.mutate()}
-          onRemovePlan={() => removeMutation.mutate()}
-          isRebuilding={buildMutation.isPending}
-        />
+        {/* GSAP moment for this page: the planner matrix rises in with a capped
+            stagger when it scrolls into view — the wrapper above is the framer
+            owner, this inner container is a different node. */}
+        <div ref={matrixRevealRef}>
+          <StudyPlannerMatrix
+            plan={savedPlan}
+            courses={data?.courses ?? []}
+            exams={data?.exams && data.exams.length > 0 ? data.exams : derivedExams}
+            weeklyMinutes={weeklyMinutes}
+            restDay={restDay}
+            onUpdateWeeklyMinutes={(mins) => {
+              setTouched(true)
+              setWeeklyMinutes(mins)
+            }}
+            onUpdateRestDay={(day) => {
+              setTouched(true)
+              setRestDay(day)
+            }}
+            onRebuildPlan={() => buildMutation.mutate()}
+            onRemovePlan={() => setConfirmRemove(true)}
+            isRebuilding={buildMutation.isPending}
+          />
+        </div>
       </ClayIn>
+
+      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove the saved study plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The weekly template and its calendar blocks are deleted. You can rebuild a new plan
+              any time — your courses and progress are not touched.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removeMutation.isPending}
+              onClick={() => {
+                setConfirmRemove(false)
+                removeMutation.mutate()
+              }}
+            >
+              Remove plan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -165,9 +213,7 @@ function CalendarSubscriptionCard() {
           <CalendarCheck className="h-5 w-5" />
         </span>
         <div>
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            Add to calendar
-          </h3>
+          <h3 className="text-sm font-semibold text-strong">Add to calendar</h3>
           <p className="text-xs text-tertiary dark:text-faint">
             Live feed: exam dates, this week&apos;s plan blocks, and the 7-day review forecast —
             updates automatically in your calendar app.

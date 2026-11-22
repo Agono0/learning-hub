@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Notes: list + markdown editor with toolbar, supertag picker (autofills
  * fields), backlinks panel, and the bullets list with "→ card" buttons that
@@ -7,12 +9,22 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bold, Heading, Link2, List, Pickaxe, Save } from 'lucide-react'
+import { Bold, FileText, Heading, Link2, List, Pickaxe, Save } from 'lucide-react'
 // subpath import (NOT the barrel) — keeps the client bundle free of the AI/db graph
 import { SUPERTAG_TEMPLATES, cornellLayout } from '@learning-hub/core/notes'
 import type { SupertagKey } from '@learning-hub/core/notes'
 import { apiGet, apiSend } from '@/lib/transport'
-import { IconButton, PageHeader, RelatedPanel } from '@/ui'
+import { Callout, EmptyState, IconButton, PageHeader, RelatedPanel, Skeleton } from '@/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { CardMinerSheet } from '@/components/CardMinerSheet'
 import { queryKeys } from '@/lib/query-keys'
 import { ClayIn, Reveal, Stagger, StaggerItem } from '@/lib/motion'
@@ -42,14 +54,23 @@ interface Backlink {
 
 export default function NotesPage() {
   const qc = useQueryClient()
-  const { data: list } = useQuery<{ notes: Note[] }>({
+  const {
+    data: list,
+    isPending: listPending,
+    isError: listFailed,
+    refetch: refetchList,
+  } = useQuery<{ notes: Note[] }>({
     queryKey: queryKeys.notes,
     queryFn: () => apiGet<{ notes: Note[] }>('/api/notes'),
   })
   const [activeId, setActiveId] = useState<number | null>(null)
   const active = list?.notes.find((n) => n.id === activeId) ?? null
 
-  const { data: detail } = useQuery<{ note: Note; bullets: Bullet[]; backlinks: Backlink[] }>({
+  const { data: detail, isPending: detailPending } = useQuery<{
+    note: Note
+    bullets: Bullet[]
+    backlinks: Backlink[]
+  }>({
     queryKey: ['note', activeId],
     queryFn: () =>
       apiGet<{ note: Note; bullets: Bullet[]; backlinks: Backlink[] }>(`/api/notes/${activeId}`),
@@ -62,6 +83,8 @@ export default function NotesPage() {
   // card miner: null = closed; string = the text to mine ('' = paste area)
   const [mineText, setMineText] = useState<string | null>(null)
   const [fields, setFields] = useState<Record<string, string>>({})
+  // S6: deletion is destructive — the toolbar button only arms this dialog.
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (!detail) return
@@ -150,23 +173,49 @@ export default function NotesPage() {
             <button className="btn w-full" onClick={() => createNote.mutate()}>
               New note
             </button>
-            <Stagger className="space-y-1">
-              {(list?.notes ?? []).map((n, i) => (
-                <StaggerItem key={n.id} index={i}>
-                  <button
-                    className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${activeId === n.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-                    onClick={() => setActiveId(n.id)}
-                  >
-                    {n.title}
-                  </button>
-                </StaggerItem>
-              ))}
-            </Stagger>
+            {listFailed ? (
+              <Callout tone="danger" title="Couldn't load notes">
+                <button className="underline underline-offset-2" onClick={() => void refetchList()}>
+                  Retry
+                </button>
+              </Callout>
+            ) : listPending ? (
+              <div className="space-y-1" aria-hidden="true">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-4/5" />
+                <Skeleton className="h-9 w-3/5" />
+              </div>
+            ) : (list?.notes ?? []).length === 0 ? (
+              <EmptyState icon={<FileText className="h-7 w-7" />} title="No notes yet">
+                Create your first note with the button above.
+              </EmptyState>
+            ) : (
+              <Stagger className="space-y-1">
+                {(list?.notes ?? []).map((n, i) => (
+                  <StaggerItem key={n.id} index={i}>
+                    <button
+                      className={`w-full rounded-lg px-2 py-1.5 text-left text-sm [@media(pointer:coarse)]:min-h-11 ${activeId === n.id ? 'bg-indigo-600/10 font-medium text-indigo-600 dark:text-indigo-300' : 'hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
+                      onClick={() => setActiveId(n.id)}
+                    >
+                      {n.title}
+                    </button>
+                  </StaggerItem>
+                ))}
+              </Stagger>
+            )}
           </aside>
 
           <section className="space-y-3">
             {activeId == null ? (
-              <div className="panel text-sm text-tertiary">Pick or create a note.</div>
+              <EmptyState icon={<FileText className="h-8 w-8" />} title="No note selected">
+                Pick a note from the list, or create a new one.
+              </EmptyState>
+            ) : detailPending ? (
+              <div className="panel space-y-3" aria-hidden="true">
+                <Skeleton className="h-8 w-1/2" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="min-h-[40vh] w-full" />
+              </div>
             ) : (
               <>
                 <div className="panel space-y-3">
@@ -220,7 +269,7 @@ export default function NotesPage() {
                     </button>
                     <button
                       className="btn-ghost text-xs text-danger-text"
-                      onClick={() => activeId && deleteNote.mutate(activeId)}
+                      onClick={() => setConfirmDelete(true)}
                     >
                       Delete
                     </button>
@@ -295,7 +344,7 @@ export default function NotesPage() {
               {backlinks.map((b) => (
                 <button
                   key={b.fromNoteId}
-                  className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline"
+                  className="block w-full rounded px-1 py-0.5 text-left text-xs text-indigo-400 hover:underline [@media(pointer:coarse)]:min-h-11"
                   onClick={() => setActiveId(b.fromNoteId)}
                 >
                   {b.fromTitle} <span className="text-tertiary">({b.type})</span>
@@ -314,6 +363,29 @@ export default function NotesPage() {
           />
         </div>
       </Reveal>
+      {/* S6: destructive confirm — the DELETE request only fires from here. */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently removes “{active?.title ?? 'this note'}” and its bullets. Backlinks
+              pointing here will disappear.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (activeId) deleteNote.mutate(activeId)
+              }}
+            >
+              Delete note
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

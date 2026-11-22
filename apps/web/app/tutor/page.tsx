@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Socratic tutor chat — streaming via fetch + ReadableStream reader (no
  * useChat, avoiding AI SDK UI version coupling). Guardrail UI: the "reveal"
@@ -20,6 +22,7 @@ import { apiGet, apiSend, apiStream } from '@/lib/transport'
 import { IconButton, PageHeader } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 import { ClayIn, Reveal, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface Msg {
   role: 'user' | 'assistant'
@@ -274,6 +277,10 @@ export default function TutorPage() {
     void send(LADDER[idx]!.prompt)
   }
 
+  // GSAP moment for this page: existing chat messages rise in with a capped
+  // stagger when the stream scrolls into view (the panel wrapper is the framer
+  // Reveal's node; the inner message rows are a different element).
+  const messagesRevealRef = useGsapReveal<HTMLDivElement>()
   const canReveal = attempts >= 1 // guardrail: no reveal without an attempt
 
   return (
@@ -377,6 +384,10 @@ export default function TutorPage() {
       ) : (
         <Reveal>
           <div className="panel flex h-[55vh] flex-col">
+            {/* GSAP moment: existing messages rise in with a capped stagger on
+                scroll into view; new messages append un-animated (chat UX). The
+                panel wrapper is the framer Reveal's node — one owner per
+                element. */}
             <div ref={streamBoxRef} className="flex-1 space-y-3 overflow-y-auto pr-1">
               {messages.length === 0 && (
                 <div className="grid h-full place-items-center text-center text-sm text-tertiary">
@@ -387,18 +398,20 @@ export default function TutorPage() {
                   </div>
                 </div>
               )}
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                    m.role === 'user'
-                      ? 'ml-auto bg-indigo-600 text-white'
-                      : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
-                  }`}
-                >
-                  {m.content || '…'}
-                </div>
-              ))}
+              <div ref={messagesRevealRef} className="space-y-3">
+                {messages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                      m.role === 'user'
+                        ? 'ml-auto bg-indigo-600 text-white'
+                        : 'bg-neutral-100 dark:bg-(--hub-panel-2)'
+                    }`}
+                  >
+                    {m.content || '…'}
+                  </div>
+                ))}
+              </div>
             </div>
             {error && (
               <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-status-warning-text">
@@ -526,7 +539,7 @@ export default function TutorPage() {
                         <Save className="h-3.5 w-3.5" /> Save {summary.cards.length} cards
                       </button>
                       {!summary.usedAI && (
-                        <span className="text-[11px] text-faint">
+                        <span className="text-xs text-faint">
                           (no provider — add one in Settings for AI gap detection)
                         </span>
                       )}
@@ -565,7 +578,7 @@ export default function TutorPage() {
                       <span className="min-w-0 flex-1 truncate">
                         {s2.title || `Session ${s2.id}`}
                       </span>
-                      <span className="ml-2 shrink-0 text-[10px] text-faint">
+                      <span className="ml-2 shrink-0 text-xs text-faint">
                         {new Date(s2.createdAt).toLocaleDateString()}
                       </span>
                     </button>

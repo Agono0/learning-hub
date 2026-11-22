@@ -15,9 +15,22 @@ import {
 } from 'lucide-react'
 import { isFreshStartMoment } from '@learning-hub/core/src/motivation'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { Callout, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { queryKeys } from '@/lib/query-keys'
+import { SectionHeader } from '@/components/ui/section-header'
+import { IconTile } from '@/components/ui/icon-tile'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 
 interface StreakResponse {
   streak: {
@@ -104,6 +117,8 @@ export default function MotivationPage() {
     threshold: 50,
     stakes: '',
   })
+  // Goal id awaiting destructive confirmation (AlertDialog) — null = none.
+  const [deleteGoalId, setDeleteGoalId] = useState<number | null>(null)
 
   // minutes to ADD to local time to get UTC — the API's tzOffset semantics
   const tz = new Date().getTimezoneOffset()
@@ -184,8 +199,14 @@ export default function MotivationPage() {
   const fresh = isFreshStartMoment(new Date())
   const unlockedCount = achievements.data?.catalog.filter((a) => a.unlocked).length ?? 0
 
+  // GSAP count-ups (per-page motion mandate): the level and streak headlines.
+  // The hook rewrites textContent in a client effect — SSR/tests keep the
+  // static final number; motionOK-gated.
+  const levelCountRef = useGsapCountUp(status.data?.xp.level ?? 1)
+  const streakCountRef = useGsapCountUp(status.data?.streak.current ?? 0)
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<Flame className="h-6 w-6 text-indigo-400" />}
         title="Motivation"
@@ -193,7 +214,7 @@ export default function MotivationPage() {
       />
 
       {fresh.fresh && (
-        <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200">
+        <div className="celebrate rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-3 text-sm text-hub-accent">
           <Sparkles className="mr-2 inline h-4 w-4" />
           {freshStartCopy[fresh.reason ?? 'new-week']}
         </div>
@@ -204,7 +225,9 @@ export default function MotivationPage() {
         <div className="panel space-y-2">
           <p className="label">Level</p>
           <div className="flex items-end justify-between">
-            <p className="text-4xl font-bold tracking-tight">{status.data?.xp.level ?? 1}</p>
+            <p className="text-4xl font-bold tracking-tight">
+              <span ref={levelCountRef}>{status.data?.xp.level ?? 1}</span>
+            </p>
             <p className="text-sm text-tertiary">{status.data?.xp.total ?? 0} XP total</p>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
@@ -224,7 +247,7 @@ export default function MotivationPage() {
           <p className="label">Streak</p>
           <div className="flex items-end gap-4">
             <p className="text-4xl font-bold tracking-tight text-status-warning-text">
-              {status.data?.streak.current ?? 0}
+              <span ref={streakCountRef}>{status.data?.streak.current ?? 0}</span>
             </p>
             <p className="text-sm text-tertiary">best {status.data?.streak.best ?? 0}</p>
           </div>
@@ -245,9 +268,10 @@ export default function MotivationPage() {
 
       {/* quests */}
       <div className="panel space-y-3">
-        <p className="label flex items-center gap-2">
-          <Target className="h-3.5 w-3.5" /> Daily quests — {quests.data?.date ?? '…'}
-        </p>
+        <SectionHeader
+          icon={Target}
+          title={quests.data?.date ? `Daily quests · ${quests.data.date}` : 'Daily quests'}
+        />
         {quests.data?.items.map((q, i) => {
           const pct = Math.min(100, Math.round((q.progress / Math.max(1, q.target)) * 100))
           return (
@@ -283,9 +307,13 @@ export default function MotivationPage() {
 
       {/* WOOP goals */}
       <div className="panel space-y-3">
-        <p className="label flex items-center gap-2">
-          <ScrollText className="h-3.5 w-3.5" /> WOOP goals — wish, outcome, obstacle, plan
-        </p>
+        <SectionHeader
+          icon={ScrollText}
+          title="WOOP goals"
+          action={
+            <span className="text-xs normal-case text-faint">wish · outcome · obstacle · plan</span>
+          }
+        />
         <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input sm:col-span-2"
@@ -348,7 +376,11 @@ export default function MotivationPage() {
             Create goal
           </button>
         </div>
-        {goalError && <p className="text-sm text-danger-text">{goalError}</p>}
+        {goalError && (
+          <Callout tone="danger" title="Couldn't save goal">
+            {goalError}
+          </Callout>
+        )}
         <ul className="space-y-2">
           {goals.data?.goals.map((g) => (
             <li
@@ -397,19 +429,23 @@ export default function MotivationPage() {
                   </button>
                   <button
                     className="btn-ghost text-xs text-danger-text"
-                    onClick={() => deleteGoal.mutate(g.id)}
+                    onClick={() => setDeleteGoalId(g.id)}
                   >
                     del
                   </button>
                 </div>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
+                {/* Transform-only motion law: progress scales along X instead
+                    of animating layout width. */}
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all"
-                  style={{ width: `${g.progressPct}%` }}
+                  className="h-full w-full origin-left rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-transform"
+                  style={{
+                    transform: `scaleX(${Math.min(100, Math.max(0, g.progressPct)) / 100})`,
+                  }}
                 />
               </div>
-              <p className="mt-1 text-right text-[10px] text-tertiary">
+              <p className="mt-1 text-right text-xs text-tertiary">
                 {g.progressPct}% {g.dueDate ? `· due ${g.dueDate}` : ''}
               </p>
             </li>
@@ -419,10 +455,16 @@ export default function MotivationPage() {
 
       {/* achievements grid */}
       <div className="panel space-y-3">
-        <p className="label flex items-center gap-2">
-          <Award className="h-3.5 w-3.5" /> Achievements — {unlockedCount}/
-          {achievements.data?.catalog.length ?? 15}
-        </p>
+        <SectionHeader
+          icon={Award}
+          title="Achievements"
+          count={unlockedCount}
+          action={
+            <span className="text-xs normal-case text-faint">
+              of {achievements.data?.catalog.length ?? 15}
+            </span>
+          }
+        />
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {achievements.data?.catalog.map((a) => (
             <div
@@ -445,7 +487,12 @@ export default function MotivationPage() {
 
       {/* commitment contracts */}
       <div className="panel space-y-3">
-        <p className="label">Commitment contracts — stakes you chose on purpose</p>
+        <SectionHeader
+          title="Commitment contracts"
+          action={
+            <span className="text-xs normal-case text-faint">stakes you chose on purpose</span>
+          }
+        />
         <div className="grid gap-2 sm:grid-cols-4">
           <input
             className="input sm:col-span-2"
@@ -511,6 +558,34 @@ export default function MotivationPage() {
 
       {/* ── 30-Tier Seasonal Study Pass ── */}
       <SeasonalStudyPassSection />
+
+      <AlertDialog
+        open={deleteGoalId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteGoalId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this goal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The goal and its progress are removed from your WOOP list. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep goal</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (deleteGoalId !== null) deleteGoal.mutate(deleteGoalId)
+                setDeleteGoalId(null)
+              }}
+            >
+              Delete goal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClayIn>
   )
 }
@@ -563,13 +638,11 @@ function SeasonalStudyPassSection() {
     <div className="panel space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-status-warning-text">
-            <Trophy className="h-5 w-5" />
-          </div>
+          <IconTile icon={Trophy} tone="warning" />
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold">Season 1: Dawn of Mastery</h2>
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-status-warning-text">
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-status-warning-text">
                 Tier {currentTier} of 30
               </span>
             </div>
@@ -584,27 +657,28 @@ function SeasonalStudyPassSection() {
           <div className="text-sm font-bold text-status-warning-text">
             {seasonXp.toLocaleString()} Season XP
           </div>
-          <div className="text-[11px] text-tertiary">
+          <div className="text-xs text-tertiary">
             {percentToNext}% toward Tier {currentTier + 1}
           </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-2 w-full rounded-full bg-neutral-800 overflow-hidden">
+      <div className="h-2 w-full rounded-full bg-(--hub-border) overflow-hidden">
+        {/* Transform-only motion law: the tier bar scales along X. */}
         <div
-          className="h-full bg-gradient-to-r from-amber-500 to-indigo-500 transition-all duration-500"
-          style={{ width: `${percentToNext}%` }}
+          className="h-full w-full origin-left bg-gradient-to-r from-amber-500 to-indigo-500 transition-transform duration-500"
+          style={{ transform: `scaleX(${Math.min(100, Math.max(0, percentToNext)) / 100})` }}
         />
       </div>
 
       {/* 30-Tier Roadmap Carousel / Scroll */}
       <div className="space-y-2 pt-2">
         <div className="flex justify-between items-center text-xs text-faint">
-          <span className="font-semibold uppercase tracking-wider text-[11px]">
+          <span className="font-semibold uppercase tracking-wider text-xs">
             30-Tier Reward Track
           </span>
-          <span className="text-[11px] text-tertiary">Scroll horizontally to view tiers →</span>
+          <span className="text-xs text-tertiary">Scroll horizontally to view tiers →</span>
         </div>
 
         <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scroll-smooth">
@@ -614,28 +688,28 @@ function SeasonalStudyPassSection() {
             return (
               <div
                 key={t.tier}
-                className={`flex-none w-44 rounded-xl border p-3.5 flex flex-col justify-between transition-all ${
+                className={`flex-none w-44 rounded-xl border p-3.5 flex flex-col justify-between transition-colors ${
                   isClaimed
-                    ? 'border-emerald-500/30 bg-emerald-950/10 text-neutral-300'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-secondary'
                     : isUnlocked
-                      ? 'border-amber-500/40 bg-amber-950/20 text-neutral-100 shadow-md'
-                      : 'border-neutral-800 bg-neutral-900/40 opacity-60 text-tertiary'
+                      ? 'border-amber-500/40 bg-amber-500/10 text-strong shadow-md'
+                      : 'border-(--hub-border) bg-(--hub-panel-2) opacity-60 text-tertiary'
                 }`}
               >
                 <div>
-                  <div className="flex items-center justify-between text-[11px] text-faint">
+                  <div className="flex items-center justify-between text-xs text-faint">
                     <span className="font-semibold">Tier {t.tier}</span>
                     <span className="font-mono">{t.xpThreshold} XP</span>
                   </div>
                   <div className="mt-2 text-xs font-semibold leading-tight">{t.rewardName}</div>
-                  <div className="text-[10px] text-tertiary uppercase tracking-wider mt-0.5">
+                  <div className="text-xs text-tertiary uppercase tracking-wider mt-0.5">
                     {t.rewardType.replace('_', ' ')}
                   </div>
                 </div>
 
                 <div className="pt-3">
                   {isClaimed ? (
-                    <span className="flex items-center gap-1 text-[11px] text-status-success-text font-medium">
+                    <span className="flex items-center gap-1 text-xs text-status-success-text font-medium">
                       <Check className="h-3.5 w-3.5" /> Claimed
                     </span>
                   ) : isUnlocked ? (
@@ -643,12 +717,12 @@ function SeasonalStudyPassSection() {
                       type="button"
                       disabled={claimMutation.isPending}
                       onClick={() => claimMutation.mutate(t.tier)}
-                      className="w-full rounded-lg bg-amber-500 py-1 text-xs font-semibold text-neutral-950 hover:bg-amber-400 transition-colors"
+                      className="w-full rounded-lg bg-amber-500 py-1 text-xs font-semibold text-neutral-950 hover:bg-amber-400 transition-colors [@media(pointer:coarse)]:min-h-11"
                     >
                       Claim Reward
                     </button>
                   ) : (
-                    <span className="flex items-center gap-1 text-[11px] text-tertiary">
+                    <span className="flex items-center gap-1 text-xs text-tertiary">
                       <Lock className="h-3 w-3" /> Locked
                     </span>
                   )}

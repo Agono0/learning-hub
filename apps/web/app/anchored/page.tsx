@@ -15,7 +15,7 @@ export const metadata = {
 
 export default function AnchoredInstructionPage() {
   return (
-    <ClayIn as="div" className="container mx-auto px-4 py-6 max-w-7xl">
+    <ClayIn as="div" className="space-y-5">
       <AnchoredInstructionStudio />
     </ClayIn>
   )

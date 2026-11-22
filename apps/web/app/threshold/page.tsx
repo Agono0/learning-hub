@@ -15,11 +15,15 @@ import React from 'react'
 import { KeyRound, Sparkles, Layers, AlertTriangle, Compass } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { ThresholdStudio } from '@/components/ThresholdStudio'
 
 export default function ThresholdPage() {
+  // GSAP reveal (per-page motion mandate): the foundations columns rise in on
+  // scroll — motionOK-gated; SSR/tests keep the static content.
+  const foundationsRef = useGsapReveal<HTMLDivElement>({ y: 12 })
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-5">
       {/* Page Header */}
       <PageHeader
         title="Threshold Concepts & Liminal Navigation Studio"
@@ -53,7 +57,10 @@ export default function ThresholdPage() {
             Threshold Concepts &amp; Troublesome Knowledge Foundations
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-secondary leading-relaxed">
+        <div
+          ref={foundationsRef}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-secondary leading-relaxed"
+        >
           <div className="space-y-1.5">
             <div className="font-semibold text-strong flex items-center gap-1.5">
               <KeyRound className="h-3.5 w-3.5 text-status-warning-text" />

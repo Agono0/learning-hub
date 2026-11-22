@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Reading Studio — Incremental Reading + Guided SQ3R Mode + Multi-Format Ingestion:
  * - Ingest PDF, EPUB, Markdown/TXT files, Web Article URLs, YouTube transcripts,
@@ -25,6 +27,7 @@ import {
   Trash2,
   Upload,
   Video,
+  X,
 } from 'lucide-react'
 import { extractIncidentalGlossTokens } from '@learning-hub/core'
 import { tokenizeText } from '@learning-hub/core/exposure'
@@ -34,6 +37,7 @@ import { apiGet, apiSend, apiUpload } from '@/lib/transport'
 import { Badge, Button, Markdown, PageHeader, Sheet, Slider, Tabs } from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 import { ClayIn, Reveal } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface Source {
   id: number
@@ -137,6 +141,8 @@ export default function ReadingPage() {
   const [markdownInput, setMarkdownInput] = useState('')
   const [priorityInput, setPriorityInput] = useState(50)
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+  // GSAP reveal ref for the reading-queue sidebar (see the aside below).
+  const queueRevealRef = useGsapReveal<HTMLElement>()
 
   const { data: detail } = useQuery<{
     source: Source
@@ -562,15 +568,24 @@ export default function ReadingPage() {
           }`}
         >
           <span>{feedback.text}</span>
-          <button className="opacity-70 hover:opacity-100" onClick={() => setFeedback(null)}>
-            ✕
+          <button
+            type="button"
+            aria-label="Dismiss"
+            className="rounded-lg p-1.5 opacity-70 hover:opacity-100 [@media(pointer:coarse)]:min-h-11"
+            onClick={() => setFeedback(null)}
+          >
+            <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
       )}
 
       <Reveal>
         <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-          <aside className="space-y-2">
+          {/* GSAP moment for this page: the reading-queue cards rise in with a
+              capped stagger when they scroll into view — the aside sits inside
+              the framer <Reveal> wrapper but is not itself animated by it
+              (one animation owner per element). */}
+          <aside ref={queueRevealRef} className="space-y-2">
             <div className="label px-1">Queue (by priority)</div>
             {(lib?.sources ?? []).map((s) => (
               <button
@@ -585,7 +600,7 @@ export default function ReadingPage() {
                 <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-200 dark:bg-(--hub-border)">
                   <div className="h-full bg-indigo-500" style={{ width: `${s.position}%` }} />
                 </div>
-                <div className="mt-1 text-[10px] text-tertiary">
+                <div className="mt-1 text-xs text-tertiary">
                   {s.kind} · {Math.round(s.position)}% · priority {s.priority}
                 </div>
               </button>
@@ -602,7 +617,7 @@ export default function ReadingPage() {
                 <span>Daily resurfacing</span>
                 {(resurfaceData?.resurface ?? []).length > 0 && (
                   <button
-                    className="text-[10px] normal-case text-indigo-400 hover:text-indigo-300"
+                    className="text-xs normal-case text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
                     onClick={() =>
                       markSeen.mutate((resurfaceData?.resurface ?? []).slice(0, 5).map((h) => h.id))
                     }
@@ -615,7 +630,7 @@ export default function ReadingPage() {
               {(resurfaceData?.resurface ?? []).slice(0, 5).map((h) => (
                 <div key={h.id} className="mb-2 border-l-2 border-indigo-500/50 pl-2 text-xs">
                   <div className="line-clamp-2 text-secondary">{h.text}</div>
-                  <div className="mt-0.5 text-[10px] text-tertiary">{h.sourceTitle}</div>
+                  <div className="mt-0.5 text-xs text-tertiary">{h.sourceTitle}</div>
                 </div>
               ))}
               {(resurfaceData?.resurface ?? []).length === 0 && (
@@ -685,12 +700,12 @@ export default function ReadingPage() {
                       <div className="mt-2.5 flex items-center gap-2 text-xs">
                         <span className="text-faint">Lexical Coverage:</span>
                         <span
-                          className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
+                          className={`font-semibold px-2 py-0.5 rounded text-xs ${
                             exposureQuery.data.coverageAnalysis.zone === 'optimal'
                               ? 'bg-emerald-950/80 text-status-success-text border border-emerald-700/50'
                               : exposureQuery.data.coverageAnalysis.zone === 'frustration'
                                 ? 'bg-rose-950/80 text-danger-text border border-rose-700/50'
-                                : 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/50'
+                                : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/40'
                           }`}
                         >
                           {exposureQuery.data.coverageAnalysis.coveragePercent}% (
@@ -705,9 +720,9 @@ export default function ReadingPage() {
                     )}
                     {incidentalGloss.length > 0 && (
                       <div className="mt-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 p-2.5 text-xs">
-                        <div className="flex items-center justify-between font-medium text-indigo-300">
+                        <div className="flex items-center justify-between font-medium text-indigo-600 dark:text-indigo-300">
                           <span>Incidental Vocabulary (Krashen i+1)</span>
-                          <span className="text-[10px] opacity-75">
+                          <span className="text-xs opacity-75">
                             {incidentalGloss.length} in text
                           </span>
                         </div>
@@ -715,11 +730,11 @@ export default function ReadingPage() {
                           {incidentalGloss.map((item) => (
                             <span
                               key={item.word}
-                              className="inline-flex items-center gap-1 rounded bg-black/30 px-2 py-0.5 text-[11px]"
+                              className="inline-flex items-center gap-1 rounded bg-indigo-500/15 px-2 py-0.5 text-xs"
                               title={`Definition: ${item.definition}`}
                             >
-                              <span className="font-semibold text-neutral-200">{item.word}</span>
-                              <span className="max-w-[120px] truncate text-[10px] text-faint">
+                              <span className="font-semibold text-body">{item.word}</span>
+                              <span className="max-w-[120px] truncate text-xs text-faint">
                                 — {item.definition}
                               </span>
                             </span>
@@ -829,10 +844,10 @@ export default function ReadingPage() {
                               key={idx}
                               className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-(--hub-border)"
                             >
-                              <span className="font-medium text-neutral-200">{h}</span>
+                              <span className="font-medium text-body">{h}</span>
                               <Button
                                 variant="ghost"
-                                className="px-2 py-1 text-[11px]"
+                                className="px-2 py-1 text-xs"
                                 onClick={() =>
                                   addGuidingQuestion(
                                     `How or why does "${h}" work, and what is its key takeaway?`,
@@ -882,16 +897,18 @@ export default function ReadingPage() {
                               key={q.id}
                               className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-xs dark:border-(--hub-border)"
                             >
-                              <span className="text-neutral-200">{q.question}</span>
+                              <span className="text-body">{q.question}</span>
                               <button
-                                className="text-tertiary hover:text-danger-text"
+                                type="button"
+                                aria-label="Delete question"
+                                className="rounded-lg p-2 text-tertiary hover:text-danger-text [@media(pointer:coarse)]:min-h-11"
                                 onClick={() => {
                                   const next = questions.filter((x) => x.id !== q.id)
                                   setQuestions(next)
                                   saveSq3r.mutate({ questions: next })
                                 }}
                               >
-                                ✕
+                                <X className="h-3.5 w-3.5" aria-hidden />
                               </button>
                             </div>
                           ))}
@@ -939,9 +956,7 @@ export default function ReadingPage() {
                             </div>
                             {questions.map((q) => (
                               <div key={q.id} className="space-y-1">
-                                <div className="text-xs font-medium text-neutral-200">
-                                  {q.question}
-                                </div>
+                                <div className="text-xs font-medium text-body">{q.question}</div>
                                 <textarea
                                   rows={2}
                                   className="input w-full text-xs"
@@ -1038,7 +1053,7 @@ export default function ReadingPage() {
                               className="rounded-xl border border-neutral-200 p-3 text-xs space-y-1.5 dark:border-(--hub-border)"
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="font-semibold text-neutral-200">{q.question}</span>
+                                <span className="font-semibold text-body">{q.question}</span>
                                 {q.cardId ? (
                                   <Badge tone="success">Card #{q.cardId}</Badge>
                                 ) : q.answer.trim() ? (
@@ -1093,7 +1108,7 @@ export default function ReadingPage() {
                   /* ─── Ambient Exposure Ledger & Lexical Coverage ─── */
                   <div className="panel space-y-4">
                     <div>
-                      <h2 className="font-semibold text-neutral-100 flex items-center gap-2">
+                      <h2 className="font-semibold text-strong flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-status-warning-text" />
                         Ambient Vocabulary &amp; Incidental Exposure Ledger
                       </h2>
@@ -1106,16 +1121,16 @@ export default function ReadingPage() {
                     </div>
 
                     {exposureQuery.data?.coverageAnalysis && (
-                      <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-4 space-y-2">
+                      <div className="rounded-xl border border-(--hub-border) bg-(--hub-panel) p-4 space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-neutral-200">
+                          <span className="font-semibold text-body">
                             Current Reading Text Lexical Coverage
                           </span>
-                          <span className="font-bold text-neutral-100">
+                          <span className="font-bold text-strong">
                             {exposureQuery.data.coverageAnalysis.coveragePercent}%
                           </span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-neutral-800 overflow-hidden">
+                        <div className="h-2 w-full rounded-full bg-(--hub-border) overflow-hidden">
                           <div
                             style={{
                               width: `${Math.min(100, exposureQuery.data.coverageAnalysis.coveragePercent)}%`,
@@ -1129,7 +1144,7 @@ export default function ReadingPage() {
                             }`}
                           />
                         </div>
-                        <p className="text-[11px] text-faint">
+                        <p className="text-xs text-faint">
                           {exposureQuery.data.coverageAnalysis.zone === 'optimal'
                             ? 'Optimal Krashen i+1 band (95–98% known): reading flows smoothly while unfamiliar words are inferred from context.'
                             : exposureQuery.data.coverageAnalysis.zone === 'frustration'
@@ -1144,7 +1159,7 @@ export default function ReadingPage() {
                         <span>
                           Words You Keep Meeting ({exposureQuery.data?.words?.length ?? 0})
                         </span>
-                        <span className="text-[11px] text-tertiary">
+                        <span className="text-xs text-tertiary">
                           Threshold: &ge;5 encounters across &ge;3 days
                         </span>
                       </div>
@@ -1155,23 +1170,23 @@ export default function ReadingPage() {
                           exposure ledger!
                         </p>
                       ) : (
-                        <div className="divide-y divide-neutral-800/60 rounded-xl border border-neutral-800 bg-neutral-950/40">
+                        <div className="divide-y divide-(--hub-border) rounded-xl border border-(--hub-border) bg-(--hub-sunken)">
                           {(exposureQuery.data?.words ?? []).map((word) => (
                             <div
                               key={word.normalized}
-                              className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs hover:bg-neutral-900/40 transition-colors"
+                              className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs transition-colors hover:bg-(--hub-panel-2)"
                             >
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-semibold text-neutral-200 text-sm">
+                                  <span className="text-sm font-semibold text-body">
                                     {word.normalized}
                                   </span>
                                   {word.eligibleForPromotion ? (
-                                    <span className="rounded bg-amber-500/20 text-status-warning-text border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-medium">
+                                    <span className="rounded bg-amber-500/20 text-status-warning-text border border-amber-500/40 px-1.5 py-0.5 text-xs font-medium">
                                       Ready for SRS ({word.encounterCount}x / {word.distinctDays}d)
                                     </span>
                                   ) : (
-                                    <span className="text-[10px] text-tertiary">
+                                    <span className="text-xs text-tertiary">
                                       {word.encounterCount} encounters &bull; {word.distinctDays}{' '}
                                       days
                                     </span>
@@ -1180,7 +1195,7 @@ export default function ReadingPage() {
                               </div>
 
                               {word.isAlreadyCard ? (
-                                <span className="text-[11px] text-status-success-text">
+                                <span className="text-xs text-status-success-text">
                                   Already a card
                                 </span>
                               ) : (
@@ -1193,7 +1208,7 @@ export default function ReadingPage() {
                                       snippet: `Encountered ${word.encounterCount} times across reading.`,
                                     })
                                   }
-                                  className="text-xs flex items-center gap-1 border border-neutral-700/60 hover:border-indigo-500/60"
+                                  className="text-xs flex items-center gap-1 border border-(--hub-border) hover:border-indigo-500/60"
                                 >
                                   <Plus className="h-3.5 w-3.5 text-indigo-400" />
                                   Turn into Card
@@ -1267,7 +1282,7 @@ export default function ReadingPage() {
                       >
                         → cards
                       </Button>
-                      <span className="text-[10px] text-tertiary">
+                      <span className="text-xs text-tertiary">
                         strength {Math.round(h.strength * 100)}
                       </span>
                     </div>
@@ -1397,7 +1412,7 @@ export default function ReadingPage() {
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
-              <span className="block text-[11px] text-tertiary">
+              <span className="block text-xs text-tertiary">
                 Strips navigation, ads, and scripts into clean Markdown headings & paragraphs.
               </span>
             </label>
@@ -1412,7 +1427,7 @@ export default function ReadingPage() {
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
-              <span className="block text-[11px] text-tertiary">
+              <span className="block text-xs text-tertiary">
                 Imports caption tracks grouped into timestamped 1-minute sections ready for SQ3R.
               </span>
             </label>

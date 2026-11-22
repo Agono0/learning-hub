@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
@@ -22,6 +24,7 @@ import { AdaptiveExamStudio } from '@/components/AdaptiveExamStudio'
 import { Button, Callout, PageHeader, Panel, Sheet, Skeleton, useToast } from '@/ui'
 import { motion, useAnimationControls } from 'framer-motion'
 import { ClayIn, Stagger, StaggerItem, clayPopVariants, motionOK, staggerDelay } from '@/lib/motion'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
 
 /**
  * Clay pop-in for CLIENT-STATE-triggered surfaces: scale 0.96 → 1 + fade on the
@@ -50,6 +53,17 @@ function ClayPop({ children, className }: { children: ReactNode; className?: str
       {children}
     </motion.div>
   )
+}
+
+/**
+ * GSAP moment for this page: the exam score counts up to its final value on
+ * the result banner. The score view is client-state-only (never SSR), and the
+ * hook only rewrites textContent when motionOK() — reduced-motion users keep
+ * the static number.
+ */
+function CountUp({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return <span ref={ref}>{value}</span>
 }
 
 interface ExamQuestion {
@@ -439,7 +453,7 @@ export default function ExamSimulatorPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase text-faint">Exam Mode</span>
-              <span className="text-xs font-medium text-neutral-600 dark:text-secondary">
+              <span className="text-xs font-medium text-secondary">
                 Question {currentIndex + 1} of {examData.totalQuestions}
               </span>
             </div>
@@ -497,7 +511,7 @@ export default function ExamSimulatorPage() {
                   aria-selected={isCur}
                   aria-label={`Question ${idx + 1}${hasAns ? ', answered' : ', unanswered'}${isFlg ? ', flagged' : ''}`}
                   onClick={() => setCurrentIndex(idx)}
-                  className={`h-8 w-8 min-h-[36px] min-w-[36px] rounded text-xs font-medium transition-all ${
+                  className={`h-8 w-8 min-h-[36px] min-w-[36px] rounded text-xs font-medium transition-colors ${
                     isCur
                       ? 'ring-2 ring-indigo-500 font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300'
                       : isFlg
@@ -545,7 +559,7 @@ export default function ExamSimulatorPage() {
         {/* Current Question Body */}
         <Panel className="p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-100 pb-2 dark:border-(--hub-border)">
-            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+            <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
               Bloom Level: {currentQuestion.bloomLevel}
             </span>
 
@@ -553,7 +567,7 @@ export default function ExamSimulatorPage() {
               type="button"
               onClick={() => toggleFlag(currentQuestion.cardId)}
               className={`flex items-center gap-1 text-xs font-medium ${
-                isCurrentFlagged ? 'text-status-warning-text' : 'text-faint hover:text-neutral-600'
+                isCurrentFlagged ? 'text-status-warning-text' : 'text-faint hover:text-secondary'
               }`}
             >
               <Flag className="h-3.5 w-3.5" />
@@ -561,7 +575,7 @@ export default function ExamSimulatorPage() {
             </button>
           </div>
 
-          <div className="text-base font-medium leading-relaxed text-neutral-900 dark:text-neutral-100">
+          <div className="text-base font-medium leading-relaxed text-strong">
             {currentQuestion.prompt}
           </div>
 
@@ -664,7 +678,7 @@ export default function ExamSimulatorPage() {
               <div
                 className={`text-4xl font-extrabold ${passed ? 'text-status-success-text dark:text-status-success-text' : 'text-status-warning-text dark:text-status-warning-text'}`}
               >
-                {gradedReport.score}%
+                <CountUp value={gradedReport.score} />%
               </div>
               <div className="text-sm font-medium text-tertiary">
                 {gradedReport.correctCount} of {gradedReport.totalQuestions} Questions Correct
@@ -681,9 +695,9 @@ export default function ExamSimulatorPage() {
             const pct = b.total > 0 ? Math.round((b.correct / b.total) * 100) : 0
             return (
               <Panel key={lvl} className="p-3 text-center space-y-1">
-                <div className="text-[10px] uppercase font-semibold text-faint">{lvl}</div>
+                <div className="text-xs uppercase font-semibold text-faint">{lvl}</div>
                 <div className="text-xl font-bold">{pct}%</div>
-                <div className="text-[11px] text-tertiary">
+                <div className="text-xs text-tertiary">
                   {b.correct} / {b.total}
                 </div>
               </Panel>
@@ -778,7 +792,7 @@ export default function ExamSimulatorPage() {
                     </div>
                     <div className="rounded bg-neutral-50 p-2 dark:bg-neutral-900/50">
                       <span className="font-semibold text-faint block mb-0.5">Correct Answer:</span>
-                      <span className="text-neutral-700 dark:text-secondary font-medium">
+                      <span className="font-medium text-secondary">
                         {res.correctAnswer || 'See reference'}
                       </span>
                     </div>
@@ -788,7 +802,7 @@ export default function ExamSimulatorPage() {
                     <div className="pt-1">
                       <Link
                         href={`/voice-tutor?topic=${encodeURIComponent(res.prompt)}&cardId=${res.cardId}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
                       >
                         <Mic className="h-3 w-3" /> Drill with Socratic Voice Tutor
                       </Link>

@@ -13,31 +13,33 @@
 
 import React from 'react'
 import { Eye, Sparkles, Type, Zap } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { Badge, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { DualCodingStudio } from '@/components/DualCodingStudio'
 
 export default function DualCodingPage() {
+  // GSAP moment: the evidence section rises in on scroll (framer owns the
+  // page container; reduced-motion skips GSAP entirely).
+  const revealRef = useGsapReveal()
+
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       {/* Page Header */}
       <PageHeader
         title="Dual-Coding & Visuospatial Schematization Studio"
         subtitle="Harness Paivio's Dual-Coding Theory (1971) and Mayer's Cognitive Theory of Multimedia Learning (2014): unite verbal logogens with visuospatial imagens to double retrieval accessibility and eliminate split-attention."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
-              <Type className="h-3.5 w-3.5 text-status-info-text" />
-              <span>Paivio (1971)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-status-warning-text">
-              <Zap className="h-3.5 w-3.5 text-status-warning-text" />
-              <span>Mayer CTML (2014)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
-              <Eye className="h-3.5 w-3.5 text-status-success-text" />
-              <span>Contiguity</span>
-            </span>
+            <Badge tone="cyan" icon={<Type className="h-3.5 w-3.5" />}>
+              Paivio (1971)
+            </Badge>
+            <Badge tone="warning" icon={<Zap className="h-3.5 w-3.5" />}>
+              Mayer CTML (2014)
+            </Badge>
+            <Badge tone="success" icon={<Eye className="h-3.5 w-3.5" />}>
+              Contiguity
+            </Badge>
           </div>
         }
       />
@@ -46,7 +48,10 @@ export default function DualCodingPage() {
       <DualCodingStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md">
+      <div
+        ref={revealRef}
+        className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md"
+      >
         <div className="flex items-center gap-2.5 mb-3">
           <Sparkles className="h-5 w-5 text-ac-text" />
           <h3 className="text-sm font-bold text-strong">

@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Lesson player (?id=). The order is deliberate:
  *   summary (advance organizer, Ausubel 1960) → theory → worked examples
@@ -25,9 +27,10 @@ import {
 } from 'lucide-react'
 import { curriculumApi, curriculumKeys, type LessonView } from '@/lib/curriculum-api'
 import { useIdParam } from '@/lib/use-id-param'
-import { Badge, Button, Callout, EmptyState, Markdown, Panel } from '@/ui'
+import { Badge, Button, Callout, EmptyState, Markdown, Panel, Skeleton } from '@/ui'
 import { ExercisePractice } from '@/ui/exercises'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 type Content = NonNullable<LessonView['lesson']['content']>
 
@@ -139,11 +142,7 @@ function KeyTerms({ terms }: { terms: NonNullable<Content['keyTerms']> }) {
             >
               <dt className="font-medium">{t.term}</dt>
               <dd
-                className={
-                  open.has(i)
-                    ? 'mt-1 text-sm text-neutral-600 dark:text-secondary'
-                    : 'mt-1 text-xs text-faint'
-                }
+                className={open.has(i) ? 'mt-1 text-sm text-secondary' : 'mt-1 text-xs text-faint'}
               >
                 {open.has(i) ? t.definition : 'What does it mean?'}
               </dd>
@@ -152,6 +151,43 @@ function KeyTerms({ terms }: { terms: NonNullable<Content['keyTerms']> }) {
         </dl>
       </Panel>
     </ClayIn>
+  )
+}
+
+/**
+ * Practice block. GSAP moment for this page: the exercise cards rise in with a
+ * capped stagger when the section scrolls into view (the section itself is not
+ * framer-animated — one animation owner per element).
+ */
+function PracticeSection({
+  exercises,
+  answered,
+  onAnswered,
+}: {
+  exercises: LessonView['exercises']
+  answered: number
+  onAnswered: () => void
+}) {
+  const revealRef = useGsapReveal<HTMLElement>()
+  return (
+    <section ref={revealRef} className="space-y-3" aria-label="Practice">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-lg font-semibold">Practice</h2>
+        <span className="text-xs text-tertiary">
+          {answered}/{exercises.length} answered · each one returns in your reviews
+        </span>
+      </div>
+      {exercises.map((e, i) => (
+        <ExercisePractice
+          key={e.cardId}
+          cardId={e.cardId}
+          exercise={e.exercise}
+          index={i + 1}
+          total={exercises.length}
+          onAnswered={onAnswered}
+        />
+      ))}
+    </section>
   )
 }
 
@@ -193,7 +229,14 @@ function Lesson() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
+  if (isLoading)
+    return (
+      <div className="space-y-4" aria-busy="true" aria-label="Loading lesson">
+        <Skeleton className="h-9 w-72" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    )
   if (error || !data) return <Callout tone="danger">{error?.message ?? 'Lesson not found'}</Callout>
 
   const { lesson, course, module, exercises } = data
@@ -262,7 +305,7 @@ function Lesson() {
         <section className="space-y-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 dark:border-indigo-500/30">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold text-indigo-300 flex items-center gap-1.5">
+              <h2 className="text-sm font-bold text-indigo-600 flex items-center gap-1.5 dark:text-indigo-300">
                 <Sparkles className="h-4 w-4 text-status-warning-text" />
                 Priming Pretest (Pretesting Effect)
               </h2>
@@ -276,7 +319,7 @@ function Lesson() {
               <button
                 type="button"
                 onClick={() => setPretestOpen(false)}
-                className="text-xs text-faint hover:text-neutral-200"
+                className="text-xs text-faint hover:text-strong"
               >
                 Skip pretest &darr;
               </button>
@@ -284,7 +327,7 @@ function Lesson() {
               <button
                 type="button"
                 onClick={() => setPretestOpen(true)}
-                className="btn-ghost text-xs border border-indigo-500/40 text-indigo-300"
+                className="btn-ghost text-xs border border-indigo-500/40 text-indigo-600 dark:text-indigo-300"
               >
                 Take Priming Pretest
               </button>
@@ -332,24 +375,11 @@ function Lesson() {
       {content.keyTerms && content.keyTerms.length > 0 && <KeyTerms terms={content.keyTerms} />}
 
       {exercises.length > 0 && (
-        <section className="space-y-3" aria-label="Practice">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-lg font-semibold">Practice</h2>
-            <span className="text-xs text-tertiary">
-              {answered}/{exercises.length} answered · each one returns in your reviews
-            </span>
-          </div>
-          {exercises.map((e, i) => (
-            <ExercisePractice
-              key={e.cardId}
-              cardId={e.cardId}
-              exercise={e.exercise}
-              index={i + 1}
-              total={exercises.length}
-              onAnswered={() => setAnswered((n) => n + 1)}
-            />
-          ))}
-        </section>
+        <PracticeSection
+          exercises={exercises}
+          answered={answered}
+          onAnswered={() => setAnswered((n) => n + 1)}
+        />
       )}
 
       {content.reflection && content.reflection.length > 0 && (
@@ -442,7 +472,15 @@ function Lesson() {
 
 export default function LessonPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
+    <Suspense
+      fallback={
+        <div className="space-y-4" aria-hidden>
+          <Skeleton className="h-9 w-72" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      }
+    >
       <Lesson />
     </Suspense>
   )

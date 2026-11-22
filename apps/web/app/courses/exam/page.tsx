@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Final exam (?id= course). Answer everything, then submit once: the server
  * grades every question and returns per-question feedback. The time limit is
@@ -11,9 +13,31 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { curriculumApi, curriculumKeys, type ExamResult } from '@/lib/curriculum-api'
 import { useIdParam } from '@/lib/use-id-param'
-import { Button, Callout, EmptyState, Markdown, PageHeader, Panel } from '@/ui'
+import { Button, Callout, EmptyState, Markdown, PageHeader, Panel, Skeleton } from '@/ui'
 import { ExerciseInput, defaultAnswer, isAnswerReady, type AnswerValue } from '@/ui/exercises'
 import { ClayIn, Reveal } from '@/lib/motion'
+import { useGsapCountUp } from '@/lib/useGsapCountUp'
+
+/**
+ * GSAP moment for this page: the exam score counts up from the previous value
+ * on the result banner. SSR and reduced-motion render the final number (the
+ * hook only rewrites textContent client-side when motionOK()).
+ */
+function CountUp({ value }: { value: number }) {
+  const ref = useGsapCountUp(value)
+  return <span ref={ref}>{value}</span>
+}
+
+/** Loading skeleton shaped like the exam page (header + question panels). */
+function ExamSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <Skeleton className="h-9 w-72" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-32 w-full" />
+    </div>
+  )
+}
 
 function Exam() {
   const id = useIdParam()
@@ -49,7 +73,7 @@ function Exam() {
         }
       />
     )
-  if (isLoading) return <p className="text-sm text-tertiary">Loading…</p>
+  if (isLoading) return <ExamSkeleton />
   if (error || !data)
     return <Callout tone="danger">{error?.message ?? 'This course has no final exam.'}</Callout>
 
@@ -81,9 +105,16 @@ function Exam() {
           <Callout
             tone={result.passed ? 'success' : 'warning'}
             title={
-              result.passed
-                ? `Passed with ${Math.round(result.score * 100)}%`
-                : `${Math.round(result.score * 100)}% — ${Math.round(result.passScore * 100)}% needed`
+              result.passed ? (
+                <>
+                  Passed with <CountUp value={Math.round(result.score * 100)} />%
+                </>
+              ) : (
+                <>
+                  <CountUp value={Math.round(result.score * 100)} />% —{' '}
+                  {Math.round(result.passScore * 100)}% needed
+                </>
+              )
             }
           >
             {result.passed ? (
@@ -151,9 +182,7 @@ function Exam() {
                     <p key={j}>{f}</p>
                   ))}
                   {exercise.explanation && (
-                    <Markdown className="text-neutral-600 dark:text-secondary">
-                      {exercise.explanation}
-                    </Markdown>
+                    <Markdown className="text-secondary">{exercise.explanation}</Markdown>
                   )}
                 </div>
               )}
@@ -191,7 +220,7 @@ function Exam() {
 
 export default function ExamPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-tertiary">Loading…</p>}>
+    <Suspense fallback={<ExamSkeleton />}>
       <Exam />
     </Suspense>
   )

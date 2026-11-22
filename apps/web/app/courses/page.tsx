@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Courses — the catalog + In-App Starter Course Library (works offline on Web,
  * Windows & Android OPFS with zero CLI or AI setup required).
@@ -20,9 +22,21 @@ import {
 } from 'lucide-react'
 import { curriculumApi, curriculumKeys, type CatalogCourse } from '@/lib/curriculum-api'
 import { apiGet, apiSend } from '@/lib/transport'
-import { Badge, EmptyState, PageHeader, Panel, ProgressBar, ProgressRing, Sheet } from '@/ui'
+import {
+  Badge,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  ProgressBar,
+  ProgressRing,
+  Sheet,
+  Skeleton,
+} from '@/ui'
 import { queryKeys } from '@/lib/query-keys'
 import { ClayIn, Stagger, StaggerItem, staggerDelay } from '@/lib/motion'
+import { SectionHeader } from '@/components/ui/section-header'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface StarterCourseItem {
   slug: string
@@ -111,6 +125,87 @@ function ContinueCard({ course }: { course: CatalogCourse }) {
   )
 }
 
+/** One row of the built-in starter library list. */
+function StarterRow({
+  sc,
+  installMutation,
+}: {
+  sc: StarterCourseItem
+  installMutation: { isPending: boolean; mutate: (slugs: string[]) => void }
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600/10 text-xl">
+          {sc.emoji}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">{sc.title}</div>
+          <div className="text-xs text-tertiary">{sc.subtitle}</div>
+          <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-tertiary">
+            <Badge>{sc.track}</Badge>
+            <Badge>{sc.level}</Badge>
+            <span>
+              {sc.lessonsCount} lessons · {sc.exercisesCount} exercises · ~{sc.estHours}h
+            </span>
+          </div>
+        </div>
+      </div>
+      {sc.installed && sc.courseId ? (
+        <Link href={`/courses/course?id=${sc.courseId}`} className="btn-ghost text-xs">
+          <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" /> Open course
+        </Link>
+      ) : (
+        <button
+          className="btn text-xs"
+          disabled={installMutation.isPending}
+          onClick={() => installMutation.mutate([sc.slug])}
+        >
+          <Download className="h-3.5 w-3.5" /> Install
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The starter-course list. GSAP moment for this page: the rows rise in with a
+ * capped stagger on first scroll into view — the rows themselves carry no
+ * framer animation (one animation owner per element; the page header and
+ * section blocks above are the ClayIn owners).
+ */
+function StarterGrid({
+  courses,
+  installMutation,
+}: {
+  courses: StarterCourseItem[]
+  installMutation: { isPending: boolean; mutate: (slugs: string[]) => void }
+}) {
+  const revealRef = useGsapReveal<HTMLDivElement>()
+  return (
+    <div ref={revealRef} className="space-y-3">
+      {courses.map((sc) => (
+        <StarterRow key={sc.slug} sc={sc} installMutation={installMutation} />
+      ))}
+    </div>
+  )
+}
+
+/** Loading skeleton shaped like the course catalog (continue card + card grid). */
+function CatalogSkeleton() {
+  return (
+    <div className="space-y-5" aria-hidden>
+      <Skeleton className="h-28 w-full" />
+      <div className="grid gap-2 md:grid-cols-2">
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    </div>
+  )
+}
+
 export default function CoursesPage() {
   const qc = useQueryClient()
   const [starterOpen, setStarterOpen] = useState(false)
@@ -167,44 +262,7 @@ export default function CoursesPage() {
   )
 
   const renderStarterGrid = () => (
-    <div className="space-y-3">
-      {starterCourses.map((sc) => (
-        <div
-          key={sc.slug}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 p-3 dark:border-(--hub-border)"
-        >
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-600/10 text-xl">
-              {sc.emoji}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium">{sc.title}</div>
-              <div className="text-xs text-tertiary">{sc.subtitle}</div>
-              <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-tertiary">
-                <Badge>{sc.track}</Badge>
-                <Badge>{sc.level}</Badge>
-                <span>
-                  {sc.lessonsCount} lessons · {sc.exercisesCount} exercises · ~{sc.estHours}h
-                </span>
-              </div>
-            </div>
-          </div>
-          {sc.installed && sc.courseId ? (
-            <Link href={`/courses/course?id=${sc.courseId}`} className="btn-ghost text-xs">
-              <CheckCircle2 className="h-3.5 w-3.5 text-status-success-text" /> Open course
-            </Link>
-          ) : (
-            <button
-              className="btn text-xs"
-              disabled={installMutation.isPending}
-              onClick={() => installMutation.mutate([sc.slug])}
-            >
-              <Download className="h-3.5 w-3.5" /> Install
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
+    <StarterGrid courses={starterCourses} installMutation={installMutation} />
   )
 
   return (
@@ -221,11 +279,11 @@ export default function CoursesPage() {
       </ClayIn>
 
       {error && (
-        <p role="alert" className="text-sm text-danger-text">
-          Could not load courses: {error.message}
-        </p>
+        <Callout tone="danger" title="Could not load courses">
+          {error.message}
+        </Callout>
       )}
-      {isLoading && <p className="text-sm text-tertiary">Loading…</p>}
+      {isLoading && <CatalogSkeleton />}
 
       {courses && courses.length === 0 && (
         <ClayIn delayS={staggerDelay(1)}>
@@ -288,7 +346,7 @@ export default function CoursesPage() {
           layout as when the Link was the direct grid child. */}
       {[...byTrack.entries()].map(([track, list], i) => (
         <ClayIn key={track} as="section" className="space-y-2" delayS={staggerDelay(i)}>
-          <h2 className="text-sm font-semibold text-tertiary">{track}</h2>
+          <SectionHeader title={track} count={list.length} />
           <Stagger className="grid gap-2 md:grid-cols-2">
             {list.map((c, ci) => (
               <StaggerItem key={c.id} index={ci} className="grid">

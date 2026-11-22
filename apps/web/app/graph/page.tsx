@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * Knowledge graph — react-force-graph-2d dynamically imported (ssr: false,
  * per ENGINE-REFERENCE). Node click routes to the owner page; filter by type.
@@ -23,7 +25,19 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { PageHeader } from '@/ui'
+import { Callout, EmptyState, PageHeader, Skeleton } from '@/ui'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { SchemaDistillationStudio } from '@/components/SchemaDistillationStudio'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
@@ -91,7 +105,7 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
 
   return (
     <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 space-y-3">
-      <div className="flex items-center gap-2 text-sm font-semibold text-indigo-300">
+      <div className="flex items-center gap-2 text-sm font-semibold text-hub-accent">
         <Sparkles className="h-4 w-4" />
         Remedial check
       </div>
@@ -133,8 +147,8 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
         <div
           className={`flex items-start gap-2 rounded-lg p-2.5 text-xs ${
             r.result.blocked
-              ? 'border border-amber-500/30 bg-amber-500/10 text-amber-200'
-              : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              ? 'border border-amber-500/30 bg-amber-500/10 text-status-warning-text'
+              : 'border border-emerald-500/30 bg-emerald-500/10 text-status-success-text'
           }`}
         >
           <AlertTriangle
@@ -151,7 +165,7 @@ function RemedialCheckPanel({ targets }: { targets: string[] }) {
         </div>
       )}
       {r?.prereqs && r.prereqs.length > 0 && (
-        <p className="text-[11px] text-tertiary">
+        <p className="text-xs text-tertiary">
           Prerequisites:{' '}
           {r.prereqs
             .map((p) =>
@@ -202,6 +216,8 @@ export default function GraphPage() {
   const [sourceConcept, setSourceConcept] = useState('')
   const [targetConcept, setTargetConcept] = useState('')
   const [edgeError, setEdgeError] = useState<string | null>(null)
+  // Destructive confirm — dependency removal only fires from the dialog.
+  const [edgeToRemove, setEdgeToRemove] = useState<ConceptDependency | null>(null)
 
   const addEdgeMutation = useMutation({
     mutationFn: async (payload: { sourceConcept: string; targetConcept: string }) =>
@@ -252,9 +268,11 @@ export default function GraphPage() {
           : '/decks'
 
   const deps = prereqQuery.data?.dependencies ?? []
+  // GSAP moment: header + active view rise in (SSR-safe; reduced-motion skips).
+  const pageRef = useGsapReveal()
 
   return (
-    <div className="space-y-4">
+    <div ref={pageRef} className="space-y-4">
       <PageHeader
         title="Knowledge Graph"
         subtitle="Notes, skills, and adaptive prerequisite DAGs as one navigable web."
@@ -263,7 +281,7 @@ export default function GraphPage() {
             <button
               type="button"
               onClick={() => router.push('/constellation')}
-              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20 transition-all"
+              className="flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-500/20 dark:text-indigo-300"
             >
               <Sparkles className="h-3.5 w-3.5 text-status-warning-text" />
               <span>3D Constellation</span>
@@ -271,43 +289,21 @@ export default function GraphPage() {
             <button
               type="button"
               onClick={() => router.push('/mindmap')}
-              className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-800/80 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:text-white transition-all"
+              className="flex items-center gap-1.5 rounded-lg border border-(--hub-border) bg-(--hub-panel-2) px-3 py-1.5 text-xs font-medium text-secondary transition-colors hover:text-strong"
             >
               <span>Mind Map Studio</span>
             </button>
-            {/* View Switcher */}
-            <div className="flex rounded-lg border border-neutral-700 bg-neutral-900/60 p-1 text-xs font-medium">
-              <button
-                onClick={() => setViewMode('web')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
-                  viewMode === 'web'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-faint hover:text-neutral-200'
-                }`}
-              >
-                <Network className="h-3.5 w-3.5" /> Force Web
-              </button>
-              <button
-                onClick={() => setViewMode('prereq')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
-                  viewMode === 'prereq'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-faint hover:text-neutral-200'
-                }`}
-              >
-                <GitFork className="h-3.5 w-3.5" /> Prerequisite DAG & Remedial
-              </button>
-              <button
-                onClick={() => setViewMode('schema_studio')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors ${
-                  viewMode === 'schema_studio'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-faint hover:text-neutral-200'
-                }`}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-status-warning-text" /> Ausubel Schema Studio
-              </button>
-            </div>
+            {/* View Switcher — kit ChipPicker (choose-one mode row) */}
+            <ChipPicker<'web' | 'prereq' | 'schema_studio'>
+              label="Graph view"
+              items={[
+                { value: 'web', label: 'Force Web', icon: <Network /> },
+                { value: 'prereq', label: 'Prerequisite DAG & Remedial', icon: <GitFork /> },
+                { value: 'schema_studio', label: 'Ausubel Schema Studio', icon: <Sparkles /> },
+              ]}
+              value={viewMode}
+              onChange={setViewMode}
+            />
           </div>
         }
       />
@@ -321,9 +317,9 @@ export default function GraphPage() {
               {(Object.keys(KIND_COLOR) as GraphNode['kind'][]).map((k) => (
                 <button
                   key={k}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs border ${
+                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs [@media(pointer:coarse)]:min-h-11 ${
                     filters[k]
-                      ? 'border-neutral-700 bg-neutral-800 text-neutral-200'
+                      ? 'border-(--hub-border) bg-(--hub-panel-2) text-strong'
                       : 'border-transparent opacity-40 text-faint'
                   }`}
                   onClick={() => setFilters((f) => ({ ...f, [k]: !f[k] }))}
@@ -337,9 +333,15 @@ export default function GraphPage() {
           </div>
 
           <div className="panel h-[65vh] overflow-hidden">
-            {graph.nodes.length === 0 ? (
-              <div className="grid h-full place-items-center text-sm text-tertiary">
-                No nodes yet — capture notes or curriculum skills first.
+            {data === undefined ? (
+              <div className="grid h-full place-items-center" aria-hidden="true">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : graph.nodes.length === 0 ? (
+              <div className="grid h-full place-items-center p-6">
+                <EmptyState title="No nodes yet">
+                  Capture notes or curriculum skills first — they appear here automatically.
+                </EmptyState>
               </div>
             ) : (
               <ForceGraph2D
@@ -384,7 +386,7 @@ export default function GraphPage() {
                   })
                 }
               }}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 p-3"
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-(--hub-border) bg-(--hub-panel-2) p-3"
             >
               <div className="flex flex-1 items-center gap-2 min-w-[280px]">
                 <input
@@ -416,10 +418,9 @@ export default function GraphPage() {
             </form>
 
             {edgeError && (
-              <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-danger-text">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-danger-text" />
-                <span>{edgeError}</span>
-              </div>
+              <Callout tone="danger" title="Could not add dependency">
+                {edgeError}
+              </Callout>
             )}
 
             {/* Dependencies Table */}
@@ -428,28 +429,32 @@ export default function GraphPage() {
                 Registered Concept Prerequisite Chains ({deps.length})
               </h3>
 
-              {deps.length === 0 ? (
-                <div className="rounded-lg border border-neutral-800 p-6 text-center text-xs text-tertiary">
-                  No prerequisite relationships configured yet. Add dependencies above to enable
-                  remedial pauses.
+              {prereqQuery.isPending ? (
+                <div className="grid gap-2 sm:grid-cols-2" aria-hidden="true">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
                 </div>
+              ) : deps.length === 0 ? (
+                <EmptyState title="No prerequisite chains yet">
+                  Add dependencies above to enable remedial pauses.
+                </EmptyState>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {deps.map((d) => (
                     <div
                       key={d.id}
-                      className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/40 p-3 text-xs"
+                      className="flex items-center justify-between rounded-lg border border-(--hub-border) bg-(--hub-panel-2) p-3 text-xs"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-indigo-300">{d.sourceConcept}</span>
+                        <span className="font-semibold text-hub-accent">{d.sourceConcept}</span>
                         <ArrowRight className="h-3.5 w-3.5 text-tertiary" />
                         <span className="font-semibold text-status-success-text">
                           {d.targetConcept}
                         </span>
                       </div>
                       <button
-                        onClick={() => deleteEdgeMutation.mutate(d.id)}
-                        className="btn-ghost text-[10px] text-tertiary hover:text-danger-text"
+                        onClick={() => setEdgeToRemove(d)}
+                        className="btn-ghost text-xs text-tertiary hover:text-danger-text [@media(pointer:coarse)]:min-h-11"
                         title="Remove dependency"
                       >
                         Remove
@@ -465,6 +470,35 @@ export default function GraphPage() {
           </div>
         </div>
       )}
+
+      {/* Destructive confirm — DELETE fires only from the dialog action. */}
+      <AlertDialog
+        open={edgeToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setEdgeToRemove(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this prerequisite chain?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {edgeToRemove?.sourceConcept} will no longer gate {edgeToRemove?.targetConcept} — the
+              remedial pause disappears with it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep chain</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (edgeToRemove) deleteEdgeMutation.mutate(edgeToRemove.id)
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

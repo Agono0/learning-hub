@@ -4,8 +4,11 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Quote, Search, Star } from 'lucide-react'
 import { apiGet, apiSend } from '@/lib/transport'
-import { IconButton, PageHeader } from '@/ui'
+import { Button, Callout, EmptyState, IconButton, PageHeader, Skeleton } from '@/ui'
 import { ClayIn, Stagger, StaggerItem } from '@/lib/motion'
+import { ChipPicker } from '@/components/ui/chip-picker'
+import { SectionHeader } from '@/components/ui/section-header'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 interface QuoteRow {
   id: number
@@ -67,8 +70,12 @@ export default function QuotesPage() {
     })
   }, [all.data, tag, search, showFavorites])
 
+  // GSAP reveal (per-page motion mandate): the daily-quote hero's lines rise in
+  // on scroll — motionOK-gated; SSR/tests keep the static content.
+  const heroRef = useGsapReveal<HTMLDivElement>()
+
   return (
-    <ClayIn as="div" className="space-y-4">
+    <ClayIn as="div" className="space-y-5">
       <PageHeader
         icon={<Quote className="h-6 w-6 text-indigo-400" />}
         title="Quotes"
@@ -76,17 +83,19 @@ export default function QuotesPage() {
       />
 
       {/* daily quote hero */}
-      <div className="panel border-indigo-500/30 text-center">
-        {daily.data?.quote ? (
+      <div ref={heroRef} className="panel border-indigo-500/30 text-center">
+        {daily.isLoading ? (
+          <Skeleton className="mx-auto h-24 w-full max-w-md" />
+        ) : daily.data?.quote ? (
           <>
-            <p className="text-lg font-medium leading-relaxed text-neutral-100">
+            <p className="text-lg font-medium leading-relaxed text-strong">
               “{daily.data.quote.text}”
             </p>
             <p className="mt-3 text-sm text-indigo-300">— {daily.data.quote.author}</p>
             {daily.data.quote.context && (
               <p className="mt-1 text-xs text-tertiary">{daily.data.quote.context}</p>
             )}
-            <p className="mt-2 text-[10px] uppercase tracking-widest text-neutral-600">
+            <p className="mt-2 text-xs uppercase tracking-widest text-faint">
               quote of the day · {daily.data.date} · stable all day
             </p>
           </>
@@ -99,9 +108,7 @@ export default function QuotesPage() {
 
       {/* add quote */}
       <div className="panel space-y-2">
-        <p className="label flex items-center gap-2">
-          <Plus className="h-3.5 w-3.5" /> Add your own
-        </p>
+        <SectionHeader icon={Plus} title="Add your own" />
         <div className="grid gap-2 sm:grid-cols-2">
           <input
             className="input sm:col-span-2"
@@ -128,15 +135,15 @@ export default function QuotesPage() {
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
           />
         </div>
-        <button
-          className="btn"
+        <Button
+          variant="primary"
           onClick={() => addQuote.mutate()}
           disabled={
             addQuote.isPending || form.text.trim().length < 3 || form.author.trim().length < 2
           }
         >
           Save quote
-        </button>
+        </Button>
       </div>
 
       {/* filters */}
@@ -151,63 +158,77 @@ export default function QuotesPage() {
           />
         </div>
         <button
-          className={`rounded-full px-3 py-1 text-xs ${tag === 'all' ? 'bg-indigo-600 text-white' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-          onClick={() => setTag('all')}
-        >
-          all
-        </button>
-        {TAGS.map((t) => (
-          <button
-            key={t}
-            className={`rounded-full px-3 py-1 text-xs ${tag === t ? 'bg-indigo-600 text-white' : 'text-tertiary hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2)'}`}
-            onClick={() => setTag(t)}
-          >
-            {t}
-          </button>
-        ))}
-        <button
-          className={`ml-auto rounded-full px-3 py-1 text-xs ${showFavorites ? 'bg-amber-500/20 text-status-warning-text' : 'text-tertiary'}`}
+          type="button"
+          aria-pressed={showFavorites}
+          className={`ml-auto inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium transition-colors [@media(pointer:coarse)]:min-h-11 ${
+            showFavorites
+              ? 'bg-amber-500/20 text-status-warning-text ring-2 ring-(--ac-strong)'
+              : 'text-tertiary hover:text-body'
+          }`}
           onClick={() => setShowFavorites((v) => !v)}
         >
           <Star className="mr-1 inline h-3.5 w-3.5" /> favorites
         </button>
       </div>
+      <ChipPicker
+        label="Filter quotes by tag"
+        items={[{ value: 'all', label: 'All' }, ...TAGS.map((t) => ({ value: t, label: t }))]}
+        value={tag}
+        onChange={setTag}
+      />
 
       {/* library grid */}
-      <Stagger className="grid gap-3 sm:grid-cols-2">
-        {filtered.map((q) => (
-          <StaggerItem key={q.id} className="panel flex flex-col justify-between gap-2">
-            <p className="text-sm leading-relaxed text-neutral-200">“{q.text}”</p>
-            <div>
-              <p className="text-xs text-indigo-300">
-                — {q.author}
-                {q.isUserAdded ? ' (yours)' : ''}
-              </p>
-              {q.context && <p className="text-[11px] text-tertiary">{q.context}</p>}
-              <div className="mt-1 flex items-center justify-between">
-                <div className="flex flex-wrap gap-1">
-                  {(q.tags ?? []).map((t) => (
-                    <span
-                      key={t}
-                      className="rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-(--hub-panel-2) dark:text-faint"
-                    >
-                      {t}
-                    </span>
-                  ))}
+      {all.isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2" aria-hidden>
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+          <Skeleton className="h-28" />
+        </div>
+      ) : all.isError ? (
+        <Callout tone="danger" title="Couldn't load your quote library">
+          {(all.error as Error | null)?.message ?? 'Please try again in a moment.'}
+        </Callout>
+      ) : (
+        <Stagger className="grid gap-3 sm:grid-cols-2">
+          {filtered.map((q) => (
+            <StaggerItem key={q.id} className="panel flex flex-col justify-between gap-2">
+              <p className="text-sm leading-relaxed text-body">“{q.text}”</p>
+              <div>
+                <p className="text-xs text-indigo-300">
+                  — {q.author}
+                  {q.isUserAdded ? ' (yours)' : ''}
+                </p>
+                {q.context && <p className="text-xs text-tertiary">{q.context}</p>}
+                <div className="mt-1 flex items-center justify-between">
+                  <div className="flex flex-wrap gap-1">
+                    {(q.tags ?? []).map((t) => (
+                      <span
+                        key={t}
+                        className="rounded bg-neutral-200 px-1.5 py-0.5 text-xs text-secondary dark:bg-(--hub-panel-2) dark:text-faint"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <IconButton label="favorite" onClick={() => toggleFavorite.mutate(q)}>
+                    <Star
+                      className={`h-4 w-4 ${q.favorite ? 'fill-amber-400 text-status-warning-text' : 'text-faint'}`}
+                    />
+                  </IconButton>
                 </div>
-                <IconButton label="favorite" onClick={() => toggleFavorite.mutate(q)}>
-                  <Star
-                    className={`h-4 w-4 ${q.favorite ? 'fill-amber-400 text-status-warning-text' : 'text-neutral-600'}`}
-                  />
-                </IconButton>
               </div>
+            </StaggerItem>
+          ))}
+          {all.data && filtered.length === 0 && (
+            <div className="sm:col-span-2">
+              <EmptyState icon={<Quote className="h-6 w-6" aria-hidden />} title="Nothing matches">
+                No quotes match the current filters — clear the search, tag or favorites toggle.
+              </EmptyState>
             </div>
-          </StaggerItem>
-        ))}
-        {all.data && filtered.length === 0 && (
-          <p className="text-sm text-tertiary">Nothing matches — clear the filters.</p>
-        )}
-      </Stagger>
+          )}
+        </Stagger>
+      )}
     </ClayIn>
   )
 }

@@ -15,11 +15,15 @@ import React from 'react'
 import { Brain, Compass, Flame, Shield, Target } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { SelfRegulatedLearningStudio } from '@/components/SelfRegulatedLearningStudio'
 
 export default function SelfRegulatedLearningPage() {
+  // GSAP reveal (per-page motion mandate): the studio rises in on scroll —
+  // motionOK-gated; SSR/tests keep the static content.
+  const studioRef = useGsapReveal<HTMLDivElement>({ y: 12 })
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="space-y-5">
       {/* Page Header */}
       <PageHeader
         title="Self-Regulated Learning & Metacognitive Matrix Studio"
@@ -51,7 +55,9 @@ export default function SelfRegulatedLearningPage() {
       />
 
       {/* Main Studio Body */}
-      <SelfRegulatedLearningStudio />
+      <div ref={studioRef}>
+        <SelfRegulatedLearningStudio />
+      </div>
     </ClayIn>
   )
 }

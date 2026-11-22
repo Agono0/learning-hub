@@ -16,15 +16,20 @@ import { BarChart3, Calendar, ShieldCheck, Sparkles } from 'lucide-react'
 import { PageHeader } from '@/ui'
 import { WorkloadStudio } from '@/components/WorkloadStudio'
 import { ClayIn, staggerDelay } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 
 export default function WorkloadStudioPage() {
+  // GSAP moment: the three principle columns rise in with a capped stagger
+  // when the foundations panel scrolls into view (the panel itself is owned
+  // by ClayIn — one animation owner per element).
+  const principlesRef = useGsapReveal<HTMLDivElement>()
   return (
     // Entrance choreography: three blocks rise + fade in on the clay spring,
     // 40ms apart (`staggerDelay`), total <300ms (motion law: transform/opacity
     // only, gated by `motionOK`). The old `animate-fade-in` class is dropped —
     // ClayIn owns the entrance. SSR renders the final state; the animation is
     // client-only, so hydration output is unchanged.
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <div className="space-y-6">
       {/* Page Header — entrance beat 0 */}
       <ClayIn>
         <PageHeader
@@ -32,7 +37,7 @@ export default function WorkloadStudioPage() {
           subtitle="Forecast 14 to 90-day review loads, smooth spike volumes with safe interval fuzzing, schedule rest days, and recover overdue backlogs gently."
           actions={
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-300">
                 <BarChart3 className="h-3.5 w-3.5 text-indigo-400" />
                 <span>90-Day Forecast</span>
               </span>
@@ -57,19 +62,20 @@ export default function WorkloadStudioPage() {
       {/* Spaced Repetition Scheduling Foundations — entrance beat 2 */}
       <ClayIn
         delayS={staggerDelay(2)}
-        className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md"
+        className="rounded-2xl border border-(--hub-border) bg-(--hub-panel) p-6"
       >
         <div className="flex items-center gap-2.5 mb-3">
           <Sparkles className="h-5 w-5 text-indigo-400" />
-          <h3 className="text-sm font-bold text-white">
+          <h3 className="text-sm font-bold text-strong">
             Spaced Repetition & Cognitive Capacity Principles
           </h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-faint leading-relaxed">
+        <div
+          ref={principlesRef}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-faint leading-relaxed"
+        >
           <div className="space-y-1">
-            <span className="font-semibold text-neutral-200">
-              Spike Attenuation via Interval Fuzzing
-            </span>
+            <span className="font-semibold text-body">Spike Attenuation via Interval Fuzzing</span>
             <p>
               When many cards are introduced on the same day, their future reviews synchronize and
               create overwhelming volume spikes. Safe interval fuzzing applies a slight random phase
@@ -77,7 +83,7 @@ export default function WorkloadStudioPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-neutral-200">Easy Days & Rest-Period Routing</span>
+            <span className="font-semibold text-body">Easy Days & Rest-Period Routing</span>
             <p>
               Designated rest days prevent study burnout and habit failure. Reviews that fall on
               easy days are gently shifted to adjacent active days ahead of time, ensuring zero
@@ -85,7 +91,7 @@ export default function WorkloadStudioPage() {
             </p>
           </div>
           <div className="space-y-1">
-            <span className="font-semibold text-neutral-200">
+            <span className="font-semibold text-body">
               Backlog Recovery without Cognitive Fatigue
             </span>
             <p>

@@ -14,31 +14,33 @@
 
 import React from 'react'
 import { Grid3X3, Shuffle, Target } from 'lucide-react'
-import { PageHeader } from '@/ui'
+import { Badge, PageHeader } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { InterleavingStudio } from '@/components/InterleavingStudio'
 
 export default function InterleavingPage() {
+  // GSAP moment: the evidence section rises in on scroll (framer owns the
+  // page container; reduced-motion skips GSAP entirely).
+  const revealRef = useGsapReveal()
+
   return (
-    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 sm:p-6 lg:p-8">
+    <ClayIn as="div" className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       {/* Page Header */}
       <PageHeader
         title="Interleaved Problem Solving & Structural Invariance Studio"
         subtitle="Rohrer & Taylor's (2007) shuffled practice roughly doubles delayed test scores over blocked drills by forcing discrimination between look-alike problem categories. Identify the deep structural invariant — never the surface story."
         actions={
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-status-success-text">
-              <Shuffle className="h-3.5 w-3.5 text-status-success-text" />
-              <span>Rohrer (2007)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
-              <Target className="h-3.5 w-3.5 text-indigo-400" />
-              <span>Kornell-Bjork (2008)</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-bold text-status-info-text">
-              <Grid3X3 className="h-3.5 w-3.5 text-status-info-text" />
-              <span>Contrast Matrix</span>
-            </span>
+            <Badge tone="success" icon={<Shuffle className="h-3.5 w-3.5" />}>
+              Rohrer (2007)
+            </Badge>
+            <Badge tone="accent" icon={<Target className="h-3.5 w-3.5" />}>
+              Kornell-Bjork (2008)
+            </Badge>
+            <Badge tone="cyan" icon={<Grid3X3 className="h-3.5 w-3.5" />}>
+              Contrast Matrix
+            </Badge>
           </div>
         }
       />
@@ -47,7 +49,10 @@ export default function InterleavingPage() {
       <InterleavingStudio />
 
       {/* Learning Science Foundations Card */}
-      <div className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md">
+      <div
+        ref={revealRef}
+        className="rounded-2xl border border-neutral-200/60 dark:border-(--hub-border)/60 bg-white/40 dark:bg-(--hub-panel)/40 p-6 backdrop-blur-md"
+      >
         <div className="mb-3 flex items-center gap-2.5">
           <Shuffle className="h-5 w-5 text-ac-text" />
           <h3 className="text-sm font-bold text-strong">

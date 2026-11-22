@@ -32,7 +32,7 @@ export default function ErrorPage({
           <p className="mt-1 text-sm text-tertiary">
             An unexpected error interrupted this page. Your data is safe — try again.
           </p>
-          {error.digest && <p className="mt-1 text-xs text-neutral-600">digest: {error.digest}</p>}
+          {error.digest && <p className="mt-1 text-xs text-faint">digest: {error.digest}</p>}
         </div>
         <div className="flex items-center justify-center gap-2">
           <button className="btn" onClick={reset}>

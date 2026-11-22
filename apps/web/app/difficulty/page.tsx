@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * /difficulty — Desirable-Difficulty Audit Studio (Dunlosky et al. 2013).
  *
@@ -12,8 +14,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { ClipboardList, Sparkles } from 'lucide-react'
 import { DifficultyAuditStudio, type MeasuredPayload } from '@/components/DifficultyAuditStudio'
-import { PageHeader, Panel } from '@/ui'
+import { Callout, PageHeader, Panel, Skeleton } from '@/ui'
 import { ClayIn } from '@/lib/motion'
+import { useGsapReveal } from '@/lib/useGsapReveal'
 import { apiGet, apiSend } from '@/lib/transport'
 import type { DifficultyAuditReport } from '@learning-hub/core'
 
@@ -55,6 +58,10 @@ export default function DifficultyPage() {
     return res.ok ? res.report : null
   }
 
+  // GSAP moment: the evidence section rises in on scroll (framer owns the page
+  // container; reduced-motion skips GSAP entirely).
+  const revealRef = useGsapReveal()
+
   return (
     <ClayIn as="div" className="space-y-4 pb-8">
       <PageHeader
@@ -63,15 +70,17 @@ export default function DifficultyPage() {
       />
 
       {q.isError ? (
-        <Panel title="Could not load telemetry">
-          <p className="text-sm text-danger-text dark:text-danger-text">
-            The measured audit failed to load. Review some cards and reload — the audit needs
-            review-log telemetry for spacing and interleaving.
-          </p>
-        </Panel>
+        <Callout tone="danger" title="Could not load telemetry">
+          The measured audit failed to load. Review some cards and reload — the audit needs
+          review-log telemetry for spacing and interleaving.
+        </Callout>
       ) : q.isLoading || !q.data ? (
         <Panel title="Reading your review log…">
-          <div className="h-24 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />
+          <div className="space-y-2" aria-hidden="true">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-4/5" />
+            <Skeleton className="h-6 w-3/5" />
+          </div>
         </Panel>
       ) : (
         <DifficultyAuditStudio
@@ -85,7 +94,7 @@ export default function DifficultyPage() {
       )}
 
       {/* Evidence reference */}
-      <section className="space-y-3" aria-label="Evidence reference">
+      <section ref={revealRef} className="space-y-3" aria-label="Evidence reference">
         <h2 className="flex items-center gap-2 px-1 text-sm font-bold text-neutral-700 dark:text-neutral-200">
           <ClipboardList className="h-4 w-4 text-tertiary" />
           The evidence table this audit scores against
