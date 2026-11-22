@@ -34,8 +34,7 @@ export function applyOrder(ids: number[], order: TaskOrder): number[] {
 export function moveTo(ids: number[], id: number, targetIndex: number): TaskOrder {
   const without = ids.filter((x) => x !== id)
   const clamped = Math.max(0, Math.min(targetIndex, without.length))
-  const next = [...without.slice(0, clamped), id, ...without.slice(clamped)]
-  return densify(next)
+  return [...without.slice(0, clamped), id, ...without.slice(clamped)]
 }
 
 /**
@@ -44,7 +43,7 @@ export function moveTo(ids: number[], id: number, targetIndex: number): TaskOrde
  */
 export function nudge(ids: number[], id: number, direction: -1 | 1): TaskOrder {
   const idx = ids.indexOf(id)
-  if (idx < 0) return densify(ids)
+  if (idx < 0) return [...ids]
   const target = Math.max(0, Math.min(ids.length - 1, idx + direction))
   return moveTo(ids, id, target)
 }
@@ -55,14 +54,13 @@ export function nudge(ids: number[], id: number, direction: -1 | 1): TaskOrder {
  */
 export function insertAt(ids: number[], id: number, targetIndex: number = ids.length): TaskOrder {
   const clamped = Math.max(0, Math.min(targetIndex, ids.length))
-  const next = [...ids.slice(0, clamped), id, ...ids.slice(clamped)]
-  return densify(next)
+  return [...ids.slice(0, clamped), id, ...ids.slice(clamped)]
 }
 
-/** Remove an id and return the re-densified order (no-op when absent). */
+/** Remove an id and return the remaining order (no-op when absent). */
 export function removeId(ids: number[], id: number): TaskOrder {
-  if (!ids.includes(id)) return densify(ids)
-  return densify(ids.filter((x) => x !== id))
+  if (!ids.includes(id)) return [...ids]
+  return ids.filter((x) => x !== id)
 }
 
 /**
@@ -71,12 +69,17 @@ export function removeId(ids: number[], id: number): TaskOrder {
  * normal — a filtered view reorders what it can see).
  */
 export function orderPatchFor(
-  tasks: Array<Pick<import('./index').TaskItem, 'id' | 'order'>>,
+  tasks: Array<Pick<import('./shared').TaskItem, 'id' | 'order'>>,
   order: TaskOrder,
 ): Array<{ id: number; order: number }> {
-  const index = new Map(order.map((id, i) => [id, i]))
-  return tasks
-    .filter((t) => index.has(t.id))
-    .map((t) => ({ id: t.id, order: index.get(t.id) ?? t.order }))
-    .filter((p, i, all) => all.findIndex((x) => x.id === p.id) === i)
+  const byId = new Map(tasks.map((t) => [t.id, t] as const))
+  const seen = new Set<number>()
+  const patches: Array<{ id: number; order: number }> = []
+  for (let i = 0; i < order.length; i++) {
+    const id = order[i] as number
+    if (seen.has(id)) continue
+    seen.add(id)
+    if (byId.has(id)) patches.push({ id, order: i })
+  }
+  return patches
 }
