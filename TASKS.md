@@ -104,7 +104,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-27 | SP | Calendar import: iCal feed subscription (extend core/ics.ts) + CalDAV VTODO read | core + handler + UI | packages/core/src/ics.ts parser, calendar/import handler + registry, lib/calendar-feeds + CalendarSubscriptions on planner | S3-26 |
 - [x] S3-28 | SP | Worklog page: history day/week, inline corrections, CSV export UI | page + tests | apps/web/app/worklog/page.tsx (consumes S3-18 endpoints; handoff notes the contract) | S3-18 |
 - [ ] S3-29 | SP | Finish-day flow: summary, auto-archive, plan-tomorrow prompt, celebration | page flow + tests | apps/web/app/tasks/finish-day | S3-18, S3-11 |
-- [ ] S3-30 | SP | Metrics: per-day records, aggregates, line charts (hand-rolled SVG), activity heatmap | page + tests | apps/web/app/metrics/page.tsx + core/metrics.ts | S3-19 |
+- [x] S3-30 | SP | Metrics: per-day records, aggregates, line charts (hand-rolled SVG), activity heatmap | page + tests | apps/web/app/metrics/page.tsx + core/metrics.ts (fed by landed S3-18/analytics endpoints; S3-19 can add series) | S3-19 |
 - [ ] S3-31 | SP | Habits/counters upgrade: simple counters with streaks + charts (existing habits kept) | core + UI + tests | packages/core/src/tasks/counters.ts, habits page upgrade | S3-19 |
 - [ ] S3-32 | SP | Focus modes: Pomodoro/Flowtime/Countdown strategies on existing timer; task-tracking bidirectional; break reminders | core + UI + tests | packages/core/src/tasks/focus-modes.ts, focus page integration | S3-10 |
 - [ ] S3-33 | SP | Idle detection (desktop Tauri): subtract idle, classify dialog; suppress during Max Focus | Rust command + core + UI | apps/native/src-tauri/src/idle.rs, core | S3-32 |
@@ -166,7 +166,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [x] S3-86 | SP | Core: mention/@ config for task notes | unit tests | core/tasks | S3-03
 - [ ] S3-87 | SP | Core: markdown paste service (list → tasks) end-to-end | unit tests | core/tasks/markdown.ts | S3-36
 - [ ] S3-88 | SP | Core: worklog week/month rollups + leaf-only totals | unit tests | core/tasks/worklog.ts | S3-10
-- [ ] S3-89 | SP | Core: activity heatmap data builder | unit tests | metrics | S3-30
+- [x] S3-89 | SP | Core: activity heatmap data builder | unit tests | packages/core/src/metrics.ts buildActivityHeatmap + tests | S3-30
 - [ ] S3-90 | SP | Core: streak-duration calc for counters | unit tests | counters | S3-31
 - [x] S3-91 | SP | Handlers: simple-counters REST (list/get/set/increment) | integration tests | handlers | S3-15
 - [x] S3-92 | SP | Handlers: task-repeat-cfg CRUD routes | integration tests | handlers | S3-15
