@@ -416,3 +416,6 @@ export * from './deadlines'
 
 // Priority model (S3-64) — re-exported so hosts consume one entry.
 export * from './priority'
+
+// Today membership (S3-65) — re-exported so hosts consume one entry.
+export * from './today'
