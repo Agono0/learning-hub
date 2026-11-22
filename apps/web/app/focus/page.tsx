@@ -53,6 +53,7 @@ import { EmergencyDialerTile } from '@/components/EmergencyDialerTile'
 import { MaxFocusExitGate } from '@/components/MaxFocusExitGate'
 import { MaxFocusPrecheck } from '@/components/MaxFocusPrecheck'
 import { MaxFocusAllowlistEditor } from '@/components/MaxFocusAllowlistEditor'
+import { MaxFocusSessionHistory } from '@/components/MaxFocusSessionHistory'
 import { MaxFocusReportCard } from '@/components/MaxFocusReportCard'
 import {
   DEVICE_OWNER_ADB_COMMAND,
@@ -1247,6 +1248,11 @@ export default function FocusPage() {
             </>
           )}
         </div>
+      </Reveal>
+
+      {/* ─── MAX FOCUS HISTORY (M2-25) ───────────────────────────────────── */}
+      <Reveal>
+        <MaxFocusSessionHistory />
       </Reveal>
 
       {/* ─── DISTRACTION APPS (F-08③) ───────────────────────────────────── */}
