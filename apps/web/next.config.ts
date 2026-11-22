@@ -1,4 +1,19 @@
+import { readFileSync } from 'node:fs'
 import type { NextConfig } from 'next'
+
+/**
+ * App version baked into the bundle for Settings > Updates (O1-14). Read from
+ * `apps/web/package.json` at config time; falls back to `''` (the UI shows a
+ * neutral "dev" label) when the file cannot be read.
+ */
+function appVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync('./package.json', 'utf8')) as { version?: string }
+    return pkg.version ?? ''
+  } catch {
+    return ''
+  }
+}
 
 /**
  * ONE app, two build targets — selected by LEARNING_HUB_TARGET:
@@ -41,6 +56,8 @@ const nextConfig: NextConfig = {
     // store builds (self-update off); unset/unknown → 'nightly', self-update
     // on (sideload/dev default). Read once in src/lib/updates.ts.
     LH_UPDATE_CHANNEL: process.env.LH_UPDATE_CHANNEL ?? '',
+    // App version shown in Settings > Updates (O1-14); '' → "dev" label.
+    LH_APP_VERSION: appVersion(),
   },
   turbopack: { resolveAlias: browserAliases },
   ...(isTauri

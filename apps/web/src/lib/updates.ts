@@ -23,7 +23,12 @@
  * Runtime-neutral: no node builtins — `process.env.X` references are replaced
  * at build time (same pattern as `transport.ts`).
  */
-import { updateChannelSchema, type UpdateChannel } from '@learning-hub/core/update'
+import {
+  updateChannelSchema,
+  updateSettingsSchema,
+  type UpdateChannel,
+  type UpdateSettings,
+} from '@learning-hub/core/update'
 
 /**
  * Build-time env variable carrying the update flavor (`LH_UPDATE_CHANNEL`).
@@ -93,3 +98,63 @@ export const UPDATE_BUILD_FLAVOR: UpdateBuildFlavor = BUILD_STATE.flavor
  * runtime.
  */
 export const SELF_UPDATE_ENABLED: boolean = BUILD_STATE.selfUpdateEnabled
+
+/**
+ * The app version baked at build time from `apps/web/package.json` (wired
+ * through `next.config.ts` `env` → `LH_APP_VERSION`). Empty string when the
+ * version could not be read at config time (e.g. some vitest runs) — UI
+ * should fall back to a neutral "dev" label in that case.
+ */
+export const APP_VERSION: string = process.env.LH_APP_VERSION ?? ''
+
+// ── Device-local update settings ────────────────────────────────────────────
+
+/**
+ * localStorage key for the device-local update settings
+ * (`{ channel, autoCheckIntervalHours, wifiOnly, lastCheckedAt? }`).
+ *
+ * Update policy is intentionally **per device**, like the sync roster
+ * (`device.ts`): it controls THIS device's updater, and until the settings
+ * row gains update columns (requested in `docs/SHARED_CHANGES.md`) there is
+ * no server home for it. The device-local record is validated through the
+ * core {@link updateSettingsSchema} at every read — zod at the boundary — so
+ * a corrupted or stale record silently falls back to the calm defaults
+ * instead of poisoning the updater.
+ */
+const UPDATE_SETTINGS_KEY = 'lh-update-settings'
+
+/**
+ * Read the device-local update settings.
+ *
+ * Hydration-safe: a plain function guarded on `window` (never a module-level
+ * read), mirroring `device.ts`. Returns the schema defaults when storage is
+ * unavailable (SSR, tests, private-mode quota errors) or the stored JSON does
+ * not validate — the user-visible behavior is "settings reset to defaults",
+ * never a crash.
+ */
+export function loadUpdateSettings(): UpdateSettings {
+  if (typeof window === 'undefined') return updateSettingsSchema.parse({})
+  try {
+    const raw = window.localStorage.getItem(UPDATE_SETTINGS_KEY)
+    const parsed = updateSettingsSchema.safeParse(raw ? JSON.parse(raw) : {})
+    return parsed.success ? parsed.data : updateSettingsSchema.parse({})
+  } catch {
+    return updateSettingsSchema.parse({})
+  }
+}
+
+/**
+ * Persist the device-local update settings (validated through the core
+ * schema first — invalid input throws rather than being written). Fails
+ * silently on storage errors (Safari private mode) because there is no
+ * recovery action; the next {@link loadUpdateSettings} returns defaults.
+ */
+export function saveUpdateSettings(settings: UpdateSettings): void {
+  if (typeof window === 'undefined') return
+  const valid = updateSettingsSchema.parse(settings)
+  try {
+    window.localStorage.setItem(UPDATE_SETTINGS_KEY, JSON.stringify(valid))
+  } catch {
+    // storage unavailable (private mode / quota) — settings stay session-local
+  }
+}

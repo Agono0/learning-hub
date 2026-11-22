@@ -75,6 +75,7 @@ import { permissionSummaryLine } from '@learning-hub/core/permissions'
 import Link from 'next/link'
 import { SemanticIndexPanel } from '@/components/SemanticIndexPanel'
 import { PushSettingsPanel } from '@/components/PushSettingsPanel'
+import { UpdatesSettingsSection } from '@/components/UpdatesSettingsSection'
 import { apiGet, apiSend } from '@/lib/transport'
 import {
   Badge,
@@ -254,6 +255,7 @@ const SECTION_ANCHORS = [
   { id: 'settings-fsrs', label: 'FSRS' },
   { id: 'settings-reminders', label: 'Reminders' },
   { id: 'settings-permissions', label: 'Permissions' },
+  { id: 'settings-updates', label: 'Updates' },
   { id: 'settings-online', label: 'Online' },
   { id: 'settings-power-tools', label: 'Power tools' },
   { id: 'settings-anki', label: 'Anki' },
@@ -1103,6 +1105,11 @@ export default function SettingsPage() {
         </section>
       </Reveal>
 
+      {/* ── Updates (O1-14): channel + cadence, device-local (audit L7a) ── */}
+      <Reveal>
+        <UpdatesSettingsSection />
+      </Reveal>
+
       {/* ── Low-frequency sections (audit L6): collapsed accordion so the page
           scans; the jump chips expand an item before scrolling to it. ── */}
       <Reveal>
@@ -1125,7 +1132,7 @@ export default function SettingsPage() {
             Save settings
           </Button>
           <p className="text-xs text-tertiary">
-            Quick-HUD style and Anki sync mode are stored on this device only.
+            Quick-HUD style, Anki sync mode and update settings are stored on this device only.
           </p>
         </div>
       </Reveal>
@@ -1980,5 +1987,6 @@ function WorldSettingsSection() {
  * | Online identity    | section button → `POST /api/online/identity` + toast              |
  * | Quick-HUD style    | device-local: `localStorage['lh-quickhud-style']` (audit L7a)     |
  * | Anki sync mode     | device-local: `localStorage['lh-anki-mode']` (audit L7a)          |
+ * | Updates (O1-14)    | device-local: `localStorage['lh-update-settings']` + core schema  |
  * | 3D world settings  | instant per-change `POST /api/world/settings` + toast (audit L7b) |
  */

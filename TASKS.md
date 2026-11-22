@@ -16,16 +16,16 @@ Decisions locked (Phase 1): Android Play+sideload (Play builds disable self-upda
 - [x] O1-02 | OTA | Rust update module skeleton: fetch pointer+manifest, Ed25519/minisign verify, sha256 per-file verify | cargo checks via CI; unit test for verify (known key fixture) | apps/native/src-tauri/src/update.rs, Cargo.toml (minisign-verify, sha2, ureq or use plugin http) | O1-01 |
 - [x] O1-03 | OTA | Rust A/B slots in app_data_dir: download to inactive slot, atomic pointer file (tmp+rename), list current | unit-testable helpers + tests | apps/native/src-tauri/src/update.rs | O1-02 |
 - [x] O1-04 | OTA | Custom URI-scheme protocol serving active slot with fallback to bundled AssetResolver; capabilities rebinding | dev-served page loads from slot when set, bundled otherwise | apps/native/src-tauri/src/lib.rs, src/update.rs, capabilities/*.json | O1-03 |
-- [ ] O1-05 | OTA | Boot-confirm rollback: webview ready invoke; N missed confirmations → flip pointer back + log | unit test of confirm counter | apps/native/src-tauri/src/update.rs, lib.rs | O1-04 |
+- [~W1] O1-05 | OTA | Boot-confirm rollback: webview ready invoke; N missed confirmations → flip pointer back + log | unit test of confirm counter | apps/native/src-tauri/src/update.rs, lib.rs | O1-04 |
 - [ ] O1-06 | OTA | Apply-on-restart + never-during-Max-Focus: update service refuses apply while session active (core gate) | unit tests | packages/core/src/update + focus-lock interplay, apps/native/src-tauri/src/update.rs | O1-03, M2-01 |
 - [x] O1-07 | OTA | Manifest generator script: hash .next-tauri → manifest.json (files{path,sha256,size}), emit changed-file patch set vs previous manifest | script runs, fixtures tested | scripts/update-manifest.mjs, tests | O1-01 |
 - [x] O1-08 | OTA | CI: nightly workflow — build web+native, generate+sign manifest, diff vs previous release, tag nightly-YYYYMMDD-<sha>, upload assets + pointer | workflow yaml valid; dry-run artifact list | .github/workflows/nightly.yml | O1-07 |
-- [~W3] O1-09 | OTA | Sign keypair: generate Ed25519 minisign keys; pubkey committed to tauri.conf + repo; private key documented as Actions secret (user adds) | pubkey in repo, docs/updates.md key section | apps/native/src-tauri/tauri.conf.json (LEAD), docs/updates.md | O1-02 |
+- [x] O1-09 | OTA | Sign keypair: generate Ed25519 minisign keys; pubkey committed to tauri.conf + repo; private key documented as Actions secret (user adds) | pubkey in repo, docs/updates.md key section | apps/native/src-tauri/tauri.conf.json (LEAD), docs/updates.md | O1-02 |
 - [ ] O1-10 | OTA | tauri-plugin-updater wiring for Windows native layer: conf + capability + Rust init + signature artifacts (createUpdaterArtifacts) | conf valid; updater builder reachable in dev | apps/native/src-tauri/tauri.conf.json, Cargo.toml, lib.rs, capabilities (LEAD-applied) | O1-02 |
 - [x] O1-11 | OTA | Promote workflow: manual dispatch nightly→beta/stable (re-tag pointer, keep artifacts) | workflow yaml + docs | .github/workflows/promote.yml | O1-08 |
 - [x] O1-12 | OTA | Play channel flag: build-time env LH_UPDATE_CHANNEL=play bakes self-update off; sideload default on | unit test of flag reader both ways | apps/web/src/lib/updates.ts (client service), next.config env, docs | O1-01 |
 - [ ] O1-13 | OTA | Android sideload install: Kotlin PackageInstaller session for full per-ABI APK; REQUEST_INSTALL_PACKAGES; consent flow | code + docs; CI compiles | apps/native/src-tauri/gen/android/.../MaxUpdatePlugin.kt + manifest, Cargo bridge | O1-02 |
-- [~W2] O1-14 | OTA | Settings > Updates UI: stream picker (nightly/beta/stable), check-now, auto-check interval, Wi-Fi-only (Android), current version + changelog panel | page renders SSR-safe; integration test | apps/web/app/settings/page.tsx (Updates section), apps/web/src/lib/updates.ts | O1-12 |
+- [x] O1-14 | OTA | Settings > Updates UI: stream picker (nightly/beta/stable), check-now, auto-check interval, Wi-Fi-only (Android), current version + changelog panel | page renders SSR-safe; integration test | apps/web/app/settings/page.tsx (Updates section), apps/web/src/lib/updates.ts | O1-12 |
 - [ ] O1-15 | OTA | Update-available banner + apply prompt (respect ask-first; shows size: patch vs full) | component + test | apps/web/src/components/UpdateBanner.tsx | O1-14 |
 - [ ] O1-16 | OTA | Rust download: resumable ranges, progress events to webview | unit tests for range math | apps/native/src-tauri/src/update.rs | O1-03 |
 - [ ] O1-17 | OTA | Rollback test: boot-confirm flip-back covered; slot pointer atomicity test | tests green | apps/native/src-tauri/src/update.rs tests | O1-05 |
@@ -181,7 +181,7 @@ Schema batches are LEAP-applied by lead after worker writes migration file.
 - [ ] O1-25 | OTA | Update check interval + Wi-Fi-only honored by Rust scheduler | code + tests | update.rs | O1-14
 - [ ] O1-26 | OTA | Changelog fetch (release notes body) rendered in Settings | UI + lib | updates.ts + settings | O1-14
 - [ ] O1-27 | OTA | Update progress events → banner progress bar | glue | UpdateBanner | O1-16
-- [ ] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
+- [~W3] O1-28 | OTA | Nightly pointer schema validation client-side (reject unknown fields gracefully) | tests | core/update | O1-01
 - [ ] O1-29 | OTA | Desktop tray/notification "update ready, restart to apply" | UI | UpdateBanner | O1-15
 - [ ] O1-30 | OTA | Android: Play-flavor build task in native.yml producing play-flagged APKs | workflow | native.yml (LEAD) | O1-12
 - [ ] M2-32 | LOCK | Android: per-tier permission checklist state machine (what's granted vs needed) | core + UI | focus-lock + focus page | M2-16
