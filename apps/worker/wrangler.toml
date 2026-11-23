@@ -8,21 +8,24 @@ enabled = true
 [observability.logs]
 enabled = true
 
-# D1 Database Binding
-[[d1_databases]]
-binding = "DB"
-database_name = "learning-hub-d1"
-database_id = "local-d1-hub"
-migrations_dir = "migrations"
-
-# Durable Objects Bindings
-[durable_objects]
-bindings = [
-  { name = "STUDY_ROOM", class_name = "StudyRoom" },
-  { name = "BOSS_RAID", class_name = "BossRaid" }
-]
-
-[[migrations]]
-tag = "v1"
-new_classes = ["StudyRoom", "BossRaid"]
+# The following bindings are for community library & live study rooms.
+# Commented out for crash-reporter-only mode.
+#
+# # D1 Database Binding
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "learning-hub-d1"
+# database_id = "local-d1-hub"
+# migrations_dir = "migrations"
+#
+# # Durable Objects Bindings
+# [durable_objects]
+# bindings = [
+#   { name = "STUDY_ROOM", class_name = "StudyRoom" },
+#   { name = "BOSS_RAID", class_name = "BossRaid" }
+# ]
+#
+# [[migrations]]
+# tag = "v1"
+# new_classes = ["StudyRoom", "BossRaid"]
 

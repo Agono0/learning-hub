@@ -11,9 +11,9 @@ import { handleCrashTelemetry } from './telemetry'
 export { StudyRoom, BossRaid }
 
 export interface Env {
-  DB: D1Database
-  STUDY_ROOM: DurableObjectNamespace
-  BOSS_RAID: DurableObjectNamespace
+  DB?: D1Database
+  STUDY_ROOM?: DurableObjectNamespace
+  BOSS_RAID?: DurableObjectNamespace
   GITHUB_ISSUE_TOKEN?: string
   GITHUB_REPO?: string
 }
@@ -149,6 +149,9 @@ export default {
           pomodoroBreakMinutes?: number
         }
 
+        if (!env.STUDY_ROOM) {
+          return jsonResponse({ error: 'Study rooms are not enabled on this worker' }, 503)
+        }
         const code = makeRoomCode()
         const id = env.STUDY_ROOM.idFromName(code)
         const roomObj = env.STUDY_ROOM.get(id)
@@ -174,6 +177,9 @@ export default {
       // WebSocket Upgrade: /api/v1/rooms/:code/ws
       const roomWsMatch = path.match(/^\/api\/v1\/rooms\/([A-Z0-9]{6})\/ws$/)
       if (roomWsMatch) {
+        if (!env.STUDY_ROOM) {
+          return jsonResponse({ error: 'Study rooms are not enabled on this worker' }, 503)
+        }
         const code = roomWsMatch[1]!
         const id = env.STUDY_ROOM.idFromName(code)
         const roomObj = env.STUDY_ROOM.get(id)
@@ -183,6 +189,9 @@ export default {
       // Room Info: /api/v1/rooms/:code/info
       const roomInfoMatch = path.match(/^\/api\/v1\/rooms\/([A-Z0-9]{6})\/info$/)
       if (roomInfoMatch) {
+        if (!env.STUDY_ROOM) {
+          return jsonResponse({ error: 'Study rooms are not enabled on this worker' }, 503)
+        }
         const code = roomInfoMatch[1]!
         const id = env.STUDY_ROOM.idFromName(code)
         const roomObj = env.STUDY_ROOM.get(id)
@@ -193,6 +202,9 @@ export default {
 
       // ── Party Boss Raids ─────────────────────────────────────────────────
       if (path === '/api/v1/raids/create' && request.method === 'POST') {
+        if (!env.BOSS_RAID) {
+          return jsonResponse({ error: 'Boss raids are not enabled on this worker' }, 503)
+        }
         const body = ((await request.json().catch(() => ({}))) ?? {}) as {
           bossKey?: string
         }
@@ -224,6 +236,9 @@ export default {
       // WebSocket Upgrade: /api/v1/raids/:id/ws
       const raidWsMatch = path.match(/^\/api\/v1\/raids\/([a-zA-Z0-9_-]+)\/ws$/)
       if (raidWsMatch) {
+        if (!env.BOSS_RAID) {
+          return jsonResponse({ error: 'Boss raids are not enabled on this worker' }, 503)
+        }
         const raidId = raidWsMatch[1]!
         const id = env.BOSS_RAID.idFromName(raidId)
         const raidObj = env.BOSS_RAID.get(id)
