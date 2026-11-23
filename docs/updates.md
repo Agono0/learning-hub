@@ -71,12 +71,39 @@ the new build never reports ready.
 
 ## Platform matrix
 
-| Platform         | Update path                                                                                             | Self-update?                                                     |
-| ---------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Windows          | NSIS/MSI bootstrap + `tauri-plugin-updater` (O1-10) for the native shell; delta slots for the web layer | On (ask-first)                                                   |
-| Android sideload | Full per-ABI APK from GitHub Releases; bsdiff delta APK stretch goal (O1-21)                            | On (ask-first)                                                   |
-| Android Play     | Store updates only                                                                                      | **Off** — `LH_UPDATE_CHANNEL=play` bakes self-update off (O1-12) |
-| Web (browser)    | Not applicable — reload is the update                                                                   | n/a                                                              |
+| Platform         | Update path                                                                                                                                                                    | Self-update?                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Windows          | `tauri-plugin-updater` (O1-10) reads the signed `latest.json` on `channel-pointers` and runs the NSIS installer (passive); the shell version advances `0.1.<run>` each nightly | On (ask-first)                                                   |
+| Android sideload | Full per-ABI APK published as a nightly release asset (`androidPackages` in the manifest); bsdiff delta APK stretch goal (O1-21)                                               | On (ask-first)                                                   |
+| Android Play     | Store updates only                                                                                                                                                             | **Off** — `LH_UPDATE_CHANNEL=play` bakes self-update off (O1-12) |
+| Web (browser)    | Not applicable — reload is the update                                                                                                                                          | n/a                                                              |
+
+## Client wiring (the last mile)
+
+The check → prompt → apply chain is driven by **`UpdateController`**
+(`apps/web/src/components/UpdateController.tsx`), mounted once in `AppShell`
+next to `OfflineBanner`. On the native shell it:
+
+1. invokes `update_confirm_boot_ready` so a healthy active slot never accrues
+   toward the rollback budget (O1-05);
+2. starts `startUpdateCheckScheduler` (O1-25 — Play gate, interval, Wi-Fi policy);
+3. on an offer, fetches the **signature-verified** manifest through the Rust
+   `update_fetch_verified_manifest` command (minisign against the committed
+   public key — an unverifiable manifest is never offered) and builds a sized
+   `UpdateOffer` for the host;
+4. renders the ask-first `UpdateBanner` (O1-15) and, on consent, runs the host
+   apply path: **Android** downloads the ABI-matched APK via
+   `update_download_android_apk` (sha256-checked, resumable) then
+   `installSideloadApk` (PackageInstaller consent, O1-13); **Windows** runs the
+   official updater plugin against `latest.json`.
+
+**A/B web-slot promotion is deliberately not wired yet.** Serving a slot changes
+the webview origin and would relocate the OPFS database (§"Slots & the webview
+origin", rule 10 adjacency). Until an origin-independent storage path or a
+first-boot migration lands, full-package updates (APK / installer) are the only
+safe apply path on both native hosts. The Rust slot machinery (`apply_patch_bundle`,
+`promote_inactive_slot_if_allowed`) and the manifest's `patches` remain in place
+for when that migration ships.
 
 ## Android sideload consent flow (O1-13)
 
@@ -304,16 +331,34 @@ two orders of magnitude under target and demonstrates the mechanics (only the
 changed file is re-zipped); the authoritative number is still the first CI
 dispatch on the real export.
 
-### Deviation analysis (2026-11-23 probe)
+### Deviation analysis (2026-11-23 probe, corrected)
 
-The 2.3 MB worst case is the root-layout edit: every page chunk imports the
-root layout, so one line there re-hashes most of the export and the bundle
-re-zips all of them. Typical leaf changes (a page component, a widget) hash
-independently and stay near the fixture's 0.2 KB scale. Mitigation path if
-worst cases matter in practice: stabilize Next module IDs across builds
-(`optimizeModuleIds`-style config or an extraction layer) so layout-only
-edits stop cascading — tracked as a future optimization, not a blocker: a
-2.3 MB hot update is still ~60× smaller than the 55 MB full export.
+**Root cause found and fixed: the random Next.js build ID.** The original
+analysis blamed a root-layout module cascade, but the manifest diff of two
+nightlies separated by a _docs-only_ commit (`nightly-20261123-10052df` →
+`nightly-20261123-c7a2fa3`) showed **492 changed files — every one a prerendered
+`.html` or RSC `.txt` payload — and zero changed JS chunks**. The build ID had
+gone `QyjipEMiiGrtwab0rFTy4` → `qFEHzIS-uoB-i7-gpm3n1`, and every page embeds it
+(`/_next/static/<buildId>/…`). So a build with _no code change at all_ re-hashed
+the whole HTML surface and shipped a ~2.3 MB "hot patch" of pure build-ID churn.
+
+**Fix.** `apps/web/next.config.ts` now sets a deterministic `generateBuildId`
+(`'lh-tauri'`) for the Tauri export. Unchanged pages hash identically across
+builds; content-hashed chunk names were already stable. The A/B slot swap is
+atomic, so a stable ID is safe here (unlike a normal web deploy that relies on
+unique IDs for cache-busting). Two consequences:
+
+- A night whose export is byte-identical to the previous release **and whose
+  native shell did not change** now publishes _nothing_ — `nightly.yml`'s
+  "Detect unchanged build" step skips the release and leaves the channel pointer
+  put, so clients are never offered an empty update. A docs-only change costs
+  zero bytes.
+- The O1-20 probe now makes a **real** one-line edit (a `data-ota-probe`
+  attribute on the root `<body>`) instead of appending a comment the minifier
+  strips. A root-layout edit remains the honest _worst case_ (every page embeds
+  the layout, so all HTML re-hashes); typical leaf changes hash independently
+  and stay near the fixture's 0.2 KB scale. Stabilizing module IDs further so
+  layout-only edits stop cascading remains a future optimization, not a blocker.
 
 ## Play policy note
 
