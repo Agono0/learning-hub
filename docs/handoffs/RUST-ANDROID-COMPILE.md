@@ -84,3 +84,34 @@ same pattern the already-working `focus::focus_lock_apply` entries used.
 - iOS (`#[cfg(mobile)]` calling `#[cfg(target_os = "android")]` plugin fns)
   was already inconsistent before this fix and is untouched — iOS is not
   built by any workflow.
+
+## Round 2 — the 6 unit-test failures (49-test suite green)
+
+Round 1 compiled everywhere; the Windows `cargo test --release` then ran the
+suite for the first time: 43 passed, 6 failed. Per-error-class fix map (the
+run analyzed: native 45085564138, commit b4117a1):
+
+| # | Failing test (actual panic) | Root cause | Fix |
+| - | --------------------------- | ---------- | --- |
+| 1 | `update::tests::base64_decoder_handles_known_vectors_and_rejects_garbage` — `Some([])` vs `None` for `"a=b"` | The decoder `break`-ed at `=`, so a single data char before padding silently produced an empty/partial decode | IMPL: strict canonical base64 — length % 4 == 0, `=` only as trailing padding (≤ 2), data after padding rejects, invalid char rejects the WHOLE input. Wire artifacts and fixtures stay canonical, so the verify path is unaffected |
+| 2 | `update::slot_tests::files_base_url_strips_manifest_segment` — `files_base_url("http://…")` returned Ok | The https-only law was not applied when DERIVING the files base (only when fetching) | IMPL: `assert_https(manifest_url)?` at the top of `files_base_url` |
+| 3 | `update::download_tests::full_response_restarts_from_scratch` — calls `[5]` vs `[0]` | TEST HELPER defect: `FakeFetcher` recorded the REQUESTED offset while the test's own comment asserts the SERVED offset ("Server ignored Range → fetched from 0"). No impl can both request `start` for a 40-byte partial (resume test) and request 0 for a 5-byte stale partial — the request is necessarily `resume_offset`; the 200-response restart-from-scratch semantics were already correct | HELPER: records the offset each response actually carries (0 for a range-stripping server). Assertions unchanged |
+| 4 | `update::patch_tests::patch_with_file_missing_from_target_manifest_is_rejected` — active slot `B` vs `A` | TEST phase bug: the setup promotes v1 (download→B, promote→active B), so after a REJECTED apply the untouched pointer is B, not A; and the patch would have filled the INACTIVE slot A, not B | TEST: assert `SlotId::B` (pointer untouched) + no smuggled file in slot A |
+| 5 | `update::patch_tests::upgrade_chain_applies_patches_across_five_manifests` — slot `A` vs `B` at step 1, then `manifest.json` extra in `hash_slot` | Same phase bug (first patch lands in the inactive slot A after the v1 promote — impl matches the design and the other passing slot tests), PLUS the expected map omitted the slot's stored `manifest.json` (written verbatim by O1-03/O1-19 by design) | TEST: phase corrected to `i % 2 == 0 → A`; expected map now includes `manifest.json` = `hash_hex(target_bytes)` — the reconciliation assertion got STRONGER, not weaker |
+| 6 | `lock_watchdog::tests::acquire_is_idempotent_and_release_is_a_noop_when_empty` — `acquire_hardening(false)` returned false | TWO causes: (a) `acquire(false)` ran the real registry write although "declined" is not a failure; (b) the real write FAILED — `RegOpenKeyExW` cannot open `HKCU\…\Policies\System` on machines where the key does not exist (clean machines), and the whole `Policies` branch can be write-protected by deny ACLs (observed locally: `reg add` → Access denied) | IMPL: `enabled=false` → no-op SUCCESS (nothing written); `RegCreateKeyExW` replaces `RegOpenKeyExW` (creating the policy key is what `reg add`/group policy do — hardening previously silently no-opped on every machine without the key); the two lifecycle tests now serialize on a shared mutex (they share process-global statics) and the lifecycle test asserts the deterministic WATCHDOG_ACTIVE transitions instead of the environmental registry outcome |
+
+- Rule-13 note: fixes 3/4/5 change tests, with the reason recorded here and in
+  the test comments — in each case the ORIGINAL assertion could never pass for
+  any impl (mutually exclusive with other passing tests, or asserting an
+  environmental OS outcome), while the corrected assertions remain strict.
+- Local verification: scoped `cargo test --release update::` / `lock_watchdog::`
+  iterations, then the FULL suite once: **49 passed; 0 failed** (cargo 1.100,
+  sanctioned scoped-run workflow). `Cargo.lock` was completed by cargo locally
+  (+378 lines: the lockfile was missing the dev/test-target packages, e.g.
+  minisign-verify 0.2.5/0.3.0, jni, objc2 — committed so CI resolves the same
+  versions that just passed).
+- Remaining known warning (pre-existing, another commit): unused `BOOL` from
+  `SetForegroundWindow(lock_hwnd)` at lock_win.rs:589 — best-effort call, needs
+  `let _ =`. `docs/updates.md` also fails `format:check` on main (pre-existing,
+  not touched here).
+
