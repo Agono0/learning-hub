@@ -16,22 +16,34 @@
  *
  * Calm by default: renders nothing until there is a real, applicable offer;
  * "Not now" is session-local (the next check re-offers); every failure surfaces
- * an honest notice, never a crash or a silent install. A/B web-slot promotion is
- * intentionally not used here — it would move the webview origin and the OPFS
- * database with it (docs/updates.md §"Slots & the webview origin"); full-package
- * updates are the safe apply path until an origin migration lands.
+ * an honest notice, never a crash or a silent install. When a web delta update
+ * is available (`requiresNative: false`), it is applied into the inactive A/B
+ * slot and activated on restart without moving the webview origin or OPFS data.
+ * Full-package native updates (APK sideload or Windows installer) are only used
+ * when native shell changes require them.
  *
  * SSR-safe: all native work lives in effects; `renderToString` yields null.
  */
 import React, { useEffect, useRef, useState } from 'react'
-import { pickAndroidPackage, type UpdateManifest } from '@learning-hub/core/update'
+import { pickAndroidPackage, pickPatch, type UpdateManifest } from '@learning-hub/core/update'
 import { isTauri } from '@/lib/transport'
 import { getDeviceIdentity } from '@/lib/device'
-import { onUpdateOffer, startUpdateCheckScheduler, type UpdateOfferInfo } from '@/lib/updates'
+import {
+  APP_VERSION,
+  onUpdateOffer,
+  startUpdateCheckScheduler,
+  type UpdateOfferInfo,
+} from '@/lib/updates'
 import { UpdateBanner, type UpdateOffer } from '@/components/UpdateBanner'
 import { useUpdateDownloadProgress, type UpdateDownloadProgress } from '@/platform/update-progress'
 import { androidDeviceInfo, installSideloadApk } from '@/platform/sideload'
-import { downloadAndroidApk, fetchVerifiedManifest, installWindowsUpdate } from '@/platform/updater'
+import {
+  applyDeltaPatch,
+  downloadAndroidApk,
+  fetchVerifiedManifest,
+  getSlotStatus,
+  installWindowsUpdate,
+} from '@/platform/updater'
 import { reportError } from '@/lib/telemetry'
 import { Callout } from '@/ui'
 
@@ -56,6 +68,17 @@ export function UpdateController(): React.ReactElement | null {
   const platform = typeof navigator !== 'undefined' ? getDeviceIdentity().platform : 'other'
   const progress = platform === 'windows' ? winProgress : rustProgress
 
+  /** Resolve the active version: prefers the native slot version, falls back to APP_VERSION. */
+  async function getInstalledVersion(): Promise<string> {
+    try {
+      const slot = await getSlotStatus()
+      if (slot?.activeVersion) return slot.activeVersion
+    } catch {
+      // ignore
+    }
+    return APP_VERSION
+  }
+
   /** Turn a pointer offer into a host-specific, sized, applicable offer. */
   async function enrich(info: UpdateOfferInfo): Promise<void> {
     try {
@@ -63,7 +86,30 @@ export function UpdateController(): React.ReactElement | null {
       if (!manifest) return // unverifiable manifest → never offer (design law)
       manifestRef.current = manifest
       const host = getDeviceIdentity().platform
-      if (host === 'android') {
+
+      const currentVersion = await getInstalledVersion()
+      const patch = currentVersion ? pickPatch(manifest, currentVersion) : null
+      const isDeltaAvailable = !manifest.requiresNative && patch !== null
+
+      if (isDeltaAvailable) {
+        // Delta hot-update path (A/B slots): download patch into inactive slot,
+        // promote, restart to apply. No full APK, no PackageInstaller dialog!
+        let fullSize = manifest.fullPackageSize ?? 0
+        if (host === 'android') {
+          const device = await androidDeviceInfo()
+          const pkg = pickAndroidPackage(manifest, device?.abi)
+          if (pkg?.size) fullSize = pkg.size
+        }
+        setOffer({
+          version: info.version,
+          notes: info.notes ?? undefined,
+          patchSize: patch.size,
+          fullSize,
+          requiresNative: false,
+        })
+        setDismissed(false)
+        setNotice(null)
+      } else if (host === 'android') {
         const device = await androidDeviceInfo()
         const pkg = pickAndroidPackage(manifest, device?.abi)
         if (!pkg) return // no APK for this device → nothing safe to apply
@@ -184,15 +230,54 @@ export function UpdateController(): React.ReactElement | null {
     }
   }
 
+  /** Delta update: download patch into inactive slot, promote, restart to apply. */
+  async function applyDelta(): Promise<void> {
+    try {
+      const manifest = manifestRef.current
+      if (!manifest) return
+      const currentVersion = await getInstalledVersion()
+      const patch = currentVersion ? pickPatch(manifest, currentVersion) : null
+      if (!patch) {
+        setNotice({
+          tone: 'warning',
+          text: 'Delta patch is not available for this version.',
+        })
+        return
+      }
+      const ok = await applyDeltaPatch(manifest, patch)
+      if (ok) {
+        setNotice({
+          tone: 'info',
+          text: 'Update installed! Restart Learning HUB to switch to the new version.',
+        })
+      } else {
+        setNotice({
+          tone: 'warning',
+          text: 'The update download failed — check your connection and try again.',
+        })
+      }
+    } catch (err) {
+      void reportError(err, { component: 'UpdateController', action: 'applyDelta' })
+      setNotice({
+        tone: 'warning',
+        text: 'The update could not be applied — please try again.',
+      })
+    }
+  }
+
   async function onApply(): Promise<void> {
     if (applyingRef.current) return
     applyingRef.current = true
     setApplying(true)
     setNotice(null)
     try {
-      const host = getDeviceIdentity().platform
-      if (host === 'android') await applyAndroid()
-      else if (host === 'windows') await applyWindows()
+      if (offer?.requiresNative) {
+        const host = getDeviceIdentity().platform
+        if (host === 'android') await applyAndroid()
+        else if (host === 'windows') await applyWindows()
+      } else {
+        await applyDelta()
+      }
     } catch (err) {
       void reportError(err, { component: 'UpdateController', action: 'onApply' })
       setNotice({

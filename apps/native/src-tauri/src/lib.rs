@@ -156,6 +156,8 @@ pub fn run() {
             update::update_download_android_apk,
             update::update_android_device_info,
             update::update_install_android_apk,
+            update::update_apply_delta_patch,
+            update::update_get_slot_status,
             focus::focus_android_provision_status,
             focus::focus_android_start_lock_task,
             focus::focus_android_stop_lock_task,

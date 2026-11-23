@@ -17,17 +17,67 @@
  * - **Web (browser):** none of this applies — reload is the update. Every
  *   function here is a no-op off the native shell.
  *
- * A/B web-slot promotion is deliberately NOT wired here: serving a slot changes
- * the webview origin and would relocate the OPFS database (docs/updates.md
- * §"Slots & the webview origin", rule 10 adjacency). Until an origin-independent
- * storage path or a first-boot migration lands, full-package updates are the
- * only safe apply path on both native hosts.
+ * - **Web delta hot updates (A/B slots):** when `requiresNative: false`,
+ *   `applyDeltaPatch` downloads the patch bundle into the inactive slot and
+ *   promotes it. Served via custom `"tauri"` scheme protocol so the webview
+ *   origin remains `tauri://localhost` and OPFS data stays intact.
  */
 import { isTauri } from '@/lib/transport'
 import { getDeviceIdentity } from '@/lib/device'
 import { sideloadSupported } from '@/platform/sideload'
 import { reportError } from '@/lib/telemetry'
-import type { UpdateAndroidPackage, UpdateManifest } from '@learning-hub/core/update'
+import type { UpdateAndroidPackage, UpdateManifest, UpdatePatch } from '@learning-hub/core/update'
+
+/** Slot status reported by Rust `update_get_slot_status`. */
+export interface SlotStatus {
+  active: 'a' | 'b'
+  inactive: 'a' | 'b'
+  activeVersion?: string | null
+  inactiveVersion?: string | null
+}
+
+/**
+ * Retrieve the current slot status from the native layer (active slot, installed version).
+ * Returns null off-Tauri or on error.
+ */
+export async function getSlotStatus(): Promise<SlotStatus | null> {
+  if (!isTauri) return null
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    return await invoke<SlotStatus>('update_get_slot_status')
+  } catch (err) {
+    void reportError(err, { action: 'get_slot_status' })
+    return null
+  }
+}
+
+/**
+ * Apply a delta hot-update patch into the inactive A/B slot and promote it.
+ *
+ * Downloads the patch zip through the Rust downloader (emitting progress on
+ * `update://download-progress`), unpacks into the inactive slot, reconciles
+ * against unchanged assets from the active slot/bundle, and flips the atomic
+ * pointer. The update is active on next app launch/restart.
+ */
+export async function applyDeltaPatch(
+  manifest: UpdateManifest,
+  patch: UpdatePatch,
+): Promise<boolean> {
+  if (!isTauri) return false
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('update_apply_delta_patch', {
+      targetManifest: manifest,
+      patchUrl: patch.url,
+      patchSha256: patch.sha256,
+      patchSize: patch.size,
+    })
+    return true
+  } catch (err) {
+    void reportError(err, { action: 'apply_delta_patch', url: patch.url })
+    return false
+  }
+}
 
 /**
  * Fetch the channel manifest through the Rust layer, which verifies its Ed25519
