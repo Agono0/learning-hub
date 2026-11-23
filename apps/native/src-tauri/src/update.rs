@@ -16,6 +16,12 @@
 //! Rust-only deps (`minisign-verify`, `sha2`, `ureq`) are requested in
 //! docs/SHARED_CHANGES.md — `Cargo.toml` is a LEAD-owned shared file.
 
+// The fetch/verify/slot/patch surface below is the O1-02..O1-19 engine: it is
+// fully tested but only partially wired to commands so far (the O1-08/O1-09
+// runtime wiring is a later milestone), so the lib build legitimately carries
+// not-yet-called public functions — same stage pattern as lock_win.rs.
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
@@ -248,8 +254,11 @@ pub fn fetch_manifest(manifest_url: &str) -> Result<(UpdateManifest, String), Up
 /// Minimal standard-alphabet base64 decoder for minisign artifacts.
 ///
 /// Self-contained on purpose (no `base64` crate for one decode path — same
-/// pattern as `idle.rs`'s self-contained externs). Returns `None` on any
-/// invalid character; padding (`=`) may only terminate the input.
+/// pattern as `idle.rs`'s self-contained externs). STRICT canonical base64:
+/// the input length must be a multiple of 4, `=` may only appear as trailing
+/// padding (at most 2) and any invalid character rejects the WHOLE input with
+/// `None` — a partially-decoded prefix is never returned (the artifacts this
+/// feeds are signed material; garbage in, `None` out).
 fn base64_decode(input: &str) -> Option<Vec<u8>> {
     const ALPHABET: &[u8; 64] =
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -257,12 +266,23 @@ fn base64_decode(input: &str) -> Option<Vec<u8>> {
     for (index, &c) in ALPHABET.iter().enumerate() {
         reverse[c as usize] = index as u8;
     }
-    let mut out = Vec::with_capacity(input.len() / 4 * 3);
+    let bytes = input.as_bytes();
+    if bytes.len() % 4 != 0 {
+        return None;
+    }
+    let mut out = Vec::with_capacity(bytes.len() / 4 * 3);
     let mut acc: u32 = 0;
     let mut bits: u32 = 0;
-    for &byte in input.as_bytes() {
+    let mut padding_seen = false;
+    let mut padding_count = 0u32;
+    for &byte in bytes {
         if byte == b'=' {
-            break; // padding — only valid as a terminator
+            padding_seen = true;
+            padding_count += 1;
+            continue;
+        }
+        if padding_seen {
+            return None; // data after padding
         }
         let value = reverse[byte as usize];
         if value == 255 {
@@ -275,6 +295,9 @@ fn base64_decode(input: &str) -> Option<Vec<u8>> {
             out.push(((acc >> bits) & 0xFF) as u8);
             acc &= (1 << bits) - 1;
         }
+    }
+    if padding_count > 2 {
+        return None;
     }
     Some(out)
 }
@@ -544,8 +567,11 @@ fn slot_version(base_dir: &Path, slot: SlotId) -> Result<Option<String>, UpdateE
 
 /// Derives the files base URL from a manifest URL: the release asset
 /// directory the manifest was fetched from (CI uploads every payload file
-/// next to `manifest.json`, see O1-08).
+/// next to `manifest.json`, see O1-08). https-only: every URL this feeds is
+/// fetched, so the core https law is enforced HERE too, before anything can
+/// be built from the base.
 pub fn files_base_url(manifest_url: &str) -> Result<String, UpdateError> {
+    assert_https(manifest_url)?;
     match manifest_url.trim_end_matches('/').strip_suffix("/manifest.json") {
         Some(base) if !base.is_empty() => Ok(base.to_string()),
         _ => Err(UpdateError::InvalidInput(format!(
@@ -1739,7 +1765,10 @@ mod download_tests {
     }
 
     /// In-memory fetcher: serves `content[start..]` as 206, or the whole
-    /// content as 200 when `ignore_range` is set.
+    /// content as 200 when `ignore_range` is set. `calls` records the offset
+    /// each response actually carried — a range-honoring server serves from
+    /// the requested `start`, one that strips `Range:` restarts at 0 and
+    /// answers with the whole file.
     struct FakeFetcher {
         content: Vec<u8>,
         ignore_range: bool,
@@ -1754,10 +1783,13 @@ mod download_tests {
 
     impl RangeFetcher for FakeFetcher {
         fn fetch_range(&mut self, start: u64) -> Result<RangeResponse, UpdateError> {
-            self.calls.push(start);
             if self.ignore_range {
+                // A 200 answer carries the file FROM 0 regardless of the
+                // requested offset — record what was actually served.
+                self.calls.push(0);
                 return Ok(RangeResponse::Full(self.content.clone()));
             }
+            self.calls.push(start);
             Ok(RangeResponse::Partial(self.content[start as usize..].to_vec()))
         }
     }
@@ -2019,15 +2051,21 @@ mod patch_tests {
             // (v5 is the fifth manifest counting v1 — the "last 5" window.)
             let slot = apply_patch_bundle(&base, &installed, &target, &target_bytes, &patch)
                 .unwrap_or_else(|e| panic!("apply step {} failed: {e}", i + 2));
-            assert_eq!(slot, if i % 2 == 0 { SlotId::B } else { SlotId::A });
+            // Slots alternate A/B/A/B: the v1 PROMOTE made B active, so the
+            // first patch fills the INACTIVE slot A, and each step promote
+            // swaps the roles for the next one.
+            assert_eq!(slot, if i % 2 == 0 { SlotId::A } else { SlotId::B });
 
             // The filled slot matches the target manifest EXACTLY (additions,
-            // modifications and deletions all reconciled).
-            let expected: BTreeMap<String, String> = target
+            // modifications and deletions all reconciled). The slot ALSO
+            // stores the signed manifest verbatim (O1-19) — its sha is part
+            // of the reconciliation, not a stray file.
+            let mut expected: BTreeMap<String, String> = target
                 .files
                 .iter()
                 .map(|f| (f.path.clone(), f.sha256.clone()))
                 .collect();
+            expected.insert("manifest.json".to_string(), hash_hex(&target_bytes));
             assert_eq!(hash_slot(&slot_dir(&base, slot)), expected, "step {}", i + 2);
 
             promote_inactive_slot(&base).expect("step promote");
@@ -2056,9 +2094,11 @@ mod patch_tests {
             apply_patch_bundle(&base, &m1, &target, &target_bytes, &patch),
             Err(UpdateError::Parse(_))
         ));
-        // Pointer untouched, target slot still empty of the smuggled file.
-        assert_eq!(active_slot(&base).unwrap(), SlotId::A);
-        assert!(!slot_dir(&base, SlotId::B).join("evil.txt").exists());
+        // Pointer untouched (still B — the v1 promote above flipped it), and
+        // the slot the patch WOULD have filled (the inactive slot A) holds
+        // no smuggled file.
+        assert_eq!(active_slot(&base).unwrap(), SlotId::B);
+        assert!(!slot_dir(&base, SlotId::A).join("evil.txt").exists());
         fs::remove_dir_all(&base).ok();
     }
 
