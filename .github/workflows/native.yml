@@ -73,6 +73,7 @@ jobs:
         with:
           name: tauri-web-export
           path: apps/web/.next-tauri
+          include-hidden-files: true
           if-no-files-found: error
 
   windows:
