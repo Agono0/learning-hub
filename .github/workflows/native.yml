@@ -25,7 +25,10 @@ on:
           - play
 
 permissions:
-  contents: read
+  # contents:write lets the Android post-build step publish the canonical
+  # per-ABI APKs to the stable `latest` release (a fixed sideload download URL
+  # and the base the APK-delta step diffs against). Windows stays artifact-only.
+  contents: write
 
 concurrency:
   group: native-${{ github.ref }}
@@ -170,6 +173,9 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           # The KEY's own password (PKCS12: same value as the store password).
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # Lets the post-build step publish the canonical APK to the `latest`
+          # release (stable sideload URL + APK-delta base).
+          GH_TOKEN: ${{ github.token }}
         run: npm run android:build -- --target ${{ matrix.tauri-target }}
 
       # O1-21: generate a bsdiff delta APK against the previous release's APK

@@ -53,7 +53,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFBNUM1QjQxMkE2OTU1Q0IKUldUTFZXa3FRVnRjcXByMnkyUFQ3VE1VNXVTOUkwZ0lZQ0lqZVdBRVZnNmZmS040cFZtK1R2ZVEK",
       "endpoints": [
-        "https://github.com/Agono0/learning-hub/releases/download/channel-pointers/nightly.json"
+        "https://github.com/Agono0/learning-hub/releases/download/channel-pointers/latest.json"
       ],
       "windows": { "installMode": "passive" }
     }

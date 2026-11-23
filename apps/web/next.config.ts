@@ -56,8 +56,11 @@ const nextConfig: NextConfig = {
     // store builds (self-update off); unset/unknown → 'nightly', self-update
     // on (sideload/dev default). Read once in src/lib/updates.ts.
     LH_UPDATE_CHANNEL: process.env.LH_UPDATE_CHANNEL ?? '',
-    // App version shown in Settings > Updates (O1-14); '' → "dev" label.
-    LH_APP_VERSION: appVersion(),
+    // App version shown in Settings > Updates (O1-14) and compared against the
+    // channel pointer by checkForUpdate. CI bakes the nightly version via
+    // LH_APP_VERSION so an installed release knows its own build; unset falls
+    // back to package.json ('' → "dev" label, never self-offers).
+    LH_APP_VERSION: process.env.LH_APP_VERSION ?? appVersion(),
   },
   turbopack: { resolveAlias: browserAliases },
   ...(isTauri
@@ -68,6 +71,16 @@ const nextConfig: NextConfig = {
         images: { unoptimized: true },
         trailingSlash: true,
         distDir: '.next-tauri',
+        // Deterministic build ID for the OTA export. Next's default random
+        // buildId is embedded in EVERY prerendered HTML page and RSC payload
+        // (`/_next/static/<buildId>/…`), so a fresh build re-hashed the whole
+        // HTML surface even for a zero-code change — a docs-only nightly shipped
+        // a ~2.3 MB "hot patch" of nothing but buildId churn (docs/updates.md
+        // §"Measured hot patch size"). A fixed ID makes unchanged pages hash
+        // identically across builds; the A/B slot swap is atomic, so a stable
+        // ID is safe here (unlike a normal web deploy that relies on unique IDs
+        // for cache-busting). Content-hashed chunk names are already stable.
+        generateBuildId: () => 'lh-tauri',
       }
     : {}),
 }
