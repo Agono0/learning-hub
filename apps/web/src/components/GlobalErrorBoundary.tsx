@@ -47,7 +47,14 @@ export class GlobalErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    this.setState({ errorInfo })
+    this.state = { ...this.state, errorInfo }
+    if (typeof this.setState === 'function') {
+      try {
+        this.setState({ errorInfo })
+      } catch {
+        // Safe when invoked outside of an active React mounting lifecycle
+      }
+    }
     void reportError(error, {
       component: 'GlobalErrorBoundary',
       componentStack: errorInfo.componentStack,
@@ -61,7 +68,14 @@ export class GlobalErrorBoundary extends Component<
   }
 
   reset = (): void => {
-    this.setState({ hasError: false, error: null, errorInfo: null })
+    this.state = { hasError: false, error: null, errorInfo: null }
+    if (typeof this.setState === 'function') {
+      try {
+        this.setState({ hasError: false, error: null, errorInfo: null })
+      } catch {
+        // Safe when invoked outside of an active React mounting lifecycle
+      }
+    }
   }
 
   render(): ReactNode {

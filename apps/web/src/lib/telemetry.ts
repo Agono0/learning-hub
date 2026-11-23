@@ -69,7 +69,7 @@ export function sanitizeString(text: string): string {
       .replace(/(https?:\/\/[^\/\s:@]+):[^\/\s@]+@/g, '$1:[REDACTED]@')
       // Key-value credentials (e.g. password=..., apiKey=..., auth_token: ...)
       .replace(
-        /(password|passwd|secret|api_?key|access_?token|auth_?token)\s*([:=])\s*["']?[^\s,"']+["']?/gi,
+        /(password|passwd|secret[_\w]*|api_?key|access_?token|auth_?token)\s*([:=])\s*["']?[^\s,"']+["']?/gi,
         '$1$2[REDACTED]',
       )
       // Local filesystem user paths (protect privacy on Windows, Linux, macOS)
