@@ -44,16 +44,21 @@ const POLICY_VALUE: &[u8] = b"DisableTaskMgr\0";
 const HKEY_CURRENT_USER: isize = 0x8000_0001;
 const KEY_SET_VALUE: u32 = 0x0002;
 const KEY_QUERY_VALUE: u32 = 0x0001;
+const REG_OPTION_NON_VOLATILE: u32 = 0x0000_0000;
 const REG_DWORD: u32 = 4;
 
 #[link(name = "advapi32")]
 extern "system" {
-    fn RegOpenKeyExW(
+    fn RegCreateKeyExW(
         hkey: isize,
         lpsubkey: *const u16,
-        uloptions: u32,
+        reserved: u32,
+        lpclass: *const u16,
+        dwoptions: u32,
         samdesired: u32,
+        lpsecurityattributes: *const core::ffi::c_void,
         phkresult: *mut isize,
+        lpdwdisposition: *mut u32,
     ) -> i32;
     fn RegSetValueExW(
         hkey: isize,
@@ -72,22 +77,29 @@ fn wide(s: &[u8]) -> Vec<u16> {
     utf8.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-/// Write `DisableTaskMgr = enabled ? 1 : 0` under HKCU. Returns false when
-/// the registry write fails (policy keys can be blocked by group policy —
-/// the caller treats false as "hardening unavailable", never as a session
-/// failure).
+/// Write `DisableTaskMgr = enabled ? 1 : 0` under HKCU. The Policies\System
+/// key does not exist on clean machines, so this CREATES it
+/// (`RegCreateKeyExW` — the same thing `reg add` / group policy tooling do);
+/// opening an absent key would make hardening silently unavailable exactly
+/// where it is needed most. Returns false when the registry write fails
+/// (policy keys can be blocked by group policy — the caller treats false as
+/// "hardening unavailable", never as a session failure).
 pub fn set_disable_task_mgr(enabled: bool) -> bool {
     #[cfg(windows)]
     {
         unsafe {
             let mut hkey: isize = 0;
             let subkey = wide(POLICY_SUBKEY);
-            if RegOpenKeyExW(
+            if RegCreateKeyExW(
                 HKEY_CURRENT_USER,
                 subkey.as_ptr(),
                 0,
+                std::ptr::null(),
+                REG_OPTION_NON_VOLATILE,
                 KEY_SET_VALUE | KEY_QUERY_VALUE,
+                std::ptr::null(),
                 &mut hkey,
+                std::ptr::null_mut(),
             ) != 0
             {
                 return false;
@@ -159,17 +171,19 @@ pub struct TaskMgrGuard {
 static HARDENING: std::sync::Mutex<Option<TaskMgrGuard>> = std::sync::Mutex::new(None);
 
 /// Acquire tier-2 hardening for the running session (idempotent: a second
-/// acquire while hardened is a no-op success). Returns whether the policy
-/// write succeeded (false = tier-1 fallback; the session proceeds either
-/// way — hardening is best-effort BY DESIGN).
-///
-/// `_enabled` is the caller's elevation decision, kept for call-site
-/// readability: acquire happens only while an opted-in (`windows-admin`)
-/// session runs, and the hardening itself is always ON for as long as the
-/// guard is held — dropping it restores the policy.
-pub fn acquire_hardening(_enabled: bool) -> bool {
+/// acquire while hardened is a no-op success). `enabled` is the caller's
+/// elevation decision (M2-08 session tier): `false` DECLINES hardening for
+/// this session — a no-op that still reports success, because "not opted in"
+/// is not a failure. `true` writes the policy once and starts the watchdog;
+/// a FAILED policy write reports `false` (tier-1 fallback; the session
+/// proceeds either way — hardening is best-effort BY DESIGN).
+pub fn acquire_hardening(enabled: bool) -> bool {
     let mut slot = HARDENING.lock().unwrap_or_else(|e| e.into_inner());
     if slot.is_some() {
+        return true;
+    }
+    if !enabled {
+        // Caller declined hardening — nothing to do, nothing failed.
         return true;
     }
     let guard = enable_admin_hardening();
@@ -207,11 +221,21 @@ impl Drop for TaskMgrGuard {
 mod tests {
     use super::*;
 
+    /// The two lifecycle tests below share the process-global HARDENING slot
+    /// and the WATCHDOG_ACTIVE flag — run them one at a time so parallel test
+    /// threads cannot tear down each other's guard mid-assert.
+    static TEST_SERIALIZER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn acquire_then_release_stops_the_watchdog() {
-        // Non-Windows: set_disable_task_mgr is a no-op success; the guard
-        // lifecycle (watchdog start/stop on release) is still exercised.
-        assert!(acquire_hardening(true));
+        let _serial = TEST_SERIALIZER.lock().unwrap_or_else(|e| e.into_inner());
+        // The guard LIFECYCLE (watchdog start/stop on release) is exercised on
+        // every platform. The registry WRITE result is environmental — some
+        // machines deny writes to HKCU\...\Policies entirely (deny ACLs) — and
+        // a failed write correctly yields the tier-1 fallback (false), never a
+        // session failure. acquire(true) still RUNS the real write here so
+        // writable machines flip the policy 1 → 0 across the release.
+        acquire_hardening(true);
         assert!(WATCHDOG_ACTIVE.load(Ordering::SeqCst));
         release_hardening();
         assert!(!WATCHDOG_ACTIVE.load(Ordering::SeqCst));
@@ -219,6 +243,9 @@ mod tests {
 
     #[test]
     fn acquire_is_idempotent_and_release_is_a_noop_when_empty() {
+        let _serial = TEST_SERIALIZER.lock().unwrap_or_else(|e| e.into_inner());
+        // enabled=false DECLINES hardening — a no-op SUCCESS (nothing held,
+        // nothing written, nothing failed).
         assert!(acquire_hardening(false));
         assert!(acquire_hardening(false)); // second acquire is a no-op success
         release_hardening();
