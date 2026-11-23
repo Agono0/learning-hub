@@ -4,6 +4,12 @@ name: Native apps
 # codebase on every push to main (and on version tags / manual runs), so each
 # change is proven to ship on both platforms. Tests live in ci.yml.
 #
+# A single `web-export` job builds the Tauri web bundle once on Linux, and passes
+# the static export to the downstream Windows and Android jobs via artifact.
+# This avoids building the web layer 4 separate times, eliminates Next.js cache
+# contention, and prevents 3 GB Next.js cache uploads from evicting Rust and
+# Gradle toolchain caches.
+#
 # Android ships one APK per ABI (arm64-v8a, armeabi-v7a, x86_64) instead of a
 # single universal build, so users download only the native code their device
 # needs. Each ABI builds in its own parallel matrix job (fail-fast disabled,
@@ -12,6 +18,16 @@ name: Native apps
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/native/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'scripts/tauri-*.mjs'
+      - 'scripts/serve-static.mjs'
+      - 'scripts/vendor-sqlite-wasm.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/native.yml'
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -35,8 +51,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  web-export:
+    name: Web export
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build web bundle for Tauri
+        run: npm run web:tauri
+
+      - name: Upload web export artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-web-export
+          path: apps/web/.next-tauri
+          if-no-files-found: error
+
   windows:
-    name: Windows (NSIS + MSI)
+    name: Windows (NSIS)
+    needs: [web-export]
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -55,16 +96,11 @@ jobs:
 
       - run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Cache Next.js build cache
-        uses: actions/cache@v4
+      - name: Download web export
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            apps/web/.next/cache
-            apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-            nextjs-${{ runner.os }}-
+          name: tauri-web-export
+          path: apps/web/.next-tauri
 
       # The Rust unit tests (update.rs slots/verify/rollback, lock_win.rs) are
       # never compiled by a plain `cargo build` — run them explicitly so the
@@ -72,10 +108,11 @@ jobs:
       - name: Rust unit tests
         run: cargo test --manifest-path apps/native/src-tauri/Cargo.toml --release
 
-      - name: Build installers
+      - name: Build installer
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          LH_SKIP_WEB_BUILD: '1'
         run: npm run app:build
 
       - uses: actions/upload-artifact@v4
@@ -84,12 +121,11 @@ jobs:
           path: |
             apps/native/src-tauri/target/release/bundle/nsis/*.exe
             apps/native/src-tauri/target/release/bundle/nsis/*.sig
-            apps/native/src-tauri/target/release/bundle/msi/*.msi
-            apps/native/src-tauri/target/release/bundle/msi/*.sig
           if-no-files-found: error
 
   android:
     name: Android (${{ matrix.abi }})
+    needs: [web-export]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -149,16 +185,11 @@ jobs:
 
       - run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Cache Next.js build cache
-        uses: actions/cache@v4
+      - name: Download web export
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            apps/web/.next/cache
-            apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-            nextjs-${{ runner.os }}-
+          name: tauri-web-export
+          path: apps/web/.next-tauri
 
       - name: Build APK (${{ matrix.abi }})
         env:
@@ -176,6 +207,7 @@ jobs:
           # Lets the post-build step publish the canonical APK to the `latest`
           # release (stable sideload URL + APK-delta base).
           GH_TOKEN: ${{ github.token }}
+          LH_SKIP_WEB_BUILD: '1'
         run: npm run android:build -- --target ${{ matrix.tauri-target }}
 
       # O1-21: generate a bsdiff delta APK against the previous release's APK

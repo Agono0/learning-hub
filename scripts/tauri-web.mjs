@@ -11,6 +11,7 @@
  * address; the dev server binds there so the device can reach it.
  */
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -43,6 +44,13 @@ await run('node', [join(root, 'scripts/vendor-sqlite-wasm.mjs')], root)
 if (mode === 'dev') {
   const host = process.env.TAURI_DEV_HOST || 'localhost'
   await run('npx', ['next', 'dev', '--hostname', host, '--port', '3000'], web)
+} else if (process.env.LH_SKIP_WEB_BUILD === '1' || process.env.TAURI_SKIP_WEB_BUILD === '1') {
+  const outDir = join(web, '.next-tauri')
+  if (!existsSync(outDir)) {
+    console.error(`[tauri-web] LH_SKIP_WEB_BUILD is set but ${outDir} does not exist`)
+    process.exit(1)
+  }
+  console.log(`[tauri-web] LH_SKIP_WEB_BUILD is set — using existing ${outDir}`)
 } else {
   await run('npx', ['next', 'build'], web)
 }

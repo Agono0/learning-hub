@@ -37,7 +37,7 @@ scoped to the origin `dev.learninghub.app`
 **Config** — `apps/native/src-tauri/tauri.conf.json`:
 
 - `identifier: "dev.learninghub.app"`, `useHttpsScheme: false` (rule 10).
-- `bundle.targets: ["nsis", "msi"]` (Windows), `bundle.android.minSdkVersion: 26`.
+- `bundle.targets: ["nsis"]` (Windows), `bundle.android.minSdkVersion: 26`.
 - Window `minWidth: 360` (the mobile-first floor), `webviewInstallMode: downloadBootstrapper`.
 - **No `updater` key and no `createUpdaterArtifacts` — no update plugin is configured today.**
 - `frontendDist: "../../web/.next-tauri"` — the static export produced by
@@ -84,8 +84,8 @@ vitest.e2e.config.mjs`) → Playwright browser install → UI smoke
 
 `.github/workflows/native.yml` (builds only, no tests):
 
-- `windows` job: NSIS + MSI installers → `upload-artifact`
-  (`target/release/bundle/{nsis,msi}`).
+- `windows` job: NSIS installer → `upload-artifact`
+  (`target/release/bundle/nsis`).
 - `android` matrix job: one runner per ABI, `fail-fast: false`, artifact glob
   `gen/android/app/build/outputs/apk/**/*<abi>*.apk`.
 - Triggers: push to `main`, `v*` tags, manual dispatch. Concurrency-canceled per ref.

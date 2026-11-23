@@ -47,7 +47,7 @@ not reachable from Web Workers, hence the hop.
 | Task                                   | Command                                         |
 | -------------------------------------- | ----------------------------------------------- |
 | Windows app, hot reload                | `npm run app:dev`                               |
-| Windows installer (NSIS + MSI)         | `npm run app:build`                             |
+| Windows installer (NSIS)               | `npm run app:build`                             |
 | Android on device/emulator, hot reload | `npm run android:dev`                           |
 | Android APK                            | `npm run android:build`                         |
 | Build the native web bundle only       | `npm run web:tauri`                             |

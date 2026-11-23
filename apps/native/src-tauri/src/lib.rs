@@ -191,7 +191,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         // Windows native-shell updater (O1-10): the official plugin handles
-        // NSIS/MSI shell updates from the signed latest.json; the WEB payload
+        // NSIS shell updates from the signed latest.json; the WEB payload
         // updates through the A/B slots (update.rs). Needs
         // `tauri-plugin-updater = "2"` in Cargo.toml and the plugins.updater
         // block in tauri.conf.json — both LEAD-applied, see
