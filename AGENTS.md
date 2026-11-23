@@ -99,6 +99,11 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
     `origin/main`, resolve any conflicts locally, and re-run the LOCAL
     verification gate (rule 17: typecheck + lint + format:check) â€” then push.
     Never force-push shared branches.
+19. **Delete merged branches locally.** After any branch is successfully
+    merged on GitHub, delete the branch locally (`git branch -d <branch>` or
+    `git branch -D <branch>`) to save space and keep the repository clean.
+    Never delete branches on GitHub â€” only clean up the local clone, leaving
+    `main` as the sole persistent local branch.
 
 ### Rule enforcement table
 
@@ -122,6 +127,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 | 16   | Continuous pipelined productivity          | Overlap active development cycles while remote CI verifies previous PR batches                                    |
 | 17   | No local builds, no local test runs â€” ever | Pre-push gate = typecheck + lint + format:check ONLY; ALL tests + builds run in CI (GitHub Actions)               |
 | 18   | Pull before push                           | `git fetch` + rebase onto `origin/main` + re-verify before every push; no force-pushes                            |
+| 19   | Delete merged branches locally             | Post-merge local cleanup (`git branch -d`) after PR is merged on GitHub; never delete remote branch on GitHub     |
 
 ## 4. Workflow
 
@@ -139,6 +145,7 @@ scripts/              Build/dev tooling (new-feature, tauri-web, tauri-androidâ€
 8. **Autonomous push & verification:** Verify locally (`npm run typecheck`, `npm run lint`, `npm run format:check` â€” **never build locally, never run tests locally**, rule 17), then `git fetch` + rebase/merge onto `origin/main` (rule 18), push branch and open PR autonomously. Tests verify on CI.
 9. **Wait for CI green gate:** Verify remote GitHub Actions CI completion (`gh pr checks`) before merging. Never merge while CI is running or failing.
 10. **Pipelined productivity:** While remote CI executes on a pending PR, immediately begin the next task or feature in parallel.
+11. **Post-merge local cleanup:** After any branch is successfully merged on GitHub, switch to `main`, pull latest, and delete the branch locally (`git branch -d <branch>`) to conserve disk space (rule 19). Do not delete the branch on GitHub.
 
 ## 5. Recipes
 
