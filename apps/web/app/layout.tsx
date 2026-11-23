@@ -3,6 +3,7 @@ import { Fredoka, Nunito } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 import { AppShell } from '@/components/AppShell'
+import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary'
 
 /**
  * Playful clay identity (ui-ux-pro-max recipe: "Soft Rounded" + "Playful
@@ -58,9 +59,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <GlobalErrorBoundary>
+          <Providers>
+            <AppShell>{children}</AppShell>
+          </Providers>
+        </GlobalErrorBoundary>
       </body>
     </html>
   )
