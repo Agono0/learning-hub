@@ -1399,7 +1399,12 @@ mod tests {
         );
         let manifest = parse_manifest(&with_extras).expect("manifest with extras parses");
         assert_eq!(manifest.full_package_size, Some(13768255));
-        let packages = manifest.android_packages.expect("android packages present");
+        // `as_ref` — the assertion below still needs `manifest` whole for the
+        // JSON round-trip check.
+        let packages = manifest
+            .android_packages
+            .as_ref()
+            .expect("android packages present");
         let arm64 = packages.get("android-arm64-v8a").expect("arm64 entry");
         assert_eq!(arm64.size, 52428800);
         let json = serde_json::to_value(&manifest).expect("serializes");
@@ -1531,6 +1536,10 @@ mod slot_tests {
             files,
             patches: vec![],
             full_package_url: "https://example.com/releases/app.zip".to_string(),
+            // Optional/additive fields — absence is the older-manifest case
+            // these fixtures model, so both stay `None`.
+            full_package_size: None,
+            android_packages: None,
         };
         let bytes =
             serde_json::to_vec(&manifest).expect("serialize test manifest");
@@ -2090,6 +2099,9 @@ mod patch_tests {
                 .collect(),
             patches: vec![],
             full_package_url: "https://example.com/releases/app.zip".to_string(),
+            // Hot-update chain fixtures are web-only: no installer/APK payload.
+            full_package_size: None,
+            android_packages: None,
         };
         let bytes = serde_json::to_vec(&manifest).expect("serialize manifest");
         (manifest, bytes)
