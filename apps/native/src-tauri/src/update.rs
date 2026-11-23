@@ -885,6 +885,9 @@ pub fn download_resumable<P>(
 where
     P: FnMut(u64, u64),
 {
+    if let Some(parent) = dest.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
     let mut start = resume_offset(dest);
     if start > total {
         // Stale partial from a previous, different download — scratch it.
@@ -1282,6 +1285,7 @@ pub fn update_download_android_apk(
     {
         use tauri::Emitter;
         let base = slot_updates_dir(&app);
+        let _ = fs::create_dir_all(&base);
         let suffix = if expected_sha256.len() >= 12 {
             &expected_sha256[..12]
         } else {
