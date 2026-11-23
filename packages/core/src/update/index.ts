@@ -137,6 +137,23 @@ export const updatePatchSchema = z.object({
 export type UpdatePatch = z.infer<typeof updatePatchSchema>
 
 /**
+ * One full Android APK artifact (per-ABI or universal), content-addressed like
+ * every other update file. The sideload flow (O1-13) downloads the entry that
+ * matches the device ABI, sha256-verifies it, and hands it to PackageInstaller.
+ */
+export const updateAndroidPackageSchema = z.object({
+  /** https URL of the APK release asset. */
+  url: httpsUrlSchema,
+  /** sha256 of the APK bytes, lowercase hex. */
+  sha256: sha256Schema,
+  /** APK size in bytes (positive integer). */
+  size: z.number().int().positive(),
+})
+
+/** One Android APK entry of {@link UpdateManifest.androidPackages}. */
+export type UpdateAndroidPackage = z.infer<typeof updateAndroidPackageSchema>
+
+/**
  * The content-addressed build manifest (`manifest.json` on GitHub Releases).
  *
  * `files` lists every file of the `.next-tauri` export with its sha256 + size,
@@ -172,6 +189,19 @@ export const updateManifestSchema = z.object({
   patches: z.array(updatePatchSchema).max(5),
   /** https URL of the full package (NSIS installer / APK) — the patch fallback. */
   fullPackageUrl: httpsUrlSchema,
+  /**
+   * Size in bytes of `fullPackageUrl`'s artifact (the Windows installer).
+   * Optional for backward compatibility with manifests published before it
+   * existed; the banner shows an honest size when present.
+   */
+  fullPackageSize: z.number().int().positive().optional(),
+  /**
+   * Per-platform full Android APKs (keys are the `android-*` members of
+   * {@link platformSchema}). Optional/additive: older clients ignore it, and
+   * manifests without it simply offer no Android sideload path. The sideload
+   * client picks the entry matching the device ABI (else `android-universal`).
+   */
+  androidPackages: z.partialRecord(platformSchema, updateAndroidPackageSchema).optional(),
 })
 
 /** The parsed {@link updateManifestSchema} shape. */
@@ -385,6 +415,26 @@ function sign(n: number): -1 | 0 | 1 {
  */
 export function pickPatch(manifest: UpdateManifest, fromVersion: string): UpdatePatch | null {
   return manifest.patches.find((p) => compareVersions(p.fromVersion, fromVersion) === 0) ?? null
+}
+
+/**
+ * Pick the full Android APK for a device ABI from `manifest.androidPackages`.
+ *
+ * Matching prefers the exact `android-<abi>` key (e.g. `android-arm64-v8a`);
+ * when the ABI is unknown or has no dedicated build, it falls back to
+ * `android-universal`. Returns `null` when the manifest carries no Android
+ * packages at all (older manifests) — callers route the user to the release
+ * page rather than guessing a URL. Pure: no I/O, mirrors {@link pickPatch}.
+ */
+export function pickAndroidPackage(
+  manifest: UpdateManifest,
+  abi: string | null | undefined,
+): UpdateAndroidPackage | null {
+  const packages = manifest.androidPackages
+  if (!packages) return null
+  const key = abi ? (`android-${abi}` as UpdatePlatform) : null
+  if (key && packages[key]) return packages[key]
+  return packages['android-universal'] ?? null
 }
 
 // ── Settings ────────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import {
   main,
   parseArgs,
   sha256Hex,
+  validateAndroidPackages,
   validateOpts,
 } from '../../../scripts/update-manifest.mjs'
 
@@ -393,6 +394,102 @@ describe('update-manifest script (O1-07)', () => {
       expect(derivePatchBaseUrl(FULL_URL)).toBe(PATCH_BASE)
       expect(derivePatchBaseUrl('https://host/file')).toBe('https://host/')
       expect(derivePatchBaseUrl('https://host')).toBeNull()
+    })
+  })
+
+  describe('androidPackages + fullPackageSize', () => {
+    const APK = {
+      url: 'https://releases.example.com/download/nightly/Learning-HUB-arm64-v8a.apk',
+      sha256: 'c'.repeat(64),
+      size: 52428800,
+    }
+
+    it('generateManifest embeds validated androidPackages + fullPackageSize', async () => {
+      const dir = await fixtureExport('20261122-new1')
+      const { manifest } = await generateManifest({
+        dir,
+        version: '20261122-new1',
+        buildSha: 'abc1234567',
+        minNativeVersion: '0.5.2',
+        fullPackageUrl: FULL_URL,
+        fullPackageSize: 13768255,
+        androidPackages: { 'android-arm64-v8a': APK },
+        createdAt: '2026-11-22T03:14:15.926Z',
+      })
+      expect(manifest.fullPackageSize).toBe(13768255)
+      expect(manifest.androidPackages?.['android-arm64-v8a']).toEqual(APK)
+      expect(() => updateManifestSchema.parse(manifest)).not.toThrow()
+    })
+
+    it('omits the fields when not provided (backward compatible)', async () => {
+      const dir = await fixtureExport('20261122-new1')
+      const { manifest } = await generateManifest({
+        dir,
+        version: '20261122-new1',
+        buildSha: 'abc1234567',
+        minNativeVersion: '0.5.2',
+        fullPackageUrl: FULL_URL,
+        createdAt: '2026-11-22T03:14:15.926Z',
+      })
+      expect(manifest.fullPackageSize).toBeUndefined()
+      expect(manifest.androidPackages).toBeUndefined()
+    })
+
+    it('validateAndroidPackages rejects bad urls, shas, sizes and keys', () => {
+      expect(() => validateAndroidPackages({ 'android-arm64-v8a': APK })).not.toThrow()
+      expect(() => validateAndroidPackages({ 'windows-x86_64': APK })).toThrow(/android-/)
+      expect(() =>
+        validateAndroidPackages({ 'android-arm64-v8a': { ...APK, url: 'http://x/app.apk' } }),
+      ).toThrow(/https/)
+      expect(() =>
+        validateAndroidPackages({ 'android-arm64-v8a': { ...APK, sha256: 'nope' } }),
+      ).toThrow(/sha256/)
+      expect(() => validateAndroidPackages({ 'android-arm64-v8a': { ...APK, size: 0 } })).toThrow(
+        /size/,
+      )
+      expect(() => validateAndroidPackages([])).toThrow(/object/)
+    })
+
+    it('parseArgs reads --full-package-size and --android-packages', () => {
+      const opts = parseArgs([
+        '--full-package-size',
+        '13768255',
+        '--android-packages',
+        'dist/android-packages.json',
+      ])
+      expect(opts.fullPackageSize).toBe(13768255)
+      expect(opts.androidPackagesPath).toBe('dist/android-packages.json')
+      expect(() => parseArgs(['--full-package-size', '0'])).toThrow(/positive integer/)
+    })
+
+    it('main reads the android-packages JSON file into the manifest', async () => {
+      const dir = await fixtureExport('20261122-new1')
+      const outDir = await tempDir()
+      const packagesPath = path.join(outDir, 'android-packages.json')
+      await writeFile(packagesPath, JSON.stringify({ 'android-arm64-v8a': APK }))
+      const outPath = path.join(outDir, 'manifest.json')
+      const { manifest } = await main([
+        '--dir',
+        dir,
+        '--out',
+        outPath,
+        '--version',
+        '20261122-new1',
+        '--build-sha',
+        'abc1234567',
+        '--min-native-version',
+        '0.5.2',
+        '--full-package-url',
+        FULL_URL,
+        '--full-package-size',
+        '13768255',
+        '--android-packages',
+        packagesPath,
+      ])
+      expect(manifest.androidPackages?.['android-arm64-v8a']).toEqual(APK)
+      expect(manifest.fullPackageSize).toBe(13768255)
+      const onDisk = JSON.parse(await readFile(outPath, 'utf8'))
+      expect(() => updateManifestSchema.parse(onDisk)).not.toThrow()
     })
   })
 })

@@ -4,6 +4,7 @@ import {
   compareVersions,
   latestJsonSchema,
   parseUpdatePointer,
+  pickAndroidPackage,
   pickPatch,
   platformSchema,
   updateManifestSchema,
@@ -399,5 +400,88 @@ describe('pickPatch', () => {
     expect(pickPatch(manifest, '20261120-0000000')).toBeNull()
     expect(pickPatch(manifest, '1.0.0')).toBeNull()
     expect(pickPatch(manifest, manifest.version)).toBeNull()
+  })
+})
+
+describe('androidPackages + fullPackageSize (additive manifest fields)', () => {
+  const APK = {
+    url: 'https://releases.example.com/Learning-HUB-arm64-v8a.apk',
+    sha256: 'c'.repeat(64),
+    size: 52428800,
+  }
+
+  it('accepts a manifest without the optional fields (backward compatible)', () => {
+    const result = updateManifestSchema.safeParse(validManifest())
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts androidPackages + fullPackageSize when present', () => {
+    const result = updateManifestSchema.safeParse(
+      validManifest({
+        fullPackageSize: 13768255,
+        androidPackages: {
+          'android-arm64-v8a': APK,
+          'android-universal': {
+            ...APK,
+            url: 'https://releases.example.com/Learning-HUB-universal.apk',
+          },
+        },
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a non-https APK url and a bad sha256', () => {
+    const http = validManifest({
+      androidPackages: {
+        'android-arm64-v8a': { ...APK, url: 'http://insecure.example.com/app.apk' },
+      },
+    })
+    expect(updateManifestSchema.safeParse(http).success).toBe(false)
+    const badSha = validManifest({
+      androidPackages: { 'android-arm64-v8a': { ...APK, sha256: 'z'.repeat(64) } },
+    })
+    expect(updateManifestSchema.safeParse(badSha).success).toBe(false)
+  })
+
+  it('rejects a non-positive fullPackageSize', () => {
+    expect(updateManifestSchema.safeParse(validManifest({ fullPackageSize: 0 })).success).toBe(
+      false,
+    )
+  })
+})
+
+describe('pickAndroidPackage', () => {
+  const arm64 = {
+    url: 'https://releases.example.com/Learning-HUB-arm64-v8a.apk',
+    sha256: 'c'.repeat(64),
+    size: 100,
+  }
+  const universal = {
+    url: 'https://releases.example.com/Learning-HUB-universal.apk',
+    sha256: 'd'.repeat(64),
+    size: 200,
+  }
+  const manifest = validManifest({
+    androidPackages: { 'android-arm64-v8a': arm64, 'android-universal': universal },
+  })
+
+  it('picks the exact ABI build when present', () => {
+    expect(pickAndroidPackage(manifest, 'arm64-v8a')).toEqual(arm64)
+  })
+
+  it('falls back to universal for an unknown or absent ABI', () => {
+    expect(pickAndroidPackage(manifest, 'mips')).toEqual(universal)
+    expect(pickAndroidPackage(manifest, null)).toEqual(universal)
+    expect(pickAndroidPackage(manifest, undefined)).toEqual(universal)
+  })
+
+  it('returns null when the manifest carries no Android packages', () => {
+    expect(pickAndroidPackage(validManifest(), 'arm64-v8a')).toBeNull()
+  })
+
+  it('returns null when neither the ABI nor universal exists', () => {
+    const onlyArm = validManifest({ androidPackages: { 'android-arm64-v8a': arm64 } })
+    expect(pickAndroidPackage(onlyArm, 'x86_64')).toBeNull()
   })
 })

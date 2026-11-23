@@ -17,9 +17,16 @@
  *   --min-native-version 0.5.2 \
  *   --requires-native=false \
  *   --full-package-url https://github.com/<owner>/<repo>/releases/download/.../setup.exe \
+ *   --full-package-size 13768255 \
+ *   --android-packages dist/nightly/android-packages.json \
  *   --prev dist/prev/manifest-1.json \
  *   --prev dist/prev/manifest-2.json
  * ```
+ *
+ * `--android-packages` points at a JSON file mapping platform keys
+ * (`android-arm64-v8a`, `android-universal`, …) to `{ url, sha256, size }`
+ * entries (the per-ABI APKs CI publishes). `--full-package-size` is the byte
+ * size of the `--full-package-url` artifact. Both are optional/additive.
  *
  * Outputs, written next to `--out`:
  * - `manifest.json` — the manifest (to be signed, then uploaded to GitHub Releases)
@@ -168,6 +175,8 @@ export async function generateManifest(options) {
     minNativeVersion,
     requiresNative = false,
     fullPackageUrl,
+    fullPackageSize,
+    androidPackages,
     prev = [],
     patchBaseUrl,
     createdAt,
@@ -195,6 +204,15 @@ export async function generateManifest(options) {
     files,
     patches: [],
     fullPackageUrl,
+  }
+  if (fullPackageSize !== undefined) {
+    if (!Number.isInteger(fullPackageSize) || fullPackageSize <= 0) {
+      throw new Error('--full-package-size must be a positive integer')
+    }
+    manifest.fullPackageSize = fullPackageSize
+  }
+  if (androidPackages !== undefined) {
+    manifest.androidPackages = validateAndroidPackages(androidPackages)
   }
 
   const patchArtifacts = []
@@ -245,6 +263,8 @@ const KNOWN_FLAGS = new Set([
   'build-sha',
   'min-native-version',
   'full-package-url',
+  'full-package-size',
+  'android-packages',
   'patch-base-url',
   'created-at',
   'requires-native',
@@ -308,6 +328,17 @@ export function parseArgs(argv) {
         opts.fullPackageUrl = value
         assertHttpsUrl(opts.fullPackageUrl, 'full-package-url')
         break
+      case 'full-package-size': {
+        const n = Number(value)
+        if (!Number.isInteger(n) || n <= 0) {
+          throw new Error('--full-package-size must be a positive integer')
+        }
+        opts.fullPackageSize = n
+        break
+      }
+      case 'android-packages':
+        opts.androidPackagesPath = value
+        break
       case 'patch-base-url':
         opts.patchBaseUrl = value
         assertHttpsUrl(opts.patchBaseUrl, 'patch-base-url')
@@ -358,6 +389,9 @@ export function validateOpts(opts) {
  */
 export async function main(argv = process.argv.slice(2)) {
   const opts = validateOpts(parseArgs(argv))
+  if (opts.androidPackagesPath !== undefined) {
+    opts.androidPackages = JSON.parse(await readFile(opts.androidPackagesPath, 'utf8'))
+  }
   const { manifest, patchArtifacts } = await generateManifest(opts)
   const outPath = await writeOutputs(opts.out, { manifest, patchArtifacts })
   const totalBytes = manifest.files.reduce((sum, f) => sum + f.size, 0)
@@ -372,6 +406,36 @@ export async function main(argv = process.argv.slice(2)) {
   if (patchArtifacts.length === 0) console.log('  no changed files vs previous manifests')
   console.log(`wrote ${outPath} + ${patchArtifacts.length} patch bundle(s)`)
   return { manifest, patchArtifacts, outPath }
+}
+
+/**
+ * Validate the Android packages map (platform key → { url, sha256, size }).
+ * Mirrors `updateAndroidPackageSchema` in core: https URL, 64-char lowercase
+ * hex sha256, positive integer size. Returns a clean copy; throws on any
+ * malformed entry so CI fails loudly before publishing a bad manifest.
+ */
+export function validateAndroidPackages(packages) {
+  if (typeof packages !== 'object' || packages === null || Array.isArray(packages)) {
+    throw new Error('--android-packages must be a JSON object of platform → { url, sha256, size }')
+  }
+  const out = {}
+  for (const [platform, entry] of Object.entries(packages)) {
+    if (!platform.startsWith('android-')) {
+      throw new Error(`android-packages key "${platform}" must start with "android-"`)
+    }
+    if (typeof entry !== 'object' || entry === null) {
+      throw new Error(`android-packages["${platform}"] must be an object`)
+    }
+    assertHttpsUrl(entry.url, `android-packages["${platform}"].url`)
+    if (typeof entry.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(entry.sha256)) {
+      throw new Error(`android-packages["${platform}"].sha256 must be 64 lowercase hex chars`)
+    }
+    if (!Number.isInteger(entry.size) || entry.size <= 0) {
+      throw new Error(`android-packages["${platform}"].size must be a positive integer`)
+    }
+    out[platform] = { url: entry.url, sha256: entry.sha256, size: entry.size }
+  }
+  return out
 }
 
 /** Throw unless `url` is an absolute https URL (mirrors core's assertHttps). */
