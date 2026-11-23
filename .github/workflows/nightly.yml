@@ -278,8 +278,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          INSTALLER="$(ls apps/native/src-tauri/target/release/bundle/nsis/*.exe | head -n 1)"
-          echo "name=$(basename "$INSTALLER")" >> "$GITHUB_OUTPUT"
+          RAW_INSTALLER="$(ls apps/native/src-tauri/target/release/bundle/nsis/*.exe | head -n 1)"
+          INSTALLER_DIR="$(dirname "$RAW_INSTALLER")"
+          RAW_NAME="$(basename "$RAW_INSTALLER")"
+          # GitHub release asset uploads replace spaces with dots (e.g. Learning HUB -> Learning.HUB).
+          # Rename the artifact on disk so the URL in latest.json / manifest.json matches exactly (no 404).
+          CLEAN_NAME="${RAW_NAME// /.}"
+          INSTALLER="${INSTALLER_DIR}/${CLEAN_NAME}"
+          if [ "$RAW_INSTALLER" != "$INSTALLER" ]; then
+            mv "$RAW_INSTALLER" "$INSTALLER"
+            if [ -f "${RAW_INSTALLER}.sig" ]; then
+              mv "${RAW_INSTALLER}.sig" "${INSTALLER}.sig"
+            fi
+          fi
+          echo "name=$CLEAN_NAME" >> "$GITHUB_OUTPUT"
           echo "path=$INSTALLER" >> "$GITHUB_OUTPUT"
           echo "size=$(wc -c < "$INSTALLER")" >> "$GITHUB_OUTPUT"
 

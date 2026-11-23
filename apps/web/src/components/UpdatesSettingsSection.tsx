@@ -28,6 +28,7 @@ import { SectionHeader } from '@/components/ui/section-header'
 import { getDeviceIdentity } from '@/lib/device'
 import {
   APP_VERSION,
+  broadcastUpdateOffer,
   checkForUpdate,
   loadUpdateSettings,
   saveUpdateSettings,
@@ -113,6 +114,9 @@ export function UpdatesSettingsSection(): React.ReactElement {
       .then((result) => {
         setCheckState(result.status)
         setCheckVersion(result.pointerVersion)
+        if (result.status === 'available' && result.offer) {
+          broadcastUpdateOffer(result.offer)
+        }
       })
       .catch(() => setCheckState('unavailable'))
   }

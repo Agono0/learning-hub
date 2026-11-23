@@ -500,3 +500,35 @@ export function stopUpdateCheckScheduler(): void {
     schedulerTimer = null
   }
 }
+
+// ── Update offer broadcast bus ──────────────────────────────────────────────
+
+/** Listener callback invoked when an update offer is discovered. */
+export type UpdateOfferListener = (offer: UpdateOfferInfo) => void
+
+const offerListeners = new Set<UpdateOfferListener>()
+
+/**
+ * Subscribe to update offers detected anywhere in the app (e.g. manual check in
+ * Settings or scheduler tick). Returns an idempotent unsubscribe function.
+ */
+export function onUpdateOffer(listener: UpdateOfferListener): () => void {
+  offerListeners.add(listener)
+  return () => {
+    offerListeners.delete(listener)
+  }
+}
+
+/**
+ * Broadcast an update offer to all active subscribers (e.g. UpdateController
+ * in the app shell, to enrich and show the UpdateBanner immediately).
+ */
+export function broadcastUpdateOffer(offer: UpdateOfferInfo): void {
+  for (const listener of offerListeners) {
+    try {
+      listener(offer)
+    } catch {
+      // Listener error must not prevent notifying other subscribers.
+    }
+  }
+}

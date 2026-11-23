@@ -27,7 +27,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { pickAndroidPackage, type UpdateManifest } from '@learning-hub/core/update'
 import { isTauri } from '@/lib/transport'
 import { getDeviceIdentity } from '@/lib/device'
-import { startUpdateCheckScheduler, type UpdateOfferInfo } from '@/lib/updates'
+import { onUpdateOffer, startUpdateCheckScheduler, type UpdateOfferInfo } from '@/lib/updates'
 import { UpdateBanner, type UpdateOffer } from '@/components/UpdateBanner'
 import { useUpdateDownloadProgress, type UpdateDownloadProgress } from '@/platform/update-progress'
 import { androidDeviceInfo, installSideloadApk } from '@/platform/sideload'
@@ -98,8 +98,12 @@ export function UpdateController(): React.ReactElement | null {
         // Shell predates the command — nothing to confirm.
       }
     })()
+    const unsub = onUpdateOffer((info) => void enrich(info))
     const stop = startUpdateCheckScheduler({ onOffer: (info) => void enrich(info) })
-    return stop
+    return () => {
+      unsub()
+      stop()
+    }
   }, [])
 
   /** Android: download the verified APK, then run the consent-first install. */
