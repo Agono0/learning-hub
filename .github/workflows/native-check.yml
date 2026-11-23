@@ -1,0 +1,66 @@
+name: Native check
+
+# `native.yml` deliberately runs only on pushes to main / tags, so nothing on a
+# pull request ever compiles the Rust shell. `cargo build` (what the Android
+# jobs run) skips the inline `#[cfg(test)]` modules entirely, so a test-only
+# compile error can reach main with every PR check green — which is exactly how
+# PR #112 landed a red Windows build.
+#
+# This workflow closes that hole for changes that can affect the shell, and is
+# path filtered so UI-only and docs-only PRs pay nothing.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/native/**'
+      - 'packages/**'
+      - 'scripts/tauri-*.mjs'
+      - 'scripts/serve-static.mjs'
+      - 'apps/web/next.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/native.yml'
+      - '.github/workflows/native-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-tests:
+    # Windows is the only configuration where native.yml compiles AND tests the
+    # shell, so match it exactly instead of paying for the Linux webkit2gtk
+    # system dependency install just to approximate it.
+    name: Rust unit tests (windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+          key: native-check
+
+      # tauri-build reads `frontendDist` (../../web/.next-tauri) from
+      # tauri.conf.json while compiling the build script. It does not exist on a
+      # fresh checkout, so provide the directory rather than let the guard fail
+      # for a reason unrelated to the change under test.
+      - name: Stub the web export directory
+        run: New-Item -ItemType Directory -Force apps/web/.next-tauri | Out-Null
+
+      # Debug profile on purpose: the release profile sets lto = true and
+      # codegen-units = 1 (Cargo.toml), which is most of the cost of
+      # `cargo test --release`. Everything under `#[cfg(test)]` is pure logic —
+      # slot files, sha256, zip unpack, manifest parsing — and nothing outside
+      # main.rs's bin-only `windows_subsystem` attribute branches on
+      # `debug_assertions`. `--lib` is the whole suite: every test lives in an
+      # inline module in src/, there is no tests/ directory.
+      - name: Rust unit tests
+        run: cargo test --manifest-path apps/native/src-tauri/Cargo.toml --lib
