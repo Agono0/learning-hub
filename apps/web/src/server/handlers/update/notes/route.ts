@@ -1,6 +1,7 @@
 import { parseUpdatePointer, updateChannelSchema } from '@learning-hub/core/update'
 import { z } from 'zod'
 import { readQuery, withRoute } from '@/lib/api'
+import { remoteFetch } from '@/server/net'
 
 /**
  * GET /api/update/notes?channel=nightly|beta|stable (O1-26).
@@ -14,7 +15,12 @@ import { readQuery, withRoute } from '@/lib/api'
  * `parseUpdatePointer` (O1-28) before anything is returned — unknown fields
  * are stripped, invalid documents yield `notes: null` rather than an error the
  * client must handle. Notes are CI-authored text but are still escaped by the
- * renderer (`<Markdown>`).
+ * renderer (`<Markdown>`). The reply also forwards `manifestUrl` so the update
+ * controller can fetch + signature-verify the manifest on the native layer.
+ *
+ * Outbound call rides the `remoteFetch` port (F-07): on the native webview it
+ * goes through the Rust HTTP bridge, so the pointer read does not depend on
+ * GitHub sending permissive CORS headers to the webview origin.
  */
 const querySchema = z.object({ channel: updateChannelSchema.default('nightly') })
 
@@ -30,7 +36,7 @@ export const GET = withRoute(async (req: Request) => {
   let pointer: ReturnType<typeof parseUpdatePointer> = null
   let reason = 'pointer-unavailable'
   try {
-    const res = await fetch(url, {
+    const res = await remoteFetch(url, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(10_000),
     })
@@ -49,6 +55,7 @@ export const GET = withRoute(async (req: Request) => {
     notes: pointer.notes ?? null,
     version: pointer.version,
     publishedAt: pointer.publishedAt,
+    manifestUrl: pointer.manifestUrl,
     channel,
   })
 })

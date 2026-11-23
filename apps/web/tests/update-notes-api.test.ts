@@ -45,6 +45,7 @@ describe('GET /api/update/notes (O1-26)', () => {
     expect(body.notes).toBe(POINTER.notes)
     expect(body.version).toBe(POINTER.version)
     expect(body.channel).toBe('nightly')
+    expect(body.manifestUrl).toBe(POINTER.manifestUrl)
     // The proxy fetched the canonical channel-pointers URL for the channel.
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('channel-pointers/nightly.json')
   })
@@ -122,6 +123,7 @@ describe('fetchChannelNotes (lib wrapper)', () => {
       version: POINTER.version,
       publishedAt: POINTER.publishedAt,
       notes: POINTER.notes,
+      manifestUrl: POINTER.manifestUrl,
     })
 
     vi.stubGlobal(
