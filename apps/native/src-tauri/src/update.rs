@@ -1266,6 +1266,24 @@ pub fn update_fetch_verified_manifest(manifest_url: String) -> Result<serde_json
     serde_json::to_value(&manifest).map_err(|e| e.to_string())
 }
 
+/// Default pointer host URL when not specified.
+pub const DEFAULT_POINTER_BASE: &str =
+    "https://github.com/Agono0/learning-hub/releases/download/channel-pointers";
+
+/// Tauri command to fetch the channel pointer directly using native Rust networking (`ureq`).
+/// Returns the pointer as JSON matching `updatePointerSchema`.
+#[tauri::command]
+pub fn update_fetch_channel_pointer(channel: Option<String>) -> Result<serde_json::Value, String> {
+    let chan = match channel.as_deref().unwrap_or("nightly") {
+        "nightly" => UpdateChannel::Nightly,
+        "beta" => UpdateChannel::Beta,
+        "stable" => UpdateChannel::Stable,
+        other => return Err(format!("unknown channel: {other}")),
+    };
+    let pointer = fetch_pointer(DEFAULT_POINTER_BASE, chan).map_err(|e| e.to_string())?;
+    serde_json::to_value(&pointer).map_err(|e| e.to_string())
+}
+
 /// Downloads a full Android APK into the updates dir (sha256 + size verified,
 /// resumable) and returns its absolute path for `update_install_android_apk`.
 /// The destination is keyed by the artifact's sha256 so a stale partial from a

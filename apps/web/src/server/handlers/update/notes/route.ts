@@ -38,7 +38,7 @@ export const GET = withRoute(async (req: Request) => {
   try {
     const res = await remoteFetch(url, {
       headers: { accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(15_000),
     })
     if (res.ok) {
       pointer = parseUpdatePointer(await res.json())
