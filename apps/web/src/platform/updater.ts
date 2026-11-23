@@ -26,6 +26,7 @@
 import { isTauri } from '@/lib/transport'
 import { getDeviceIdentity } from '@/lib/device'
 import { sideloadSupported } from '@/platform/sideload'
+import { reportError } from '@/lib/telemetry'
 import type { UpdateAndroidPackage, UpdateManifest } from '@learning-hub/core/update'
 
 /**
@@ -41,7 +42,8 @@ export async function fetchVerifiedManifest(
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     return await invoke<UpdateManifest>('update_fetch_verified_manifest', { manifestUrl })
-  } catch {
+  } catch (err) {
+    void reportError(err, { action: 'fetch_verified_manifest', url: manifestUrl })
     return null
   }
 }
@@ -61,7 +63,8 @@ export async function downloadAndroidApk(pkg: UpdateAndroidPackage): Promise<str
       expectedSha256: pkg.sha256,
       total: pkg.size,
     })
-  } catch {
+  } catch (err) {
+    void reportError(err, { action: 'download_android_apk', url: pkg.url })
     return null
   }
 }
@@ -107,7 +110,8 @@ export async function installWindowsUpdate(
       }
     })
     return 'installed'
-  } catch {
+  } catch (err) {
+    void reportError(err, { action: 'install_windows_update' })
     return 'failed'
   }
 }

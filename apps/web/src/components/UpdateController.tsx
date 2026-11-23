@@ -32,6 +32,7 @@ import { UpdateBanner, type UpdateOffer } from '@/components/UpdateBanner'
 import { useUpdateDownloadProgress, type UpdateDownloadProgress } from '@/platform/update-progress'
 import { androidDeviceInfo, installSideloadApk } from '@/platform/sideload'
 import { downloadAndroidApk, fetchVerifiedManifest, installWindowsUpdate } from '@/platform/updater'
+import { reportError } from '@/lib/telemetry'
 import { Callout } from '@/ui'
 
 /** An honest, transient status line shown under the banner (consent / errors). */
@@ -57,33 +58,41 @@ export function UpdateController(): React.ReactElement | null {
 
   /** Turn a pointer offer into a host-specific, sized, applicable offer. */
   async function enrich(info: UpdateOfferInfo): Promise<void> {
-    const manifest = await fetchVerifiedManifest(info.manifestUrl)
-    if (!manifest) return // unverifiable manifest → never offer (design law)
-    manifestRef.current = manifest
-    const host = getDeviceIdentity().platform
-    if (host === 'android') {
-      const device = await androidDeviceInfo()
-      const pkg = pickAndroidPackage(manifest, device?.abi)
-      if (!pkg) return // no APK for this device → nothing safe to apply
-      setOffer({
+    try {
+      const manifest = await fetchVerifiedManifest(info.manifestUrl)
+      if (!manifest) return // unverifiable manifest → never offer (design law)
+      manifestRef.current = manifest
+      const host = getDeviceIdentity().platform
+      if (host === 'android') {
+        const device = await androidDeviceInfo()
+        const pkg = pickAndroidPackage(manifest, device?.abi)
+        if (!pkg) return // no APK for this device → nothing safe to apply
+        setOffer({
+          version: info.version,
+          notes: info.notes ?? undefined,
+          fullSize: pkg.size,
+          requiresNative: true,
+        })
+        setDismissed(false)
+        setNotice(null)
+      } else if (host === 'windows') {
+        setOffer({
+          version: info.version,
+          notes: info.notes ?? undefined,
+          fullSize: manifest.fullPackageSize ?? 0,
+          requiresNative: true,
+        })
+        setDismissed(false)
+        setNotice(null)
+      }
+      // Other hosts (plain web): no native apply path — the banner stays hidden.
+    } catch (err) {
+      void reportError(err, {
+        component: 'UpdateController',
+        action: 'enrich',
         version: info.version,
-        notes: info.notes ?? undefined,
-        fullSize: pkg.size,
-        requiresNative: true,
       })
-      setDismissed(false)
-      setNotice(null)
-    } else if (host === 'windows') {
-      setOffer({
-        version: info.version,
-        notes: info.notes ?? undefined,
-        fullSize: manifest.fullPackageSize ?? 0,
-        requiresNative: true,
-      })
-      setDismissed(false)
-      setNotice(null)
     }
-    // Other hosts (plain web): no native apply path — the banner stays hidden.
   }
 
   useEffect(() => {
@@ -108,50 +117,71 @@ export function UpdateController(): React.ReactElement | null {
 
   /** Android: download the verified APK, then run the consent-first install. */
   async function applyAndroid(): Promise<void> {
-    const manifest = manifestRef.current
-    const device = await androidDeviceInfo()
-    const pkg = manifest ? pickAndroidPackage(manifest, device?.abi) : null
-    if (!pkg) {
-      setNotice({ tone: 'warning', text: 'No installer is available for this device yet.' })
-      return
-    }
-    const path = await downloadAndroidApk(pkg)
-    if (!path) {
-      setNotice({
-        tone: 'warning',
-        text: 'The download failed — check your connection and try again.',
-      })
-      return
-    }
-    const result = await installSideloadApk(path)
-    if (result?.consentRequired) {
-      setNotice({
-        tone: 'info',
-        text: 'Allow “install unknown apps” for Learning HUB, then tap Download update again.',
-      })
-    } else if (result?.committed) {
-      setNotice({
-        tone: 'info',
-        text: 'Installer opened — confirm on the system dialog to finish.',
-      })
-    } else {
+    try {
+      const manifest = manifestRef.current
+      const device = await androidDeviceInfo()
+      const pkg = manifest ? pickAndroidPackage(manifest, device?.abi) : null
+      if (!pkg) {
+        setNotice({ tone: 'warning', text: 'No installer is available for this device yet.' })
+        return
+      }
+      const path = await downloadAndroidApk(pkg)
+      if (!path) {
+        setNotice({
+          tone: 'warning',
+          text: 'The download failed — check your connection and try again.',
+        })
+        return
+      }
+      const result = await installSideloadApk(path)
+      if (result?.consentRequired) {
+        setNotice({
+          tone: 'info',
+          text: 'Allow “install unknown apps” for Learning HUB, then tap Download update again.',
+        })
+      } else if (result?.committed) {
+        setNotice({
+          tone: 'info',
+          text: 'Installer opened — confirm on the system dialog to finish.',
+        })
+      } else {
+        void reportError(new Error('Sideload install was not committed'), {
+          component: 'UpdateController',
+          action: 'installSideloadApk',
+        })
+        setNotice({ tone: 'warning', text: 'The installer could not start — please try again.' })
+      }
+    } catch (err) {
+      void reportError(err, { component: 'UpdateController', action: 'applyAndroid' })
       setNotice({ tone: 'warning', text: 'The installer could not start — please try again.' })
     }
   }
 
   /** Windows: the official plugin verifies latest.json and runs the installer. */
   async function applyWindows(): Promise<void> {
-    setWinProgress(null)
-    const result = await installWindowsUpdate((p) => setWinProgress(p))
-    if (result === 'no-update') {
-      setOffer(null)
-      setNotice({ tone: 'info', text: 'This device is already on the latest build.' })
-    } else if (result === 'failed') {
+    try {
+      setWinProgress(null)
+      const result = await installWindowsUpdate((p) => setWinProgress(p))
+      if (result === 'no-update') {
+        setOffer(null)
+        setNotice({ tone: 'info', text: 'This device is already on the latest build.' })
+      } else if (result === 'failed') {
+        void reportError(new Error('Windows update install failed'), {
+          component: 'UpdateController',
+          action: 'applyWindows',
+        })
+        setNotice({
+          tone: 'warning',
+          text: 'The update could not be installed — please try again.',
+        })
+      } else if (result === 'unsupported') {
+        setNotice({ tone: 'warning', text: 'Updates are not available on this device.' })
+      }
+      // 'installed': the shell relaunches into the new version — nothing to do.
+    } catch (err) {
+      void reportError(err, { component: 'UpdateController', action: 'applyWindows' })
       setNotice({ tone: 'warning', text: 'The update could not be installed — please try again.' })
-    } else if (result === 'unsupported') {
-      setNotice({ tone: 'warning', text: 'Updates are not available on this device.' })
     }
-    // 'installed': the shell relaunches into the new version — nothing to do.
   }
 
   async function onApply(): Promise<void> {
@@ -163,6 +193,12 @@ export function UpdateController(): React.ReactElement | null {
       const host = getDeviceIdentity().platform
       if (host === 'android') await applyAndroid()
       else if (host === 'windows') await applyWindows()
+    } catch (err) {
+      void reportError(err, { component: 'UpdateController', action: 'onApply' })
+      setNotice({
+        tone: 'warning',
+        text: 'An unexpected error occurred while applying the update.',
+      })
     } finally {
       applyingRef.current = false
       setApplying(false)

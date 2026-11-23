@@ -26,6 +26,9 @@ mod update;
 /// everything the `.next-tauri` export emits. Unknown extensions default to
 /// `application/octet-stream` so nothing is ever sniffed.
 fn mime_for(path: &str) -> &'static str {
+    if !path.contains('.') || path.ends_with('/') {
+        return "text/html; charset=utf-8";
+    }
     let ext = path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
     match ext.as_str() {
         "html" => "text/html; charset=utf-8",
@@ -52,22 +55,49 @@ fn mime_for(path: &str) -> &'static str {
     }
 }
 
-/// Serves the ACTIVE slot over the custom `lhslot` scheme (O1-04), falling
-/// back to the bundled `.next-tauri` assets via the asset resolver when the
-/// slot has no such file (first run — no pointer, empty slot, missing file).
+/// Decodes standard URL percent-encoding (e.g. `%20` -> ` `) without external dependencies.
+fn percent_decode(input: &str) -> String {
+    let mut bytes = Vec::new();
+    let mut chars = input.bytes();
+    while let Some(b) = chars.next() {
+        if b == b'%' {
+            let h1 = chars.next();
+            let h2 = chars.next();
+            if let (Some(h1), Some(h2)) = (h1, h2) {
+                if let (Some(d1), Some(d2)) = (
+                    char::from(h1).to_digit(16),
+                    char::from(h2).to_digit(16),
+                ) {
+                    bytes.push(((d1 << 4) | d2) as u8);
+                    continue;
+                }
+                bytes.push(b'%');
+                bytes.push(h1);
+                bytes.push(h2);
+                continue;
+            } else {
+                bytes.push(b'%');
+                if let Some(h1) = h1 {
+                    bytes.push(h1);
+                }
+                continue;
+            }
+        }
+        bytes.push(b);
+    }
+    String::from_utf8(bytes).unwrap_or_else(|_| input.to_string())
+}
+
+/// Serves assets for the webview: checks the ACTIVE slot first (for delta-OTA
+/// hot updates), falling back to the bundled `.next-tauri` assets via
+/// `app.asset_resolver()` when the slot does not have the file (first run,
+/// empty slot, or untouched asset).
 ///
-/// Uri shapes from the webview: `https://lhslot.localhost/<path>` on Windows
-/// and `lhslot://localhost/<path>` elsewhere — both expose the path through
-/// `Uri::path()`, so one parser serves both.
-///
-/// Capabilities note: capabilities bind by window label (`"main"`), not by
-/// origin, and Tauri 2 treats registered custom schemes as app origins — so
-/// IPC permissions survive the slot switch with no capability rebind.
-///
-/// Origin note: the slot origin differs from the bundled origin, which moves
-/// the webview's OPFS/localStorage scope; slot payloads are only promoted
-/// after signature verification, and the storage path is tracked in
-/// docs/updates.md §"Slots & the webview origin".
+/// Origin-safe: By registering this protocol handler for the standard `"tauri"`
+/// scheme, the webview origin stays strictly at `tauri://localhost` (or
+/// `http://tauri.localhost` on Windows/Android with useHttpsScheme=false).
+/// This prevents OPFS and localStorage storage scope from ever moving,
+/// safeguarding the sqlite-wasm database while enabling delta updates.
 fn serve_slot_protocol(
     app: &tauri::AppHandle,
     request: tauri::http::Request<Vec<u8>>,
@@ -75,7 +105,8 @@ fn serve_slot_protocol(
     use std::borrow::Cow;
 
     let path = request.uri().path().trim_start_matches('/');
-    let rel = if path.is_empty() { "index.html" } else { path };
+    let decoded = percent_decode(path);
+    let rel = if decoded.is_empty() { "index.html" } else { &decoded };
     // NOTE: `asset_resolver()` is an inherent AppHandle method in tauri 2 —
     // `tauri::Manager` is NOT needed (and would warn as unused) here; the
     // Manager-backed `app.path()` call lives inside `update::slot_updates_dir`.
@@ -85,6 +116,7 @@ fn serve_slot_protocol(
         return tauri::http::Response::builder()
             .status(200)
             .header("Content-Type", mime_for(rel))
+            .header("Access-Control-Allow-Origin", "*")
             .body(Cow::Owned(bytes))
             .expect("valid slot response");
     }
@@ -96,6 +128,7 @@ fn serve_slot_protocol(
         return tauri::http::Response::builder()
             .status(200)
             .header("Content-Type", mime_for(rel))
+            .header("Access-Control-Allow-Origin", "*")
             .body(Cow::Owned(asset.bytes().to_owned()))
             .expect("valid bundled response");
     }
@@ -103,6 +136,7 @@ fn serve_slot_protocol(
     tauri::http::Response::builder()
         .status(404)
         .header("Content-Type", "text/plain; charset=utf-8")
+        .header("Access-Control-Allow-Origin", "*")
         .body(Cow::Borrowed(b"not found".as_slice()))
         .expect("valid 404 response")
 }
@@ -145,9 +179,15 @@ pub fn run() {
         // AI provider traffic from the hub worker (via the main thread) — native HTTP, no webview CORS.
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_notification::init())
-        // Delta-OTA A/B slots (O1-04): serve the active slot's payload over a
-        // custom scheme, falling back to the bundled assets when no slot has
-        // been promoted yet (first run). See update.rs + docs/updates.md.
+        // Delta-OTA A/B slots (origin-safe): serve the active slot's payload first,
+        // falling back to the bundled assets via asset_resolver() when no
+        // slot has been promoted yet (first run) or the file is not in the slot.
+        // We register "tauri" so the webview origin stays strictly at
+        // tauri://localhost / http://tauri.localhost (preserving OPFS & storage scope).
+        // We also keep "lhslot" for backward-compatibility.
+        .register_uri_scheme_protocol("tauri", |ctx, request| {
+            serve_slot_protocol(ctx.app_handle(), request)
+        })
         .register_uri_scheme_protocol("lhslot", |ctx, request| {
             serve_slot_protocol(ctx.app_handle(), request)
         })
@@ -296,4 +336,31 @@ fn setup_desktop_shell(app: &mut tauri::App) -> Result<(), tauri::Error> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn percent_decode_decodes_standard_sequences() {
+        assert_eq!(percent_decode("index.html"), "index.html");
+        assert_eq!(percent_decode("hello%20world.js"), "hello world.js");
+        assert_eq!(percent_decode("nested/path%2Ffile.txt"), "nested/path/file.txt");
+        assert_eq!(percent_decode(""), "");
+        assert_eq!(percent_decode("%ZZ%2"), "%ZZ%2");
+    }
+
+    #[test]
+    fn mime_for_maps_extensions_and_extensionless_html() {
+        assert_eq!(mime_for("index.html"), "text/html; charset=utf-8");
+        assert_eq!(mime_for("review"), "text/html; charset=utf-8");
+        assert_eq!(mime_for("courses/new"), "text/html; charset=utf-8");
+        assert_eq!(mime_for("courses/"), "text/html; charset=utf-8");
+        assert_eq!(mime_for("app.js"), "text/javascript; charset=utf-8");
+        assert_eq!(mime_for("style.css"), "text/css; charset=utf-8");
+        assert_eq!(mime_for("icon.svg"), "image/svg+xml");
+        assert_eq!(mime_for("data.wasm"), "application/wasm");
+        assert_eq!(mime_for("unknown.xyz"), "application/octet-stream");
+    }
 }

@@ -6,6 +6,7 @@ import { communityItemSchema, filterContentSafety, makeRoomCode } from '@learnin
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import { BossRaid } from './boss-raid'
 import { StudyRoom } from './study-room'
+import { handleCrashTelemetry } from './telemetry'
 
 export { StudyRoom, BossRaid }
 
@@ -13,6 +14,8 @@ export interface Env {
   DB: D1Database
   STUDY_ROOM: DurableObjectNamespace
   BOSS_RAID: DurableObjectNamespace
+  GITHUB_ISSUE_TOKEN?: string
+  GITHUB_REPO?: string
 }
 
 function corsHeaders(): HeadersInit {
@@ -386,6 +389,11 @@ export default {
         }
 
         return jsonResponse({ ok: true })
+      }
+
+      // ── Crash Telemetry ──────────────────────────────────────────────────
+      if (path === '/api/v1/telemetry/crash' && request.method === 'POST') {
+        return handleCrashTelemetry(request, env)
       }
 
       return jsonResponse({ error: 'Not found' }, 404)

@@ -31,11 +31,21 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::time::Duration;
 
-/// Blocking HTTP agent shared by all update fetches (30s timeout).
+/// Blocking HTTP agent shared by metadata update fetches (manifests, pointers, signatures).
 static AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     ureq::AgentBuilder::new()
         .timeout_connect(Duration::from_secs(10))
         .timeout(Duration::from_secs(30))
+        .build()
+});
+
+/// Blocking HTTP agent for downloading large update artifacts (APK/zip packages).
+/// Uses connect timeout (15s) and read timeout (30s per chunk), with NO overall
+/// transfer timeout so large files (e.g. 21MB Android APKs) stream over slow networks.
+static AGENT_DOWNLOAD: LazyLock<ureq::Agent> = LazyLock::new(|| {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(15))
+        .timeout_read(Duration::from_secs(30))
         .build()
 });
 
@@ -392,6 +402,37 @@ pub fn verify_file_hash(data: &[u8], expected_sha256: &str) -> Result<(), Update
         )));
     }
     let actual = hash_hex(data);
+    if actual == expected_sha256 {
+        Ok(())
+    } else {
+        Err(UpdateError::Hash(format!(
+            "sha256 mismatch: expected {expected_sha256}, got {actual}"
+        )))
+    }
+}
+
+/// Verifies the file at `path` against the manifest's lowercase-hex sha256 content address
+/// by streaming from disk in 64KB chunks (RAM bounded, no whole-file allocation).
+pub fn verify_path_hash(path: &Path, expected_sha256: &str) -> Result<(), UpdateError> {
+    if !is_valid_sha256(expected_sha256) {
+        return Err(UpdateError::InvalidInput(format!(
+            "malformed sha256 in manifest: {expected_sha256:?}"
+        )));
+    }
+    let mut file = fs::File::open(path)
+        .map_err(|e| UpdateError::Network(format!("open {path:?} for hash: {e}")))?;
+    let mut hasher = Sha256::new();
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| UpdateError::Network(format!("read {path:?} for hash: {e}")))?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buf[..n]);
+    }
+    let actual = to_hex(&hasher.finalize());
     if actual == expected_sha256 {
         Ok(())
     } else {
@@ -836,11 +877,11 @@ pub trait RangeFetcher {
     fn fetch_range(&mut self, start: u64) -> Result<RangeResponse, UpdateError>;
 }
 
-/// HTTP ranged GET via the shared agent (https-only). Maps 206 →
+/// HTTP ranged GET via the download agent (https-only). Maps 206 →
 /// `Partial`, 200 → `Full`; anything else is a network error.
 pub fn fetch_range_http(url: &str, start: u64) -> Result<RangeResponse, UpdateError> {
     assert_https(url)?;
-    let response = AGENT
+    let response = AGENT_DOWNLOAD
         .get(url)
         .set("Range", &range_header(start))
         .call()
@@ -926,25 +967,112 @@ where
     }
 
     on_progress(total, total);
-    let assembled = fs::read(dest)
-        .map_err(|e| UpdateError::Network(format!("read {dest:?}: {e}")))?;
-    verify_file_hash(&assembled, expected_sha256)
+    verify_path_hash(dest, expected_sha256)
 }
 
-/// Convenience wrapper over {@link download_resumable} for `fetch_range_http`.
+/// Convenience wrapper over download streaming for HTTP URLs using `AGENT_DOWNLOAD`.
+/// Streams directly from HTTP response reader to disk in 64KB chunks, emitting progress
+/// events on each chunk, with connect timeout (15s), read timeout (30s per chunk),
+/// and NO overall total transfer timeout.
 pub fn download_resumable_http<P>(
     dest: &Path,
     url: &str,
     total: u64,
     expected_sha256: &str,
-    on_progress: P,
+    mut on_progress: P,
 ) -> Result<(), UpdateError>
 where
     P: FnMut(u64, u64),
 {
-    let url = url.to_string();
-    let mut fetcher = HttpRangeFetcher { url };
-    download_resumable(dest, total, expected_sha256, on_progress, &mut fetcher)
+    use std::io::Write;
+
+    if let Some(parent) = dest.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let mut start = resume_offset(dest);
+    if start > total {
+        // Stale partial from a previous, different download — scratch it.
+        fs::write(dest, b"").map_err(|e| UpdateError::Network(format!("truncate {dest:?}: {e}")))?;
+        start = 0;
+    }
+    on_progress(start, total);
+
+    if start == total {
+        if total == 0 || verify_path_hash(dest, expected_sha256).is_ok() {
+            on_progress(total, total);
+            return Ok(());
+        }
+        // If hash verification failed on the existing complete file, restart from scratch.
+        fs::write(dest, b"").map_err(|e| UpdateError::Network(format!("truncate {dest:?}: {e}")))?;
+        start = 0;
+        on_progress(0, total);
+    }
+
+    assert_https(url)?;
+    let response = AGENT_DOWNLOAD
+        .get(url)
+        .set("Range", &range_header(start))
+        .call()
+        .map_err(|e| UpdateError::Network(format!("ranged GET {url} @ {start}: {e}")))?;
+
+    let status = response.status();
+    let (mut file, mut downloaded) = match status {
+        206 => {
+            let file = fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(dest)
+                .map_err(|e| UpdateError::Network(format!("open {dest:?}: {e}")))?;
+            (file, start)
+        }
+        200 => {
+            let file = fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(dest)
+                .map_err(|e| UpdateError::Network(format!("open {dest:?}: {e}")))?;
+            (file, 0)
+        }
+        status => {
+            return Err(UpdateError::Network(format!(
+                "ranged GET {url}: unexpected status {status}"
+            )))
+        }
+    };
+
+    let mut reader = response.into_reader();
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        let n = reader
+            .read(&mut buf)
+            .map_err(|e| UpdateError::Network(format!("read {url} stream: {e}")))?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buf[..n])
+            .map_err(|e| UpdateError::Network(format!("write {dest:?}: {e}")))?;
+        downloaded += n as u64;
+        if downloaded > total {
+            return Err(UpdateError::Hash(format!(
+                "download size exceeded manifest: got at least {downloaded} bytes, manifest says {total}"
+            )));
+        }
+        on_progress(downloaded, total);
+    }
+
+    if downloaded != total {
+        return Err(UpdateError::Hash(format!(
+            "ranged download size mismatch: had {downloaded} bytes, manifest says {total}"
+        )));
+    }
+
+    file.flush()
+        .map_err(|e| UpdateError::Network(format!("flush {dest:?}: {e}")))?;
+    drop(file);
+
+    on_progress(total, total);
+    verify_path_hash(dest, expected_sha256)
 }
 
 /// {@link RangeFetcher} backed by the shared https agent.
@@ -1089,7 +1217,22 @@ pub fn lookup_in_active_slot(base_dir: &Path, rel_path: &str) -> Option<Vec<u8>>
         return None;
     }
     let slot = active_slot(base_dir).ok()?;
-    fs::read(slot_dir(base_dir, slot).join(rel_path)).ok()
+    let slot_root = slot_dir(base_dir, slot);
+    let target = slot_root.join(rel_path);
+    if target.is_file() {
+        return fs::read(&target).ok();
+    }
+    if target.is_dir() {
+        let index = target.join("index.html");
+        if index.is_file() {
+            return fs::read(index).ok();
+        }
+    }
+    let html = slot_root.join(format!("{rel_path}.html"));
+    if html.is_file() {
+        return fs::read(html).ok();
+    }
+    None
 }
 
 // ─── App integration (commands + the lhslot serving seam) ────────────────────
@@ -1722,13 +1865,24 @@ mod slot_tests {
         assert_eq!(lookup_in_active_slot(&base, "index.html"), None);
         assert_eq!(lookup_in_active_slot(&base, "../escape"), None);
 
-        let (manifest, manifest_bytes) = test_manifest(vec![file_entry("index.html", b"slotted")]);
+        let (manifest, manifest_bytes) = test_manifest(vec![
+            file_entry("index.html", b"slotted"),
+            file_entry("courses/index.html", b"courses-slotted"),
+            file_entry("review.html", b"review-slotted"),
+        ]);
         download_to_inactive_slot(
             &base,
             &manifest,
             &manifest_bytes,
             "https://example.com/rel",
-            |_| Ok(b"slotted".to_vec()),
+            |f| {
+                Ok(match f.path.as_str() {
+                    "index.html" => b"slotted".to_vec(),
+                    "courses/index.html" => b"courses-slotted".to_vec(),
+                    "review.html" => b"review-slotted".to_vec(),
+                    _ => b"".to_vec(),
+                })
+            },
         )
         .unwrap();
         // Still bundled (download targets the INACTIVE slot): None.
@@ -1738,6 +1892,16 @@ mod slot_tests {
         assert_eq!(
             lookup_in_active_slot(&base, "index.html"),
             Some(b"slotted".to_vec())
+        );
+        // Directory fallback: "courses" -> "courses/index.html"
+        assert_eq!(
+            lookup_in_active_slot(&base, "courses"),
+            Some(b"courses-slotted".to_vec())
+        );
+        // Extensionless HTML fallback: "review" -> "review.html"
+        assert_eq!(
+            lookup_in_active_slot(&base, "review"),
+            Some(b"review-slotted".to_vec())
         );
         assert_eq!(lookup_in_active_slot(&base, "missing.html"), None);
         assert_eq!(lookup_in_active_slot(&base, "../evil"), None);
@@ -2064,6 +2228,24 @@ mod download_tests {
         assert!(matches!(
             download_resumable(&dest, 26, &hash_hex(b"expected"), |_, _| {}, &mut WrongFetcher),
             Err(UpdateError::Hash(_))
+        ));
+        fs::remove_dir_all(dest.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn verify_path_hash_verifies_or_rejects() {
+        let dest = temp_file("pathhash");
+        let content = b"hello stream sha256 verification";
+        fs::write(&dest, content).unwrap();
+        let expected = hash_hex(content);
+        assert!(verify_path_hash(&dest, &expected).is_ok());
+        assert!(matches!(
+            verify_path_hash(&dest, &"0".repeat(64)),
+            Err(UpdateError::Hash(_))
+        ));
+        assert!(matches!(
+            verify_path_hash(&dest, "invalid"),
+            Err(UpdateError::InvalidInput(_))
         ));
         fs::remove_dir_all(dest.parent().unwrap()).ok();
     }
