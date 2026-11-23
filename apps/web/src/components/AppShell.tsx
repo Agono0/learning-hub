@@ -35,6 +35,7 @@ import { NotificationBell } from './NotificationBell'
 import { CommandPalette, openCommandPalette } from './CommandPalette'
 import { QuickHudModal } from './QuickHudModal'
 import { OnboardingWizard } from './OnboardingWizard'
+import { UpdateController } from './UpdateController'
 import { apiGet, apiSend, hubStoragePersistent, onHubStoragePersistence } from '@/lib/transport'
 import { initReminderScheduler } from '@/platform/reminders'
 import { IconButton, LiveAnnouncerProvider, OfflineBanner, useToast } from '@/ui'
@@ -667,6 +668,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
             <OfflineBanner />
+            <UpdateController />
             <StorageWarning />
             <PermissionNudge />
             {children}

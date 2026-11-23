@@ -87,6 +87,20 @@ pub struct UpdatePatch {
     pub size: u64,
 }
 
+/// One full Android APK artifact (`updateAndroidPackageSchema`), content-
+/// addressed like every other update file. The sideload flow picks the entry
+/// matching the device ABI and hands it to PackageInstaller after verification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAndroidPackage {
+    /// https URL of the APK release asset.
+    pub url: String,
+    /// sha256 of the APK bytes, lowercase hex.
+    pub sha256: String,
+    /// APK size in bytes.
+    pub size: u64,
+}
+
 /// The content-addressed build manifest (`updateManifestSchema`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -112,6 +126,15 @@ pub struct UpdateManifest {
     pub patches: Vec<UpdatePatch>,
     /// https URL of the full package — the patch fallback.
     pub full_package_url: String,
+    /// Byte size of the full-package artifact (optional; older manifests lack
+    /// it). The banner shows an honest installer size when present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full_package_size: Option<u64>,
+    /// Per-platform full Android APKs (optional/additive; keys are the
+    /// `android-*` platform names). Older clients ignore the field; manifests
+    /// without it offer no Android sideload path.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub android_packages: Option<std::collections::HashMap<String, UpdateAndroidPackage>>,
 }
 
 /// The per-channel pointer document (`updatePointerSchema`).
@@ -1213,6 +1236,81 @@ pub fn update_download_file(
     .map_err(|e| e.to_string())
 }
 
+// ─── Verified manifest fetch + Android APK download (O1-13 wiring) ───────────
+
+/// The committed updater public key (O1-09): `base64(minisign .pub text)`.
+/// Embedded at compile time so verification needs no runtime config and can
+/// never be pointed at an attacker-supplied key.
+const UPDATE_PUB_KEY: &str = include_str!("../keys/lh-update.key.pub");
+
+/// Fetches the channel manifest and verifies its Ed25519 minisign signature
+/// against the embedded public key BEFORE returning it (design law: a manifest
+/// whose signature does not verify is hostile, never used). The webview calls
+/// this to turn a pointer offer into a concrete, sized update offer.
+///
+/// Synchronous on purpose: the blocking HTTP agent runs on Tauri's blocking
+/// command pool, never on the async runtime. Returns the manifest as JSON
+/// (camelCase, matching `updateManifestSchema`), including `androidPackages`
+/// and `fullPackageSize` when the manifest carries them.
+#[tauri::command]
+pub fn update_fetch_verified_manifest(manifest_url: String) -> Result<serde_json::Value, String> {
+    assert_https(&manifest_url).map_err(|e| e.to_string())?;
+    let json = http_get(&manifest_url).map_err(|e| e.to_string())?;
+    let signature = http_get(&format!("{manifest_url}.sig")).map_err(|e| e.to_string())?;
+    verify_manifest_signature(json.as_bytes(), signature.trim(), UPDATE_PUB_KEY.trim())
+        .map_err(|e| e.to_string())?;
+    let manifest = parse_manifest(&json).map_err(|e| e.to_string())?;
+    serde_json::to_value(&manifest).map_err(|e| e.to_string())
+}
+
+/// Downloads a full Android APK into the updates dir (sha256 + size verified,
+/// resumable) and returns its absolute path for `update_install_android_apk`.
+/// The destination is keyed by the artifact's sha256 so a stale partial from a
+/// DIFFERENT build can never poison this download, while a retry of the SAME
+/// build resumes where it left off. Progress rides `update://download-progress`.
+///
+/// Android-only: other hosts answer with a clean error (the client only calls
+/// this on the sideload path).
+#[tauri::command]
+pub fn update_download_android_apk(
+    app: tauri::AppHandle,
+    url: String,
+    expected_sha256: String,
+    total: u64,
+) -> Result<String, String> {
+    #[cfg(target_os = "android")]
+    {
+        use tauri::Emitter;
+        let base = slot_updates_dir(&app);
+        let suffix = if expected_sha256.len() >= 12 {
+            &expected_sha256[..12]
+        } else {
+            "unknown"
+        };
+        let dest = base.join(format!("android-update-{suffix}.apk"));
+        let handle = app.clone();
+        download_resumable_http(
+            &dest,
+            &url,
+            total,
+            &expected_sha256,
+            move |downloaded, total| {
+                let _ = handle.emit(
+                    "update://download-progress",
+                    serde_json::json!({ "downloaded": downloaded, "total": total }),
+                );
+            },
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(dest.to_string_lossy().to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = (app, url, expected_sha256, total);
+        Err("Android APK updates are Android-only".to_string())
+    }
+}
+
 // ─── Tests (known-key fixture, no network) ───────────────────────────────────
 
 #[cfg(test)]
@@ -1285,6 +1383,28 @@ mod tests {
 
         let v2 = FIXTURE_MANIFEST.replace("\"manifestVersion\": 1", "\"manifestVersion\": 2");
         assert!(matches!(parse_manifest(&v2), Err(UpdateError::Parse(_))));
+    }
+
+    #[test]
+    fn parses_optional_android_packages_and_full_size() {
+        // Older manifests (the fixture) carry neither field → both None.
+        let bare = parse_manifest(FIXTURE_MANIFEST).expect("bare manifest parses");
+        assert!(bare.android_packages.is_none());
+        assert!(bare.full_package_size.is_none());
+
+        // Additive fields parse when present and round-trip as camelCase JSON.
+        let with_extras = FIXTURE_MANIFEST.replace(
+            "\"fullPackageUrl\": \"https://github.com/learning-hub/releases/download/nightly-20261122-abc1234/app.zip\"",
+            "\"fullPackageUrl\": \"https://github.com/learning-hub/releases/download/nightly-20261122-abc1234/app.zip\",\n  \"fullPackageSize\": 13768255,\n  \"androidPackages\": {\n    \"android-arm64-v8a\": { \"url\": \"https://github.com/learning-hub/releases/download/nightly-20261122-abc1234/Learning-HUB-arm64-v8a.apk\", \"sha256\": \"0000000000000000000000000000000000000000000000000000000000000000\", \"size\": 52428800 }\n  }",
+        );
+        let manifest = parse_manifest(&with_extras).expect("manifest with extras parses");
+        assert_eq!(manifest.full_package_size, Some(13768255));
+        let packages = manifest.android_packages.expect("android packages present");
+        let arm64 = packages.get("android-arm64-v8a").expect("arm64 entry");
+        assert_eq!(arm64.size, 52428800);
+        let json = serde_json::to_value(&manifest).expect("serializes");
+        assert_eq!(json["fullPackageSize"], 13768255);
+        assert!(json["androidPackages"]["android-arm64-v8a"]["url"].is_string());
     }
 
     #[test]

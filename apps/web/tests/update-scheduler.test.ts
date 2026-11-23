@@ -177,7 +177,7 @@ describe('checkForUpdate (pointer fetch + version verdict)', () => {
     const { checkForUpdate: fresh } = await freshUpdates()
     const result = await fresh()
     expect(result.status).toBe('available')
-    expect(result.offer).toEqual({ version: '2.0.0', notes: 'fixes' })
+    expect(result.offer).toEqual({ version: '2.0.0', notes: 'fixes', manifestUrl: null })
     vi.unstubAllEnvs()
   })
 
@@ -361,7 +361,7 @@ describe('startUpdateCheckScheduler (background loop)', () => {
   })
 
   it('reports an offer when a tick finds a newer version', async () => {
-    const offer = { version: '2.0.0', notes: null }
+    const offer = { version: '2.0.0', notes: null, manifestUrl: null }
     const check = vi.fn(async (): Promise<UpdateCheckResult> => ({
       status: 'available',
       pointerVersion: '2.0.0',

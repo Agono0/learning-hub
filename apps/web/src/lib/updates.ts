@@ -172,6 +172,8 @@ export interface ChannelNotes {
   publishedAt: string
   /** Notes body (may be null when the pointer carries no notes). */
   notes: string | null
+  /** https URL of the signed manifest (for the native verify + stage flow). */
+  manifestUrl: string | null
 }
 
 /**
@@ -187,6 +189,7 @@ export async function fetchChannelNotes(channel: UpdateChannel): Promise<Channel
     notes?: string | null
     version?: string
     publishedAt?: string
+    manifestUrl?: string
     reason?: string
   }>('/api/update/notes', { channel })
   if (!res || typeof res.version !== 'string' || res.version === '') return null
@@ -194,6 +197,7 @@ export async function fetchChannelNotes(channel: UpdateChannel): Promise<Channel
     version: res.version,
     publishedAt: typeof res.publishedAt === 'string' ? res.publishedAt : '',
     notes: typeof res.notes === 'string' ? res.notes : null,
+    manifestUrl: typeof res.manifestUrl === 'string' ? res.manifestUrl : null,
   }
 }
 
@@ -306,6 +310,8 @@ export interface UpdateOfferInfo {
   version: string
   /** Release notes body, or `null` when the pointer carries none. */
   notes: string | null
+  /** https URL of the signed manifest, or `null` when the pointer lacked one. */
+  manifestUrl: string | null
 }
 
 /** Result of one update check (manual "Check now" or scheduler tick). */
@@ -357,7 +363,7 @@ export async function checkForUpdate(options?: {
     return {
       status: 'available',
       pointerVersion: notes.version,
-      offer: { version: notes.version, notes: notes.notes },
+      offer: { version: notes.version, notes: notes.notes, manifestUrl: notes.manifestUrl },
     }
   }
   return { status: 'up-to-date', pointerVersion: notes.version, offer: null }
