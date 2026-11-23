@@ -20,6 +20,13 @@ export interface ManifestPatchEntry {
   size: number
 }
 
+/** One full Android APK entry ({@link UpdateAndroidPackage} shape). */
+export interface AndroidPackageEntry {
+  url: string
+  sha256: string
+  size: number
+}
+
 /** The generated manifest ({@link UpdateManifest} shape). */
 export interface UpdateManifestLike {
   manifestVersion: 1
@@ -32,6 +39,10 @@ export interface UpdateManifestLike {
   files: ManifestFileEntry[]
   patches: ManifestPatchEntry[]
   fullPackageUrl: string
+  /** Byte size of the full-package artifact (optional/additive). */
+  fullPackageSize?: number
+  /** Per-platform full Android APKs (optional/additive). */
+  androidPackages?: Record<string, AndroidPackageEntry>
 }
 
 /** A built patch bundle, ready to be written as `filename`. */
@@ -57,6 +68,10 @@ export interface GenerateOptions {
   requiresNative?: boolean
   /** https URL of the full package (patch fallback). */
   fullPackageUrl: string
+  /** Byte size of the full-package artifact (optional/additive). */
+  fullPackageSize?: number
+  /** Per-platform full Android APKs, already parsed (optional/additive). */
+  androidPackages?: Record<string, AndroidPackageEntry>
   /** Previous manifest file paths, newest first (max 5 used). */
   prev?: string[]
   /** https base URL for patch uploads; derived from fullPackageUrl when omitted. */
@@ -79,6 +94,8 @@ export interface MainResult extends GenerateResult {
 /** Parsed CLI options ({@link CliOptions}): {@link GenerateOptions} + out path. */
 export interface CliOptions extends GenerateOptions {
   out: string
+  /** Path to the android-packages JSON file (read by {@link main}). */
+  androidPackagesPath?: string
 }
 
 /** Maximum number of delta patches per manifest (O1-19 "last 5 manifests"). */
@@ -104,6 +121,11 @@ export declare function sha256Hex(bytes: Uint8Array): string
 
 /** Directory part of `fullPackageUrl` with trailing slash, or null. */
 export declare function derivePatchBaseUrl(fullPackageUrl: string): string | null
+
+/** Validate the Android packages map (https url, 64-hex sha256, positive size). */
+export declare function validateAndroidPackages(
+  packages: unknown,
+): Record<string, AndroidPackageEntry>
 
 /** Build the manifest + patch bundles (pure; writes nothing). */
 export declare function generateManifest(options: GenerateOptions): Promise<GenerateResult>
