@@ -1114,6 +1114,28 @@ pub fn apply_patch_bundle(
     manifest_bytes: &[u8],
     patch_bytes: &[u8],
 ) -> Result<SlotId, UpdateError> {
+    apply_patch_bundle_internal(
+        base_dir,
+        Some(installed),
+        target,
+        manifest_bytes,
+        patch_bytes,
+        &|_| None,
+    )
+}
+
+/// Core implementation of delta patch application into the inactive slot.
+/// Supports reusing unchanged files from the active slot or a fallback resolver
+/// (e.g. `app.asset_resolver()` when updating from the bundled first run where no
+/// slot manifest exists yet).
+pub fn apply_patch_bundle_internal(
+    base_dir: &Path,
+    installed: Option<&UpdateManifest>,
+    target: &UpdateManifest,
+    manifest_bytes: &[u8],
+    patch_bytes: &[u8],
+    fallback_resolver: &dyn Fn(&str) -> Option<Vec<u8>>,
+) -> Result<SlotId, UpdateError> {
     let slot = inactive_slot(base_dir)?;
     let dir = slot_dir(base_dir, slot);
     if dir.exists() {
@@ -1123,17 +1145,37 @@ pub fn apply_patch_bundle(
 
     let mut handled: std::collections::HashSet<String> = std::collections::HashSet::new();
 
-    // 2. Zero-bandwidth reuse of unchanged files from the active slot.
+    // 1. Zero-bandwidth reuse of unchanged files from the active slot or bundled fallback.
     let active_dir = slot_dir(base_dir, active_slot(base_dir)?);
     for file in &target.files {
-        if let Some(prev) = installed.files.iter().find(|f| f.path == file.path) {
-            if prev.sha256 == file.sha256 && prev.size == file.size {
-                let src = active_dir.join(&file.path);
-                let dest = dir.join(&file.path);
-                if let Some(parent) = dest.parent() {
-                    fs::create_dir_all(parent)
-                        .map_err(|e| UpdateError::Network(format!("mkdir {}: {e}", file.path)))?;
+        let is_unchanged = if let Some(prev) = installed {
+            prev.files
+                .iter()
+                .any(|f| f.path == file.path && f.sha256 == file.sha256 && f.size == file.size)
+        } else {
+            // First run from clean install (no slot manifest yet):
+            let src = active_dir.join(&file.path);
+            if src.is_file() {
+                if let Ok(meta) = src.metadata() {
+                    meta.len() == file.size && verify_path_hash(&src, &file.sha256).is_ok()
+                } else {
+                    false
                 }
+            } else if let Some(bytes) = fallback_resolver(&file.path) {
+                bytes.len() as u64 == file.size && hash_hex(&bytes) == file.sha256
+            } else {
+                false
+            }
+        };
+
+        if is_unchanged {
+            let src = active_dir.join(&file.path);
+            let dest = dir.join(&file.path);
+            if let Some(parent) = dest.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|e| UpdateError::Network(format!("mkdir {}: {e}", file.path)))?;
+            }
+            if src.is_file() {
                 fs::copy(&src, &dest).map_err(|e| {
                     UpdateError::Parse(format!(
                         "unchanged file {} missing from active slot: {e}",
@@ -1141,11 +1183,16 @@ pub fn apply_patch_bundle(
                     ))
                 })?;
                 handled.insert(file.path.clone());
+            } else if let Some(bytes) = fallback_resolver(&file.path) {
+                fs::write(&dest, &bytes).map_err(|e| {
+                    UpdateError::Network(format!("writing bundled asset {}: {e}", file.path))
+                })?;
+                handled.insert(file.path.clone());
             }
         }
     }
 
-    // 3. Patch entries — verify against the target manifest, then write.
+    // 2. Patch entries — verify against the target manifest, then write.
     let reader = std::io::Cursor::new(patch_bytes);
     let mut archive = zip::ZipArchive::new(reader)
         .map_err(|e| UpdateError::Parse(format!("patch bundle: {e}")))?;
@@ -1154,6 +1201,9 @@ pub fn apply_patch_bundle(
             .by_index(i)
             .map_err(|e| UpdateError::Parse(format!("patch entry {i}: {e}")))?;
         let name = entry.name().to_string();
+        if entry.is_dir() {
+            continue;
+        }
         if is_unsafe_rel_path(&name) {
             return Err(UpdateError::InvalidInput(format!(
                 "unsafe path in patch bundle: {name:?}"
@@ -1190,7 +1240,7 @@ pub fn apply_patch_bundle(
         handled.insert(name);
     }
 
-    // 4. Every target file must have had a source.
+    // 3. Every target file must have had a source.
     for file in &target.files {
         if !handled.contains(&file.path) {
             return Err(UpdateError::Parse(format!(
@@ -1474,6 +1524,92 @@ pub fn update_download_android_apk(
         let _ = (app, url, expected_sha256, total);
         Err("Android APK updates are Android-only".to_string())
     }
+}
+
+/// Applies a delta patch bundle into the inactive slot (A/B slot update) and
+/// promotes it to active so it serves on next restart.
+/// Emits download progress events (`update://download-progress`) so the banner
+/// shows live download progress.
+#[tauri::command]
+pub fn update_apply_delta_patch(
+    app: tauri::AppHandle,
+    target_manifest: serde_json::Value,
+    patch_url: String,
+    patch_sha256: String,
+    patch_size: u64,
+) -> Result<(), String> {
+    use tauri::Emitter;
+
+    let target: UpdateManifest =
+        serde_json::from_value(target_manifest).map_err(|e| format!("parse target manifest: {e}"))?;
+    let manifest_bytes = serde_json::to_vec_pretty(&target)
+        .map_err(|e| format!("serialize target manifest: {e}"))?;
+
+    let base = slot_updates_dir(&app);
+    let _ = fs::create_dir_all(&base);
+
+    let suffix = if patch_sha256.len() >= 12 {
+        &patch_sha256[..12]
+    } else {
+        "unknown"
+    };
+    let patch_path = base.join(format!("patch-{suffix}.zip"));
+
+    let handle = app.clone();
+    download_resumable_http(
+        &patch_path,
+        &patch_url,
+        patch_size,
+        &patch_sha256,
+        move |downloaded, total| {
+            let _ = handle.emit(
+                "update://download-progress",
+                serde_json::json!({ "downloaded": downloaded, "total": total }),
+            );
+        },
+    )
+    .map_err(|e| format!("download patch: {e}"))?;
+
+    let patch_bytes = fs::read(&patch_path).map_err(|e| format!("read patch file: {e}"))?;
+
+    // Look for currently installed manifest if present in active slot
+    let active = active_slot(&base).map_err(|e| e.to_string())?;
+    let installed_path = slot_manifest_path(&base, active);
+    let installed_manifest: Option<UpdateManifest> = if installed_path.exists() {
+        fs::read_to_string(&installed_path)
+            .ok()
+            .and_then(|s| parse_manifest(&s).ok())
+    } else {
+        None
+    };
+
+    // Apply patch bundle to inactive slot
+    apply_patch_bundle_internal(
+        &base,
+        installed_manifest.as_ref(),
+        &target,
+        &manifest_bytes,
+        &patch_bytes,
+        &|rel| app.asset_resolver().get(rel.to_string()).map(|a| a.bytes().to_vec()),
+    )
+    .map_err(|e| format!("apply patch bundle: {e}"))?;
+
+    // Promote the inactive slot to active!
+    promote_inactive_slot(&base).map_err(|e| format!("promote slot: {e}"))?;
+
+    // Clean up temporary patch zip
+    let _ = fs::remove_file(&patch_path);
+
+    Ok(())
+}
+
+/// Returns the current slot status (`SlotStatus`) containing active/inactive slot
+/// IDs and their installed versions (if any).
+#[tauri::command]
+pub fn update_get_slot_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    let base = slot_updates_dir(&app);
+    let status = list_current(&base).map_err(|e| e.to_string())?;
+    serde_json::to_value(&status).map_err(|e| e.to_string())
 }
 
 // ─── Tests (known-key fixture, no network) ───────────────────────────────────
