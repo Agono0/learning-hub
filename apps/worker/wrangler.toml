@@ -1,6 +1,7 @@
 name = "learning-hub-engagement"
 main = "src/index.ts"
 compatibility_date = "2026-11-23"
+preview_urls = false
 
 [observability]
 enabled = true
