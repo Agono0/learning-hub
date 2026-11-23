@@ -18,7 +18,7 @@ import { ArrowDown, ArrowUp, Repeat2, RotateCcw, Sparkles, Sprout } from 'lucide
 import { levelFromXp } from '@learning-hub/core/xp'
 import { nextFreshStart, streakBrokeWithinDays } from '@learning-hub/core/freshStart'
 import { apiGet } from '@/lib/transport'
-import { Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
+import { Badge, Button, Callout, IconButton, PageHeader, Skeleton } from '@/ui'
 import { DEFAULT_ORDER, useDashboardWidgets } from '@/components/dashboard/widgets'
 import { ErrorBoundary } from '@/ui'
 import { classifyRequestError } from '@/lib/use-api-error'
@@ -202,6 +202,9 @@ export default function DashboardPage() {
           subtitle={`${d.dateKey} · Level ${level} · ${d.xpToday} XP earned today`}
           actions={
             <div className="flex items-center gap-2">
+              <Badge tone="accent" data-ota-test>
+                OTA verified — hot update landed
+              </Badge>
               <button
                 type="button"
                 className="btn-ghost border text-xs"
