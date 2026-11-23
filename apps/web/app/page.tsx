@@ -203,7 +203,7 @@ export default function DashboardPage() {
           actions={
             <div className="flex items-center gap-2">
               <Badge tone="accent" data-ota-test>
-                OTA verified — DELTA-V2 landed
+                OTA verified — DELTA-V3 landed
               </Badge>
               <button
                 type="button"
