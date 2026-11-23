@@ -24,6 +24,7 @@ import {
   broadcastUpdateOffer,
   checkForUpdate,
   decideUpdateCheck,
+  fetchChannelNotes,
   isConnectionUnmetered,
   onUpdateOffer,
   requestUpdateDownload,
@@ -468,5 +469,53 @@ describe('update offer broadcast bus (onUpdateOffer / broadcastUpdateOffer)', ()
     expect(received).toEqual(['20261123-abc1234'])
     unsub1()
     unsub2()
+  })
+})
+
+describe('fetchChannelNotes Tauri direct fallback', () => {
+  beforeEach(() => {
+    transportMocks.isTauri = false
+    transportMocks.apiGet.mockReset()
+    invokeMock.mockReset()
+  })
+
+  it('falls back to invoke update_fetch_channel_pointer when apiGet fails in Tauri', async () => {
+    transportMocks.isTauri = true
+    transportMocks.apiGet.mockResolvedValueOnce(null)
+    invokeMock.mockResolvedValueOnce({
+      channel: 'nightly',
+      version: '20261123-74ea545',
+      manifestUrl: 'https://example.com/manifest.json',
+      publishedAt: '2026-11-23T17:50:34.714Z',
+      notes: 'Direct native pointer',
+    })
+
+    const notes = await fetchChannelNotes('nightly')
+    expect(invokeMock).toHaveBeenCalledWith('update_fetch_channel_pointer', { channel: 'nightly' })
+    expect(notes).toEqual({
+      version: '20261123-74ea545',
+      publishedAt: '2026-11-23T17:50:34.714Z',
+      notes: 'Direct native pointer',
+      manifestUrl: 'https://example.com/manifest.json',
+    })
+  })
+
+  it('does not invoke native fallback off-Tauri when apiGet fails', async () => {
+    transportMocks.isTauri = false
+    transportMocks.apiGet.mockResolvedValueOnce(null)
+
+    const notes = await fetchChannelNotes('nightly')
+    expect(invokeMock).not.toHaveBeenCalled()
+    expect(notes).toBeNull()
+  })
+
+  it('handles native invoke rejection gracefully', async () => {
+    transportMocks.isTauri = true
+    transportMocks.apiGet.mockResolvedValueOnce(null)
+    invokeMock.mockRejectedValueOnce(new Error('native offline'))
+
+    const notes = await fetchChannelNotes('nightly')
+    expect(invokeMock).toHaveBeenCalledWith('update_fetch_channel_pointer', { channel: 'nightly' })
+    expect(notes).toBeNull()
   })
 })

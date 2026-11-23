@@ -192,13 +192,40 @@ export async function fetchChannelNotes(channel: UpdateChannel): Promise<Channel
     manifestUrl?: string
     reason?: string
   }>('/api/update/notes', { channel })
-  if (!res || typeof res.version !== 'string' || res.version === '') return null
-  return {
-    version: res.version,
-    publishedAt: typeof res.publishedAt === 'string' ? res.publishedAt : '',
-    notes: typeof res.notes === 'string' ? res.notes : null,
-    manifestUrl: typeof res.manifestUrl === 'string' ? res.manifestUrl : null,
+  if (res && typeof res.version === 'string' && res.version !== '') {
+    return {
+      version: res.version,
+      publishedAt: typeof res.publishedAt === 'string' ? res.publishedAt : '',
+      notes: typeof res.notes === 'string' ? res.notes : null,
+      manifestUrl: typeof res.manifestUrl === 'string' ? res.manifestUrl : null,
+    }
   }
+
+  // Native Tauri fallback: if /api/update/notes returned null (e.g. webview HTTP
+  // bridge delay or offline worker proxy), attempt direct native fetch via Rust ureq.
+  if (isTauri) {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      const pointer = await invoke<{
+        version?: string
+        publishedAt?: string
+        notes?: string | null
+        manifestUrl?: string | null
+      }>('update_fetch_channel_pointer', { channel })
+      if (pointer && typeof pointer.version === 'string' && pointer.version !== '') {
+        return {
+          version: pointer.version,
+          publishedAt: typeof pointer.publishedAt === 'string' ? pointer.publishedAt : '',
+          notes: typeof pointer.notes === 'string' ? pointer.notes : null,
+          manifestUrl: typeof pointer.manifestUrl === 'string' ? pointer.manifestUrl : null,
+        }
+      }
+    } catch {
+      // Native fallback failed as well.
+    }
+  }
+
+  return null
 }
 
 // ── Check scheduler (O1-25) ─────────────────────────────────────────────────

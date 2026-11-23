@@ -117,6 +117,7 @@ pub fn run() {
             focus::focus_lock_status,
             update::update_confirm_boot_ready,
             update::update_download_file,
+            update::update_fetch_channel_pointer,
             update::update_fetch_verified_manifest,
             update::update_download_android_apk,
             update::update_android_device_info,
