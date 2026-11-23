@@ -157,6 +157,14 @@ child.on('exit', (code) => {
         const dest = join(apkDir, 'Learning-HUB-arm64-v8a.apk')
         copyFileSync(apk, dest)
         canonicalApks.push(dest)
+      } else if (filename.includes('armeabi-v7a')) {
+        const dest = join(apkDir, 'Learning-HUB-armeabi-v7a.apk')
+        copyFileSync(apk, dest)
+        canonicalApks.push(dest)
+      } else if (filename.includes('x86_64')) {
+        const dest = join(apkDir, 'Learning-HUB-x86_64.apk')
+        copyFileSync(apk, dest)
+        canonicalApks.push(dest)
       } else if (filename.includes('universal')) {
         const dest = join(apkDir, 'Learning-HUB-universal.apk')
         copyFileSync(apk, dest)
