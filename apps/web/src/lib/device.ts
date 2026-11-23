@@ -10,6 +10,7 @@
  * Hydration-safe: everything is behind function calls (never module-level),
  * mirroring the Phase-M19 pattern of keeping window access out of render.
  */
+import { isTauri } from '@/lib/transport'
 
 const DEVICE_ID_KEY = 'lh-device-id'
 const DEVICE_NAME_KEY = 'lh-device-name'
@@ -25,7 +26,7 @@ function detectPlatform(): DeviceIdentity['platform'] {
   if (typeof navigator === 'undefined') return 'other'
   const ua = navigator.userAgent
   if (/android/i.test(ua)) return 'android'
-  if (/tauri|LearningHUB/i.test(ua)) return 'windows'
+  if (isTauri || /tauri|LearningHUB/i.test(ua)) return 'windows'
   return 'web'
 }
 

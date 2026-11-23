@@ -21,9 +21,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { updateSettingsSchema, type UpdateSettings } from '@learning-hub/core/update'
 import {
+  broadcastUpdateOffer,
   checkForUpdate,
   decideUpdateCheck,
   isConnectionUnmetered,
+  onUpdateOffer,
   requestUpdateDownload,
   startUpdateCheckScheduler,
   stopUpdateCheckScheduler,
@@ -418,5 +420,53 @@ describe('startUpdateCheckScheduler (background loop)', () => {
     expect(first).toHaveBeenCalledTimes(1) // its immediate tick, nothing after
     expect(second).toHaveBeenCalledTimes(3) // immediate + two cadence ticks
     stopUpdateCheckScheduler()
+  })
+})
+
+describe('update offer broadcast bus (onUpdateOffer / broadcastUpdateOffer)', () => {
+  it('notifies subscribers of broadcast offers', () => {
+    const received: string[] = []
+    const unsub = onUpdateOffer((offer) => {
+      received.push(offer.version)
+    })
+    broadcastUpdateOffer({
+      version: '20261123-abc1234',
+      notes: 'New build',
+      manifestUrl: 'https://example.com/manifest.json',
+    })
+    expect(received).toEqual(['20261123-abc1234'])
+    unsub()
+  })
+
+  it('unsubscribing stops notifications', () => {
+    const received: string[] = []
+    const unsub = onUpdateOffer((offer) => {
+      received.push(offer.version)
+    })
+    unsub()
+    broadcastUpdateOffer({
+      version: '20261123-abc1234',
+      notes: 'New build',
+      manifestUrl: 'https://example.com/manifest.json',
+    })
+    expect(received).toEqual([])
+  })
+
+  it('an error in one listener does not prevent other listeners from being called', () => {
+    const received: string[] = []
+    const unsub1 = onUpdateOffer(() => {
+      throw new Error('boom')
+    })
+    const unsub2 = onUpdateOffer((offer) => {
+      received.push(offer.version)
+    })
+    broadcastUpdateOffer({
+      version: '20261123-abc1234',
+      notes: 'New build',
+      manifestUrl: 'https://example.com/manifest.json',
+    })
+    expect(received).toEqual(['20261123-abc1234'])
+    unsub1()
+    unsub2()
   })
 })
