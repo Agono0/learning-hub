@@ -239,18 +239,22 @@ jobs:
           echo "path=$INSTALLER" >> "$GITHUB_OUTPUT"
           echo "size=$(wc -c < "$INSTALLER")" >> "$GITHUB_OUTPUT"
 
-      - name: Download previous manifest
+      - name: Download previous manifests (up to 5 recent releases)
         shell: bash
-        env:
-          PREV_TAG: ${{ needs.meta.outputs.prev_tag }}
         run: |
           set -euo pipefail
           mkdir -p dist/prev
-          if [ -n "$PREV_TAG" ]; then
-            gh release download "$PREV_TAG" --pattern 'manifest.json' --output dist/prev/manifest.json || true
-          fi
+          TAGS=$(gh release list --limit 20 --json tagName --jq '[.[].tagName | select(startswith("nightly-"))][0:5] | .[]')
+          i=0
+          for tag in $TAGS; do
+            echo "downloading manifest for $tag..."
+            if gh release download "$tag" --pattern 'manifest.json' --output "dist/prev/manifest-${i}.json" 2>/dev/null; then
+              i=$((i + 1))
+            fi
+          done
+          echo "Downloaded $i previous manifest(s)"
 
-      - name: Generate manifest + patch bundles (diff vs previous release)
+      - name: Generate manifest + patch bundles (diff vs previous releases)
         shell: bash
         env:
           VERSION: ${{ needs.meta.outputs.version }}
@@ -273,9 +277,11 @@ jobs:
             --full-package-url "$FULL_URL"
             --full-package-size "$INSTALLER_SIZE"
           )
-          if [ -f dist/prev/manifest.json ]; then
-            ARGS+=(--prev dist/prev/manifest.json)
-          fi
+          for p in dist/prev/manifest-*.json; do
+            if [ -f "$p" ]; then
+              ARGS+=(--prev "$p")
+            fi
+          done
           node scripts/update-manifest.mjs "${ARGS[@]}"
 
       - name: Detect unchanged build (skip empty releases)
@@ -286,8 +292,8 @@ jobs:
             const fs = require("node:fs");
             const cur = JSON.parse(fs.readFileSync("dist/nightly/manifest.json", "utf8"));
             let skip = false;
-            if (fs.existsSync("dist/prev/manifest.json") && !cur.requiresNative) {
-              const prev = JSON.parse(fs.readFileSync("dist/prev/manifest.json", "utf8"));
+            if (fs.existsSync("dist/prev/manifest-0.json") && !cur.requiresNative) {
+              const prev = JSON.parse(fs.readFileSync("dist/prev/manifest-0.json", "utf8"));
               const key = (f) => f.path + "|" + f.sha256 + "|" + f.size;
               const a = cur.files.map(key).sort().join("\n");
               const b = prev.files.map(key).sort().join("\n");
