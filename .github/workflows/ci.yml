@@ -97,6 +97,7 @@ jobs:
           retention-days: 7
 
       - name: Cache Next.js build cache
+        if: github.event_name != 'pull_request'
         uses: actions/cache@v4
         with:
           path: |
@@ -108,9 +109,11 @@ jobs:
             nextjs-${{ runner.os }}-
 
       - name: Build
+        if: github.event_name != 'pull_request'
         run: npm run build
 
       # The bundle the Windows/Android apps ship (static export + hub worker).
       # Fast, and catches anything that only breaks the native build.
       - name: Build native web bundle
+        if: github.event_name != 'pull_request'
         run: npm run web:tauri

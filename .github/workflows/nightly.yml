@@ -92,7 +92,7 @@ jobs:
           REQUIRES_NATIVE=false
           PREV_TAG="$(gh release list --limit 30 --json tagName --jq '[.[].tagName | select(startswith("nightly-"))][0] // ""')"
           if [ -n "$PREV_TAG" ]; then
-            if [ -n "$(git diff --name-only "${PREV_TAG}" HEAD -- apps/native packages/db 2>/dev/null)" ]; then
+            if [ -n "$(git diff --name-only "${PREV_TAG}" HEAD -- apps/native packages/db ':(exclude)**/*.md' 2>/dev/null)" ]; then
               REQUIRES_NATIVE=true
             fi
           fi
@@ -108,9 +108,63 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Nightly ${VERSION} (tag ${TAG}), shell ${SHELL_VERSION}, prev=${PREV_TAG:-none}, requiresNative=${REQUIRES_NATIVE}"
 
+  web-export:
+    name: Web export
+    needs: meta
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.measure_patch }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/web/.next/cache
+            apps/web/.next-tauri/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+            nextjs-${{ runner.os }}-
+
+      - name: Bake monotonic shell version
+        shell: bash
+        env:
+          SHELL_VERSION: ${{ needs.meta.outputs.shell_version }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const p = "apps/native/src-tauri/tauri.conf.json";
+            const c = JSON.parse(fs.readFileSync(p, "utf8"));
+            c.version = process.env.SHELL_VERSION;
+            fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
+            console.log("shell version →", c.version);
+          '
+
+      - name: Build web bundle for Tauri
+        env:
+          LH_APP_VERSION: ${{ needs.meta.outputs.version }}
+        run: npm run web:tauri
+
+      - name: Upload web export artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-web-export
+          path: apps/web/.next-tauri
+          include-hidden-files: true
+          if-no-files-found: error
+
   android:
     name: Android APK (${{ matrix.abi }})
-    needs: meta
+    needs: [meta, web-export]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -165,16 +219,11 @@ jobs:
 
       - run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Cache Next.js build cache
-        uses: actions/cache@v4
+      - name: Download web export
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            apps/web/.next/cache
-            apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-            nextjs-${{ runner.os }}-
+          name: tauri-web-export
+          path: apps/web/.next-tauri
 
       - name: Bake monotonic shell version
         shell: bash
@@ -202,6 +251,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          LH_SKIP_WEB_BUILD: '1'
         # No GH_TOKEN here: the script's own release-upload branch stays off;
         # the nightly job publishes the APKs under the nightly tag instead.
         run: npm run android:build -- --target ${{ matrix.tauri-target }}
@@ -215,7 +265,7 @@ jobs:
 
   nightly:
     name: Build, sign, publish nightly
-    needs: [meta, android]
+    needs: [meta, web-export, android]
     runs-on: windows-latest
     timeout-minutes: 60
     env:
@@ -240,16 +290,11 @@ jobs:
 
       - run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Cache Next.js build cache
-        uses: actions/cache@v4
+      - name: Download web export
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            apps/web/.next/cache
-            apps/web/.next-tauri/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'packages/**/*.ts') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
-            nextjs-${{ runner.os }}-
+          name: tauri-web-export
+          path: apps/web/.next-tauri
 
       - name: Bake monotonic shell version
         shell: bash
@@ -265,12 +310,12 @@ jobs:
             console.log("shell version →", c.version);
           '
 
-      - name: Build web export + Windows installer
+      - name: Build Windows installer
         shell: bash
         env:
           LH_APP_VERSION: ${{ needs.meta.outputs.version }}
+          LH_SKIP_WEB_BUILD: '1'
         run: |
-          npm run web:tauri
           npm run app:build
 
       - name: Resolve installer artifact name + size
