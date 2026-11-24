@@ -56,11 +56,11 @@ const nextConfig: NextConfig = {
     // store builds (self-update off); unset/unknown → 'nightly', self-update
     // on (sideload/dev default). Read once in src/lib/updates.ts.
     LH_UPDATE_CHANNEL: process.env.LH_UPDATE_CHANNEL ?? '',
-    // App version shown in Settings > Updates (O1-14) and compared against the
-    // channel pointer by checkForUpdate. CI bakes the nightly version via
-    // LH_APP_VERSION so an installed release knows its own build; unset falls
-    // back to package.json ('' → "dev" label, never self-offers).
-    LH_APP_VERSION: process.env.LH_APP_VERSION ?? appVersion(),
+    // Static base app version from package.json (0.1.0). Dynamic nightly
+    // versions (e.g. 20261124-abc1234) are written to a static version.json at
+    // export time and resolved dynamically at runtime, avoiding chunk re-hashing
+    // on unchanged routes.
+    LH_APP_VERSION: appVersion(),
   },
   turbopack: { resolveAlias: browserAliases },
   ...(isTauri

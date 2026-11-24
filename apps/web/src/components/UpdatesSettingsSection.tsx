@@ -30,6 +30,7 @@ import {
   APP_VERSION,
   broadcastUpdateOffer,
   checkForUpdate,
+  getInstalledVersion,
   loadUpdateSettings,
   saveUpdateSettings,
   SELF_UPDATE_ENABLED,
@@ -78,6 +79,7 @@ export function UpdatesSettingsSection(): React.ReactElement {
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [checkState, setCheckState] = useState<ManualCheckState>('idle')
   const [checkVersion, setCheckVersion] = useState<string | null>(null)
+  const [activeVersion, setActiveVersion] = useState<string>(APP_VERSION || 'dev')
 
   // Hydration-safe loads (device.ts pattern): storage and platform are read
   // after mount only, so SSR markup (defaults, no Android toggle) matches the
@@ -85,6 +87,9 @@ export function UpdatesSettingsSection(): React.ReactElement {
   useEffect(() => {
     setSettings(loadUpdateSettings())
     setIsAndroid(getDeviceIdentity().platform === 'android')
+    void getInstalledVersion().then((ver) => {
+      if (ver) setActiveVersion(ver)
+    })
   }, [])
 
   useEffect(() => {
@@ -143,7 +148,7 @@ export function UpdatesSettingsSection(): React.ReactElement {
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
         <Badge tone="accent">{UPDATE_BUILD_FLAVOR}</Badge>
-        <span>Version {APP_VERSION || 'dev'}</span>
+        <span>Version {activeVersion}</span>
         {!readOnly && settings.lastCheckedAt ? (
           <span className="text-tertiary">Last check {settings.lastCheckedAt}</span>
         ) : null}
