@@ -110,6 +110,24 @@ export const SELF_UPDATE_ENABLED: boolean = BUILD_STATE.selfUpdateEnabled
  */
 export const APP_VERSION: string = process.env.LH_APP_VERSION ?? ''
 
+/**
+ * Resolves the active installed version at runtime: prefers the native slot
+ * status (which checks active/inactive A/B slot manifests and bundled version.json),
+ * falling back to APP_VERSION.
+ */
+export async function getInstalledVersion(): Promise<string> {
+  if (typeof window !== 'undefined') {
+    try {
+      const { getSlotStatus } = await import('@/platform/updater')
+      const slot = await getSlotStatus()
+      if (slot?.activeVersion) return slot.activeVersion
+    } catch {
+      // ignore
+    }
+  }
+  return APP_VERSION
+}
+
 // ── Device-local update settings ────────────────────────────────────────────
 
 /**
@@ -367,6 +385,8 @@ export interface UpdateCheckResult {
 export async function checkForUpdate(options?: {
   /** Channel override (defaults to the stored setting). */
   channel?: UpdateChannel
+  /** Explicit current version to compare against; defaults to slot version or APP_VERSION. */
+  currentVersion?: string
   /** Clock override for tests; defaults to `Date.now()`. */
   nowMs?: number
 }): Promise<UpdateCheckResult> {
@@ -385,7 +405,8 @@ export async function checkForUpdate(options?: {
   saveUpdateSettings(
     updateSettingsSchema.parse({ ...settings, lastCheckedAt: new Date(nowMs).toISOString() }),
   )
-  const newer = APP_VERSION ? compareVersions(notes.version, APP_VERSION) > 0 : false
+  const baseVersion = options?.currentVersion ?? (await getInstalledVersion())
+  const newer = baseVersion ? compareVersions(notes.version, baseVersion) > 0 : false
   if (newer) {
     return {
       status: 'available',

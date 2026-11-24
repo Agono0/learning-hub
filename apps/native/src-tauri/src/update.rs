@@ -1608,7 +1608,16 @@ pub fn update_apply_delta_patch(
 #[tauri::command]
 pub fn update_get_slot_status(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let base = slot_updates_dir(&app);
-    let status = list_current(&base).map_err(|e| e.to_string())?;
+    let mut status = list_current(&base).map_err(|e| e.to_string())?;
+    if status.active_version.is_none() {
+        if let Some(asset) = app.asset_resolver().get("version.json".to_string()) {
+            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(asset.bytes()) {
+                if let Some(v) = val.get("version").and_then(|x| x.as_str()) {
+                    status.active_version = Some(v.to_string());
+                }
+            }
+        }
+    }
     serde_json::to_value(&status).map_err(|e| e.to_string())
 }
 

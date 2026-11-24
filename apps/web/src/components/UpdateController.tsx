@@ -29,7 +29,7 @@ import { pickAndroidPackage, pickPatch, type UpdateManifest } from '@learning-hu
 import { isTauri } from '@/lib/transport'
 import { getDeviceIdentity } from '@/lib/device'
 import {
-  APP_VERSION,
+  getInstalledVersion,
   onUpdateOffer,
   startUpdateCheckScheduler,
   type UpdateOfferInfo,
@@ -41,7 +41,6 @@ import {
   applyDeltaPatch,
   downloadAndroidApk,
   fetchVerifiedManifest,
-  getSlotStatus,
   installWindowsUpdate,
 } from '@/platform/updater'
 import { reportError } from '@/lib/telemetry'
@@ -67,17 +66,6 @@ export function UpdateController(): React.ReactElement | null {
 
   const platform = typeof navigator !== 'undefined' ? getDeviceIdentity().platform : 'other'
   const progress = platform === 'windows' ? winProgress : rustProgress
-
-  /** Resolve the active version: prefers the native slot version, falls back to APP_VERSION. */
-  async function getInstalledVersion(): Promise<string> {
-    try {
-      const slot = await getSlotStatus()
-      if (slot?.activeVersion) return slot.activeVersion
-    } catch {
-      // ignore
-    }
-    return APP_VERSION
-  }
 
   /** Turn a pointer offer into a host-specific, sized, applicable offer. */
   async function enrich(info: UpdateOfferInfo): Promise<void> {

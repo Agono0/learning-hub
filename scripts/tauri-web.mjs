@@ -53,4 +53,21 @@ if (mode === 'dev') {
   console.log(`[tauri-web] LH_SKIP_WEB_BUILD is set — using existing ${outDir}`)
 } else {
   await run('npx', ['next', 'build'], web)
+  const version = process.env.LH_APP_VERSION || ''
+  if (version) {
+    const { writeFileSync } = await import('node:fs')
+    const outDir = join(web, '.next-tauri')
+    writeFileSync(
+      join(outDir, 'version.json'),
+      JSON.stringify(
+        {
+          version,
+          channel: process.env.LH_UPDATE_CHANNEL || 'nightly',
+        },
+        null,
+        2,
+      ) + '\n',
+      'utf8',
+    )
+  }
 }
