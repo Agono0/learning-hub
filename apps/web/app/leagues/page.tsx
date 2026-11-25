@@ -35,6 +35,12 @@ type LeagueRow = {
   relegationSlots: number
 }
 
+/** True when a league's current round has passed its calendar end (same math as the engine). */
+function leagueRoundIsDue(l: LeagueRow, now: number = Date.now()): boolean {
+  const base = new Date(`${l.seasonStart}T00:00:00.000Z`).getTime()
+  return now >= base + (l.currentRound + 1) * l.roundLengthDays * 86_400_000
+}
+
 type PlayerRow = {
   handle: string
   tier: string
@@ -432,7 +438,14 @@ function OverviewTab({
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{l.title}</span>
-                    <Badge tone="accent">round {l.currentRound}</Badge>
+                    <span className="flex items-center gap-1">
+                      <Badge tone="accent">round {l.currentRound}</Badge>
+                      {leagueRoundIsDue(l) && (
+                        <Badge tone="warning" data-testid={`league-due-${l.slug}`}>
+                          due
+                        </Badge>
+                      )}
+                    </span>
                   </div>
                   <p className="mt-1 text-xs text-neutral-500">
                     {l.slug} · season from {l.seasonStart} · {l.roundLengthDays}-day rounds · ↑

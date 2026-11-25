@@ -261,6 +261,18 @@ test.describe('leagues season lifecycle', () => {
     // duel-1 completed earlier in the lifecycle, so amr gained Elo this week
     await expect(page.getByTestId('digest-elo-movers').getByText(/amr \+/)).toBeVisible()
     await expect(page.getByTestId('digest-elo-movers').getByText(/sara -/)).toBeVisible()
+    // the calendar strip shows the current round window and the next rounds
+    const strip = page.getByTestId('digest-schedule')
+    await expect(strip).toBeVisible()
+    await expect(strip).toContainText(/Round \d+ of \d+/)
+    await expect(strip).toContainText('next:')
+  })
+
+  test('league cards flag a round past its calendar end as due', async ({ page }) => {
+    await page.goto('/leagues')
+    // spring's season start is in the past and its round was never closed on
+    // the calendar, so the engine math marks the current round due
+    await expect(page.getByTestId(`league-due-${LEAGUE}`)).toBeVisible({ timeout: 60_000 })
   })
 
   test('rematch a completed duel from the duel list', async ({ page }) => {
