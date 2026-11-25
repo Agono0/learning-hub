@@ -116,7 +116,7 @@ test.describe('leagues season lifecycle', () => {
   }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     // duel-1 was decided in the previous test: amr beat sara
     await page.getByTestId('standings-row-amr').click()
@@ -134,7 +134,7 @@ test.describe('leagues season lifecycle', () => {
   test('profile shows earned achievement badges', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     // amr won duel-1 and the round: first-blood (auto-banked on duel
     // completion) and more badges show on his profile
@@ -153,7 +153,7 @@ test.describe('leagues season lifecycle', () => {
   test('division drill-down shows standings, winners and movement', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     // amr was promoted to silver in the earlier round close
     await page.getByTestId('division-open-silver').click()
@@ -174,7 +174,7 @@ test.describe('leagues season lifecycle', () => {
   test('head-to-head panel compares the two duelists', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     await page.getByTestId('h2h-a').fill('amr')
     await page.getByTestId('h2h-b').fill('sara')
