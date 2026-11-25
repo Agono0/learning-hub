@@ -86,6 +86,34 @@ describe('smoke preload', () => {
     expect(destroyed[0]!.message).toContain('external connect blocked')
   })
 
+  it('priv.test: the app lookup runs; a refusal passes through, an acceptance fails the connect', async () => {
+    const { Socket, connected } = fakes()
+    // The app lookup refuses: the error reaches the caller unchanged, and the real connect runs
+    // only to deliver that error (nothing is dialled by the fake).
+    const refused: unknown[] = []
+    const opts1: Record<string, unknown> = {
+      host: 'priv.test',
+      port: 80,
+      lookup: (_h: string, _o: unknown, cb: (e: Error | null, a?: string) => void) =>
+        cb(new Error('refused by app')),
+    }
+    new Socket().connect(opts1)
+    ;(opts1.lookup as (...a: unknown[]) => void)('priv.test', {}, (e: Error) => refused.push(e))
+    expect((refused[0] as Error).message).toBe('refused by app')
+    // The app lookup accepts a private address: the wrapper turns it into an error.
+    const accepted: unknown[] = []
+    const opts2: Record<string, unknown> = {
+      host: 'priv.test',
+      port: 80,
+      lookup: (_h: string, _o: unknown, cb: (e: Error | null, a?: string) => void) =>
+        cb(null, '10.0.0.5'),
+    }
+    new Socket().connect(opts2)
+    ;(opts2.lookup as (...a: unknown[]) => void)('priv.test', {}, (e: Error) => accepted.push(e))
+    expect((accepted[0] as Error).message).toContain('accepted a private address')
+    expect(connected).toHaveLength(2)
+  })
+
   it('lets loopback and IPC connections through untouched', () => {
     const { Socket, connected } = fakes()
     new Socket().connect({ host: '127.0.0.1', port: 3000 })

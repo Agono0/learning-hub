@@ -47,6 +47,15 @@ function install({ net, dns, fs, fixturePort, markerPath }) {
             if (Array.isArray(a)) cb(null, a.map(remap), f)
             else cb(null, a === PUBLIC_LOOKING ? '127.0.0.1' : a, f)
           })
+      } else if (o.host === 'priv.test' && typeof o.lookup === 'function') {
+        // Let the app's own lookup run: it must refuse 10.0.0.5. If it accepts, fail the
+        // connect here so nothing is ever dialled.
+        const lk = o.lookup
+        o.lookup = (h, opt, cb) =>
+          lk(h, opt, (e, a, f) => {
+            if (e) return cb(e, a, f)
+            return cb(new Error('smoke: app lookup accepted a private address'))
+          })
       } else if (!LOCAL.has(o.host)) {
         process.nextTick(() =>
           this.destroy(new Error('smoke: external connect blocked: ' + o.host)),
