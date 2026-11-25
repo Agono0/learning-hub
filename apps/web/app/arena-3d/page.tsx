@@ -52,6 +52,7 @@ import {
 } from '@/ui'
 import { ArenaCoachMarks, ArenaCoachReopenButton } from '@/components/arena/ArenaCoachMarks'
 import { NemesisPanel } from '@/components/arena/NemesisPanel'
+import { ArenaExportButtons } from '@/components/arena/ArenaExportButtons'
 import { ChipPicker } from '@/components/ui/chip-picker'
 import type { ArenaCanvasHandle } from '@/ui/ArenaCanvas'
 
@@ -777,6 +778,7 @@ export default function Arena3DPage() {
             ) : null}
 
             <NemesisPanel refreshKey={phase} />
+            <ArenaExportButtons disabled={(record?.stats?.runs ?? 0) === 0} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
