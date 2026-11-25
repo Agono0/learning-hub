@@ -25,7 +25,7 @@ async function seedArenaDeck(request: APIRequestContext, count = CARD_COUNT): Pr
   const deckRes = await request.post('/api/decks', {
     data: { name: DECK_NAME, description: 'Playwright arena spec', emoji: '⚔️' },
   })
-  expect(deckRes.ok()).toBeTruthy()
+  expect(deckRes.ok(), `deck create: ${deckRes.status()} ${await deckRes.text()}`).toBeTruthy()
   const deck = await deckRes.json()
   const deckId = deck.id as number
 
@@ -41,7 +41,7 @@ async function seedArenaDeck(request: APIRequestContext, count = CARD_COUNT): Pr
         due: past,
       },
     })
-    expect(cardRes.ok()).toBeTruthy()
+    expect(cardRes.ok(), `card create: ${cardRes.status()} ${await cardRes.text()}`).toBeTruthy()
   }
   return deckId
 }
