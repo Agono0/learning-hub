@@ -2053,6 +2053,18 @@ export const taskViews = table('task_views', {
 // and is never written by an incoming channel update (see core share-channels
 // engine merge rules).
 
+export const shareChannelManifests = table('share_channel_manifests', {
+  channelId: text('channel_id').primaryKey(),
+  /** JSON-encoded ChannelManifest (validated on read). */
+  manifestJson: text('manifest_json').notNull(),
+  hostedAt: text('hosted_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
 export const shareChannelSubscriptions = table('share_channel_subscriptions', {
   channelId: text('channel_id').primaryKey(),
   localVersion: integer('local_version').notNull().default(0),
@@ -2111,4 +2123,26 @@ export const shareChannelSyncRecords = table(
     errorMessage: text('error_message'),
   },
   (t) => [index('share_channel_sync_records_channel_at_idx').on(t.channelId, t.at)],
+)
+
+/** Subscription pull requests against locally hosted channels (lh-share/v2). */
+export const channelProposals = table(
+  'channel_proposals',
+  {
+    id: text('id').primaryKey(),
+    channelId: text('channel_id').notNull(),
+    authorHandle: text('author_handle').notNull(),
+    title: text('title').notNull(),
+    note: text('note').notNull().default(''),
+    baseVersion: integer('base_version').notNull(),
+    /** JSON-encoded ProposalOperation[]. */
+    operationsJson: text('operations_json').notNull(),
+    status: text('status').notNull().default('open'),
+    acceptedVersion: integer('accepted_version'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    decidedAt: text('decided_at'),
+  },
+  (t) => [index('channel_proposals_channel_idx').on(t.channelId, t.status)],
 )
