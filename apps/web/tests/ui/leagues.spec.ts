@@ -232,6 +232,26 @@ test.describe('leagues season lifecycle', () => {
     await expect(winButtons()).toHaveCount(0)
   })
 
+  test('auto-seed a tournament from standings through the UI', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await page.getByRole('tab', { name: 'Tournaments' }).click()
+
+    await page.getByTestId('tournament-slug').fill('auto-cup')
+    await page.getByTestId('tournament-title').fill('Auto Cup')
+    // no manual seeds: the button ranks the league by division then season points
+    await page.getByTestId('tournament-seed').click()
+
+    await expect(page.getByTestId('tournament-list').getByText('Auto Cup')).toBeVisible({
+      timeout: 60_000,
+    })
+    const bracket = page.getByTestId('bracket-auto-cup')
+    await expect(bracket).toBeVisible()
+    // amr leads on season points (round-0 winner) so amr is the top seed
+    const firstLine = await bracket.locator('span').first().textContent()
+    expect(firstLine).toContain('amr')
+  })
+
   test('weekly digest panel recaps the league on the overview tab', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
