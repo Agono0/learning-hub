@@ -151,32 +151,37 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
 
   const createRoomMutation = useMutation({
     mutationFn: (data: { title: string; pomodoroWorkMinutes: number }) =>
-      apiSend<{ ok: boolean; code: string; room: StudyRoomState; wsUrl: string }>(
-        '/api/online/rooms',
-        'POST',
-        data,
-      ),
+      apiSend<{
+        ok: boolean
+        code: string
+        room: StudyRoomState
+        wsUrl: string
+        joinAssertion?: unknown
+      }>('/api/online/rooms', 'POST', data),
     onSuccess: (data) => {
       setActiveRoom(data.room)
-      connectRoomSocket(data.wsUrl, data.room)
+      connectRoomSocket(data.wsUrl, data.room, data.joinAssertion)
     },
   })
 
   const joinRoomMutation = useMutation({
     mutationFn: (code: string) =>
-      apiGet<{ ok: boolean; room: StudyRoomState; server: string }>(
-        `/api/online/rooms?code=${code}`,
-      ),
+      apiGet<{
+        ok: boolean
+        room: StudyRoomState
+        server: string
+        joinAssertion?: unknown
+      }>(`/api/online/rooms?code=${code}`),
     onSuccess: (data) => {
       if (data.room) {
         setActiveRoom(data.room)
         const wsUrl = `${data.server.replace(/^http/, 'ws')}/api/v1/rooms/${data.room.code}/ws`
-        connectRoomSocket(wsUrl, data.room)
+        connectRoomSocket(wsUrl, data.room, data.joinAssertion)
       }
     },
   })
 
-  const connectRoomSocket = (wsUrl: string, _room: StudyRoomState) => {
+  const connectRoomSocket = (wsUrl: string, _room: StudyRoomState, assertion?: unknown) => {
     socketRef.current?.disconnect()
 
     const socket = new OnlineSocket<StudyRoomState, RoomMessage>({
@@ -192,6 +197,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
     setTimeout(() => {
       socket.send({
         type: 'join',
+        ...(assertion ? { assertion } : {}),
         participant: {
           id: identity?.userId ?? `usr_${Date.now()}`,
           alias: identity?.alias ?? 'Learner',
