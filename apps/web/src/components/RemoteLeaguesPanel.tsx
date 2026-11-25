@@ -7,8 +7,16 @@
  * not a verified skill measure, and this panel never shows a rank.
  */
 import React, { useEffect, useState } from 'react'
-import { Badge, Callout, Panel } from '@/ui'
-import { apiGet } from '@/lib/transport'
+import { Badge, Button, Callout, Panel, TextField } from '@/ui'
+import { apiGet, apiSend } from '@/lib/transport'
+import {
+  buildMembershipRequest,
+  buildNewInvite,
+  numberOr,
+  submitMembership,
+  type LinkTarget,
+  type RemoteSend,
+} from '@/lib/remote-leagues-actions'
 
 export interface RemoteLinkView {
   serverUrl: string
@@ -41,6 +49,187 @@ export function describeSyncedAt(at: string | number | null | undefined): string
   return new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'
 }
 
+const send: RemoteSend = (path, method, body) => apiSend(path, method, body)
+
+/**
+ * Membership controls for one linked league. Every change is queued and then
+ * pushed; nothing here shows a rank. A new invite code is shown once and is
+ * not stored anywhere in the app.
+ */
+export function RemoteLinkActions({
+  target,
+  run = submitMembership,
+  transport = send,
+}: {
+  target: LinkTarget
+  run?: typeof submitMembership
+  transport?: RemoteSend
+}) {
+  const [alias, setAlias] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+  const [uses, setUses] = useState('1')
+  const [hours, setHours] = useState('24')
+  const [revokeDigest, setRevokeDigest] = useState('')
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [shownCode, setShownCode] = useState<string | null>(null)
+
+  async function go(work: () => Promise<{ ok: boolean; message: string }>) {
+    setBusy(true)
+    try {
+      const r = await work()
+      setMessage(r.message)
+      return r
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const testid = (name: string) => `remote-${name}`
+  return (
+    <div className="space-y-2 border-t border-neutral-200 pt-2 dark:border-neutral-700">
+      <div className="flex flex-wrap items-end gap-2">
+        <TextField
+          label="Your name in this league"
+          value={alias}
+          onChange={(e) => setAlias(e.target.value)}
+          maxLength={40}
+          data-testid={testid('alias')}
+        />
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('rename')}
+          onClick={() =>
+            go(() => run(buildMembershipRequest(target, { kind: 'rename', alias }), transport))
+          }
+        >
+          Rename
+        </Button>
+        <TextField
+          label="Invite code (if required)"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+          autoComplete="off"
+          data-testid={testid('invite-code')}
+        />
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('join')}
+          onClick={() =>
+            go(() =>
+              run(
+                buildMembershipRequest(target, { kind: 'join', alias, invite: inviteCode }),
+                transport,
+              ),
+            ).then(() => setInviteCode(''))
+          }
+        >
+          Join
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <TextField
+          label="Uses"
+          inputMode="numeric"
+          value={uses}
+          onChange={(e) => setUses(e.target.value)}
+          data-testid={testid('invite-uses')}
+        />
+        <TextField
+          label="Hours valid"
+          inputMode="decimal"
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
+          data-testid={testid('invite-hours')}
+        />
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('invite-new')}
+          onClick={async () => {
+            const inv = await buildNewInvite(target, {
+              uses: numberOr(uses, 1),
+              hours: numberOr(hours, 24),
+            })
+            const r = await go(() => run(inv.request, transport))
+            setShownCode(r.ok ? inv.code : null)
+          }}
+        >
+          New invite
+        </Button>
+        <TextField
+          label="Revoke invite (digest)"
+          value={revokeDigest}
+          onChange={(e) => setRevokeDigest(e.target.value)}
+          autoComplete="off"
+          data-testid={testid('revoke-digest')}
+        />
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('revoke')}
+          onClick={() =>
+            go(() =>
+              run(
+                buildMembershipRequest(target, { kind: 'revoke', digest: revokeDigest }),
+                transport,
+              ),
+            )
+          }
+        >
+          Revoke
+        </Button>
+      </div>
+      {shownCode && (
+        <Callout tone="warning" title="Your new invite code">
+          <code data-testid={testid('shown-code')}>{shownCode}</code>
+          <p className="text-xs">
+            Shown once and not saved. Share it only with the person you invite. Anyone with it can
+            join until it expires, is used up or is revoked.
+          </p>
+        </Callout>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {confirmLeave ? (
+          <>
+            <Button
+              variant="danger"
+              disabled={busy}
+              data-testid={testid('leave-confirm')}
+              onClick={() =>
+                go(() => run(buildMembershipRequest(target, { kind: 'leave' }), transport)).then(
+                  () => setConfirmLeave(false),
+                )
+              }
+            >
+              Confirm leave
+            </Button>
+            <Button variant="secondary" onClick={() => setConfirmLeave(false)}>
+              Keep me in
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="secondary"
+            data-testid={testid('leave')}
+            onClick={() => setConfirmLeave(true)}
+          >
+            Leave league
+          </Button>
+        )}
+        {message && (
+          <span role="status" className="text-sm" data-testid={testid('message')}>
+            {message}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function RemoteLeaguesView({ state }: { state: RemoteLeaguesState | null }) {
   if (!state || !state.enabled) return null
   return (
@@ -69,6 +258,11 @@ export function RemoteLeaguesView({ state }: { state: RemoteLeaguesState | null 
               <span className="opacity-70">{l.serverUrl}</span>
               <span>{describeLinkStatus(l.lastStatus)}</span>
               <span className="opacity-70">Last synced {describeSyncedAt(l.lastSyncedAt)}</span>
+              <div className="basis-full">
+                <RemoteLinkActions
+                  target={{ serverUrl: l.serverUrl, remoteLeagueId: l.remoteLeagueId }}
+                />
+              </div>
             </li>
           ))}
         </ul>

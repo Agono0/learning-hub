@@ -3,6 +3,7 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import {
   RemoteLeaguesView,
+  RemoteLinkActions,
   describeLinkStatus,
   describeSyncedAt,
   type RemoteLeaguesState,
@@ -67,5 +68,57 @@ describe('status helpers', () => {
     expect(describeSyncedAt(null)).toBe('never')
     expect(describeSyncedAt('not a date')).toBe('never')
     expect(describeSyncedAt(Date.parse('2026-03-02T10:05:00Z'))).toBe('2026-03-02 10:05 UTC')
+  })
+})
+
+describe('RemoteLinkActions', () => {
+  const html = renderToString(
+    React.createElement(RemoteLinkActions, {
+      target: { serverUrl: 'https://league.example', remoteLeagueId: 'lg-1' },
+    }),
+  )
+
+  it('renders every membership control with a stable test id', () => {
+    for (const id of [
+      'remote-alias',
+      'remote-rename',
+      'remote-invite-code',
+      'remote-join',
+      'remote-invite-uses',
+      'remote-invite-hours',
+      'remote-invite-new',
+      'remote-revoke-digest',
+      'remote-revoke',
+      'remote-leave',
+    ]) {
+      expect(html).toContain(`data-testid="${id}"`)
+    }
+  })
+
+  it('starts calm: no code shown, no leave confirmation, no status message', () => {
+    expect(html).not.toContain('remote-shown-code')
+    expect(html).not.toContain('remote-leave-confirm')
+    expect(html).not.toContain('remote-message')
+    expect(html).toContain('Leave league')
+  })
+
+  it('keeps secrets out of autofill and defaults the invite to one use for 24 hours', () => {
+    expect(html).toMatch(
+      /data-testid="remote-invite-code"[^>]*autoComplete="off"|autoComplete="off"[^>]*data-testid="remote-invite-code"/i,
+    )
+    expect(html).toMatch(
+      /value="1"[^>]*data-testid="remote-invite-uses"|data-testid="remote-invite-uses"[^>]*value="1"/,
+    )
+    expect(html).toMatch(
+      /value="24"[^>]*data-testid="remote-invite-hours"|data-testid="remote-invite-hours"[^>]*value="24"/,
+    )
+  })
+
+  it('is part of every linked league row in the panel', () => {
+    const panel = render({
+      enabled: true,
+      links: [link, { ...link, remoteLeagueId: 'lg-2' }],
+    })
+    expect(panel.match(/data-testid="remote-leave"/g)).toHaveLength(2)
   })
 })
