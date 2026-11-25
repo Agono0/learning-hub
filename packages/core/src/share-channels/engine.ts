@@ -34,9 +34,13 @@ import {
   MAX_CONTENT_NODES,
   MAX_ITEM_CONTENT_BYTES,
   MAX_ITEMS_PER_VERSION,
+  MAX_MANIFEST_BODY_BYTES,
   MAX_VERSIONS_PER_MANIFEST,
   measureJson,
 } from './bounded-body'
+
+/** Approximate UTF-8 size per validated content object, so the manifest check can sum without re-walking. */
+const contentBytes = new WeakMap<object, number>()
 
 /* ==========================================================================
  * SCHEMAS
@@ -64,6 +68,7 @@ export const ChannelItemSchema = z.object({
       maxNodes: MAX_CONTENT_NODES,
     })
     if (!m.ok) ctx.addIssue({ code: 'custom', message: `item content ${m.reason}` })
+    else contentBytes.set(value, m.approxBytes)
   }),
   /** Monotonic per-item revision, bumped by the publisher on every change. */
   revision: z.number().int().nonnegative(),
@@ -82,20 +87,34 @@ export const ChannelVersionSchema = z.object({
 export type ChannelVersion = z.infer<typeof ChannelVersionSchema>
 
 /** The public manifest of a channel: what a subscriber fetches. */
-export const ChannelManifestSchema = z.object({
-  v: z.literal(2),
-  schema: z.literal('lh-share/v2'),
-  channelId: z.string().min(1).max(MAX_CHANNEL_ID_LENGTH),
-  type: ChannelContentTypeSchema,
-  title: z.string().min(1).max(200),
-  description: z.string().max(1000).default(''),
-  /** Learner-chosen handle; never a real name. */
-  authorHandle: z.string().min(1).max(50),
-  visibility: ChannelVisibilitySchema,
-  createdAt: z.string(),
-  currentVersion: z.number().int().positive(),
-  versions: z.array(ChannelVersionSchema).min(1).max(MAX_VERSIONS_PER_MANIFEST),
-})
+export const ChannelManifestSchema = z
+  .object({
+    v: z.literal(2),
+    schema: z.literal('lh-share/v2'),
+    channelId: z.string().min(1).max(MAX_CHANNEL_ID_LENGTH),
+    type: ChannelContentTypeSchema,
+    title: z.string().min(1).max(200),
+    description: z.string().max(1000).default(''),
+    /** Learner-chosen handle; never a real name. */
+    authorHandle: z.string().min(1).max(50),
+    visibility: ChannelVisibilitySchema,
+    createdAt: z.string(),
+    currentVersion: z.number().int().positive(),
+    versions: z.array(ChannelVersionSchema).min(1).max(MAX_VERSIONS_PER_MANIFEST),
+  })
+  .superRefine((manifest, ctx) => {
+    // Cumulative bound: every version keeps a full copy of its items, so the sum
+    // of item content across the manifest is capped at the same size as the
+    // wire body. Stops many just-under-cap items from adding up.
+    let total = 0
+    for (const v of manifest.versions) {
+      for (const item of v.items) total += contentBytes.get(item.content) ?? 0
+      if (total > MAX_MANIFEST_BODY_BYTES) {
+        ctx.addIssue({ code: 'custom', message: 'manifest content exceeds the total size cap' })
+        return
+      }
+    }
+  })
 export type ChannelManifest = z.infer<typeof ChannelManifestSchema>
 
 /** A learner's local subscription record. */

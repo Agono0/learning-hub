@@ -377,6 +377,21 @@ async function postChannelSubscribe(req: IncomingMessage, res: ServerResponse): 
   })
 }
 
+/**
+ * Loopback http for channel hosts is for local dev and tests only. It is on
+ * ONLY when the operator sets LH_SHARE_ALLOW_HTTP_LOOPBACK=1 in the server's
+ * own environment, and never when NODE_ENV is production. It is not derived
+ * from NODE_ENV and cannot be set from a request body. It never opens LAN or
+ * private ranges.
+ */
+export function shareSyncTransportOptions(): { allowHttpLoopback: boolean } {
+  return {
+    allowHttpLoopback:
+      process.env['LH_SHARE_ALLOW_HTTP_LOOPBACK'] === '1' &&
+      process.env['NODE_ENV'] !== 'production',
+  }
+}
+
 /** GET /share/channels/subscriptions — dashboard roster with pending flags */
 async function getChannelSubscriptions(_req: IncomingMessage, res: ServerResponse): Promise<void> {
   sendJson(res, 200, { ok: true, subscriptions: listChannelSubscriptions() })
@@ -402,6 +417,7 @@ async function postChannelSync(req: IncomingMessage, res: ServerResponse): Promi
     body.channelId,
     body.hostBaseUrl ?? row?.hostBaseUrl ?? null,
     fetch,
+    shareSyncTransportOptions(),
   )
   sendJson(res, record.outcome === 'failed' ? 502 : 200, {
     ok: record.outcome !== 'failed',
@@ -412,7 +428,12 @@ async function postChannelSync(req: IncomingMessage, res: ServerResponse): Promi
 /** POST /share/channels/sync-all — sync every hosted subscription, grouped by host */
 async function postChannelSyncAll(_req: IncomingMessage, res: ServerResponse): Promise<void> {
   const store = new DbChannelSyncStore()
-  const summary = await syncAllSubscriptions(store, listChannelSubscriptions(), fetch)
+  const summary = await syncAllSubscriptions(
+    store,
+    listChannelSubscriptions(),
+    fetch,
+    shareSyncTransportOptions(),
+  )
   sendJson(res, 200, { ok: true, summary, records: summary.records })
 }
 

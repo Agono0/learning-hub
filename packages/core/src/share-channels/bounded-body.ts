@@ -67,6 +67,24 @@ export async function readBoundedText(res: Response, maxBytes: number): Promise<
   return new TextDecoder('utf-8').decode(bytes)
 }
 
+/** UTF-8 byte length of a string without allocating (lone surrogates count as 3, like TextEncoder). */
+export function utf8ByteLength(text: string): number {
+  let bytes = 0
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text.charCodeAt(i)
+    if (c < 0x80) bytes += 1
+    else if (c < 0x800) bytes += 2
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < text.length) {
+      const next = text.charCodeAt(i + 1)
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        bytes += 4
+        i += 1
+      } else bytes += 3
+    } else bytes += 3
+  }
+  return bytes
+}
+
 export interface JsonMeasure {
   ok: boolean
   reason?: 'too-large' | 'too-deep' | 'too-many-nodes'
@@ -86,7 +104,7 @@ export function measureJson(
     nodes += 1
     if (nodes > limits.maxNodes) return { ok: false, reason: 'too-many-nodes', approxBytes: bytes }
     if (depth > limits.maxDepth) return { ok: false, reason: 'too-deep', approxBytes: bytes }
-    if (typeof v === 'string') bytes += v.length + 2
+    if (typeof v === 'string') bytes += utf8ByteLength(v) + 2
     else if (typeof v === 'number' || typeof v === 'boolean' || v === null) bytes += 5
     else if (Array.isArray(v)) {
       bytes += 2
@@ -94,7 +112,7 @@ export function measureJson(
     } else if (typeof v === 'object') {
       bytes += 2
       for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
-        bytes += k.length + 3
+        bytes += utf8ByteLength(k) + 3
         stack.push({ v: x, depth: depth + 1 })
       }
     } else bytes += 5

@@ -277,4 +277,35 @@ describe('ChannelManifestSchema structural caps', () => {
     longItem['versions'][0].items[0].id = 'i'.repeat(201)
     expect(ChannelManifestSchema.safeParse(longItem).success).toBe(false)
   })
+
+  it('counts multi-byte content by UTF-8 bytes', () => {
+    const m = base()
+    m['versions'][0].items[0].content = { body: '€'.repeat(400_000) } // 1.2 MB in UTF-8, 400k units
+    expect(ChannelManifestSchema.safeParse(m).success).toBe(false)
+  })
+
+  it('caps the cumulative content of a manifest, not only each item', () => {
+    const m = base()
+    const item = (i: number) => ({
+      id: `i${i}`,
+      content: { body: 'x'.repeat(900_000) },
+      revision: 1,
+    })
+    m['versions'][0].items = Array.from({ length: 19 }, (_, i) => item(i)) // 17.1 MB, each item under 1 MiB
+    expect(ChannelManifestSchema.safeParse(m).success).toBe(false)
+    m['versions'][0].items = Array.from({ length: 10 }, (_, i) => item(i)) // 9 MB
+    expect(ChannelManifestSchema.safeParse(m).success).toBe(true)
+  })
+
+  it('rejects very deep content quickly, parsed from real JSON, without a stack error', () => {
+    const depth = 50_000
+    const deep = '{"n":'.repeat(depth) + '1' + '}'.repeat(depth)
+    const m = base()
+    const text = JSON.stringify(m).replace('"back":"b"', `"back":${deep}`)
+    const start = Date.now()
+    const parsed = JSON.parse(text)
+    const result = ChannelManifestSchema.safeParse(parsed)
+    expect(result.success).toBe(false)
+    expect(Date.now() - start).toBeLessThan(1000)
+  })
 })

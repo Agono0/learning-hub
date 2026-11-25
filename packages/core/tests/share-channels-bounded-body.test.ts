@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { BodyLimitError, measureJson, readBoundedText } from '../src/share-channels/bounded-body'
+import {
+  BodyLimitError,
+  measureJson,
+  readBoundedText,
+  utf8ByteLength,
+} from '../src/share-channels/bounded-body'
 
 function streamOf(chunks: Uint8Array[], onCancel?: () => void, onPull?: () => void) {
   let i = 0
@@ -92,5 +97,25 @@ describe('measureJson', () => {
     const a: Record<string, unknown> = {}
     a['self'] = a
     expect(measureJson(a, limits).ok).toBe(false)
+  })
+})
+
+describe('UTF-8 byte counting', () => {
+  it('matches TextEncoder for ASCII, 2, 3 and 4 byte characters and lone surrogates', () => {
+    const samples = ['', 'abc', 'é', '€', '😀', 'a😀b€é', '\ud800', 'x\udc00', '\ud83d']
+    for (const t of samples) {
+      expect(utf8ByteLength(t), JSON.stringify(t)).toBe(new TextEncoder().encode(t).length)
+    }
+  })
+
+  it('counts bytes, not UTF-16 units, against the size limit', () => {
+    const text = '€'.repeat(400) // 400 units, 1200 bytes
+    expect(measureJson({ a: text }, { maxBytes: 1000, maxDepth: 5, maxNodes: 50 })).toMatchObject({
+      ok: false,
+      reason: 'too-large',
+    })
+    expect(
+      measureJson({ a: 'a'.repeat(400) }, { maxBytes: 1000, maxDepth: 5, maxNodes: 50 }).ok,
+    ).toBe(true)
   })
 })
