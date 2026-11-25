@@ -551,6 +551,36 @@ export function createLeagueDuel(
   return row!
 }
 
+/**
+ * Rematch: create a NEW open duel between the same two players of a
+ * completed duel, in the same league, with the SAME prompts (a rematch
+ * retests the same material — scores stay comparable) and swapped seating
+ * for fairness. The new slug must be free.
+ */
+export function rematchLeagueDuel(
+  duelSlug: string,
+  newSlug: string,
+  database?: LearningHubDB,
+): LeagueDuelRow {
+  const conn = database ?? getDb()
+  const source = getLeagueDuel(duelSlug, conn)
+  if (!source) throw new Error(`duel not found: ${duelSlug}`)
+  if (source.status !== 'complete') throw new Error(`duel is not complete: ${duelSlug}`)
+  if (getLeagueDuel(newSlug, conn)) throw new Error(`duel slug already exists: ${newSlug}`)
+  const [row] = conn
+    .insert(leagueDuels)
+    .values({
+      slug: newSlug,
+      leagueId: source.leagueId,
+      playerA: source.playerB, // swapped seating
+      playerB: source.playerA,
+      promptsJson: source.promptsJson,
+    })
+    .returning()
+    .all()
+  return row!
+}
+
 export function getLeagueDuel(
   slug: string,
   database?: LearningHubDB | Transaction,

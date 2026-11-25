@@ -186,6 +186,19 @@ authority) or to keep a backup before a new season.
 - MCP: `league_export` / `league_import`.
 - Web UI: the Export / import panel on the Overview tab of `/leagues`.
 
+## Rematch
+
+Any completed duel offers a one-call rematch: a new open duel between the
+same two players in the same league, with the SAME prompts (a rematch
+retests the same material, so scores stay comparable) and swapped seating
+for fairness.
+
+- REST: `POST /leagues/duels/rematch` with `{ duelSlug, newSlug }`.
+- Web API: action `duel-rematch`; a Rematch button on completed duels in
+  the Duels tab picks the next free `<slug>-rN` id.
+- CLI: `learning-hub leagues duel rematch <duelSlug> <newSlug>`.
+- MCP: `duel_rematch`.
+
 ## Head-to-head and achievements
 
 **Head-to-head** distills every completed duel between two players into a
