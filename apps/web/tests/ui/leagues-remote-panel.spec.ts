@@ -87,6 +87,7 @@ async function expectNoOcclusion(page: Page) {
     .evaluateAll((els) =>
       els
         .map((el) => {
+          el.scrollIntoView({ block: 'center' })
           const r = el.getBoundingClientRect()
           if (r.width === 0 || r.height === 0) return null
           const x = r.left + r.width / 2
