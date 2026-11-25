@@ -70,6 +70,7 @@ import {
   Target,
   Telescope,
   Timer,
+  Trophy,
   Users,
   Zap,
 } from 'lucide-react'
@@ -387,6 +388,12 @@ export const NAV: NavGroup[] = [
         label: 'Debate Arena',
         icon: Swords,
         shortLabel: 'Debate',
+      },
+      {
+        href: '/arena-3d',
+        label: 'Review Arena',
+        icon: Trophy,
+        shortLabel: 'Arena',
       },
       {
         href: '/scaffolding',
