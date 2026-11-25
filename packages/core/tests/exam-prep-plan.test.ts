@@ -74,6 +74,16 @@ describe('exam prep plan', () => {
     expect(p.days.at(-1)!.meanExamRecallAfter).toBe(p.summary.planned)
   })
 
+  it('a rest day carries the previous day figure and a study day never lowers it', async () => {
+    const p = (await planExamPrep(mixedDeck(60, 31), NOW, exam(21), 0.85, {
+      restWeekdays: [0, 6],
+    }))!
+    p.days.forEach((d, i) => {
+      if (i > 0 && d.rest) expect(d.meanExamRecallAfter).toBe(p.days[i - 1]!.meanExamRecallAfter)
+    })
+    expect(p.days.some((d) => d.rest)).toBe(true)
+  })
+
   it('agrees with the readiness simulation about the baseline', async () => {
     const cards = mixedDeck(40, 13)
     const p = (await planExamPrep(cards, NOW, exam(20), 0.85, { perDay: 0 }))!

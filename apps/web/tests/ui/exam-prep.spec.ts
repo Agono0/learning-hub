@@ -12,15 +12,18 @@ const assumptions = [
   'Following the plan means doing real reviews. Nothing in this plan is applied for you.',
 ]
 
+// The running mean only moves on study days: a rest day carries the previous day's figure.
+let running = 0.62
 const days = Array.from({ length: 14 }, (_, i) => {
   const date = new Date(Date.UTC(2026, 11, 1 + i)).toISOString().slice(0, 10)
   const wd = new Date(`${date}T00:00:00Z`).getUTCDay()
   const rest = wd === 0 || wd === 6
   const n = rest ? 0 : i === 0 ? 8 : 3
+  if (!rest) running += 0.02
   return {
     date,
     rest,
-    meanExamRecallAfter: 0.62 + i * 0.02,
+    meanExamRecallAfter: Math.round(running * 1000) / 1000,
     reviews: Array.from({ length: n }, (_, k) => ({
       cardId: 100 + i * 10 + k,
       deckId: 1,
@@ -167,6 +170,9 @@ for (const view of [
     const href = await page.getByTestId('prep-study-link').first().getAttribute('href')
     expect(href).toBe('/review?cardIds=' + days[0]!.reviews.map((r) => r.cardId).join(','))
     await expect(page.getByTestId('prep-day').first()).toContainText('You answer each one yourself')
+    // A rest day shows the same figure as the day before it (the mean only moves on study days).
+    for (let i = 1; i < days.length; i++)
+      if (days[i]!.rest) expect(days[i]!.meanExamRecallAfter).toBe(days[i - 1]!.meanExamRecallAfter)
     // Rest days offer no study link.
     await expect(page.getByTestId('prep-day').nth(5)).toContainText('Rest day')
 
