@@ -84,6 +84,36 @@ type DuelRow = {
   createdAt: string
 }
 
+type LeagueDigest = {
+  generatedAt: string
+  playerCount: number
+  roundsClosed: number
+  divisions: {
+    tier: string
+    standings: { handle: string; seasonPoints: number; roundsWon: number; elo: number }[]
+  }[]
+  lastRound: {
+    round: number
+    closedAt: string
+    winners: { tier: string; handle: string }[]
+    promotions: { handle: string; from: string; to: string }[]
+    relegations: { handle: string; from: string; to: string }[]
+  } | null
+  duels: {
+    open: number
+    completed: number
+    recentCompleted: {
+      slug: string
+      playerA: string
+      playerB: string
+      winner: string | null
+      completedAt: string | null
+    }[]
+  }
+  eloMovers: { handle: string; delta: number; duels: number }[]
+  newAchievements: { handle: string; achievementId: string; earnedAt: string }[]
+}
+
 type TournamentRow = {
   slug: string
   title: string
@@ -248,6 +278,82 @@ export default function LeaguesPage() {
 
 type ActFn = (body: Record<string, unknown>, okMessage: string) => Promise<void>
 
+function DigestPanel({ slug }: { slug: string }) {
+  const [digest, setDigest] = useState<LeagueDigest | null>(null)
+  useEffect(() => {
+    let alive = true
+    apiGet<{ ok: boolean; digest: LeagueDigest }>(
+      `/api/leagues?view=digest&slug=${encodeURIComponent(slug)}`,
+    )
+      .then((res) => {
+        if (alive) setDigest(res.digest)
+      })
+      .catch(() => {
+        if (alive) setDigest(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [slug])
+
+  if (!digest) return null
+  const tone = (delta: number): 'success' | 'danger' | 'neutral' =>
+    delta > 0 ? 'success' : delta < 0 ? 'danger' : 'neutral'
+  return (
+    <Panel>
+      <div data-testid="league-digest">
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-base font-semibold">Weekly digest</h2>
+          <span className="text-xs text-neutral-500">
+            {digest.playerCount} players · {digest.roundsClosed} rounds · {digest.duels.open} open
+            duels
+          </span>
+        </div>
+        {digest.lastRound ? (
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            Round {digest.lastRound.round} closed {digest.lastRound.closedAt.slice(0, 10)} —
+            winners:{' '}
+            {digest.lastRound.winners.map((w) => `${w.handle} (${w.tier})`).join(', ') || 'none'}
+            {digest.lastRound.promotions.length > 0 &&
+              ` · promoted: ${digest.lastRound.promotions.map((m) => m.handle).join(', ')}`}
+            {digest.lastRound.relegations.length > 0 &&
+              ` · relegated: ${digest.lastRound.relegations.map((m) => m.handle).join(', ')}`}
+          </p>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            No rounds closed yet — the first recap lands after round 0.
+          </p>
+        )}
+        {digest.eloMovers.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1" data-testid="digest-elo-movers">
+            {digest.eloMovers.map((m) => (
+              <Badge key={m.handle} tone={tone(m.delta)}>
+                {m.handle} {m.delta > 0 ? '+' : ''}
+                {m.delta}
+              </Badge>
+            ))}
+          </div>
+        )}
+        {digest.newAchievements.length > 0 && (
+          <p className="mt-2 text-sm" data-testid="digest-badges">
+            New badges:{' '}
+            {digest.newAchievements.map((a) => `${a.handle} — ${a.achievementId}`).join(', ')}
+          </p>
+        )}
+        {digest.duels.recentCompleted.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+            {digest.duels.recentCompleted.map((d) => (
+              <li key={d.slug}>
+                {d.slug}: {d.playerA} vs {d.playerB} → {d.winner ?? 'draw'}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
+  )
+}
+
 function OverviewTab({
   leagues,
   selected,
@@ -301,6 +407,7 @@ function OverviewTab({
           </ul>
         )}
       </Panel>
+      {selected && <DigestPanel slug={selected} />}
       <div className="space-y-4">
         <Panel>
           <h2 className="mb-2 text-base font-semibold">Create a league</h2>

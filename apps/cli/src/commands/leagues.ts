@@ -28,6 +28,7 @@
  *   leagues h2h <slug> <handleA> <handleB>
  *   leagues achievements <slug> <handle>
  *   leagues division <slug> <tier>
+ *   leagues digest <slug>
  *   leagues export <slug> [--out FILE]
  *   leagues import <file>
  */
@@ -42,6 +43,7 @@ import {
   exportLeague,
   getLeagueBySlug,
   importLeague,
+  buildLeagueDigest,
   leagueDivisionDetail,
   leagueHeadToHead,
   listLeagueAchievements,
@@ -570,6 +572,52 @@ function achievementsCommand(args: string[]): void {
   )
 }
 
+function digestCommand(args: string[]): void {
+  const [slug] = args
+  if (!slug) return fail('Usage: learning-hub leagues digest <slug>')
+  const d = buildLeagueDigest(slug)
+  if (!d) return fail(`League not found: ${slug}`)
+  const lines = [
+    `${d.title} — weekly digest (${d.generatedAt.slice(0, 10)})`,
+    `${d.playerCount} players · ${d.roundsClosed} rounds closed · ${d.duels.open} open duels · ${d.duels.completed} completed`,
+  ]
+  for (const div of d.divisions) {
+    lines.push('', `[${div.tier}]`)
+    for (const [i, p] of div.standings.entries())
+      lines.push(
+        `  #${i + 1} ${p.handle} — ${p.seasonPoints} season pts · ${p.roundsWon} rounds won · elo ${p.elo}`,
+      )
+  }
+  if (d.lastRound) {
+    lines.push(
+      '',
+      `Last round (#${d.lastRound.round}, closed ${d.lastRound.closedAt.slice(0, 10)}):`,
+    )
+    for (const w of d.lastRound.winners) lines.push(`  winner [${w.tier}]: ${w.handle}`)
+    for (const m of d.lastRound.promotions)
+      lines.push(`  promoted: ${m.handle} ${m.from} -> ${m.to}`)
+    for (const m of d.lastRound.relegations)
+      lines.push(`  relegated: ${m.handle} ${m.from} -> ${m.to}`)
+  }
+  if (d.eloMovers.length > 0) {
+    lines.push('', 'Elo movers (7d):')
+    for (const m of d.eloMovers)
+      lines.push(
+        `  ${m.handle} ${m.delta > 0 ? '+' : ''}${m.delta} over ${m.duels} duel${m.duels === 1 ? '' : 's'}`,
+      )
+  }
+  if (d.newAchievements.length > 0) {
+    lines.push('', 'New badges (7d):')
+    for (const a of d.newAchievements) lines.push(`  ${a.handle}: ${a.achievementId}`)
+  }
+  if (d.duels.recentCompleted.length > 0) {
+    lines.push('', 'Recent duels:')
+    for (const r of d.duels.recentCompleted)
+      lines.push(`  ${r.slug}: ${r.playerA} vs ${r.playerB} -> ${r.winner ?? 'draw'}`)
+  }
+  console.log(lines.join('\n'))
+}
+
 function divisionCommand(args: string[]): void {
   const [slug, tier] = args
   if (!slug || !tier) return fail('Usage: learning-hub leagues division <slug> <tier>')
@@ -627,6 +675,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'h2h') return h2hCommand(args.slice(1))
   if (sub === 'achievements') return achievementsCommand(args.slice(1))
   if (sub === 'division') return divisionCommand(args.slice(1))
+  if (sub === 'digest') return digestCommand(args.slice(1))
   if (sub === 'export') return exportCommand(args.slice(1))
   if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))

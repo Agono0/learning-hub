@@ -232,6 +232,17 @@ test.describe('leagues season lifecycle', () => {
     await expect(winButtons()).toHaveCount(0)
   })
 
+  test('weekly digest panel recaps the league on the overview tab', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    const digest = page.getByTestId('league-digest')
+    await expect(digest).toBeVisible({ timeout: 60_000 })
+    await expect(digest.getByText('Weekly digest')).toBeVisible()
+    // duel-1 completed earlier in the lifecycle, so amr gained Elo this week
+    await expect(page.getByTestId('digest-elo-movers').getByText(/amr \+/)).toBeVisible()
+    await expect(page.getByTestId('digest-elo-movers').getByText(/sara -/)).toBeVisible()
+  })
+
   test('rematch a completed duel from the duel list', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()

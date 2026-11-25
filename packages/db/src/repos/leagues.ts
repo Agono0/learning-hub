@@ -14,6 +14,7 @@ import {
   closeRound,
   createLeague,
   createTournament,
+  DIVISION_ORDER,
   decideDuel,
   divisionStandings,
   duelEloUpdate,
@@ -1588,4 +1589,160 @@ export function leagueDivisionDetail(
     }))
 
   return { tier, standings, roundHistory, duels, movements }
+}
+
+/** One tier's slice of a league digest. */
+export type LeagueDigestDivision = {
+  tier: DivisionTier
+  standings: { handle: string; seasonPoints: number; roundsWon: number; elo: number }[]
+}
+
+/** The most recent closed round, summarized for a digest. */
+export type LeagueDigestRound = {
+  round: number
+  closedAt: string
+  winners: { tier: string; handle: string }[]
+  promotions: { handle: string; from: string; to: string }[]
+  relegations: { handle: string; from: string; to: string }[]
+}
+
+/**
+ * A point-in-time league digest: division standings, the last closed round
+ * (winners, promotions, relegations), duel activity, net Elo movement over
+ * the past week and achievements earned in the same window. Designed for a
+ * weekly recap surface; everything it reports is derived from stored rows,
+ * so it is cheap to regenerate and safe to poll.
+ */
+export type LeagueDigest = {
+  slug: string
+  title: string
+  generatedAt: string
+  playerCount: number
+  roundsClosed: number
+  divisions: LeagueDigestDivision[]
+  lastRound: LeagueDigestRound | null
+  duels: {
+    open: number
+    completed: number
+    recentCompleted: {
+      slug: string
+      playerA: string
+      playerB: string
+      winner: string | null
+      completedAt: string | null
+    }[]
+  }
+  eloMovers: { handle: string; delta: number; duels: number }[]
+  newAchievements: { handle: string; achievementId: string; earnedAt: string }[]
+}
+
+const DIGEST_WINDOW_DAYS = 7
+
+/**
+ * Build the digest for one league, or null when the slug is unknown. The Elo
+ * movers and achievement sections only cover the last DIGEST_WINDOW_DAYS
+ * days so the recap stays about what changed, not lifetime totals.
+ */
+export function buildLeagueDigest(slug: string, database?: LearningHubDB): LeagueDigest | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const core = rowsToLeague(league, players)
+  const eloByHandle = new Map(players.map((p) => [p.handle, p.elo]))
+  const roundsWonByHandle = new Map(players.map((p) => [p.handle, p.roundsWon]))
+
+  const divisions: LeagueDigestDivision[] = DIVISION_ORDER.map((tier) => ({
+    tier,
+    standings: divisionStandings(core, tier).map((p) => ({
+      handle: p.handle,
+      seasonPoints: p.seasonPoints,
+      roundsWon: roundsWonByHandle.get(p.handle) ?? 0,
+      elo: eloByHandle.get(p.handle) ?? 1000,
+    })),
+  })).filter((d) => d.standings.length > 0)
+
+  const rounds = conn
+    .select()
+    .from(leagueRounds)
+    .where(eq(leagueRounds.leagueId, league.id))
+    .orderBy(desc(leagueRounds.round))
+    .all()
+  const latest = rounds[0]
+  const lastRound: LeagueDigestRound | null = latest
+    ? {
+        round: latest.round,
+        closedAt: latest.closedAt,
+        winners: latest.winnersJson,
+        promotions: latest.promotionsJson,
+        relegations: latest.relegationsJson,
+      }
+    : null
+
+  const duelRows = conn
+    .select()
+    .from(leagueDuels)
+    .where(eq(leagueDuels.leagueId, league.id))
+    .orderBy(desc(leagueDuels.id))
+    .all()
+  const completedDuels = duelRows.filter((d) => d.completedAt)
+  const duels: LeagueDigest['duels'] = {
+    open: duelRows.length - completedDuels.length,
+    completed: completedDuels.length,
+    recentCompleted: completedDuels.slice(0, 5).map((d) => ({
+      slug: d.slug,
+      playerA: d.playerA,
+      playerB: d.playerB,
+      winner: d.winner,
+      completedAt: d.completedAt,
+    })),
+  }
+
+  const since = new Date(Date.now() - DIGEST_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
+  const eloEvents = conn
+    .select()
+    .from(leagueEloEvents)
+    .where(eq(leagueEloEvents.leagueId, league.id))
+    .orderBy(desc(leagueEloEvents.id))
+    .all()
+    .filter((e) => e.createdAt >= since)
+  const eloAgg = new Map<string, { delta: number; duels: number }>()
+  for (const e of eloEvents) {
+    const agg = eloAgg.get(e.handle) ?? { delta: 0, duels: 0 }
+    agg.delta += e.eloAfter - e.eloBefore
+    agg.duels += 1
+    eloAgg.set(e.handle, agg)
+  }
+  const eloMovers = [...eloAgg.entries()]
+    .map(([handle, agg]) => ({ handle, ...agg }))
+    .filter((m) => m.delta !== 0)
+    .sort((a, b) => b.delta - a.delta)
+
+  const newAchievements = conn
+    .select()
+    .from(leagueAchievements)
+    .where(eq(leagueAchievements.leagueId, league.id))
+    .orderBy(desc(leagueAchievements.id))
+    .all()
+    .filter((a) => a.earnedAt >= since)
+    .map((a) => ({ handle: a.handle, achievementId: a.achievementId, earnedAt: a.earnedAt }))
+
+  return {
+    slug: league.slug,
+    title: league.title,
+    generatedAt: new Date().toISOString(),
+    playerCount: players.length,
+    roundsClosed: rounds.length,
+    divisions,
+    lastRound,
+    duels,
+    eloMovers,
+    newAchievements,
+  }
 }

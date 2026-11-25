@@ -242,3 +242,19 @@ recorded `roundsWon` stat.
   `packages/db/src/repos/leagues.ts`.
 - MCP: `apps/mcp/src/tools/leagues.ts`. CLI: `apps/cli/src/commands/leagues.ts`.
 - UI: `apps/web/app/leagues/page.tsx`.
+
+## Weekly digest
+
+`buildLeagueDigest(slug)` composes a point-in-time recap from stored rows —
+cheap to regenerate, safe to poll:
+
+- division standings (season points, rounds won, current Elo)
+- the last closed round: winners per tier, promotions, relegations
+- duel activity: open/completed counts and the five most recent results
+- Elo movers over the last 7 days (net delta per handle, gainers first)
+- achievement badges earned in the same 7-day window
+
+Surfaces: `GET /api/leagues?view=digest&slug=…` (web) and
+`GET /leagues/digest?slug=…` (server), the Weekly digest panel on the
+/leagues Overview tab, `learning-hub leagues digest <slug>`, and the
+`league_digest` MCP tool.
