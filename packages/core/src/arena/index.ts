@@ -682,6 +682,12 @@ export function summarizeGradeLog(
    * queue snapshot at settlement. Omitted: no flavor (pre-flavor runs).
    */
   formatOf?: (cardId: number) => string | undefined,
+  /**
+   * The server-issued queue length. A defeated run submits a log shorter than
+   * its queue; replaying only the log would shrink the queue to the log and
+   * turn the defeat into a victory (and a boss run into a non-boss one).
+   */
+  queueSize?: number,
 ): ArenaSummary {
   const tuned = applyArenaModifier(modifier, guardianConfig(archetype, config))
   const challenges = exchanges.map((e) => ({
@@ -690,7 +696,11 @@ export function summarizeGradeLog(
     answer: 'x',
     format: formatOf?.(e.cardId),
   }))
-  let state = createArenaSession(challenges, tuned, archetype)
+  const queue = [...challenges]
+  while (queueSize !== undefined && queue.length < queueSize) {
+    queue.push({ cardId: -(queue.length + 1), prompt: 'x', answer: 'x', format: undefined })
+  }
+  let state = createArenaSession(queue, tuned, archetype)
   for (let i = 0; i < exchanges.length; i++) {
     const e = exchanges[i]!
     state = applyGrade(state, challenges[i]!, e.grade, e.confidence, e.timeMs, tuned)
