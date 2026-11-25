@@ -46,6 +46,13 @@ describe('evaluateGesturePlan', () => {
           verbalAnchor: 'the whole bar',
           rationale: 'grounding',
         },
+        {
+          element: 'an unrelated extra',
+          channel: 'spatial-layout',
+          gestureDescription: 'point at the bar again',
+          verbalAnchor: 'still the bar',
+          rationale: 'same channel again',
+        },
       ],
       elements,
     )
