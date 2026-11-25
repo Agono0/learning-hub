@@ -2,6 +2,8 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { XP_REWARDS } from '@learning-hub/core'
 import {
   awardLeaguePoints,
   createBasicCards,
@@ -21,6 +23,7 @@ import {
   leaguePlayers,
   leagueRounds,
   leagues,
+  xpEvents,
   leagueStandings,
   leagueTournaments,
   listLeagueDuels,
@@ -45,6 +48,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(xpEvents).run()
   db.delete(leagueTournaments).run()
   db.delete(leagueDuels).run()
   db.delete(leagueRounds).run()
@@ -143,6 +147,37 @@ describe('round close persistence', () => {
     const { promoted } = closeLeagueRound('spring', db)
     expect(promoted).toEqual([])
     expect(listLeaguePlayers('spring', db)[0]!.tier).toBe('bronze')
+  })
+
+  it('awards canonical XP to scoring division winners only', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    joinLeagueRow('spring', 'sara', db)
+    awardLeaguePoints('spring', { kind: 'reviews', handle: 'amr', count: 40 }, db)
+    // sara never scores: no XP for an uncontested zero-point top is not the
+    // case here (amr wins), but the zero-point silver winner must get nothing
+    joinLeagueRow('spring', 'khaled', db)
+    awardLeaguePoints('spring', { kind: 'reviews', handle: 'khaled', count: 5 }, db)
+
+    closeLeagueRound('spring', db)
+
+    const events = db.select().from(xpEvents).where(eq(xpEvents.source, 'league')).all()
+    // only one division (bronze) had players: exactly one scoring winner
+    expect(events).toHaveLength(1)
+    expect(events[0]!.amount).toBe(XP_REWARDS.leagueRoundWin)
+    expect(events[0]!.meta).toMatchObject({
+      leagueSlug: 'spring',
+      round: 0,
+      tier: 'bronze',
+      handle: 'amr',
+    })
+  })
+
+  it('gives no league XP when the only winner never scored', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    closeLeagueRound('spring', db)
+    expect(db.select().from(xpEvents).where(eq(xpEvents.source, 'league')).all()).toHaveLength(0)
   })
 
   it('standings and champion read back from persisted state', () => {
@@ -266,7 +301,7 @@ describe('duels from a deck', () => {
     joinLeagueRow('spring', 'amr', db)
     joinLeagueRow('spring', 'sara', db)
     const deck = findOrCreateDeck('Bio 101', { db })
-    createBasicCards(deck.id, '2+2? :: 4\nCapital of France? :: Paris\nSky color? :: Blue', db)
+    createBasicCards(deck.id, '2+2? :: 4\nCapital of France? :: Paris\nSky color? :: Blue', { db })
 
     const d = createDuelFromDeck(
       {
