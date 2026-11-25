@@ -7,10 +7,24 @@ import { communityItemSchema, filterContentSafety, makeRoomCode } from '@learnin
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import { BossRaid } from './boss-raid'
 import { StudyRoom } from './study-room'
+import { readBytesCapped } from './body'
+import { authenticateRequest } from './signed-request'
 import { handleCrashTelemetry } from './telemetry'
 import { parseStatsSync } from './validation'
 
 export { StudyRoom, BossRaid }
+
+/** Largest accepted publish body (a share string plus metadata). Assumed limit. */
+const PUBLISH_MAX_BYTES = 512 * 1024
+
+function safeTags(raw: unknown): string[] {
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(v) ? v.filter((t): t is string => typeof t === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 export interface Env {
   DB?: D1Database
@@ -18,6 +32,8 @@ export interface Env {
   BOSS_RAID?: DurableObjectNamespace
   GITHUB_ISSUE_TOKEN?: string
   GITHUB_REPO?: string
+  /** Trusted public host of this worker; signed requests are refused when it is unset. */
+  EXPECTED_HOST?: string
 }
 
 function corsHeaders(): HeadersInit {
@@ -297,39 +313,93 @@ export default {
       }
 
       if (path === '/api/v1/library/publish' && request.method === 'POST') {
-        const body = await request.json()
-        const parsed = communityItemSchema.parse({
-          id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        const bytes = await readBytesCapped(request, PUBLISH_MAX_BYTES)
+        if (bytes === null) return jsonResponse({ error: 'Payload too large' }, 413)
+        const auth = await authenticateRequest(request, bytes, env)
+        if (!auth.ok) return jsonResponse({ error: auth.error }, auth.status)
+
+        let raw: unknown
+        try {
+          raw = JSON.parse(new TextDecoder().decode(bytes))
+        } catch {
+          return jsonResponse({ error: 'Invalid JSON body' }, 400)
+        }
+        // Only these fields come from the caller. Id, author, downloads, rating and publish
+        // time are decided here (a caller used to be able to set all of them).
+        const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+        const principal = auth.principal
+        const publishedMs =
+          principal.kind === 'registered' ? Number(request.headers.get('x-lh-ts')) : Date.now()
+        const candidate = communityItemSchema.safeParse({
+          id:
+            principal.kind === 'registered'
+              ? `item_${principal.requestId.slice(0, 32)}`
+              : `item_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          type: input.type,
+          title: input.title,
+          description: input.description,
+          tags: input.tags,
+          shareString: input.shareString,
+          author: principal.kind === 'registered' ? principal.alias : 'Anonymous',
           downloads: 0,
           rating: 5.0,
-          publishedAt: new Date().toISOString(),
-          ...body,
+          publishedAt: new Date(publishedMs).toISOString(),
         })
+        if (!candidate.success) return jsonResponse({ error: 'Invalid item' }, 400)
+        const parsed = candidate.data
 
         const { clean: cleanTitle } = filterContentSafety(parsed.title)
         const { clean: cleanDesc } = filterContentSafety(parsed.description ?? '')
+        const item = { ...parsed, title: cleanTitle, description: cleanDesc }
 
         if (env.DB) {
+          // Atomic and idempotent: replaying the same signed request hits the same id and
+          // changes nothing (an existing item and its counters are never overwritten).
           await env.DB.prepare(
             `INSERT INTO community_library (id, type, title, description, author, downloads, rating, tags, share_string, published_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO NOTHING`,
           )
             .bind(
-              parsed.id,
-              parsed.type,
-              cleanTitle,
-              cleanDesc,
-              parsed.author,
+              item.id,
+              item.type,
+              item.title,
+              item.description,
+              item.author,
               0,
               5.0,
-              JSON.stringify(parsed.tags),
-              parsed.shareString,
-              parsed.publishedAt,
+              JSON.stringify(item.tags),
+              item.shareString,
+              item.publishedAt,
             )
             .run()
+          if (principal.kind === 'registered') {
+            const existing = await env.DB.prepare(
+              'SELECT id, type, title, description, author, downloads, rating, tags, share_string, published_at FROM community_library WHERE id = ?',
+            )
+              .bind(item.id)
+              .first<Record<string, unknown>>()
+            if (existing) {
+              return jsonResponse({
+                ok: true,
+                item: {
+                  id: existing.id,
+                  type: existing.type,
+                  title: existing.title,
+                  description: existing.description,
+                  author: existing.author,
+                  downloads: existing.downloads,
+                  rating: existing.rating,
+                  tags: safeTags(existing.tags),
+                  shareString: existing.share_string,
+                  publishedAt: existing.published_at,
+                },
+              })
+            }
+          }
         }
 
-        return jsonResponse({ ok: true, item: parsed })
+        return jsonResponse({ ok: true, item })
       }
 
       if (path === '/api/v1/library/download' && request.method === 'POST') {
