@@ -135,6 +135,17 @@ test('capture all /leagues surfaces', async ({ page }) => {
   await expect(page.getByTestId('duel-list').getByText('shots-duel', { exact: true })).toBeVisible()
   await page.screenshot({ path: 'shots/pr130-leagues-duels.png', fullPage: true })
 
+  // advanced raw-entry fields expanded (multiline prompt/answer TextAreas)
+  await page.getByTestId('duel-advanced-toggle').click()
+  await page.getByTestId('duel-prompts').fill('q1::What is 2+2?::4\nq2::Largest planet?::Jupiter')
+  await page.getByTestId('answer-advanced-toggle').click()
+  await page.getByTestId('answer-duel-slug').fill('shots-duel-open')
+  await page.getByTestId('answer-text').fill('q1::4::900\nq2::Jupiter::800')
+  await page.screenshot({ path: 'shots/pr130-duels-advanced-fields.png', fullPage: true })
+  // collapse again so the guided shots below see the default layout
+  await page.getByTestId('duel-advanced-toggle').click()
+  await page.getByTestId('answer-advanced-toggle').click()
+
   // guided question-by-question play on the open duel
   await page.getByTestId('duel-play-shots-duel-open').click()
   await expect(page.getByTestId('guided-progress')).toHaveText('Question 1 of 2')
