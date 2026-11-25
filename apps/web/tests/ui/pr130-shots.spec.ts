@@ -121,9 +121,9 @@ test('capture all /leagues surfaces', async ({ page }) => {
   await page.getByTestId(`league-card-${LEAGUE}`).click()
   // card click selects + jumps to Standings; the digest lives on Overview
   await page.getByRole('tab', { name: 'Overview' }).click()
-  // digest panel with schedule strip, Elo movers and recent results
+  // digest panel with schedule strip and recent results (no Elo movers in practice mode)
   await expect(page.getByTestId('league-digest')).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByTestId('digest-elo-movers').getByText(/amr \+/)).toBeVisible()
+  await expect(page.getByTestId('digest-elo-movers')).toHaveCount(0)
   await page.screenshot({ path: 'shots/pr130-leagues-overview.png', fullPage: true })
 
   await page.getByRole('tab', { name: 'Standings' }).click()
