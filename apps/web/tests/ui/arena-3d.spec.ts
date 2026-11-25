@@ -140,7 +140,13 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
   for (let round = 0; round < 6; round++) {
     const reveal = page.getByTestId('arena-reveal')
     // Once the run ends the HUD swaps to settling/results; stop grading then.
-    if (!(await reveal.isVisible({ timeout: 4_000 }).catch(() => false))) break
+    if (
+      !(await reveal.waitFor({ state: 'visible', timeout: 4_000 }).then(
+        () => true,
+        () => false,
+      ))
+    )
+      break
     await reveal.click()
     await page.getByTestId('arena-grade-1').click()
   }
