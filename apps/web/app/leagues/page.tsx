@@ -1624,11 +1624,12 @@ function DuelsTab({
                   Side B
                 </Button>
               </div>
-              <TextField
+              <TextArea
                 label={'Answers — one per line: promptId::answer::milliseconds'}
                 value={answersText}
                 onChange={(e) => setAnswersText(e.target.value)}
                 data-testid="answer-text"
+                rows={3}
               />
               <Button
                 type="submit"
