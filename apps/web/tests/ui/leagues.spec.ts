@@ -81,18 +81,26 @@ test.describe('leagues season lifecycle', () => {
     await page.getByTestId('duel-slug').fill('duel-1')
     await page.getByTestId('duel-player-a').fill('amr')
     await page.getByTestId('duel-player-b').fill('sara')
+    await page.getByTestId('duel-advanced-toggle').click()
     await page.getByTestId('duel-prompts').fill('p1::2+2?::4\np2::Capital of France?::Paris')
     await page.getByTestId('duel-create').click()
     await expect(page.getByText('Duel duel-1 created.')).toBeVisible()
     await expect(page.getByText('Waiting: duel-1')).toBeVisible()
 
-    // side A: both correct and fast
-    await page.getByTestId('answer-duel-slug').fill('duel-1')
-    await page.getByTestId('answer-text').fill('p1::4::1200\np2::Paris::1500')
-    await page.getByTestId('answer-submit').click()
+    // side A: both correct, answered through the guided question-by-question flow
+    await page.getByTestId('duel-play-duel-1').click()
+    await expect(page.getByTestId('guided-progress')).toHaveText('Question 1 of 2')
+    await expect(page.getByTestId('guided-question')).toHaveText('2+2?')
+    await page.getByTestId('guided-answer-input').fill('4')
+    await page.getByTestId('guided-answer-next').click()
+    await expect(page.getByTestId('guided-progress')).toHaveText('Question 2 of 2')
+    await expect(page.getByTestId('guided-question')).toHaveText('Capital of France?')
+    await page.getByTestId('guided-answer-input').fill('Paris')
+    await page.getByTestId('guided-answer-next').click()
     await expect(page.getByText('Answers submitted for duel-1.')).toBeVisible()
 
-    // side B: one wrong — accuracy decides, speed never gets a say
+    // side B: one wrong — accuracy decides, speed never gets a say (advanced raw entry)
+    await page.getByTestId('answer-advanced-toggle').click()
     await page.getByTestId('answer-side').getByRole('button', { name: 'Side B' }).click()
     await page.getByTestId('answer-duel-slug').fill('duel-1')
     await page.getByTestId('answer-text').fill('p1::4::800\np2::Lyon::700')

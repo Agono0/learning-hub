@@ -152,7 +152,21 @@ export const GET = withRoute(async (req: Request) => {
   if (view === 'duel') {
     const duel = getLeagueDuel(slug)
     if (!duel) return Response.json({ error: `duel not found: ${slug}` }, { status: 404 })
-    return Response.json({ ok: true, duel })
+    // Do not leak the correct answers while the duel is still playable —
+    // the guided play flow needs questions only. Completed duels return the
+    // full prompts so players can review what they missed.
+    const safe =
+      duel.status === 'open'
+        ? {
+            ...duel,
+            promptsJson: duel.promptsJson.map(({ id, question }) => ({
+              id,
+              question,
+              answers: [],
+            })),
+          }
+        : duel
+    return Response.json({ ok: true, duel: safe })
   }
   if (view === 'tournaments') {
     const status = z

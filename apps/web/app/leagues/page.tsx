@@ -6,7 +6,7 @@
  * flows through /api/leagues (the shared leagues repository) via apiGet /
  * apiSend — never raw fetch.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Badge,
   Button,
@@ -306,6 +306,13 @@ export default function LeaguesPage() {
 }
 
 // ── Overview ────────────────────────────────────────────────────────────────
+
+type DeckOption = {
+  id: number
+  name: string
+  emoji: string | null
+  total: number
+}
 
 type ActFn = (body: Record<string, unknown>, okMessage: string) => Promise<void>
 
@@ -1249,9 +1256,11 @@ function DuelsTab({
   const [promptsText, setPromptsText] = useState('')
   const [deckId, setDeckId] = useState('')
   const [deckLimit, setDeckLimit] = useState('10')
+  const [decks, setDecks] = useState<DeckOption[]>([])
   const [answerDuel, setAnswerDuel] = useState('')
   const [answerSide, setAnswerSide] = useState<'A' | 'B'>('A')
   const [answersText, setAnswersText] = useState('')
+  const [playSlug, setPlaySlug] = useState<string | null>(null)
 
   const openDuels = useMemo(() => detail?.duels.filter((d) => d.status === 'open') ?? [], [detail])
   const [stats, setStats] = useState<DuelPlayerStats[]>([])
@@ -1271,6 +1280,20 @@ function DuelsTab({
       alive = false
     }
   }, [selected, detail])
+
+  useEffect(() => {
+    let alive = true
+    apiGet<{ decks: DeckOption[] }>('/api/decks')
+      .then((res) => {
+        if (alive) setDecks(res.decks)
+      })
+      .catch(() => {
+        if (alive) setDecks([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   if (!selected) {
     return <EmptyState title="Pick a league">Duels live inside a league season.</EmptyState>
@@ -1323,6 +1346,15 @@ function DuelsTab({
                   <span className="font-medium">{d.slug}</span> — {d.playerA} vs {d.playerB}
                 </span>
                 <span className="flex items-center gap-2">
+                  {d.status === 'open' && (
+                    <Button
+                      variant="secondary"
+                      data-testid={`duel-play-${d.slug}`}
+                      onClick={() => setPlaySlug(d.slug)}
+                    >
+                      Play
+                    </Button>
+                  )}
                   {d.status === 'complete' && (
                     <Button
                       variant="secondary"
@@ -1356,8 +1388,9 @@ function DuelsTab({
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault()
+              const slug = duelSlug.trim() || `duel-${Date.now().toString(36)}`
               const body: Record<string, unknown> = {
-                slug: duelSlug.trim(),
+                slug,
                 leagueSlug: selected,
                 playerA: playerA.trim(),
                 playerB: playerB.trim(),
@@ -1381,14 +1414,14 @@ function DuelsTab({
                     }
                   })
               }
-              void act(body, `Duel ${duelSlug.trim()} created.`).then(() => {
+              void act(body, `Duel ${slug} created.`).then(() => {
                 setDuelSlug('')
                 setPromptsText('')
               })
             }}
           >
             <TextField
-              label="Duel id"
+              label="Duel id (auto-generated when empty)"
               value={duelSlug}
               onChange={(e) => setDuelSlug(e.target.value)}
               data-testid="duel-slug"
@@ -1405,35 +1438,65 @@ function DuelsTab({
               onChange={(e) => setPlayerB(e.target.value)}
               data-testid="duel-player-b"
             />
-            <TextField
-              label="Deck id (optional — build prompts from its cards)"
-              value={deckId}
-              onChange={(e) => setDeckId(e.target.value)}
-              data-testid="duel-deck-id"
-            />
-            {deckId.trim() ? (
+            {decks.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  Build the duel from one of your decks
+                </p>
+                <div className="flex flex-wrap gap-1.5" data-testid="duel-deck-pick">
+                  {decks.map((d) => (
+                    <Button
+                      key={d.id}
+                      type="button"
+                      variant={deckId === String(d.id) ? 'primary' : 'secondary'}
+                      data-testid={`duel-deck-${d.id}`}
+                      onClick={() => setDeckId((cur) => (cur === String(d.id) ? '' : String(d.id)))}
+                    >
+                      {d.emoji ? `${d.emoji} ` : ''}
+                      {d.name} · {d.total} cards
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {deckId.trim() && (
               <TextField
                 label="Prompt count"
                 value={deckLimit}
                 onChange={(e) => setDeckLimit(e.target.value)}
                 data-testid="duel-deck-limit"
               />
-            ) : (
-              <TextField
-                label={'Prompts — one per line: id::question::answer1|answer2'}
-                value={promptsText}
-                onChange={(e) => setPromptsText(e.target.value)}
-                data-testid="duel-prompts"
-              />
             )}
+            <details
+              data-testid="duel-advanced"
+              className="rounded-lg border border-neutral-200 p-2 dark:border-neutral-700"
+            >
+              <summary
+                data-testid="duel-advanced-toggle"
+                className="cursor-pointer text-xs text-neutral-500 dark:text-neutral-400"
+              >
+                Advanced: raw deck id or prompt lines
+              </summary>
+              <div className="mt-2 space-y-3">
+                <TextField
+                  label="Deck id (build prompts from its cards)"
+                  value={deckId}
+                  onChange={(e) => setDeckId(e.target.value)}
+                  data-testid="duel-deck-id"
+                />
+                <TextField
+                  label={'Prompts — one per line: id::question::answer1|answer2'}
+                  value={promptsText}
+                  onChange={(e) => setPromptsText(e.target.value)}
+                  data-testid="duel-prompts"
+                />
+              </div>
+            </details>
             <Button
               type="submit"
               data-testid="duel-create"
               disabled={
-                !duelSlug.trim() ||
-                !playerA.trim() ||
-                !playerB.trim() ||
-                (!deckId.trim() && !promptsText.trim())
+                !playerA.trim() || !playerB.trim() || (!deckId.trim() && !promptsText.trim())
               }
             >
               Create duel
@@ -1441,65 +1504,88 @@ function DuelsTab({
           </form>
         </Panel>
         <Panel>
-          <h2 className="mb-2 text-base font-semibold">Answer a duel</h2>
-          <form
-            className="space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const answers = answersText
-                .split('\n')
-                .map((line) => line.trim())
-                .filter(Boolean)
-                .map((line) => {
-                  const [promptId, answer, ms] = line.split('::')
-                  return {
-                    promptId: promptId ?? '',
-                    answer: answer ?? '',
-                    elapsedMs: Number(ms) || 0,
-                  }
-                })
-              void act(
-                { action: 'duel-answer', slug: answerDuel.trim(), side: answerSide, answers },
-                `Answers submitted for ${answerDuel.trim()}.`,
-              ).then(() => setAnswersText(''))
-            }}
+          <h2 className="mb-2 text-base font-semibold">Play a duel</h2>
+          {playSlug ? (
+            <GuidedDuelPlayer duelSlug={playSlug} act={act} onClose={() => setPlaySlug(null)} />
+          ) : openDuels.length > 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Press <span className="font-medium">Play</span> next to an open duel — questions come
+              one at a time and your answer time is measured automatically.
+            </p>
+          ) : (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              No open duels waiting for answers.
+            </p>
+          )}
+          <details
+            data-testid="answer-advanced"
+            className="mt-3 rounded-lg border border-neutral-200 p-2 dark:border-neutral-700"
           >
-            <TextField
-              label="Duel id"
-              value={answerDuel}
-              onChange={(e) => setAnswerDuel(e.target.value)}
-              data-testid="answer-duel-slug"
-            />
-            <div className="flex gap-2" data-testid="answer-side">
-              <Button
-                type="button"
-                variant={answerSide === 'A' ? 'primary' : 'secondary'}
-                onClick={() => setAnswerSide('A')}
-              >
-                Side A
-              </Button>
-              <Button
-                type="button"
-                variant={answerSide === 'B' ? 'primary' : 'secondary'}
-                onClick={() => setAnswerSide('B')}
-              >
-                Side B
-              </Button>
-            </div>
-            <TextField
-              label={'Answers — one per line: promptId::answer::milliseconds'}
-              value={answersText}
-              onChange={(e) => setAnswersText(e.target.value)}
-              data-testid="answer-text"
-            />
-            <Button
-              type="submit"
-              data-testid="answer-submit"
-              disabled={!answerDuel.trim() || !answersText.trim()}
+            <summary
+              data-testid="answer-advanced-toggle"
+              className="cursor-pointer text-xs text-neutral-500 dark:text-neutral-400"
             >
-              Submit answers
-            </Button>
-          </form>
+              Advanced: paste raw answer lines
+            </summary>
+            <form
+              className="mt-2 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const answers = answersText
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line) => {
+                    const [promptId, answer, ms] = line.split('::')
+                    return {
+                      promptId: promptId ?? '',
+                      answer: answer ?? '',
+                      elapsedMs: Number(ms) || 0,
+                    }
+                  })
+                void act(
+                  { action: 'duel-answer', slug: answerDuel.trim(), side: answerSide, answers },
+                  `Answers submitted for ${answerDuel.trim()}.`,
+                ).then(() => setAnswersText(''))
+              }}
+            >
+              <TextField
+                label="Duel id"
+                value={answerDuel}
+                onChange={(e) => setAnswerDuel(e.target.value)}
+                data-testid="answer-duel-slug"
+              />
+              <div className="flex gap-2" data-testid="answer-side">
+                <Button
+                  type="button"
+                  variant={answerSide === 'A' ? 'primary' : 'secondary'}
+                  onClick={() => setAnswerSide('A')}
+                >
+                  Side A
+                </Button>
+                <Button
+                  type="button"
+                  variant={answerSide === 'B' ? 'primary' : 'secondary'}
+                  onClick={() => setAnswerSide('B')}
+                >
+                  Side B
+                </Button>
+              </div>
+              <TextField
+                label={'Answers — one per line: promptId::answer::milliseconds'}
+                value={answersText}
+                onChange={(e) => setAnswersText(e.target.value)}
+                data-testid="answer-text"
+              />
+              <Button
+                type="submit"
+                data-testid="answer-submit"
+                disabled={!answerDuel.trim() || !answersText.trim()}
+              >
+                Submit answers
+              </Button>
+            </form>
+          </details>
           {openDuels.length > 0 && (
             <p className="mt-2 text-xs text-neutral-500">
               Waiting: {openDuels.map((d) => d.slug).join(', ')}
@@ -1507,6 +1593,173 @@ function DuelsTab({
           )}
         </Panel>
       </div>
+    </div>
+  )
+}
+
+type GuidedDuel = {
+  slug: string
+  playerA: string
+  playerB: string
+  status: string
+  promptsJson: { id: string; question: string; answers: string[] }[]
+}
+
+/**
+ * Learner-facing duel play: one question at a time, per-question time measured
+ * with performance.now() from when the question becomes visible. Answers are
+ * submitted together at the end through the normal duel-answer action.
+ */
+function GuidedDuelPlayer({
+  duelSlug,
+  act,
+  onClose,
+}: {
+  duelSlug: string
+  act: ActFn
+  onClose: () => void
+}) {
+  const [duel, setDuel] = useState<GuidedDuel | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [side, setSide] = useState<'A' | 'B'>('A')
+  const [index, setIndex] = useState(0)
+  const [answer, setAnswer] = useState('')
+  const [answers, setAnswers] = useState<{ promptId: string; answer: string; elapsedMs: number }[]>(
+    [],
+  )
+  const [submitting, setSubmitting] = useState(false)
+  const shownAt = useRef<number>(0)
+
+  useEffect(() => {
+    let alive = true
+    setDuel(null)
+    setLoadError(null)
+    setSide('A')
+    setIndex(0)
+    setAnswer('')
+    setAnswers([])
+    setSubmitting(false)
+    apiGet<{ ok: boolean; duel: GuidedDuel }>(
+      `/api/leagues?view=duel&slug=${encodeURIComponent(duelSlug)}`,
+    )
+      .then((res) => {
+        if (alive) setDuel(res.duel)
+      })
+      .catch((err) => {
+        if (alive) setLoadError(err instanceof Error ? err.message : 'failed to load duel')
+      })
+    return () => {
+      alive = false
+    }
+  }, [duelSlug])
+
+  // The per-question clock starts when the question becomes visible.
+  useEffect(() => {
+    shownAt.current = performance.now()
+    setAnswer('')
+  }, [index, duel])
+
+  if (loadError) {
+    return (
+      <Callout tone="danger" title="Duel failed to load">
+        {loadError}
+      </Callout>
+    )
+  }
+  if (!duel) return <p className="text-sm text-neutral-500">Loading duel…</p>
+
+  const prompts = duel.promptsJson
+  const prompt = prompts[index]
+  const playing = side === 'A' ? duel.playerA : duel.playerB
+  const last = index + 1 >= prompts.length
+
+  function submitCurrent() {
+    if (!prompt || submitting) return
+    const elapsedMs = Math.max(1, Math.round(performance.now() - shownAt.current))
+    const next = [...answers, { promptId: prompt.id, answer: answer.trim(), elapsedMs }]
+    setAnswers(next)
+    if (last) {
+      setSubmitting(true)
+      void act(
+        { action: 'duel-answer', slug: duelSlug, side, answers: next },
+        `Answers submitted for ${duelSlug}.`,
+      ).then(onClose)
+    } else {
+      setIndex(index + 1)
+    }
+  }
+
+  return (
+    <div className="space-y-3" data-testid="guided-duel">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm">
+          <span className="font-medium">{duelSlug}</span> — playing as{' '}
+          <span className="font-medium">{playing}</span>
+        </p>
+        <div className="flex gap-2" data-testid="guided-side">
+          <Button
+            type="button"
+            variant={side === 'A' ? 'primary' : 'secondary'}
+            disabled={answers.length > 0}
+            onClick={() => setSide('A')}
+            data-testid="guided-side-A"
+          >
+            {duel.playerA}
+          </Button>
+          <Button
+            type="button"
+            variant={side === 'B' ? 'primary' : 'secondary'}
+            disabled={answers.length > 0}
+            onClick={() => setSide('B')}
+            data-testid="guided-side-B"
+          >
+            {duel.playerB}
+          </Button>
+        </div>
+      </div>
+      {prompt ? (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            submitCurrent()
+          }}
+        >
+          <p
+            className="text-xs text-neutral-500 dark:text-neutral-400"
+            data-testid="guided-progress"
+          >
+            Question {index + 1} of {prompts.length}
+          </p>
+          <p className="text-base font-medium" data-testid="guided-question">
+            {prompt.question}
+          </p>
+          <TextField
+            label="Your answer"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            data-testid="guided-answer-input"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              data-testid="guided-answer-next"
+              disabled={submitting || !answer.trim()}
+            >
+              {last ? 'Finish duel' : 'Next question'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Your time per question is measured automatically and breaks accuracy ties.
+          </p>
+        </form>
+      ) : (
+        <p className="text-sm text-neutral-500">This duel has no prompts.</p>
+      )}
     </div>
   )
 }
