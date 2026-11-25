@@ -29,6 +29,7 @@ type Modules = {
   history: typeof import('../src/server/handlers/arena/history/route')
   nemesis: typeof import('../src/server/handlers/arena/nemesis/route')
   exportRoute: typeof import('../src/server/handlers/arena/export/route')
+  progress: typeof import('../src/server/handlers/arena/progress/route')
   historyId: typeof import('../src/server/handlers/arena/history/[id]/route')
   db: typeof import('@learning-hub/db')
   core: typeof import('@learning-hub/core')
@@ -116,6 +117,7 @@ beforeAll(async () => {
   const historyMod = await import('../src/server/handlers/arena/history/route')
   const nemesisMod = await import('../src/server/handlers/arena/nemesis/route')
   const exportMod = await import('../src/server/handlers/arena/export/route')
+  const progressMod = await import('../src/server/handlers/arena/progress/route')
   const historyIdMod = await import('../src/server/handlers/arena/history/[id]/route')
   const coreMod = await import('@learning-hub/core')
   M = {
@@ -123,6 +125,7 @@ beforeAll(async () => {
     history: historyMod,
     nemesis: nemesisMod,
     exportRoute: exportMod,
+    progress: progressMod,
     historyId: historyIdMod,
     db: dbMod,
     core: coreMod,
@@ -1093,5 +1096,33 @@ describe('Arena API — nemesis drill', () => {
     expect(post.status).toBe(200)
     const settled = await post.json()
     expect(settled.drill ?? null).toBeNull()
+  })
+})
+
+describe('Arena API — practice progression', () => {
+  it('returns a rank and a heatmap consistent with the run rows', async () => {
+    const res = await M.progress.GET(new Request('http://localhost/api/arena/progress'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.scope).toBe('local-practice')
+    expect(body.rank.points).toBeGreaterThanOrEqual(0)
+    expect(body.rank.progressPct).toBeGreaterThanOrEqual(0)
+    expect(body.rank.progressPct).toBeLessThanOrEqual(100)
+    expect(body.heatmap.days).toHaveLength(84)
+    const hist = await (
+      await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    ).json()
+    // Every run in the suite happened today, so the window holds all of them.
+    expect(body.heatmap.totalRuns).toBe(hist.stats.runs)
+    expect(body.heatmap.days[83].date).toBe(new Date().toISOString().slice(0, 10))
+  })
+
+  it('honors the days parameter and rejects out-of-range values', async () => {
+    const ok = await M.progress.GET(new Request('http://localhost/api/arena/progress?days=30'))
+    expect((await ok.json()).heatmap.days).toHaveLength(30)
+    const bad = await M.progress.GET(new Request('http://localhost/api/arena/progress?days=3'))
+    expect(bad.status).toBe(400)
+    const worse = await M.progress.GET(new Request('http://localhost/api/arena/progress?days=999'))
+    expect(worse.status).toBe(400)
   })
 })
