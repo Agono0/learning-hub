@@ -12,6 +12,17 @@
 import { z } from 'zod'
 import { readJson, withRoute } from '@/lib/api'
 import {
+  createChannelProposal,
+  decideChannelProposal,
+  getHostedChannel,
+  hostChannel,
+  listChannelProposals,
+  listHostedChannels,
+  publishHostedChannelVersion,
+  unhostChannel,
+} from '@learning-hub/db'
+import {
+  ProposalOperationSchema,
   applyAllPendingVersions,
   applyChannelUpdate,
   canSubscribe,
@@ -126,6 +137,37 @@ const postSchema = z.discriminatedUnion('action', [
     localItems: z.array(LocalItemSchema),
     manifest: ChannelManifestSchema,
   }),
+  /* Local hosting + subscription pull requests (SQLite-backed). */
+  z.object({ action: z.literal('host'), manifest: ChannelManifestSchema }),
+  z.object({ action: z.literal('host-list') }),
+  z.object({ action: z.literal('host-get'), channelId: z.string().min(1) }),
+  z.object({
+    action: z.literal('host-publish'),
+    channelId: z.string().min(1),
+    items: z
+      .array(z.object({ id: z.string().min(1), content: z.record(z.string(), z.unknown()) }))
+      .min(1),
+    changelog: z.string().max(500),
+  }),
+  z.object({ action: z.literal('host-unhost'), channelId: z.string().min(1) }),
+  z.object({
+    action: z.literal('proposal-create'),
+    channelId: z.string().min(1),
+    authorHandle: z.string().min(1).max(50),
+    title: z.string().min(1).max(200),
+    note: z.string().max(2000).optional(),
+    operations: z.array(ProposalOperationSchema).min(1).max(500),
+  }),
+  z.object({
+    action: z.literal('proposal-list'),
+    channelId: z.string().min(1),
+    status: z.enum(['open', 'accepted', 'declined']).optional(),
+  }),
+  z.object({
+    action: z.literal('proposal-decide'),
+    proposalId: z.string().min(1),
+    decision: z.enum(['accept', 'decline']),
+  }),
 ])
 
 /** POST /api/share-channels { action, ... } — run one channel engine step. */
@@ -226,5 +268,43 @@ export const POST = withRoute(async (req: Request) => {
         conflictIds: preview.result.conflicts,
       })
     }
+    case 'host':
+      return Response.json(hostChannel(body.manifest))
+    case 'host-list':
+      return Response.json({ ok: true, channels: listHostedChannels() })
+    case 'host-get': {
+      const manifest = getHostedChannel(body.channelId)
+      if (!manifest) {
+        return Response.json({ ok: false, error: 'channel not hosted here' }, { status: 404 })
+      }
+      return Response.json({ ok: true, manifest })
+    }
+    case 'host-publish':
+      return Response.json(
+        publishHostedChannelVersion({
+          channelId: body.channelId,
+          items: body.items,
+          changelog: body.changelog,
+        }),
+      )
+    case 'host-unhost':
+      return Response.json(unhostChannel(body.channelId))
+    case 'proposal-create':
+      return Response.json(
+        createChannelProposal({
+          channelId: body.channelId,
+          authorHandle: body.authorHandle,
+          title: body.title,
+          operations: body.operations,
+          ...(body.note !== undefined ? { note: body.note } : {}),
+        }),
+      )
+    case 'proposal-list':
+      return Response.json({
+        ok: true,
+        proposals: listChannelProposals(body.channelId, body.status),
+      })
+    case 'proposal-decide':
+      return Response.json(decideChannelProposal(body.proposalId, body.decision))
   }
 })
