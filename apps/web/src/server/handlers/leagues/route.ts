@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import {
   awardLeaguePoints,
+  createDuelFromDeck,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -140,6 +141,16 @@ const postSchema = z.discriminatedUnion('action', [
       .max(50),
   }),
   z.object({
+    action: z.literal('duel-create-from-deck'),
+    slug: z.string().min(1).max(60),
+    deckId: z.number().int().positive(),
+    leagueSlug: z.string().min(1).optional(),
+    playerA: z.string().min(1).max(50),
+    playerB: z.string().min(1).max(50),
+    limit: z.number().int().min(1).max(50).optional(),
+    seed: z.number().int().optional(),
+  }),
+  z.object({
     action: z.literal('duel-answer'),
     slug: z.string().min(1),
     side: z.enum(['A', 'B']),
@@ -209,6 +220,13 @@ export const POST = withRoute(async (req: Request) => {
           return Response.json({ error: `duel exists: ${body.slug}` }, { status: 409 })
         }
         const duel = createLeagueDuel(body)
+        return Response.json({ ok: true, duel }, { status: 201 })
+      }
+      case 'duel-create-from-deck': {
+        if (getLeagueDuel(body.slug)) {
+          return Response.json({ error: `duel exists: ${body.slug}` }, { status: 409 })
+        }
+        const duel = createDuelFromDeck(body)
         return Response.json({ ok: true, duel }, { status: 201 })
       }
       case 'duel-answer': {

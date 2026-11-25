@@ -22,6 +22,7 @@ import {
   leagueLeader,
   openMatches,
   recordMatchResult,
+  buildDuelPromptsFromCards,
   type DivisionTier,
   type Duel,
   type League,
@@ -30,7 +31,14 @@ import {
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import type { Transaction } from '../transaction'
-import { leagueDuels, leaguePlayers, leagueRounds, leagues, leagueTournaments } from '../schema'
+import {
+  cards as cardsTable,
+  leagueDuels,
+  leaguePlayers,
+  leagueRounds,
+  leagues,
+  leagueTournaments,
+} from '../schema'
 import { withTransaction } from '../transaction'
 
 export type LeagueRow = typeof leagues.$inferSelect
@@ -564,4 +572,48 @@ export function recordTournamentMatchResult(
       .all()
     return updated!
   }, conn)
+}
+
+// ── Duel generation from a deck ─────────────────────────────────────────────
+
+/**
+ * Create a duel whose prompts come from a deck's answerable cards (basic,
+ * typein, mcq). Same seed + same deck = same duel, so two devices generate
+ * matching duels; omit the seed for a fresh draw.
+ */
+export function createDuelFromDeck(
+  data: {
+    slug: string
+    deckId: number
+    playerA: string
+    playerB: string
+    leagueSlug?: string
+    limit?: number
+    seed?: number
+  },
+  database?: LearningHubDB,
+): LeagueDuelRow {
+  const conn = database ?? getDb()
+  const rows = conn
+    .select({ id: cardsTable.id, content: cardsTable.content })
+    .from(cardsTable)
+    .where(eq(cardsTable.deckId, data.deckId))
+    .all()
+  const prompts = buildDuelPromptsFromCards(
+    rows.map((r) => ({ id: r.id, content: r.content as Record<string, unknown> })),
+    { limit: data.limit ?? 10, ...(data.seed !== undefined ? { seed: data.seed } : {}) },
+  )
+  if (prompts.length === 0) {
+    throw new Error(`deck ${data.deckId} has no answerable cards (basic, typein or mcq)`)
+  }
+  return createLeagueDuel(
+    {
+      slug: data.slug,
+      playerA: data.playerA,
+      playerB: data.playerB,
+      prompts,
+      ...(data.leagueSlug !== undefined ? { leagueSlug: data.leagueSlug } : {}),
+    },
+    conn,
+  )
 }

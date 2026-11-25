@@ -23,6 +23,7 @@
  */
 import {
   awardLeaguePoints,
+  createDuelFromDeck,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -265,6 +266,29 @@ function duelCommand(args: string[]): void {
     }
     return
   }
+  if (sub === 'from-deck') {
+    const [, slug, deckId, playerA, playerB] = args
+    if (!slug || !deckId || !playerA || !playerB) {
+      return fail(
+        'Usage: learning-hub leagues duel from-deck <slug> <deckId> <playerA> <playerB> [--league s] [--limit N] [--seed N]',
+      )
+    }
+    try {
+      const d = createDuelFromDeck({
+        slug,
+        deckId: Number(deckId),
+        playerA,
+        playerB,
+        leagueSlug: parseFlag(args, '--league'),
+        limit: num(parseFlag(args, '--limit')),
+        seed: num(parseFlag(args, '--seed')),
+      })
+      console.log(`Duel ${d.slug} created from deck ${deckId} (${d.promptsJson.length} prompts).`)
+    } catch (err) {
+      fail(err instanceof Error ? err.message : 'duel creation failed')
+    }
+    return
+  }
   if (sub === 'answer') {
     const [, slug, side] = args
     const answers = parseAll(args, '--answer').map((raw) => {
@@ -308,7 +332,7 @@ function duelCommand(args: string[]): void {
     )
     return
   }
-  fail('Usage: learning-hub leagues duel [create|answer|list] …')
+  fail('Usage: learning-hub leagues duel [create|from-deck|answer|list] …')
 }
 
 function tournamentCommand(args: string[]): void {
