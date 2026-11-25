@@ -37,6 +37,7 @@ import { curriculumTools } from './tools/curriculum'
 import { lifestyleTools } from './tools/lifestyle'
 import { learningPathTools } from './tools/learning-path'
 import { readinessTools } from './tools/readiness'
+import { examPrepTools } from './tools/exam-prep'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
@@ -75,6 +76,7 @@ async function main() {
     ...lifestyleTools,
     ...learningPathTools,
     ...readinessTools,
+    ...examPrepTools,
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,

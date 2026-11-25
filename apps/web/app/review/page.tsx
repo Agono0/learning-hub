@@ -268,7 +268,11 @@ export default function ReviewPage() {
 function ReviewPageInner() {
   const qc = useQueryClient()
   // ?courseId=<id> → mixed practice across the whole course (auto-starts)
-  const courseIdParam = useSearchParams().get('courseId')
+  const searchParams = useSearchParams()
+  const courseIdParam = searchParams.get('courseId')
+  // ?cardIds=1,2,3 → an explicit list (an exam-prep day). The server validates it and rejects
+  // anything unknown, suspended, buried or out of scope; answers still go through the same POST.
+  const cardIdsParam = searchParams.get('cardIds')
   const courseId = courseIdParam ? Number(courseIdParam) : null
   const [deckId, setDeckId] = useState<number | null>(null)
   const [selectedDeckIds, setSelectedDeckIds] = useState<number[]>([])
@@ -303,14 +307,24 @@ function ReviewPageInner() {
     queryFn: () => apiGet<SettingsProfilePayload>('/api/settings'),
   })
   const session = useQuery<SessionPayload, Error, SessionPayload>({
-    queryKey: ['review-session', deckId, selectedDeckIds, multiDeckMode, courseId, limit, mode],
+    queryKey: [
+      'review-session',
+      deckId,
+      selectedDeckIds,
+      multiDeckMode,
+      courseId,
+      limit,
+      mode,
+      cardIdsParam,
+    ],
     queryFn: () => {
       const deckParam =
         multiDeckMode && selectedDeckIds.length > 0
           ? `deckIds=${selectedDeckIds.join(',')}`
           : `deckId=${deckId ?? ''}`
       return apiGet<SessionPayload>(
-        `/api/review?${deckParam}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}`,
+        `/api/review?${deckParam}&courseId=${courseId ?? ''}&limit=${limit}&mode=${mode}` +
+          (cardIdsParam !== null ? `&cardIds=${encodeURIComponent(cardIdsParam)}` : ''),
       )
     },
     enabled: started,
@@ -319,6 +333,10 @@ function ReviewPageInner() {
   useEffect(() => {
     if (courseId !== null && !Number.isNaN(courseId)) setStarted(true)
   }, [courseId])
+  // an exam-prep link opens the chosen cards at once (the learner clicked to study them)
+  useEffect(() => {
+    if (cardIdsParam !== null) setStarted(true)
+  }, [cardIdsParam])
 
   // Profile default session size: the first render stays the synchronous 20
   // (SSR/tests never wait on settings); once settings load client-side, the
