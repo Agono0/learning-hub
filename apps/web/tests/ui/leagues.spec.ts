@@ -237,9 +237,13 @@ test.describe('leagues season lifecycle', () => {
     await expect(winButtons()).toHaveCount(2, { timeout: 60_000 })
     await winButtons().nth(0).click()
 
-    // the final appears once both semifinals are decided
-    await expect(winButtons()).toHaveCount(2, { timeout: 60_000 })
-    await winButtons().nth(0).click()
+    // The final appears once both semifinals are decided. The button count is
+    // 2 before and after that re-render (the last semifinal's pair, then the
+    // final's pair), so counting alone can pass early and the next click lands
+    // on the stale semifinal button. Wait for a round-2 button by test id.
+    const finalButtons = bracket.locator('[data-testid^="match-win-cup-1-2-"]')
+    await expect(finalButtons).toHaveCount(2, { timeout: 60_000 })
+    await finalButtons.nth(0).click()
 
     await expect(page.getByTestId('tournament-list').getByText(/champion:/)).toBeVisible({
       timeout: 60_000,
