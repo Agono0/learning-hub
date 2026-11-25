@@ -124,6 +124,25 @@ export function MergeView({
 }) {
   const [choices, setChoices] = useState<Record<string, Choice>>({})
   const resolved = useMemo(() => resolveMerge(result, choices), [result, choices])
+  const [ack, setAck] = useState(false)
+  const impact = resolved.progressImpact
+  const impactBox =
+    impact.length > 0 ? (
+      <Callout tone="warning" title="This merge removes or moves lessons">
+        <ul className="list-disc pl-5" data-testid="progress-impact">
+          {impact.slice(0, 8).map((x, i) => (
+            <li key={i} className="break-words">
+              {x}
+            </li>
+          ))}
+        </ul>
+        <label className="mt-2 flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+          <span>I have read this and want to use the merged course.</span>
+        </label>
+      </Callout>
+    ) : null
+  const blocked = impact.length > 0 && !ack
   const dangling = (
     <Callout tone="danger" title="Missing skills after the merge">
       <div data-testid="dangling">
@@ -138,9 +157,11 @@ export function MergeView({
         <Callout tone="success" title="Merged without conflicts">
           {`${result.autoMerged} change(s) from both sides were combined.`}
         </Callout>
+        {impactBox}
         {result.validation?.ok ? (
           <div className="mt-2">
             <Button
+              disabled={blocked}
               onClick={() =>
                 onUse(
                   courseToText(
@@ -185,9 +206,10 @@ export function MergeView({
           {`${resolved.failed.length} change(s) pointed at something that no longer exists.`}
         </Callout>
       )}
+      {impactBox}
       <div className="mt-2">
         <Button
-          disabled={!resolved.validation?.ok}
+          disabled={!resolved.validation?.ok || blocked}
           onClick={() => {
             const v = resolved.validation
             if (v?.ok) onUse(courseToText(v.course))

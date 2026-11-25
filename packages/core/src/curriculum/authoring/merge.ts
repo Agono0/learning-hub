@@ -64,6 +64,13 @@ export interface MergeResult {
    * recreates the skill or drops the reference; `validation` stays null.
    */
   dangling: string[]
+  /**
+   * Lessons the merge removes or moves. Learner progress is stored by lesson
+   * slug, so these change what a learner sees. Shown to the author before use.
+   */
+  progressImpact: string[]
+  /** Internal: lesson slug to module slug in the base, for recomputing the impact after choices. */
+  baseLessons: Record<string, string>
   /** Number of independent changes from either side that merged without a conflict. */
   autoMerged: number
   /** Present when the clean result passes validation. */
@@ -430,6 +437,27 @@ function placements(course: Record<string, unknown>): Map<string, Placed> {
   return m
 }
 
+/** Lessons that the merged course removes or moves compared with the base. */
+export function lessonProgressImpact(
+  baseLessons: Readonly<Record<string, string>>,
+  merged: Record<string, unknown>,
+): string[] {
+  const now = placements(merged)
+  const out: string[] = []
+  for (const [slug, mod] of Object.entries(baseLessons)) {
+    const p = now.get(slug)
+    if (!p)
+      out.push(
+        `Lesson "${slug}" is removed. Learner progress is stored by lesson slug, so progress on it no longer maps to anything.`,
+      )
+    else if (p.moduleSlug !== mod)
+      out.push(
+        `Lesson "${slug}" moves from module "${mod}" to "${p.moduleSlug}". Its progress stays, but module completion counts change.`,
+      )
+  }
+  return out
+}
+
 /** Merge three versions of a course. Inputs must be validated courses. */
 export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCourse): MergeResult {
   const ctx: Ctx = { conflicts: [], auto: 0, n: 0 }
@@ -706,6 +734,8 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
   } else delete merged.finalExam
 
   const clean = undecorate(merged)
+  const baseLessons: Record<string, string> = {}
+  for (const [slug, p] of placements(B)) baseLessons[slug] = p.moduleSlug
   const dangling = newDanglingRefs(
     ours as unknown as Record<string, unknown>,
     clean as Record<string, unknown>,
@@ -716,6 +746,8 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
     conflicts: ctx.conflicts,
     status,
     dangling,
+    baseLessons,
+    progressImpact: lessonProgressImpact(baseLessons, clean as Record<string, unknown>),
     autoMerged: ctx.auto,
     validation: status === 'clean' ? validateLhcf(clean) : null,
     keyed: merged,
@@ -755,6 +787,8 @@ export interface ResolveResult {
   failed: { id: string; patch: Patch }[]
   /** Skill references still pointing at nothing after the choices. Blocks validation. */
   dangling: string[]
+  /** Lessons removed or moved in the merged course, compared with the base. */
+  progressImpact: string[]
   validation: LhcfValidation | null
 }
 
@@ -785,7 +819,14 @@ export function applyResolutions(
   const was = new Set(result.dangling)
   const dangling = danglingSkillRefs(merged).filter((x) => was.has(x))
   const done = unresolved.length === 0 && failed.length === 0 && dangling.length === 0
-  return { merged, unresolved, failed, dangling, validation: done ? validateLhcf(merged) : null }
+  return {
+    merged,
+    unresolved,
+    failed,
+    dangling,
+    progressImpact: lessonProgressImpact(result.baseLessons, merged),
+    validation: done ? validateLhcf(merged) : null,
+  }
 }
 
 /** Strict parse of a merged document, for callers that only want the typed course. */

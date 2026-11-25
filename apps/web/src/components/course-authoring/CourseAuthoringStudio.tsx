@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { Button, Callout, EmptyState, PageHeader, Panel, Tabs } from '@/ui'
+import { Button, Callout, EmptyState, PageHeader, Panel } from '@/ui'
 import {
   compareSources,
   courseToText,
@@ -151,12 +151,45 @@ export function CourseAuthoringStudio() {
         </EmptyState>
       )}
 
-      <Tabs
-        label="Authoring tools"
-        items={TAB_ITEMS}
-        value={state.tab}
-        onChange={(tab) => update({ tab })}
-      />
+      <div
+        role="tablist"
+        aria-label="Authoring tools"
+        data-testid="authoring-tabs"
+        className="flex flex-wrap gap-1 rounded-xl p-1"
+        onKeyDown={(e) => {
+          const i = TAB_ITEMS.findIndex((t) => t.key === state.tab)
+          const next =
+            e.key === 'ArrowRight'
+              ? i + 1
+              : e.key === 'ArrowLeft'
+                ? i - 1
+                : e.key === 'Home'
+                  ? 0
+                  : e.key === 'End'
+                    ? TAB_ITEMS.length - 1
+                    : null
+          if (next === null) return
+          e.preventDefault()
+          const t = TAB_ITEMS[(next + TAB_ITEMS.length) % TAB_ITEMS.length]!
+          update({ tab: t.key })
+          document.getElementById(`authoring-tab-${t.key}`)?.focus()
+        }}
+      >
+        {TAB_ITEMS.map((t) => (
+          <button
+            key={t.key}
+            id={`authoring-tab-${t.key}`}
+            type="button"
+            role="tab"
+            aria-selected={state.tab === t.key}
+            tabIndex={state.tab === t.key ? 0 : -1}
+            onClick={() => update({ tab: t.key })}
+            className={`rounded-lg px-3 py-1.5 text-sm [@media(pointer:coarse)]:min-h-11 ${state.tab === t.key ? 'bg-(--hub-panel) font-semibold ring-1 ring-border-subtle' : 'opacity-80'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       {state.tab === 'review' && (
         <Panel title="Review">
@@ -252,7 +285,7 @@ function ComparePanel({
   )
   return (
     <Panel title="Compare and merge">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button variant={mode === 'diff' ? 'primary' : 'secondary'} onClick={() => setMode('diff')}>
           Compare two versions
         </Button>

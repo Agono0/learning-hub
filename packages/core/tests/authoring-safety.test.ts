@@ -120,3 +120,18 @@ describe('preview token', () => {
     ).toBe(false)
   })
 })
+
+describe('merge progress impact', () => {
+  it('lists lessons the merge removes or moves', () => {
+    const base = makeCourse()
+    const gone = base.modules[0]!.lessons[1]!.slug
+    const ours = edit((c) => {
+      c.modules[0]!.lessons = c.modules[0]!.lessons.filter((l) => l.slug !== gone)
+    }, base)
+    const r = mergeCourses(base, ours, base)
+    expect(r.progressImpact.join(' ')).toMatch(new RegExp(`Lesson "${gone}" is removed`))
+    const same = mergeCourses(base, base, base)
+    expect(same.progressImpact).toEqual([])
+    expect(applyResolutions(r, {}).progressImpact).toEqual(r.progressImpact)
+  })
+})

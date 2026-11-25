@@ -370,3 +370,13 @@ describe('rendering', () => {
     expect(e).toContain('Build packet')
   })
 })
+
+describe('mobile layout', () => {
+  it('renders every tab as a wrapping tab list, not a clipped strip', () => {
+    const html = renderToString(React.createElement(CourseAuthoringStudio))
+    for (const label of ['Review', 'Alignment', 'Restructure', 'Compare', 'Export'])
+      expect(html).toContain(`>${label}</button>`)
+    expect(html).toMatch(/role="tablist"[^>]*class="[^"]*flex-wrap/)
+    expect(html).not.toContain('scroll-x')
+  })
+})
