@@ -36,6 +36,7 @@ import { systemTools } from './tools/system'
 import { curriculumTools } from './tools/curriculum'
 import { lifestyleTools } from './tools/lifestyle'
 import { learningPathTools } from './tools/learning-path'
+import { readinessTools } from './tools/readiness'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
@@ -75,6 +76,7 @@ async function main() {
     ...cognitiveTools,
     ...lifestyleTools,
     ...learningPathTools,
+    ...readinessTools,
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,

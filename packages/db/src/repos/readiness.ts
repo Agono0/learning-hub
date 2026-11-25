@@ -3,6 +3,16 @@
  * needs. No writes. The forecast itself is pure and lives in core.
  */
 import { asc, eq, inArray } from 'drizzle-orm'
+import {
+  buildReadinessReport,
+  parseExamDate,
+  planBudget,
+  rankReviewGains,
+  reviewsNeededFor,
+  type ReadinessReport,
+  type ReviewGain,
+  type ReviewPlan,
+} from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import { cards, decks, examDates, skills } from '../schema'
 
@@ -111,4 +121,90 @@ export function loadReadinessInputs(
     skillNames.set(s.id, s.name)
   }
   return { cards: rows, deckNames, skillNames }
+}
+
+export interface ReadinessQuery {
+  examId?: number
+  date?: string
+  title?: string
+  plan: 'none' | 'on-schedule' | 'capacity'
+  perDay: number
+  target: number
+  deckIds?: readonly number[]
+  budget: number
+}
+
+export interface ReadinessRun {
+  report: ReadinessReport
+  review: {
+    budget: number
+    meanRecallBefore: number
+    meanRecallAfter: number
+    reviewsNeededForTarget: number | null
+    top: ReviewGain[]
+    assumptions: string[]
+  }
+}
+
+export type ReadinessRunResult =
+  { ok: true; value: ReadinessRun } | { ok: false; status: 400 | 404 | 422; error: string }
+
+/**
+ * One read-only pipeline shared by the API, CLI and MCP so every surface
+ * returns the same figures and the same `assumptions`. Never writes.
+ */
+export async function runReadiness(
+  q: ReadinessQuery,
+  opts: { db?: LearningHubDB; now?: Date; maxGainRows?: number } = {},
+): Promise<ReadinessRunResult> {
+  const db = opts.db ?? getDb()
+  let target: { title: string; date: string; courseId: number | null }
+  if (q.examId !== undefined) {
+    const exam = getReadinessExam(q.examId, db)
+    if (!exam) return { ok: false, status: 404, error: 'exam not found' }
+    target = { title: exam.title, date: exam.date, courseId: exam.courseId }
+  } else if (q.date !== undefined) {
+    if (!parseExamDate(q.date))
+      return { ok: false, status: 400, error: 'date must be YYYY-MM-DD or an ISO timestamp' }
+    target = { title: q.title ?? 'Exam', date: q.date, courseId: null }
+  } else {
+    return { ok: false, status: 400, error: 'examId or date is required' }
+  }
+  const exam = parseExamDate(target.date)
+  if (!exam) return { ok: false, status: 422, error: 'exam date is not a valid date' }
+
+  const plan: ReviewPlan =
+    q.plan === 'none'
+      ? { kind: 'none' }
+      : q.plan === 'capacity'
+        ? { kind: 'capacity', perDay: q.perDay }
+        : { kind: 'on-schedule' }
+  const now = opts.now ?? new Date()
+  const inputs = loadReadinessInputs({ deckIds: q.deckIds }, db)
+  const report = await buildReadinessReport({
+    target,
+    cards: inputs.cards,
+    now,
+    plan,
+    targetRecall: q.target,
+    deckLabel: (id) => inputs.deckNames.get(id) ?? `Deck ${id}`,
+    skillLabel: (id) => inputs.skillNames.get(id) ?? `Skill ${id}`,
+  })
+  if (!report) return { ok: false, status: 422, error: 'exam date is not a valid date' }
+  const gains = await rankReviewGains(inputs.cards, now, exam)
+  const budgetPlan = planBudget(gains, q.budget)
+  return {
+    ok: true,
+    value: {
+      report,
+      review: {
+        budget: budgetPlan.budget,
+        meanRecallBefore: budgetPlan.before,
+        meanRecallAfter: budgetPlan.after,
+        reviewsNeededForTarget: reviewsNeededFor(gains, report.targetRecall),
+        top: budgetPlan.chosen.slice(0, opts.maxGainRows ?? 50),
+        assumptions: report.assumptions,
+      },
+    },
+  }
 }
