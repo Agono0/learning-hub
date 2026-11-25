@@ -21,7 +21,7 @@ const base = {
   message: 'Modeled over your current Review-state cards under the assumptions shown.',
   asOf: '2026-06-01T12:00:00.000Z',
   currentRetention: 0.93,
-  fingerprint: 'aaaa1111',
+  fingerprint: 'aaaa1111aaaa1111aaaa1111aaaa1111',
   currentSource: 'global',
   weights: 'custom',
   scope: 'all-decks',
@@ -67,7 +67,7 @@ const base = {
     defaultLogLoss: 0.33,
     defaultRmse: 0.05,
     usingCustomWeights: true,
-    note: 'Newest 20% of reviews. The stored custom weights have no recorded fit date and may have been fit on these reviews, so their score may be in-sample.',
+    note: 'Every 5th card, full history each (not a time split). The stored custom weights have no recorded fit date and may have been fit on these cards, so their score may be in-sample. Default weights are a reference, not a clean test.',
   },
 }
 
@@ -76,7 +76,7 @@ async function stub(
   result: unknown,
   settings = { value: 0.93 },
   puts: number[] = [],
-  live = { fingerprint: 'aaaa1111' },
+  live = { fingerprint: 'aaaa1111aaaa1111aaaa1111aaaa1111' },
 ) {
   await page.route('**/api/retention-planner', (route) => {
     const body = route.request().postDataJSON() as { fingerprintOnly?: boolean }
@@ -244,13 +244,27 @@ test('apply is disabled when the live setting differs from the run baseline', as
 
 test('changed cards or weights since the run block the apply', async ({ page }) => {
   const puts: number[] = []
-  const live = { fingerprint: 'aaaa1111' }
+  const live = { fingerprint: 'aaaa1111aaaa1111aaaa1111aaaa1111' }
   await stub(page, base, { value: 0.93 }, puts, live)
   await page.goto('/retention-planner')
   await page.getByRole('button', { name: 'Model my cards' }).click()
   await page.getByRole('button', { name: /Review change to 90%/ }).click()
-  live.fingerprint = 'bbbb2222'
+  live.fingerprint = 'bbbb2222bbbb2222bbbb2222bbbb2222'
   await page.getByRole('button', { name: 'Confirm and apply' }).click()
   await expect(page.getByText('cards, weights or retention changed')).toBeVisible()
   expect(puts).toEqual([])
+})
+
+test('apply is off and says why when the collection exceeded the read limit', async ({ page }) => {
+  await stub(page, base)
+  await page.unroute('**/api/retention-planner')
+  await page.route('**/api/retention-planner', (route) =>
+    route.fulfill({ json: { ok: true, result: base, cardsTruncated: true } }),
+  )
+  await page.goto('/retention-planner')
+  await page.getByRole('button', { name: 'Model my cards' }).click()
+  await expect(page.getByTestId('rp-apply')).toContainText('Apply is off')
+  await expect(page.getByRole('button', { name: /Review change to/ })).toHaveCount(0)
+  await expect(page.getByTestId('rp-apply-atomic')).toContainText('not one atomic step')
+  await expect(page.getByTestId('rp-apply-age')).toContainText('This model ran at')
 })

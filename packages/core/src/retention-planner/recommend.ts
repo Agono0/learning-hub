@@ -100,23 +100,20 @@ export function recommend(points: readonly GridPoint[], budget: number) {
   }
 }
 
-/** FNV-1a over the inputs that change the model. Deterministic, no clock. */
+/**
+ * 128-bit change detector (four FNV-1a lanes with different offsets over one
+ * canonical string). Not cryptographic; it only has to notice that retention,
+ * weights, cards or reviews moved since a run. Deterministic, no clock.
+ */
 export function fingerprintInput(input: PlannerInput): string {
-  let h = 0x811c9dc5
-  const feed = (v: string) => {
-    for (let i = 0; i < v.length; i++) {
-      h ^= v.charCodeAt(i)
-      h = Math.imul(h, 0x01000193) >>> 0
-    }
-    h ^= 0x2c
-    h = Math.imul(h, 0x01000193) >>> 0
-  }
-  feed(String(input.currentRetention))
-  feed(input.currentSource)
-  feed(String(input.deckId ?? 'all'))
-  feed((input.weights ?? []).join(','))
+  const parts: string[] = [
+    String(input.currentRetention),
+    input.currentSource,
+    String(input.deckId ?? 'all'),
+    (input.weights ?? []).join(','),
+  ]
   for (const c of input.cards) {
-    feed(
+    parts.push(
       [
         c.id,
         c.deckId,
@@ -132,10 +129,18 @@ export function fingerprintInput(input: PlannerInput): string {
       ].join('|'),
     )
   }
-  feed(String(input.reviews.length))
+  parts.push(String(input.reviews.length))
   const last = input.reviews[input.reviews.length - 1]
-  feed(last ? `${last.id}|${last.reviewedAt}` : 'none')
-  return h.toString(16).padStart(8, '0')
+  parts.push(last ? `${last.id}|${last.reviewedAt}` : 'none')
+  const text = parts.join('\n')
+  const lanes = [0x811c9dc5, 0x9747b28c, 0xc2b2ae35, 0x27d4eb2f]
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i)
+    for (let l = 0; l < 4; l++) {
+      lanes[l] = Math.imul((lanes[l]! ^ (ch + l)) >>> 0, 0x01000193) >>> 0
+    }
+  }
+  return lanes.map((n) => n.toString(16).padStart(8, '0')).join('')
 }
 
 export async function runRetentionPlanner(

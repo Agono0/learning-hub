@@ -165,4 +165,10 @@ describe('retention planner with the real settings handler (temp DB)', () => {
     expect((await guardedRestore(rec)).refused).toBe(true)
     expect(await live()).toBe(0.85)
   })
+
+  it('reads cards in a deterministic id order', () => {
+    const d = dbm.loadRetentionPlannerData()
+    const ids = d.cards.map((c) => c.id)
+    expect(ids).toEqual([...ids].sort((a, b) => a - b))
+  })
 })

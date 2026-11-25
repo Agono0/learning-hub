@@ -24,6 +24,8 @@ export function ApplyPanel({
   coverage,
   baseline,
   fingerprint,
+  asOf,
+  truncated,
 }: {
   candidate: number | null
   coverage: CardCoverage
@@ -31,6 +33,10 @@ export function ApplyPanel({
   baseline: number
   /** Fingerprint of the inputs the run read. */
   fingerprint: string
+  /** When the model ran. Elapsed time is not part of the fingerprint. */
+  asOf: string
+  /** The collection was larger than the read limit. */
+  truncated: boolean
 }) {
   const [now, setNow] = useState<number | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -142,6 +148,23 @@ export function ApplyPanel({
         {coverage.excludedNew.toLocaleString()} new, {coverage.excludedLearning.toLocaleString()}{' '}
         learning, {coverage.excludedRelearning.toLocaleString()} relearning and{' '}
         {coverage.excludedSuspended.toLocaleString()} suspended cards are not in it.
+      </p>
+      <p data-testid="rp-apply-age">
+        This model ran at {new Date(asOf).toLocaleString()}. Cards that have come due since then are
+        not noticed, so if the model is old, run it again before applying.
+      </p>
+      {truncated ? (
+        <Callout tone="warning">
+          Apply is off: the collection is larger than the read limit, so the model did not see every
+          card.
+        </Callout>
+      ) : null}
+      <p className="text-tertiary" data-testid="rp-apply-atomic">
+        Before writing, this page rereads the setting and checks that your cards, weights and
+        retention are unchanged. Those checks and the write are separate requests, not one atomic
+        step, so a change made at the same moment elsewhere can still slip through. Restore works
+        the same way. The saved restore record lives in this browser only and stays until you
+        restore or the setting is changed by something else.
       </p>
       <p>
         Global retention now: <strong>{now === null ? 'unknown' : pct(now)}</strong>

@@ -37,10 +37,12 @@ describe('calibrateHeldOut', () => {
     expect(c.scored).toBe(0)
     expect(c.note).toMatch(/Not validated/)
   })
-  it('scores the newest 20% and labels custom weights as possibly in-sample', () => {
+  it('scores every 5th card with full histories and labels custom weights as possibly in-sample', () => {
     const w = Array(21).fill(0.5)
     const c = calibrateHeldOut(makeReviews(1500), null)
-    expect(c.heldOutReviews).toBe(300)
+    const all = makeReviews(1500)
+    expect(c.heldOutReviews).toBe(all.filter((r) => r.cardId % 5 === 0).length)
+    expect(c.note).toMatch(/not a time split/)
     expect(c.note).toMatch(/default FSRS-6/)
     const custom = calibrateHeldOut(makeReviews(1500), w)
     expect(custom.usingCustomWeights).toBe(true)

@@ -1,4 +1,5 @@
 import { DefaultScheduler } from 'ts-fsrs'
+import { parseFsrsWeights } from '../fsrs-optimizer'
 import { calculateRetrievability, cardRowToFsrs, FSRS6_DEFAULT_DECAY } from '../fsrs'
 import type { CardCoverage, PassMix, PlannerCard, PlannerOptions, TimingEstimate } from './model'
 import { MAX_REVIEWS_PER_CARD } from './model'
@@ -82,6 +83,15 @@ export interface CallCounter {
  * pass-grade mix and review time. Returns early with complete=false when the
  * shared call counter is exhausted.
  */
+export function normalizeWeights(weights: readonly number[] | null): number[] | null {
+  if (!weights || weights.length === 0) return null
+  try {
+    return parseFsrsWeights([...weights])
+  } catch {
+    return null
+  }
+}
+
 export async function simulateRetention(args: {
   cards: readonly PlannerCard[]
   retention: number
@@ -93,13 +103,16 @@ export async function simulateRetention(args: {
   counter: CallCounter
 }): Promise<SimulationOutcome> {
   const { cards, retention, weights, options, mix, timing, now, counter } = args
+  // Migrate 17/19-value vectors to 21 once, so the scheduler and the recall
+  // draw below read the same decay. Unparseable weights fall back to defaults.
+  const w = normalizeWeights(weights)
   const sched = await DefaultScheduler({
     version: 'FSRS-6',
     desiredRetention: retention,
-    weights: weights && weights.length > 0 ? [...weights] : undefined,
+    weights: w ?? undefined,
     enableShortTerm: true,
   })
-  const decay = weights && weights.length === 21 ? weights[20]! : FSRS6_DEFAULT_DECAY
+  const decay = w ? w[20]! : FSRS6_DEFAULT_DECAY
   const days: DayLoad[] = Array.from({ length: options.horizonDays }, () => ({
     reviews: 0,
     minutes: 0,

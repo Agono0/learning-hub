@@ -41,6 +41,7 @@ export function loadRetentionPlannerData(
   }
   const base = database.select().from(cards)
   const rows = (opts.deckId === undefined ? base : base.where(eq(cards.deckId, opts.deckId)))
+    .orderBy(cards.id)
     .limit(MAX_CARDS_READ + 1)
     .all()
   const cardsTruncated = rows.length > MAX_CARDS_READ

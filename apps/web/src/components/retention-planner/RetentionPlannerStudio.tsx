@@ -145,7 +145,13 @@ export function RetentionPlannerStudio() {
           </Panel>
           <Panel>
             <ApplyPanel
-              candidate={r.status === 'ok' && r.scope === 'all-decks' ? candidate : null}
+              candidate={
+                r.status === 'ok' && r.scope === 'all-decks' && !data?.cardsTruncated
+                  ? candidate
+                  : null
+              }
+              asOf={r.asOf}
+              truncated={data?.cardsTruncated ?? false}
               coverage={r.coverage}
               baseline={r.currentRetention}
               fingerprint={r.fingerprint}

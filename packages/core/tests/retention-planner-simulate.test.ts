@@ -215,3 +215,19 @@ describe('fingerprintInput', () => {
     ).not.toBe(fp)
   })
 })
+
+describe('weights normalization and fingerprint width', () => {
+  it('migrates 17 and 19 value vectors to 21 so scheduler and decay agree', async () => {
+    const { normalizeWeights } = await import('../src/retention-planner')
+    const { FSRS6_DEFAULT_WEIGHTS } = await import('../src/fsrs-optimizer')
+    expect(normalizeWeights(null)).toBeNull()
+    expect(normalizeWeights([1, 2, 3])).toBeNull()
+    expect(normalizeWeights(FSRS6_DEFAULT_WEIGHTS.slice(0, 17))?.length).toBe(21)
+    expect(normalizeWeights(FSRS6_DEFAULT_WEIGHTS.slice(0, 19))?.length).toBe(21)
+    expect(normalizeWeights([...FSRS6_DEFAULT_WEIGHTS])?.length).toBe(21)
+  })
+  it('fingerprint is 128 bits of hex', async () => {
+    const { fingerprintInput } = await import('../src/retention-planner')
+    expect(fingerprintInput(makeInput(makeCards(5)))).toMatch(/^[0-9a-f]{32}$/)
+  })
+})

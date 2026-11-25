@@ -39,7 +39,7 @@ export function AssumptionsBlock({ r, truncated }: { r: PlannerResult; truncated
           {c.excludedOwnSettings.toLocaleString()} in decks with their own retention or weights (the
           global setting does not govern them).
           {truncated
-            ? ' The collection is larger than the read limit, so some cards were not read.'
+            ? ' The collection is larger than the read limit: only the first 50,000 cards by id were read.'
             : ''}
         </li>
         <li>
@@ -53,6 +53,14 @@ export function AssumptionsBlock({ r, truncated }: { r: PlannerResult; truncated
         <li>
           <strong>Review time</strong> ({t.source}): {t.secondsOverall.toFixed(1)} s overall.{' '}
           {t.note} Usable {t.usable} of {t.considered} ({Math.round(t.coverage * 100)}%).
+        </li>
+        <li>
+          <strong>Window</strong>: this is the next {r.horizonDays} days from each card&apos;s
+          current due date, not steady state. Cards due after that do no work here. Overdue cards
+          all land on day 1, which lifts the average. Sampling by id is not proven unbiased, and the
+          daily peaks are scaled-up approximations. No accuracy is promised for the whole
+          collection. After a lapse, the scheduler&apos;s same-day relearning steps are counted as
+          extra reviews at the time for the grade given.
         </li>
         <li>
           <strong>Left out</strong>: new-card introduction, learning-step time, easy days, fuzz,
