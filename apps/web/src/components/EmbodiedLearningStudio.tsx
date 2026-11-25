@@ -71,7 +71,8 @@ export function EmbodiedLearningStudio() {
     queryKey: ['embodied-learning'],
     queryFn: () => apiGet<LibraryResponse>('/api/embodied-learning'),
   })
-  const [tab, setTab] = useState('scenarios')
+  type StudioTab = 'scenarios' | 'ground' | 'gesture' | 'mismatch' | 'fade' | 'enact'
+  const [tab, setTab] = useState<StudioTab>('scenarios')
   const [scenario, setScenario] = useState<Scenario | null>(null)
 
   // Gesture plan evaluation state
@@ -162,14 +163,16 @@ export function EmbodiedLearningStudio() {
         label="Studio phases"
         value={tab}
         onChange={setTab}
-        items={[
-          { value: 'scenarios', label: 'Scenarios' },
-          { value: 'ground', label: 'Ground', disabled: !scenario },
-          { value: 'gesture', label: 'Gesture', disabled: !scenario },
-          { value: 'mismatch', label: 'Mismatch', disabled: !scenario },
-          { value: 'fade', label: 'Fade', disabled: !scenario },
-          { value: 'enact', label: 'Enact', disabled: !scenario },
-        ]}
+        items={(
+          [
+            { key: 'scenarios', label: 'Scenarios' },
+            { key: 'ground', label: 'Ground' },
+            { key: 'gesture', label: 'Gesture' },
+            { key: 'mismatch', label: 'Mismatch' },
+            { key: 'fade', label: 'Fade' },
+            { key: 'enact', label: 'Enact' },
+          ] as const
+        ).filter((item) => item.key === 'scenarios' || scenario !== null)}
       />
 
       {tab === 'scenarios' && (
