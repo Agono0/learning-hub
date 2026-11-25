@@ -12,6 +12,8 @@
  *   invite-create <digest> [--uses N] [--hours H]
  *   invite-revoke <digest>
  *   invite-policy on|off
+ *   remove-member <handle>
+ *   unblock-member <handle>
  *   duel-open <duelId> <opponentSignerId> --prompt "id::question::ans1|ans2" [--prompt …]
  *   duel-start <duelId>
  *   duel-answer <duelId> <promptId> <answer…>
@@ -91,6 +93,12 @@ export function parseMutationArgs(args: string[]): ParsedMutation {
     case 'invite-revoke': {
       if (tail.length !== 1) return { ok: false, error: 'invite-revoke needs exactly one <digest>' }
       candidate = { type, digest: tail[0] }
+      break
+    }
+    case 'remove-member':
+    case 'unblock-member': {
+      if (tail.length !== 1) return { ok: false, error: `${type} needs exactly one <handle>` }
+      candidate = { type, target: tail[0] }
       break
     }
     case 'invite-policy': {

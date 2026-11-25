@@ -40,3 +40,6 @@ export async function digestInviteCode(code: string): Promise<string> {
   const hash = await globalThis.crypto.subtle.digest('SHA-256', data)
   return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+/** Most handles a league will keep blocked. */
+export const MAX_BLOCKED = 200

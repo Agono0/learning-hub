@@ -67,6 +67,8 @@ export function laneFor(mutation: LeagueMutation): string {
     case 'invite-create':
     case 'invite-revoke':
     case 'invite-policy':
+    case 'remove-member':
+    case 'unblock-member':
       return 'membership'
     case 'close-round':
       return 'round'
@@ -101,6 +103,11 @@ const PERMANENT_CODES = new Set([
   'invite_unknown',
   'not_invite_owner',
   'not_founder',
+  'blocked',
+  'target_not_member',
+  'cannot_remove_self',
+  'not_blocked',
+  'block_list_full',
 ])
 
 /** Codes that mean "try again later": the item itself may still be fine. */

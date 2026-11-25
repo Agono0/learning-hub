@@ -22,16 +22,16 @@ challenger authored, but the player's device still chooses what to send.
 
 ## Attackers considered
 
-| Attacker | Goal | Control |
-| --- | --- | --- |
-| Network observer | Replay a captured envelope | Per-signer monotonic `seq`, nonce ledger, clock window |
-| Unsigned caller | Learn a member's sequence | `bad_seq` hint only after the signature verifies |
-| Member | Act as another member | Handle derived from the public key; envelopes bind league id and domain |
-| Member | Flood the room | Rate limit per signer window, body size cap, bounded duel retention |
-| Member | Inflate points | Points come only from the reducer; no client-supplied totals |
-| Challenger | Hide answers from the opponent | Public views omit accepted answers and timing flags |
-| Spectator | Harvest keys | `/spectate` returns aliases and counts only |
-| Corrupt local queue | Wedge syncing | Queue loads through a schema; a bad document resets to empty and reports `recovered` |
+| Attacker            | Goal                           | Control                                                                              |
+| ------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| Network observer    | Replay a captured envelope     | Per-signer monotonic `seq`, nonce ledger, clock window                               |
+| Unsigned caller     | Learn a member's sequence      | `bad_seq` hint only after the signature verifies                                     |
+| Member              | Act as another member          | Handle derived from the public key; envelopes bind league id and domain              |
+| Member              | Flood the room                 | Rate limit per signer window, body size cap, bounded duel retention                  |
+| Member              | Inflate points                 | Points come only from the reducer; no client-supplied totals                         |
+| Challenger          | Hide answers from the opponent | Public views omit accepted answers and timing flags                                  |
+| Spectator           | Harvest keys                   | `/spectate` returns aliases and counts only                                          |
+| Corrupt local queue | Wedge syncing                  | Queue loads through a schema; a bad document resets to empty and reports `recovered` |
 
 ## Membership, invites, leave and rename
 
@@ -97,3 +97,15 @@ challenger authored, but the player's device still chooses what to send.
 Turning this on, deploying the Durable Object and binding it are the owner's
 decisions. Review this document, the free-tier limits, and the retarget notes
 for the base branch (`feat/competitive-leagues`) first.
+
+## Founder moderation: remove and unblock
+
+`remove-member` and `unblock-member` are signed mutations that only the
+founder (`players[0]`) may apply. A removal drops the member's alias, cancels
+their open duels and revokes the invites they minted, then adds the handle to
+`state.blocked` (capped at 200). A blocked handle is refused on `join` before
+any invite is spent, so a removed member cannot return with a still-valid code.
+`unblock-member` lifts the block. The founder cannot remove themselves (they
+use `leave`, which passes founder status to the next member). The block list is
+cleared when the league empties. This is room-local moderation for friendly
+practice, not an identity ban: a person with a new device key is a new handle.

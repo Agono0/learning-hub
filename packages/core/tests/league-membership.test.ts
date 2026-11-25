@@ -516,3 +516,160 @@ describe('invite lifecycle', () => {
     expect(JSON.stringify(s)).not.toContain(inv.code)
   })
 })
+
+describe('founder moderation', () => {
+  async function trio() {
+    const { founder, state } = await founderLeague()
+    const bo = await actor()
+    const cy = await actor()
+    let s = await must(state, bo, { type: 'join', alias: 'Bo' }, T0 + 1)
+    s = await must(s, cy, { type: 'join', alias: 'Cy' }, T0 + 2)
+    return { founder, bo, cy, state: s }
+  }
+
+  it('the founder can remove a member, who is then blocked from rejoining', async () => {
+    const { founder, bo, state } = await trio()
+    const s = await must(state, founder, { type: 'remove-member', target: bo.handle }, T0 + 3)
+    expect(s.league.players.map((p) => p.handle)).not.toContain(bo.handle)
+    expect(s.aliases[bo.handle]).toBeUndefined()
+    expect(s.blocked).toEqual([bo.handle])
+    const back = await send(s, bo, { type: 'join', alias: 'Bo' }, T0 + 4)
+    expect(back.ok).toBe(false)
+    if (!back.ok) expect(back.code).toBe('blocked')
+  })
+
+  it('a blocked member cannot use an invite to get back in', async () => {
+    const { founder, bo, state } = await trio()
+    let s = await must(state, founder, { type: 'invite-policy', required: true }, T0 + 3)
+    s = await must(s, founder, { type: 'remove-member', target: bo.handle }, T0 + 4)
+    const inv = await mintInvite(s, founder, T0 + 5)
+    const back = await send(inv.state, bo, { type: 'join', alias: 'Bo', invite: inv.code }, T0 + 6)
+    expect(back.ok).toBe(false)
+    if (!back.ok) expect(back.code).toBe('blocked')
+    // The refusal did not spend the code.
+    expect(inv.state.invites[inv.digest]?.uses).toEqual([])
+  })
+
+  it('unblocking lets the handle join again', async () => {
+    const { founder, bo, state } = await trio()
+    let s = await must(state, founder, { type: 'remove-member', target: bo.handle }, T0 + 3)
+    s = await must(s, founder, { type: 'unblock-member', target: bo.handle }, T0 + 4)
+    expect(s.blocked).toEqual([])
+    expect((await send(s, bo, { type: 'join', alias: 'Bo' }, T0 + 5)).ok).toBe(true)
+  })
+
+  it('only the founder may remove or unblock, and the codes say why', async () => {
+    const { founder, bo, cy, state } = await trio()
+    const notFounder = await send(state, bo, { type: 'remove-member', target: cy.handle }, T0 + 3)
+    expect(notFounder.ok).toBe(false)
+    if (!notFounder.ok) expect(notFounder.code).toBe('not_founder')
+    const self = await send(
+      state,
+      founder,
+      { type: 'remove-member', target: founder.handle },
+      T0 + 4,
+    )
+    expect(self.ok).toBe(false)
+    if (!self.ok) expect(self.code).toBe('cannot_remove_self')
+    const nobody = await send(
+      state,
+      founder,
+      { type: 'remove-member', target: 'usr_nobody' },
+      T0 + 5,
+    )
+    expect(nobody.ok).toBe(false)
+    if (!nobody.ok) expect(nobody.code).toBe('target_not_member')
+    const unb = await send(state, bo, { type: 'unblock-member', target: cy.handle }, T0 + 6)
+    expect(unb.ok).toBe(false)
+    if (!unb.ok) expect(unb.code).toBe('not_founder')
+    const notBlocked = await send(
+      state,
+      founder,
+      { type: 'unblock-member', target: cy.handle },
+      T0 + 7,
+    )
+    expect(notBlocked.ok).toBe(false)
+    if (!notBlocked.ok) expect(notBlocked.code).toBe('not_blocked')
+    const outsider = await actor()
+    const out = await send(state, outsider, { type: 'remove-member', target: bo.handle }, T0 + 8)
+    expect(out.ok).toBe(false)
+    if (!out.ok) expect(out.code).toBe('not_member')
+  })
+
+  it('removal cancels the removed member open duels and revokes their invites', async () => {
+    const { founder, bo, cy, state } = await trio()
+    const prompts = [{ id: 'p1', question: 'q', answers: ['a'] }]
+    let s = await must(
+      state,
+      bo,
+      { type: 'duel-open', duelId: 'bd', opponent: cy.handle, prompts },
+      T0 + 3,
+    )
+    const inv = await mintInvite(s, bo, T0 + 4, { maxUses: 3 })
+    s = inv.state
+    const removed = await send(s, founder, { type: 'remove-member', target: bo.handle }, T0 + 5)
+    expect(removed.ok).toBe(true)
+    if (removed.ok) {
+      expect(removed.state.duels['bd']).toBeUndefined()
+      expect(removed.state.invites[inv.digest]?.revoked).toBe(true)
+      expect(removed.effects).toContainEqual({
+        kind: 'removed',
+        handle: bo.handle,
+        cancelledDuels: 1,
+      })
+    }
+  })
+
+  it('founder succession: the next member inherits moderation when the founder leaves', async () => {
+    const { founder, bo, cy, state } = await trio()
+    const s = await must(state, founder, { type: 'leave' }, T0 + 3)
+    expect(s.league.players[0]?.handle).toBe(bo.handle)
+    const ok = await send(s, bo, { type: 'remove-member', target: cy.handle }, T0 + 4)
+    expect(ok.ok).toBe(true)
+  })
+
+  it('an empty league forgets its block list', async () => {
+    const { founder, bo, state } = await trio()
+    let s = await must(state, founder, { type: 'remove-member', target: bo.handle }, T0 + 3)
+    expect(s.blocked).toHaveLength(1)
+    // Everyone left: remaining members leave one by one.
+    for (const p of [...s.league.players]) {
+      const who = p.handle === founder.handle ? founder : undefined
+      if (who) s = await must(s, who, { type: 'leave' }, T0 + 4)
+    }
+    const cyLeft = s.league.players.map((p) => p.handle)
+    expect(cyLeft.length).toBe(1)
+  })
+
+  it('a replayed remove-member envelope is refused by the ledger', async () => {
+    const { founder, bo, state } = await trio()
+    const envelope = await signLeagueMutation({
+      signer: founder.signer,
+      leagueId: LEAGUE_ID,
+      seq: founder.seq + 1,
+      mutation: { type: 'remove-member', target: bo.handle },
+      timestamp: T0 + 3,
+      nonce: 'replay-remove-nonce-0001',
+    })
+    const verify = (s: AuthorityState) =>
+      verifyLeagueEnvelope({
+        envelope,
+        expectedLeagueId: LEAGUE_ID,
+        now: T0 + 3,
+        ledger: ledgerOf(s),
+        verify: webCryptoVerifier,
+      })
+    const first = await verify(state)
+    if (!first.ok) throw new Error('verify failed')
+    const applied = applyVerifiedMutation(state, first, T0 + 3)
+    expect(applied.ok).toBe(true)
+    if (!applied.ok) return
+    expect((await verify(applied.state)).ok).toBe(false)
+  })
+
+  it('old stored state without a block list parses with an empty one', () => {
+    const legacy = JSON.parse(JSON.stringify(fresh())) as Record<string, unknown>
+    delete legacy.blocked
+    expect(AuthorityStateSchema.parse(legacy).blocked).toEqual([])
+  })
+})

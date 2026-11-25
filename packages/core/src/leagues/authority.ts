@@ -25,7 +25,12 @@ import {
 } from './engine'
 import { decideDuel, type Duel, type DuelResult } from './duels'
 import { pruneDuels } from './retention'
-import { INVITE_TOMBSTONE_MS, MAX_ACTIVE_INVITES_PER_MEMBER, MAX_STORED_INVITES } from './invites'
+import {
+  INVITE_TOMBSTONE_MS,
+  MAX_ACTIVE_INVITES_PER_MEMBER,
+  MAX_BLOCKED,
+  MAX_STORED_INVITES,
+} from './invites'
 import type { LeagueMutation } from './signed-schemas'
 import type { ReplayLedger, VerifiedMutation } from './signed'
 import { NONCE_RETENTION_MS } from './signed'
@@ -116,6 +121,8 @@ export const AuthorityStateSchema = z.object({
   invites: z.record(z.string(), InviteSchema).default({}),
   /** When true, joining needs a live invite (unless the league is empty). */
   inviteOnly: z.boolean().default(false),
+  /** Handles the founder removed. They cannot rejoin until unblocked. */
+  blocked: z.array(z.string()).default([]),
   accepted: z.number().int().nonnegative(),
   log: z.array(AcceptedEntrySchema),
 })
@@ -132,6 +139,7 @@ export function createAuthorityState(league: League): AuthorityState {
     rate: {},
     invites: {},
     inviteOnly: false,
+    blocked: [],
     accepted: 0,
     log: [],
   })
@@ -170,6 +178,11 @@ export type ReduceFailureCode =
   | 'invite_unknown'
   | 'not_invite_owner'
   | 'not_founder'
+  | 'blocked'
+  | 'target_not_member'
+  | 'cannot_remove_self'
+  | 'not_blocked'
+  | 'block_list_full'
 
 export type ReduceEffect =
   | { kind: 'joined'; handle: string }
@@ -183,6 +196,8 @@ export type ReduceEffect =
   | { kind: 'invite-created'; digest: string }
   | { kind: 'invite-revoked'; digest: string }
   | { kind: 'invite-policy'; required: boolean }
+  | { kind: 'removed'; handle: string; cancelledDuels: number }
+  | { kind: 'unblocked'; handle: string }
 
 export type ReduceResult =
   | { ok: true; state: AuthorityState; effects: ReduceEffect[] }
@@ -244,6 +259,44 @@ export function pruneInvites(invites: Record<string, Invite>, now: number): Reco
   )
   kept.sort((a, b) => b[1].createdAt - a[1].createdAt)
   return Object.fromEntries(kept.slice(0, MAX_STORED_INVITES))
+}
+
+/** State changes shared by `leave` and `remove-member`. Pure. */
+function withoutMember(
+  state: AuthorityState,
+  who: string,
+): { patch: Partial<AuthorityState>; cancelled: number } {
+  const players = state.league.players.filter((p) => p.handle !== who)
+  const league = LeagueSchema.parse({ ...state.league, players })
+  const aliases = { ...state.aliases }
+  delete aliases[who]
+  const duels: Record<string, DuelRuntime> = {}
+  let cancelled = 0
+  for (const [id, d] of Object.entries(state.duels)) {
+    if (d.status === 'open' && (d.playerA === who || d.playerB === who)) cancelled++
+    else duels[id] = d
+  }
+  // Their invites die with them; an empty league resets to open.
+  const empty = players.length === 0
+  const invites: Record<string, Invite> = empty
+    ? {}
+    : Object.fromEntries(
+        Object.entries(state.invites).map(([d, inv]) => [
+          d,
+          inv.creator === who ? { ...inv, revoked: true } : inv,
+        ]),
+      )
+  return {
+    patch: {
+      league,
+      aliases,
+      duels,
+      invites,
+      inviteOnly: empty ? false : state.inviteOnly,
+      blocked: empty ? [] : state.blocked,
+    },
+    cancelled,
+  }
 }
 
 function reject(state: AuthorityState, code: ReduceFailureCode): ReduceResult {
@@ -311,6 +364,7 @@ export function applyVerifiedMutation(
   switch (m.type) {
     case 'join': {
       if (isMember) return reject(stateIn, 'already_member')
+      if (state.blocked.includes(handle)) return reject(stateIn, 'blocked')
       if (state.league.players.length >= MAX_MEMBERS) return reject(stateIn, 'league_full')
       let invites = state.invites
       // An empty league is always open: its next member becomes the founder.
@@ -345,39 +399,33 @@ export function applyVerifiedMutation(
 
     case 'leave': {
       if (!isMember) return reject(stateIn, 'not_member')
-      const players = state.league.players.filter((p) => p.handle !== handle)
-      const league = LeagueSchema.parse({ ...state.league, players })
-      const aliases = { ...state.aliases }
-      delete aliases[handle]
-      const duels: Record<string, DuelRuntime> = {}
-      let cancelled = 0
-      for (const [id, d] of Object.entries(state.duels)) {
-        if (d.status === 'open' && (d.playerA === handle || d.playerB === handle)) cancelled++
-        else duels[id] = d
+      const out = withoutMember(state, handle)
+      return commit(state, v, now, out.patch, [
+        { kind: 'left', handle, cancelledDuels: out.cancelled },
+      ])
+    }
+
+    case 'remove-member': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      if (state.league.players[0]?.handle !== handle) return reject(stateIn, 'not_founder')
+      if (m.target === handle) return reject(stateIn, 'cannot_remove_self')
+      if (!state.league.players.some((p) => p.handle === m.target)) {
+        return reject(stateIn, 'target_not_member')
       }
-      // The leaver's invites die with them; an empty league resets to open.
-      const invites: Record<string, Invite> =
-        players.length === 0
-          ? {}
-          : Object.fromEntries(
-              Object.entries(state.invites).map(([d, inv]) => [
-                d,
-                inv.creator === handle ? { ...inv, revoked: true } : inv,
-              ]),
-            )
-      return commit(
-        state,
-        v,
-        now,
-        {
-          league,
-          aliases,
-          duels,
-          invites,
-          inviteOnly: players.length === 0 ? false : state.inviteOnly,
-        },
-        [{ kind: 'left', handle, cancelledDuels: cancelled }],
-      )
+      if (state.blocked.length >= MAX_BLOCKED) return reject(stateIn, 'block_list_full')
+      const out = withoutMember(state, m.target)
+      return commit(state, v, now, { ...out.patch, blocked: [...state.blocked, m.target] }, [
+        { kind: 'removed', handle: m.target, cancelledDuels: out.cancelled },
+      ])
+    }
+
+    case 'unblock-member': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      if (state.league.players[0]?.handle !== handle) return reject(stateIn, 'not_founder')
+      if (!state.blocked.includes(m.target)) return reject(stateIn, 'not_blocked')
+      return commit(state, v, now, { blocked: state.blocked.filter((h) => h !== m.target) }, [
+        { kind: 'unblocked', handle: m.target },
+      ])
     }
 
     case 'invite-create': {

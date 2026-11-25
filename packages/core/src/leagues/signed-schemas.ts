@@ -46,6 +46,10 @@ export const LeagueMutationSchema = z.discriminatedUnion('type', [
   }),
   /** Revoke an invite I created (the founder may revoke any). */
   z.object({ type: z.literal('invite-revoke'), digest: z.string().regex(/^[0-9a-f]{64}$/) }),
+  /** Founder only: remove a member and block them from rejoining. */
+  z.object({ type: z.literal('remove-member'), target: z.string().min(1).max(64) }),
+  /** Founder only: lift a block so the handle may join again. */
+  z.object({ type: z.literal('unblock-member'), target: z.string().min(1).max(64) }),
   /** Founder only: require an invite to join. */
   z.object({ type: z.literal('invite-policy'), required: z.boolean() }),
   /** Challenge another joined member to a duel the challenger authors. */

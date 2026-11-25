@@ -141,6 +141,19 @@ describe('membership mutation arguments', () => {
     expect(parseMutationArgs(['invite-revoke', digest]).ok).toBe(true)
   })
 
+  it('parses remove-member and unblock-member with exactly one handle', () => {
+    expect(parseMutationArgs(['remove-member', 'usr_bo'])).toEqual({
+      ok: true,
+      mutation: { type: 'remove-member', target: 'usr_bo' },
+    })
+    expect(parseMutationArgs(['unblock-member', 'usr_bo'])).toEqual({
+      ok: true,
+      mutation: { type: 'unblock-member', target: 'usr_bo' },
+    })
+    expect(err(['remove-member'])).toMatch(/handle/)
+    expect(err(['unblock-member', 'a', 'b'])).toMatch(/handle/)
+  })
+
   it('parses invite-policy on and off only', () => {
     expect(parseMutationArgs(['invite-policy', 'on'])).toEqual({
       ok: true,
