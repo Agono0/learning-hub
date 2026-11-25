@@ -48,18 +48,28 @@ dns.promises.lookup = async (host, opts) => {
   throw Object.assign(new Error('no external DNS in smoke'), { code: 'ENOTFOUND' })
 }
 const origConnect = net.Socket.prototype.connect
+const LOCAL = new Set(['127.0.0.1', 'localhost', '::1'])
 net.Socket.prototype.connect = function (...args) {
-  const o = args[0]
-  if (o && typeof o === 'object' && typeof o.lookup === 'function' && o.host === 'fixture.test') {
-    const lk = o.lookup
-    const remap = (x) => (x.address === '93.184.216.34' ? { address: '127.0.0.1', family: 4 } : x)
-    const no = { ...o, port: ${FIX}, lookup: (h, opt, cb) => lk(h, opt, (e, a, f) => {
-      if (e) return cb(e)
-      fs.appendFileSync(${JSON.stringify(path.join(tmp, 'pinned-lookup-used'))}, h + ' ' + JSON.stringify(a) + '\\n')
-      if (Array.isArray(a)) cb(null, a.map(remap), f)
-      else cb(null, a === '93.184.216.34' ? '127.0.0.1' : a, f)
-    }) }
-    return origConnect.call(this, no, ...args.slice(1))
+  // net.createConnection passes a normalized [options, cb] array (with an internal marker
+  // symbol), a direct call passes options: find the options object and edit it in place.
+  const o = Array.isArray(args[0]) ? args[0][0] : args[0]
+  if (o && typeof o === 'object' && typeof o.host === 'string') {
+    if (o.host === 'fixture.test' && typeof o.lookup === 'function') {
+      const lk = o.lookup
+      const remap = (x) => (x.address === '93.184.216.34' ? { address: '127.0.0.1', family: 4 } : x)
+      o.port = ${FIX}
+      o.lookup = (h, opt, cb) =>
+        lk(h, opt, (e, a, f) => {
+          if (e) return cb(e)
+          fs.appendFileSync(${JSON.stringify(path.join(tmp, 'pinned-lookup-used'))}, h + ' ' + JSON.stringify(a) + '\\n')
+          if (Array.isArray(a)) cb(null, a.map(remap), f)
+          else cb(null, a === '93.184.216.34' ? '127.0.0.1' : a, f)
+        })
+    } else if (!LOCAL.has(o.host)) {
+      // Nothing in this smoke may leave the machine: refuse any other outbound connect.
+      process.nextTick(() => this.destroy(new Error('smoke: external connect blocked: ' + o.host)))
+      return this
+    }
   }
   return origConnect.apply(this, args)
 }
