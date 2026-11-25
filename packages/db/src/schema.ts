@@ -970,6 +970,31 @@ export const leagueSeasons = table(
   ],
 )
 
+/** Earned league achievements (catalog in core leagues/achievements). */
+export const leagueAchievements = table(
+  'league_achievements',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    handle: text('handle').notNull(),
+    achievementId: text('achievement_id').notNull(),
+    earnedAt: text('earned_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('league_achievements_league_handle_achievement_uidx').on(
+      t.leagueId,
+      t.handle,
+      t.achievementId,
+    ),
+    index('league_achievements_league_idx').on(t.leagueId),
+  ],
+)
+export type LeagueAchievementRow = typeof leagueAchievements.$inferSelect
+
 export const leagueTournaments = table(
   'league_tournaments',
   {

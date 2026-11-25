@@ -37,6 +37,9 @@ import {
   type LeagueTransferPayload,
   scoreDuelSide,
   summarizeHeadToHead,
+  newlyEarnedAchievements,
+  getLeagueAchievement,
+  type LeagueAchievementContext,
   headToHeadLeader,
   headToHeadEloGap,
   type HeadToHeadEncounter,
@@ -48,6 +51,7 @@ import {
   cards as cardsTable,
   leagueDuels,
   leagueEloEvents,
+  leagueAchievements,
   leaguePlayers,
   leagueRounds,
   leagueSeasons,
@@ -476,6 +480,11 @@ export function closeLeagueRound(
       conn,
     )
   }
+
+  // Round close changes tiers, roundsWon and season archives: re-evaluate
+  // achievements for the whole league after everything above has committed.
+  syncLeagueAchievementsAll(slug, conn)
+
   return {
     round: outcome.round,
     promoted: outcome.promoted,
@@ -580,7 +589,8 @@ export function submitDuelAnswers(
   database?: LearningHubDB,
 ): { duel: LeagueDuelRow; decided: boolean; winner: string | null } {
   const conn = database ?? getDb()
-  return withTransaction((tx) => {
+  const pendingAchievementSync: [string, string][] = []
+  const outcome = withTransaction((tx) => {
     const row = getLeagueDuel(slug, tx)
     if (!row) throw new Error(`duel not found: ${slug}`)
     if (row.status === 'complete') throw new Error('duel already complete')
@@ -709,8 +719,19 @@ export function submitDuelAnswers(
         }
       }
     }
+    if (row.leagueId !== null) {
+      const leagueRow = tx.select().from(leagues).where(eq(leagues.id, row.leagueId)).get()
+      if (leagueRow)
+        pendingAchievementSync.push([leagueRow.slug, row.playerA], [leagueRow.slug, row.playerB])
+    }
     return { duel: updated!, decided: true, winner: result.winner }
   }, conn)
+
+  // Achievements re-evaluated after the duel transaction commits.
+  for (const [leagueSlug, handle] of pendingAchievementSync) {
+    syncLeagueAchievements(leagueSlug, handle, conn)
+  }
+  return outcome
 }
 
 // ─── Tournaments ───────────────────────────────────────────────────────────
@@ -1273,4 +1294,177 @@ export function leagueHeadToHead(
       completedAt: r.completedAt ?? r.createdAt,
     })),
   }
+}
+
+// ─── Achievements ───────────────────────────────────────────────────────────
+
+export interface LeagueAchievementEarned {
+  achievementId: string
+  title: string
+  description: string
+  earnedAt: string
+}
+
+/**
+ * Gather the evaluation context for one player in one league: current row
+ * stats plus titles from the season archive and completed tournaments.
+ * Returns null when the league or player does not exist.
+ */
+export function leagueAchievementContext(
+  slug: string,
+  handle: string,
+  database?: LearningHubDB,
+): LeagueAchievementContext | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const player = conn
+    .select()
+    .from(leaguePlayers)
+    .where(and(eq(leaguePlayers.leagueId, league.id), eq(leaguePlayers.handle, handle)))
+    .get()
+  if (!player) return null
+  const seasons = conn
+    .select()
+    .from(leagueSeasons)
+    .where(and(eq(leagueSeasons.leagueId, league.id), eq(leagueSeasons.champion, handle)))
+    .all()
+  const tournaments = conn
+    .select()
+    .from(leagueTournaments)
+    .where(eq(leagueTournaments.leagueId, league.id))
+    .all()
+    .filter((t) => t.status === 'complete' && t.champion === handle)
+  return {
+    tier: player.tier,
+    points: player.points,
+    // Lifetime banked plus the current round's in-progress points, so
+    // point-threshold badges unlock in real time rather than at round close.
+    seasonPoints: player.seasonPoints + player.points,
+    roundsWon: player.roundsWon,
+    duelsWon: player.duelsWon,
+    duelsLost: player.duelsLost,
+    elo: player.elo,
+    seasonsChampioned: seasons.length,
+    tournamentsWon: tournaments.length,
+  }
+}
+
+/** Achievements a player has already banked, oldest first. */
+export function listLeagueAchievements(
+  slug: string,
+  handle: string,
+  database?: LearningHubDB,
+): LeagueAchievementEarned[] {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return []
+  return conn
+    .select()
+    .from(leagueAchievements)
+    .where(and(eq(leagueAchievements.leagueId, league.id), eq(leagueAchievements.handle, handle)))
+    .all()
+    .sort((a, b) => a.earnedAt.localeCompare(b.earnedAt))
+    .map((row) => {
+      const def = getLeagueAchievement(row.achievementId)
+      return {
+        achievementId: row.achievementId,
+        title: def?.title ?? row.achievementId,
+        description: def?.description ?? '',
+        earnedAt: row.earnedAt,
+      }
+    })
+}
+
+/**
+ * Re-evaluate a player's achievements against the catalog and bank any new
+ * ones. Returns only the NEWLY earned achievements (empty when nothing
+ * changed), so callers can surface exactly what unlocked. Emits one
+ * league-channel notification per new achievement (prefs-honoring).
+ */
+export function syncLeagueAchievements(
+  slug: string,
+  handle: string,
+  database?: LearningHubDB,
+): LeagueAchievementEarned[] {
+  const conn = database ?? getDb()
+  const ctx = leagueAchievementContext(slug, handle, conn)
+  if (!ctx) return []
+  const league = getLeagueBySlug(slug, conn)!
+  const have = conn
+    .select()
+    .from(leagueAchievements)
+    .where(and(eq(leagueAchievements.leagueId, league.id), eq(leagueAchievements.handle, handle)))
+    .all()
+    .map((r) => r.achievementId)
+  const fresh = newlyEarnedAchievements(ctx, have)
+  if (fresh.length === 0) return []
+
+  const earnedAt = new Date().toISOString()
+  withTransaction((tx) => {
+    for (const id of fresh) {
+      tx.insert(leagueAchievements)
+        .values({ leagueId: league.id, handle, achievementId: id, earnedAt })
+        .run()
+    }
+  }, conn)
+
+  // Notification repos take the db handle, not a transaction: log after
+  // commit, honoring the master switch and the 'league' channel toggle.
+  const prefs = getNotificationPrefs(conn)
+  const leaguePref = prefs.channels['league']
+  const decision = !prefs.masterEnabled
+    ? ('suppress_master' as const)
+    : leaguePref && !leaguePref.enabled
+      ? ('suppress_channel' as const)
+      : ('deliver' as const)
+  const notifiedAt = new Date().toISOString()
+  for (const id of fresh) {
+    const def = getLeagueAchievement(id)
+    logNotification(
+      {
+        channel: 'league',
+        title: `Achievement unlocked: ${def?.title ?? id}`,
+        body: `${league.title} — ${def?.description ?? id} (${handle})`,
+        actionUrl: '/leagues',
+        decision,
+        createdAt: notifiedAt,
+      },
+      conn,
+    )
+  }
+
+  return fresh.map((id) => {
+    const def = getLeagueAchievement(id)
+    return {
+      achievementId: id,
+      title: def?.title ?? id,
+      description: def?.description ?? '',
+      earnedAt,
+    }
+  })
+}
+
+/**
+ * Sweep one league and sync achievements for every player. Returns the
+ * handles that unlocked something, with their new badges.
+ */
+export function syncLeagueAchievementsAll(
+  slug: string,
+  database?: LearningHubDB,
+): { handle: string; earned: LeagueAchievementEarned[] }[] {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return []
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const out: { handle: string; earned: LeagueAchievementEarned[] }[] = []
+  for (const p of players) {
+    const earned = syncLeagueAchievements(slug, p.handle, conn)
+    if (earned.length > 0) out.push({ handle: p.handle, earned })
+  }
+  return out
 }

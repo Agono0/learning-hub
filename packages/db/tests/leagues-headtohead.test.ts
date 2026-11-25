@@ -6,6 +6,7 @@ import {
   createLeagueDuel,
   createLeagueRow,
   initDb,
+  leagueAchievements,
   joinLeagueRow,
   leagueDuels,
   leagueEloEvents,
@@ -34,6 +35,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(leagueAchievements).run()
   db.delete(leagueSeasons).run()
   db.delete(leagueEloEvents).run()
   db.delete(leagueTournaments).run()

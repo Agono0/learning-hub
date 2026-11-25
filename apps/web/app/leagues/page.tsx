@@ -677,16 +677,33 @@ function StandingsTab({
 
 function PlayerProfilePanel({ slug, handle }: { slug: string; handle: string }) {
   const [profile, setProfile] = useState<PlayerProfile | null>(null)
+  const [achievements, setAchievements] = useState<
+    { achievementId: string; title: string; description: string; earnedAt: string }[]
+  >([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setProfile(null)
+    setAchievements([])
     setError(null)
     apiGet<{ ok: boolean; profile: PlayerProfile }>(
       `/api/leagues?view=player&slug=${encodeURIComponent(slug)}&handle=${encodeURIComponent(handle)}`,
     )
       .then((res) => setProfile(res.profile))
       .catch((err) => setError(err instanceof Error ? err.message : 'failed to load profile'))
+    apiGet<{
+      ok: boolean
+      achievements: {
+        achievementId: string
+        title: string
+        description: string
+        earnedAt: string
+      }[]
+    }>(
+      `/api/leagues?view=achievements&slug=${encodeURIComponent(slug)}&handle=${encodeURIComponent(handle)}`,
+    )
+      .then((res) => setAchievements(res.achievements))
+      .catch(() => setAchievements([]))
   }, [slug, handle])
 
   if (error) {
@@ -739,6 +756,24 @@ function PlayerProfilePanel({ slug, handle }: { slug: string; handle: string }) 
             )}
           </div>
         </div>
+        {achievements.length > 0 && (
+          <div data-testid="profile-achievements">
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">
+              Achievements ({achievements.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {achievements.map((a) => (
+                <Badge
+                  key={a.achievementId}
+                  tone="success"
+                  data-testid={`achievement-${a.achievementId}`}
+                >
+                  {a.title}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
         {recentDuels.length > 0 && (
           <ul className="space-y-1" data-testid="profile-duels">
             {recentDuels.map((d) => (

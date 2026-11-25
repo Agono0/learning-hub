@@ -14,6 +14,9 @@ import {
   exportLeague,
   importLeague,
   leagueHeadToHead,
+  listLeagueAchievements,
+  syncLeagueAchievements,
+  syncLeagueAchievementsAll,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -88,6 +91,21 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'league_achievements',
+    "List a player's earned league achievement badges (oldest first).",
+    { slug: z.string().min(1), handle: z.string().min(1) },
+    ({ slug, handle }) => json({ ok: true, achievements: listLeagueAchievements(slug, handle) }),
+  ),
+  tool(
+    'league_achievements_sync',
+    'Re-evaluate achievements: for one player (handle) or the whole league (omit handle). Banks and returns only newly earned badges.',
+    { slug: z.string().min(1), handle: z.string().min(1).optional() },
+    ({ slug, handle }) =>
+      handle
+        ? json({ ok: true, earned: syncLeagueAchievements(slug, handle) })
+        : json({ ok: true, unlocked: syncLeagueAchievementsAll(slug) }),
   ),
   tool(
     'league_head_to_head',

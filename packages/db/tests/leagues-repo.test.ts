@@ -18,6 +18,7 @@ import {
   getLeagueDuel,
   getLeagueTournament,
   initDb,
+  leagueAchievements,
   joinLeagueRow,
   leagueChampion,
   leagueDuels,
@@ -55,6 +56,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(leagueAchievements).run()
   db.delete(leagueSeasons).run()
   db.delete(leagueEloEvents).run()
   db.delete(xpEvents).run()
@@ -297,7 +299,10 @@ describe('round close persistence', () => {
     closeLeagueRound('spring', db)
 
     const log = db.select().from(notificationLog).all()
-    const leagueNotes = log.filter((n) => n.channel === 'league')
+    // round-result notes only; achievement unlocks log separately on close
+    const leagueNotes = log.filter(
+      (n) => n.channel === 'league' && !n.title.startsWith('Achievement unlocked'),
+    )
     // winner + promotee folds into one message; the other promotee gets her own
     expect(leagueNotes).toHaveLength(2)
     expect(leagueNotes.map((n) => n.title).sort()).toEqual([
@@ -314,13 +319,16 @@ describe('round close persistence', () => {
     makeLeague()
     joinLeagueRow('spring', 'amr', db)
     closeLeagueRound('spring', db)
-    expect(
-      db
-        .select()
-        .from(notificationLog)
-        .all()
-        .filter((n) => n.channel === 'league'),
-    ).toHaveLength(0)
+    const notes = db
+      .select()
+      .from(notificationLog)
+      .all()
+      .filter((n) => n.channel === 'league')
+    // no round-result celebrations for a pointless round…
+    expect(notes.filter((n) => !n.title.startsWith('Achievement unlocked'))).toHaveLength(0)
+    // …the round-winner badge follows the recorded roundsWon stat, which the
+    // engine increments for the (zero-point) top of the division
+    expect(notes.filter((n) => n.title.startsWith('Achievement unlocked'))).toHaveLength(1)
   })
 
   it('standings and champion read back from persisted state', () => {

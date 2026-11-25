@@ -25,6 +25,7 @@
  *   leagues tournament result <slug> <round> <position> <winner> [--duel <id>]
  *   leagues tournament list [--league <slug>] [--status open|complete]
  *   leagues h2h <slug> <handleA> <handleB>
+ *   leagues achievements <slug> <handle>
  *   leagues export <slug> [--out FILE]
  *   leagues import <file>
  */
@@ -40,6 +41,8 @@ import {
   getLeagueBySlug,
   importLeague,
   leagueHeadToHead,
+  listLeagueAchievements,
+  syncLeagueAchievements,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -527,6 +530,28 @@ function h2hCommand(args: string[]): void {
   )
 }
 
+function achievementsCommand(args: string[]): void {
+  const [slug, handle] = args
+  if (!slug || !handle) return fail('Usage: learning-hub leagues achievements <slug> <handle>')
+  const fresh = syncLeagueAchievements(slug, handle)
+  const all = listLeagueAchievements(slug, handle)
+  if (all.length === 0) {
+    console.log(
+      `No achievements yet for ${handle} in ${slug}. Win duels, climb divisions, take rounds.`,
+    )
+    return
+  }
+  console.log(
+    panel(
+      `${handle} in ${slug} — ${all.length} achievement${all.length === 1 ? '' : 's'}`,
+      all.map(
+        (a) =>
+          `${fresh.some((f) => f.achievementId === a.achievementId) ? 'NEW ' : ''}${a.title} — ${a.description}`,
+      ),
+    ),
+  )
+}
+
 function leaguesCommand(args: string[]): void {
   const sub = args[0] || 'list'
   if (sub === 'list') return listLeaguesCommand()
@@ -541,6 +566,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'rounds') return roundsCommand(args.slice(1))
   if (sub === 'seasons') return seasonsCommand(args.slice(1))
   if (sub === 'h2h') return h2hCommand(args.slice(1))
+  if (sub === 'achievements') return achievementsCommand(args.slice(1))
   if (sub === 'export') return exportCommand(args.slice(1))
   if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
