@@ -284,3 +284,17 @@ Surfaces: `GET /leagues/schedule?slug=` (server), `GET
 /api/leagues?view=schedule&slug=` (web, rendered as the calendar strip in
 the Weekly digest panel), `learning-hub leagues schedule <slug>`, and the
 `league_schedule` MCP tool.
+
+## Duel performance stats
+
+`leagueDuelStats(slug)` aggregates every completed duel in a league into a
+per-player table: record (W-L-D), win rate, mean accuracy, mean time per
+correct answer, and win streaks (current and best). Accuracy and speed use
+the same scoring that decides duels, so the table doubles as a
+study-strength signal (low accuracy = weak material) and a fair-matchmaking
+input. Open duels never count. Sorted by win rate, then wins, then accuracy.
+
+Surfaces: `GET /leagues/duel-stats?slug=` (server), `GET
+/api/leagues?view=duel-stats&slug=` (web, rendered as the stats table above
+the duel list on the Duels tab), `learning-hub leagues duel-stats <slug>`,
+and the `league_duel_stats` MCP tool.

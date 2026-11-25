@@ -120,6 +120,19 @@ type LeagueDigest = {
   newAchievements: { handle: string; achievementId: string; earnedAt: string }[]
 }
 
+type DuelPlayerStats = {
+  handle: string
+  played: number
+  wins: number
+  losses: number
+  draws: number
+  winRate: number
+  avgAccuracy: number
+  avgCorrectTimeMs: number | null
+  currentStreak: number
+  bestStreak: number
+}
+
 type LeagueSchedule = {
   currentRound: number
   seasonLengthRounds: number
@@ -1240,6 +1253,23 @@ function DuelsTab({
   const [answersText, setAnswersText] = useState('')
 
   const openDuels = useMemo(() => detail?.duels.filter((d) => d.status === 'open') ?? [], [detail])
+  const [stats, setStats] = useState<DuelPlayerStats[]>([])
+  useEffect(() => {
+    if (!selected) return
+    let alive = true
+    apiGet<{ ok: boolean; stats: DuelPlayerStats[] }>(
+      `/api/leagues?view=duel-stats&slug=${encodeURIComponent(selected)}`,
+    )
+      .then((res) => {
+        if (alive) setStats(res.stats)
+      })
+      .catch(() => {
+        if (alive) setStats([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [selected, detail])
 
   if (!selected) {
     return <EmptyState title="Pick a league">Duels live inside a league season.</EmptyState>
@@ -1249,6 +1279,34 @@ function DuelsTab({
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel>
         <h2 className="mb-2 text-base font-semibold">Duels in {selected}</h2>
+        {stats.length > 0 && (
+          <table className="mb-3 w-full text-xs" data-testid="duel-stats">
+            <thead>
+              <tr className="text-left text-neutral-500">
+                <th className="py-1 pr-2 font-medium">player</th>
+                <th className="py-1 pr-2 font-medium">W-L-D</th>
+                <th className="py-1 pr-2 font-medium">win%</th>
+                <th className="py-1 pr-2 font-medium">accuracy</th>
+                <th className="py-1 font-medium">streak</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.map((st) => (
+                <tr key={st.handle} className="border-t border-neutral-100 dark:border-neutral-800">
+                  <td className="py-1 pr-2 font-medium">{st.handle}</td>
+                  <td className="py-1 pr-2">
+                    {st.wins}-{st.losses}-{st.draws}
+                  </td>
+                  <td className="py-1 pr-2">{Math.round(st.winRate * 100)}%</td>
+                  <td className="py-1 pr-2">{Math.round(st.avgAccuracy * 100)}%</td>
+                  <td className="py-1">
+                    {st.currentStreak > 0 ? `${st.currentStreak}W` : '—'} (best {st.bestStreak})
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         {detail && detail.duels.length === 0 ? (
           <EmptyState title="No duels yet">
             Challenge a rival to a recall duel — accuracy first, speed breaks ties.

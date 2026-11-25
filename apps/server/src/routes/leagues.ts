@@ -28,6 +28,7 @@ import {
   leagueChampion,
   buildLeagueDigest,
   leagueDivisionDetail,
+  leagueDuelStats,
   leagueRoundPreview,
   seedLeagueTournamentFromStandings,
   leagueStandings,
@@ -405,6 +406,14 @@ function getLeagueDigest(req: IncomingMessage, res: ServerResponse, url: URL): v
   sendJson(res, 200, { ok: true, digest })
 }
 
+/** GET /leagues/duel-stats?slug= — per-player duel record, accuracy, speed, streaks. */
+function getLeagueDuelStats(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, digestQuerySchema)
+  const stats = leagueDuelStats(q.slug)
+  if (stats === null) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, stats })
+}
+
 /** GET /leagues/schedule?slug= — round calendar: current window, due state, upcoming rounds. */
 function getLeagueSchedule(req: IncomingMessage, res: ServerResponse, url: URL): void {
   const q = readQuery(url, digestQuerySchema)
@@ -487,6 +496,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/division',
     summary: 'one division: standings, round history, movement, duels (?slug=&tier=)',
     handler: getLeagueDivision,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/duel-stats',
+    summary: 'per-player duel performance: record, accuracy, speed, streaks (?slug=)',
+    handler: getLeagueDuelStats,
   },
   {
     method: 'GET',
