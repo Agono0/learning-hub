@@ -83,23 +83,44 @@ describe('telemetry hardening', () => {
     ).toBe(false)
   })
 
-  it('counts streamed bytes against the cap without buffering the rest', async () => {
+  it('stops at the byte budget plus one bounded source chunk and cancels the stream', async () => {
+    const CHUNK = 1024
+    const CAP = 4096
     let pulled = 0
-    const stream = new ReadableStream<Uint8Array>({
-      pull(c) {
-        pulled += 1024
-        c.enqueue(new Uint8Array(1024).fill(120))
-        if (pulled > 10 * 1024 * 1024) c.close()
+    let cancelled = false
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(c) {
+          pulled += CHUNK
+          c.enqueue(new Uint8Array(CHUNK).fill(120))
+          if (pulled > 10 * 1024 * 1024) c.close()
+        },
+        cancel() {
+          cancelled = true
+        },
       },
-    })
+      { highWaterMark: 0 },
+    )
     const req = new Request('http://w.local/x', {
       method: 'POST',
       body: stream,
       duplex: 'half',
     } as RequestInit)
-    expect(await readBodyCapped(req, 4096)).toBeNull()
-    // Stopped shortly after the cap, far below the 10 MiB the stream could supply.
-    expect(pulled).toBeLessThan(1024 * 1024)
+    expect(await readBodyCapped(req, CAP)).toBeNull()
+    expect(cancelled).toBe(true)
+    // Budget is CAP; the first read past it is the one that trips the cap. The runtime may
+    // have pulled one more chunk ahead, so allow at most two chunks over the budget.
+    expect(pulled).toBeGreaterThan(CAP)
+    expect(pulled).toBeLessThanOrEqual(CAP + 2 * CHUNK)
+  })
+
+  it('accepts a body of exactly the cap and refuses one byte more', async () => {
+    const exact = 'a'.repeat(CRASH_LIMITS.bodyBytes)
+    expect(await readBodyCapped(post('http://w.local', exact), CRASH_LIMITS.bodyBytes)).toBe(exact)
+    expect(
+      await readBodyCapped(post('http://w.local', exact + 'a'), CRASH_LIMITS.bodyBytes),
+    ).toBeNull()
+    expect(CRASH_LIMITS.bodyBytes).toBe(65536)
   })
 
   it('counts UTF-8 bytes, not characters', async () => {

@@ -1,7 +1,12 @@
 /**
  * Input validation for public worker endpoints. Invalid input is refused with a message,
- * never silently clamped. Numeric bounds are generous sanity limits (assumptions, not measured
- * from real clients) that only stop absurd values from reaching the leaderboard.
+ * never silently clamped.
+ *
+ * Grounding for the numeric rules: the shared client schema (packages/core/src/share) types
+ * weeklyXp as a non-negative integer with no upper bound, core levelFromXp defaults to a max
+ * level of 50, and no client in this repo calls /stats/sync. So integer-ness and the lower
+ * bounds follow the client contract; the upper bounds below are generous sanity limits that
+ * the repo does not define, chosen only to keep absurd values off the public leaderboard.
  */
 import { filterContentSafety } from '@learning-hub/core/online'
 
