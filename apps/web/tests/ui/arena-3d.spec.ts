@@ -217,10 +217,13 @@ test('narrow viewport: the session stays playable and the stage is visible', asy
   await page.getByTestId('arena-start').click()
   await expect(page.getByTestId('arena-canvas')).toBeVisible()
   await page.waitForTimeout(1500)
-  await page
-    .getByTestId('arena-stage')
-    .screenshot({ path: 'test-results/shots/5-narrow-stage.png' })
   await page.screenshot({ path: 'test-results/shots/5-narrow-session.png' })
+  // The whole focal scene must sit below the sticky header, and the answer
+  // control must be on screen without extra scrolling.
+  const stageBox = await page.getByTestId('arena-stage').boundingBox()
+  expect(stageBox && stageBox.y >= 40, `stage top ${stageBox?.y}`).toBeTruthy()
+  const revealBox = await page.getByTestId('arena-reveal').boundingBox()
+  expect(revealBox && revealBox.y + revealBox.height <= 844, `reveal ${revealBox?.y}`).toBeTruthy()
   await page.getByTestId('arena-reveal').click()
   await expect(page.getByTestId('arena-grade-3')).toBeVisible()
 })

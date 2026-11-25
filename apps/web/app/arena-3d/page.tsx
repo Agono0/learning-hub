@@ -313,6 +313,7 @@ export default function Arena3DPage() {
   const reducedMotion = useReducedMotion()
   const { toast } = useToast()
   const arenaHandle = useRef<ArenaCanvasHandle>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
 
   const [phase, setPhase] = useState<Phase>('setup')
   const [decks, setDecks] = useState<DeckInfo[]>([])
@@ -348,6 +349,12 @@ export default function Arena3DPage() {
   const [cfg, setCfg] = useState<ArenaConfig | null>(null)
 
   // Deck catalog for the setup picker.
+  // When a run starts, bring the whole stage under the sticky header so the
+  // guardian, HUD and answer control are on screen together on small screens.
+  useEffect(() => {
+    if (phase === 'fighting') stageRef.current?.scrollIntoView({ block: 'start' })
+  }, [phase])
+
   useEffect(() => {
     apiGet<{ decks: DeckInfo[] }>('/api/decks')
       .then((d) => setDecks(d.decks))
@@ -681,7 +688,8 @@ export default function Arena3DPage() {
       {/* 3D stage — decorative; never mounted for reduced motion. */}
       {canvasEnabled && phase !== 'setup' && phase !== 'loading' ? (
         <div
-          className="relative h-64 w-full overflow-hidden rounded-2xl border border-(--hub-border) bg-neutral-950 sm:h-80"
+          ref={stageRef}
+          className="relative h-48 w-full scroll-mt-20 overflow-hidden rounded-2xl border border-(--hub-border) bg-neutral-950 sm:h-80 md:scroll-mt-6"
           data-testid="arena-stage"
         >
           <ArenaCanvas ref={arenaHandle} className="h-full w-full" />
