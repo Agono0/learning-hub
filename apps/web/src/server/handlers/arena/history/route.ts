@@ -19,6 +19,98 @@ import {
 } from '@learning-hub/db'
 import { withRoute } from '@/lib/api'
 
+// ─── Weekly trial ───────────────────────────────────────────────────────────
+
+/** Monday 00:00 UTC of the week containing `now`, plus its YYYY-Www key. */
+function weekStart(now: Date): { start: Date; weekKey: string } {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const dow = (d.getUTCDay() + 6) % 7 // Monday = 0
+  d.setUTCDate(d.getUTCDate() - dow)
+  // ISO week number: Thursday of this week fixes the week-year.
+  const thursday = new Date(d)
+  thursday.setUTCDate(d.getUTCDate() + 3)
+  const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4))
+  const week = 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / (7 * 86_400_000))
+  return {
+    start: d,
+    weekKey: `${thursday.getUTCFullYear()}-W${String(week).padStart(2, '0')}`,
+  }
+}
+
+interface WeeklyTrialTemplate {
+  key: string
+  name: string
+  description: string
+  target: number
+  unit: 'victories' | 'boss_victories' | 'combo'
+}
+
+const WEEKLY_TRIALS: WeeklyTrialTemplate[] = [
+  {
+    key: 'three_wins',
+    name: 'Arena Regular',
+    description: 'Win 3 arena runs this week.',
+    target: 3,
+    unit: 'victories',
+  },
+  {
+    key: 'boss_win',
+    name: 'Giant Slayer',
+    description: 'Win 1 boss run (15+ challenges) this week.',
+    target: 1,
+    unit: 'boss_victories',
+  },
+  {
+    key: 'combo_12',
+    name: 'Flow State',
+    description: 'Land a 12-combo in any run this week.',
+    target: 12,
+    unit: 'combo',
+  },
+]
+
+/**
+ * This week's trial: one deterministic template per ISO week, progress from
+ * the week's settled runs. Recognition only — completing a trial changes no
+ * economy state; the runs' own reviews already gave their XP.
+ */
+function weeklyTrial(
+  now: Date,
+  runs: ArenaRunRow[],
+): {
+  weekKey: string
+  key: string
+  name: string
+  description: string
+  target: number
+  progress: number
+  done: boolean
+} {
+  const { start, weekKey } = weekStart(now)
+  const startIso = start.toISOString()
+  const thisWeek = runs.filter((r) => r.createdAt >= startIso)
+  let hash = 0
+  for (let i = 0; i < weekKey.length; i++) hash = (hash * 31 + weekKey.charCodeAt(i)) | 0
+  const template = WEEKLY_TRIALS[Math.abs(hash) % WEEKLY_TRIALS.length]!
+  let progress = 0
+  if (template.unit === 'victories') {
+    progress = thisWeek.filter((r) => r.result === 'victory').length
+  } else if (template.unit === 'boss_victories') {
+    progress = thisWeek.filter((r) => r.result === 'victory' && r.boss).length
+  } else {
+    progress = thisWeek.reduce((best, r) => Math.max(best, r.bestCombo), 0)
+  }
+  return {
+    weekKey,
+    key: template.key,
+    name: template.name,
+    description: template.description,
+    target: template.target,
+    progress: Math.min(progress, template.target),
+    done: progress >= template.target,
+  }
+}
+
 /** How the accuracy trend is moving, for the record book's insight line. */
 function accuracyInsight(recent: ArenaRunRow[]): {
   direction: 'up' | 'down' | 'flat' | null
@@ -56,6 +148,7 @@ export const GET = withRoute(async (req: Request) => {
     ReturnType<typeof listArenaRuns>[number] | null
   >((best, r) => (best === null || r.score > best.score ? r : best), null)
   const insight = accuracyInsight(listArenaRuns({ limit: 10 }))
+  const trial = weeklyTrial(new Date(), listArenaRuns({ limit: 100 }))
   return Response.json({
     ok: true,
     stats: getArenaStats(),
@@ -67,6 +160,7 @@ export const GET = withRoute(async (req: Request) => {
     })),
     bestRunId: bestRun?.id ?? null,
     perGuardian: getArenaStatsByGuardian(),
+    trial,
     trend: trendRows.map((r) => ({
       runId: r.referenceId,
       accuracy: r.rounds === 0 ? 0 : r.correct / r.rounds,
