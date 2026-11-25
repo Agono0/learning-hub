@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bestsLines,
   heatmapWeeks,
   rankCaption,
   type ProgressPayload,
@@ -48,5 +49,35 @@ describe('heatmapWeeks', () => {
     const weeks = heatmapWeeks(days)
     expect(weeks.every((w) => w.length <= 7)).toBe(true)
     expect(weeks.flat().filter(Boolean)).toHaveLength(14)
+  })
+})
+
+describe('bestsLines', () => {
+  it('skips records that are not set yet', () => {
+    expect(
+      bestsLines({
+        bestScore: null,
+        bestCombo: null,
+        bestAccuracy: null,
+        fastestPerCard: null,
+        longestWinStreak: 0,
+      }),
+    ).toEqual([])
+  })
+  it('formats every record', () => {
+    const lines = bestsLines({
+      bestScore: { runId: 1, value: 900 },
+      bestCombo: { runId: 2, value: 7 },
+      bestAccuracy: { runId: 3, value: 0.925 },
+      fastestPerCard: { runId: 4, value: 3450 },
+      longestWinStreak: 4,
+    })
+    expect(lines).toEqual([
+      ['Best score', '900'],
+      ['Best combo', '7'],
+      ['Best accuracy', '93%'],
+      ['Fastest win pace', '3.5s per card'],
+      ['Longest win streak', '4'],
+    ])
   })
 })

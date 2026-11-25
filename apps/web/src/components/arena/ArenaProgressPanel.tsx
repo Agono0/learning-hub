@@ -13,7 +13,19 @@ import { Medal } from 'lucide-react'
 import { Badge, Panel, ProgressBar, Skeleton } from '@/ui'
 import { apiGet } from '@/lib/transport'
 
+export interface BestEntry {
+  runId: number
+  value: number
+}
+
 export interface ProgressPayload {
+  bests?: {
+    bestScore: BestEntry | null
+    bestCombo: BestEntry | null
+    bestAccuracy: BestEntry | null
+    fastestPerCard: BestEntry | null
+    longestWinStreak: number
+  }
   pace?: { sampleRuns: number; medianMsPerCard: number | null }
   rank: {
     points: number
@@ -39,6 +51,20 @@ const LEVEL_CLASS: Record<0 | 1 | 2 | 3 | 4, string> = {
   2: 'bg-indigo-500/50',
   3: 'bg-indigo-500/75',
   4: 'bg-indigo-500',
+}
+
+/** Personal-best chips as label/value pairs, skipping records not set yet. */
+export function bestsLines(bests: NonNullable<ProgressPayload['bests']>): Array<[string, string]> {
+  const out: Array<[string, string]> = []
+  if (bests.bestScore) out.push(['Best score', String(bests.bestScore.value)])
+  if (bests.bestCombo) out.push(['Best combo', String(bests.bestCombo.value)])
+  if (bests.bestAccuracy)
+    out.push(['Best accuracy', `${Math.round(bests.bestAccuracy.value * 100)}%`])
+  if (bests.fastestPerCard) {
+    out.push(['Fastest win pace', `${(bests.fastestPerCard.value / 1000).toFixed(1)}s per card`])
+  }
+  if (bests.longestWinStreak > 0) out.push(['Longest win streak', String(bests.longestWinStreak)])
+  return out
 }
 
 /** One-line rank caption: what is left to the next tier, or that the ladder is topped. */
@@ -103,6 +129,20 @@ export function ArenaProgressPanel({ refreshKey }: { refreshKey?: unknown }): Re
       <div className="mt-2">
         <ProgressBar value={data.rank.progressPct} label="Progress to next practice rank" />
       </div>
+
+      {data.bests && bestsLines(data.bests).length > 0 ? (
+        <dl
+          className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3"
+          data-testid="arena-bests"
+        >
+          {bestsLines(data.bests).map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-(--hub-border) p-2">
+              <dt className="text-faint">{label}</dt>
+              <dd className="font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-faint">
         <span data-testid="arena-heatmap-streak">

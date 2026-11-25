@@ -53,6 +53,7 @@ import {
 import { ArenaCoachMarks, ArenaCoachReopenButton } from '@/components/arena/ArenaCoachMarks'
 import { ArenaProgressPanel } from '@/components/arena/ArenaProgressPanel'
 import { RunEstimateLine } from '@/components/arena/RunEstimateLine'
+import { CopyRunSummary } from '@/components/arena/CopyRunSummary'
 import { NemesisPanel } from '@/components/arena/NemesisPanel'
 import { ArenaExportButtons } from '@/components/arena/ArenaExportButtons'
 import { ChipPicker } from '@/components/ui/chip-picker'
@@ -1269,6 +1270,24 @@ export default function Arena3DPage() {
                     {Math.round(settlement.summary.accuracy * 100)}% accuracy
                   </h2>
                 </div>
+                {guardian ? (
+                  <div>
+                    <CopyRunSummary
+                      run={{
+                        result: settlement.summary.result,
+                        guardianName: guardian.name,
+                        boss: guardian.boss,
+                        rounds: settlement.summary.rounds,
+                        correct: settlement.summary.correct,
+                        accuracy: settlement.summary.accuracy,
+                        bestCombo: settlement.summary.bestCombo,
+                        crits: settlement.summary.crits,
+                        score: settlement.summary.score,
+                        modifierName: modifier?.name ?? null,
+                      }}
+                    />
+                  </div>
+                ) : null}
                 {modifier ? (
                   <p className="text-sm text-faint" data-testid="results-modifier">
                     {'\u2726'} {modifier.name}: {modifier.description}
