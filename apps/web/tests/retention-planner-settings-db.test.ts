@@ -34,7 +34,14 @@ const fp = async () =>
   ).fingerprint
 
 /** The same guarded sequence ApplyPanel runs, against the real handlers. */
-async function guardedApply(baseline: number, fingerprint: string, candidate: number) {
+type ApplyOutcome =
+  | { refused: 'baseline' | 'inputs' | 'rejected'; before: number }
+  | { refused?: undefined; applied: number; previous: number }
+async function guardedApply(
+  baseline: number,
+  fingerprint: string,
+  candidate: number,
+): Promise<ApplyOutcome> {
   const before = await live()
   if (Math.abs(before - baseline) > 1e-9) return { refused: 'baseline' as const, before }
   if ((await fp()) !== fingerprint) return { refused: 'inputs' as const, before }
@@ -113,7 +120,7 @@ describe('retention planner with the real settings handler (temp DB)', () => {
     const rec = await guardedApply(baseline, await fp(), 0.9)
     expect(rec).toMatchObject({ applied: 0.9, previous: 0.93 })
     expect(await live()).toBe(0.9)
-    if (!('applied' in rec)) throw new Error('expected an applied record')
+    if (rec.refused) throw new Error('expected an applied record')
     expect((await guardedRestore(rec)).refused).toBe(false)
     expect(await live()).toBe(0.93)
   })
