@@ -16,6 +16,7 @@ import {
   getLeagueTournament,
   joinLeagueRow,
   leagueChampion,
+  leaguePlayerProfile,
   leagueStandings,
   listLeagueDuels,
   listLeaguePlayers,
@@ -55,6 +56,12 @@ export const GET = withRoute(async (req: Request) => {
       duels: listLeagueDuels({ leagueSlug: slug }),
       tournaments: listLeagueTournaments({ leagueSlug: slug }),
     })
+  }
+  if (view === 'player') {
+    const handle = url.searchParams.get('handle') ?? ''
+    const profile = leaguePlayerProfile(slug, handle)
+    if (!profile) return Response.json({ error: 'player not found' }, { status: 404 })
+    return Response.json({ ok: true, profile })
   }
   if (view === 'standings') {
     const tier = tierEnum.optional().parse(url.searchParams.get('tier') ?? undefined)

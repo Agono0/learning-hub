@@ -9,6 +9,7 @@
  *   leagues join <slug> <handle>
  *   leagues standings <slug> [--tier bronze|silver|gold|platinum|diamond]
  *   leagues players <slug>
+ *   leagues profile <slug> <handle>
  *   leagues points <slug> <handle> [--reviews N | --focus-minutes N]
  *   leagues close-round <slug>
  *   leagues close-due
@@ -33,6 +34,7 @@ import {
   getLeagueBySlug,
   joinLeagueRow,
   leagueChampion,
+  leaguePlayerProfile,
   leagueStandings,
   listLeagueDuels,
   listLeaguePlayers,
@@ -201,6 +203,20 @@ function pointsCommand(args: string[]): void {
   } catch (err) {
     fail(err instanceof Error ? err.message : 'points failed')
   }
+}
+
+function profileCommand(args: string[]): void {
+  const [slug, handle] = args
+  if (!slug || !handle) return fail('Usage: learning-hub leagues profile <slug> <handle>')
+  const profile = leaguePlayerProfile(slug, handle)
+  if (!profile) return fail(`player not found: ${handle} in ${slug}`)
+  const { player, record, eloHistory, rank } = profile
+  const lines = [
+    `${player.tier} · rank #${rank} · round ${player.points} pts · season ${player.seasonPoints}`,
+    `duels ${record.wins}W/${record.draws}D/${record.losses}L · rounds won ${player.roundsWon}`,
+    `elo ${player.elo}${eloHistory.length > 0 ? ` (${eloHistory[0]!.result} ${eloHistory[0]!.eloBefore} → ${eloHistory[0]!.eloAfter} vs ${eloHistory[0]!.opponent})` : ''}`,
+  ]
+  console.log(panel(`${handle} @ ${slug}`, lines))
 }
 
 function closeDueCommand(): void {
@@ -441,6 +457,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'create') return createLeagueCommand(args.slice(1))
   if (sub === 'join') return joinCommand(args.slice(1))
   if (sub === 'standings') return standingsCommand(args.slice(1))
+  if (sub === 'profile') return profileCommand(args.slice(1))
   if (sub === 'players') return playersCommand(args.slice(1))
   if (sub === 'points') return pointsCommand(args.slice(1))
   if (sub === 'close-round') return closeRoundCommand(args.slice(1))
