@@ -179,7 +179,10 @@ describe('custom openers keep working (no sqlite_master or pragma needed)', () =
       },
       close() {},
     })
-    const r = await parseApkg(apkg(new Uint8Array([1, 2, 3])), { openDatabase: opener })
+    const r = await parseApkg(apkg(new Uint8Array([1, 2, 3])), {
+      openDatabase: opener,
+      trustCustomOpener: true,
+    })
     expect(r.cards).toHaveLength(1)
     expect(seen.filter((s) => s.includes('FROM notes'))).toHaveLength(1)
   })
@@ -201,7 +204,7 @@ describe('custom openers keep working (no sqlite_master or pragma needed)', () =
       close() {},
     })
     await expect(
-      parseApkg(apkg(new Uint8Array([1, 2, 3])), { openDatabase: opener }),
+      parseApkg(apkg(new Uint8Array([1, 2, 3])), { openDatabase: opener, trustCustomOpener: true }),
     ).rejects.toThrow(/cursor did not advance/)
   })
 
@@ -214,8 +217,104 @@ describe('custom openers keep working (no sqlite_master or pragma needed)', () =
       },
     })
     await expect(
-      parseApkg(apkg(new Uint8Array([1, 2, 3])), { openDatabase: opener }),
+      parseApkg(apkg(new Uint8Array([1, 2, 3])), { openDatabase: opener, trustCustomOpener: true }),
     ).rejects.toThrow(ApkgBudgetError)
     expect(closed).toBe(1)
+  })
+})
+
+describe('custom opener portable checks (no silent bypass)', () => {
+  const wrap = (bytes: Uint8Array, readOnly: boolean, seen: string[] = []) => {
+    const real = new Database(Buffer.from(bytes))
+    real.pragma('query_only = ON')
+    return {
+      prepare(sql: string) {
+        seen.push(sql)
+        return real.prepare(sql) as never
+      },
+      close() {
+        real.close()
+      },
+      ...(readOnly ? { readOnly: true } : {}),
+    }
+  }
+
+  it('accepts a readOnly-declaring adapter and queries only col/notes/cards/sqlite_master', async () => {
+    const seen: string[] = []
+    const img = image({
+      notes: [{ flds: 'Q\x1fA' }],
+      extra: `CREATE VIEW v AS SELECT 1 AS x;
+        CREATE TABLE audit (n integer);
+        CREATE TRIGGER t AFTER INSERT ON notes BEGIN INSERT INTO audit VALUES (1); END;`,
+    })
+    const r = await parseApkg(apkg(img), { openDatabase: (b) => wrap(b, true, seen) })
+    expect(r.cards).toHaveLength(1)
+    expect(seen.length).toBeGreaterThan(0)
+    for (const sql of seen) {
+      expect(sql).toMatch(/FROM (sqlite_master|col|notes|cards)\b/)
+    }
+    expect(seen.some((s) => /\b(v|audit)\b/.test(s.replace(/'[^']*'/g, '')))).toBe(false)
+  })
+
+  it('refuses an adapter that does not declare readOnly, and closes it', async () => {
+    let closed = false
+    const opener: SqliteOpener = (b) => {
+      const h = wrap(b, false)
+      return {
+        prepare: (s) => h.prepare(s),
+        close() {
+          closed = true
+          h.close()
+        },
+      }
+    }
+    await expect(parseApkg(apkg(image({})), { openDatabase: opener })).rejects.toThrow(
+      /does not declare readOnly/,
+    )
+    expect(closed).toBe(true)
+  })
+
+  it('refuses a custom opener over a view named notes (portable table check)', async () => {
+    const col = new Database(':memory:')
+    col.exec(
+      SCHEMA.replace(/CREATE TABLE notes \([^;]*;/s, '').replace(
+        /CREATE INDEX ix_notes_usn[^;]*;/,
+        '',
+      ) + `CREATE VIEW notes AS SELECT 1 AS id, 7 AS mid, '' AS tags, 'q' AS flds;`,
+    )
+    col.exec(`INSERT INTO col VALUES (1,0,0,0,11,0,0,0,'{}','${MODELS}','${DECKS}','{}','{}')`)
+    const bytes = new Uint8Array(col.serialize())
+    await expect(parseApkg(apkg(bytes), { openDatabase: (b) => wrap(b, true) })).rejects.toThrow(
+      /notes is not an ordinary table/,
+    )
+  })
+
+  it('applies the magic check to custom openers too', async () => {
+    const bad = apkg(new TextEncoder().encode('not sqlite at all, plain text bytes'))
+    let opened = false
+    await expect(
+      parseApkg(bad, {
+        openDatabase: () => {
+          opened = true
+          return wrap(image({}), true)
+        },
+      }),
+    ).rejects.toThrow(/not a SQLite database image/)
+    expect(opened).toBe(false)
+  })
+})
+
+describe('limits are in characters, not UTF-8 bytes', () => {
+  it('accepts 1 Mi three-byte BMP chars (3 MiB of UTF-8) at the per-note limit', async () => {
+    const flds = '\u20ac'.repeat(APKG_SQLITE_BUDGETS.maxFieldsChars)
+    expect(new TextEncoder().encode(flds).length).toBe(3 * APKG_SQLITE_BUDGETS.maxFieldsChars)
+    const r = await parseApkg(apkg(image({ notes: [{ flds }] })))
+    expect(r.cards).toHaveLength(1)
+  })
+
+  it('refuses astral chars that exceed the limit counted in UTF-16 units', async () => {
+    // 600k code points = 1.2M UTF-16 units > 1 Mi; SQLite substr counts code points.
+    const flds = '\u{1F600}'.repeat(600_000)
+    await expect(parseApkg(apkg(image({ notes: [{ flds }] })))).rejects.toThrow(/fields exceed/)
   })
 })

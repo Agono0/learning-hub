@@ -638,6 +638,26 @@ export interface SqliteStatement {
 export interface SqliteHandle {
   prepare(sql: string): SqliteStatement
   close(): void
+  /**
+   * Capability flag: the adapter guarantees this handle cannot write (the equivalent of
+   * `PRAGMA query_only=ON` plus `trusted_schema=OFF`). parseApkg only sets those pragmas
+   * itself on its default better-sqlite3 opener; for a custom opener it refuses a handle
+   * that does not declare `readOnly: true`, unless the caller passes `trustCustomOpener`.
+   */
+  readOnly?: boolean
+}
+
+/** Options for {@link parseApkg}. */
+export interface ParseApkgOptions {
+  /** Custom SQLite driver (portable runtimes). Default: better-sqlite3 on Node. */
+  openDatabase?: SqliteOpener
+  /**
+   * Explicit opt-out for a custom opener: skips the SQLite magic check, the `readOnly`
+   * capability requirement and the sqlite_master table check. Without it every custom
+   * opener gets the portable checks. Tests with fake openers use this; production adapters
+   * should implement `readOnly` and answer sqlite_master instead.
+   */
+  trustCustomOpener?: boolean
 }
 
 /**
@@ -675,7 +695,7 @@ interface AnkiModel {
  */
 export async function parseApkg(
   buffer: Uint8Array | ArrayBuffer,
-  options?: { openDatabase?: SqliteOpener },
+  options?: ParseApkgOptions,
 ): Promise<ParsedDeck> {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
   let zip: ReturnType<typeof openBoundedZip>
@@ -711,9 +731,26 @@ export async function parseApkg(
     if (err instanceof ArchiveLimitError) throw new Error(`invalid .apkg: ${err.message}`)
     throw err
   }
-  const db = options?.openDatabase
-    ? options.openDatabase(collection)
-    : await openSqliteNode(collection)
+  let db: SqliteHandle
+  if (options?.openDatabase) {
+    if (!options.trustCustomOpener) assertSqliteMagic(collection)
+    db = options.openDatabase(collection)
+    if (!options.trustCustomOpener) {
+      try {
+        if (db.readOnly !== true) {
+          throw new ApkgBudgetError(
+            'the custom SQLite opener does not declare readOnly: true (pass trustCustomOpener to opt out)',
+          )
+        }
+        assertOrdinaryTables(db)
+      } catch (err) {
+        db.close()
+        throw err
+      }
+    }
+  } else {
+    db = await openSqliteNode(collection)
+  }
   try {
     const colRow = db
       .prepare(
@@ -865,35 +902,51 @@ function readNotesBounded(db: SqliteHandle): NoteRow[] {
 
 const SQLITE_MAGIC = 'SQLite format 3\0'
 
+function assertSqliteMagic(bytes: Uint8Array): void {
+  let head = ''
+  for (let i = 0; i < SQLITE_MAGIC.length; i++) head += String.fromCharCode(bytes[i] ?? 256)
+  if (head !== SQLITE_MAGIC) throw new ApkgBudgetError('collection is not a SQLite database image')
+}
+
+/**
+ * Portable post-open check (uses only `prepare().all()`): `col`, `notes` and `cards`, the only
+ * names parseApkg queries, must be ordinary tables in sqlite_master, not views or virtual
+ * tables. Queries are unqualified; a freshly deserialized image has an empty `temp` schema, so
+ * they resolve to `main`. Views, triggers, indexes and other tables are not inspected or
+ * refused, and none is ever queried by name; triggers need a write, which query_only (default
+ * opener) or a readOnly adapter refuses. A missing table surfaces as the driver's own error.
+ */
+function assertOrdinaryTables(db: SqliteHandle): void {
+  const rows = db
+    .prepare("SELECT name, type, sql FROM sqlite_master WHERE name IN ('col', 'notes', 'cards')")
+    .all() as { name: string; type: string; sql: string | null }[]
+  for (const want of ['col', 'notes', 'cards']) {
+    const row = rows.find((r) => r.name === want)
+    if (!row) continue
+    if (row.type !== 'table' || /^\s*CREATE\s+VIRTUAL\s/i.test(row.sql ?? '')) {
+      throw new ApkgBudgetError(`${want} is not an ordinary table`)
+    }
+  }
+}
+
 /**
  * Node default opener: better-sqlite3, imported lazily so that merely loading
- * this module (and the barrel) never resolves the driver — the dynamic import
+ * this module (and the barrel) never resolves the driver, the dynamic import
  * only fires when parseApkg runs WITHOUT a custom `openDatabase`.
  *
- * Adapter-level hardening (applies to this opener only; custom openers own theirs):
- * the image must start with the SQLite magic; `query_only` and `trusted_schema=OFF` are set
- * (verified: both read back as 1 / 0 on better-sqlite3 13.x); and the tables parseApkg reads
- * (`col`, `notes`, `cards`) must be real tables in `sqlite_master`, not views or virtual
- * tables. Other schema objects are not inspected or refused.
+ * Hardening applied here, and ONLY here: the SQLite magic check, `query_only=ON` and
+ * `trusted_schema=OFF` (verified: they read back 1 / 0 on better-sqlite3 13.x), then the portable
+ * table check. Custom openers get the magic check and the table check from parseApkg, and must
+ * declare `readOnly: true` for the pragmas they own.
  */
 async function openSqliteNode(bytes: Uint8Array): Promise<SqliteHandle> {
   const { default: Database } = await import('better-sqlite3')
-  const magic = Buffer.from(bytes.subarray(0, SQLITE_MAGIC.length)).toString('latin1')
-  if (magic !== SQLITE_MAGIC) throw new ApkgBudgetError('collection is not a SQLite database image')
+  assertSqliteMagic(bytes)
   const db = new Database(Buffer.from(bytes))
   try {
     db.pragma('query_only = ON')
     db.pragma('trusted_schema = OFF')
-    const rows = db
-      .prepare("SELECT name, type, sql FROM sqlite_master WHERE name IN ('col', 'notes', 'cards')")
-      .all() as { name: string; type: string; sql: string | null }[]
-    for (const want of ['col', 'notes', 'cards']) {
-      const row = rows.find((r) => r.name === want)
-      if (!row) continue // a missing table surfaces as the driver's own error on first read
-      if (row.type !== 'table' || /^\s*CREATE\s+VIRTUAL\s/i.test(row.sql ?? '')) {
-        throw new ApkgBudgetError(`${want} is not an ordinary table`)
-      }
-    }
+    assertOrdinaryTables(db)
   } catch (err) {
     db.close()
     throw err

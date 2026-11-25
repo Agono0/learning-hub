@@ -448,7 +448,7 @@ describe('parseApkg', () => {
 
     // the entry bytes are never decoded — the fake opener is the database
     const zip = zipSync({ 'collection.anki2': new Uint8Array([1, 2, 3]) })
-    const deck = await parseApkg(zip, { openDatabase: opener })
+    const deck = await parseApkg(zip, { openDatabase: opener, trustCustomOpener: true })
 
     expect(closed).toBe(1) // handle is closed exactly once
     expect(deck.name).toBe('In-Memory Deck')
