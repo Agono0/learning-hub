@@ -1536,6 +1536,29 @@ function TournamentsTab({
               data-testid="tournament-seeds"
             />
             <Button
+              type="button"
+              variant="secondary"
+              data-testid="tournament-seed"
+              disabled={!tSlug.trim() || !tTitle.trim()}
+              onClick={() =>
+                void act(
+                  {
+                    action: 'tournament-seed',
+                    slug: tSlug.trim(),
+                    leagueSlug: selected,
+                    title: tTitle.trim(),
+                  },
+                  `Tournament ${tSlug.trim()} seeded from ${selected} standings.`,
+                ).then(() => {
+                  setTSlug('')
+                  setTTitle('')
+                  setSeeds('')
+                })
+              }
+            >
+              Seed from standings
+            </Button>
+            <Button
               type="submit"
               data-testid="tournament-create"
               disabled={

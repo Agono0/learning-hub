@@ -258,3 +258,16 @@ Surfaces: `GET /api/leagues?view=digest&slug=…` (web) and
 `GET /leagues/digest?slug=…` (server), the Weekly digest panel on the
 /leagues Overview tab, `learning-hub leagues digest <slug>`, and the
 `league_digest` MCP tool.
+
+## Auto-seeded tournaments
+
+`seedLeagueTournamentFromStandings({ slug, leagueSlug, title, size? })` builds
+a bracket straight from league standings: highest division first, then season
+points, so seed 1 is the strongest player and opening matches pair
+best-vs-worst. `size` caps the field (default: the whole league). Needs at
+least 2 players.
+
+Surfaces: `POST /leagues/tournaments/seed` (server), web action
+`tournament-seed` plus the Seed-from-standings button in the /leagues
+Tournaments tab, `learning-hub leagues tournament seed <slug> "<title>"
+--league <slug> [--size N]`, and the `tournament_seed` MCP tool.

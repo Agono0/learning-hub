@@ -28,6 +28,7 @@ import {
   leagueChampion,
   buildLeagueDigest,
   leagueDivisionDetail,
+  seedLeagueTournamentFromStandings,
   leagueStandings,
   listLeagueDuels,
   listLeaguePlayers,
@@ -281,6 +282,25 @@ async function postTournament(req: IncomingMessage, res: ServerResponse): Promis
   }
 }
 
+const tournamentSeedSchema = z.object({
+  slug: z.string().min(1),
+  leagueSlug: z.string().min(1),
+  title: z.string().min(1),
+  size: z.number().int().min(2).max(64).optional(),
+})
+
+/** POST /leagues/tournaments/seed — auto-seed a bracket from league standings. */
+async function postTournamentSeed(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, tournamentSeedSchema)
+  if (getLeagueTournament(body.slug)) return jsonError(res, 409, `tournament exists: ${body.slug}`)
+  try {
+    const tournament = seedLeagueTournamentFromStandings(body)
+    sendJson(res, 201, { ok: true, tournament })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'tournament seeding failed')
+  }
+}
+
 function getTournamentOpen(_req: IncomingMessage, res: ServerResponse, url: URL): void {
   const q = readQuery(url, slugQuerySchema)
   if (!getLeagueTournament(q.slug)) return jsonError(res, 404, `tournament not found: ${q.slug}`)
@@ -519,6 +539,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/tournaments',
     summary: 'tournaments (?leagueSlug=&status=)',
     handler: getTournaments,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/tournaments/seed',
+    summary: 'auto-seed a tournament from league standings',
+    handler: postTournamentSeed,
   },
   {
     method: 'POST',
