@@ -267,6 +267,8 @@ describe('membership items in the queue', () => {
       { type: 'invite-create', digest, maxUses: 1, ttlMs: 120_000 },
       { type: 'invite-revoke', digest },
       { type: 'invite-policy', required: true },
+      { type: 'remove-member', target: 'usr_bo' },
+      { type: 'unblock-member', target: 'usr_bo' },
     ] as LeagueMutation[]) {
       expect(laneFor(m)).toBe('membership')
     }
@@ -281,9 +283,24 @@ describe('membership items in the queue', () => {
       'invite_unknown',
       'not_invite_owner',
       'not_founder',
+      'blocked',
+      'target_not_member',
+      'cannot_remove_self',
+      'not_blocked',
+      'block_list_full',
     ]) {
       expect(classifyOutcome({ kind: 'rejected', code })).toBe('permanent')
     }
+  })
+
+  it('a refused remove-member is dropped and the next membership item still waits its turn', () => {
+    let q = add(createSyncQueue(), { type: 'remove-member', target: 'usr_bo' }).queue
+    const first = q.items[0]!.id
+    q = recordOutcome(q, first, { kind: 'rejected', code: 'not_founder' }, T)
+    expect(q.items[0]!.status).toBe('rejected')
+    expect(q.items[0]!.lastCode).toBe('not_founder')
+    const next = add(q, { type: 'unblock-member', target: 'usr_bo' })
+    expect(dueItems(next.queue, T + 10_000).map((i) => i.id)).toContain(next.id)
   })
 
   it('keeps the invite code while pending and scrubs it once accepted', () => {

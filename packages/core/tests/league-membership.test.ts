@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_MOD_LOG } from '../src/leagues/invites'
+import { MAX_BLOCKED, MAX_MOD_LOG } from '../src/leagues/invites'
 import {
   INVITE_MAX_TTL_MS,
   MAX_ACTIVE_INVITES_PER_MEMBER,
@@ -702,5 +702,27 @@ describe('founder moderation', () => {
     }
     expect(s.modLog).toHaveLength(MAX_MOD_LOG)
     expect(s.modLog[MAX_MOD_LOG - 1]?.action).toBe('unblock')
+  })
+
+  it('refuses a removal once the block list is full, and leave still works', async () => {
+    const { founder, bo, state } = await trio()
+    const filler = Array.from({ length: MAX_BLOCKED }, (_, i) => `usr_filler_${i}`)
+    const full: AuthorityState = { ...state, blocked: filler }
+    const r = await send(full, founder, { type: 'remove-member', target: bo.handle }, T0 + 3)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.code).toBe('block_list_full')
+    // Unblocking one frees a slot.
+    const freed = await must(
+      full,
+      founder,
+      { type: 'unblock-member', target: 'usr_filler_0' },
+      T0 + 4,
+    )
+    expect(freed.blocked).toHaveLength(MAX_BLOCKED - 1)
+    const ok = await send(freed, founder, { type: 'remove-member', target: bo.handle }, T0 + 5)
+    expect(ok.ok).toBe(true)
+    // A plain leave never touches the block list.
+    const left = await must(full, bo, { type: 'leave' }, T0 + 6)
+    expect(left.blocked).toHaveLength(MAX_BLOCKED)
   })
 })
