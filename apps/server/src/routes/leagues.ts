@@ -17,9 +17,11 @@ import {
   createLeagueDuel,
   createLeagueRow,
   createLeagueTournament,
+  exportLeague,
   getLeagueBySlug,
   getLeagueDuel,
   getLeagueTournament,
+  importLeague,
   joinLeagueRow,
   leagueChampion,
   leagueStandings,
@@ -302,6 +304,29 @@ function getLeagueSeasons(_req: IncomingMessage, res: ServerResponse, url: URL):
   sendJson(res, 200, { ok: true, seasons: listLeagueSeasons(q.slug) })
 }
 
+/** GET /leagues/export?slug= — full portable transfer envelope. */
+function getLeagueExport(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  const transfer = exportLeague(q.slug)
+  if (!transfer) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, transfer)
+}
+
+const importSchema = z.object({
+  transfer: z.unknown(),
+})
+
+/** POST /leagues/import — import a transfer envelope as a NEW league. */
+async function postLeagueImport(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, importSchema)
+  try {
+    const league = importLeague(body.transfer)
+    sendJson(res, 201, { ok: true, slug: league.slug })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'import failed')
+  }
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -329,6 +354,18 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/close-due',
     summary: 'close every due round (one per league per sweep)',
     handler: postLeagueCloseDue,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/export',
+    summary: 'export a league as a portable transfer envelope (?slug=)',
+    handler: getLeagueExport,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/import',
+    summary: 'import a transfer envelope as a new league',
+    handler: postLeagueImport,
   },
   {
     method: 'POST',

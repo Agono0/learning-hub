@@ -161,6 +161,31 @@ history). **Duels**: league duels with live status badges, plus create
 with per-match result recording. The end-to-end season lifecycle is covered
 by `apps/web/tests/ui/leagues.spec.ts`.
 
+## Export / import (transfer envelopes)
+
+A league's full state travels as a single `lh-leagues-transfer/v1` JSON
+envelope: config, players, closed rounds, duels, tournaments, season
+archives and the complete Elo history. The envelope carries a checksum over
+the payload, so a hand-edited or corrupted file is rejected on import.
+
+- **Export** gathers everything into one checksummed document.
+- **Import** always creates a NEW league: the league slug and every
+  duel/tournament slug must be free (slugs are globally unique). Nothing is
+  ever overwritten. Elo history references duels by slug, so the new numeric
+  row ids are remapped automatically.
+
+Use it to move a league between devices (local-first has no server
+authority) or to keep a backup before a new season.
+
+- REST: `GET /leagues/export?slug=…` and `POST /leagues/import` with
+  `{ "transfer": <envelope> }`.
+- Web API: `GET /api/leagues?view=export&slug=…` and action `import` with
+  `{ action: 'import', transfer: <envelope> }`.
+- CLI: `learning-hub leagues export <slug> [--out FILE]` and
+  `learning-hub leagues import <file>`.
+- MCP: `league_export` / `league_import`.
+- Web UI: the Export / import panel on the Overview tab of `/leagues`.
+
 ## Implementation map
 
 - Engine (pure, schema-validated): `packages/core/src/leagues/engine.ts`
@@ -169,5 +194,8 @@ by `apps/web/tests/ui/leagues.spec.ts`.
   `league_duels`, `league_tournaments`): `packages/db/src/repos/leagues.ts`.
 - REST: `apps/server` leagues routes; web handler
   `apps/web/src/server/handlers/leagues/route.ts`.
+- Transfer envelopes: `packages/core/src/leagues/transfer.ts`
+  (schema + checksum) and the export/import repo functions in
+  `packages/db/src/repos/leagues.ts`.
 - MCP: `apps/mcp/src/tools/leagues.ts`. CLI: `apps/cli/src/commands/leagues.ts`.
 - UI: `apps/web/app/leagues/page.tsx`.

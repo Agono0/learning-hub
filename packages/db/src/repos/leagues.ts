@@ -31,6 +31,10 @@ import {
   isRoundDue,
   isSeasonComplete,
   closeSeason,
+  createLeagueTransfer,
+  parseLeagueTransfer,
+  type LeagueTransfer,
+  type LeagueTransferPayload,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import type { Transaction } from '../transaction'
@@ -949,4 +953,228 @@ export function leaguePlayerProfile(
     eloHistory: listLeagueEloEvents(slug, handle, 50, conn),
     rank,
   }
+}
+
+// ─── Portable export/import (lh-leagues-transfer/v1) ───────────────────────
+
+/**
+ * Gather a league's full state into a checksummed transfer envelope. Returns
+ * null when the slug does not exist.
+ */
+export function exportLeague(slug: string, database?: LearningHubDB): LeagueTransfer | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const rounds = conn
+    .select()
+    .from(leagueRounds)
+    .where(eq(leagueRounds.leagueId, league.id))
+    .orderBy(desc(leagueRounds.round))
+    .all()
+  const duels = conn.select().from(leagueDuels).where(eq(leagueDuels.leagueId, league.id)).all()
+  const tournaments = conn
+    .select()
+    .from(leagueTournaments)
+    .where(eq(leagueTournaments.leagueId, league.id))
+    .all()
+  const seasons = conn
+    .select()
+    .from(leagueSeasons)
+    .where(eq(leagueSeasons.leagueId, league.id))
+    .orderBy(desc(leagueSeasons.season))
+    .all()
+  const duelSlugById = new Map(duels.map((d) => [d.id, d.slug]))
+  const eloEvents = conn
+    .select()
+    .from(leagueEloEvents)
+    .where(eq(leagueEloEvents.leagueId, league.id))
+    .all()
+    .map((e) => ({
+      duelSlug: duelSlugById.get(e.duelId) ?? '',
+      handle: e.handle,
+      opponent: e.opponent,
+      result: e.result,
+      eloBefore: e.eloBefore,
+      eloAfter: e.eloAfter,
+      createdAt: e.createdAt,
+    }))
+
+  const payload: LeagueTransferPayload = {
+    league: rowsToLeague(league, players),
+    players: players.map((p) => ({
+      handle: p.handle,
+      tier: p.tier,
+      points: p.points,
+      seasonPoints: p.seasonPoints,
+      roundsWon: p.roundsWon,
+      duelsWon: p.duelsWon,
+      duelsLost: p.duelsLost,
+      elo: p.elo,
+      joinedAt: p.joinedAt,
+    })),
+    rounds: rounds.map((r) => ({
+      round: r.round,
+      closedAt: r.closedAt,
+      promotionsJson: r.promotionsJson,
+      relegationsJson: r.relegationsJson,
+      winnersJson: r.winnersJson,
+    })),
+    duels: duels.map((d) => ({
+      duel: rowToDuel(d),
+      status: d.status as 'open' | 'complete',
+      winner: d.winner,
+      completedAt: d.completedAt,
+      createdAt: d.createdAt,
+    })),
+    tournaments: tournaments.map((t) => ({
+      tournament: rowToTournament(t),
+      status: t.status as 'open' | 'complete',
+      createdAt: t.createdAt,
+    })),
+    seasons: seasons.map((se) => ({
+      season: se.season,
+      champion: se.champion,
+      finalStandingsJson: se.finalStandingsJson,
+      closedAt: se.closedAt,
+    })),
+    eloEvents,
+  }
+  return createLeagueTransfer(payload)
+}
+
+/**
+ * Import a transfer envelope as a NEW league. The league slug and every
+ * duel/tournament slug must be free — slugs are globally unique and an
+ * import never overwrites existing state. Returns the created league row.
+ */
+export function importLeague(raw: string | unknown, database?: LearningHubDB): LeagueRow {
+  const conn = database ?? getDb()
+  const transfer = parseLeagueTransfer(raw)
+  const { payload } = transfer
+  const slug = payload.league.id
+  return withTransaction((tx) => {
+    if (getLeagueBySlug(slug, tx)) throw new Error(`league already exists: ${slug}`)
+    for (const d of payload.duels) {
+      if (getLeagueDuel(d.duel.id, tx)) throw new Error(`duel slug already exists: ${d.duel.id}`)
+    }
+    for (const t of payload.tournaments) {
+      if (getLeagueTournament(t.tournament.id, tx))
+        throw new Error(`tournament slug already exists: ${t.tournament.id}`)
+    }
+
+    const core = payload.league
+    const [league] = tx
+      .insert(leagues)
+      .values({
+        slug: core.id,
+        title: core.title,
+        seasonStart: core.seasonStart,
+        roundLengthDays: core.roundLengthDays,
+        seasonLengthRounds: core.seasonLengthRounds,
+        currentRound: core.currentRound,
+        season: core.season,
+        promotionSlots: core.promotionSlots,
+        relegationSlots: core.relegationSlots,
+        scoringJson: core.scoring,
+      })
+      .returning()
+      .all()
+
+    for (const p of payload.players) {
+      tx.insert(leaguePlayers)
+        .values({
+          leagueId: league!.id,
+          handle: p.handle,
+          tier: p.tier,
+          points: p.points,
+          seasonPoints: p.seasonPoints,
+          roundsWon: p.roundsWon,
+          duelsWon: p.duelsWon,
+          duelsLost: p.duelsLost,
+          elo: p.elo,
+          joinedAt: p.joinedAt,
+        })
+        .run()
+    }
+    for (const r of payload.rounds) {
+      tx.insert(leagueRounds)
+        .values({
+          leagueId: league!.id,
+          round: r.round,
+          promotionsJson: r.promotionsJson,
+          relegationsJson: r.relegationsJson,
+          winnersJson: r.winnersJson,
+          closedAt: r.closedAt,
+        })
+        .run()
+    }
+    const duelIdBySlug = new Map<string, number>()
+    for (const d of payload.duels) {
+      const [row] = tx
+        .insert(leagueDuels)
+        .values({
+          slug: d.duel.id,
+          leagueId: league!.id,
+          playerA: d.duel.playerA,
+          playerB: d.duel.playerB,
+          promptsJson: d.duel.prompts,
+          answersAJson: d.duel.answersA,
+          answersBJson: d.duel.answersB,
+          status: d.status,
+          winner: d.winner,
+          createdAt: d.createdAt,
+          completedAt: d.completedAt,
+        })
+        .returning()
+        .all()
+      duelIdBySlug.set(d.duel.id, row!.id)
+    }
+    for (const t of payload.tournaments) {
+      tx.insert(leagueTournaments)
+        .values({
+          slug: t.tournament.id,
+          leagueId: league!.id,
+          title: t.tournament.title,
+          seedsJson: t.tournament.seeds,
+          matchesJson: t.tournament.matches,
+          status: t.status,
+          champion: t.tournament.champion ?? null,
+          createdAt: t.createdAt,
+        })
+        .run()
+    }
+    for (const se of payload.seasons) {
+      tx.insert(leagueSeasons)
+        .values({
+          leagueId: league!.id,
+          season: se.season,
+          champion: se.champion,
+          finalStandingsJson: se.finalStandingsJson,
+          closedAt: se.closedAt,
+        })
+        .run()
+    }
+    for (const e of payload.eloEvents) {
+      const duelId = duelIdBySlug.get(e.duelSlug)
+      if (!duelId) continue // event for a duel missing from the payload: skip, don't crash
+      tx.insert(leagueEloEvents)
+        .values({
+          leagueId: league!.id,
+          duelId,
+          handle: e.handle,
+          opponent: e.opponent,
+          result: e.result,
+          eloBefore: e.eloBefore,
+          eloAfter: e.eloAfter,
+          createdAt: e.createdAt,
+        })
+        .run()
+    }
+    return league!
+  }, conn)
 }

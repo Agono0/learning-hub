@@ -7,7 +7,17 @@
  * apiSend — never raw fetch.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Badge, Button, Callout, EmptyState, PageHeader, Panel, Tabs, TextField } from '@/ui'
+import {
+  Badge,
+  Button,
+  Callout,
+  EmptyState,
+  PageHeader,
+  Panel,
+  Tabs,
+  TextArea,
+  TextField,
+} from '@/ui'
 import { apiGet, apiSend } from '@/lib/transport'
 
 // ── Types mirroring the /api/leagues payloads ────────────────────────────────
@@ -348,8 +358,111 @@ function OverviewTab({
             </Button>
           </form>
         </Panel>
+        <TransferPanel leagues={leagues} selected={selected} act={act} />
       </div>
     </div>
+  )
+}
+
+function TransferPanel({
+  leagues,
+  selected,
+  act,
+}: {
+  leagues: LeagueRow[]
+  selected: string | null
+  act: ActFn
+}) {
+  const [exportSlug, setExportSlug] = useState('')
+  const [exportJson, setExportJson] = useState('')
+  const [importText, setImportText] = useState('')
+  const [transferError, setTransferError] = useState<string | null>(null)
+
+  const effectiveSlug = exportSlug || selected || leagues[0]?.slug || ''
+
+  async function doExport() {
+    setTransferError(null)
+    setExportJson('')
+    try {
+      const res = await apiGet<{ ok: boolean; transfer: unknown }>(
+        `/api/leagues?view=export&slug=${encodeURIComponent(effectiveSlug)}`,
+      )
+      setExportJson(JSON.stringify(res.transfer, null, 2))
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : 'export failed')
+    }
+  }
+
+  return (
+    <Panel>
+      <h2 className="mb-2 text-base font-semibold">Export / import</h2>
+      <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+        Move a league between devices as a portable, tamper-checked file — players, rounds, duels,
+        tournaments, seasons and Elo history travel together. Import always creates a new league; it
+        never overwrites an existing one.
+      </p>
+      {transferError && (
+        <Callout tone="danger" title="Transfer failed">
+          {transferError}
+        </Callout>
+      )}
+      <div className="space-y-3">
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <TextField
+              label="League id to export"
+              value={exportSlug}
+              onChange={(e) => setExportSlug(e.target.value)}
+              placeholder={selected ?? ''}
+              data-testid="export-league-slug"
+            />
+          </div>
+          <Button
+            type="button"
+            data-testid="export-league-submit"
+            disabled={!effectiveSlug.trim()}
+            onClick={() => void doExport()}
+          >
+            Export
+          </Button>
+        </div>
+        {exportJson && (
+          <TextArea
+            label="Exported transfer file (copy and save as .json)"
+            value={exportJson}
+            onChange={() => undefined}
+            data-testid="export-league-json"
+          />
+        )}
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            let parsed: unknown
+            try {
+              parsed = JSON.parse(importText)
+            } catch {
+              setTransferError('That is not valid JSON — paste the exported transfer file.')
+              return
+            }
+            void act(
+              { action: 'import', transfer: parsed },
+              'League imported as a new league.',
+            ).then(() => setImportText(''))
+          }}
+        >
+          <TextArea
+            label="Import a transfer file (paste its JSON)"
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            data-testid="import-league-json"
+          />
+          <Button type="submit" data-testid="import-league-submit" disabled={!importText.trim()}>
+            Import as new league
+          </Button>
+        </form>
+      </div>
+    </Panel>
   )
 }
 

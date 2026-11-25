@@ -11,9 +11,11 @@ import {
   createLeagueDuel,
   createLeagueRow,
   createLeagueTournament,
+  exportLeague,
   getLeagueBySlug,
   getLeagueDuel,
   getLeagueTournament,
+  importLeague,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -40,6 +42,12 @@ export const GET = withRoute(async (req: Request) => {
   if (view === 'list') return Response.json({ ok: true, leagues: listLeagueRows() })
 
   const slug = url.searchParams.get('slug') ?? ''
+  if (view === 'export') {
+    const transfer = exportLeague(slug)
+    if (!transfer) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, transfer })
+  }
+
   if (view === 'detail') {
     const league = getLeagueBySlug(slug)
     if (!league) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
@@ -131,6 +139,7 @@ const postSchema = z.discriminatedUnion('action', [
     focusMinutes: z.number().optional(),
   }),
   z.object({ action: z.literal('close-round'), slug: z.string().min(1) }),
+  z.object({ action: z.literal('import'), transfer: z.unknown() }),
   z.object({
     action: z.literal('duel-create'),
     slug: z.string().min(1).max(60),
@@ -198,6 +207,10 @@ export const POST = withRoute(async (req: Request) => {
         }
         const league = createLeagueRow(body)
         return Response.json({ ok: true, league }, { status: 201 })
+      }
+      case 'import': {
+        const league = importLeague(body.transfer)
+        return Response.json({ ok: true, slug: league.slug }, { status: 201 })
       }
       case 'join': {
         const player = joinLeagueRow(body.slug, body.handle)
