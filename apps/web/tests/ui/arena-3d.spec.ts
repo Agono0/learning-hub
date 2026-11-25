@@ -34,7 +34,7 @@ function trackSettlements(page: Page): { lastReport: () => string } {
   })
   page.on('pageerror', (e) => seen.push(`pageerror: ${e.message.slice(0, 200)}`))
   page.on('console', (m) => {
-    if (m.type() === 'error') seen.push(`console: ${m.text().slice(0, 200)}`)
+    if (m.type() === 'error') seen.push(`console: ${m.text().slice(0, 2500)}`)
   })
   return { lastReport: () => (seen.length ? seen.join(' | ') : 'no settlement POST seen') }
 }
@@ -96,6 +96,7 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   await expect(page.getByTestId('guardian-progress-label')).toContainText('Round 1 of 6')
   await page.waitForTimeout(1500)
   await page.screenshot({ path: 'test-results/shots/2-session.png' })
+  await page.getByTestId('arena-stage').screenshot({ path: 'test-results/shots/2b-stage.png' })
 
   // Fight the whole run: reveal → Sure → Good for each card.
   for (let round = 0; round < CARD_COUNT; round++) {
@@ -106,6 +107,9 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   }
 
   // Settlement: victory results from the server summary.
+  await page
+    .getByTestId('arena-stage')
+    .screenshot({ path: 'test-results/shots/3b-victory-stage.png' })
   await expectSettled(page, track)
   await expect(page.getByTestId('arena-result-badge')).toHaveText('Victory')
   // Normal-viewport shot after the transient toast clears (not fullPage), so
@@ -213,6 +217,9 @@ test('narrow viewport: the session stays playable and the stage is visible', asy
   await page.getByTestId('arena-start').click()
   await expect(page.getByTestId('arena-canvas')).toBeVisible()
   await page.waitForTimeout(1500)
+  await page
+    .getByTestId('arena-stage')
+    .screenshot({ path: 'test-results/shots/5-narrow-stage.png' })
   await page.screenshot({ path: 'test-results/shots/5-narrow-session.png' })
   await page.getByTestId('arena-reveal').click()
   await expect(page.getByTestId('arena-grade-3')).toBeVisible()
