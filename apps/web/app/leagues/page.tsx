@@ -542,7 +542,7 @@ function OverviewTab({
               void act(
                 { action: 'join', slug: joinLeague.trim(), handle: joinHandle.trim() },
                 `${joinHandle.trim()} joined ${joinLeague.trim()} in bronze.`,
-              ).then(() => setJoinHandle(''))
+              )
             }}
           >
             <TextField
