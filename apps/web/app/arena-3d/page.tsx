@@ -153,6 +153,14 @@ const GRADE_BUTTONS: { grade: Grade; label: string }[] = [
 const CHALLENGE_OPTIONS = ['5', '10', '15', '20'] as const
 const DEFAULT_CHALLENGES = '10'
 
+const GRADE_LABEL: Record<number, string> = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' }
+const GRADE_TONE: Record<number, 'danger' | 'warning' | 'accent' | 'success'> = {
+  1: 'danger',
+  2: 'warning',
+  3: 'accent',
+  4: 'success',
+}
+
 // ─── Card text extraction (mirrors the review page's voice helpers) ─────────
 
 function cardFront(card: ArenaCard): string {
@@ -192,6 +200,11 @@ export default function Arena3DPage() {
   const [confident, setConfident] = useState(false)
   const [shownAt, setShownAt] = useState<number>(0)
   const [settlement, setSettlement] = useState<SettlementResponse | null>(null)
+  const [floater, setFloater] = useState<{
+    id: number
+    text: string
+    tone: 'strike' | 'crit' | 'counter' | 'shield'
+  } | null>(null)
   const [record, setRecord] = useState<HistoryPayload | null>(null)
   const [guardian, setGuardian] = useState<SessionPayload['guardian'] | null>(null)
 
@@ -204,6 +217,36 @@ export default function Arena3DPage() {
       .then((d) => setDecks(d.decks))
       .catch(() => setDecks([]))
   }, [])
+
+  // Floaters are ephemeral combat feedback.
+  useEffect(() => {
+    if (!floater) return
+    const t = setTimeout(() => setFloater(null), 1200)
+    return () => clearTimeout(t)
+  }, [floater])
+
+  // Keyboard controls: Space/Enter reveals, 1-4 grade while revealed.
+  // Guarded to the fighting phase so typing elsewhere is never hijacked.
+  useEffect(() => {
+    if (phase !== 'fighting') return
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+      if (!revealed && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault()
+        setRevealed(true)
+        setShownAt(performance.now())
+        return
+      }
+      if (revealed && ['1', '2', '3', '4'].includes(e.key)) {
+        e.preventDefault()
+        grade(Number(e.key) as Grade)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // No react-hooks plugin in this config — deps listed by hand.
+  }, [phase, revealed, arena, cfg, challenges, confident, shownAt])
 
   // The record book refreshes every time the gate screen is (re)shown.
   useEffect(() => {
@@ -271,8 +314,29 @@ export default function Arena3DPage() {
 
   function driveScene(next: ArenaState, lastGrade: Grade): void {
     const handle = arenaHandle.current
-    if (!handle) return
     const last = next.exchanges[next.exchanges.length - 1]
+
+    // DOM floater — the canvas is decorative, so combat feedback always has a
+    // text rendering (and reduced-motion users get the same information).
+    if (last) {
+      if (last.counterTaken > 0) {
+        setFloater({
+          id: Date.now(),
+          text: `-${last.counterTaken} HP`,
+          tone: 'counter',
+        })
+      } else if (last.counterShielded > 0) {
+        setFloater({ id: Date.now(), text: 'Shield held', tone: 'shield' })
+      } else if (lastGrade >= 3) {
+        setFloater({
+          id: Date.now(),
+          text: last.crit ? `CRIT ${last.damage}` : `${last.damage}`,
+          tone: last.crit ? 'crit' : 'strike',
+        })
+      }
+    }
+
+    if (!handle) return
     handle.setProgress(1 - next.guardianHp / Math.max(1, next.guardianMaxHp))
     if (next.shield > 0 && last && last.counterShielded > 0) {
       handle.shieldRaise()
@@ -603,6 +667,25 @@ export default function Arena3DPage() {
               <div className="mt-2" data-testid="guardian-progress">
                 <ProgressBar value={guardianProgress} label="Guardian progress" />
               </div>
+              <div className="relative h-5" aria-live="polite">
+                {floater ? (
+                  <span
+                    key={floater.id}
+                    className={`absolute right-0 text-sm font-bold ${
+                      floater.tone === 'crit'
+                        ? 'text-amber-500'
+                        : floater.tone === 'counter'
+                          ? 'text-rose-500'
+                          : floater.tone === 'shield'
+                            ? 'text-sky-500'
+                            : 'text-emerald-500'
+                    }`}
+                    data-testid="arena-floater"
+                  >
+                    {floater.text}
+                  </span>
+                ) : null}
+              </div>
             </Panel>
 
             {/* Last exchange feedback */}
@@ -731,6 +814,52 @@ export default function Arena3DPage() {
                     </p>
                   </Panel>
                 </div>
+                {arena && arena.exchanges.length > 0 ? (
+                  <div>
+                    <h3 className="mb-2 text-sm font-semibold">Round by round</h3>
+                    <ul
+                      className="flex max-h-64 flex-col gap-1.5 overflow-y-auto"
+                      data-testid="results-recap"
+                    >
+                      {arena.exchanges.map((ex, i) => {
+                        const card = cards.find((c) => c.id === ex.cardId)
+                        return (
+                          <li
+                            key={`${ex.cardId}-${i}`}
+                            className="flex flex-wrap items-center gap-2 text-sm"
+                            data-testid="recap-row"
+                          >
+                            <span className="w-8 text-xs text-faint">#{i + 1}</span>
+                            <span className="min-w-0 flex-1 truncate">
+                              {card ? cardFront(card) : `Card ${ex.cardId}`}
+                            </span>
+                            <Badge tone={GRADE_TONE[ex.grade] ?? 'neutral'}>
+                              {GRADE_LABEL[ex.grade] ?? ex.grade}
+                            </Badge>
+                            {ex.crit ? (
+                              <Badge tone="warning" data-testid="recap-crit">
+                                Crit
+                              </Badge>
+                            ) : null}
+                            {ex.counterTaken > 0 ? (
+                              <span className="text-xs text-rose-500">-{ex.counterTaken} HP</span>
+                            ) : null}
+                            <span className="ml-auto text-xs text-faint">
+                              +{ex.scoreDelta} · {(ex.timeMs / 1000).toFixed(1)}s
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    {arena.exchanges.some((e) => e.grade <= 2) ? (
+                      <p className="mt-2 text-xs text-faint" data-testid="results-restudy-hint">
+                        Missed cards are already rescheduled by FSRS — the review queue will bring
+                        them back at the right time.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {settlement.streak ? (
                   <p className="text-sm text-faint" data-testid="results-streak">
                     Streak: {settlement.streak.current} day
