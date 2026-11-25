@@ -1,0 +1,32 @@
+# TEMPORARY visual-verification workflow for PR #130 review evidence.
+# Boots the web app on a full-size runner (the dev sandbox OOMs at 2GB),
+# seeds a league with a completed duel and a live bracket, screenshots
+# every /leagues surface, uploads them. Lives on a chore branch only.
+name: ui-screenshots
+on:
+  push:
+    branches: ['chore/**']
+  workflow_dispatch:
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Prepare dev database
+        run: npm run db:push && npm run db:seed
+      - name: Install chromium
+        run: npx playwright install chromium --with-deps
+      - name: Capture screenshots via the e2e harness
+        run: |
+          cd apps/web
+          mkdir -p shots
+          npx playwright test tests/ui/pr130-shots.spec.ts --project=chromium
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr130-ui-screenshots
+          path: apps/web/shots/*.png
