@@ -1,17 +1,13 @@
 import { strToU8, zipSync } from 'fflate'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { setPinnedFetch } from '../src/server/bounded-fetch'
 import { MAX_ARTICLE_HTML_CHARS, MAX_CHAPTER_HTML_CHARS } from '@learning-hub/core/html-scan'
 
 const createSource = vi.fn((v: Record<string, unknown>) => ({ id: 1, ...v }))
-let pageHtml = ''
 
 vi.mock('@learning-hub/db', async (orig) => ({
   ...(await orig<Record<string, unknown>>()),
   createSource: (v: Record<string, unknown>) => createSource(v),
-}))
-vi.mock('@learning-hub/ai-adapters', async (orig) => ({
-  ...(await orig<Record<string, unknown>>()),
-  networkFetch: async () => new Response(pageHtml, { status: 200 }),
 }))
 
 import { POST as ingestPost } from '../src/server/handlers/reading/ingest/route'
@@ -66,14 +62,12 @@ describe('oversized HTML maps to 422, not 400 or 500', () => {
     expect(createSource).toHaveBeenCalledOnce()
   })
 
-  it('ingest url mode: an article over the limit is a 422', async () => {
-    pageHtml = `<html><body>${'b'.repeat(MAX_ARTICLE_HTML_CHARS + 10)}</body></html>`
+  it('ingest url mode: the byte cap (413) fires before the parser limit once fetches are bounded', async () => {
+    setPinnedFetch(async () => new Response('b'.repeat(MAX_ARTICLE_HTML_CHARS + 10)))
     const res = await ingestPost(json({ mode: 'url', url: 'https://example.com/a' }))
-    expect(res.status).toBe(422)
-    const text = await res.text()
-    expect(text).toMatch(/too large to import safely/i)
-    expect(text).not.toContain('bbbb')
+    expect(res.status).toBe(413)
     expect(createSource).not.toHaveBeenCalled()
+    setPinnedFetch(null)
   })
 
   it('reading upload: an oversized chapter is a 422', async () => {
