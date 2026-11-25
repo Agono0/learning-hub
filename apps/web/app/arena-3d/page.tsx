@@ -135,6 +135,14 @@ interface SettlementResponse {
   coinBalance: number
   achievements: string[]
   streak: { current: number; best: number } | null
+  /** Present when this run drilled an earlier settled run's weak cards. */
+  drill?: {
+    sourceRunId: string
+    compared: number
+    improved: number
+    steady: number
+    slipped: number
+  } | null
 }
 
 type Phase = 'setup' | 'loading' | 'fighting' | 'settling' | 'results'
@@ -1429,10 +1437,10 @@ export default function Arena3DPage() {
                 ) : null}
               </>
             ) : (
-              <EmptyState
-                title="Settlement did not complete"
-                description="The run finished locally but the grades were not recorded. Start a new run to review those cards — they are still due."
-              />
+              <EmptyState title="Settlement did not complete">
+                The run finished locally but the grades were not recorded. Start a new run to review
+                those cards — they are still due.
+              </EmptyState>
             )}
             <div className="flex flex-wrap items-center gap-3">
               <Button onClick={playAgain} data-testid="arena-play-again">
