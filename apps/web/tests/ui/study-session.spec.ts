@@ -7,7 +7,7 @@ import { expect, test, type Page } from '@playwright/test'
  */
 
 const assumptions = [
-  "Estimated recall is the model's estimate as of 2026-12-01 from the default FSRS-6 forgetting curve and each card's stored stability and last review. Your fitted weights are not applied, and it is not a validated prediction.",
+  "Estimated recall is the model's estimate as of 2026-12-01 from the default FSRS-6 forgetting curve and each card's stored stability and last review. No custom weights were found for these cards, and it is not a validated prediction.",
   'New cards and cards with no stored stability or last review have no recall estimate.',
   'Suspended and buried cards are left out because the review queue refuses them.',
   'The list is a snapshot. Start opens exactly these cards. If one changed since this preview, the review queue refuses the list and you can preview again.',
@@ -24,7 +24,7 @@ function makeCards(offset = 0, n = 20) {
         ? 'What is the rate-limiting enzyme of glycolysis and what regulates it allosterically?'
         : `Card ${i}`,
     state: 2,
-    lapses: 6 - Math.floor(i / 4),
+    lapses: 9 - Math.floor(i / 4), // all >= 3 so the rows agree with the minLapses=3 filter shown
     due: '2026-11-20T00:00:00.000Z',
     dueInDays: -11 + i * 0.5,
     recall: i === 19 ? null : 0.4 + i * 0.015,
