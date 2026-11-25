@@ -1880,6 +1880,8 @@ export const arenaSessions = table(
     cardIds: text('card_ids', { mode: 'json' }).$type<number[]>().notNull(),
     archetype: text('archetype').notNull().default('warden'),
     boss: integer('boss', { mode: 'boolean' }).notNull().default(false),
+    /** Daily modifier the run was issued under (null: none / pre-modifier run). */
+    modifier: text('modifier'),
     status: text('status').notNull().default('open'), // 'open' | 'settling' | 'settled'
     /**
      * Fencing token: increments on every settlement claim. The settlement

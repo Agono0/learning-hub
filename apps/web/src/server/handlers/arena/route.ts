@@ -59,8 +59,11 @@ import {
 } from '@learning-hub/db'
 import {
   ARENA_DEFAULTS,
+  ARENA_MODIFIER_INFO,
   BOSS_CHALLENGE_THRESHOLD,
   GUARDIANS,
+  applyArenaModifier,
+  arenaModifierForDate,
   arenaSettlementSchema,
   buildSession,
   guardianConfig,
@@ -69,6 +72,7 @@ import {
   previewGrades,
   summarizeGradeLog,
   type ArenaGradeEvent,
+  type ArenaModifier,
   type Confidence,
   type Grade,
   type GuardianArchetype,
@@ -133,6 +137,13 @@ export const GET = withRoute(async function GET(req: Request) {
   )
   const now = new Date()
 
+  // Daily modifier: one rotating rule twist per UTC day, layered over the
+  // guardian tuning. It is stored on the issued run so settlement replays
+  // the SAME twist even when a run spans midnight (selection is a stable
+  // hash of the date — convenience, not an integrity proof).
+  const modifier = arenaModifierForDate(now.toISOString().slice(0, 10))
+  const modifierInfo = { key: modifier, ...ARENA_MODIFIER_INFO[modifier] }
+
   const requestedDeckIds = deckIdsParam
     ? deckIdsParam
         .split(',')
@@ -161,9 +172,13 @@ export const GET = withRoute(async function GET(req: Request) {
         runId: null,
         cards: [],
         limit,
-        config: guardianConfig(guardianForRun(getArenaStats().runs), ARENA_DEFAULTS),
+        config: applyArenaModifier(
+          modifier,
+          guardianConfig(guardianForRun(getArenaStats().runs), ARENA_DEFAULTS),
+        ),
         guardian: null,
         drillEmpty: true,
+        modifier: modifierInfo,
       })
     }
     filters.push(inArray(cards.id, drillCardIds))
@@ -282,7 +297,7 @@ export const GET = withRoute(async function GET(req: Request) {
   const runNumber = getArenaStats().runs
   const archetype = guardianForRun(runNumber)
   const boss = cardsWithPreviews.length >= BOSS_CHALLENGE_THRESHOLD
-  const tunedConfig = guardianConfig(archetype, ARENA_DEFAULTS)
+  const tunedConfig = applyArenaModifier(modifier, guardianConfig(archetype, ARENA_DEFAULTS))
 
   // Issue the server-owned run: the queue, guardian and boss flag the
   // settlement will be validated against. The client gets the runId; it can
@@ -293,6 +308,7 @@ export const GET = withRoute(async function GET(req: Request) {
     cardIds: cardsWithPreviews.map((c) => c.id),
     archetype,
     boss,
+    modifier,
   })
 
   return Response.json({
@@ -308,6 +324,7 @@ export const GET = withRoute(async function GET(req: Request) {
       tagline: GUARDIANS[archetype].tagline,
       boss,
     },
+    modifier: modifierInfo,
   })
 })
 
@@ -366,7 +383,11 @@ export const POST = withRoute(async (req: Request) => {
   // 3) Server-side outcome: recomputed from the validated log with the RUN'S
   //    guardian tuning — client score/bestCombo/result are telemetry only.
   const archetype = claim.run.archetype as GuardianArchetype
-  const summary = summarizeGradeLog(normalized, ARENA_DEFAULTS, archetype)
+  // The modifier the run was ISSUED under — reapplied for the recompute so
+  // a run spanning midnight keeps its own rules, and a client can never
+  // pick a friendlier twist at settlement time.
+  const runModifier = (claim.run.modifier as ArenaModifier | null) ?? null
+  const summary = summarizeGradeLog(normalized, ARENA_DEFAULTS, archetype, runModifier)
   const boss = claim.run.boss
   const referenceId = `arena:${runId}`
 

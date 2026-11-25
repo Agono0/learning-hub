@@ -5,9 +5,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   ARENA_DEFAULTS,
+  ARENA_MODIFIER_INFO,
+  applyArenaModifier,
   applyGrade,
   arenaConfig,
   arenaGradeEventSchema,
+  arenaModifierForDate,
   arenaSettlementSchema,
   buildArenaSummary,
   createArenaSession,
@@ -16,6 +19,7 @@ import {
   strikeFor,
   summarizeGradeLog,
   type ArenaChallenge,
+  type ArenaModifier,
 } from '../src/arena'
 
 const CH = (n: number): ArenaChallenge[] =>
@@ -440,5 +444,96 @@ describe('guardian signature mechanics', () => {
         expect(live.exchanges[0]!.armorBlocked).toBeGreaterThan(0)
       }
     }
+  })
+})
+
+describe('daily modifiers', () => {
+  const ALL: ArenaModifier[] = ['swift_strikes', 'brittle_guard', 'heavy_air', 'focus_flow']
+
+  it('picks a stable modifier per calendar day', () => {
+    for (const day of ['2026-11-25', '2026-11-26', '2027-01-01', '2026-02-28']) {
+      const pick = arenaModifierForDate(day)
+      expect(ALL).toContain(pick)
+      expect(arenaModifierForDate(day)).toBe(pick) // deterministic
+    }
+    // Across a month the rotation visits more than one modifier.
+    const seen = new Set(
+      Array.from({ length: 30 }, (_, i) =>
+        arenaModifierForDate(`2026-11-${String(i + 1).padStart(2, '0')}`),
+      ),
+    )
+    expect(seen.size).toBeGreaterThan(1)
+    // Every declared modifier has player-facing copy.
+    for (const m of ALL) {
+      expect(ARENA_MODIFIER_INFO[m].name.length).toBeGreaterThan(0)
+      expect(ARENA_MODIFIER_INFO[m].description.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('swift_strikes widens the crit window only', () => {
+    const base = guardianConfig('warden', ARENA_DEFAULTS)
+    const tuned = applyArenaModifier('swift_strikes', base)
+    expect(tuned.critTimeMs).toBe(Math.floor(base.critTimeMs * 1.5))
+    expect(tuned.baseDamage).toBe(base.baseDamage)
+    expect(tuned.maxShield).toBe(base.maxShield)
+  })
+
+  it('brittle_guard removes one shield charge and delays repairs', () => {
+    const base = guardianConfig('colossus', ARENA_DEFAULTS)
+    const tuned = applyArenaModifier('brittle_guard', base)
+    expect(tuned.maxShield).toBe(Math.max(0, base.maxShield - 1))
+    expect(tuned.shieldRepairCombo).toBe(Math.min(20, base.shieldRepairCombo + 2))
+  })
+
+  it('heavy_air hardens counters and softens strikes', () => {
+    const base = guardianConfig('shade', ARENA_DEFAULTS)
+    const tuned = applyArenaModifier('heavy_air', base)
+    expect(tuned.againCounter).toBe(Math.ceil(base.againCounter * 1.25))
+    expect(tuned.hardCounter).toBe(Math.ceil(base.hardCounter * 1.25))
+    expect(tuned.baseDamage).toBe(Math.max(1, base.baseDamage - 1))
+  })
+
+  it('focus_flow speeds the combo and tightens the crit window', () => {
+    const base = guardianConfig('warden', ARENA_DEFAULTS)
+    const tuned = applyArenaModifier('focus_flow', base)
+    expect(tuned.comboStepPercent).toBe(Math.min(50, base.comboStepPercent + 5))
+    expect(tuned.critTimeMs).toBe(Math.max(500, base.critTimeMs - 500))
+  })
+
+  it('null / undefined modifier is the identity layer', () => {
+    const base = guardianConfig('warden', ARENA_DEFAULTS)
+    expect(applyArenaModifier(null, base)).toEqual(base)
+    expect(applyArenaModifier(undefined, base)).toEqual(base)
+  })
+
+  it('summarizeGradeLog replays deterministically under a modifier', () => {
+    const events = [
+      { cardId: 1, grade: 3 as const, confidence: 1 as const, timeMs: 1_200 },
+      { cardId: 2, grade: 2 as const, confidence: 0 as const, timeMs: 4_000 },
+      { cardId: 3, grade: 1 as const, confidence: 0 as const, timeMs: 6_500 },
+      { cardId: 4, grade: 4 as const, confidence: 1 as const, timeMs: 900 },
+      { cardId: 5, grade: 3 as const, confidence: 1 as const, timeMs: 1_100 },
+    ]
+    for (const modifier of ALL) {
+      const a = summarizeGradeLog(events, ARENA_DEFAULTS, 'warden', modifier)
+      const b = summarizeGradeLog(events, ARENA_DEFAULTS, 'warden', modifier)
+      expect(a).toEqual(b)
+      // Matches a manual recompute through the tuned config.
+      const tuned = applyArenaModifier(modifier, guardianConfig('warden', ARENA_DEFAULTS))
+      let state = createArenaSession(CH(events.length), tuned, 'warden')
+      events.forEach((e, i) => {
+        state = applyGrade(state, CH(events.length)[i]!, e.grade, e.confidence, e.timeMs, tuned)
+      })
+      const manual = buildArenaSummary(state)
+      expect(a.score).toBe(manual.score)
+      expect(a.crits).toBe(manual.crits)
+    }
+    // heavy_air weakens strikes: the score must differ from no modifier.
+    const plain = summarizeGradeLog(events, ARENA_DEFAULTS, 'warden', null)
+    const heavy = summarizeGradeLog(events, ARENA_DEFAULTS, 'warden', 'heavy_air')
+    expect(heavy.score).not.toBe(plain.score)
+    // Rewards stay learning-derived and modifier-neutral.
+    expect(heavy.coins).toBe(plain.coins)
+    expect(heavy.correct).toBe(plain.correct)
   })
 })

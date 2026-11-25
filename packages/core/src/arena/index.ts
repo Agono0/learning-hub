@@ -132,6 +132,90 @@ export const BOSS_CHALLENGE_THRESHOLD = 15
 /** Bosses enrage below half HP: counters hit 50% harder (rounded up). */
 export const BOSS_ENRAGE_COUNTER_PERCENT = 50
 
+// ─── Daily modifiers ────────────────────────────────────────────────────────
+
+/**
+ * One deterministic twist per day, layered over the guardian's tuning. Like
+ * the guardian mechanics, a modifier only changes how a run FEELS: coins and
+ * XP come from correct retrieval (buildArenaSummary), never from combat
+ * numbers. The modifier active when a run is ISSUED is stored on the run row
+ * and reapplied at settlement, so a midnight boundary can never fork the
+ * recompute.
+ */
+export const arenaModifierSchema = z.enum([
+  'swift_strikes',
+  'brittle_guard',
+  'heavy_air',
+  'focus_flow',
+])
+export type ArenaModifier = z.infer<typeof arenaModifierSchema>
+
+export const ARENA_MODIFIER_INFO: Record<ArenaModifier, { name: string; description: string }> = {
+  swift_strikes: {
+    name: 'Swift Strikes',
+    description: 'A wider crit window today: fast, sure answers land criticals more easily.',
+  },
+  brittle_guard: {
+    name: 'Brittle Guard',
+    description: 'One less shield charge, and combos repair shields later than usual.',
+  },
+  heavy_air: {
+    name: 'Heavy Air',
+    description: 'Counters hit 25% harder, and every strike starts one point weaker.',
+  },
+  focus_flow: {
+    name: 'Focus Flow',
+    description: 'Combos grow 5% faster, but the crit window tightens slightly.',
+  },
+}
+
+/** Tiny deterministic string hash — selection only, NOT an integrity proof. */
+function hashDateKey(dateKey: string): number {
+  let h = 0
+  for (let i = 0; i < dateKey.length; i++) {
+    h = (h * 31 + dateKey.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
+/** The modifier for a calendar day (YYYY-MM-DD), stable for that day everywhere. */
+export function arenaModifierForDate(dateKey: string): ArenaModifier {
+  const order: ArenaModifier[] = ['swift_strikes', 'brittle_guard', 'heavy_air', 'focus_flow']
+  return order[hashDateKey(dateKey) % order.length]!
+}
+
+/** Layer a modifier over an already guardian-tuned config. */
+export function applyArenaModifier(
+  modifier: ArenaModifier | null | undefined,
+  config: ArenaConfig,
+): ArenaConfig {
+  switch (modifier) {
+    case 'swift_strikes':
+      return { ...config, critTimeMs: Math.floor(config.critTimeMs * 1.5) }
+    case 'brittle_guard':
+      return {
+        ...config,
+        maxShield: Math.max(0, config.maxShield - 1),
+        shieldRepairCombo: Math.min(20, config.shieldRepairCombo + 2),
+      }
+    case 'heavy_air':
+      return {
+        ...config,
+        againCounter: Math.ceil(config.againCounter * 1.25),
+        hardCounter: Math.ceil(config.hardCounter * 1.25),
+        baseDamage: Math.max(1, config.baseDamage - 1),
+      }
+    case 'focus_flow':
+      return {
+        ...config,
+        comboStepPercent: Math.min(50, config.comboStepPercent + 5),
+        critTimeMs: Math.max(500, config.critTimeMs - 500),
+      }
+    default:
+      return config
+  }
+}
+
 export function arenaConfig(overrides: Partial<ArenaConfig> = {}): ArenaConfig {
   return arenaConfigSchema.parse({ ...ARENA_DEFAULTS, ...overrides })
 }
@@ -469,8 +553,10 @@ export function summarizeGradeLog(
   exchanges: ArenaGradeEvent[],
   config: ArenaConfig = ARENA_DEFAULTS,
   archetype: GuardianArchetype = 'warden',
+  /** The daily modifier the run was issued under — reapplied for the replay. */
+  modifier: ArenaModifier | null = null,
 ): ArenaSummary {
-  const tuned = guardianConfig(archetype, config)
+  const tuned = applyArenaModifier(modifier, guardianConfig(archetype, config))
   let state = createArenaSession(
     exchanges.map((e) => ({ cardId: e.cardId, prompt: 'x', answer: 'x' })),
     tuned,
