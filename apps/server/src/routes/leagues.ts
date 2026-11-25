@@ -24,6 +24,7 @@ import {
   importLeague,
   joinLeagueRow,
   leagueHeadToHead,
+  listLeagueAchievements,
   leagueChampion,
   leagueStandings,
   listLeagueDuels,
@@ -342,6 +343,18 @@ function getLeagueHeadToHead(req: IncomingMessage, res: ServerResponse, url: URL
   sendJson(res, 200, { ok: true, headToHead: h2h })
 }
 
+const achievementsQuerySchema = z.object({
+  slug: z.string().min(1),
+  handle: z.string().min(1),
+})
+
+/** GET /leagues/achievements?slug=&handle= — banked badges, oldest first. */
+function getLeagueAchievements(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, achievementsQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, achievements: listLeagueAchievements(q.slug, q.handle) })
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -399,6 +412,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/standings',
     summary: 'division standings or full table + champion (?slug=&tier=)',
     handler: getLeagueStandings,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/achievements',
+    summary: "a player's earned achievement badges (?slug=&handle=)",
+    handler: getLeagueAchievements,
   },
   {
     method: 'GET',

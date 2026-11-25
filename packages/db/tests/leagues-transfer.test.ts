@@ -9,6 +9,7 @@ import {
   exportLeague,
   importLeague,
   initDb,
+  leagueAchievements,
   joinLeagueRow,
   leagueDuels,
   leagueEloEvents,
@@ -41,6 +42,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(leagueAchievements).run()
   db.delete(leagueSeasons).run()
   db.delete(leagueEloEvents).run()
   db.delete(leagueTournaments).run()
@@ -94,6 +96,7 @@ describe('league export/import', () => {
     const snapshot = JSON.parse(JSON.stringify(transfer)) // JSON round-trip, as over the wire
 
     // wipe every league table (FK-safe order) and re-import from scratch
+    db.delete(leagueAchievements).run()
     db.delete(leagueSeasons).run()
     db.delete(leagueEloEvents).run()
     db.delete(leagueTournaments).run()

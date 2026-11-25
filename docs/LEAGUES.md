@@ -186,6 +186,36 @@ authority) or to keep a backup before a new season.
 - MCP: `league_export` / `league_import`.
 - Web UI: the Export / import panel on the Overview tab of `/leagues`.
 
+## Head-to-head and achievements
+
+**Head-to-head** distills every completed duel between two players into a
+rivalry record — wins/draws, win rates, accuracy, correct-answer speed,
+streaks, last result — plus the current Elo gap and recent duels. Seating
+is irrelevant: the record counts whichever side each player sat on.
+
+- REST: `GET /leagues/head-to-head?slug=&a=&b=`. Web API: `view=h2h`.
+- CLI: `learning-hub leagues h2h <slug> <a> <b>`. MCP: `league_head_to_head`.
+- Web UI: Head-to-head panel on the Standings tab of `/leagues`.
+
+**Achievements** are a closed catalog of badges (core
+`leagues/achievements`): duel milestones (first blood → veteran →
+champion), Elo milestones (1200/1500/2000), division climbs
+(silver→diamond), round and season titles, tournament championships, and
+season-point thresholds. Evaluation is pure; the db layer banks new badges
+in `league_achievements` and logs one `league`-channel notification per
+unlock (prefs-honoring). Sync happens automatically when a league duel
+completes and when a round closes, and on demand. Point thresholds see the
+live total (banked season points plus the current round's in-progress
+points) so badges unlock in real time; the round-winner badge follows the
+recorded `roundsWon` stat.
+
+- REST: `GET /leagues/achievements?slug=&handle=`. Web API:
+  `view=achievements`.
+- CLI: `learning-hub leagues achievements <slug> <handle>`.
+- MCP: `league_achievements`, `league_achievements_sync` (one player or the
+  whole league).
+- Web UI: achievement badges on the player profile panel.
+
 ## Implementation map
 
 - Engine (pure, schema-validated): `packages/core/src/leagues/engine.ts`
