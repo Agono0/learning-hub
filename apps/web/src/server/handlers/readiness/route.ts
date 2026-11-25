@@ -14,15 +14,7 @@
  *             deckIds=1,2, budget=20
  */
 import { z } from 'zod'
-import { getReadinessExam, listReadinessExams, loadReadinessInputs } from '@learning-hub/db'
-import {
-  buildReadinessReport,
-  parseExamDate,
-  planBudget,
-  rankReviewGains,
-  reviewsNeededFor,
-  type ReviewPlan,
-} from '@learning-hub/core'
+import { listReadinessExams, runReadiness } from '@learning-hub/db'
 import { db } from '@/lib/db'
 import { withRoute } from '@/lib/api'
 
@@ -64,52 +56,7 @@ export const GET = withRoute(async (req: Request) => {
     return Response.json({ ok: true, exams: listReadinessExams(db) })
   }
 
-  let target: { title: string; date: string; courseId: number | null }
-  if (q.examId !== undefined) {
-    const exam = getReadinessExam(q.examId, db)
-    if (!exam) return fail(404, 'exam not found')
-    target = { title: exam.title, date: exam.date, courseId: exam.courseId }
-  } else {
-    if (!parseExamDate(q.date as string))
-      return fail(400, 'date must be YYYY-MM-DD or an ISO timestamp')
-    target = { title: q.title ?? 'Exam', date: q.date as string, courseId: null }
-  }
-  if (!parseExamDate(target.date)) return fail(422, 'exam date is not a valid date')
-
-  const plan: ReviewPlan =
-    q.plan === 'none'
-      ? { kind: 'none' }
-      : q.plan === 'capacity'
-        ? { kind: 'capacity', perDay: q.perDay }
-        : { kind: 'on-schedule' }
-
-  const now = new Date()
-  const inputs = loadReadinessInputs({ deckIds: q.deckIds }, db)
-  const report = await buildReadinessReport({
-    target,
-    cards: inputs.cards,
-    now,
-    plan,
-    targetRecall: q.target,
-    deckLabel: (id) => inputs.deckNames.get(id) ?? `Deck ${id}`,
-    skillLabel: (id) => inputs.skillNames.get(id) ?? `Skill ${id}`,
-  })
-  if (!report) return fail(422, 'exam date is not a valid date')
-
-  const exam = parseExamDate(target.date) as Date
-  const gains = await rankReviewGains(inputs.cards, now, exam)
-  const budgetPlan = planBudget(gains, q.budget)
-  return Response.json({
-    ok: true,
-    report,
-    review: {
-      // Assumes each chosen card is reviewed once today and remembered (Good).
-      budget: budgetPlan.budget,
-      meanRecallBefore: budgetPlan.before,
-      meanRecallAfter: budgetPlan.after,
-      reviewsNeededForTarget: reviewsNeededFor(gains, report.targetRecall),
-      top: budgetPlan.chosen.slice(0, MAX_GAIN_ROWS),
-      assumptions: report.assumptions,
-    },
-  })
+  const run = await runReadiness(q, { db, maxGainRows: MAX_GAIN_ROWS })
+  if (!run.ok) return fail(run.status, run.error)
+  return Response.json({ ok: true, ...run.value })
 })
