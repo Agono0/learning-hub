@@ -1267,12 +1267,11 @@ export default function Arena3DPage() {
             {settlement ? (
               <>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Badge
-                    tone={settlement.summary.result === 'victory' ? 'success' : 'danger'}
-                    data-testid="arena-result-badge"
-                  >
-                    {settlement.summary.result === 'victory' ? 'Victory' : 'Defeat'}
-                  </Badge>
+                  <span data-testid="arena-result-badge">
+                    <Badge tone={settlement.summary.result === 'victory' ? 'success' : 'danger'}>
+                      {settlement.summary.result === 'victory' ? 'Victory' : 'Defeat'}
+                    </Badge>
+                  </span>
                   <h2 className="text-lg font-semibold">
                     {settlement.summary.correct}/{settlement.summary.rounds} correct ·{' '}
                     {Math.round(settlement.summary.accuracy * 100)}% accuracy
