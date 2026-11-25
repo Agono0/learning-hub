@@ -147,6 +147,8 @@ export function RetentionPlannerStudio() {
             <ApplyPanel
               candidate={r.status === 'ok' && r.scope === 'all-decks' ? candidate : null}
               coverage={r.coverage}
+              baseline={r.currentRetention}
+              fingerprint={r.fingerprint}
             />
           </Panel>
         </>

@@ -152,6 +152,8 @@ export interface PlannerResult {
   budgetMinutes: number
   seed: number
   scope: 'all-decks' | 'deck'
+  /** Hash of the inputs this run read (retention, weights, cards, review count). Lets a caller detect staleness. */
+  fingerprint: string
   coverage: CardCoverage
   timing: TimingEstimate
   passMix: PassMix

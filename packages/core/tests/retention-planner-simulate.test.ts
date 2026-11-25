@@ -183,3 +183,35 @@ describe('decks with their own settings', () => {
     expect(all.scope).toBe('all-decks')
   })
 })
+
+describe('fingerprintInput', () => {
+  it('is stable and changes with retention, weights, cards or reviews', async () => {
+    const { fingerprintInput } = await import('../src/retention-planner')
+    const cards = makeCards(20)
+    const a = makeInput(cards)
+    const fp = fingerprintInput(a)
+    expect(fingerprintInput(makeInput(makeCards(20)))).toBe(fp)
+    expect(fingerprintInput({ ...a, currentRetention: 0.93 })).not.toBe(fp)
+    expect(fingerprintInput({ ...a, weights: [1, 2, 3] })).not.toBe(fp)
+    expect(fingerprintInput({ ...a, cards: cards.slice(1) })).not.toBe(fp)
+    expect(
+      fingerprintInput({ ...a, cards: [{ ...cards[0], stability: 99 }, ...cards.slice(1)] }),
+    ).not.toBe(fp)
+    expect(
+      fingerprintInput({
+        ...a,
+        reviews: [
+          ...a.reviews,
+          {
+            id: 9999,
+            cardId: 1,
+            rating: 3,
+            reviewedAt: '2026-01-01T00:00:00Z',
+            elapsedDays: 1,
+            timeMs: 3000,
+          },
+        ],
+      }),
+    ).not.toBe(fp)
+  })
+})

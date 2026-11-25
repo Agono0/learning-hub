@@ -16,6 +16,7 @@ import {
   MIN_HORIZON_DAYS,
   MIN_RETENTION,
   PlannerBoundsError,
+  fingerprintInput,
   runRetentionPlanner,
 } from '@learning-hub/core'
 import { loadRetentionPlannerData } from '@learning-hub/db'
@@ -34,6 +35,8 @@ const bodySchema = z
     maxCards: z.number().int().min(1).max(MAX_SIMULATED_CARDS).optional(),
     seed: z.number().int().min(-2_147_483_647).max(2_147_483_647).optional(),
     maxCalls: z.number().int().min(1).max(MAX_SCHEDULER_CALLS).optional(),
+    /** Skip the simulation and return only the input fingerprint, to check a result is still current. */
+    fingerprintOnly: z.boolean().optional(),
   })
   .strict()
 
@@ -41,8 +44,12 @@ export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, bodySchema)
   const data = loadRetentionPlannerData({ deckId: body.deckId })
   try {
-    const { deckId: _deckId, ...options } = body
+    if (body.fingerprintOnly) {
+      return Response.json({ ok: true, fingerprint: fingerprintInput(data) })
+    }
+    const { deckId: _deckId, fingerprintOnly: _f, ...options } = body
     void _deckId
+    void _f
     const result = await runRetentionPlanner(data, options)
     return Response.json({ ok: true, result, cardsTruncated: data.cardsTruncated })
   } catch (e) {

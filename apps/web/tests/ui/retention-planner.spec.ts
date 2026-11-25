@@ -20,7 +20,8 @@ const base = {
   status: 'ok',
   message: 'Modeled over your current Review-state cards under the assumptions shown.',
   asOf: '2026-06-01T12:00:00.000Z',
-  currentRetention: 0.9,
+  currentRetention: 0.93,
+  fingerprint: 'aaaa1111',
   currentSource: 'global',
   weights: 'custom',
   scope: 'all-decks',
@@ -70,10 +71,20 @@ const base = {
   },
 }
 
-async function stub(page: Page, result: unknown, settings = { value: 0.9 }, puts: number[] = []) {
-  await page.route('**/api/retention-planner', (route) =>
-    route.fulfill({ json: { ok: true, result, cardsTruncated: false } }),
-  )
+async function stub(
+  page: Page,
+  result: unknown,
+  settings = { value: 0.93 },
+  puts: number[] = [],
+  live = { fingerprint: 'aaaa1111' },
+) {
+  await page.route('**/api/retention-planner', (route) => {
+    const body = route.request().postDataJSON() as { fingerprintOnly?: boolean }
+    if (body.fingerprintOnly) {
+      return route.fulfill({ json: { ok: true, fingerprint: live.fingerprint } })
+    }
+    return route.fulfill({ json: { ok: true, result, cardsTruncated: false } })
+  })
   await page.route('**/api/settings', async (route) => {
     if (route.request().method() === 'PUT') {
       const body = route.request().postDataJSON() as { desiredRetention: number }
@@ -217,6 +228,29 @@ test('a setting changed after the page loaded blocks the apply', async ({ page }
   await page.getByRole('button', { name: /Review change to 90%/ }).click()
   settings.value = 0.95
   await page.getByRole('button', { name: 'Confirm and apply' }).click()
-  await expect(page.getByText('changed to 95% since this page loaded')).toBeVisible()
+  await expect(page.getByText('now 95%, but this model started from 93%')).toBeVisible()
+  expect(puts).toEqual([])
+})
+
+test('apply is disabled when the live setting differs from the run baseline', async ({ page }) => {
+  const puts: number[] = []
+  await stub(page, base, { value: 0.95 }, puts)
+  await page.goto('/retention-planner')
+  await page.getByRole('button', { name: 'Model my cards' }).click()
+  await expect(page.getByTestId('rp-apply')).toContainText('differs from the 93%')
+  await expect(page.getByRole('button', { name: /Review change to 90%/ })).toBeDisabled()
+  expect(puts).toEqual([])
+})
+
+test('changed cards or weights since the run block the apply', async ({ page }) => {
+  const puts: number[] = []
+  const live = { fingerprint: 'aaaa1111' }
+  await stub(page, base, { value: 0.93 }, puts, live)
+  await page.goto('/retention-planner')
+  await page.getByRole('button', { name: 'Model my cards' }).click()
+  await page.getByRole('button', { name: /Review change to 90%/ }).click()
+  live.fingerprint = 'bbbb2222'
+  await page.getByRole('button', { name: 'Confirm and apply' }).click()
+  await expect(page.getByText('cards, weights or retention changed')).toBeVisible()
   expect(puts).toEqual([])
 })

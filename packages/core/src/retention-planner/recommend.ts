@@ -100,6 +100,44 @@ export function recommend(points: readonly GridPoint[], budget: number) {
   }
 }
 
+/** FNV-1a over the inputs that change the model. Deterministic, no clock. */
+export function fingerprintInput(input: PlannerInput): string {
+  let h = 0x811c9dc5
+  const feed = (v: string) => {
+    for (let i = 0; i < v.length; i++) {
+      h ^= v.charCodeAt(i)
+      h = Math.imul(h, 0x01000193) >>> 0
+    }
+    h ^= 0x2c
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  feed(String(input.currentRetention))
+  feed(input.currentSource)
+  feed(String(input.deckId ?? 'all'))
+  feed((input.weights ?? []).join(','))
+  for (const c of input.cards) {
+    feed(
+      [
+        c.id,
+        c.deckId,
+        c.state,
+        c.suspended ? 1 : 0,
+        c.stability,
+        c.difficulty,
+        c.due,
+        c.lastReview,
+        c.reps,
+        c.lapses,
+        c.ownSettings ? 1 : 0,
+      ].join('|'),
+    )
+  }
+  feed(String(input.reviews.length))
+  const last = input.reviews[input.reviews.length - 1]
+  feed(last ? `${last.id}|${last.reviewedAt}` : 'none')
+  return h.toString(16).padStart(8, '0')
+}
+
 export async function runRetentionPlanner(
   input: PlannerInput,
   rawOptions: Partial<PlannerOptions> = {},
@@ -120,6 +158,7 @@ export async function runRetentionPlanner(
     budgetMinutes: options.budgetMinutes,
     seed: options.seed,
     scope: input.deckId == null ? ('all-decks' as const) : ('deck' as const),
+    fingerprint: fingerprintInput(input),
     coverage,
     timing,
     passMix,

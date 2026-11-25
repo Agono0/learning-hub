@@ -22,9 +22,15 @@ async function currentGlobal(): Promise<number> {
 export function ApplyPanel({
   candidate,
   coverage,
+  baseline,
+  fingerprint,
 }: {
   candidate: number | null
   coverage: CardCoverage
+  /** Retention the model run started from. */
+  baseline: number
+  /** Fingerprint of the inputs the run read. */
+  fingerprint: string
 }) {
   const [now, setNow] = useState<number | null>(null)
   const [confirming, setConfirming] = useState(false)
@@ -50,12 +56,23 @@ export function ApplyPanel({
     setMessage(null)
     try {
       const before = await currentGlobal()
-      if (now !== null && Math.abs(before - now) > 1e-9) {
+      if (Math.abs(before - baseline) > 1e-9) {
         setNow(before)
         setConfirming(false)
         setMessage({
           tone: 'danger',
-          text: `The setting changed to ${pct(before)} since this page loaded. Nothing was changed. Review the change again.`,
+          text: `The setting is now ${pct(before)}, but this model started from ${pct(baseline)}. Nothing was changed. Run the model again.`,
+        })
+        return
+      }
+      const check = await apiSend<{ fingerprint: string }>('/api/retention-planner', 'POST', {
+        fingerprintOnly: true,
+      })
+      if (check.fingerprint !== fingerprint) {
+        setConfirming(false)
+        setMessage({
+          tone: 'danger',
+          text: 'Your cards, weights or retention changed since this model ran. Nothing was changed. Run the model again.',
         })
         return
       }
@@ -129,11 +146,17 @@ export function ApplyPanel({
       <p>
         Global retention now: <strong>{now === null ? 'unknown' : pct(now)}</strong>
       </p>
+      {candidate !== null && now !== null && Math.abs(now - baseline) > 1e-9 ? (
+        <Callout tone="warning">
+          The live setting ({pct(now)}) differs from the {pct(baseline)} this model started from.
+          Run the model again before applying.
+        </Callout>
+      ) : null}
       {candidate !== null && !confirming ? (
         <Button
           variant="secondary"
           onClick={() => setConfirming(true)}
-          disabled={busy || now === candidate}
+          disabled={busy || now === candidate || (now !== null && Math.abs(now - baseline) > 1e-9)}
         >
           Review change to {pct(candidate)}
         </Button>
