@@ -13,6 +13,8 @@ import { expect, test, type APIRequestContext } from '@playwright/test'
  */
 
 const DECK_NAME = 'Arena Spec Deck'
+let deckSeq = 0
+const uniqueDeckName = (base: string): string => `${base} ${Date.now()}-${++deckSeq}`
 const CARD_COUNT = 6
 
 test.beforeEach(async ({ context }) => {
@@ -23,11 +25,11 @@ test.beforeEach(async ({ context }) => {
 
 async function seedArenaDeck(request: APIRequestContext, count = CARD_COUNT): Promise<number> {
   const deckRes = await request.post('/api/decks', {
-    data: { name: DECK_NAME, description: 'Playwright arena spec', emoji: '⚔️' },
+    data: { name: uniqueDeckName(DECK_NAME), description: 'Playwright arena spec', emoji: '⚔️' },
   })
   expect(deckRes.ok(), `deck create: ${deckRes.status()} ${await deckRes.text()}`).toBeTruthy()
   const deck = await deckRes.json()
-  const deckId = deck.id as number
+  const deckId = deck.deck.id as number
 
   // Cards are created already backdated (POST /api/cards accepts `due`), so
   // every one of them is due the moment the arena asks for its queue.
@@ -151,13 +153,13 @@ test('empty selection shows a recoverable notice instead of a broken session', a
 }) => {
   // A deck whose cards are all scheduled in the future → nothing due.
   const deckRes = await request.post('/api/decks', {
-    data: { name: 'Arena Empty Deck', description: 'Nothing due' },
+    data: { name: uniqueDeckName('Arena Empty Deck'), description: 'Nothing due' },
   })
   const deck = await deckRes.json()
   const future = new Date(Date.now() + 30 * 86_400_000).toISOString()
   const cardRes = await request.post('/api/cards', {
     data: {
-      deckId: deck.id,
+      deckId: deck.deck.id,
       type: 'basic',
       content: { basic: { front: 'Future Q', back: 'Future A' } },
       due: future,
@@ -169,7 +171,7 @@ test('empty selection shows a recoverable notice instead of a broken session', a
   await expect(page.getByRole('heading', { name: 'Review Arena', level: 1 })).toBeVisible({
     timeout: 60_000,
   })
-  await page.getByTestId(`arena-deck-${deck.id}`).click()
+  await page.getByTestId(`arena-deck-${deck.deck.id}`).click()
   await page.getByTestId('arena-start').click()
 
   await expect(page.getByTestId('arena-load-error')).toBeVisible()
