@@ -20,6 +20,7 @@ import {
   leagueHeadToHead,
   listLeagueAchievements,
   leagueChampion,
+  leagueDivisionDetail,
   leaguePlayerProfile,
   leagueStandings,
   listLeagueDuels,
@@ -44,6 +45,16 @@ export const GET = withRoute(async (req: Request) => {
   if (view === 'list') return Response.json({ ok: true, leagues: listLeagueRows() })
 
   const slug = url.searchParams.get('slug') ?? ''
+  if (view === 'division') {
+    const tier = url.searchParams.get('tier') ?? ''
+    if (!tier) return Response.json({ error: 'pass a tier' }, { status: 400 })
+    const division = leagueDivisionDetail(slug, tier as Parameters<typeof leagueDivisionDetail>[1])
+    if (!division) {
+      return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    }
+    return Response.json({ ok: true, division })
+  }
+
   if (view === 'achievements') {
     const handle = url.searchParams.get('handle') ?? ''
     if (!handle) return Response.json({ error: 'pass a handle' }, { status: 400 })

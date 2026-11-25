@@ -26,6 +26,7 @@ import {
   leagueHeadToHead,
   listLeagueAchievements,
   leagueChampion,
+  leagueDivisionDetail,
   leagueStandings,
   listLeagueDuels,
   listLeaguePlayers,
@@ -355,6 +356,15 @@ function getLeagueAchievements(req: IncomingMessage, res: ServerResponse, url: U
   sendJson(res, 200, { ok: true, achievements: listLeagueAchievements(q.slug, q.handle) })
 }
 
+/** GET /leagues/division?slug=&tier= — focused division view. */
+function getLeagueDivision(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, standingsQuerySchema)
+  if (!q.tier) return jsonError(res, 400, 'pass a tier')
+  const detail = leagueDivisionDetail(q.slug, q.tier)
+  if (!detail) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, division: detail })
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -412,6 +422,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/standings',
     summary: 'division standings or full table + champion (?slug=&tier=)',
     handler: getLeagueStandings,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/division',
+    summary: 'one division: standings, round history, movement, duels (?slug=&tier=)',
+    handler: getLeagueDivision,
   },
   {
     method: 'GET',

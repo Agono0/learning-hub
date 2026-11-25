@@ -509,6 +509,7 @@ function StandingsTab({
   const [reviews, setReviews] = useState('')
   const [focusMinutes, setFocusMinutes] = useState('')
   const [profileHandle, setProfileHandle] = useState<string | null>(null)
+  const [divisionTier, setDivisionTier] = useState<string | null>(null)
 
   if (!selected) {
     return (
@@ -552,10 +553,17 @@ function StandingsTab({
                   key={d.tier}
                   className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700"
                 >
-                  <div className="mb-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    data-testid={`division-open-${d.tier}`}
+                    onClick={() => setDivisionTier((cur) => (cur === d.tier ? null : d.tier))}
+                    className="mb-2 flex items-center gap-2 rounded px-1 transition hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
                     <Badge tone={TIER_TONE[d.tier] ?? 'neutral'}>{d.tier}</Badge>
-                    <span className="text-xs text-neutral-500">{d.standings.length} players</span>
-                  </div>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {d.standings.length} players
+                    </span>
+                  </button>
                   {d.standings.length === 0 ? (
                     <p className="text-xs text-neutral-400">empty</p>
                   ) : (
@@ -588,6 +596,7 @@ function StandingsTab({
             </div>
           </Panel>
           {profileHandle && <PlayerProfilePanel slug={selected} handle={profileHandle} />}
+          {divisionTier && <DivisionPanel slug={selected} tier={divisionTier} />}
           <HeadToHeadPanel detail={detail} selected={selected} />
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel>
@@ -818,6 +827,121 @@ function EloSparkline({ values, start }: { values: number[]; start: number }) {
     >
       <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>
+  )
+}
+
+type DivisionDetail = {
+  tier: string
+  standings: { handle: string; points: number; seasonPoints: number; elo: number }[]
+  roundHistory: { round: number; winner: string; closedAt: string }[]
+  duels: { slug: string; playerA: string; playerB: string; status: string; winner: string | null }[]
+  movements: {
+    round: number
+    handle: string
+    kind: 'promoted_in' | 'relegated_in' | 'promoted_out' | 'relegated_out'
+  }[]
+}
+
+function DivisionPanel({ slug, tier }: { slug: string; tier: string }) {
+  const [division, setDivision] = useState<DivisionDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setDivision(null)
+    setError(null)
+    apiGet<{ ok: boolean; division: DivisionDetail }>(
+      `/api/leagues?view=division&slug=${encodeURIComponent(slug)}&tier=${encodeURIComponent(tier)}`,
+    )
+      .then((res) => setDivision(res.division))
+      .catch((err) => setError(err instanceof Error ? err.message : 'failed to load division'))
+  }, [slug, tier])
+
+  if (error) {
+    return (
+      <Callout tone="danger" title="Division failed to load">
+        {error}
+      </Callout>
+    )
+  }
+  if (!division) return null
+
+  return (
+    <Panel>
+      <div data-testid="division-detail" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">{tier} division</h2>
+          <Badge tone={TIER_TONE[tier] ?? 'neutral'}>{division.standings.length} players</Badge>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Standings</p>
+            {division.standings.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Empty division.</p>
+            ) : (
+              <ol className="space-y-1" data-testid="division-standings">
+                {division.standings.map((p, i) => (
+                  <li key={p.handle} className="flex justify-between text-sm">
+                    <span>
+                      {i + 1}. {p.handle}
+                    </span>
+                    <span className="text-neutral-500 dark:text-neutral-400">
+                      {p.points} pts · elo {p.elo}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Round winners</p>
+            {division.roundHistory.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                No closed rounds named a {tier} winner yet.
+              </p>
+            ) : (
+              <ul className="space-y-1" data-testid="division-history">
+                {division.roundHistory.map((r) => (
+                  <li key={r.round} className="flex justify-between text-sm">
+                    <span>round {r.round}</span>
+                    <span className="text-neutral-500 dark:text-neutral-400">{r.winner}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        {division.movements.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Movement</p>
+            <div className="flex flex-wrap gap-1.5" data-testid="division-movements">
+              {division.movements.map((m, i) => (
+                <Badge
+                  key={`${m.round}-${m.handle}-${i}`}
+                  tone={m.kind.startsWith('promoted') ? 'success' : 'warning'}
+                >
+                  {m.handle} {m.kind.replace(/_/g, ' ')} (r{m.round})
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {division.duels.length > 0 && (
+          <ul className="space-y-1" data-testid="division-duels">
+            {division.duels.map((d) => (
+              <li
+                key={d.slug}
+                className="flex justify-between text-sm text-neutral-600 dark:text-neutral-300"
+              >
+                <span>
+                  {d.slug} — {d.playerA} vs {d.playerB}
+                </span>
+                <span>{d.winner ?? d.status}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
   )
 }
 

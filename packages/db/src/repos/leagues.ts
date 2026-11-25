@@ -1468,3 +1468,94 @@ export function syncLeagueAchievementsAll(
   }
   return out
 }
+
+// ─── Division detail ────────────────────────────────────────────────────────
+
+export interface LeagueDivisionDetail {
+  tier: DivisionTier
+  /** Current standings: round points and season points per player. */
+  standings: { handle: string; points: number; seasonPoints: number; elo: number }[]
+  /** Every closed round that named a winner in this division (newest first). */
+  roundHistory: { round: number; winner: string; closedAt: string }[]
+  /** Completed and open duels between current members of this division. */
+  duels: { slug: string; playerA: string; playerB: string; status: string; winner: string | null }[]
+  /** Division movement in closed rounds: who entered or left this tier. */
+  movements: {
+    round: number
+    handle: string
+    kind: 'promoted_in' | 'relegated_in' | 'promoted_out' | 'relegated_out'
+  }[]
+}
+
+/**
+ * Focused view of one division: who's in it and how they're doing, the
+ * division's round-win history, its internal duels, and the movement in and
+ * out across closed rounds. Returns null when the league does not exist.
+ */
+export function leagueDivisionDetail(
+  slug: string,
+  tier: DivisionTier,
+  database?: LearningHubDB,
+): LeagueDivisionDetail | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const core = rowsToLeague(league, players)
+  const eloByHandle = new Map(players.map((p) => [p.handle, p.elo]))
+  const standings = divisionStandings(core, tier).map((p) => ({
+    handle: p.handle,
+    points: p.points,
+    seasonPoints: p.seasonPoints,
+    elo: eloByHandle.get(p.handle) ?? 1000,
+  }))
+  const members = new Set(standings.map((p) => p.handle))
+
+  const rounds = conn
+    .select()
+    .from(leagueRounds)
+    .where(eq(leagueRounds.leagueId, league.id))
+    .orderBy(desc(leagueRounds.round))
+    .all()
+
+  const roundHistory: LeagueDivisionDetail['roundHistory'] = []
+  const movements: LeagueDivisionDetail['movements'] = []
+  for (const r of rounds) {
+    for (const w of r.winnersJson) {
+      if (w.tier === tier) {
+        roundHistory.push({ round: r.round, winner: w.handle, closedAt: r.closedAt })
+      }
+    }
+    for (const p of r.promotionsJson) {
+      if (p.to === tier) movements.push({ round: r.round, handle: p.handle, kind: 'promoted_in' })
+      if (p.from === tier)
+        movements.push({ round: r.round, handle: p.handle, kind: 'promoted_out' })
+    }
+    for (const p of r.relegationsJson) {
+      if (p.to === tier) movements.push({ round: r.round, handle: p.handle, kind: 'relegated_in' })
+      if (p.from === tier)
+        movements.push({ round: r.round, handle: p.handle, kind: 'relegated_out' })
+    }
+  }
+
+  const duels = conn
+    .select()
+    .from(leagueDuels)
+    .where(eq(leagueDuels.leagueId, league.id))
+    .orderBy(desc(leagueDuels.id))
+    .all()
+    .filter((d) => members.has(d.playerA) && members.has(d.playerB))
+    .map((d) => ({
+      slug: d.slug,
+      playerA: d.playerA,
+      playerB: d.playerB,
+      status: d.status,
+      winner: d.winner,
+    }))
+
+  return { tier, standings, roundHistory, duels, movements }
+}
