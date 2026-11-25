@@ -91,7 +91,7 @@ const fresh = () =>
 
 async function founderLeague() {
   const founder = await actor()
-  let state = await must(fresh(), founder, { type: 'join', alias: 'Fay' }, T0)
+  const state = await must(fresh(), founder, { type: 'join', alias: 'Fay' }, T0)
   return { founder, state }
 }
 
