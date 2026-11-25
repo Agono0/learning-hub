@@ -24,6 +24,7 @@ import {
   type RoundResult,
 } from './engine'
 import { decideDuel, type Duel, type DuelResult } from './duels'
+import { pruneDuels } from './retention'
 import type { LeagueMutation } from './signed-schemas'
 import type { ReplayLedger, VerifiedMutation } from './signed'
 import { NONCE_RETENTION_MS } from './signed'
@@ -219,9 +220,10 @@ function commit(
     ...state.log,
     { n: accepted, at: now, signer: v.signer, seq: v.seq, type: v.mutation.type },
   ].slice(-MAX_LOG_ENTRIES)
+  const merged: AuthorityState = { ...state, ...patch }
   const next: AuthorityState = {
-    ...state,
-    ...patch,
+    ...merged,
+    duels: pruneDuels(merged.duels, now).duels,
     lastSeq: { ...state.lastSeq, [v.signer]: v.seq },
     nonces: { ...state.nonces, [v.nonce]: now },
     rate: { ...state.rate, [v.signer]: recent },
