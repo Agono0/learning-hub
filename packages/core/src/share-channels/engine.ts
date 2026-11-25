@@ -377,3 +377,121 @@ export function canSubscribe(
     ? { allowed: true }
     : { allowed: false, reason: 'Invite token does not match this channel.' }
 }
+
+/* ==========================================================================
+ * VERSION DIFFS & BATCH APPLICATION
+ * ========================================================================== */
+
+/** A human-readable summary of what changed between two versions. */
+export interface VersionDiff {
+  addedIds: string[]
+  removedIds: string[]
+  changedIds: string[]
+  unchangedIds: string[]
+}
+
+/**
+ * Diff two versions of a channel. Used to surface "what changed" to a
+ * subscriber before they apply an update, and to sanity-check a changelog.
+ */
+export function diffVersions(from: ChannelVersion, to: ChannelVersion): VersionDiff {
+  const fromMap = new Map(from.items.map((i) => [i.id, i]))
+  const toMap = new Map(to.items.map((i) => [i.id, i]))
+  const addedIds: string[] = []
+  const changedIds: string[] = []
+  const unchangedIds: string[] = []
+  for (const item of to.items) {
+    const prev = fromMap.get(item.id)
+    if (!prev) addedIds.push(item.id)
+    else if (prev.revision !== item.revision) changedIds.push(item.id)
+    else unchangedIds.push(item.id)
+  }
+  const removedIds = from.items.filter((i) => !toMap.has(i.id)).map((i) => i.id)
+  return { addedIds, removedIds, changedIds, unchangedIds }
+}
+
+/** All versions a subscriber is behind, oldest first. */
+export function pendingVersions(
+  subscription: Subscription,
+  manifest: ChannelManifest,
+): ChannelVersion[] {
+  return manifest.versions.filter((v) => v.version > subscription.localVersion)
+}
+
+/**
+ * Apply every pending version in order and fold the merge results. Because
+ * each single-version merge is idempotent and learner-state-preserving, the
+ * batch is too: intermediate conflicts are reported once per item (the last
+ * version's state wins the base, the learner's content still wins the item).
+ */
+export function applyAllPendingVersions(
+  localItems: LocalItem[],
+  subscription: Subscription,
+  manifest: ChannelManifest,
+): { items: LocalItem[]; result: MergeResult; appliedVersions: number[] } {
+  const pending = pendingVersions(subscription, manifest)
+  let items = localItems
+  const totals: MergeResult = {
+    addedCount: 0,
+    updatedCount: 0,
+    removedCount: 0,
+    conflictCount: 0,
+    conflicts: [],
+    newVersion: subscription.localVersion || 1,
+  }
+  const applied: number[] = []
+  const conflictSet = new Set<string>()
+  for (const version of pending) {
+    const step = applyChannelUpdate(items, version)
+    items = step.items
+    totals.addedCount += step.result.addedCount
+    totals.updatedCount += step.result.updatedCount
+    totals.removedCount += step.result.removedCount
+    for (const c of step.result.conflicts) conflictSet.add(c)
+    totals.newVersion = version.version
+    applied.push(version.version)
+  }
+  totals.conflictCount = conflictSet.size
+  totals.conflicts = [...conflictSet].sort()
+  return { items, result: totals, appliedVersions: applied }
+}
+
+/* ==========================================================================
+ * V1 ENVELOPE MIGRATION
+ * ========================================================================== */
+
+/**
+ * Upgrade a one-shot lh-share/v1 envelope into a v2 channel manifest at
+ * version 1, so existing shared decks/courses can become living channels
+ * without a fresh export. Item ids come from the envelope data's own id
+ * fields when present, else positional ids are assigned deterministically.
+ */
+export function migrateV1Envelope(input: {
+  envelope: {
+    type: 'deck' | 'course'
+    metadata: { title: string; author?: string; description?: string }
+    data: Record<string, unknown>
+  }
+  channelId: string
+  authorHandle: string
+  visibility: ChannelVisibility
+  now?: string
+}): ChannelManifest {
+  const rawItems = Array.isArray(input.envelope.data.items) ? input.envelope.data.items : []
+  const items = rawItems.map((raw, idx) => {
+    const obj = (raw ?? {}) as Record<string, unknown>
+    const id = typeof obj.id === 'string' && obj.id.length > 0 ? obj.id : `item-${idx + 1}`
+    return { id, content: obj }
+  })
+  return createChannel({
+    channelId: input.channelId,
+    type: input.envelope.type,
+    title: input.envelope.metadata.title,
+    authorHandle: input.authorHandle,
+    visibility: input.visibility,
+    items: items.length > 0 ? items : [{ id: 'item-1', content: input.envelope.data }],
+    description: input.envelope.metadata.description,
+    changelog: 'Migrated from an lh-share/v1 envelope',
+    now: input.now,
+  })
+}

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   acceptChannelVersion,
+  applyAllPendingVersions,
   applyChannelUpdate,
+  diffVersions,
+  migrateV1Envelope,
   canSubscribe,
   issueInviteToken,
   verifyInviteToken,
@@ -220,5 +223,90 @@ describe('invite tokens', () => {
     expect(canSubscribe(invite, token).allowed).toBe(true)
     expect(canSubscribe(invite, 'bogus-token', 'creator-secret').allowed).toBe(false)
     expect(canSubscribe(invite, token, 'creator-secret').allowed).toBe(true)
+  })
+})
+
+describe('diffVersions', () => {
+  it('reports added, removed, changed and unchanged items', () => {
+    const m0 = manifestWithTwo()
+    const m1 = publishUpdate(
+      m0,
+      [
+        { id: 'c1', content: { front: 'What is mitosis?', back: 'Changed' } },
+        { id: 'c3', content: { front: 'Brand new', back: 'Card' } },
+      ],
+      'v2',
+    )
+    const diff = diffVersions(m0.versions[0], m1.versions[1])
+    expect(diff.addedIds).toEqual(['c3'])
+    expect(diff.removedIds).toEqual(['c2'])
+    expect(diff.changedIds).toEqual(['c1'])
+    expect(diff.unchangedIds).toEqual([])
+  })
+})
+
+describe('applyAllPendingVersions', () => {
+  it('folds multiple versions in order and dedupes conflicts', () => {
+    const m0 = manifestWithTwo()
+    const local = localFrom(m0)
+    local[0] = { ...local[0], localContent: { front: 'q', back: 'mine' } }
+    let m = publishUpdate(
+      m0,
+      [{ id: 'c1', content: { front: 'q', back: 'theirs v2' } }, m0.versions[0].items[1]],
+      'v2',
+      '2026-01-02T00:00:00Z',
+    )
+    m = publishUpdate(
+      m,
+      [
+        { id: 'c1', content: { front: 'q', back: 'theirs v3' } },
+        m0.versions[0].items[1],
+        { id: 'c4', content: { front: 'new', back: 'card' } },
+      ],
+      'v3',
+      '2026-01-03T00:00:00Z',
+    )
+    const sub = { ...subscribeToChannel(m.channelId), localVersion: 1 }
+    const { items, result, appliedVersions } = applyAllPendingVersions(local, sub, m)
+    expect(appliedVersions).toEqual([2, 3])
+    expect(result.newVersion).toBe(3)
+    expect(result.addedCount).toBe(1)
+    expect(result.conflicts).toEqual(['c1'])
+    expect(items.find((i) => i.channelItemId === 'c1')?.localContent.back).toBe('mine')
+    expect(items.find((i) => i.channelItemId === 'c1')?.channelContent?.back).toBe('theirs v3')
+  })
+
+  it('is a no-op when the subscription is current', () => {
+    const m = manifestWithTwo()
+    const sub = { ...subscribeToChannel(m.channelId), localVersion: 1 }
+    const { result, appliedVersions } = applyAllPendingVersions(localFrom(m), sub, m)
+    expect(appliedVersions).toEqual([])
+    expect(result.addedCount).toBe(0)
+  })
+})
+
+describe('migrateV1Envelope', () => {
+  it('upgrades a v1 envelope into a v2 channel at version 1', () => {
+    const m = migrateV1Envelope({
+      envelope: {
+        type: 'deck',
+        metadata: { title: 'Old Deck', author: 'legacy' },
+        data: {
+          items: [
+            { id: 'a', front: 'Q', back: 'A' },
+            { front: 'No id', back: 'B' },
+          ],
+        },
+      },
+      channelId: 'ch-legacy',
+      authorHandle: 'study-owl',
+      visibility: 'link',
+      now: '2026-01-01T00:00:00Z',
+    })
+    expect(m.schema).toBe('lh-share/v2')
+    expect(m.currentVersion).toBe(1)
+    const ids = m.versions[0].items.map((i) => i.id)
+    expect(ids).toEqual(['a', 'item-2'])
+    expect(verifyManifest(m).ok).toBe(true)
   })
 })
