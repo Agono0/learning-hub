@@ -28,6 +28,9 @@ import {
   publishUpdate,
   subscribeToChannel,
   verifyManifest,
+  HttpChannelTransport,
+  TransportError,
+  pendingVersions,
 } from '@learning-hub/core/share-channels'
 
 const postSchema = z.discriminatedUnion('action', [
@@ -109,6 +112,20 @@ const postSchema = z.discriminatedUnion('action', [
     localVersion: z.number().int().nonnegative(),
     manifest: ChannelManifestSchema,
   }),
+  z.object({
+    action: z.literal('fetch-manifest'),
+    hostBaseUrl: z.string().url(),
+    channelId: z.string().min(1),
+    inviteToken: z.string().min(1).optional(),
+    ifNoneMatch: z.string().min(4).optional(),
+  }),
+  z.object({
+    action: z.literal('sync-plan'),
+    channelId: z.string().min(1),
+    localVersion: z.number().int().nonnegative(),
+    localItems: z.array(LocalItemSchema),
+    manifest: ChannelManifestSchema,
+  }),
 ])
 
 /** POST /api/share-channels { action, ... } — run one channel engine step. */
@@ -149,6 +166,64 @@ export const POST = withRoute(async (req: Request) => {
         pending: hasPendingUpdate(sub, body.manifest),
         localVersion: body.localVersion,
         currentVersion: body.manifest.currentVersion,
+      })
+    }
+    case 'fetch-manifest': {
+      const transport = new HttpChannelTransport({
+        baseUrl: body.hostBaseUrl,
+        fetchFn: (input, init) => fetch(input, init),
+      })
+      try {
+        const manifest = await transport.fetchManifest(body.channelId, {
+          inviteToken: body.inviteToken,
+          ifNoneMatch: body.ifNoneMatch,
+        })
+        return Response.json({ manifest })
+      } catch (err) {
+        if (err instanceof TransportError) {
+          const status =
+            err.code === 'not-found'
+              ? 404
+              : err.code === 'unauthorized'
+                ? 403
+                : err.code === 'invalid-manifest' || err.code === 'checksum-mismatch'
+                  ? 422
+                  : 502
+          return Response.json({ error: err.message, code: err.code }, { status })
+        }
+        return Response.json(
+          { error: err instanceof Error ? err.message : String(err), code: 'network' },
+          { status: 502 },
+        )
+      }
+    }
+    case 'sync-plan': {
+      const sub = { ...subscribeToChannel(body.channelId), localVersion: body.localVersion }
+      const pending = pendingVersions(sub, body.manifest)
+      const byVersion = new Map(body.manifest.versions.map((v) => [v.version, v]))
+      const steps = pending.map((v) => {
+        const prev = byVersion.get(v.version - 1)
+        return {
+          version: v.version,
+          publishedAt: v.publishedAt,
+          changelog: v.changelog,
+          diff: prev
+            ? diffVersions(prev, v)
+            : {
+                addedIds: v.items.map((i) => i.id),
+                removedIds: [],
+                changedIds: [],
+                unchangedIds: [],
+              },
+        }
+      })
+      const preview = applyAllPendingVersions(body.localItems, sub, body.manifest)
+      return Response.json({
+        pending: pending.length > 0,
+        pendingCount: pending.length,
+        steps,
+        preview: preview.result,
+        conflictIds: preview.result.conflicts,
       })
     }
   }

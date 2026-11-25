@@ -23,6 +23,15 @@ import {
   subscribeToChannel,
   verifyManifest,
 } from '@learning-hub/core'
+import {
+  DbChannelSyncStore,
+  listChannelSubscriptions,
+  listSyncRecords,
+  refreshSubscriptionManifestView,
+  setSubscriptionHost,
+  syncSubscriptionOverHttp,
+  syncAllSubscriptions,
+} from '@learning-hub/db'
 import { sendJson, readJson } from '../http'
 import type { Route } from './shared'
 
@@ -290,3 +299,142 @@ async function postChannelCheckAccess(req: IncomingMessage, res: ServerResponse)
   const body = await readJson(req, accessBodySchema)
   sendJson(res, 200, { ok: true, gate: canSubscribe(body.manifest, body.inviteToken) })
 }
+
+/* ==========================================================================
+ * SYNC ROUTES — remote transport + coordinator over local SQLite state
+ * ========================================================================== */
+
+const subscribeBodySchema = z.object({
+  manifest: ChannelManifestSchema,
+  inviteToken: z.string().min(1).optional(),
+  hostBaseUrl: z.string().url().optional(),
+})
+
+/**
+ * POST /share/channels/subscribe — subscribe to a channel: verifies the
+ * manifest, checks the visibility gate, seeds local items from the current
+ * version snapshot and records the subscription (with its host) locally.
+ */
+async function postChannelSubscribe(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, subscribeBodySchema)
+  const check = verifyManifest(body.manifest)
+  if (!check.ok) {
+    sendJson(res, 400, {
+      ok: false,
+      error: `checksum mismatch in versions: ${check.badVersions.join(', ')}`,
+    })
+    return
+  }
+  const access = canSubscribe(body.manifest, body.inviteToken)
+  if (!access.allowed) {
+    sendJson(res, 403, { ok: false, error: access.reason })
+    return
+  }
+  const store = new DbChannelSyncStore()
+  if (store.getSubscription(body.manifest.channelId)) {
+    sendJson(res, 409, { ok: false, error: 'already subscribed to this channel' })
+    return
+  }
+  const fresh = subscribeToChannel(body.manifest.channelId)
+  const seeded = applyAllPendingVersions([], fresh, body.manifest)
+  store.saveLocalItems(body.manifest.channelId, seeded.items)
+  store.saveSubscription({ ...fresh, localVersion: seeded.result.newVersion, lastSyncAt: null })
+  refreshSubscriptionManifestView({
+    channelId: body.manifest.channelId,
+    title: body.manifest.title,
+    authorHandle: body.manifest.authorHandle,
+    contentType: body.manifest.type,
+    visibility: body.manifest.visibility,
+    seenVersion: body.manifest.currentVersion,
+  })
+  if (body.hostBaseUrl) setSubscriptionHost(body.manifest.channelId, body.hostBaseUrl)
+  sendJson(res, 200, {
+    ok: true,
+    subscription: store.getSubscription(body.manifest.channelId),
+    itemCount: seeded.items.length,
+    localVersion: seeded.result.newVersion,
+  })
+}
+
+/** GET /share/channels/subscriptions — dashboard roster with pending flags */
+async function getChannelSubscriptions(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  sendJson(res, 200, { ok: true, subscriptions: listChannelSubscriptions() })
+}
+
+const syncOneBodySchema = z.object({
+  channelId: z.string().min(1),
+  /** Overrides the recorded host for this sync (does not persist). */
+  hostBaseUrl: z.string().url().optional(),
+})
+
+/** POST /share/channels/sync — sync one subscription against its host */
+async function postChannelSync(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, syncOneBodySchema)
+  const store = new DbChannelSyncStore()
+  if (!store.getSubscription(body.channelId)) {
+    sendJson(res, 404, { ok: false, error: 'no local subscription for this channel' })
+    return
+  }
+  const row = listChannelSubscriptions().find((r) => r.channelId === body.channelId)
+  const record = await syncSubscriptionOverHttp(
+    store,
+    body.channelId,
+    body.hostBaseUrl ?? row?.hostBaseUrl ?? null,
+    fetch,
+  )
+  sendJson(res, record.outcome === 'failed' ? 502 : 200, {
+    ok: record.outcome !== 'failed',
+    record,
+  })
+}
+
+/** POST /share/channels/sync-all — sync every hosted subscription, grouped by host */
+async function postChannelSyncAll(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const store = new DbChannelSyncStore()
+  const summary = await syncAllSubscriptions(store, listChannelSubscriptions(), fetch)
+  sendJson(res, 200, { ok: true, summary, records: summary.records })
+}
+
+const syncRecordsBodySchema = z.object({
+  channelId: z.string().min(1),
+  limit: z.number().int().positive().max(100).optional(),
+})
+
+/** POST /share/channels/sync-records — recent sync history for one channel */
+async function postChannelSyncRecords(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, syncRecordsBodySchema)
+  sendJson(res, 200, { ok: true, records: listSyncRecords(body.channelId, { limit: body.limit }) })
+}
+
+shareChannelRoutes.push(
+  {
+    method: 'POST',
+    path: '/share/channels/subscribe',
+    summary: 'subscribe to a channel: verify, gate-check, seed items, record subscription',
+    handler: postChannelSubscribe,
+  },
+  {
+    method: 'GET',
+    path: '/share/channels/subscriptions',
+    summary: 'list local subscriptions with manifest view fields and pending flags',
+    handler: getChannelSubscriptions,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/sync',
+    summary: 'sync one subscription against its recorded host',
+    handler: postChannelSync,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/sync-all',
+    summary: 'sync every hosted subscription, grouped by host',
+    handler: postChannelSyncAll,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/sync-records',
+    summary: 'list recent sync records for a channel (newest first)',
+    handler: postChannelSyncRecords,
+  },
+)

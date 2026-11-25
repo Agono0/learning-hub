@@ -26,6 +26,8 @@ export interface ChannelSubscriptionRow extends Subscription {
   visibility: string
   /** Manifest's currentVersion as last seen by a sync. */
   seenVersion: number
+  /** Where the channel is hosted; null when local-only. */
+  hostBaseUrl: string | null
   /** Convenience flag: the publisher has versions we have not applied. */
   hasPending: boolean
 }
@@ -40,6 +42,7 @@ interface SubscriptionSqlRow {
   content_type: string
   visibility: string
   seen_version: number
+  host_base_url: string | null
 }
 
 interface ItemSqlRow {
@@ -84,6 +87,7 @@ function rowToSubscription(row: SubscriptionSqlRow): ChannelSubscriptionRow {
     contentType: row.content_type,
     visibility: row.visibility,
     seenVersion: row.seen_version,
+    hostBaseUrl: row.host_base_url,
     hasPending: row.seen_version > row.local_version,
   }
 }
@@ -259,6 +263,18 @@ export function refreshSubscriptionManifestView(input: {
       input.seenVersion,
       input.channelId,
     )
+}
+
+/** Record where a channel is hosted so sync-all can group subscriptions by host. */
+export function setSubscriptionHost(
+  channelId: string,
+  hostBaseUrl: string | null,
+  opts: { database?: RawSqliteHandle } = {},
+): void {
+  const database = opts.database ?? getRawDb()
+  database
+    .prepare('UPDATE "share_channel_subscriptions" SET host_base_url = ? WHERE channel_id = ?')
+    .run(hostBaseUrl, channelId)
 }
 
 /** Most recent sync records for one channel, newest first. */

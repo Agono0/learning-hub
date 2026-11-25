@@ -25,7 +25,17 @@ import {
   publishUpdate,
   subscribeToChannel,
   verifyManifest,
+  type SyncRecord,
 } from '@learning-hub/core'
+import {
+  DbChannelSyncStore,
+  listChannelSubscriptions,
+  listSyncRecords,
+  refreshSubscriptionManifestView,
+  setSubscriptionHost,
+  syncSubscriptionOverHttp,
+  syncAllSubscriptions,
+} from '@learning-hub/db'
 
 export const shareChannelTools: RegisteredTool[] = [
   tool(
@@ -208,6 +218,108 @@ export const shareChannelTools: RegisteredTool[] = [
           itemCount: v.items.length,
         })),
       })
+    },
+  ),
+  tool(
+    'share_channel_subscribe',
+    'Subscribes to a channel locally: verifies checksums, checks the visibility gate (invite token for invite-only channels), seeds local items from the current version snapshot and records the subscription with its host in the local database.',
+    {
+      manifest: ChannelManifestSchema,
+      inviteToken: z.string().min(1).optional().describe('Required for invite-only channels.'),
+      hostBaseUrl: z
+        .string()
+        .url()
+        .optional()
+        .describe('Where the channel is hosted; recorded for later syncs.'),
+    },
+    async ({ manifest, inviteToken, hostBaseUrl }) => {
+      const check = verifyManifest(manifest)
+      if (!check.ok) {
+        return json({
+          ok: false,
+          error: `checksum mismatch in versions: ${check.badVersions.join(', ')}`,
+        })
+      }
+      const access = canSubscribe(manifest, inviteToken)
+      if (!access.allowed) return json({ ok: false, error: access.reason })
+      const store = new DbChannelSyncStore()
+      if (store.getSubscription(manifest.channelId)) {
+        return json({ ok: false, error: 'already subscribed to this channel' })
+      }
+      const fresh = subscribeToChannel(manifest.channelId)
+      const seeded = applyAllPendingVersions([], fresh, manifest)
+      store.saveLocalItems(manifest.channelId, seeded.items)
+      store.saveSubscription({ ...fresh, localVersion: seeded.result.newVersion })
+      refreshSubscriptionManifestView({
+        channelId: manifest.channelId,
+        title: manifest.title,
+        authorHandle: manifest.authorHandle,
+        contentType: manifest.type,
+        visibility: manifest.visibility,
+        seenVersion: manifest.currentVersion,
+      })
+      if (hostBaseUrl) setSubscriptionHost(manifest.channelId, hostBaseUrl)
+      return json({
+        ok: true,
+        subscription: store.getSubscription(manifest.channelId),
+        itemCount: seeded.items.length,
+        localVersion: seeded.result.newVersion,
+      })
+    },
+  ),
+  tool(
+    'share_channel_list_subscriptions',
+    'Lists local channel subscriptions with manifest view fields (title, author handle, visibility) and a hasPending flag when the publisher has versions the learner has not applied.',
+    {},
+    async () => {
+      return json({ subscriptions: listChannelSubscriptions() })
+    },
+  ),
+  tool(
+    'share_channel_sync',
+    'Syncs one subscription against its recorded host: fetches the manifest, refreshes the dashboard view, and applies pending versions through the learner-state-preserving merge. Every attempt is written to the sync log.',
+    {
+      channelId: z.string().min(1),
+      hostBaseUrl: z
+        .string()
+        .url()
+        .optional()
+        .describe('Overrides the recorded host for this sync.'),
+    },
+    async ({ channelId, hostBaseUrl }) => {
+      const store = new DbChannelSyncStore()
+      if (!store.getSubscription(channelId)) {
+        return json({ ok: false, error: 'no local subscription for this channel' })
+      }
+      const row = listChannelSubscriptions().find((r) => r.channelId === channelId)
+      const record: SyncRecord = await syncSubscriptionOverHttp(
+        store,
+        channelId,
+        hostBaseUrl ?? row?.hostBaseUrl ?? null,
+        fetch,
+      )
+      return json({ ok: record.outcome !== 'failed', record })
+    },
+  ),
+  tool(
+    'share_channel_sync_all',
+    'Syncs every local subscription against its recorded host and returns a summary plus one record per channel.',
+    {},
+    async () => {
+      const store = new DbChannelSyncStore()
+      const summary = await syncAllSubscriptions(store, listChannelSubscriptions(), fetch)
+      return json({ ok: true, summary, records: summary.records })
+    },
+  ),
+  tool(
+    'share_channel_sync_records',
+    'Lists recent sync records for a channel, newest first: outcome, versions moved, merge counts and error details for failures.',
+    {
+      channelId: z.string().min(1),
+      limit: z.number().int().positive().max(100).optional(),
+    },
+    async ({ channelId, limit }) => {
+      return json({ records: listSyncRecords(channelId, { limit }) })
     },
   ),
 ]

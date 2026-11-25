@@ -26,6 +26,15 @@ import {
   subscribeToChannel,
   verifyManifest,
 } from '@learning-hub/core'
+import {
+  DbChannelSyncStore,
+  listChannelSubscriptions,
+  listSyncRecords,
+  refreshSubscriptionManifestView,
+  setSubscriptionHost,
+  syncSubscriptionOverHttp,
+  syncAllSubscriptions,
+} from '@learning-hub/db'
 
 function parseFlag(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag)
@@ -260,13 +269,151 @@ function shareChannelsCommand(args: string[]): void {
       }
       return
     }
+    case 'subscribe': {
+      const body = readJsonPayload(args) as {
+        manifest: unknown
+        inviteToken?: string
+        hostBaseUrl?: string
+      }
+      const manifest = ChannelManifestSchema.parse(body.manifest)
+      const check = verifyManifest(manifest)
+      if (!check.ok) {
+        console.error(`checksum mismatch in versions: ${check.badVersions.join(', ')}`)
+        process.exitCode = 1
+        return
+      }
+      const access = canSubscribe(manifest, body.inviteToken)
+      if (!access.allowed) {
+        console.error(access.reason)
+        process.exitCode = 1
+        return
+      }
+      const store = new DbChannelSyncStore()
+      if (store.getSubscription(manifest.channelId)) {
+        console.error('already subscribed to this channel')
+        process.exitCode = 1
+        return
+      }
+      const fresh = subscribeToChannel(manifest.channelId)
+      const seeded = applyAllPendingVersions([], fresh, manifest)
+      store.saveLocalItems(manifest.channelId, seeded.items)
+      store.saveSubscription({ ...fresh, localVersion: seeded.result.newVersion })
+      refreshSubscriptionManifestView({
+        channelId: manifest.channelId,
+        title: manifest.title,
+        authorHandle: manifest.authorHandle,
+        contentType: manifest.type,
+        visibility: manifest.visibility,
+        seenVersion: manifest.currentVersion,
+      })
+      if (body.hostBaseUrl) setSubscriptionHost(manifest.channelId, body.hostBaseUrl)
+      if (asJson) {
+        console.log(
+          JSON.stringify({
+            ok: true,
+            subscription: store.getSubscription(manifest.channelId),
+            itemCount: seeded.items.length,
+          }),
+        )
+      } else {
+        console.log(`\nSubscribed to ${manifest.channelId} (${manifest.title})`)
+        console.log(`Version: ${seeded.result.newVersion} (${seeded.items.length} items)`)
+        if (body.hostBaseUrl) console.log(`Host:    ${body.hostBaseUrl}`)
+      }
+      return
+    }
+    case 'subscriptions': {
+      const rows = listChannelSubscriptions()
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, subscriptions: rows }))
+      } else {
+        console.log(`\nChannel subscriptions (${rows.length})`)
+        for (const r of rows) {
+          const pending = r.hasPending
+            ? ` — ${r.seenVersion - r.localVersion} update(s) waiting`
+            : ''
+          console.log(
+            `  ${r.channelId}  v${r.localVersion}  ${r.title || '(untitled)'} by ${r.authorHandle || '?'}${pending}`,
+          )
+        }
+      }
+      return
+    }
     default:
       console.error(`unknown subcommand: ${sub}`)
       console.error(
-        'usage: share-channels [create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access] [--json]',
+        'usage: share-channels [create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access|subscribe|subscriptions|sync|sync-all|sync-records] [--json]',
       )
       process.exitCode = 1
   }
+}
+
+async function shareChannelsSyncCommand(args: string[]): Promise<void> {
+  const sub = args[0]
+  const asJson = hasFlag(args, '--json')
+  const store = new DbChannelSyncStore()
+  if (sub === 'sync' || sub === 'sync-records') {
+    const channelId = args[1]
+    if (!channelId) {
+      console.error(`usage: share-channels ${sub} <channelId> [--json]`)
+      process.exitCode = 1
+      return
+    }
+    if (sub === 'sync-records') {
+      const records = listSyncRecords(channelId)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, records }))
+      } else {
+        console.log(`\nSync records for ${channelId} (${records.length})`)
+        for (const r of records) {
+          console.log(
+            `  ${r.at}  ${r.outcome}  v${r.fromVersion} -> v${r.toVersion}${r.errorMessage ? `  (${r.errorMessage})` : ''}`,
+          )
+        }
+      }
+      return
+    }
+    if (!store.getSubscription(channelId)) {
+      console.error('no local subscription for this channel')
+      process.exitCode = 1
+      return
+    }
+    const row = listChannelSubscriptions().find((r) => r.channelId === channelId)
+    const record = await syncSubscriptionOverHttp(
+      store,
+      channelId,
+      parseFlag(args, '--host') ?? row?.hostBaseUrl ?? null,
+      fetch,
+    )
+    if (asJson) {
+      console.log(JSON.stringify({ ok: record.outcome !== 'failed', record }))
+    } else {
+      console.log(
+        record.outcome === 'updated'
+          ? `\nUpdated ${channelId}: v${record.fromVersion} -> v${record.toVersion}`
+          : record.outcome === 'already-current'
+            ? `\n${channelId} is already current (v${record.toVersion})`
+            : `\nSync failed for ${channelId}: ${record.errorMessage}`,
+      )
+    }
+    return
+  }
+  if (sub === 'sync-all') {
+    const summary = await syncAllSubscriptions(store, listChannelSubscriptions(), fetch)
+    if (asJson) {
+      console.log(JSON.stringify({ ok: true, summary, records: summary.records }))
+    } else {
+      console.log(
+        `\nSync complete: ${summary.checked} checked, ${summary.updated} updated, ${summary.alreadyCurrent} current, ${summary.failed} failed`,
+      )
+      for (const r of summary.records.filter((rec) => rec.outcome !== 'already-current')) {
+        console.log(`  ${r.channelId}: ${r.outcome}`)
+      }
+    }
+    return
+  }
+  console.error(`unknown subcommand: ${sub}`)
+  process.exitCode = 1
 }
 
 export const shareChannelCommands: RegisteredCommand[] = [
@@ -274,7 +421,13 @@ export const shareChannelCommands: RegisteredCommand[] = [
     name: 'share-channels',
     description: 'lh-share/v2 versioned shared material channels (create, publish, apply, verify)',
     usage:
-      '[create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access]',
-    run: (runArgs) => shareChannelsCommand(runArgs),
+      '[create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access|subscribe|subscriptions|sync|sync-all|sync-records]',
+    run: async (runArgs) => {
+      if (['sync', 'sync-all', 'sync-records'].includes(runArgs[0] ?? '')) {
+        await shareChannelsSyncCommand(runArgs)
+      } else {
+        shareChannelsCommand(runArgs)
+      }
+    },
   },
 ]

@@ -2066,6 +2066,8 @@ export const shareChannelSubscriptions = table('share_channel_subscriptions', {
   visibility: text('visibility').notNull().default('link'), // 'link' | 'invite'
   /** Manifest's currentVersion as last seen; > localVersion means updates wait. */
   seenVersion: integer('seen_version').notNull().default(0),
+  /** Where this channel is hosted; null means local-only (no remote sync). */
+  hostBaseUrl: text('host_base_url'),
 })
 
 export const shareChannelItems = table(
