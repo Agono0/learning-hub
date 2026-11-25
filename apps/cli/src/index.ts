@@ -71,6 +71,7 @@ import {
 } from './commands/advanced-learning'
 import { prototypeExemplarCommands } from './commands/prototype-exemplar'
 import { feedbackCommands } from './commands/feedback'
+import { shareChannelCommands } from './commands/share-channels'
 import { cognitiveLoadCommands } from './commands/cognitive-load'
 import { dualcodingCommands } from './commands/dualcoding'
 
@@ -140,6 +141,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...modelInquiryCommands,
   ...prototypeExemplarCommands,
   ...feedbackCommands,
+  ...shareChannelCommands,
   ...cognitiveLoadCommands,
   ...dualcodingCommands,
   ...knowledgeSpaceCommands,
