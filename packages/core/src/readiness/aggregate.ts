@@ -1,7 +1,7 @@
 import {
   MIN_USEFUL_REPS,
   type CardForecast,
-  type Confidence,
+  type ReadinessConfidence,
   type GroupReadiness,
   type ReadinessCard,
 } from './model'
@@ -63,7 +63,7 @@ export function groupBy(
  * reviewed enough times for FSRS stability to be meaningful. Thresholds are
  * plain product choices, stated in the reason text.
  */
-export function assessConfidence(cards: readonly ReadinessCard[]): Confidence {
+export function assessConfidence(cards: readonly ReadinessCard[]): ReadinessConfidence {
   const live = cards.filter((c) => !c.suspended)
   const seen = live.filter((c) => c.state !== 0 && c.stability > 0 && c.lastReview !== null)
   const established = seen.filter((c) => c.reps >= MIN_USEFUL_REPS).length

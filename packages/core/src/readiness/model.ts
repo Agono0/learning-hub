@@ -67,15 +67,15 @@ export interface GroupReadiness {
   atTarget: number
 }
 
-export type ConfidenceLevel = 'insufficient' | 'low' | 'moderate' | 'good'
+export type ReadinessConfidenceLevel = 'insufficient' | 'low' | 'moderate' | 'good'
 
 /**
  * How much study history the forecast stands on. This is a data-sufficiency
  * label, NOT a statistical confidence interval: no calibration against real
  * exam results exists, so none is claimed.
  */
-export interface Confidence {
-  level: ConfidenceLevel
+export interface ReadinessConfidence {
+  level: ReadinessConfidenceLevel
   /** Why the level was chosen, in plain words for the learner. */
   reason: string
   seenCards: number
@@ -92,7 +92,7 @@ export interface ReadinessReport {
   overall: GroupReadiness
   decks: GroupReadiness[]
   skills: GroupReadiness[]
-  confidence: Confidence
+  confidence: ReadinessConfidence
   /** Plain-language limits of this forecast, to show next to the numbers. */
   assumptions: string[]
   /** True when the exam date is today or already past, so no review can help. */
