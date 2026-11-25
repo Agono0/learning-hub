@@ -236,6 +236,23 @@ describe('handlers use the bound', () => {
     expect(msg).not.toMatch(/SECRETTOKEN|QUERYSECRET|calendar\.example/)
   })
 
+  it('the pinned slot is shared by separate copies of the module (bundle split)', async () => {
+    vi.resetModules()
+    const a = await import('../src/server/bounded-fetch')
+    vi.resetModules()
+    const b = await import('../src/server/bounded-fetch')
+    expect(a.boundedFetchText).not.toBe(b.boundedFetchText) // really two module instances
+    const stub = vi.fn(async () => ok('via-slot'))
+    a.setPinnedFetch(stub) // what the instrumentation bundle does
+    const r = await b.boundedFetchText('https://example.com/a', base) // what a route bundle does
+    expect(r.text).toBe('via-slot')
+    expect(stub).toHaveBeenCalledTimes(1)
+    a.setPinnedFetch(null)
+    await expect(b.boundedFetchText('https://example.com/a', base)).rejects.toMatchObject({
+      code: 'network',
+    })
+  })
+
   it('http is allowed for article ingest only (preserved), never for calendar import', async () => {
     const f = vi.fn(async () => ok('<html><body><p>short</p></body></html>'))
     vi.stubGlobal('fetch', f)
