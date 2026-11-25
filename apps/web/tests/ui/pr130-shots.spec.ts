@@ -10,6 +10,12 @@ const LEAGUE = 'shots-league'
 
 test.beforeAll(async ({ request }) => {
   const post = (data: unknown) => request.post('/api/leagues', { data })
+  // Seeding survives a re-run of this hook (e.g. after an earlier test
+  // failed): if the league already exists, everything below already ran.
+  const list = (await (await request.get('/api/leagues?view=list')).json()) as {
+    leagues?: { slug: string }[]
+  }
+  if (list.leagues?.some((l) => l.slug === LEAGUE)) return
   expect(
     (
       await post({
@@ -126,7 +132,7 @@ test('capture all /leagues surfaces', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Duels' }).click()
   await expect(page.getByTestId('duel-stats')).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByTestId('duel-list').getByText('shots-duel')).toBeVisible()
+  await expect(page.getByTestId('duel-list').getByText('shots-duel', { exact: true })).toBeVisible()
   await page.screenshot({ path: 'shots/pr130-leagues-duels.png', fullPage: true })
 
   // guided question-by-question play on the open duel
