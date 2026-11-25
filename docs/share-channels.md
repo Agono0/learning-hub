@@ -67,8 +67,8 @@ the subscriber's local items:
 - `apps/mcp/src/tools/share-channels.ts` — `share_channel_*` tools,
   including subscribe/list/sync/sync-all/sync-records/import.
 - `apps/cli/src/commands/share-channels.ts` — `learning-hub share-channels
-  [create|publish|apply|verify|describe|status|subscribe|subscriptions|
-  sync|sync-all|sync-records|import]`.
+[create|publish|apply|verify|describe|status|subscribe|subscriptions|
+sync|sync-all|sync-records|import]`.
 - `apps/web/src/server/handlers/share-channels/route.ts` — runtime-neutral
   engine actions plus `fetch-manifest` (HTTP transport) and `sync-plan`
   (per-version diffs + merge preview); `apps/web/app/shared/page.tsx` hosts
@@ -83,6 +83,65 @@ Learning HUB instance. Subscribers record the host URL when subscribing;
 `sync` then fetches, verifies schema and checksums, and applies pending
 versions through the learner-state-preserving merge. Hosts that support
 `If-None-Match` get conditional 304 responses for free.
+
+## Local hosting
+
+A Learning HUB instance can host channels itself, which makes it a real peer
+for the HTTP transport (subscribers point their `hostBaseUrl` at it) and the
+anchor for collaboration. Hosted manifests live in the
+`share_channel_manifests` table and are managed through:
+
+- Server routes: `POST /share/host`, `/share/host/list`, `/share/host/get`,
+  `/share/host/publish`, `/share/host/unhost`.
+- Web actions on `/api/share-channels`: `host`, `host-list`, `host-get`,
+  `host-publish`, `host-unhost`.
+- MCP tools: `share_channel_host`, `share_channel_list_hosted`,
+  `share_channel_hosted_manifest`, `share_channel_publish_hosted_update`,
+  `share_channel_unhost`.
+- CLI: `learning-hub share-channels
+[host|host-list|host-get|host-publish|host-unhost]`.
+- The `/shared` page Hosting tab lists hosted channels and can host a
+  published manifest or unhost a channel.
+
+`publish-from-library` (server route, MCP tool, CLI subcommand) turns an
+existing deck or course into a channel in one step. Item ids derive from
+stable card ids and lesson slugs, so a learner's merge state survives
+republishes; cards whose format is not channel-transportable are skipped and
+reported.
+
+## Subscription pull requests
+
+Subscribers can propose changes to a hosted channel instead of only
+receiving them. A proposal is a titled set of operations (`upsert` an item
+by id+content, or `remove` an item id) against the channel's current
+version. The owner reviews proposals and accepts or declines; accepting
+applies the operations onto the CURRENT version — which may be newer than
+the proposal's base — and publishes the result as the next version, so every
+subscriber receives accepted work through the normal sync path. Proposals
+live in the `channel_proposals` table.
+
+- Server routes: `POST /share/proposals/create`, `/share/proposals/list`,
+  `/share/proposals/decide`.
+- Web actions: `proposal-create`, `proposal-list`, `proposal-decide`.
+- MCP tools: `share_channel_propose`, `share_channel_list_proposals`,
+  `share_channel_decide_proposal`.
+- CLI: `propose`, `proposals`, `proposal-decide`.
+- The Hosting tab has a per-channel proposal inbox with accept/decline and a
+  submission form.
+
+## Analytics and sync health
+
+`manifestAnalytics` (core) derives per-version activity (items added,
+removed, changed), lifetime totals and a churn rate from any manifest. The
+db layer composes that with proposal stats — totals by status and top
+contributors by accepted proposals — for hosted channels, and summarizes
+subscriber-side sync outcomes per channel (`subscriptionSyncStats`).
+
+- Server routes: `POST /share/host/analytics`,
+  `POST /share/channels/sync-stats`.
+- Web actions: `host-analytics`, `sync-stats`.
+- MCP tools: `share_channel_hosted_analytics`, `share_channel_sync_stats`.
+- Each hosted channel on the Hosting tab has an Analytics block.
 
 ## What a later PR adds
 

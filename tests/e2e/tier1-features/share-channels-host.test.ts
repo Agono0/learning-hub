@@ -202,3 +202,65 @@ describe('unhost', () => {
     expect(propose.status).toBe(422)
   })
 })
+
+describe('channel analytics routes', () => {
+  const analyticsChannel = 'ch-analytics-e2e'
+
+  it('reports version activity and proposal stats for a hosted channel', async () => {
+    const hosted = await post('/share/host', {
+      manifest: createChannel({
+        channelId: analyticsChannel,
+        type: 'deck',
+        title: 'Analytics E2E',
+        authorHandle: 'owner-e2e',
+        visibility: 'link',
+        items: [{ id: 'x1', content: { front: 'X1?', back: 'A' } }],
+        now: '2026-01-01T00:00:00Z',
+      }),
+    })
+    expect(hosted.status).toBe(200)
+
+    const published = await post('/share/host/publish', {
+      channelId: analyticsChannel,
+      items: [
+        { id: 'x1', content: { front: 'X1 edited?', back: 'A' } },
+        { id: 'x2', content: { front: 'X2?', back: 'B' } },
+      ],
+      changelog: 'v2',
+    })
+    expect(published.status).toBe(200)
+
+    const proposal = await post('/share/proposals/create', {
+      channelId: analyticsChannel,
+      authorHandle: 'fox-e2e',
+      title: 'improve x2',
+      operations: [
+        { kind: 'upsert', item: { id: 'x2', content: { front: 'X2 better?', back: 'B' } } },
+      ],
+    })
+    await post('/share/proposals/decide', {
+      proposalId: proposal.json.proposal.id,
+      decision: 'accept',
+    })
+
+    const res = await post('/share/host/analytics', { channelId: analyticsChannel })
+    expect(res.status).toBe(200)
+    const a = res.json.analytics
+    expect(a.currentVersion).toBe(3)
+    expect(a.itemCount).toBe(2)
+    expect(a.lifetime.added).toBe(2) // x1 at v1, x2 at v2
+    expect(a.lifetime.changed).toBe(2) // x1 at v2, x2 at v3
+    expect(a.versions).toHaveLength(3)
+    expect(a.proposals.total).toBe(1)
+    expect(a.proposals.accepted).toBe(1)
+    expect(a.proposals.topContributors[0]).toEqual({ authorHandle: 'fox-e2e', accepted: 1 })
+  })
+
+  it('404s analytics for unhosted channels and reports empty sync stats', async () => {
+    const missing = await post('/share/host/analytics', { channelId: 'ch-ghost' })
+    expect(missing.status).toBe(404)
+    const stats = await post('/share/channels/sync-stats', { channelId: 'ch-ghost' })
+    expect(stats.status).toBe(200)
+    expect(stats.json.stats.totalSyncs).toBe(0)
+  })
+})
