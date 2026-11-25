@@ -18,7 +18,8 @@
  *  - A bad_seq verdict is not the item's fault: it retries without counting
  *    an attempt, after the caller bumps its sequence counter.
  */
-import type { LeagueMutation } from './signed-schemas'
+import { z } from 'zod'
+import { LeagueMutationSchema, type LeagueMutation } from './signed-schemas'
 
 export const SYNC_QUEUE_SCHEMA = 'lh-league-sync/v1'
 
@@ -287,3 +288,23 @@ export function summarizeQueue(queue: SyncQueue): SyncQueueSummary {
     nextWakeAt: nextWakeAt(queue),
   }
 }
+
+/** Schema for a queue read back from storage: corrupt rows must not poison a flush. */
+export const SyncQueueSchema = z.object({
+  schema: z.literal(SYNC_QUEUE_SCHEMA),
+  counter: z.number().int().nonnegative(),
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(40),
+        lane: z.string().min(1).max(120),
+        mutation: LeagueMutationSchema,
+        createdAt: z.number().int().nonnegative(),
+        attempts: z.number().int().nonnegative().max(MAX_ATTEMPTS),
+        nextAttemptAt: z.number().int().nonnegative(),
+        status: z.enum(['pending', 'sent', 'rejected', 'dead']),
+        lastCode: z.string().max(80).nullable(),
+      }),
+    )
+    .max(MAX_QUEUE_ITEMS * 2),
+})

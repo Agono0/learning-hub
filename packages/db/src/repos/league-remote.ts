@@ -7,7 +7,14 @@
  * database only remembers where it stopped signing.
  */
 import { and, eq } from 'drizzle-orm'
-import { leagueRemoteLinks } from '../schema'
+import {
+  SyncQueueSchema,
+  createSyncQueue,
+  enqueue,
+  type LeagueMutation,
+  type SyncQueue,
+} from '@learning-hub/core/leagues'
+import { leagueRemoteLinks, leagueRemoteQueues } from '../schema'
 import { getDb, type LearningHubDB } from '../index'
 import { withTransaction } from '../transaction'
 
@@ -144,4 +151,70 @@ export function recordRemoteOutcome(
     .set({ lastStatus: status.slice(0, 60), lastSyncedAt: now.toISOString() })
     .where(eq(leagueRemoteLinks.id, linkId))
     .run()
+}
+
+// ─── Offline queue persistence ──────────────────────────────────────────────
+
+/**
+ * Load the stored queue for a link. A missing row is an empty queue; a row
+ * that no longer parses (manual edit, older schema) is treated as empty
+ * rather than thrown, so one bad document cannot wedge syncing. The caller
+ * sees `recovered: true` and can tell the user their queue was reset.
+ */
+export function loadLeagueQueue(
+  linkId: number,
+  database?: LearningHubDB,
+): { queue: SyncQueue; recovered: boolean } {
+  const conn = database ?? getDb()
+  const row = conn
+    .select()
+    .from(leagueRemoteQueues)
+    .where(eq(leagueRemoteQueues.linkId, linkId))
+    .get()
+  if (!row) return { queue: createSyncQueue(), recovered: false }
+  try {
+    const parsed = SyncQueueSchema.safeParse(JSON.parse(row.queueJson))
+    if (parsed.success) return { queue: parsed.data as SyncQueue, recovered: false }
+  } catch {
+    // fall through to the reset below
+  }
+  return { queue: createSyncQueue(), recovered: true }
+}
+
+export function saveLeagueQueue(
+  linkId: number,
+  queue: SyncQueue,
+  now: Date = new Date(),
+  database?: LearningHubDB,
+): void {
+  const valid = SyncQueueSchema.parse(queue)
+  const conn = database ?? getDb()
+  const queueJson = JSON.stringify(valid)
+  conn
+    .insert(leagueRemoteQueues)
+    .values({ linkId, queueJson, updatedAt: now.toISOString() })
+    .onConflictDoUpdate({
+      target: leagueRemoteQueues.linkId,
+      set: { queueJson, updatedAt: now.toISOString() },
+    })
+    .run()
+}
+
+/**
+ * Queue one mutation for a link in a single transaction (load, enqueue,
+ * save), so two concurrent callers cannot overwrite each other's item.
+ * Throws SyncQueueFullError when the queue is at capacity.
+ */
+export function enqueueLeagueMutation(
+  linkId: number,
+  mutation: LeagueMutation,
+  now: Date = new Date(),
+  database?: LearningHubDB,
+): { itemId: string; queue: SyncQueue } {
+  return withTransaction((tx) => {
+    const { queue } = loadLeagueQueue(linkId, tx as unknown as LearningHubDB)
+    const next = enqueue(queue, mutation, now.getTime())
+    saveLeagueQueue(linkId, next.queue, now, tx as unknown as LearningHubDB)
+    return { itemId: next.id, queue: next.queue }
+  }, database)
 }

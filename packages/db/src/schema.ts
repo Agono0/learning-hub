@@ -908,6 +908,21 @@ export const leagueRemoteLinks = table(
   (t) => [uniqueIndex('league_remote_links_unique_idx').on(t.serverUrl, t.remoteLeagueId)],
 )
 
+/**
+ * Offline queue of unsent signed-league mutations, one JSON document per
+ * link (lh-league-sync/v1, validated on read). Holds unsigned mutations
+ * only: signing happens at send time, so no key or signature is stored.
+ */
+export const leagueRemoteQueues = table('league_remote_queues', {
+  linkId: integer('link_id')
+    .primaryKey()
+    .references(() => leagueRemoteLinks.id, { onDelete: 'cascade' }),
+  queueJson: text('queue_json').notNull(),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
 export const leagueRounds = table(
   'league_rounds',
   {
