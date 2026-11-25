@@ -167,7 +167,7 @@ export default {
         let userId = await deriveUserId(body.pubkey)
         // Fingerprint, not a key-text prefix: every P-256 SPKI key shares the same
         // first 16 base64 characters, so a prefix would give all users one id.
-        const userId = await signerIdFromPubKey(body.pubkey)
+        let userId = await signerIdFromPubKey(body.pubkey)
         const nowIso = new Date().toISOString()
         const { clean: cleanAlias } = filterContentSafety(body.alias.slice(0, 40))
 
@@ -183,6 +183,14 @@ export default {
           )
             .bind(userId, body.pubkey, cleanAlias, nowIso)
             .run()
+          // Existing accounts keep the id they were first registered under
+          // (public_stats and other rows reference it). The upsert never
+          // rewrites id, so report the stored one instead of the new
+          // fingerprint: no silent reassignment of existing account data.
+          const stored = await env.DB.prepare('SELECT id FROM users WHERE pubkey = ?')
+            .bind(body.pubkey)
+            .first<{ id: string }>()
+          if (stored?.id) userId = stored.id
         }
 
         return jsonResponse({ ok: true, userId, alias: cleanAlias })
