@@ -860,3 +860,53 @@ describe('Arena API — rival ghost (best-run pace)', () => {
     expect(body.scoreSeries[body.scoreSeries.length - 1]).toBe(settled.summary.score)
   })
 })
+
+describe('Arena API — drill improvement tracking', () => {
+  it('a drill settlement reports per-card improvement against the source run', async () => {
+    const { deckId } = seedDeckWithCards(8)
+    const { runId, queue } = await startRun(deckId, 6)
+    // Struggle on the first three cards (Again), clean on the rest.
+    const log = queue.map((cardId, i) => ({
+      cardId,
+      grade: i < 3 ? 1 : 3,
+      confidence: 0,
+      timeMs: 3000 + i * 500,
+    }))
+    const post = await postSettlement(settlePayload(runId, log))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+    expect(settled.drill ?? null).toBeNull() // not itself a drill
+
+    // Drill the weak cards and do better on two of them.
+    const drillRes = await M.arena.GET(new Request(`http://localhost/api/arena?rematch=${runId}`))
+    expect(drillRes.status).toBe(200)
+    const drillBody = await drillRes.json()
+    expect(drillBody.drill).toBe(true)
+    expect(drillBody.cards.length).toBe(3)
+    const drillQueue: number[] = drillBody.cards.map((c: { id: number }) => c.id)
+    const drillLog = drillQueue.map((cardId, i) => ({
+      cardId,
+      grade: i < 2 ? 3 : 1, // two improve, one still struggles
+      confidence: 1,
+      timeMs: 2500 + i * 400,
+    }))
+    const drillPost = await postSettlement(settlePayload(drillBody.runId as string, drillLog))
+    expect(drillPost.status).toBe(200)
+    const drillSettled = await drillPost.json()
+    expect(drillSettled.drill).toBeTruthy()
+    expect(drillSettled.drill.sourceRunId).toBe(runId)
+    expect(drillSettled.drill.compared).toBe(3)
+    expect(drillSettled.drill.improved).toBe(2)
+    expect(drillSettled.drill.steady).toBe(1)
+    expect(drillSettled.drill.slipped).toBe(0)
+  })
+
+  it('a non-drill settlement carries no drill report', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const post = await postSettlement(settlePayload(runId, gradeLog(queue, [0, queue.length])))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+    expect(settled.drill ?? null).toBeNull()
+  })
+})

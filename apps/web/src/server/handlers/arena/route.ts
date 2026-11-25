@@ -48,6 +48,7 @@ import {
   decks,
   evaluateAndUnlockAchievements,
   executeBatchReview,
+  getArenaSession,
   getArenaStats,
   getWeakCardIdsForRun,
   recordArenaRun,
@@ -309,6 +310,10 @@ export const GET = withRoute(async function GET(req: Request) {
     archetype,
     boss,
     modifier,
+    // Drill lineage: a rematch run records the OWNED, SETTLED run it drills
+    // (getWeakCardIdsForRun already enforced both). The client never sends
+    // this — it is server state, like the queue snapshot itself.
+    drillOfRunId: drillCardIds !== null ? (rematchParam ?? null) : null,
   })
 
   return Response.json({
@@ -493,10 +498,41 @@ export const POST = withRoute(async (req: Request) => {
         xpEarned: r.xpEarned,
       }))
 
+      // Drill improvement: when this run rematches an earlier settled run,
+      // compare each re-drilled card's grade against the original — purely
+      // informational (rewards already flowed from the reviews themselves).
+      let drill: Record<string, unknown> | null = null
+      if (claim.run.drillOfRunId) {
+        const source = getArenaSession(claim.run.drillOfRunId, tx)
+        const sourceLog = (source?.gradeLog ?? []) as Array<{
+          cardId: number
+          grade: number
+        }>
+        const sourceGradeByCard = new Map(sourceLog.map((e) => [e.cardId, e.grade]))
+        let improved = 0
+        let steady = 0
+        let slipped = 0
+        for (const e of normalized) {
+          const before = sourceGradeByCard.get(e.cardId)
+          if (before === undefined) continue
+          if (e.grade > before) improved += 1
+          else if (e.grade < before) slipped += 1
+          else steady += 1
+        }
+        drill = {
+          sourceRunId: claim.run.drillOfRunId,
+          compared: improved + steady + slipped,
+          improved,
+          steady,
+          slipped,
+        }
+      }
+
       settlement = {
         ok: true,
         summary,
         schedule,
+        drill,
         reviewXp: results.reduce((sum, r) => sum + r.xpEarned, 0),
         achievements,
         coinsAwarded,

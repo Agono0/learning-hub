@@ -1583,6 +1583,8 @@ export const arenaSessions = table(
     boss: integer('boss', { mode: 'boolean' }).notNull().default(false),
     /** Daily modifier the run was issued under (null: none / pre-modifier run). */
     modifier: text('modifier'),
+    /** Set when this run is a weak-card drill of an earlier settled run. */
+    drillOfRunId: text('drill_of_run_id'),
     status: text('status').notNull().default('open'), // 'open' | 'settling' | 'settled'
     /**
      * Fencing token: increments on every settlement claim. The settlement
