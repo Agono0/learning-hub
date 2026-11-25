@@ -49,6 +49,8 @@ import {
   createChannelProposal,
   listChannelProposals,
   decideChannelProposal,
+  hostedChannelAnalytics,
+  subscriptionSyncStats,
 } from '@learning-hub/db'
 
 export const shareChannelTools: RegisteredTool[] = [
@@ -470,5 +472,17 @@ export const shareChannelTools: RegisteredTool[] = [
       decision: z.enum(['accept', 'decline']),
     },
     async ({ proposalId, decision }) => json(decideChannelProposal(proposalId, decision)),
+  ),
+  tool(
+    'share_channel_hosted_analytics',
+    'Analytics for a locally hosted channel: per-version activity (added/removed/changed), lifetime totals, churn rate, and proposal stats including top contributors.',
+    { channelId: z.string().min(1) },
+    async ({ channelId }) => json(hostedChannelAnalytics(channelId)),
+  ),
+  tool(
+    'share_channel_sync_stats',
+    'Subscriber-side sync health for a channel: total syncs, outcomes (updated/already-current/failed), last sync time and last error.',
+    { channelId: z.string().min(1) },
+    async ({ channelId }) => json({ ok: true, stats: subscriptionSyncStats(channelId) }),
   ),
 ]

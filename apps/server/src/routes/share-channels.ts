@@ -45,6 +45,8 @@ import {
   createChannelProposal,
   listChannelProposals,
   decideChannelProposal,
+  hostedChannelAnalytics,
+  subscriptionSyncStats,
 } from '@learning-hub/db'
 import { sendJson, readJson } from '../http'
 import type { Route } from './shared'
@@ -563,7 +565,30 @@ async function postProposalDecide(req: IncomingMessage, res: ServerResponse): Pr
   sendJson(res, result.ok ? 200 : 422, result)
 }
 
+async function postHostAnalytics(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, channelIdBodySchema)
+  const result = hostedChannelAnalytics(body.channelId)
+  sendJson(res, result.ok ? 200 : 404, result)
+}
+
+async function postSyncStats(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, channelIdBodySchema)
+  sendJson(res, 200, { ok: true, stats: subscriptionSyncStats(body.channelId) })
+}
+
 shareChannelRoutes.push(
+  {
+    method: 'POST',
+    path: '/share/host/analytics',
+    summary: 'analytics for a hosted channel',
+    handler: postHostAnalytics,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/sync-stats',
+    summary: 'subscriber-side sync health for a channel',
+    handler: postSyncStats,
+  },
   {
     method: 'POST',
     path: '/share/host',

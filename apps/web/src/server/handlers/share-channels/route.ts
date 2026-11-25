@@ -20,6 +20,8 @@ import {
   listHostedChannels,
   publishHostedChannelVersion,
   unhostChannel,
+  hostedChannelAnalytics,
+  subscriptionSyncStats,
 } from '@learning-hub/db'
 import {
   ProposalOperationSchema,
@@ -163,6 +165,8 @@ const postSchema = z.discriminatedUnion('action', [
     channelId: z.string().min(1),
     status: z.enum(['open', 'accepted', 'declined']).optional(),
   }),
+  z.object({ action: z.literal('host-analytics'), channelId: z.string().min(1) }),
+  z.object({ action: z.literal('sync-stats'), channelId: z.string().min(1) }),
   z.object({
     action: z.literal('proposal-decide'),
     proposalId: z.string().min(1),
@@ -306,5 +310,11 @@ export const POST = withRoute(async (req: Request) => {
       })
     case 'proposal-decide':
       return Response.json(decideChannelProposal(body.proposalId, body.decision))
+    case 'host-analytics': {
+      const result = hostedChannelAnalytics(body.channelId)
+      return Response.json(result, { status: result.ok ? 200 : 404 })
+    }
+    case 'sync-stats':
+      return Response.json({ ok: true, stats: subscriptionSyncStats(body.channelId) })
   }
 })

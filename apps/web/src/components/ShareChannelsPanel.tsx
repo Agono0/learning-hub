@@ -57,6 +57,20 @@ type HostedChannel = {
   updatedAt: string
 }
 
+type ChannelAnalyticsView = {
+  currentVersion: number
+  itemCount: number
+  lifetime: { added: number; removed: number; changed: number }
+  churnRate: number
+  proposals: {
+    total: number
+    open: number
+    accepted: number
+    declined: number
+    topContributors: { authorHandle: string; accepted: number }[]
+  }
+}
+
 type Proposal = {
   id: string
   channelId: string
@@ -117,6 +131,7 @@ export function ShareChannelsPanel() {
   const [proposalTitle, setProposalTitle] = useState('')
   const [proposalNote, setProposalNote] = useState('')
   const [proposalOps, setProposalOps] = useState('')
+  const [analytics, setAnalytics] = useState<Record<string, ChannelAnalyticsView>>({})
 
   useEffect(() => {
     setSubs(loadSubscriptions())
@@ -331,6 +346,20 @@ export function ShareChannelsPanel() {
     setProposalNote('')
     setProposalOps('')
     await loadProposals(proposalChannel)
+  }
+
+  async function loadAnalytics(channelIdFor: string) {
+    setNotice(null)
+    const res = await apiSend<{ ok: boolean; analytics?: ChannelAnalyticsView }>(
+      '/api/share-channels',
+      'POST',
+      { action: 'host-analytics', channelId: channelIdFor },
+    )
+    if (!res.ok || !res.analytics) {
+      setNotice('Could not load analytics for that channel.')
+      return
+    }
+    setAnalytics((prev) => ({ ...prev, [channelIdFor]: res.analytics! }))
   }
 
   async function decideProposal(proposalId: string, decision: 'accept' | 'decline') {
@@ -576,6 +605,9 @@ export function ShareChannelsPanel() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => void loadAnalytics(c.channelId)}>
+                          Analytics
+                        </Button>
                         <Button variant="secondary" onClick={() => void loadProposals(c.channelId)}>
                           Proposals
                         </Button>
@@ -584,6 +616,31 @@ export function ShareChannelsPanel() {
                         </Button>
                       </div>
                     </div>
+                    {analytics[c.channelId] && (
+                      <div
+                        className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600"
+                        data-testid={`analytics-${c.channelId}`}
+                      >
+                        <p>
+                          v{analytics[c.channelId].currentVersion} ·{' '}
+                          {analytics[c.channelId].itemCount} items · lifetime +
+                          {analytics[c.channelId].lifetime.added} / -
+                          {analytics[c.channelId].lifetime.removed} / ~
+                          {analytics[c.channelId].lifetime.changed} · churn{' '}
+                          {Math.round(analytics[c.channelId].churnRate * 100)}%
+                        </p>
+                        <p>
+                          Proposals: {analytics[c.channelId].proposals.total} (
+                          {analytics[c.channelId].proposals.open} open,{' '}
+                          {analytics[c.channelId].proposals.accepted} accepted,{' '}
+                          {analytics[c.channelId].proposals.declined} declined)
+                          {analytics[c.channelId].proposals.topContributors.length > 0 &&
+                            ` · top: ${analytics[c.channelId].proposals.topContributors
+                              .map((t) => `${t.authorHandle} (${t.accepted})`)
+                              .join(', ')}`}
+                        </p>
+                      </div>
+                    )}
                     {proposalChannel === c.channelId && (
                       <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3">
                         {proposals.length === 0 ? (
