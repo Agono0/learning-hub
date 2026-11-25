@@ -92,6 +92,15 @@ test.beforeEach(async ({ context }) => {
   })
 })
 
+test('debug digest endpoint', async ({ request }) => {
+  const r = await request.get(`/api/leagues?view=digest&slug=${LEAGUE}`)
+  console.log('DIGEST STATUS', r.status())
+  console.log('DIGEST BODY', (await r.text()).slice(0, 2000))
+  const s2 = await request.get(`/api/leagues?view=schedule&slug=${LEAGUE}`)
+  console.log('SCHED STATUS', s2.status())
+  console.log('SCHED BODY', (await s2.text()).slice(0, 1200))
+})
+
 test('capture all /leagues surfaces', async ({ page }) => {
   test.setTimeout(300_000)
   await page.goto('/leagues')
