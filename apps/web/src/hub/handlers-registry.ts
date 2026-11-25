@@ -255,6 +255,7 @@ import * as deliberate from '../server/handlers/deliberate/route'
 import * as scaffolding from '../server/handlers/scaffolding/route'
 import * as updateNotes from '../server/handlers/update/notes/route'
 import * as calendarImport from '../server/handlers/calendar/import/route'
+import * as embodiedLearningRoute from '../server/handlers/embodied-learning/route'
 import * as implementationIntentionsRoute from '../server/handlers/implementation-intentions/route'
 import * as feedbackStudioRoute from '../server/handlers/feedback-studio/route'
 
@@ -533,6 +534,7 @@ add('scaffolding', scaffolding)
 add('share-channels', shareChannels)
 add('update/notes', updateNotes)
 add('calendar/import', calendarImport)
+add('embodied-learning', embodiedLearningRoute)
 add('implementation-intentions', implementationIntentionsRoute)
 add('feedback-studio', feedbackStudioRoute)
 
