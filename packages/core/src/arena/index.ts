@@ -132,6 +132,57 @@ export const BOSS_CHALLENGE_THRESHOLD = 15
 /** Bosses enrage below half HP: counters hit 50% harder (rounded up). */
 export const BOSS_ENRAGE_COUNTER_PERCENT = 50
 
+// ─── Boss phases ────────────────────────────────────────────────────────────
+
+/**
+ * Bosses fight in three phases derived from guardian HP: the arena's way of
+ * making a long run escalate. Phases only change combat FEEL (crit window,
+ * shield repair cadence) — coins and XP stay learning-derived. Like every
+ * combat input, the phase is a pure function of the run's HP progression,
+ * so server-side replays through summarizeGradeLog reproduce it exactly.
+ */
+export type BossPhase = 1 | 2 | 3
+
+export const BOSS_PHASE_INFO: Record<BossPhase, { name: string; description: string }> = {
+  1: {
+    name: 'Full Guard',
+    description: 'The boss fights by the book.',
+  },
+  2: {
+    name: 'Pressured',
+    description: 'Below two-thirds HP the boss tightens up: the crit window shrinks by a quarter.',
+  },
+  3: {
+    name: 'Last Stand',
+    description:
+      'Below one-third HP the boss fights desperate: crit window halved and shields repair later.',
+  },
+}
+
+/** The phase a boss is in at a given HP (non-boss runs are always phase 1). */
+export function bossPhaseFor(guardianHp: number, guardianMaxHp: number, boss: boolean): BossPhase {
+  if (!boss || guardianMaxHp <= 0) return 1
+  const frac = guardianHp / guardianMaxHp
+  if (frac > 2 / 3) return 1
+  if (frac > 1 / 3) return 2
+  return 3
+}
+
+/** Layer a boss phase over the (guardian- and modifier-tuned) config. */
+export function bossPhaseConfig(config: ArenaConfig, phase: BossPhase): ArenaConfig {
+  if (phase === 2) {
+    return { ...config, critTimeMs: Math.max(500, Math.floor(config.critTimeMs * 0.75)) }
+  }
+  if (phase === 3) {
+    return {
+      ...config,
+      critTimeMs: Math.max(500, Math.floor(config.critTimeMs * 0.5)),
+      shieldRepairCombo: Math.min(20, config.shieldRepairCombo + 2),
+    }
+  }
+  return config
+}
+
 // ─── Daily modifiers ────────────────────────────────────────────────────────
 
 /**
@@ -255,14 +306,18 @@ export interface ArenaExchange {
   armorBlocked: number
   /** True when the guardian dodged this exchange's strike. */
   dodged: boolean
+  /** The boss phase this exchange was graded in (1 for non-boss runs). */
+  phase: BossPhase
 }
 
 export interface ArenaState {
   status: ArenaStatus
   /** Which guardian this run faces. */
   archetype: GuardianArchetype
-  /** Long runs face a two-phase boss. */
+  /** Long runs face a boss that escalates through three phases. */
   boss: boolean
+  /** Current boss phase (always 1 for non-boss runs). */
+  phase: BossPhase
   /** Boss below half HP — counters hit harder. */
   enraged: boolean
   /** Guardian HP remaining (the guardian is the queue; 0 = victory). */
@@ -382,6 +437,7 @@ export function createArenaSession(
     status: challenges.length === 0 ? 'victory' : 'fighting',
     archetype,
     boss,
+    phase: 1,
     enraged: false,
     guardianHp: guardianMaxHp,
     guardianMaxHp,
@@ -413,12 +469,17 @@ export function applyGrade(
 ): ArenaState {
   if (state.status !== 'fighting') return state
 
+  // The strike lands against the phase the guardian is in NOW; the phase
+  // banner flips right after the blow that crosses a threshold.
+  const strikePhase = bossPhaseFor(state.guardianHp, state.guardianMaxHp, state.boss)
+  const phaseCfg = bossPhaseConfig(config, strikePhase)
+
   const strike = strikeFor(
     grade,
     confidence,
     Math.max(0, Math.round(timeMs)),
     state.combo,
-    config,
+    phaseCfg,
     state.round + 1,
   )
 
@@ -453,8 +514,10 @@ export function applyGrade(
     scoreDelta: strike.scoreDelta,
     armorBlocked: strike.armorBlocked,
     dodged: strike.dodged,
+    phase: strikePhase,
   }
 
+  const phase = bossPhaseFor(guardianHpAfter, state.guardianMaxHp, state.boss)
   const remaining = state.remaining - 1
   // Victory requires clearing the whole queue: every card in the session is
   // always reviewed (guardian HP is a progress bar, never an early exit).
@@ -465,6 +528,7 @@ export function applyGrade(
     ...state,
     status,
     enraged,
+    phase,
     guardianHp,
     hp,
     shield,

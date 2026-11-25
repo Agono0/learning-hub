@@ -153,6 +153,8 @@ export class ArenaSceneManager {
   private endGlow = 0
   private archetype: 'warden' | 'colossus' | 'shade' = 'warden'
   private enraged = false
+  private bossPhase: 1 | 2 | 3 = 1
+  private phaseGlow = 0 // eased 0..1 menace ramp from the boss phase
   private enrageGlow = 0
 
   constructor(config: ArenaSceneConfig) {
@@ -557,6 +559,11 @@ export class ArenaSceneManager {
     this.enraged = enraged
   }
 
+  /** Boss phase: ramps the arena's menace (torch heat, eye burn) as it escalates. */
+  setPhase(phase: 1 | 2 | 3): void {
+    this.bossPhase = phase
+  }
+
   /** Restore the opening tableau for a fresh session. */
   reset(): void {
     this.guardianProgress = 0
@@ -568,6 +575,8 @@ export class ArenaSceneManager {
     this.endGlow = 0
     this.enraged = false
     this.enrageGlow = 0
+    this.bossPhase = 1
+    this.phaseGlow = 0
     this.playerLunge = 0
     this.victoryRain = 0
     this.defeatDim = 0
@@ -674,6 +683,17 @@ export class ArenaSceneManager {
     const guardianScale = baseScale * (1 - this.guardianDeath * 0.35)
     this.guardian.scale.setScalar(Math.max(0.05, guardianScale))
 
+    // Boss phase: the arena itself heats up as the fight escalates.
+    const phaseTarget = (this.bossPhase - 1) / 2
+    if (this.phaseGlow < phaseTarget) {
+      this.phaseGlow = Math.min(phaseTarget, this.phaseGlow + dt * 1.2)
+    } else if (this.phaseGlow > phaseTarget) {
+      this.phaseGlow = Math.max(phaseTarget, this.phaseGlow - dt * 1.8)
+    }
+    for (const torch of this.torches) {
+      torch.baseIntensity = 1.5 + this.phaseGlow * 0.9
+    }
+
     // Enrage: eyes burn and the body smolders.
     if (this.enraged && this.enrageGlow < 1) {
       this.enrageGlow = Math.min(1, this.enrageGlow + dt * 1.6)
@@ -691,7 +711,9 @@ export class ArenaSceneManager {
 
     // Eyes dim as the queue clears; enrage overrides with a burn.
     const look = GUARDIAN_LOOKS[this.archetype]
-    const eyeColor = new THREE.Color(look.eye).lerp(new THREE.Color(0xff3b1f), this.enrageGlow)
+    const eyeColor = new THREE.Color(look.eye)
+      .lerp(new THREE.Color(0xffa02f), this.phaseGlow * 0.5)
+      .lerp(new THREE.Color(0xff3b1f), this.enrageGlow)
     for (const eye of this.guardianEyes) {
       const mat = eye.material as THREE.MeshBasicMaterial
       mat.color.copy(eyeColor)

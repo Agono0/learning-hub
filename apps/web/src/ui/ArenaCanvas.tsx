@@ -14,6 +14,7 @@ import { ArenaSceneManager, type ArenaQuality } from '@/lib/three/ArenaSceneMana
 export interface ArenaCanvasHandle {
   setArchetype: (archetype: 'warden' | 'colossus' | 'shade') => void
   setEnraged: (enraged: boolean) => void
+  setPhase: (phase: 1 | 2 | 3) => void
   strike: (options: { crit: boolean }) => void
   countered: () => void
   shieldRaise: () => void
@@ -39,6 +40,7 @@ export const ArenaCanvas = React.forwardRef<ArenaCanvasHandle, ArenaCanvasProps>
       (): ArenaCanvasHandle => ({
         setArchetype: (archetype) => managerRef.current?.setArchetype(archetype),
         setEnraged: (enraged) => managerRef.current?.setEnraged(enraged),
+        setPhase: (phase) => managerRef.current?.setPhase(phase),
         strike: (options) => managerRef.current?.strike(options),
         countered: () => managerRef.current?.countered(),
         shieldRaise: () => managerRef.current?.shieldRaise(),

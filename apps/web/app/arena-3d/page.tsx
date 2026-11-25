@@ -22,6 +22,7 @@ import { Coins, Flame, Heart, RotateCcw, Shield, Swords, Trophy } from 'lucide-r
 import {
   ARENA_MODIFIER_INFO,
   BOSS_CHALLENGE_THRESHOLD,
+  BOSS_PHASE_INFO,
   GUARDIANS,
   applyGrade,
   arenaModifierForDate,
@@ -398,9 +399,17 @@ export default function Arena3DPage() {
     const handle = arenaHandle.current
     const last = next.exchanges[next.exchanges.length - 1]
 
-    // DOM floater — the canvas is decorative, so combat feedback always has a
-    // text rendering (and reduced-motion users get the same information).
-    if (last) {
+    // Boss phase transitions: banner floater + the scene heats up. The
+    // floater wins over ordinary combat feedback — a phase flip is rarer
+    // and matters more than one strike's numbers.
+    if (arena && next.boss && next.phase > arena.phase) {
+      const info = BOSS_PHASE_INFO[next.phase]
+      setFloater({
+        id: Date.now(),
+        text: `Phase ${next.phase} — ${info.name}!`,
+        tone: 'counter',
+      })
+    } else if (last) {
       if (last.dodged) {
         setFloater({
           id: Date.now(),
@@ -426,6 +435,7 @@ export default function Arena3DPage() {
 
     if (!handle) return
     handle.setProgress(1 - next.guardianHp / Math.max(1, next.guardianMaxHp))
+    if (next.boss) handle.setPhase(next.phase)
     if (next.shield > 0 && last && last.counterShielded > 0) {
       handle.shieldRaise()
     } else if (next.shield === 0) {
@@ -865,6 +875,14 @@ export default function Arena3DPage() {
                   {arena.boss ? (
                     <Badge tone="violet" data-testid="guardian-boss-badge">
                       Boss
+                    </Badge>
+                  ) : null}
+                  {arena.boss && arena.phase > 1 ? (
+                    <Badge
+                      tone={arena.phase === 3 ? 'danger' : 'warning'}
+                      data-testid="guardian-phase-badge"
+                    >
+                      Phase {arena.phase} · {BOSS_PHASE_INFO[arena.phase].name}
                     </Badge>
                   ) : null}
                   {arena.enraged ? (

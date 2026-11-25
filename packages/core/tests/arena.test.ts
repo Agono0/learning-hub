@@ -6,7 +6,10 @@ import { describe, expect, it } from 'vitest'
 import {
   ARENA_DEFAULTS,
   ARENA_MODIFIER_INFO,
+  BOSS_PHASE_INFO,
   applyArenaModifier,
+  bossPhaseConfig,
+  bossPhaseFor,
   applyGrade,
   arenaConfig,
   arenaGradeEventSchema,
@@ -20,6 +23,7 @@ import {
   summarizeGradeLog,
   type ArenaChallenge,
   type ArenaModifier,
+  type BossPhase,
 } from '../src/arena'
 
 const CH = (n: number): ArenaChallenge[] =>
@@ -535,5 +539,98 @@ describe('daily modifiers', () => {
     // Rewards stay learning-derived and modifier-neutral.
     expect(heavy.coins).toBe(plain.coins)
     expect(heavy.correct).toBe(plain.correct)
+  })
+})
+
+describe('boss phases', () => {
+  it('derives the phase from guardian HP thirds; non-boss runs stay in phase 1', () => {
+    expect(bossPhaseFor(100, 100, true)).toBe(1)
+    expect(bossPhaseFor(67, 100, true)).toBe(1) // just above 2/3
+    expect(bossPhaseFor(66, 100, true)).toBe(2)
+    expect(bossPhaseFor(34, 100, true)).toBe(2) // just above 1/3
+    expect(bossPhaseFor(33, 100, true)).toBe(3)
+    expect(bossPhaseFor(0, 100, true)).toBe(3)
+    expect(bossPhaseFor(10, 100, false)).toBe(1) // not a boss
+    expect(bossPhaseFor(0, 0, true)).toBe(1) // degenerate HP pool
+  })
+
+  it('phase 2 tightens the crit window by a quarter', () => {
+    const base = guardianConfig('warden', ARENA_DEFAULTS)
+    const tuned = bossPhaseConfig(base, 2)
+    expect(tuned.critTimeMs).toBe(Math.max(500, Math.floor(base.critTimeMs * 0.75)))
+    expect(tuned.baseDamage).toBe(base.baseDamage)
+    expect(tuned.shieldRepairCombo).toBe(base.shieldRepairCombo)
+  })
+
+  it('phase 3 halves the crit window and delays shield repairs', () => {
+    const base = guardianConfig('colossus', ARENA_DEFAULTS)
+    const tuned = bossPhaseConfig(base, 3)
+    expect(tuned.critTimeMs).toBe(Math.max(500, Math.floor(base.critTimeMs * 0.5)))
+    expect(tuned.shieldRepairCombo).toBe(Math.min(20, base.shieldRepairCombo + 2))
+  })
+
+  it('phase 1 is the identity layer and every phase has player-facing copy', () => {
+    const base = guardianConfig('shade', ARENA_DEFAULTS)
+    expect(bossPhaseConfig(base, 1)).toEqual(base)
+    for (const phase of [1, 2, 3] as BossPhase[]) {
+      expect(BOSS_PHASE_INFO[phase].name.length).toBeGreaterThan(0)
+      expect(BOSS_PHASE_INFO[phase].description.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('a long boss run escalates through the phases deterministically', () => {
+    const challenges = CH(20) // >= BOSS_CHALLENGE_THRESHOLD → boss
+    const config = guardianConfig('warden', ARENA_DEFAULTS)
+    let state = createArenaSession(challenges, config, 'warden')
+    expect(state.boss).toBe(true)
+    expect(state.phase).toBe(1)
+
+    // Fast, confident good answers: crits chew through the boss HP premium.
+    const phasesSeen = new Set<number>()
+    for (let i = 0; i < challenges.length && state.status === 'fighting'; i++) {
+      state = applyGrade(state, challenges[i]!, 4, 1, 1_000, config)
+      phasesSeen.add(state.phase)
+      expect(state.exchanges[state.exchanges.length - 1]!.phase).toBeGreaterThanOrEqual(1)
+    }
+    expect(phasesSeen.has(1)).toBe(true)
+    expect(phasesSeen.has(2)).toBe(true)
+    expect(phasesSeen.has(3)).toBe(true)
+
+    // Replaying the same log reproduces the same phase sequence exactly.
+    let replay = createArenaSession(challenges, config, 'warden')
+    const seq: number[] = []
+    for (let i = 0; i < challenges.length && replay.status === 'fighting'; i++) {
+      replay = applyGrade(replay, challenges[i]!, 4, 1, 1_000, config)
+      seq.push(replay.exchanges[replay.exchanges.length - 1]!.phase)
+    }
+    let replay2 = createArenaSession(challenges, config, 'warden')
+    const seq2: number[] = []
+    for (let i = 0; i < challenges.length && replay2.status === 'fighting'; i++) {
+      replay2 = applyGrade(replay2, challenges[i]!, 4, 1, 1_000, config)
+      seq2.push(replay2.exchanges[replay2.exchanges.length - 1]!.phase)
+    }
+    expect(seq).toEqual(seq2)
+  })
+
+  it('the tightening crit window actually changes outcomes in phase 3', () => {
+    const challenges = CH(18)
+    const config = guardianConfig('warden', ARENA_DEFAULTS)
+    // Drive the boss into phase 3, then land a strike inside the phase-1
+    // crit window but outside the halved one.
+    let state = createArenaSession(challenges, config, 'warden')
+    for (
+      let i = 0;
+      i < challenges.length && state.phase !== 3 && state.status === 'fighting';
+      i++
+    ) {
+      state = applyGrade(state, challenges[i]!, 3, 1, 1_000, config)
+    }
+    expect(state.phase).toBe(3)
+    const borderline = Math.floor(config.critTimeMs * 0.6) // inside base, outside phase-3 window
+    const idx = state.round
+    const after = applyGrade(state, challenges[idx]!, 3, 1, borderline, config)
+    const last = after.exchanges[after.exchanges.length - 1]!
+    expect(last.phase).toBe(3)
+    expect(last.crit).toBe(false)
   })
 })
