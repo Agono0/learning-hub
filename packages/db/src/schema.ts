@@ -1863,6 +1863,38 @@ export const studyCoinLedger = table(
   ],
 )
 
+/**
+ * Review Arena run history — one row per settled session. `referenceId` is
+ * the settlement idempotency key (FNV-1a over the grade log, shared with the
+ * coin ledger), so a replayed settlement can never double-record a run.
+ */
+export const arenaRuns = table(
+  'arena_runs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().default('default'),
+    deckIds: text('deck_ids', { mode: 'json' }).$type<number[]>().notNull(),
+    result: text('result').notNull(), // 'victory' | 'defeat'
+    rounds: integer('rounds').notNull(),
+    correct: integer('correct').notNull(),
+    accuracy: real('accuracy').notNull(),
+    bestCombo: integer('best_combo').notNull(),
+    crits: integer('crits').notNull(),
+    score: integer('score').notNull(),
+    coins: integer('coins').notNull(),
+    xp: integer('xp').notNull(),
+    durationMs: integer('duration_ms').notNull().default(0),
+    referenceId: text('reference_id').notNull().unique(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('arena_runs_user_idx').on(t.userId),
+    index('arena_runs_created_idx').on(t.createdAt),
+  ],
+)
+
 export const marketItems = table(
   'market_items',
   {

@@ -23,6 +23,7 @@ import {
   decks,
   executeReview,
   getCoinBalance,
+  recordArenaRun,
   recordCoinTransaction,
   studyCoinLedger,
   userSettings,
@@ -271,6 +272,23 @@ export const POST = withRoute(async (req: Request) => {
       },
     })
   }
+
+  // 5) Persistent run record — same idempotency key as the coin mint, so a
+  //    replay is a no-op here too and history can never double-count a run.
+  recordArenaRun({
+    deckIds: body.deckIds,
+    result: summary.result,
+    rounds: summary.rounds,
+    correct: summary.correct,
+    accuracy: summary.accuracy,
+    bestCombo: summary.bestCombo,
+    crits: summary.crits,
+    score: summary.score,
+    coins: coinsAwarded,
+    xp: summary.xp,
+    durationMs: body.exchanges.reduce((sum, e) => sum + e.timeMs, 0),
+    referenceId,
+  })
 
   return Response.json({
     ok: true,
