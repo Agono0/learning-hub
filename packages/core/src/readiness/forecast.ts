@@ -32,6 +32,18 @@ type Scheduler = Awaited<ReturnType<typeof DefaultScheduler>>
 export interface SimulationOptions {
   desiredRetention?: number
   weights?: readonly number[] | null
+  /** Called for every simulated review, in order. For explaining a scenario and for tests. */
+  onReview?: (event: SimulatedReview) => void
+}
+
+/** One simulated review inside a scenario. */
+export interface SimulatedReview {
+  cardId: number
+  at: Date
+  /** Recall probability just before this review. */
+  recallBefore: number
+  /** Stability after this review, in days. */
+  stabilityAfter: number
 }
 
 let cachedScheduler: { key: string; value: Promise<Scheduler> } | null = null
@@ -136,7 +148,16 @@ export async function plannedRecall(
             )
             .slice(0, Math.max(0, Math.floor(plan.perDay)))
         : due
-    for (const s of todo) s.fsrs = reviewOnce(sched, s.fsrs, when, GOOD)
+    for (const s of todo) {
+      const before = fsrsRecall(s.fsrs, when)
+      s.fsrs = reviewOnce(sched, s.fsrs, when, GOOD)
+      opts.onReview?.({
+        cardId: s.src.id,
+        at: when,
+        recallBefore: before,
+        stabilityAfter: s.fsrs.stability,
+      })
+    }
   }
   for (const c of live) out.set(c.id, 0)
   for (const s of sims) out.set(s.src.id, fsrsRecall(s.fsrs, exam))

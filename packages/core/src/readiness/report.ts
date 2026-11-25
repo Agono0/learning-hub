@@ -2,6 +2,7 @@ import { assessConfidence, groupBy, summarizeGroup } from './aggregate'
 import { forecastCards, type SimulationOptions } from './forecast'
 import {
   DEFAULT_TARGET_RECALL,
+  READINESS_ASSUMPTIONS,
   MS_PER_DAY,
   type ExamTarget,
   type ReadinessCard,
@@ -52,6 +53,7 @@ export async function buildReadinessReport(input: ReportInput): Promise<Readines
     decks: groupBy(forecasts, (f) => f.deckId, deckLabel, targetRecall),
     skills: groupBy(forecasts, (f) => f.skillId, skillLabel, targetRecall),
     confidence: assessConfidence(input.cards),
+    assumptions: [...READINESS_ASSUMPTIONS],
     expired: msLeft <= 0,
   }
 }
