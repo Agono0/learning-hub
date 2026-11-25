@@ -125,6 +125,12 @@ describe('GET /api/exam-prep', () => {
     expect((await get('?examId=987654')).status).toBe(404)
   })
 
+  it('refuses an exam more than 366 days away or absurdly far, with a 422', async () => {
+    expect((await get(`?date=${futureDate(400)}`)).status).toBe(422)
+    expect((await get('?date=2999-01-01')).status).toBe(422)
+    expect((await get(`?date=${futureDate(300)}`)).status).toBe(200)
+  })
+
   it('never writes: cards, exams and the review log are unchanged after several reads', async () => {
     const snapshot = () =>
       JSON.stringify([

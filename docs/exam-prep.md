@@ -19,6 +19,9 @@ forward so later days see the spacing already chosen.
 - To stay fast on a large collection, only the 4,000 studied cards with the lowest exam-day recall are considered (`maxCards`).
   Measured before the cap on a synthetic deck: 5,000 cards x 30 days about 1.6 s, 10,000 x 60 days about 7 s (about 3.3 s with the cap). A plan of that size is still a few seconds of CPU in one request. When the cap applies, the
   summary says `truncated` and the page says so. The other cards stay at their no-review figure in every mean.
+- Server-enforced bounds, the same for the API, CLI and MCP (all call `runExamPrep`): an exam more than 366 days away is refused with a 422, not
+  shortened, and cards considered x study days is capped at 300,000 (about 3.5 s of CPU worst case). `maxCards` is not a public option; the core
+  ceiling is 8,000 whatever is asked. The truncation is a prioritization of the weakest cards, not a full-collection optimal plan.
 - A bare exam date counts through the end of that day (UTC).
 - Output is deterministic for fixed inputs: ties break on card id.
 
