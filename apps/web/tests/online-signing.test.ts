@@ -108,8 +108,18 @@ describe('online request signing', () => {
   })
 })
 
-describe('library publish handler', () => {
-  it('sends only whitelisted fields (no author), signed; retries anonymously on 403', async () => {
+describe('library publish handler (no silent downgrade)', () => {
+  async function publish() {
+    const { POST } = await import('../src/server/handlers/online/library/route')
+    return POST(
+      new Request('http://localhost/api/online/library', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type: 'deck', title: 'T', shareString: 'LH1:x', tags: [] }),
+      }),
+    )
+  }
+  async function withKey() {
     const pair = await generateIdentityKeyPair()
     identity = {
       mode: 'device_key',
@@ -118,43 +128,38 @@ describe('library publish handler', () => {
       alias: 'Ada',
       userId: 'usr_x',
     }
-    statuses = [403, 200]
-    const { POST } = await import('../src/server/handlers/online/library/route')
-    const res = await POST(
-      new Request('http://localhost/api/online/library', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'deck', title: 'T', shareString: 'LH1:x', tags: [] }),
-      }),
-    )
+  }
+
+  it('sends a signed request with only whitelisted fields (no author)', async () => {
+    await withKey()
+    const res = await publish()
     expect(res.status).toBe(200)
-    expect(sent).toHaveLength(2)
+    expect(sent).toHaveLength(1)
     expect(sent[0]!.headers['x-lh-sig']).toBeTruthy()
-    expect(sent[1]!.headers['x-lh-sig']).toBeUndefined()
-    for (const s of sent) {
-      expect(JSON.parse(s.body)).not.toHaveProperty('author')
-      expect(s.url).toBe('https://hub.example/api/v1/library/publish')
-    }
+    expect(JSON.parse(sent[0]!.body)).not.toHaveProperty('author')
+    expect(sent[0]!.url).toBe('https://hub.example/api/v1/library/publish')
   })
 
-  it('does not retry a rejected signature (401) as anonymous', async () => {
-    const pair = await generateIdentityKeyPair()
-    identity = {
-      mode: 'device_key',
-      pubKey: pair.publicKey,
-      privKey: pair.privateKey,
-      alias: 'Ada',
-      userId: 'usr_x',
-    }
-    statuses = [401]
-    const { POST } = await import('../src/server/handlers/online/library/route')
-    await POST(
-      new Request('http://localhost/api/online/library', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'deck', title: 'T', shareString: 'LH1:x', tags: [] }),
-      }),
-    )
-    expect(sent).toHaveLength(1)
+  it.each([
+    [403, 'register_required'],
+    [503, 'verification_unavailable'],
+    [401, 'signature_rejected'],
+  ])('worker %i is reported, never retried anonymously', async (status, code) => {
+    await withKey()
+    statuses = [status, 200]
+    const res = await publish()
+    const out = (await res.json()) as { ok: boolean; code: string; error: string }
+    expect(res.status).toBe(status)
+    expect(out).toMatchObject({ ok: false, code })
+    expect(out.error.length).toBeGreaterThan(10)
+    expect(sent).toHaveLength(1) // exactly one attempt, with a signature
+    expect(sent[0]!.headers['x-lh-sig']).toBeTruthy()
+  })
+
+  it('a device without a key publishes anonymously, explicitly and unsigned', async () => {
+    identity = { mode: 'local', alias: 'Ada', userId: 'usr_x' }
+    const res = await publish()
+    expect(res.status).toBe(200)
+    expect(sent[0]!.headers['x-lh-sig']).toBeUndefined()
   })
 })

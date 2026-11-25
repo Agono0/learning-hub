@@ -356,6 +356,11 @@ describe('study room join identity', () => {
     expect(ids).toContain('usr_ada')
     expect(ids.filter((i) => i === 'usr_ada')).toHaveLength(1)
     expect(ids.some((i) => /^anon_[0-9a-f]{16}$/.test(i))).toBe(true)
+    // The guest is marked unverified even though it copied the registered alias.
+    expect(roomState().find((p) => p.id.startsWith('anon_'))).toMatchObject({
+      alias: 'Ada',
+      verified: false,
+    })
   })
 
   it('a valid assertion for a registered key binds the stored id and alias', async () => {
@@ -367,7 +372,7 @@ describe('study room join identity', () => {
       connect(),
       join(await assertion(pair), { id: 'usr_other', alias: 'Mallory' }),
     )
-    expect(roomState()).toMatchObject([{ id: 'usr_ada', alias: 'Ada' }])
+    expect(roomState()).toMatchObject([{ id: 'usr_ada', alias: 'Ada', verified: true }])
   })
 
   it('refuses replay of the same assertion and keeps the existing participant', async () => {

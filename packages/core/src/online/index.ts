@@ -31,6 +31,8 @@ export const studyRoomParticipantSchema = z.object({
   streak: z.number().int().nonnegative().default(0),
   cardsReviewed: z.number().int().nonnegative().default(0),
   joinedAt: z.string(),
+  /** True only when the worker verified a registered device key. Absent or false: a guest. */
+  verified: z.boolean().optional(),
 })
 export type StudyRoomParticipant = z.infer<typeof studyRoomParticipantSchema>
 
@@ -52,6 +54,8 @@ export const roomMessageSchema = z.object({
   roomCode: z.string().length(6),
   senderId: z.string(),
   senderAlias: z.string(),
+  /** True when the sender joined with a verified registered key (guests are unverified). */
+  senderVerified: z.boolean().optional(),
   content: z.string().min(1).max(500),
   sentAt: z.string(),
 })

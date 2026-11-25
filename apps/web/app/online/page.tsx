@@ -38,7 +38,8 @@ import {
   type StudyRoomState,
 } from '@learning-hub/core/online'
 import { apiGet, apiSend } from '@/lib/transport'
-import { OnlineSocket } from '@/lib/online-socket'
+import { OnlineSocket, joinRefusalMessage } from '@/lib/online-socket'
+import { OnlineIdentityLabel } from '@/components/OnlineIdentityLabel'
 import {
   Badge,
   Button,
@@ -144,6 +145,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
   const [roomTitle, setRoomTitle] = useState('Deep Work Session')
   const [workMinutes, setWorkMinutes] = useState(25)
   const [activeRoom, setActiveRoom] = useState<StudyRoomState | null>(null)
+  const [joinRefused, setJoinRefused] = useState<string | null>(null)
   const [chatMessages, setChatMessages] = useState<RoomMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [copied, setCopied] = useState(false)
@@ -188,7 +190,12 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
       url: wsUrl,
       onState: (state) => setActiveRoom(state),
       onChat: (msg) => setChatMessages((prev) => [...prev.slice(-40), msg]),
+      onRefused: (code) => {
+        setJoinRefused(joinRefusalMessage(code))
+        setActiveRoom(null)
+      },
     })
+    setJoinRefused(null)
 
     socket.connect()
     socketRef.current = socket
@@ -313,6 +320,11 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
               >
                 <Users className="h-4 w-4" /> Join Room
               </Button>
+              {joinRefused && (
+                <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+                  {joinRefused}
+                </p>
+              )}
             </div>
           </Panel>
         </div>
@@ -366,7 +378,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                     className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-xs dark:border-(--hub-border) dark:bg-(--hub-panel)"
                   >
                     <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                    <span className="font-medium">{p.alias}</span>
+                    <OnlineIdentityLabel alias={p.alias} verified={p.verified} />
                     <span className="text-tertiary">({p.cardsReviewed} cards)</span>
                   </div>
                 ))}
@@ -389,7 +401,11 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                 chatMessages.map((msg) => (
                   <div key={msg.id} className="flex flex-col">
                     <div className="flex items-center gap-1 text-xs text-tertiary">
-                      <span className="font-semibold text-secondary">{msg.senderAlias}</span>
+                      <OnlineIdentityLabel
+                        alias={msg.senderAlias}
+                        verified={msg.senderVerified}
+                        className="font-semibold text-secondary"
+                      />
                       <span>·</span>
                       <span>{new Date(msg.sentAt).toLocaleTimeString()}</span>
                     </div>
