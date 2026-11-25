@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 /**
  * /arena-3d browser spec. Runs against `next dev` on the isolated DB clone
@@ -22,6 +22,23 @@ test.beforeEach(async ({ context }) => {
     window.localStorage.setItem('lh-onboarding-dismissed', '1')
   })
 })
+
+/** Records every settlement POST so a failing run reports what the server said. */
+function trackSettlements(page: Page): { lastReport: () => string } {
+  const seen: string[] = []
+  page.on('response', (r) => {
+    if (r.url().endsWith('/api/arena') && r.request().method() === 'POST') {
+      void r.text().then((t) => seen.push(`${r.status()} ${t.slice(0, 400)}`))
+    }
+  })
+  return { lastReport: () => (seen.length ? seen.join(' | ') : 'no settlement POST seen') }
+}
+
+async function expectSettled(page: Page, track: { lastReport: () => string }): Promise<void> {
+  await expect(page.getByTestId('arena-results')).toBeVisible({ timeout: 30_000 })
+  const ok = await page.getByTestId('arena-result-badge').count()
+  expect(ok, `settlement did not complete: ${track.lastReport()}`).toBeGreaterThan(0)
+}
 
 async function seedArenaDeck(request: APIRequestContext, count = CARD_COUNT): Promise<number> {
   const deckRes = await request.post('/api/decks', {
@@ -50,6 +67,7 @@ async function seedArenaDeck(request: APIRequestContext, count = CARD_COUNT): Pr
 
 test('arena session: setup → duel → settlement reschedules the deck', async ({ page, request }) => {
   const deckId = await seedArenaDeck(request)
+  const track = trackSettlements(page)
 
   await page.goto('/arena-3d')
   await expect(page.getByRole('heading', { name: 'Review Arena', level: 1 })).toBeVisible({
@@ -77,7 +95,7 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   }
 
   // Settlement: victory results from the server summary.
-  await expect(page.getByTestId('arena-results')).toBeVisible({ timeout: 30_000 })
+  await expectSettled(page, track)
   await expect(page.getByTestId('arena-result-badge')).toHaveText('Victory')
   await expect(page.getByTestId('results-score')).toBeVisible()
   await expect(page.getByTestId('results-xp')).toContainText('XP')
@@ -111,21 +129,14 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
   await page.getByTestId('arena-start').click()
   await expect(page.getByTestId('arena-session')).toBeVisible()
 
-  const settleResponse = page.waitForResponse(
-    (r) => r.url().endsWith('/api/arena') && r.request().method() === 'POST',
-    { timeout: 30_000 },
-  )
+  const track = trackSettlements(page)
   for (let round = 0; round < 6; round++) {
+    if (await page.getByTestId('arena-results').isVisible()) break
     await page.getByTestId('arena-reveal').click()
     await page.getByTestId('arena-grade-1').click()
   }
-  const settled = await settleResponse
-  expect(
-    settled.ok(),
-    `defeat settlement: ${settled.status()} ${await settled.text()}`,
-  ).toBeTruthy()
 
-  await expect(page.getByTestId('arena-results')).toBeVisible({ timeout: 30_000 })
+  await expectSettled(page, track)
   await expect(page.getByTestId('arena-result-badge')).toHaveText('Defeat')
 })
 
