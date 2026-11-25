@@ -124,6 +124,7 @@ function PracticePanel() {
             return (
               <button
                 key={o.id}
+                data-testid={`fb-option-${o.id}`}
                 type="button"
                 disabled={submitted}
                 onClick={() => setChosen(o.id)}

@@ -35,10 +35,9 @@ test('practice flow: choose an option, set confidence, commit, see feedback', as
   await expect(page.locator('#fb-confidence')).toBeVisible()
 
   // Pick the first answer option and commit.
-  const firstOption = page
-    .locator('button[type="button"].w-full')
-    .filter({ has: page.locator('span.rounded-full') })
-    .first()
+  // data-testid: the app-shell nav also has w-full buttons with rounded-full
+  // badge spans (collapsed group counts), so a class-based locator misfires.
+  const firstOption = page.locator('[data-testid^="fb-option-"]').first()
   await firstOption.click()
   await expect(commit).toBeEnabled()
   await commit.click()
