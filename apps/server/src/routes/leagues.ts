@@ -26,6 +26,7 @@ import {
   listLeagueDuels,
   listLeaguePlayers,
   listLeagueRounds,
+  listLeagueSeasons,
   listLeagueRows,
   listLeagueTournaments,
   openTournamentMatches,
@@ -43,6 +44,7 @@ const createLeagueSchema = z.object({
   title: z.string().min(1).max(200),
   seasonStart: z.string().min(1).optional(),
   roundLengthDays: z.number().int().min(1).max(28).optional(),
+  seasonLengthRounds: z.number().int().min(2).max(52).optional(),
   promotionSlots: z.number().int().min(1).max(10).optional(),
   relegationSlots: z.number().int().min(0).max(10).optional(),
 })
@@ -294,6 +296,12 @@ function postLeagueCloseDue(_req: IncomingMessage, res: ServerResponse): void {
   sendJson(res, 200, { ok: true, closed })
 }
 
+function getLeagueSeasons(_req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, slugQuerySchema)
+  if (!getLeagueBySlug(q.slug)) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, seasons: listLeagueSeasons(q.slug) })
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -339,6 +347,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/standings',
     summary: 'division standings or full table + champion (?slug=&tier=)',
     handler: getLeagueStandings,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/seasons',
+    summary: 'archived seasons, newest first (?slug=)',
+    handler: getLeagueSeasons,
   },
   {
     method: 'GET',

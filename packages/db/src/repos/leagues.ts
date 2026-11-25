@@ -29,6 +29,8 @@ import {
   type LeagueEvent,
   type Tournament,
   isRoundDue,
+  isSeasonComplete,
+  closeSeason,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import type { Transaction } from '../transaction'
@@ -38,6 +40,7 @@ import {
   leagueEloEvents,
   leaguePlayers,
   leagueRounds,
+  leagueSeasons,
   leagues,
   leagueTournaments,
 } from '../schema'
@@ -51,6 +54,7 @@ export type LeagueRoundRow = typeof leagueRounds.$inferSelect
 export type LeagueDuelRow = typeof leagueDuels.$inferSelect
 export type LeagueTournamentRow = typeof leagueTournaments.$inferSelect
 export type LeagueEloEventRow = typeof leagueEloEvents.$inferSelect
+export type LeagueSeasonRow = typeof leagueSeasons.$inferSelect
 
 // ─── Row <-> core type mapping ─────────────────────────────────────────────
 
@@ -62,6 +66,8 @@ function rowsToLeague(league: LeagueRow, players: LeaguePlayerRow[]): League {
     seasonStart: league.seasonStart,
     roundLengthDays: league.roundLengthDays,
     currentRound: league.currentRound,
+    season: league.season,
+    seasonLengthRounds: league.seasonLengthRounds,
     promotionSlots: league.promotionSlots,
     relegationSlots: league.relegationSlots,
     scoring: league.scoringJson,
@@ -108,6 +114,7 @@ export function createLeagueRow(
     title: string
     seasonStart?: string
     roundLengthDays?: number
+    seasonLengthRounds?: number
     promotionSlots?: number
     relegationSlots?: number
   },
@@ -120,6 +127,7 @@ export function createLeagueRow(
     title: data.title,
     seasonStart: data.seasonStart ?? new Date().toISOString().slice(0, 10),
     roundLengthDays: data.roundLengthDays,
+    seasonLengthRounds: data.seasonLengthRounds,
     promotionSlots: data.promotionSlots,
     relegationSlots: data.relegationSlots,
   })
@@ -130,6 +138,7 @@ export function createLeagueRow(
       title: core.title,
       seasonStart: core.seasonStart,
       roundLengthDays: core.roundLengthDays,
+      seasonLengthRounds: core.seasonLengthRounds,
       promotionSlots: core.promotionSlots,
       relegationSlots: core.relegationSlots,
       scoringJson: core.scoring,
@@ -272,6 +281,7 @@ export function closeLeagueRound(
   round: LeagueRoundRow
   promoted: LeagueRoundRow['promotionsJson']
   relegated: LeagueRoundRow['relegationsJson']
+  seasonClosed: { season: number; champion: string | null } | null
 } {
   const conn = database ?? getDb()
   // captured for the post-commit notification pass (the notification ledger
@@ -332,7 +342,59 @@ export function closeLeagueRound(
       })
       .returning()
       .all()
-    return { round: round!, promoted: result.promoted, relegated: result.relegated, result }
+    // season close: the last round of the season crowns a champion, archives
+    // the final table and resets everyone to bronze for the next season
+    let seasonRow: LeagueSeasonRow | null = null
+    let seasonChampion: string | null = null
+    let seasonNumber = 0
+    if (isSeasonComplete(result.league)) {
+      const today = new Date().toISOString().slice(0, 10)
+      const seasonResult = closeSeason(result.league, today)
+      seasonChampion = seasonResult.champion
+      seasonNumber = seasonResult.season
+      for (const p of seasonResult.league.players) {
+        tx.update(leaguePlayers)
+          .set({ tier: p.tier, points: p.points, seasonPoints: p.seasonPoints })
+          .where(and(eq(leaguePlayers.leagueId, league.id), eq(leaguePlayers.handle, p.handle)))
+          .run()
+      }
+      tx.update(leagues)
+        .set({
+          season: seasonResult.league.season,
+          seasonStart: seasonResult.league.seasonStart,
+          currentRound: 0,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(leagues.id, league.id))
+        .run()
+      const [archived] = tx
+        .insert(leagueSeasons)
+        .values({
+          leagueId: league.id,
+          season: seasonResult.season,
+          champion: seasonResult.champion,
+          finalStandingsJson: seasonResult.finalStandings.map((p) => ({
+            handle: p.handle,
+            tier: p.tier,
+            seasonPoints: p.seasonPoints,
+            roundsWon: p.roundsWon,
+            // Elo is a db-side career stat, not part of the core player schema
+            elo: players.find((row) => row.handle === p.handle)?.elo ?? 1000,
+          })),
+        })
+        .returning()
+        .all()
+      seasonRow = archived!
+    }
+    return {
+      round: round!,
+      promoted: result.promoted,
+      relegated: result.relegated,
+      result,
+      seasonRow,
+      seasonChampion,
+      seasonNumber,
+    }
   }, conn)
 
   // league-round notifications on the 'league' channel, honoring prefs
@@ -375,6 +437,21 @@ export function closeLeagueRound(
       conn,
     )
   }
+  if (outcome.seasonRow) {
+    logNotification(
+      {
+        channel: 'league',
+        title: `Season ${outcome.seasonNumber} of ${leagueTitle} is over${
+          outcome.seasonChampion ? ` — champion: ${outcome.seasonChampion}` : ''
+        }`,
+        body: 'The final table is archived. Everyone restarts in bronze — Elo and career stats carry over.',
+        actionUrl: '/leagues',
+        decision,
+        createdAt: now,
+      },
+      conn,
+    )
+  }
   for (const w of outcome.result.roundWinners) {
     if (!scoringWinnerHandles.includes(w.handle) || promotedHandles.has(w.handle)) continue
     logNotification(
@@ -389,7 +466,27 @@ export function closeLeagueRound(
       conn,
     )
   }
-  return { round: outcome.round, promoted: outcome.promoted, relegated: outcome.relegated }
+  return {
+    round: outcome.round,
+    promoted: outcome.promoted,
+    relegated: outcome.relegated,
+    seasonClosed: outcome.seasonRow
+      ? { season: outcome.seasonNumber, champion: outcome.seasonChampion }
+      : null,
+  }
+}
+
+/** Archived seasons for a league, newest first. */
+export function listLeagueSeasons(slug: string, database?: LearningHubDB): LeagueSeasonRow[] {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return []
+  return conn
+    .select()
+    .from(leagueSeasons)
+    .where(eq(leagueSeasons.leagueId, league.id))
+    .orderBy(desc(leagueSeasons.season))
+    .all()
 }
 
 export function listLeagueRounds(slug: string, database?: LearningHubDB): LeagueRoundRow[] {

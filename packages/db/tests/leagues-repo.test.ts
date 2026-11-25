@@ -34,7 +34,9 @@ import {
   listLeagueTournaments,
   leagueEloEvents,
   leaguePlayerProfile,
+  leagueSeasons,
   listLeagueEloEvents,
+  listLeagueSeasons,
   loadLeague,
   notificationLog,
   openTournamentMatches,
@@ -53,6 +55,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(leagueSeasons).run()
   db.delete(leagueEloEvents).run()
   db.delete(xpEvents).run()
   db.delete(notificationLog).run()
@@ -121,8 +124,57 @@ describe('league lifecycle', () => {
   })
 })
 
+describe('season close', () => {
+  it('closing the last round archives the season and resets everyone', () => {
+    createLeagueRow(
+      { slug: 'cup', title: 'Cup', seasonStart: '2026-03-01', seasonLengthRounds: 2 },
+      db,
+    )
+    joinLeagueRow('cup', 'amr', db)
+    joinLeagueRow('cup', 'sara', db)
+    awardLeaguePoints('cup', { kind: 'reviews', handle: 'amr', count: 60 }, db)
+    awardLeaguePoints('cup', { kind: 'reviews', handle: 'sara', count: 20 }, db)
+
+    const first = closeLeagueRound('cup', db)
+    expect(first.seasonClosed).toBeNull()
+    expect(getLeagueBySlug('cup', db)!.currentRound).toBe(1)
+
+    const second = closeLeagueRound('cup', db)
+    expect(second.seasonClosed).toEqual({ season: 1, champion: 'amr' })
+
+    const league = getLeagueBySlug('cup', db)!
+    expect(league.season).toBe(2)
+    expect(league.currentRound).toBe(0)
+
+    const players = listLeaguePlayers('cup', db)
+    for (const p of players) {
+      expect(p.tier).toBe('bronze')
+      expect(p.points).toBe(0)
+      expect(p.seasonPoints).toBe(0)
+    }
+    // career stats persist
+    expect(players.find((p) => p.handle === 'amr')!.roundsWon).toBeGreaterThan(0)
+
+    const seasons = listLeagueSeasons('cup', db)
+    expect(seasons).toHaveLength(1)
+    expect(seasons[0]!.champion).toBe('amr')
+    expect(seasons[0]!.finalStandingsJson[0]!.handle).toBe('amr')
+    expect(seasons[0]!.finalStandingsJson[0]!.elo).toBe(1000)
+
+    // the season-close lands a league-channel notification
+    const notes = db
+      .select()
+      .from(notificationLog)
+      .all()
+      .filter((n) => n.channel === 'league')
+    expect(notes.some((n) => n.title.includes('Season 1') && n.title.includes('amr'))).toBe(true)
+
+    expect(listLeagueSeasons('missing', db)).toEqual([])
+  })
+})
+
 describe('due-round sweep', () => {
-  it('closes only leagues whose round has ended, one round per sweep', () => {
+  it('sweeps elapsed rounds and lets the season close stop the catch-up', () => {
     // long past: round 0 ended months ago
     createLeagueRow(
       { slug: 'old', title: 'Old', seasonStart: '2026-03-01', roundLengthDays: 7 },
@@ -138,15 +190,18 @@ describe('due-round sweep', () => {
     awardLeaguePoints('old', { kind: 'reviews', handle: 'amr', count: 12 }, db)
 
     const closed = closeDueRounds(new Date(), db)
-    // 2026-03-01 + 7-day rounds: every elapsed round closes in one sweep
-    const expectedRounds = Math.floor(
-      (Date.now() - new Date('2026-03-01T00:00:00.000Z').getTime()) / (7 * 86_400_000),
-    )
-    expect(closed).toHaveLength(expectedRounds)
+    // 2026-03-01 + 7-day rounds + the default 10-round season: the sweep
+    // closes rounds 0-9, then the season ends - season 2 starts today, so
+    // no further rounds are due
+    expect(closed).toHaveLength(10)
     expect(closed[0]).toEqual({ slug: 'old', roundClosed: 0 })
-    expect(closed.at(-1)).toEqual({ slug: 'old', roundClosed: expectedRounds - 1 })
-    expect(getLeagueBySlug('old', db)!.currentRound).toBe(expectedRounds)
+    expect(closed.at(-1)).toEqual({ slug: 'old', roundClosed: 9 })
+    const old = getLeagueBySlug('old', db)!
+    expect(old.currentRound).toBe(0)
+    expect(old.season).toBe(2)
     expect(getLeagueBySlug('fresh', db)!.currentRound).toBe(0)
+    expect(listLeagueSeasons('old', db)).toHaveLength(1)
+    expect(listLeagueSeasons('old', db)[0]!.champion).toBe('amr')
     // amr scored only in round 0: promoted then, relegated the next round for
     // inactivity (relegation needs no points), then quiet in bronze
     // (listLeagueRounds is newest-first — find by round number)
@@ -162,7 +217,7 @@ describe('due-round sweep', () => {
 
     // fully caught up: a second sweep closes nothing and touches no one
     expect(closeDueRounds(new Date(), db)).toEqual([])
-    expect(listLeagueRounds('old', db)).toHaveLength(expectedRounds)
+    expect(listLeagueRounds('old', db)).toHaveLength(10)
   })
 })
 

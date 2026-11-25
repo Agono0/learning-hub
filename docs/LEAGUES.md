@@ -26,6 +26,19 @@ joins in bronze. A league runs in **rounds** (default 7 days, configurable
 - The round row (promotions, relegations, winners per division) is recorded
   in `league_rounds` and shown under Round history.
 
+### Seasons
+
+A league plays `seasonLengthRounds` rounds per season (default 10, set at
+creation with `--season-rounds` / `seasonLengthRounds`). Closing the last
+round ends the season automatically: the leader of the highest non-empty
+division is crowned **champion**, the final table is archived
+(`league_seasons`, readable via `GET /leagues/seasons`, `leagues seasons`,
+or `league_seasons`), everyone restarts in **bronze** with zeroed points,
+and the season counter bumps. Elo, roundsWon and duel records are career
+stats and carry across seasons. The due-round sweep interacts correctly:
+a long-inactive league catches up to its season boundary, archives the
+season, and stops (the new season starts today, so nothing further is due).
+
 ### Points
 
 Study activity converts to league points via `awardLeaguePoints`:
@@ -117,6 +130,7 @@ leagues points <slug> <handle> [--reviews N | --focus-minutes N]
 leagues close-round <slug>
 leagues close-due
 leagues rounds <slug>
+leagues seasons <slug>
 leagues duel create <slug> <playerA> <playerB> [--league <slug>]
                    --prompt "id::question::ans1|ans2" [--prompt …]
 leagues duel from-deck <slug> <deckId> <playerA> <playerB> [--league s]
