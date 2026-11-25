@@ -219,6 +219,14 @@
   --hub-sunken: #05121a;
   --hub-border: #17383f;
   --hub-border-strong: #25535c;
+  /* Clay shadows tinted teal instead of indigo (light); .dark below still wins in dark. */
+  --clay-shadow:
+    inset -3px -3px 7px rgba(255, 255, 255, 0.8), inset 2px 2px 6px rgba(19, 78, 74, 0.06),
+    7px 7px 16px rgba(15, 118, 110, 0.16);
+  --clay-shadow-sm:
+    inset -2px -2px 5px rgba(255, 255, 255, 0.75), 4px 4px 10px rgba(15, 118, 110, 0.13);
+  --clay-pressed:
+    inset 3px 3px 7px rgba(19, 78, 74, 0.14), inset -2px -2px 5px rgba(255, 255, 255, 0.65);
 }
 
 /* Perceived-lightness ramp derived from the palette tint (one source of truth).
@@ -811,4 +819,42 @@ html.theme-e-ink .panel {
   -webkit-background-clip: text;
   background-clip: text;
   animation: shimmer 3s linear infinite;
+}
+
+/* Prototype entrance motion (lagoon palette only). Opacity and transform only,
+   so layout never shifts; content starts at 60% opacity, never hidden; fill
+   mode is `backwards`, so no transform is left behind after it ends (a lasting
+   transform would trap fixed-position children). Reduced motion zeroes the
+   duration through the global block above. */
+@keyframes rise-in {
+  from {
+    opacity: 0.6;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise-in {
+  animation: rise-in var(--duration-base) var(--ease-enter) backwards;
+}
+
+[data-theme='lagoon'] .panel {
+  animation: rise-in var(--duration-base) var(--ease-enter) backwards;
+}
+[data-theme='lagoon'] .panel:nth-child(2) {
+  animation-delay: 40ms;
+}
+[data-theme='lagoon'] .panel:nth-child(3) {
+  animation-delay: 80ms;
+}
+[data-theme='lagoon'] .panel:nth-child(n + 4) {
+  animation-delay: 120ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='lagoon'] .panel {
+    animation-delay: 0s !important;
+  }
 }

@@ -23,7 +23,7 @@ const VARIANT: Record<NonNullable<ButtonProps['variant']>, string> = {
   secondary: 'btn-secondary',
   ghost: 'btn-ghost',
   danger: 'btn bg-rose-600 hover:bg-rose-700',
-  bare: 'inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold transition-all [@media(pointer:coarse)]:min-h-11 active:scale-[0.97]',
+  bare: 'inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold transition-[transform,background-color,opacity,box-shadow] [@media(pointer:coarse)]:min-h-11 active:scale-[0.97]',
   // bare keeps its caller-supplied radius via className; clay spring only
 }
 
