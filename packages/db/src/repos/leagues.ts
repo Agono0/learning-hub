@@ -28,6 +28,7 @@ import {
   type League,
   type LeagueEvent,
   type Tournament,
+  isRoundDue,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import type { Transaction } from '../transaction'
@@ -696,4 +697,31 @@ export function createDuelFromDeck(
     },
     conn,
   )
+}
+
+/**
+ * Close every league round whose end instant has passed (scheduling sweep).
+ * A league inactive for several round lengths catches up in one sweep: the
+ * elapsed rounds are real history, so each is recorded (empty rounds are
+ * silent — no XP, no notifications, no promotions). Capped at 104 closes
+ * per league per sweep (two years of weekly rounds) as a pathological-loop
+ * guard.
+ */
+export function closeDueRounds(
+  now: Date = new Date(),
+  database?: LearningHubDB,
+): { slug: string; roundClosed: number }[] {
+  const conn = database ?? getDb()
+  const closed: { slug: string; roundClosed: number }[] = []
+  for (const row of listLeagueRows(conn)) {
+    let league = row
+    let guard = 0
+    while (guard < 104 && isRoundDue(league, now)) {
+      const { round } = closeLeagueRound(row.slug, conn)
+      closed.push({ slug: row.slug, roundClosed: round.round })
+      league = getLeagueBySlug(row.slug, conn)!
+      guard++
+    }
+  }
+  return closed
 }

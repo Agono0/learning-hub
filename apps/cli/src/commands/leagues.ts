@@ -11,6 +11,7 @@
  *   leagues players <slug>
  *   leagues points <slug> <handle> [--reviews N | --focus-minutes N]
  *   leagues close-round <slug>
+ *   leagues close-due
  *   leagues rounds <slug>
  *   leagues duel create <slug> <playerA> <playerB> [--league <slug>]
  *                      --prompt "id::question::ans1|ans2" [--prompt …]
@@ -24,6 +25,7 @@
 import {
   awardLeaguePoints,
   createDuelFromDeck,
+  closeDueRounds,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -199,6 +201,16 @@ function pointsCommand(args: string[]): void {
   } catch (err) {
     fail(err instanceof Error ? err.message : 'points failed')
   }
+}
+
+function closeDueCommand(): void {
+  const closed = closeDueRounds()
+  if (closed.length === 0) {
+    console.log('No league rounds are due.')
+    return
+  }
+  for (const c of closed) console.log(`${c.slug}: closed round ${c.roundClosed}`)
+  console.log(`Closed ${closed.length} round(s).`)
 }
 
 function closeRoundCommand(args: string[]): void {
@@ -432,6 +444,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'players') return playersCommand(args.slice(1))
   if (sub === 'points') return pointsCommand(args.slice(1))
   if (sub === 'close-round') return closeRoundCommand(args.slice(1))
+  if (sub === 'close-due') return closeDueCommand()
   if (sub === 'rounds') return roundsCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
   if (sub === 'tournament') return tournamentCommand(args.slice(1))

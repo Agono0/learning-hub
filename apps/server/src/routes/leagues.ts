@@ -11,6 +11,7 @@ import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   awardLeaguePoints,
+  closeDueRounds,
   createDuelFromDeck,
   closeLeagueRound,
   createLeagueDuel,
@@ -288,6 +289,11 @@ async function postTournamentResult(req: IncomingMessage, res: ServerResponse): 
   }
 }
 
+function postLeagueCloseDue(_req: IncomingMessage, res: ServerResponse): void {
+  const closed = closeDueRounds()
+  sendJson(res, 200, { ok: true, closed })
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -309,6 +315,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/points',
     summary: 'award league points for a study event',
     handler: postLeaguePoints,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/close-due',
+    summary: 'close every due round (one per league per sweep)',
+    handler: postLeagueCloseDue,
   },
   {
     method: 'POST',

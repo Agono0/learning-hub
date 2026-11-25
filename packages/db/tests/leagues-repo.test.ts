@@ -9,6 +9,7 @@ import {
   createBasicCards,
   createDuelFromDeck,
   findOrCreateDeck,
+  closeDueRounds,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -113,6 +114,51 @@ describe('league lifecycle', () => {
     expect(
       awardLeaguePoints('spring', { kind: 'reviews', handle: 'ghost', count: 5 }, db),
     ).toBeNull()
+  })
+})
+
+describe('due-round sweep', () => {
+  it('closes only leagues whose round has ended, one round per sweep', () => {
+    // long past: round 0 ended months ago
+    createLeagueRow(
+      { slug: 'old', title: 'Old', seasonStart: '2026-03-01', roundLengthDays: 7 },
+      db,
+    )
+    // still running: started yesterday with a 7-day round
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+    createLeagueRow(
+      { slug: 'fresh', title: 'Fresh', seasonStart: yesterday, roundLengthDays: 7 },
+      db,
+    )
+    joinLeagueRow('old', 'amr', db)
+    awardLeaguePoints('old', { kind: 'reviews', handle: 'amr', count: 12 }, db)
+
+    const closed = closeDueRounds(new Date(), db)
+    // 2026-03-01 + 7-day rounds: every elapsed round closes in one sweep
+    const expectedRounds = Math.floor(
+      (Date.now() - new Date('2026-03-01T00:00:00.000Z').getTime()) / (7 * 86_400_000),
+    )
+    expect(closed).toHaveLength(expectedRounds)
+    expect(closed[0]).toEqual({ slug: 'old', roundClosed: 0 })
+    expect(closed.at(-1)).toEqual({ slug: 'old', roundClosed: expectedRounds - 1 })
+    expect(getLeagueBySlug('old', db)!.currentRound).toBe(expectedRounds)
+    expect(getLeagueBySlug('fresh', db)!.currentRound).toBe(0)
+    // amr scored only in round 0: promoted then, relegated the next round for
+    // inactivity (relegation needs no points), then quiet in bronze
+    // (listLeagueRounds is newest-first — find by round number)
+    const rounds = listLeagueRounds('old', db)
+    const round0 = rounds.find((r) => r.round === 0)!
+    const round1 = rounds.find((r) => r.round === 1)!
+    expect(round0.promotionsJson).toContainEqual({ handle: 'amr', from: 'bronze', to: 'silver' })
+    expect(round1.relegationsJson).toContainEqual({ handle: 'amr', from: 'silver', to: 'bronze' })
+    expect(rounds.filter((r) => r.round >= 2).every((r) => r.promotionsJson.length === 0)).toBe(
+      true,
+    )
+    expect(listLeaguePlayers('old', db).find((p) => p.handle === 'amr')!.tier).toBe('bronze')
+
+    // fully caught up: a second sweep closes nothing and touches no one
+    expect(closeDueRounds(new Date(), db)).toEqual([])
+    expect(listLeagueRounds('old', db)).toHaveLength(expectedRounds)
   })
 })
 

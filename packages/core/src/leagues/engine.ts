@@ -208,6 +208,24 @@ export function closeRound(league: League): RoundResult {
   }
 }
 
+/** Minimal shape the scheduling helpers need (a db row qualifies). */
+export type LeagueSchedule = Pick<League, 'seasonStart' | 'roundLengthDays' | 'currentRound'>
+
+/**
+ * Instant the current round ends: seasonStart (an ISO calendar date, read as
+ * UTC midnight) plus (currentRound + 1) round lengths. UTC math keeps every
+ * device on the same boundary regardless of local timezone.
+ */
+export function roundEndsAt(league: LeagueSchedule): Date {
+  const start = new Date(`${league.seasonStart}T00:00:00.000Z`)
+  return new Date(start.getTime() + (league.currentRound + 1) * league.roundLengthDays * 86_400_000)
+}
+
+/** True once the current round's end instant has passed. */
+export function isRoundDue(league: LeagueSchedule, now: Date = new Date()): boolean {
+  return now.getTime() >= roundEndsAt(league).getTime()
+}
+
 /** Champion at any moment: leader of the highest non-empty division. */
 export function leagueLeader(league: League): LeaguePlayer | undefined {
   for (let i = DIVISION_ORDER.length - 1; i >= 0; i--) {
