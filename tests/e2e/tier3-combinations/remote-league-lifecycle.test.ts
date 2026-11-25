@@ -1,3 +1,4 @@
+/// <reference path="../../../apps/worker/src/worker.d.ts" />
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -34,7 +35,7 @@ function fakeState() {
     blockConcurrencyWhile: async <T>(cb: () => Promise<T>) => cb(),
     acceptWebSocket: () => undefined,
     getWebSockets: () => [],
-  } as unknown as DurableObjectState
+  } as never
 }
 
 interface Reply {

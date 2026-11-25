@@ -1,3 +1,4 @@
+/// <reference path="../../../apps/worker/src/worker.d.ts" />
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { leaguesRemoteCommands } from '../../../apps/cli/src/commands/leagues-remote'
 
@@ -28,7 +29,7 @@ function fakeState() {
     blockConcurrencyWhile: async <T>(cb: () => Promise<T>) => cb(),
     acceptWebSocket: () => undefined,
     getWebSockets: () => [],
-  } as unknown as DurableObjectState
+  } as never
 }
 
 beforeAll(async () => {
