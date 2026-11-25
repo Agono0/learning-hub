@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
-import { ArchiveLimitError, openBoundedZip, type ArchiveLimits } from '../src/archive-limits'
+import {
+  ArchiveLimitError,
+  INFLATE_PUSH_CHUNK,
+  MAX_DEFLATE_RATIO,
+  openBoundedZip,
+  type ArchiveLimits,
+} from '../src/archive-limits'
 import { parseApkg } from '../src/anki'
 import { extractEpubBytes } from '../src/ingest'
 
@@ -44,17 +50,23 @@ describe('openBoundedZip', () => {
     expect(new TextDecoder().decode(z.read('a.txt'))).toBe('hello hello hello hello')
   })
 
-  it('refuses over-limit input, entry count, entry size and declared total before inflating', () => {
+  it('refuses over-limit input and entry count at open; output caps apply to reads only', () => {
     expectCode(() => openBoundedZip(small, { ...BIG, maxInputBytes: 10 }), 'limit')
     expectCode(() => openBoundedZip(small, { ...BIG, maxEntries: 1 }), 'limit')
-    expectCode(() => openBoundedZip(small, { ...BIG, maxEntryBytes: 10 }), 'limit')
-    expectCode(() => openBoundedZip(small, { ...BIG, maxTotalBytes: 25 }), 'limit')
+    // entry cap: a.txt (23 bytes) is refused when read, b.txt (5) is fine, nothing at open
+    const z = openBoundedZip(small, { ...BIG, maxEntryBytes: 10 })
+    expectCode(() => z.read('a.txt'), 'limit')
+    expect(z.read('b.txt')).toHaveLength(5)
+    // total cap: second read would push accepted bytes past 25
+    const t = openBoundedZip(small, { ...BIG, maxTotalBytes: 25 })
+    t.read('a.txt')
+    expectCode(() => t.read('b.txt'), 'limit')
   })
 
   it('refuses a real deflate bomb at the entry limit and never inflates it', () => {
     const bomb = zipSync({ 'z.bin': new Uint8Array(3 * MiB) }) // ~3 KiB on disk
     expect(bomb.length).toBeLessThan(10_000)
-    expectCode(() => openBoundedZip(bomb, { ...BIG, maxEntryBytes: MiB }), 'limit')
+    expectCode(() => openBoundedZip(bomb, { ...BIG, maxEntryBytes: MiB }).read('z.bin'), 'limit')
   })
 
   it('aborts when the header lies small about a bomb (no silent truncation)', () => {
@@ -62,6 +74,57 @@ describe('openBoundedZip', () => {
     const lie = patched(bomb, (dv) => dv.setUint32(cenOffsets(bomb)[0]! + 24, 1000, true))
     const z = openBoundedZip(lie, BIG)
     expectCode(() => z.read('z.bin'), 'corrupt')
+  })
+
+  it('measures the inflate overshoot: abort happens within one push chunk of expansion', () => {
+    const bomb = zipSync({ 'z.bin': new Uint8Array(8 * MiB) }) // ~8 KiB compressed
+    const declared = 1000
+    const lie = patched(bomb, (dv) => dv.setUint32(cenOffsets(bomb)[0]! + 24, declared, true))
+    let peak = 0
+    const z = openBoundedZip(lie, BIG, (n) => (peak = Math.max(peak, n)))
+    expectCode(() => z.read('z.bin'), 'corrupt')
+    // never more than one 4 KiB push worth of maximum-ratio expansion past the declared size
+    expect(peak).toBeGreaterThan(declared)
+    expect(peak).toBeLessThanOrEqual(declared + INFLATE_PUSH_CHUNK * MAX_DEFLATE_RATIO)
+    expect(peak).toBeLessThan(8 * MiB) // and the bomb was not fully inflated
+  })
+
+  it('refuses overlapping entries and overflow-sized fields', () => {
+    const z = zipSync({ 'a.txt': strToU8('hello hello hello'), 'b.txt': strToU8('world world') })
+    const [c0, c1] = cenOffsets(z)
+    const dv0 = new DataView(z.buffer, z.byteOffset)
+    const overlap = patched(z, (dv) => dv.setUint32(c1! + 42, dv0.getUint32(c0! + 42, true), true))
+    expectCode(() => openBoundedZip(overlap, BIG), 'corrupt')
+    // csize near 2^32 - 2 must not wrap: the data range is past the central directory
+    const huge = patched(z, (dv) => dv.setUint32(c0! + 20, 0xfffffffe, true))
+    expectCode(() => openBoundedZip(huge, BIG), 'corrupt')
+    // local offset near 2^32 - 2 points outside the body
+    const off = patched(z, (dv) => dv.setUint32(c0! + 42, 0xfffffffe, true))
+    expectCode(() => openBoundedZip(off, BIG), 'corrupt')
+  })
+
+  it('refuses bytes trailing the deflate stream inside the declared compressed size', () => {
+    const z = zipSync({ 'a.txt': strToU8('hello hello hello hello') }, { level: 6 })
+    const dv = new DataView(z.buffer, z.byteOffset)
+    const c = cenOffsets(z)[0]!
+    const csize = dv.getUint32(c + 20, true)
+    const nameLen = dv.getUint16(c + 28, true)
+    const dataEnd = 30 + nameLen + dv.getUint16(28, true) + csize
+    // rebuild: local+data+8 junk bytes+central dir+eocd, with csize bumped by 8 in both headers
+    const body = z.subarray(0, dataEnd)
+    const rest = z.subarray(dataEnd)
+    const out = new Uint8Array(z.length + 8)
+    out.set(body, 0)
+    out.set([1, 2, 3, 4, 5, 6, 7, 8], dataEnd)
+    out.set(rest, dataEnd + 8)
+    const odv = new DataView(out.buffer)
+    odv.setUint32(18, csize + 8, true) // local csize
+    const nc = c + 8
+    odv.setUint32(nc + 20, csize + 8, true)
+    const eocd = out.length - 22
+    odv.setUint32(eocd + 16, dv.getUint32(z.length - 22 + 16, true) + 8, true)
+    const zz = openBoundedZip(out, BIG)
+    expectCode(() => zz.read('a.txt'), 'corrupt')
   })
 
   it('refuses a header that lies large (declared more than actual)', () => {
@@ -123,18 +186,27 @@ describe('parseApkg containment', () => {
     }
   }
 
-  it('inflates only the chosen collection and never the unused one', async () => {
+  it('refuses when both collection.anki2 and collection.anki21 are present', async () => {
     const z = zipSync({
       'collection.anki2': new Uint8Array([1, 2, 3]),
       'collection.anki21': new Uint8Array([9, 9, 9]),
     })
-    // corrupt the CRC of the unused collection: if it were read, parseApkg would throw
-    const second = cenOffsets(z)[1]!
-    const bad = patched(z, (dv) => dv.setUint32(second + 16, 123, true))
     const seen: Uint8Array[] = []
-    await parseApkg(bad, { openDatabase: opener(seen) as never })
-    expect(seen).toHaveLength(1)
-    expect([...seen[0]!]).toEqual([1, 2, 3])
+    await expect(parseApkg(z, { openDatabase: opener(seen) as never })).rejects.toThrow(
+      /both collection\.anki2 and collection\.anki21/,
+    )
+    expect(seen).toHaveLength(0)
+  })
+
+  it('accepts either single collection and never inflates unused media', async () => {
+    for (const key of ['collection.anki2', 'collection.anki21']) {
+      const z = zipSync({ [key]: new Uint8Array([1, 2, 3]), '0': new Uint8Array([7, 7]) })
+      // media entry '0' sorts first in the object (integer key): corrupt its CRC; if inflated, parseApkg would throw
+      const bad = patched(z, (dv) => dv.setUint32(cenOffsets(z)[0]! + 16, 123, true))
+      const seen: Uint8Array[] = []
+      await parseApkg(bad, { openDatabase: opener(seen) as never })
+      expect([...seen[0]!]).toEqual([1, 2, 3])
+    }
   })
 
   it('rejects a lying collection header instead of importing a truncated database', async () => {
@@ -181,10 +253,53 @@ describe('extractEpubBytes containment', () => {
     expect(extractEpubBytes(bad).chapters).toHaveLength(1)
   })
 
-  it('refuses an oversized declared entry (even an unread image) instead of skipping it', () => {
+  it('does not refuse an oversized UNUSED entry (never allocated), but refuses an oversized chapter', () => {
     const base = zipSync(files({ 'OEBPS/big.bin': new Uint8Array(4) }))
-    const z = patched(base, (dv) => dv.setUint32(cenOffsets(base)[3]! + 24, 17 * MiB, true))
-    expect(() => extractEpubBytes(z)).toThrow(/Invalid EPUB file .*entry limit/)
+    const unused = patched(base, (dv) => dv.setUint32(cenOffsets(base)[3]! + 24, 17 * MiB, true))
+    // the unused entry's header lies large: structurally valid, never read, nothing allocated
+    expect(extractEpubBytes(unused).chapters).toHaveLength(1)
+    const chap = patched(base, (dv) => dv.setUint32(cenOffsets(base)[2]! + 24, 17 * MiB, true))
+    expect(() => extractEpubBytes(chap)).toThrow(/Invalid EPUB file .*entry limit/)
+  })
+
+  it('refuses a chapter listed in the OPF but missing from the archive', () => {
+    const f = files()
+    delete (f as Record<string, unknown>)['OEBPS/c1.xhtml']
+    expect(() => extractEpubBytes(zipSync(f))).toThrow(/chapter "c1.xhtml".*missing/)
+  })
+
+  it('keeps multi-chapter spine order and resolves container-relative paths', () => {
+    const ch = (t: string) =>
+      `<html><body><h1>${t}</h1><p>${'Body text for chapter. '.repeat(4)}</p></body></html>`
+    const z = zipSync({
+      'META-INF/container.xml': strToU8(
+        '<container><rootfiles><rootfile full-path="book/OPS/p.opf"/></rootfiles></container>',
+      ),
+      'book/OPS/p.opf': strToU8(
+        `<package><metadata><dc:title>Multi</dc:title></metadata><manifest>
+        <item id="b" href="../text/b.xhtml" media-type="application/xhtml+xml"/>
+        <item id="a" href="a%20one.xhtml" media-type="application/xhtml+xml"/>
+        <item id="c" href="sub/c.xhtml" media-type="application/xhtml+xml"/></manifest>
+        <spine><itemref idref="c"/><itemref idref="a"/><itemref idref="b"/></spine></package>`,
+      ),
+      'book/text/b.xhtml': strToU8(ch('Bee')),
+      'book/OPS/a one.xhtml': strToU8(ch('Ay')),
+      'book/OPS/sub/c.xhtml': strToU8(ch('Sea')),
+    })
+    expect(extractEpubBytes(z).chapters.map((c) => c.title)).toEqual(['Sea', 'Ay', 'Bee'])
+  })
+
+  it('refuses malformed edges: no OPF, unreadable OPF path', () => {
+    expect(() => extractEpubBytes(zipSync({ 'x.txt': strToU8('hi') }))).toThrow(
+      /missing OPF package manifest/,
+    )
+    expect(() =>
+      extractEpubBytes(
+        zipSync({
+          'META-INF/container.xml': strToU8('<rootfile full-path="nope.opf"/>'),
+        }),
+      ),
+    ).toThrow(/could not read "nope.opf"/)
   })
 
   it('refuses a chapter whose header lies small (no silently truncated chapter)', () => {

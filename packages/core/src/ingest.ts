@@ -236,7 +236,10 @@ export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
     if (!item) continue
     const resolvedPath = normalizeZipPath(opfDir, item.href)
     const rawChapter = readEntry(resolvedPath)
-    if (!rawChapter) continue
+    if (rawChapter === null) {
+      // A chapter the OPF lists but the archive lacks is refused, not silently dropped.
+      throw new Error(`Invalid EPUB file — chapter "${item.href}" listed in the OPF is missing`)
+    }
 
     const bodyMatch = /<body\b[^>]*>([\s\S]*?)<\/body>/i.exec(rawChapter)
     const bodyHtml = bodyMatch ? bodyMatch[1]! : rawChapter

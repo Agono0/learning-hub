@@ -6,12 +6,17 @@
  * lying header forces a big allocation (or silently truncates when it lies small).
  *
  * Mechanism here:
- *  1. Parse the central directory ourselves, with input, entry-count, per-entry and
- *     declared-total limits enforced BEFORE any inflation or output allocation.
- *  2. Inflate only the entries a caller asks for, through fflate's streaming `Inflate`,
- *     counting output bytes per chunk and aborting as soon as the declared size is
- *     exceeded. Input is pushed in small chunks, so the overshoot before an abort is
- *     bounded by `PUSH_CHUNK * 1032` (deflate's maximum expansion ratio), about 4 MiB.
+ *  1. Parse the central directory ourselves, with input size and entry count enforced and
+ *     every central and local header structurally validated (overlaps included) BEFORE any
+ *     inflation. Output caps (entry, total) apply to the entries actually read.
+ *  2. Inflate only the entries a caller asks for, through fflate's streaming `Inflate`
+ *     (0.8.3 source: `inflt` consumes a whole push before `ondata` fires, grows its buffer
+ *     to at least `bt + 131072` by doubling, and a deflate symbol pair expands at most
+ *     258 bytes per 2 bits = 1032:1). Each push is sized from the remaining declared
+ *     budget, so the work past a violation is at most about (push + carry) * 1032 bytes of
+ *     output, internal buffers up to roughly twice that plus 128 KiB, and one copy handed
+ *     to `ondata`. A throw from `ondata` leaves `push` before another is issued; no timers
+ *     or workers exist, so nothing continues inflating.
  *  3. Require actual size == declared size and CRC-32 match, and count actual accepted
  *     bytes against the total limit. Nothing is truncated silently.
  *
@@ -33,6 +38,8 @@ export interface ArchiveLimits {
 }
 
 const MiB = 1024 * 1024
+
+export const INFLATE_PUSH_CHUNK = 4096
 
 export const APKG_LIMITS: ArchiveLimits = {
   maxInputBytes: 100 * MiB,
@@ -77,7 +84,7 @@ interface Entry {
   isDir: boolean
 }
 
-const PUSH_CHUNK = 4096
+const PUSH_CHUNK = INFLATE_PUSH_CHUNK
 const EOCD_SIG = 0x06054b50
 const CEN_SIG = 0x02014b50
 const LOC_SIG = 0x04034b50
@@ -102,7 +109,15 @@ function normalizeName(raw: string): string {
   return raw.replace(/\\/g, '/').replace(/^\/+/, '')
 }
 
-export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): BoundedZip {
+/** Max deflate expansion ratio (RFC 1951 length 258 per 2 bits of code is ~1032:1). */
+export const MAX_DEFLATE_RATIO = 1032
+
+export function openBoundedZip(
+  bytes: Uint8Array,
+  limits: ArchiveLimits,
+  /** Test probe: called with cumulative inflated bytes each time the inflater emits. */
+  observe?: (cumulativeBytes: number) => void,
+): BoundedZip {
   if (bytes.length > limits.maxInputBytes) {
     throw new ArchiveLimitError(
       `archive is ${bytes.length} bytes, over the ${limits.maxInputBytes} byte input limit`,
@@ -156,7 +171,6 @@ export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): Bounde
   const names: string[] = []
   const utf8 = new TextDecoder('utf-8', { fatal: true })
   let p = cdOffset
-  let declaredTotal = 0
   for (let i = 0; i < entryCount; i++) {
     if (p + 46 > eocd || dv.getUint32(p, true) !== CEN_SIG) {
       throw new ArchiveLimitError('corrupt central directory', 'corrupt')
@@ -207,19 +221,6 @@ export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): Bounde
     }
     lowerSeen.add(lower)
 
-    if (usize > limits.maxEntryBytes) {
-      throw new ArchiveLimitError(
-        `entry "${name}" declares ${usize} bytes, over the ${limits.maxEntryBytes} byte entry limit`,
-        'limit',
-      )
-    }
-    declaredTotal += usize
-    if (declaredTotal > limits.maxTotalBytes) {
-      throw new ArchiveLimitError(
-        `archive declares more than ${limits.maxTotalBytes} uncompressed bytes in total`,
-        'limit',
-      )
-    }
     if (method === 0 && csize !== usize) {
       throw new ArchiveLimitError(`stored entry "${name}" has inconsistent sizes`, 'corrupt')
     }
@@ -235,19 +236,14 @@ export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): Bounde
   }
   if (p !== eocd) throw new ArchiveLimitError('unexpected bytes in central directory', 'corrupt')
 
-  const cache = new Map<string, Uint8Array>()
-  let acceptedTotal = 0
-
-  const read = (name: string): Uint8Array => {
-    const cached = cache.get(name)
-    if (cached) return cached
-    const e = entries.get(name)
-    if (!e) throw new ArchiveLimitError(`entry "${name}" not found`, 'corrupt')
-    if (e.isDir) return new Uint8Array(0)
-
+  // Validate every local header now (30 bytes each) so a lying or overlapping entry is
+  // refused before anything is inflated, whether or not the parser later reads it.
+  const dataRange = new Map<string, { start: number; end: number }>()
+  const spans: { start: number; end: number; name: string }[] = []
+  for (const e of entries.values()) {
     const o = e.localOffset
     if (o + 30 > cdOffset || dv.getUint32(o, true) !== LOC_SIG) {
-      throw new ArchiveLimitError(`entry "${name}" has a bad local header`, 'corrupt')
+      throw new ArchiveLimitError(`entry "${e.name}" has a bad local header`, 'corrupt')
     }
     const lflags = dv.getUint16(o + 6, true)
     const lmethod = dv.getUint16(o + 8, true)
@@ -258,14 +254,46 @@ export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): Bounde
     }
     const nameStart = o + 30
     const dataStart = nameStart + lNameLen + lExtraLen
-    const dataEnd = dataStart + e.csize
+    const dataEnd = dataStart + e.csize // all operands < 2^32 + 2^17, exact in a double
     if (lmethod !== e.method || lNameLen !== e.rawName.length || dataEnd > cdOffset) {
-      throw new ArchiveLimitError(`entry "${name}" has an inconsistent local header`, 'corrupt')
+      throw new ArchiveLimitError(`entry "${e.name}" has an inconsistent local header`, 'corrupt')
     }
     for (let i = 0; i < lNameLen; i++) {
       if (bytes[nameStart + i] !== e.rawName[i]) {
-        throw new ArchiveLimitError(`entry "${name}" has an inconsistent local header`, 'corrupt')
+        throw new ArchiveLimitError(`entry "${e.name}" has an inconsistent local header`, 'corrupt')
       }
+    }
+    dataRange.set(e.name, { start: dataStart, end: dataEnd })
+    spans.push({ start: o, end: dataEnd, name: e.name })
+  }
+  spans.sort((x, y) => x.start - y.start)
+  for (let i = 1; i < spans.length; i++) {
+    if (spans[i]!.start < spans[i - 1]!.end) {
+      throw new ArchiveLimitError(
+        `entries "${spans[i - 1]!.name}" and "${spans[i]!.name}" overlap in the archive`,
+        'corrupt',
+      )
+    }
+  }
+
+  const cache = new Map<string, Uint8Array>()
+  let acceptedTotal = 0
+
+  const read = (name: string): Uint8Array => {
+    const cached = cache.get(name)
+    if (cached) return cached
+    const e = entries.get(name)
+    if (!e) throw new ArchiveLimitError(`entry "${name}" not found`, 'corrupt')
+    if (e.isDir) return new Uint8Array(0)
+
+    const { start: dataStart, end: dataEnd } = dataRange.get(name)!
+    // Output caps apply to SELECTED reads only. Unread entries were structurally validated
+    // above and never allocate output.
+    if (e.usize > limits.maxEntryBytes) {
+      throw new ArchiveLimitError(
+        `entry "${name}" declares ${e.usize} bytes, over the ${limits.maxEntryBytes} byte entry limit`,
+        'limit',
+      )
     }
     if (acceptedTotal + e.usize > limits.maxTotalBytes) {
       throw new ArchiveLimitError(
@@ -282,23 +310,40 @@ export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): Bounde
       const chunks: Uint8Array[] = []
       let n = 0
       const inf = new Inflate((chunk) => {
+        observe?.(n + chunk.length)
         if (n + chunk.length > e.usize) {
           throw new ArchiveLimitError(
             `entry "${name}" inflates past its declared ${e.usize} bytes`,
             'corrupt',
           )
         }
-        chunks.push(chunk.slice())
+        chunks.push(chunk) // fflate hands out a fresh copy per call
         n += chunk.length
       })
       try {
-        for (let i = 0; i < data.length; i += PUSH_CHUNK) {
-          inf.push(
-            data.subarray(i, Math.min(i + PUSH_CHUNK, data.length)),
-            i + PUSH_CHUNK >= data.length,
+        // Bound each push by the remaining declared budget: a push of c bytes (plus a few
+        // carried-over bytes) can emit at most about (c + carry) * 1032 bytes, so c shrinks
+        // as the budget does. The inflater only calls ondata after a whole push, so the
+        // abort below happens after that push, never mid-push.
+        let i = 0
+        do {
+          const c = Math.max(
+            1,
+            Math.min(PUSH_CHUNK, Math.ceil((e.usize - n + 1) / MAX_DEFLATE_RATIO)),
+          )
+          const end = Math.min(i + c, data.length)
+          inf.push(data.subarray(i, end), end >= data.length)
+          i = end
+        } while (i < data.length)
+        // After the final push fflate keeps unconsumed input in `p` (at most the one partial
+        // byte of the last block). More means bytes trail the deflate stream.
+        const left = (inf as unknown as { p: Uint8Array }).p.length
+        if (left > 1) {
+          throw new ArchiveLimitError(
+            `entry "${name}" has trailing bytes after its data`,
+            'corrupt',
           )
         }
-        if (data.length === 0) inf.push(new Uint8Array(0), true)
       } catch (err) {
         if (err instanceof ArchiveLimitError) throw err
         throw new ArchiveLimitError(`entry "${name}" is corrupt or truncated`, 'corrupt')
@@ -315,6 +360,7 @@ export function openBoundedZip(bytes: Uint8Array, limits: ArchiveLimits): Bounde
         out.set(c, at)
         at += c.length
       }
+      chunks.length = 0
     }
     if (crc32(out) !== e.crc) {
       throw new ArchiveLimitError(`entry "${name}" failed its CRC-32 check`, 'corrupt')
