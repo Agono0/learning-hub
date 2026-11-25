@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
+  ChannelCollectionSchema,
   ProposalOperationSchema,
   applyAllPendingVersions,
   applyChannelUpdate,
@@ -47,6 +48,10 @@ import {
   decideChannelProposal,
   hostedChannelAnalytics,
   subscriptionSyncStats,
+  saveCollection,
+  getCollection,
+  listCollections,
+  deleteCollection,
 } from '@learning-hub/db'
 import { sendJson, readJson } from '../http'
 import type { Route } from './shared'
@@ -576,7 +581,59 @@ async function postSyncStats(req: IncomingMessage, res: ServerResponse): Promise
   sendJson(res, 200, { ok: true, stats: subscriptionSyncStats(body.channelId) })
 }
 
+const collectionSaveBodySchema = z.object({ collection: ChannelCollectionSchema })
+const collectionIdBodySchema = z.object({ id: z.string().min(1) })
+
+async function postCollectionSave(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, collectionSaveBodySchema)
+  sendJson(res, 200, saveCollection(body.collection))
+}
+
+async function postCollectionList(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  sendJson(res, 200, { ok: true, collections: listCollections() })
+}
+
+async function postCollectionGet(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, collectionIdBodySchema)
+  const collection = getCollection(body.id)
+  if (!collection) {
+    sendJson(res, 404, { ok: false, error: 'collection not found' })
+    return
+  }
+  sendJson(res, 200, { ok: true, collection })
+}
+
+async function postCollectionDelete(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, collectionIdBodySchema)
+  const result = deleteCollection(body.id)
+  sendJson(res, result.ok ? 200 : 404, result)
+}
+
 shareChannelRoutes.push(
+  {
+    method: 'POST',
+    path: '/share/collections/save',
+    summary: 'save a channel collection',
+    handler: postCollectionSave,
+  },
+  {
+    method: 'POST',
+    path: '/share/collections/list',
+    summary: 'list stored collections',
+    handler: postCollectionList,
+  },
+  {
+    method: 'POST',
+    path: '/share/collections/get',
+    summary: 'fetch one collection',
+    handler: postCollectionGet,
+  },
+  {
+    method: 'POST',
+    path: '/share/collections/delete',
+    summary: 'delete a collection',
+    handler: postCollectionDelete,
+  },
   {
     method: 'POST',
     path: '/share/host/analytics',

@@ -22,8 +22,13 @@ import {
   unhostChannel,
   hostedChannelAnalytics,
   subscriptionSyncStats,
+  saveCollection,
+  getCollection,
+  listCollections,
+  deleteCollection,
 } from '@learning-hub/db'
 import {
+  ChannelCollectionSchema,
   ProposalOperationSchema,
   applyAllPendingVersions,
   applyChannelUpdate,
@@ -165,6 +170,10 @@ const postSchema = z.discriminatedUnion('action', [
     channelId: z.string().min(1),
     status: z.enum(['open', 'accepted', 'declined']).optional(),
   }),
+  z.object({ action: z.literal('collection-save'), collection: ChannelCollectionSchema }),
+  z.object({ action: z.literal('collection-list') }),
+  z.object({ action: z.literal('collection-get'), id: z.string().min(1) }),
+  z.object({ action: z.literal('collection-delete'), id: z.string().min(1) }),
   z.object({ action: z.literal('host-analytics'), channelId: z.string().min(1) }),
   z.object({ action: z.literal('sync-stats'), channelId: z.string().min(1) }),
   z.object({
@@ -316,5 +325,20 @@ export const POST = withRoute(async (req: Request) => {
     }
     case 'sync-stats':
       return Response.json({ ok: true, stats: subscriptionSyncStats(body.channelId) })
+    case 'collection-save':
+      return Response.json(saveCollection(body.collection))
+    case 'collection-list':
+      return Response.json({ ok: true, collections: listCollections() })
+    case 'collection-get': {
+      const collection = getCollection(body.id)
+      if (!collection) {
+        return Response.json({ ok: false, error: 'collection not found' }, { status: 404 })
+      }
+      return Response.json({ ok: true, collection })
+    }
+    case 'collection-delete': {
+      const result = deleteCollection(body.id)
+      return Response.json(result, { status: result.ok ? 200 : 404 })
+    }
   }
 })

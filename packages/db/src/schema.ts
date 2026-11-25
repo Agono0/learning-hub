@@ -2125,6 +2125,18 @@ export const shareChannelSyncRecords = table(
   (t) => [index('share_channel_sync_records_channel_at_idx').on(t.channelId, t.at)],
 )
 
+/** Portable channel collections (lh-share-collection/v1). */
+export const channelCollections = table('channel_collections', {
+  id: text('id').primaryKey(),
+  /** JSON-encoded ChannelCollection (validated on read). */
+  collectionJson: text('collection_json').notNull(),
+  title: text('title').notNull(),
+  ownerHandle: text('owner_handle').notNull(),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
 /** Subscription pull requests against locally hosted channels (lh-share/v2). */
 export const channelProposals = table(
   'channel_proposals',

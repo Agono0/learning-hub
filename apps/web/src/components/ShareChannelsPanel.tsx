@@ -72,6 +72,22 @@ type ChannelAnalyticsView = {
   }
 }
 
+type CollectionSummary = {
+  id: string
+  title: string
+  ownerHandle: string
+  channelCount: number
+  updatedAt: string
+}
+
+type Collection = {
+  id: string
+  title: string
+  description: string
+  ownerHandle: string
+  channels: Manifest[]
+}
+
 type Proposal = {
   id: string
   channelId: string
@@ -101,7 +117,7 @@ function saveSubscriptions(subs: SubscriptionRecord[]): void {
 }
 
 export function ShareChannelsPanel() {
-  type PanelTab = 'subscriptions' | 'publish' | 'subscribe' | 'update' | 'hosting'
+  type PanelTab = 'subscriptions' | 'publish' | 'subscribe' | 'update' | 'hosting' | 'collections'
   const [tab, setTab] = useState<PanelTab>('subscriptions')
   const [subs, setSubs] = useState<SubscriptionRecord[]>([])
   const [notice, setNotice] = useState<string | null>(null)
@@ -136,14 +152,23 @@ export function ShareChannelsPanel() {
   const [inviteChannel, setInviteChannel] = useState<string | null>(null)
   const [inviteSecret, setInviteSecret] = useState('')
   const [inviteToken, setInviteToken] = useState<string | null>(null)
+  const [collections, setCollections] = useState<CollectionSummary[]>([])
+  const [collectionJson, setCollectionJson] = useState('')
+  const [newCollectionId, setNewCollectionId] = useState('')
+  const [newCollectionTitle, setNewCollectionTitle] = useState('')
+  const [newCollectionHandle, setNewCollectionHandle] = useState('')
+  const [collectionPick, setCollectionPick] = useState<string[]>([])
 
   useEffect(() => {
     setSubs(loadSubscriptions())
   }, [])
 
   useEffect(() => {
-    if (tab !== 'hosting') return
-    void refreshHosted()
+    if (tab === 'hosting') void refreshHosted()
+    if (tab === 'collections') {
+      void refreshCollections()
+      void refreshHosted()
+    }
   }, [tab])
 
   async function createCh() {
@@ -352,6 +377,104 @@ export function ShareChannelsPanel() {
     await loadProposals(proposalChannel)
   }
 
+  async function refreshCollections() {
+    const res = await apiSend<{ ok: boolean; collections: CollectionSummary[] }>(
+      '/api/share-channels',
+      'POST',
+      { action: 'collection-list' },
+    )
+    setCollections(res.collections ?? [])
+  }
+
+  async function saveNewCollection() {
+    setNotice(null)
+    const manifests: Manifest[] = []
+    for (const id of collectionPick) {
+      const res = await apiSend<{ ok: boolean; manifest?: Manifest }>(
+        '/api/share-channels',
+        'POST',
+        { action: 'host-get', channelId: id },
+      )
+      if (res.ok && res.manifest) manifests.push(res.manifest)
+    }
+    if (manifests.length === 0) {
+      setNotice('Pick at least one hosted channel for the collection.')
+      return
+    }
+    const res = await apiSend<{ ok: boolean; error?: string }>('/api/share-channels', 'POST', {
+      action: 'collection-save',
+      collection: {
+        schema: 'lh-share-collection/v1',
+        id: newCollectionId,
+        title: newCollectionTitle,
+        description: '',
+        ownerHandle: newCollectionHandle,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        channels: manifests,
+      },
+    })
+    if (!res.ok) {
+      setNotice(res.error ?? 'Could not save the collection.')
+      return
+    }
+    setNotice(`Collection ${newCollectionId} saved with ${manifests.length} channel(s).`)
+    setNewCollectionId('')
+    setNewCollectionTitle('')
+    setCollectionPick([])
+    await refreshCollections()
+  }
+
+  async function importCollection() {
+    setNotice(null)
+    const parsed = JSON.parse(collectionJson) as Collection
+    const save = await apiSend<{ ok: boolean }>('/api/share-channels', 'POST', {
+      action: 'collection-save',
+      collection: parsed,
+    })
+    if (!save.ok) {
+      setNotice('Could not store that collection.')
+      return
+    }
+    // subscribe to every channel we do not already have
+    const have = new Set(subs.map((s) => s.manifest.channelId))
+    const added: SubscriptionRecord[] = []
+    for (const m of parsed.channels) {
+      if (have.has(m.channelId)) continue
+      const latest = m.versions[m.versions.length - 1]
+      added.push({
+        manifest: m,
+        localItems: latest.items.map((i) => ({
+          channelItemId: i.id,
+          channelContent: i.content,
+          channelRevision: i.revision,
+          localContent: i.content,
+          learnerState: {},
+        })),
+        localVersion: m.currentVersion,
+      })
+    }
+    const next = [...subs, ...added]
+    setSubs(next)
+    saveSubscriptions(next)
+    setNotice(
+      `Collection "${parsed.title}" imported: subscribed to ${added.length} new channel(s)` +
+        (parsed.channels.length - added.length > 0
+          ? `, ${parsed.channels.length - added.length} already present`
+          : '') +
+        '.',
+    )
+    setCollectionJson('')
+    await refreshCollections()
+  }
+
+  async function removeCollection(id: string) {
+    setNotice(null)
+    await apiSend('/api/share-channels', 'POST', { action: 'collection-delete', id })
+    setNotice(`Collection ${id} deleted.`)
+    await refreshCollections()
+  }
+
   async function loadAnalytics(channelIdFor: string) {
     setNotice(null)
     const res = await apiSend<{ ok: boolean; analytics?: ChannelAnalyticsView }>(
@@ -415,6 +538,7 @@ export function ShareChannelsPanel() {
           { key: 'subscribe', label: 'Subscribe' },
           { key: 'update', label: 'Apply update' },
           { key: 'hosting', label: 'Hosting' },
+          { key: 'collections', label: 'Collections' },
         ]}
       />
 
@@ -812,6 +936,105 @@ export function ShareChannelsPanel() {
               />
               <Button variant="primary" onClick={() => void hostFromText()}>
                 Host channel
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      {tab === 'collections' && (
+        <Panel>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium">Channel collections</h3>
+              <p className="text-xs text-neutral-500">
+                A collection bundles channel manifests into one portable JSON: share one paste
+                instead of many, and subscribe to every channel at once.
+              </p>
+            </div>
+            {collections.length === 0 ? (
+              <p className="text-sm text-neutral-500">No collections stored yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {collections.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3"
+                    data-testid={`collection-${c.id}`}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{c.title}</p>
+                      <p className="text-xs text-neutral-500">
+                        {c.id} · by {c.ownerHandle} · {c.channelCount} channel(s)
+                      </p>
+                    </div>
+                    <Button variant="secondary" onClick={() => void removeCollection(c.id)}>
+                      Delete
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="space-y-2 rounded-lg bg-neutral-50 p-3">
+              <p className="text-xs font-medium text-neutral-600">
+                New collection from hosted channels
+              </p>
+              <TextField
+                label="Collection id"
+                value={newCollectionId}
+                onChange={(e) => setNewCollectionId(e.target.value)}
+              />
+              <TextField
+                label="Title"
+                value={newCollectionTitle}
+                onChange={(e) => setNewCollectionTitle(e.target.value)}
+              />
+              <TextField
+                label="Your handle"
+                value={newCollectionHandle}
+                onChange={(e) => setNewCollectionHandle(e.target.value)}
+              />
+              {hosted.length === 0 ? (
+                <p className="text-xs text-neutral-500">Host channels on the Hosting tab first.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {hosted.map((h) => (
+                    <li key={h.channelId} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={collectionPick.includes(h.channelId)}
+                        onChange={(e) =>
+                          setCollectionPick((prev) =>
+                            e.target.checked
+                              ? [...prev, h.channelId]
+                              : prev.filter((x) => x !== h.channelId),
+                          )
+                        }
+                        data-testid={`collection-pick-${h.channelId}`}
+                      />
+                      <span>
+                        {h.title} <span className="text-neutral-400">v{h.currentVersion}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button variant="primary" onClick={() => void saveNewCollection()}>
+                Save collection
+              </Button>
+            </div>
+            <div className="space-y-2 border-t border-neutral-100 pt-3">
+              <p className="text-xs font-medium text-neutral-600">
+                Import a collection JSON (subscribes to every channel)
+              </p>
+              <TextArea
+                label="Collection JSON"
+                value={collectionJson}
+                onChange={(e) => setCollectionJson(e.target.value)}
+                rows={5}
+              />
+              <Button variant="primary" onClick={() => void importCollection()}>
+                Import and subscribe
               </Button>
             </div>
           </div>

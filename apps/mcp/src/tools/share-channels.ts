@@ -9,6 +9,7 @@
 import { z } from 'zod'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 import {
+  ChannelCollectionSchema,
   ProposalOperationSchema,
   applyAllPendingVersions,
   applyChannelUpdate,
@@ -51,6 +52,10 @@ import {
   decideChannelProposal,
   hostedChannelAnalytics,
   subscriptionSyncStats,
+  saveCollection,
+  getCollection,
+  listCollections,
+  deleteCollection,
 } from '@learning-hub/db'
 
 export const shareChannelTools: RegisteredTool[] = [
@@ -484,5 +489,30 @@ export const shareChannelTools: RegisteredTool[] = [
     'Subscriber-side sync health for a channel: total syncs, outcomes (updated/already-current/failed), last sync time and last error.',
     { channelId: z.string().min(1) },
     async ({ channelId }) => json({ ok: true, stats: subscriptionSyncStats(channelId) }),
+  ),
+  tool(
+    'share_collection_save',
+    'Saves a channel collection (a portable bundle of channel manifests) locally.',
+    { collection: ChannelCollectionSchema },
+    async ({ collection }) => json(saveCollection(collection)),
+  ),
+  tool('share_collection_list', 'Lists locally stored channel collections.', {}, async () =>
+    json({ ok: true, collections: listCollections() }),
+  ),
+  tool(
+    'share_collection_get',
+    'Returns one stored collection with full channel manifests.',
+    { id: z.string().min(1) },
+    async ({ id }) => {
+      const collection = getCollection(id)
+      if (!collection) return json({ ok: false, error: 'collection not found' })
+      return json({ ok: true, collection })
+    },
+  ),
+  tool(
+    'share_collection_delete',
+    'Deletes a stored collection.',
+    { id: z.string().min(1) },
+    async ({ id }) => json(deleteCollection(id)),
   ),
 ]

@@ -15,6 +15,7 @@ import { type RegisteredCommand } from './registry'
 import {
   applyAllPendingVersions,
   applyChannelUpdate,
+  ChannelCollectionSchema,
   ChannelManifestSchema,
   canSubscribe,
   diffVersions,
@@ -46,6 +47,10 @@ import {
   createChannelProposal,
   listChannelProposals,
   decideChannelProposal,
+  saveCollection,
+  getCollection,
+  listCollections,
+  deleteCollection,
 } from '@learning-hub/db'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -604,6 +609,65 @@ function shareChannelsCommand(args: string[]): void {
       } else {
         console.log('Proposal declined.')
       }
+      return
+    }
+    case 'collection-save': {
+      const data = readJsonPayload(args)
+      const result = saveCollection(ChannelCollectionSchema.parse(data))
+      if (!result.ok) {
+        console.error(result.error ?? 'save failed')
+        process.exitCode = 1
+        return
+      }
+      console.log(
+        asJson
+          ? JSON.stringify({ ok: true })
+          : `Collection ${result.collection!.id} saved (${result.collection!.channels.length} channels).`,
+      )
+      return
+    }
+    case 'collections': {
+      const collections = listCollections()
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, collections }))
+      } else {
+        console.log(`\nCollections (${collections.length})`)
+        for (const c of collections) {
+          console.log(`  ${c.id}  ${c.title}  by ${c.ownerHandle}  ${c.channelCount} channel(s)`)
+        }
+      }
+      return
+    }
+    case 'collection-get': {
+      const id = parseFlag(args, '--id')
+      if (!id) {
+        console.error('usage: share-channels collection-get --id <id> [--json]')
+        process.exitCode = 1
+        return
+      }
+      const collection = getCollection(id)
+      if (!collection) {
+        console.error('collection not found')
+        process.exitCode = 1
+        return
+      }
+      console.log(JSON.stringify(collection, null, asJson ? 0 : 2))
+      return
+    }
+    case 'collection-delete': {
+      const id = parseFlag(args, '--id')
+      if (!id) {
+        console.error('usage: share-channels collection-delete --id <id>')
+        process.exitCode = 1
+        return
+      }
+      const result = deleteCollection(id)
+      if (!result.ok) {
+        console.error(result.error ?? 'delete failed')
+        process.exitCode = 1
+        return
+      }
+      console.log(asJson ? JSON.stringify({ ok: true }) : `Collection ${id} deleted.`)
       return
     }
     default:
