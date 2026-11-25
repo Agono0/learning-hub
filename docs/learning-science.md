@@ -763,6 +763,14 @@ Dynamic detection of working memory saturation and flow disruption during review
 
 ---
 
+### The Power of Feedback — Hattie & Timperley (2007); Kluger & DeNisi (1996); Shute (2008)
+
+Feedback answers three questions (Where am I going? How am I going? Where to next?) at four levels — task, process, self-regulation, self — and its effect on performance depends on where it moves the learner's attention.
+
+- **Evidence:** Kluger & DeNisi's (1996, _Psychol. Bull._) meta-analysis of 3,000+ observations found mean effect d ≈ 0.41, but over a third of feedback interventions _reduced_ performance when they pulled attention to the self. Shute (2008) distills formative feedback into enforceable guidelines (specific, nonevaluative, manageable, scaffolded, process- and self-regulation-oriented).
+- **In Learning HUB:** the Feedback Studio — transparent cue classifier for the four levels, FIT self-focus risk detection, Shute guideline audit, misconception-tagged formative scenarios with three-level exemplar feedback, hypercorrection flagging, and an FSRS-6 bridge deck. Core `packages/core/src/feedback-studio/`, page `apps/web/app/feedback-studio/`, API `apps/web/app/api/feedback-studio/`, MCP `feedback_*` tools, CLI `feedback-*` commands, server `/cognitive/feedback/*`; docs [feedback-studio.md](feedback-studio.md).
+- **Status:** ✅
+
 ## Planned items summary (current expansion)
 
 > Statuses reconciled with [CHANGELOG.md](../CHANGELOG.md) on 2026-11-07 (M18
