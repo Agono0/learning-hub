@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  resolveOptions,
   estimateTiming,
   preflightCalls,
   runRetentionPlanner,
   selectCards,
   simulateRetention,
 } from '../src/retention-planner'
-import { makeCards, makeInput, NOW } from './retention-planner-fixtures'
+import { makeCards, makeInput, makeReviews, NOW } from './retention-planner-fixtures'
 
 describe('selectCards', () => {
   it('simulates only Review-state, non-suspended cards and counts the rest', () => {
@@ -128,5 +129,57 @@ describe('runRetentionPlanner', () => {
     expect(r.status).toBe('ok')
     expect(r.schedulerCalls).toBeLessThan(r.maxCalls)
     expect(performance.now() - t0).toBeLessThan(10_000)
+  })
+  it('recommends exactly the last grid point that fits, never one that does not', async () => {
+    const r = await runRetentionPlanner(makeInput(makeCards(300)), {
+      maxCards: 300,
+      budgetMinutes: 1.2,
+    })
+    const fits = r.grid.filter((p) => p.meanDailyMinutes <= 1.2)
+    expect(r.recommendation?.retention ?? null).toBe(
+      fits.length ? fits[fits.length - 1]!.retention : null,
+    )
+    for (const p of r.grid) expect(p.fitsBudget).toBe(p.meanDailyMinutes <= 1.2)
+  })
+  it('labels weights and calibration from the same input', async () => {
+    const custom = await runRetentionPlanner({
+      ...makeInput(makeCards(50), makeReviews(1500)),
+      weights: Array(21).fill(0.5),
+    })
+    expect(custom.weights).toBe('custom')
+    expect(custom.calibration.usingCustomWeights).toBe(true)
+    const def = await runRetentionPlanner(makeInput(makeCards(50), makeReviews(1500)))
+    expect(def.weights).toBe('default')
+    expect(def.calibration.usingCustomWeights).toBe(false)
+  })
+  it('uses plain wording in bounds errors', () => {
+    expect(() => resolveOptions({ horizonDays: 5 })).toThrow(
+      /Look ahead must be a whole number of days between 14 and 365/,
+    )
+    expect(() => resolveOptions({ budgetMinutes: 0 })).toThrow(
+      /Daily minutes must be between 1 and 600/,
+    )
+  })
+})
+
+describe('decks with their own settings', () => {
+  it('leaves their cards out of a global-scope model and counts them', () => {
+    const cards = [
+      ...makeCards(10),
+      ...makeCards(4, { ownSettings: true }).map((c) => ({ ...c, id: c.id + 500 })),
+    ]
+    const { picked, coverage } = selectCards(cards, 100)
+    expect(picked).toHaveLength(10)
+    expect(coverage.excludedOwnSettings).toBe(4)
+    expect(picked.every((c) => !c.ownSettings)).toBe(true)
+  })
+  it('reports scope so a deck-only result is never mistaken for a global one', async () => {
+    const deck = await runRetentionPlanner(
+      { ...makeInput(makeCards(30)), deckId: 2 },
+      { maxCards: 30 },
+    )
+    expect(deck.scope).toBe('deck')
+    const all = await runRetentionPlanner(makeInput(makeCards(30)), { maxCards: 30 })
+    expect(all.scope).toBe('all-decks')
   })
 })

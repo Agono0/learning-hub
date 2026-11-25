@@ -44,6 +44,14 @@ export function loadRetentionPlannerData(
     .limit(MAX_CARDS_READ + 1)
     .all()
   const cardsTruncated = rows.length > MAX_CARDS_READ
+  const ownDecks = new Set<number>()
+  if (opts.deckId === undefined) {
+    for (const dk of database.select().from(decks).all()) {
+      const hasWeights = !!dk.fsrsWeights && dk.fsrsWeights.length > 0
+      if ((dk.desiredRetention !== null && dk.desiredRetention !== undefined) || hasWeights)
+        ownDecks.add(dk.id)
+    }
+  }
   const plannerCards: PlannerCard[] = rows.slice(0, MAX_CARDS_READ).map((r) => ({
     id: r.id,
     deckId: r.deckId,
@@ -57,6 +65,7 @@ export function loadRetentionPlannerData(
     reps: r.reps,
     lapses: r.lapses,
     learningStep: r.learningStep,
+    ownSettings: ownDecks.has(r.deckId),
   }))
   const revRows = database
     .select({
@@ -81,6 +90,7 @@ export function loadRetentionPlannerData(
     currentRetention,
     currentSource,
     now,
+    deckId: opts.deckId ?? null,
     cardsTruncated,
   }
 }

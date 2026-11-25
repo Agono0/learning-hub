@@ -25,7 +25,9 @@ export function selectCards(
   maxCards: number,
 ): { picked: PlannerCard[]; coverage: CardCoverage } {
   const sorted = [...cards].sort((a, b) => a.id - b.id)
-  const eligible = sorted.filter((c) => c.state === 2 && !c.suspended && c.stability > 0)
+  const eligible = sorted.filter(
+    (c) => c.state === 2 && !c.suspended && c.stability > 0 && !c.ownSettings,
+  )
   const stride = eligible.length > maxCards ? Math.ceil(eligible.length / maxCards) : 1
   const picked = stride === 1 ? eligible : eligible.filter((_, i) => i % stride === 0)
   const live = sorted.filter((c) => !c.suspended)
@@ -40,6 +42,8 @@ export function selectCards(
       excludedLearning: live.filter((c) => c.state === 1).length,
       excludedRelearning: live.filter((c) => c.state === 3).length,
       excludedSuspended: sorted.length - live.length,
+      excludedOwnSettings: live.filter((c) => c.state === 2 && c.stability > 0 && c.ownSettings)
+        .length,
       selection: stride === 1 ? 'all-eligible' : 'every-kth-by-id',
       stride,
     },

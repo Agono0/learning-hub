@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { CardCoverage } from '@learning-hub/core'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Callout } from '@/ui'
 import { APPLIED_KEY, pct, type AppliedRecord } from './types'
@@ -18,7 +19,13 @@ async function currentGlobal(): Promise<number> {
  * Applies a desired retention to the global setting through the existing
  * settings endpoint, only after an explicit confirm. No reschedule, no weights.
  */
-export function ApplyPanel({ candidate }: { candidate: number | null }) {
+export function ApplyPanel({
+  candidate,
+  coverage,
+}: {
+  candidate: number | null
+  coverage: CardCoverage
+}) {
   const [now, setNow] = useState<number | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -43,6 +50,15 @@ export function ApplyPanel({ candidate }: { candidate: number | null }) {
     setMessage(null)
     try {
       const before = await currentGlobal()
+      if (now !== null && Math.abs(before - now) > 1e-9) {
+        setNow(before)
+        setConfirming(false)
+        setMessage({
+          tone: 'danger',
+          text: `The setting changed to ${pct(before)} since this page loaded. Nothing was changed. Review the change again.`,
+        })
+        return
+      }
       await apiSend('/api/settings', 'PUT', { desiredRetention: candidate })
       const rec: AppliedRecord = {
         applied: candidate,
@@ -55,7 +71,7 @@ export function ApplyPanel({ candidate }: { candidate: number | null }) {
       setConfirming(false)
       setMessage({
         tone: 'accent',
-        text: `Global retention is now ${pct(candidate)}. Restore is available below.`,
+        text: `Global retention is now ${pct(candidate)}. You can restore the previous value.`,
       })
     } catch (e) {
       setMessage({ tone: 'danger', text: e instanceof Error ? e.message : 'Could not apply.' })
@@ -100,6 +116,15 @@ export function ApplyPanel({ candidate }: { candidate: number | null }) {
         with its own override keeps that override. A learner-profile preset can set this value again
         later, and its saved snapshot will not match. Nothing here reschedules cards or touches
         weights.
+      </p>
+      <p data-testid="rp-apply-scope">
+        This is a global setting only. Cards in decks that have their own retention or weights are
+        left out of the model ({coverage.excludedOwnSettings.toLocaleString()} cards), because the
+        global setting does not govern them and this change will not touch those decks. The number
+        is based on {coverage.eligible.toLocaleString()} Review-state cards;{' '}
+        {coverage.excludedNew.toLocaleString()} new, {coverage.excludedLearning.toLocaleString()}{' '}
+        learning, {coverage.excludedRelearning.toLocaleString()} relearning and{' '}
+        {coverage.excludedSuspended.toLocaleString()} suspended cards are not in it.
       </p>
       <p>
         Global retention now: <strong>{now === null ? 'unknown' : pct(now)}</strong>

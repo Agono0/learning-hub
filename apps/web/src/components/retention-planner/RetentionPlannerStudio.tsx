@@ -115,6 +115,9 @@ export function RetentionPlannerStudio() {
                     ))}
                   </tbody>
                 </table>
+                <p className="pt-1 text-xs text-tertiary">
+                  Minutes are shown to two decimals. Within budget compares the unrounded value.
+                </p>
               </div>
             ) : null}
             {r.status === 'ok' ? (
@@ -141,7 +144,10 @@ export function RetentionPlannerStudio() {
             <AssumptionsBlock r={r} truncated={data?.cardsTruncated ?? false} />
           </Panel>
           <Panel>
-            <ApplyPanel candidate={candidate} />
+            <ApplyPanel
+              candidate={r.status === 'ok' && r.scope === 'all-decks' ? candidate : null}
+              coverage={r.coverage}
+            />
           </Panel>
         </>
       ) : (

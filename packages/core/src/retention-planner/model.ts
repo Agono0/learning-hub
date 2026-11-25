@@ -44,6 +44,8 @@ export interface PlannerCard {
   reps: number
   lapses: number
   learningStep: number
+  /** Deck has its own retention or weights, so the global setting does not govern this card. */
+  ownSettings?: boolean
 }
 
 export interface PlannerReview {
@@ -64,6 +66,8 @@ export interface PlannerInput {
   currentRetention: number
   currentSource: 'deck' | 'global'
   now: Date
+  /** null = every deck (global scope). A number = that deck only. */
+  deckId?: number | null
 }
 
 export interface PlannerOptions {
@@ -84,6 +88,8 @@ export interface CardCoverage {
   excludedLearning: number
   excludedRelearning: number
   excludedSuspended: number
+  /** Review-state cards in decks with their own retention or weights (global scope only). */
+  excludedOwnSettings: number
   selection: 'all-eligible' | 'every-kth-by-id'
   stride: number
 }
@@ -145,6 +151,7 @@ export interface PlannerResult {
   horizonDays: number
   budgetMinutes: number
   seed: number
+  scope: 'all-decks' | 'deck'
   coverage: CardCoverage
   timing: TimingEstimate
   passMix: PassMix

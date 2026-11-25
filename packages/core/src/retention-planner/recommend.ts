@@ -25,14 +25,19 @@ export class PlannerBoundsError extends Error {}
 export function resolveOptions(raw: Partial<PlannerOptions>): PlannerOptions {
   const grid = raw.grid ?? DEFAULT_GRID
   if (grid.length < MIN_GRID_POINTS || grid.length > MAX_GRID_POINTS) {
-    throw new PlannerBoundsError(`grid needs ${MIN_GRID_POINTS} to ${MAX_GRID_POINTS} values`)
+    throw new PlannerBoundsError(
+      `Choose between ${MIN_GRID_POINTS} and ${MAX_GRID_POINTS} retention values.`,
+    )
   }
   for (let i = 0; i < grid.length; i++) {
     const g = grid[i]!
     if (!Number.isFinite(g) || g < MIN_RETENTION || g > MAX_RETENTION) {
-      throw new PlannerBoundsError(`grid values must be ${MIN_RETENTION} to ${MAX_RETENTION}`)
+      throw new PlannerBoundsError(
+        `Retention values must be between ${MIN_RETENTION * 100}% and ${MAX_RETENTION * 100}%.`,
+      )
     }
-    if (i > 0 && g <= grid[i - 1]!) throw new PlannerBoundsError('grid must be strictly increasing')
+    if (i > 0 && g <= grid[i - 1]!)
+      throw new PlannerBoundsError('Retention values must go up from one to the next.')
   }
   const horizonDays = raw.horizonDays ?? DEFAULT_HORIZON_DAYS
   if (
@@ -41,7 +46,7 @@ export function resolveOptions(raw: Partial<PlannerOptions>): PlannerOptions {
     horizonDays > MAX_HORIZON_DAYS
   ) {
     throw new PlannerBoundsError(
-      `horizonDays must be an integer ${MIN_HORIZON_DAYS} to ${MAX_HORIZON_DAYS}`,
+      `Look ahead must be a whole number of days between ${MIN_HORIZON_DAYS} and ${MAX_HORIZON_DAYS}.`,
     )
   }
   const budgetMinutes = raw.budgetMinutes ?? 30
@@ -51,20 +56,24 @@ export function resolveOptions(raw: Partial<PlannerOptions>): PlannerOptions {
     budgetMinutes > MAX_BUDGET_MINUTES
   ) {
     throw new PlannerBoundsError(
-      `budgetMinutes must be ${MIN_BUDGET_MINUTES} to ${MAX_BUDGET_MINUTES}`,
+      `Daily minutes must be between ${MIN_BUDGET_MINUTES} and ${MAX_BUDGET_MINUTES}.`,
     )
   }
   const maxCards = raw.maxCards ?? DEFAULT_SIMULATED_CARDS
   if (!Number.isInteger(maxCards) || maxCards < 1 || maxCards > MAX_SIMULATED_CARDS) {
-    throw new PlannerBoundsError(`maxCards must be an integer 1 to ${MAX_SIMULATED_CARDS}`)
+    throw new PlannerBoundsError(
+      `Cards to simulate must be a whole number from 1 to ${MAX_SIMULATED_CARDS}.`,
+    )
   }
   const seed = raw.seed ?? DEFAULT_SEED
   if (!Number.isInteger(seed) || Math.abs(seed) > 2_147_483_647) {
-    throw new PlannerBoundsError('seed must be a 32-bit integer')
+    throw new PlannerBoundsError('The seed must be a whole number.')
   }
   const maxCalls = raw.maxCalls ?? MAX_SCHEDULER_CALLS
   if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > MAX_SCHEDULER_CALLS) {
-    throw new PlannerBoundsError(`maxCalls must be an integer 1 to ${MAX_SCHEDULER_CALLS}`)
+    throw new PlannerBoundsError(
+      `The call limit must be a whole number from 1 to ${MAX_SCHEDULER_CALLS}.`,
+    )
   }
   return { grid, horizonDays, budgetMinutes, maxCards, seed, maxCalls }
 }
@@ -110,6 +119,7 @@ export async function runRetentionPlanner(
     horizonDays: options.horizonDays,
     budgetMinutes: options.budgetMinutes,
     seed: options.seed,
+    scope: input.deckId == null ? ('all-decks' as const) : ('deck' as const),
     coverage,
     timing,
     passMix,

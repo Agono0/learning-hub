@@ -21,5 +21,5 @@ export function pct(v: number): string {
 }
 
 export function formatMinutes(v: number): string {
-  return `${v < 10 ? v.toFixed(1) : Math.round(v)} min`
+  return `${v < 10 ? v.toFixed(2) : Math.round(v)} min`
 }

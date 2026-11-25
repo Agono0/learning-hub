@@ -35,7 +35,9 @@ export function AssumptionsBlock({ r, truncated }: { r: PlannerResult; truncated
             : `one in every ${c.stride} by id, scaled up x${c.scaleUp.toFixed(2)}`}
           ). Not included: {c.excludedNew.toLocaleString()} new,{' '}
           {c.excludedLearning.toLocaleString()} learning, {c.excludedRelearning.toLocaleString()}{' '}
-          relearning, {c.excludedSuspended.toLocaleString()} suspended.
+          relearning, {c.excludedSuspended.toLocaleString()} suspended, and{' '}
+          {c.excludedOwnSettings.toLocaleString()} in decks with their own retention or weights (the
+          global setting does not govern them).
           {truncated
             ? ' The collection is larger than the read limit, so some cards were not read.'
             : ''}

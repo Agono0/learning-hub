@@ -22,7 +22,8 @@ const base = {
   asOf: '2026-06-01T12:00:00.000Z',
   currentRetention: 0.9,
   currentSource: 'global',
-  weights: 'default',
+  weights: 'custom',
+  scope: 'all-decks',
   horizonDays: 90,
   budgetMinutes: 3,
   seed: 20260101,
@@ -35,6 +36,7 @@ const base = {
     excludedLearning: 60,
     excludedRelearning: 40,
     excludedSuspended: 50,
+    excludedOwnSettings: 120,
     selection: 'every-kth-by-id',
     stride: 2,
   },
@@ -52,9 +54,9 @@ const base = {
   schedulerCalls: 21000,
   maxCalls: 400000,
   recommendation: {
-    retention: 0.85,
+    retention: 0.9,
     basis:
-      'Modeled mean daily time at that retention is 1.9 min. This is not a learning-optimal value.',
+      'Modeled mean daily time at that retention is 2.5 min. This is not a learning-optimal value.',
   },
   calibration: {
     heldOutReviews: 400,
@@ -94,7 +96,7 @@ test('shows the budget result with assumptions and exclusion counts', async ({ p
   await stub(page, base)
   await page.goto('/retention-planner')
   await page.getByRole('button', { name: 'Model my cards' }).click()
-  await expect(page.getByTestId('rp-result')).toContainText('85%')
+  await expect(page.getByTestId('rp-result')).toContainText('90%')
   await expect(page.getByTestId('retention-curve')).toBeVisible()
   const a = page.getByTestId('rp-assumptions')
   await expect(a).toContainText('900 of 1,800 eligible')
@@ -124,42 +126,97 @@ test('an incomplete run gives no recommendation', async ({ page }) => {
 
 test('a server error is shown, not hidden', async ({ page }) => {
   await page.route('**/api/retention-planner', (route) =>
-    route.fulfill({ status: 400, json: { error: 'horizonDays must be an integer 14 to 365' } }),
+    route.fulfill({ status: 500, json: { error: 'The model could not run. Try again.' } }),
   )
   await page.route('**/api/settings', (route) =>
     route.fulfill({ json: { settings: { desiredRetention: 0.9 } } }),
   )
   await page.goto('/retention-planner')
   await page.getByRole('button', { name: 'Model my cards' }).click()
-  await expect(page.getByRole('alert').filter({ hasText: 'horizonDays' })).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'could not run' })).toBeVisible()
 })
 
 test('apply needs confirmation, then restore returns the previous value', async ({ page }) => {
   const puts: number[] = []
-  await stub(page, base, { value: 0.9 }, puts)
+  await stub(page, base, { value: 0.93 }, puts)
   await page.goto('/retention-planner')
   await page.getByRole('button', { name: 'Model my cards' }).click()
-  await page.getByRole('button', { name: /Review change to 85%/ }).click()
+  await expect(page.getByTestId('rp-apply')).toContainText('250 new')
+  await expect(page.getByTestId('rp-apply')).toContainText('global setting only')
+  await page.getByRole('button', { name: /Review change to 90%/ }).click()
   expect(puts).toEqual([])
-  await expect(page.getByRole('group', { name: 'Confirm change' })).toContainText('90%')
+  await expect(page.getByRole('group', { name: 'Confirm change' })).toContainText('93%')
   await page.getByRole('button', { name: 'Confirm and apply' }).click()
-  await expect(page.getByTestId('rp-restore')).toContainText('Previous value was 90%')
-  expect(puts).toEqual([0.85])
-  await page.getByRole('button', { name: 'Restore 90%' }).click()
-  await expect.poll(() => puts).toEqual([0.85, 0.9])
+  await expect(page.getByTestId('rp-restore')).toContainText('Previous value was 93%')
+  expect(puts).toEqual([0.9])
+  await page.getByRole('button', { name: 'Restore 93%' }).click()
+  await expect.poll(() => puts).toEqual([0.9, 0.93])
 })
 
 test('restore refuses when the setting changed elsewhere', async ({ page }) => {
-  const settings = { value: 0.9 }
+  const settings = { value: 0.93 }
   const puts: number[] = []
   await stub(page, base, settings, puts)
   await page.goto('/retention-planner')
   await page.getByRole('button', { name: 'Model my cards' }).click()
-  await page.getByRole('button', { name: /Review change to 85%/ }).click()
+  await page.getByRole('button', { name: /Review change to 90%/ }).click()
   await page.getByRole('button', { name: 'Confirm and apply' }).click()
   await expect(page.getByTestId('rp-restore')).toBeVisible()
   settings.value = 0.8
-  await page.getByRole('button', { name: 'Restore 90%' }).click()
+  await page.getByRole('button', { name: 'Restore 93%' }).click()
   await expect(page.getByText('Not restored', { exact: false })).toBeVisible()
-  expect(puts).toEqual([0.85])
+  expect(puts).toEqual([0.9])
+})
+
+test('a failed apply changes nothing and offers no restore', async ({ page }) => {
+  await stub(page, base, { value: 0.93 })
+  await page.unroute('**/api/settings')
+  await page.route('**/api/settings', (route) =>
+    route.request().method() === 'PUT'
+      ? route.fulfill({ status: 500, json: { error: 'Could not save settings.' } })
+      : route.fulfill({ json: { settings: { desiredRetention: 0.93 } } }),
+  )
+  await page.goto('/retention-planner')
+  await page.getByRole('button', { name: 'Model my cards' }).click()
+  await page.getByRole('button', { name: /Review change to 90%/ }).click()
+  await page.getByRole('button', { name: 'Confirm and apply' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not save' })).toBeVisible()
+  await expect(page.getByTestId('rp-restore')).toHaveCount(0)
+  expect(
+    await page.evaluate(() => window.localStorage.getItem('lh-retention-planner-applied')),
+  ).toBeNull()
+})
+
+test('a failed restore keeps the record so it can be retried', async ({ page }) => {
+  const settings = { value: 0.93 }
+  const puts: number[] = []
+  await stub(page, base, settings, puts)
+  await page.goto('/retention-planner')
+  await page.getByRole('button', { name: 'Model my cards' }).click()
+  await page.getByRole('button', { name: /Review change to 90%/ }).click()
+  await page.getByRole('button', { name: 'Confirm and apply' }).click()
+  await expect(page.getByTestId('rp-restore')).toBeVisible()
+  await page.unroute('**/api/settings')
+  await page.route('**/api/settings', (route) =>
+    route.request().method() === 'PUT'
+      ? route.fulfill({ status: 500, json: { error: 'Could not save settings.' } })
+      : route.fulfill({ json: { settings: { desiredRetention: 0.9 } } }),
+  )
+  await page.getByRole('button', { name: 'Restore 93%' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not save' })).toBeVisible()
+  await expect(page.getByTestId('rp-restore')).toBeVisible()
+})
+
+test('a setting changed after the page loaded blocks the apply', async ({ page }) => {
+  const settings = { value: 0.93 }
+  const puts: number[] = []
+  await stub(page, base, settings, puts)
+  await page.goto('/retention-planner')
+  await page.getByRole('button', { name: 'Model my cards' }).click()
+  await expect(page.getByTestId('rp-apply')).toContainText('93%')
+  await page.getByRole('button', { name: /Review change to 90%/ }).click()
+  settings.value = 0.95
+  await page.getByRole('button', { name: 'Confirm and apply' }).click()
+  await expect(page.getByText('changed to 95% since this page loaded')).toBeVisible()
+  expect(puts).toEqual([])
 })
