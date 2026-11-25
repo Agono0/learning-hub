@@ -12,7 +12,7 @@
  * 3. Colliding autoincrement IDs created independently offline remap cleanly via
  *    topological parent → child foreign-key `idMap` translation.
  * 4. Device-local secrets (`sync_configs`, `user_settings.ai_api_key`,
- *    `user_settings.ai_headers`) never leave the device and are never wiped by
+ *    `user_settings.ai_headers`, the `online_identity` key pair) never leave the device and are never wiped by
  *    incoming sync payloads.
  */
 import {
@@ -52,7 +52,13 @@ const APPEND_ONLY_TABLES = new Set([
   'exposure_events',
 ])
 
-const SKIP_TABLES = new Set(['schema_migrations', 'sync_configs', 'focus_bridge'])
+const SKIP_TABLES = new Set([
+  'schema_migrations',
+  'sync_configs',
+  'focus_bridge',
+  // Device-local key pair: never merged in from another device's snapshot.
+  'online_identity',
+])
 
 function str(val: unknown): string {
   if (val === null || val === undefined) return ''
