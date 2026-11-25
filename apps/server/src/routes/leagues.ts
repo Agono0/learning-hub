@@ -28,6 +28,7 @@ import {
   leagueChampion,
   buildLeagueDigest,
   leagueDivisionDetail,
+  leagueRoundPreview,
   seedLeagueTournamentFromStandings,
   leagueStandings,
   listLeagueDuels,
@@ -404,6 +405,14 @@ function getLeagueDigest(req: IncomingMessage, res: ServerResponse, url: URL): v
   sendJson(res, 200, { ok: true, digest })
 }
 
+/** GET /leagues/schedule?slug= — round calendar: current window, due state, upcoming rounds. */
+function getLeagueSchedule(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, digestQuerySchema)
+  const schedule = leagueRoundPreview(q.slug, { upcoming: 5 })
+  if (!schedule) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, schedule })
+}
+
 /** POST /leagues/duels/rematch — new duel: same players/prompts, swapped seats. */
 async function postDuelRematch(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJson(req, duelRematchSchema)
@@ -478,6 +487,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/division',
     summary: 'one division: standings, round history, movement, duels (?slug=&tier=)',
     handler: getLeagueDivision,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/schedule',
+    summary: 'round calendar: current window, due state, upcoming rounds (?slug=)',
+    handler: getLeagueSchedule,
   },
   {
     method: 'GET',

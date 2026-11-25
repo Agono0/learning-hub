@@ -14,6 +14,7 @@ import {
   exportLeague,
   importLeague,
   buildLeagueDigest,
+  leagueRoundPreview,
   seedLeagueTournamentFromStandings,
   leagueDivisionDetail,
   leagueHeadToHead,
@@ -126,6 +127,16 @@ export const leagueTools: RegisteredTool[] = [
         ok: true,
         tournament: seedLeagueTournamentFromStandings({ slug, leagueSlug, title, size }),
       }),
+  ),
+  tool(
+    'league_schedule',
+    "A league's round calendar: when the current round starts and ends, whether it is due to close, rounds remaining, season end, and a preview of the next rounds.",
+    { slug: z.string().min(1), upcoming: z.number().int().min(0).max(10).optional() },
+    ({ slug, upcoming }) => {
+      const schedule = leagueRoundPreview(slug, { upcoming })
+      if (!schedule) throw new Error(`league not found: ${slug}`)
+      return json({ ok: true, schedule })
+    },
   ),
   tool(
     'league_digest',

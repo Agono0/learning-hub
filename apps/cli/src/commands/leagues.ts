@@ -30,6 +30,7 @@
  *   leagues achievements <slug> <handle>
  *   leagues division <slug> <tier>
  *   leagues digest <slug>
+ *   leagues schedule <slug>
  *   leagues export <slug> [--out FILE]
  *   leagues import <file>
  */
@@ -45,6 +46,7 @@ import {
   getLeagueBySlug,
   importLeague,
   buildLeagueDigest,
+  leagueRoundPreview,
   leagueDivisionDetail,
   leagueHeadToHead,
   listLeagueAchievements,
@@ -594,6 +596,27 @@ function achievementsCommand(args: string[]): void {
   )
 }
 
+function scheduleCommand(args: string[]): void {
+  const [slug] = args
+  if (!slug) return fail('Usage: learning-hub leagues schedule <slug>')
+  const p = leagueRoundPreview(slug, { upcoming: 5 })
+  if (!p) return fail(`League not found: ${slug}`)
+  const days = Math.round(Math.abs(p.msUntilRoundEnd) / 86_400_000)
+  const lines = [
+    `${p.title} — round ${p.currentRound} of ${p.seasonLengthRounds} (${p.roundLengthDays}-day rounds)`,
+    `current round: ${p.current.startsAt.slice(0, 10)} -> ${p.current.endsAt.slice(0, 10)} (${
+      p.dueNow ? `DUE — ${days}d overdue` : `${days}d left`
+    })`,
+    `season ends ${p.seasonEndsAt.slice(0, 10)} · ${p.roundsRemaining} rounds remaining`,
+  ]
+  if (p.upcoming.length > 0) {
+    lines.push('', 'Upcoming:')
+    for (const u of p.upcoming)
+      lines.push(`  round ${u.round}: ${u.startsAt.slice(0, 10)} -> ${u.endsAt.slice(0, 10)}`)
+  }
+  console.log(lines.join('\n'))
+}
+
 function digestCommand(args: string[]): void {
   const [slug] = args
   if (!slug) return fail('Usage: learning-hub leagues digest <slug>')
@@ -698,6 +721,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'achievements') return achievementsCommand(args.slice(1))
   if (sub === 'division') return divisionCommand(args.slice(1))
   if (sub === 'digest') return digestCommand(args.slice(1))
+  if (sub === 'schedule') return scheduleCommand(args.slice(1))
   if (sub === 'export') return exportCommand(args.slice(1))
   if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
