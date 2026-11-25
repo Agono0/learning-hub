@@ -573,13 +573,16 @@ export function ShareChannelsPanel() {
       {tab === 'subscriptions' && (
         <Panel>
           {subs.length === 0 ? (
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               No subscriptions yet. Paste a channel manifest under Subscribe to get started.
             </p>
           ) : (
             <ul className="space-y-2">
               {subs.map((s) => (
-                <li key={s.manifest.channelId} className="rounded-lg border border-neutral-200 p-3">
+                <li
+                  key={s.manifest.channelId}
+                  className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3"
+                >
                   <button
                     type="button"
                     className="flex w-full items-center justify-between gap-3 text-left"
@@ -591,7 +594,7 @@ export function ShareChannelsPanel() {
                   >
                     <div>
                       <p className="text-sm font-medium">{s.manifest.title}</p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {s.manifest.authorHandle} · {s.localItems.length} items · local v
                         {s.localVersion}
                       </p>
@@ -616,7 +619,7 @@ export function ShareChannelsPanel() {
                   </button>
                   {expandedId === s.manifest.channelId && syncStats[s.manifest.channelId] && (
                     <div
-                      className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600"
+                      className="mt-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) p-3 text-xs text-neutral-600 dark:text-neutral-400"
                       data-testid={`sync-stats-${s.manifest.channelId}`}
                     >
                       <p>
@@ -636,7 +639,7 @@ export function ShareChannelsPanel() {
                     </div>
                   )}
                   {expandedId === s.manifest.channelId && (
-                    <ul className="mt-3 space-y-1 border-t border-neutral-100 pt-3">
+                    <ul className="mt-3 space-y-1 border-t border-neutral-100 dark:border-(--hub-border) pt-3">
                       {s.localItems.slice(0, 50).map((i) => {
                         const conflict =
                           i.channelContent !== null &&
@@ -659,7 +662,7 @@ export function ShareChannelsPanel() {
                         )
                       })}
                       {s.localItems.length > 50 && (
-                        <li className="text-xs text-neutral-500">
+                        <li className="text-xs text-neutral-500 dark:text-neutral-400">
                           and {s.localItems.length - 50} more items
                         </li>
                       )}
@@ -741,7 +744,7 @@ export function ShareChannelsPanel() {
       {tab === 'update' && (
         <Panel>
           <div className="space-y-3">
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Paste the newer manifest the creator shared. Your notes, progress and scheduling are
               never overwritten; conflicting edits stay yours and are listed for review.
             </p>
@@ -781,25 +784,27 @@ export function ShareChannelsPanel() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium">Hosted on this hub</h3>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Channels hosted here can be fetched over HTTP and accept change proposals from
                 subscribers.
               </p>
             </div>
             {hosted.length === 0 ? (
-              <p className="text-sm text-neutral-500">No channels hosted yet.</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                No channels hosted yet.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {hosted.map((c) => (
                   <li
                     key={c.channelId}
-                    className="rounded-lg border border-neutral-200 p-3"
+                    className="rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3"
                     data-testid={`hosted-channel-${c.channelId}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium">{c.title}</p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           {c.channelId} · v{c.currentVersion}
                         </p>
                       </div>
@@ -833,10 +838,10 @@ export function ShareChannelsPanel() {
                     </div>
                     {inviteChannel === c.channelId && (
                       <div
-                        className="mt-3 space-y-2 rounded-lg bg-neutral-50 p-3"
+                        className="mt-3 space-y-2 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) p-3"
                         data-testid={`invite-panel-${c.channelId}`}
                       >
-                        <p className="text-xs font-medium text-neutral-600">
+                        <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                           Issue an invite token (invite-only channels). Rotating the secret
                           invalidates every outstanding token.
                         </p>
@@ -853,7 +858,7 @@ export function ShareChannelsPanel() {
                             <p className="text-xs break-all" data-testid="invite-token">
                               {inviteToken}
                             </p>
-                            <p className="mt-1 text-xs text-neutral-500">
+                            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                               Copy it now; it is not stored.
                             </p>
                           </Callout>
@@ -862,7 +867,7 @@ export function ShareChannelsPanel() {
                     )}
                     {analytics[c.channelId] && (
                       <div
-                        className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600"
+                        className="mt-3 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) p-3 text-xs text-neutral-600 dark:text-neutral-400"
                         data-testid={`analytics-${c.channelId}`}
                       >
                         <p>
@@ -886,21 +891,23 @@ export function ShareChannelsPanel() {
                       </div>
                     )}
                     {proposalChannel === c.channelId && (
-                      <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3">
+                      <div className="mt-3 space-y-3 border-t border-neutral-100 dark:border-(--hub-border) pt-3">
                         {proposals.length === 0 ? (
-                          <p className="text-sm text-neutral-500">No proposals yet.</p>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                            No proposals yet.
+                          </p>
                         ) : (
                           <ul className="space-y-2">
                             {proposals.map((pr) => (
                               <li
                                 key={pr.id}
-                                className="rounded-lg border border-neutral-100 p-2"
+                                className="rounded-lg border border-neutral-100 dark:border-(--hub-border) p-2"
                                 data-testid={`proposal-${pr.id}`}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div>
                                     <p className="text-sm font-medium">{pr.title}</p>
-                                    <p className="text-xs text-neutral-500">
+                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
                                       {pr.authorHandle} · base v{pr.baseVersion} ·{' '}
                                       {pr.operations.length} change(s)
                                       {pr.acceptedVersion
@@ -908,7 +915,9 @@ export function ShareChannelsPanel() {
                                         : ''}
                                     </p>
                                     {pr.note && (
-                                      <p className="mt-1 text-xs text-neutral-600">{pr.note}</p>
+                                      <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                                        {pr.note}
+                                      </p>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2">
@@ -945,8 +954,8 @@ export function ShareChannelsPanel() {
                             ))}
                           </ul>
                         )}
-                        <div className="space-y-2 rounded-lg bg-neutral-50 p-3">
-                          <p className="text-xs font-medium text-neutral-600">
+                        <div className="space-y-2 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) p-3">
+                          <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                             Propose changes to this channel
                           </p>
                           <TextField
@@ -980,8 +989,10 @@ export function ShareChannelsPanel() {
                 ))}
               </ul>
             )}
-            <div className="space-y-2 border-t border-neutral-100 pt-3">
-              <p className="text-xs font-medium text-neutral-600">Host a channel you published</p>
+            <div className="space-y-2 border-t border-neutral-100 dark:border-(--hub-border) pt-3">
+              <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                Host a channel you published
+              </p>
               <TextArea
                 label="Channel manifest JSON"
                 value={hostManifestText}
@@ -1001,24 +1012,26 @@ export function ShareChannelsPanel() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium">Channel collections</h3>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 A collection bundles channel manifests into one portable JSON: share one paste
                 instead of many, and subscribe to every channel at once.
               </p>
             </div>
             {collections.length === 0 ? (
-              <p className="text-sm text-neutral-500">No collections stored yet.</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                No collections stored yet.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {collections.map((c) => (
                   <li
                     key={c.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 dark:border-(--hub-border) p-3"
                     data-testid={`collection-${c.id}`}
                   >
                     <div>
                       <p className="text-sm font-medium">{c.title}</p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
                         {c.id} · by {c.ownerHandle} · {c.channelCount} channel(s)
                       </p>
                     </div>
@@ -1029,8 +1042,8 @@ export function ShareChannelsPanel() {
                 ))}
               </ul>
             )}
-            <div className="space-y-2 rounded-lg bg-neutral-50 p-3">
-              <p className="text-xs font-medium text-neutral-600">
+            <div className="space-y-2 rounded-lg bg-neutral-50 dark:bg-(--hub-panel-2) p-3">
+              <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 New collection from hosted channels
               </p>
               <TextField
@@ -1049,7 +1062,9 @@ export function ShareChannelsPanel() {
                 onChange={(e) => setNewCollectionHandle(e.target.value)}
               />
               {hosted.length === 0 ? (
-                <p className="text-xs text-neutral-500">Host channels on the Hosting tab first.</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Host channels on the Hosting tab first.
+                </p>
               ) : (
                 <ul className="space-y-1">
                   {hosted.map((h) => (
@@ -1077,8 +1092,8 @@ export function ShareChannelsPanel() {
                 Save collection
               </Button>
             </div>
-            <div className="space-y-2 border-t border-neutral-100 pt-3">
-              <p className="text-xs font-medium text-neutral-600">
+            <div className="space-y-2 border-t border-neutral-100 dark:border-(--hub-border) pt-3">
+              <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 Import a collection JSON (subscribes to every channel)
               </p>
               <TextArea
