@@ -207,4 +207,42 @@ test.describe('leagues season lifecycle', () => {
       timeout: 60_000,
     })
   })
+
+  test('record tournament results through the bracket to a champion', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await page.getByRole('tab', { name: 'Tournaments' }).click()
+    const bracket = page.getByTestId('bracket-cup-1')
+    await expect(bracket).toBeVisible({ timeout: 60_000 })
+
+    // two semifinals: pick the first player's button in each undecided match
+    const winButtons = () => bracket.getByRole('button', { name: /wins$/ })
+    await expect(winButtons()).toHaveCount(4) // 2 matches x 2 players
+    await winButtons().nth(0).click()
+    await expect(winButtons()).toHaveCount(2, { timeout: 60_000 })
+    await winButtons().nth(0).click()
+
+    // the final appears once both semifinals are decided
+    await expect(winButtons()).toHaveCount(2, { timeout: 60_000 })
+    await winButtons().nth(0).click()
+
+    await expect(page.getByTestId('tournament-list').getByText(/champion:/)).toBeVisible({
+      timeout: 60_000,
+    })
+    await expect(winButtons()).toHaveCount(0)
+  })
+
+  test('rematch a completed duel from the duel list', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await page.getByRole('tab', { name: 'Duels' }).click()
+    await expect(page.getByTestId('duel-list')).toBeVisible({ timeout: 60_000 })
+
+    // duel-1 was decided earlier in the lifecycle
+    await page.getByTestId('duel-rematch-duel-1').click()
+    await expect(page.getByText(/Rematch duel-1-r2 created/)).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('duel-list').getByText('duel-1-r2')).toBeVisible()
+    // the rematch is open, with swapped seating
+    await expect(page.getByTestId('duel-list').getByText('duel-1-r2 — sara vs amr')).toBeVisible()
+  })
 })
