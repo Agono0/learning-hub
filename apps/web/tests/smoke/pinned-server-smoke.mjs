@@ -18,6 +18,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  rmSync,
   renameSync,
   statSync,
   writeFileSync,
@@ -40,6 +41,7 @@ writeFileSync(
   path.join(tmp, 'preload.cjs'),
   `const dns = require('node:dns')
 const net = require('node:net')
+const fs = require('node:fs')
 const map = { 'fixture.test': '93.184.216.34', 'priv.test': '10.0.0.5' }
 dns.promises.lookup = async (host, opts) => {
   if (map[host]) return opts && opts.all ? [{ address: map[host], family: 4 }] : { address: map[host], family: 4 }
@@ -53,6 +55,7 @@ net.Socket.prototype.connect = function (...args) {
     const remap = (x) => (x.address === '93.184.216.34' ? { address: '127.0.0.1', family: 4 } : x)
     const no = { ...o, port: ${FIX}, lookup: (h, opt, cb) => lk(h, opt, (e, a, f) => {
       if (e) return cb(e)
+      fs.appendFileSync(${JSON.stringify(path.join(tmp, 'pinned-lookup-used'))}, h + ' ' + JSON.stringify(a) + '\\n')
       if (Array.isArray(a)) cb(null, a.map(remap), f)
       else cb(null, a === '93.184.216.34' ? '127.0.0.1' : a, f)
     }) }
@@ -115,7 +118,7 @@ async function ingest(url) {
     body: JSON.stringify({ mode: 'url', url }),
     signal: AbortSignal.timeout(30000),
   })
-  return { status: r.status, text: (await r.text()).slice(0, 300) }
+  return { status: r.status, text: (await r.text()).slice(0, 2000) }
 }
 
 function findInstrumentation() {
@@ -140,45 +143,52 @@ const stop = (child) =>
     setTimeout(r, 3000)
   })
 
+const marker = path.join(tmp, 'pinned-lookup-used')
+const inst = findInstrumentation()
+const moved = inst.filter((p) => /instrumentation\.(js|mjs)$/.test(p))
 try {
-  const inst = findInstrumentation()
   console.log(
     '[pinned-smoke] compiled instrumentation files:',
     inst.map((p) => path.relative(webDir, p)),
   )
-  if (!inst.some((p) => p.endsWith('.js') || p.endsWith('.mjs')))
-    fail('build produced no compiled instrumentation')
+  if (moved.length === 0) fail('build produced no compiled instrumentation')
 
-  // A. normal
+  // A. normal build: registration runs.
   let s = await startServer()
   hits = []
   const ok = await ingest('http://fixture.test/article')
-  console.log('[pinned-smoke] A fixture:', ok.status, 'hits', hits)
+  console.log('[pinned-smoke] A public-looking fixture:', ok.status, 'hits', hits, ok.text)
   if (hits.length !== 1 || hits[0] !== 'fixture.test/article')
-    fail('A: fixture was not reached with the original Host')
-  if (ok.status === 400 || ok.status === 502)
-    fail('A: public-looking fixture refused or failed: ' + ok.text)
+    fail('A: fixture not reached exactly once with the original Host: ' + JSON.stringify(hits))
+  if (!existsSync(marker) || !readFileSync(marker, 'utf8').includes('fixture.test'))
+    fail('A: the connection did not go through the app pinned lookup (preload bypass?)')
+  if (ok.status >= 300 || !ok.text.includes('Smoke'))
+    fail('A: expected a successful ingest of the fixture article, got ' + ok.status + ' ' + ok.text)
+  rmSync(marker, { force: true })
   hits = []
   const priv = await ingest('http://priv.test/article')
-  console.log('[pinned-smoke] A private:', priv.status, 'hits', hits)
+  console.log('[pinned-smoke] A private-resolving:', priv.status, 'hits', hits, priv.text)
   if (hits.length !== 0) fail('A: private-resolving name reached the fixture')
-  if (priv.status === 200) fail('A: private-resolving name succeeded')
+  if (priv.status !== 400 || !priv.text.includes('Private, local and internal addresses'))
+    fail('A: expected 400 address refusal, got ' + priv.status + ' ' + priv.text)
   await stop(s.child)
 
-  // B. registration removed
-  const moved = inst.filter((p) => /instrumentation\.(js|mjs)$/.test(p))
+  // B. registration absent: same request must fail closed for the stated reason.
+  rmSync(marker, { force: true })
   for (const p of moved) renameSync(p, p + '.disabled')
   s = await startServer()
   hits = []
   const off = await ingest('http://fixture.test/article')
   console.log('[pinned-smoke] B (no registration):', off.status, 'hits', hits, off.text)
   if (hits.length !== 0) fail('B: request left the process without a registered pinned fetch')
-  if (off.status === 200) fail('B: fetch succeeded without registration')
+  if (existsSync(marker)) fail('B: pinned lookup ran although registration was removed')
+  if (off.status !== 502 || !off.text.includes('address pinning is not registered'))
+    fail('B: expected the fail-closed 502 refusal, got ' + off.status + ' ' + off.text)
   await stop(s.child)
-  for (const p of moved) renameSync(p + '.disabled', p)
 } catch (err) {
   fail(String(err && err.stack ? err.stack : err))
 } finally {
+  for (const p of moved) if (existsSync(p + '.disabled')) renameSync(p + '.disabled', p)
   fixture.close()
 }
 if (!process.exitCode) console.log('[pinned-smoke] OK')
