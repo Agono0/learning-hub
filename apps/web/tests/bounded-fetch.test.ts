@@ -203,6 +203,18 @@ describe('handlers use the bound', () => {
     ).toBe(413)
   })
 
+  it('http is allowed for article ingest only (preserved), never for calendar import', async () => {
+    const f = vi.fn(async () => ok('<html><body><p>short</p></body></html>'))
+    vi.stubGlobal('fetch', f)
+    const art = await postJson(ingestRoute, { mode: 'url', url: 'http://example.com/post' })
+    expect(art.status).not.toBe(400) // reached the fetch; a tiny page is a 422 for content, not a refusal
+    expect(f).toHaveBeenCalledTimes(1)
+    f.mockClear()
+    const cal = await postJson(importRoute, { url: 'http://example.com/cal.ics' })
+    expect(cal.status).toBe(400)
+    expect(f).not.toHaveBeenCalled()
+  })
+
   it('reading upload refuses a declared oversized multipart body (413)', async () => {
     const res = await readingRoute.POST(
       new Request('http://localhost/api/reading', {
