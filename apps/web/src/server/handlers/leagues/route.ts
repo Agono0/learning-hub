@@ -3,7 +3,7 @@
  * divisions and promotion/relegation, duels, and tournaments, over the
  * shared leagues repository (packages/db repos/leagues).
  */
-import { redactLeagueDuelRow, syncLeaguePoints, z } from 'zod'
+import { z } from 'zod'
 import {
   awardLeaguePoints,
   createDuelFromDeck,
@@ -35,7 +35,9 @@ import {
   openTournamentMatches,
   recordTournamentMatchResult,
   rematchLeagueDuel,
+  redactLeagueDuelRow,
   submitDuelAnswers,
+  syncLeaguePoints,
 } from '@learning-hub/db'
 import { DIVISION_ORDER } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
