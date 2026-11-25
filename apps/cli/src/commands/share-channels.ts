@@ -34,6 +34,8 @@ import {
   setSubscriptionHost,
   syncSubscriptionOverHttp,
   syncAllSubscriptions,
+  importChannelDeck,
+  importChannelCourse,
 } from '@learning-hub/db'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -336,6 +338,39 @@ function shareChannelsCommand(args: string[]): void {
             `  ${r.channelId}  v${r.localVersion}  ${r.title || '(untitled)'} by ${r.authorHandle || '?'}${pending}`,
           )
         }
+      }
+      return
+    }
+    case 'import': {
+      const channelId = args[1]
+      if (!channelId) {
+        console.error('usage: share-channels import <channelId> [--json]')
+        process.exitCode = 1
+        return
+      }
+      const row = listChannelSubscriptions().find((r) => r.channelId === channelId)
+      if (!row) {
+        console.error('no local subscription for this channel')
+        process.exitCode = 1
+        return
+      }
+      const result =
+        row.contentType === 'course' ? importChannelCourse(channelId) : importChannelDeck(channelId)
+      if (!result.ok) {
+        console.error(result.error ?? 'import failed')
+        process.exitCode = 1
+        return
+      }
+      if (asJson) {
+        console.log(JSON.stringify(result))
+      } else if (row.contentType === 'course') {
+        const r = result as ReturnType<typeof importChannelCourse>
+        console.log(`\nImported course ${channelId} -> ${r.courseSlug}`)
+      } else {
+        const r = result as ReturnType<typeof importChannelDeck>
+        console.log(
+          `\nImported ${channelId} into deck "${r.deckName}": ${r.created} new, ${r.updated} updated`,
+        )
       }
       return
     }

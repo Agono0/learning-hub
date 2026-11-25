@@ -31,6 +31,8 @@ import {
   setSubscriptionHost,
   syncSubscriptionOverHttp,
   syncAllSubscriptions,
+  importChannelDeck,
+  importChannelCourse,
 } from '@learning-hub/db'
 import { sendJson, readJson } from '../http'
 import type { Route } from './shared'
@@ -406,7 +408,30 @@ async function postChannelSyncRecords(req: IncomingMessage, res: ServerResponse)
   sendJson(res, 200, { ok: true, records: listSyncRecords(body.channelId, { limit: body.limit }) })
 }
 
+const importBodySchema = z.object({ channelId: z.string().min(1) })
+
+/** POST /share/channels/import — import a subscription into the library (deck or course) */
+async function postChannelImport(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, importBodySchema)
+  const row = listChannelSubscriptions().find((r) => r.channelId === body.channelId)
+  if (!row) {
+    sendJson(res, 404, { ok: false, error: 'no local subscription for this channel' })
+    return
+  }
+  const result =
+    row.contentType === 'course'
+      ? importChannelCourse(body.channelId)
+      : importChannelDeck(body.channelId)
+  sendJson(res, result.ok ? 200 : 422, result)
+}
+
 shareChannelRoutes.push(
+  {
+    method: 'POST',
+    path: '/share/channels/import',
+    summary: 'import a subscription into the library as a deck or course (idempotent)',
+    handler: postChannelImport,
+  },
   {
     method: 'POST',
     path: '/share/channels/subscribe',

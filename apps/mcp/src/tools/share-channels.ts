@@ -35,6 +35,8 @@ import {
   setSubscriptionHost,
   syncSubscriptionOverHttp,
   syncAllSubscriptions,
+  importChannelDeck,
+  importChannelCourse,
 } from '@learning-hub/db'
 
 export const shareChannelTools: RegisteredTool[] = [
@@ -320,6 +322,18 @@ export const shareChannelTools: RegisteredTool[] = [
     },
     async ({ channelId, limit }) => {
       return json({ records: listSyncRecords(channelId, { limit }) })
+    },
+  ),
+  tool(
+    'share_channel_import',
+    'Imports a subscription into the local library: deck channels become a reviewable deck (re-imports update card content in place by sourceKey and keep FSRS state); course channels become a curriculum course (re-imports refresh in place by slug). Idempotent.',
+    { channelId: z.string().min(1) },
+    async ({ channelId }) => {
+      const row = listChannelSubscriptions().find((r) => r.channelId === channelId)
+      if (!row) return json({ ok: false, error: 'no local subscription for this channel' })
+      const result =
+        row.contentType === 'course' ? importChannelCourse(channelId) : importChannelDeck(channelId)
+      return json(result)
     },
   ),
 ]
