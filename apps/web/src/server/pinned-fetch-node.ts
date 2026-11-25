@@ -13,6 +13,7 @@
  * - Compressed bodies (gzip, deflate, br) are decompressed as a stream so the caller's byte cap
  *   applies to the DECOMPRESSED size. `accept-encoding` defaults to identity.
  * - `init.signal` destroys the socket; the body is a web ReadableStream, cancel destroys it.
+ * - `agent: false`: no keep-alive pooling, so every request resolves and validates afresh.
  * - Only GET and HEAD without a body are supported.
  *
  * Node only. This file is imported from a Node-only entry (src/instrumentation.ts), never from
@@ -121,6 +122,8 @@ export function createPinnedNodeFetch(opts: PinnedFetchOptions = {}) {
           method,
           headers: headersFrom(init),
           lookup: lookup as never,
+          // No pooled sockets: every request resolves and validates its own address.
+          agent: false,
           ...(opts.ca ? { ca: opts.ca } : {}),
           // Node's default autoSelectFamily path asks lookup for all answers; ours checks all.
           servername: net.isIP(host) ? undefined : host,
