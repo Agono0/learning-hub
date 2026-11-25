@@ -33,6 +33,7 @@ type LeagueRow = {
   seasonLengthRounds: number
   promotionSlots: number
   relegationSlots: number
+  mode: string
 }
 
 /** True when a league's current round has passed its calendar end (same math as the engine). */
