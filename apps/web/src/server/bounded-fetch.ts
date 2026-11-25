@@ -101,6 +101,29 @@ export function isPrivateAddress(address: string): boolean {
  * fetch: if it refuses or fails, the call fails.
  */
 let pinnedFetch: ((url: string, init?: RequestInit) => Promise<Response>) | null = null
+/** True on a Node process (Next server, CLI, tests). False in browsers and web workers. */
+function isNodeRuntime(): boolean {
+  return typeof process !== 'undefined' && process.release?.name === 'node'
+}
+
+/**
+ * Default transport. On Node the ONLY allowed transport is the registered pinned fetch: if
+ * registration never ran or failed, requests are refused (fail closed) instead of using the
+ * global fetch. Browser and worker runtimes (native bridge) keep `remoteFetch`.
+ */
+function defaultFetch(): (url: string, init?: RequestInit) => Promise<Response> {
+  if (pinnedFetch) return pinnedFetch
+  if (isNodeRuntime()) {
+    return async () => {
+      throw new BoundedFetchError(
+        'network',
+        'Outbound fetching is unavailable: address pinning is not registered on this server',
+      )
+    }
+  }
+  return (u, i) => remoteFetch(u, i)
+}
+
 export function setPinnedFetch(fn: typeof pinnedFetch): void {
   pinnedFetch = fn
 }
@@ -192,7 +215,7 @@ export async function boundedFetchText(
   rawUrl: string,
   opts: BoundedFetchOptions,
 ): Promise<BoundedFetchResult> {
-  const fetchFn = opts.fetchFn ?? pinnedFetch ?? ((u, i) => remoteFetch(u, i))
+  const fetchFn = opts.fetchFn ?? defaultFetch()
   const maxRedirects = opts.maxRedirects ?? 3
   const signal = AbortSignal.timeout(opts.timeoutMs)
   let url = assertAllowedUrl(rawUrl, opts.allowHttp)
