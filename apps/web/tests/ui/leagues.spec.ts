@@ -268,6 +268,19 @@ test.describe('leagues season lifecycle', () => {
     await expect(strip).toContainText('next:')
   })
 
+  test('duel stats table tracks the lifecycle duel record', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await page.getByRole('tab', { name: 'Duels' }).click()
+    const table = page.getByTestId('duel-stats')
+    await expect(table).toBeVisible({ timeout: 60_000 })
+    // amr won duel-1 earlier in the lifecycle
+    const amrRow = table.locator('tr', { hasText: 'amr' })
+    await expect(amrRow).toBeVisible()
+    await expect(amrRow).toContainText(/[1-9]\d*-\d+-\d+/)
+    await expect(amrRow).toContainText('100%')
+  })
+
   test('league cards flag a round past its calendar end as due', async ({ page }) => {
     await page.goto('/leagues')
     // spring's season start is in the past and its round was never closed on

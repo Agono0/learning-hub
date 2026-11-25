@@ -31,6 +31,7 @@
  *   leagues division <slug> <tier>
  *   leagues digest <slug>
  *   leagues schedule <slug>
+ *   leagues duel-stats <slug>
  *   leagues export <slug> [--out FILE]
  *   leagues import <file>
  */
@@ -46,6 +47,7 @@ import {
   getLeagueBySlug,
   importLeague,
   buildLeagueDigest,
+  leagueDuelStats,
   leagueRoundPreview,
   leagueDivisionDetail,
   leagueHeadToHead,
@@ -596,6 +598,23 @@ function achievementsCommand(args: string[]): void {
   )
 }
 
+function duelStatsCommand(args: string[]): void {
+  const [slug] = args
+  if (!slug) return fail('Usage: learning-hub leagues duel-stats <slug>')
+  const stats = leagueDuelStats(slug)
+  if (stats === null) return fail(`League not found: ${slug}`)
+  if (stats.length === 0) return console.log('No completed duels yet.')
+  const pct = (x: number) => `${Math.round(x * 100)}%`
+  const lines = ['handle | W-L-D | win% | accuracy | ms/correct | streak (best)']
+  for (const st of stats)
+    lines.push(
+      `${st.handle} | ${st.wins}-${st.losses}-${st.draws} | ${pct(st.winRate)} | ${pct(st.avgAccuracy)} | ${
+        st.avgCorrectTimeMs === null ? '-' : Math.round(st.avgCorrectTimeMs)
+      } | ${st.currentStreak} (${st.bestStreak})`,
+    )
+  console.log(lines.join('\n'))
+}
+
 function scheduleCommand(args: string[]): void {
   const [slug] = args
   if (!slug) return fail('Usage: learning-hub leagues schedule <slug>')
@@ -722,6 +741,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'division') return divisionCommand(args.slice(1))
   if (sub === 'digest') return digestCommand(args.slice(1))
   if (sub === 'schedule') return scheduleCommand(args.slice(1))
+  if (sub === 'duel-stats') return duelStatsCommand(args.slice(1))
   if (sub === 'export') return exportCommand(args.slice(1))
   if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))

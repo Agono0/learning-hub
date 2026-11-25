@@ -790,6 +790,124 @@ export function createLeagueTournament(
   return row!
 }
 
+/** Per-player performance across a league's completed duels. */
+export type LeagueDuelPlayerStats = {
+  handle: string
+  played: number
+  wins: number
+  losses: number
+  draws: number
+  /** wins / played, 0-1. */
+  winRate: number
+  /** Mean per-duel accuracy (correct answers / prompts) on this player's side. */
+  avgAccuracy: number
+  /** Mean time per correct answer across duels with at least one correct; null if never correct. */
+  avgCorrectTimeMs: number | null
+  /** Consecutive wins counting back from the player's latest duel. */
+  currentStreak: number
+  bestStreak: number
+}
+
+/**
+ * Duel performance table for one league: every player with at least one
+ * completed duel, sorted by win rate (then wins, then accuracy). Accuracy
+ * and answer speed come from the same scoring the duel decider uses, so the
+ * stats match what actually decided each duel. Useful both as a study signal
+ * (low accuracy = weak material) and for fair matchmaking.
+ */
+export function leagueDuelStats(
+  slug: string,
+  database?: LearningHubDB,
+): LeagueDuelPlayerStats[] | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const duels = conn
+    .select()
+    .from(leagueDuels)
+    .where(and(eq(leagueDuels.leagueId, league.id), eq(leagueDuels.status, 'complete')))
+    .orderBy(leagueDuels.completedAt)
+    .all()
+
+  type Acc = {
+    played: number
+    wins: number
+    losses: number
+    draws: number
+    accuracySum: number
+    correctTimeSum: number
+    correctCount: number
+    streak: number
+    bestStreak: number
+  }
+  const byHandle = new Map<string, Acc>()
+  const acc = (h: string): Acc => {
+    let a = byHandle.get(h)
+    if (!a) {
+      a = {
+        played: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        accuracySum: 0,
+        correctTimeSum: 0,
+        correctCount: 0,
+        streak: 0,
+        bestStreak: 0,
+      }
+      byHandle.set(h, a)
+    }
+    return a
+  }
+
+  for (const row of duels) {
+    const duel = rowToDuel(row)
+    for (const side of ['A', 'B'] as const) {
+      const handle = side === 'A' ? row.playerA : row.playerB
+      const a = acc(handle)
+      const score = scoreDuelSide(duel, side)
+      a.played += 1
+      a.accuracySum += score.accuracy
+      if (score.correct > 0) {
+        a.correctTimeSum += score.correctTimeMs
+        a.correctCount += score.correct
+      }
+      const won = row.winner === handle
+      const draw = row.winner === null
+      if (won) {
+        a.wins += 1
+        a.streak += 1
+        a.bestStreak = Math.max(a.bestStreak, a.streak)
+      } else {
+        if (draw) a.draws += 1
+        else a.losses += 1
+        a.streak = 0
+      }
+    }
+  }
+
+  return [...byHandle.entries()]
+    .map(([handle, a]) => ({
+      handle,
+      played: a.played,
+      wins: a.wins,
+      losses: a.losses,
+      draws: a.draws,
+      winRate: a.played > 0 ? a.wins / a.played : 0,
+      avgAccuracy: a.played > 0 ? a.accuracySum / a.played : 0,
+      avgCorrectTimeMs: a.correctCount > 0 ? a.correctTimeSum / a.correctCount : null,
+      currentStreak: a.streak,
+      bestStreak: a.bestStreak,
+    }))
+    .sort(
+      (x, y) =>
+        y.winRate - x.winRate ||
+        y.wins - x.wins ||
+        y.avgAccuracy - x.avgAccuracy ||
+        x.handle.localeCompare(y.handle),
+    )
+}
+
 /** When one round starts/ends, derived from the season calendar. */
 export type LeagueRoundWindow = { round: number; startsAt: string; endsAt: string }
 

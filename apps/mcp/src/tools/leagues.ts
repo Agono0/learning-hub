@@ -14,6 +14,7 @@ import {
   exportLeague,
   importLeague,
   buildLeagueDigest,
+  leagueDuelStats,
   leagueRoundPreview,
   seedLeagueTournamentFromStandings,
   leagueDivisionDetail,
@@ -127,6 +128,16 @@ export const leagueTools: RegisteredTool[] = [
         ok: true,
         tournament: seedLeagueTournamentFromStandings({ slug, leagueSlug, title, size }),
       }),
+  ),
+  tool(
+    'league_duel_stats',
+    'Per-player duel performance in a league: record (W-L-D), win rate, mean accuracy, mean time per correct answer, and win streaks. Accuracy and speed use the same scoring that decides duels, so they double as a study-strength signal and matchmaking input.',
+    { slug: z.string().min(1) },
+    ({ slug }) => {
+      const stats = leagueDuelStats(slug)
+      if (stats === null) throw new Error(`league not found: ${slug}`)
+      return json({ ok: true, stats })
+    },
   ),
   tool(
     'league_schedule',
