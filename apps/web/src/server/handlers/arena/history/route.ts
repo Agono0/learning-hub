@@ -49,6 +49,11 @@ export const GET = withRoute(async (req: Request) => {
         .where(inArray(decks.id, deckIds))
     : []
   const deckById = new Map(deckRows.map((d) => [d.id, d]))
+  // The rival ghost: your highest-scoring run (ties go to the newest), so
+  // the fight HUD can pace you against your own best.
+  const bestRun = listArenaRuns({ limit: 100 }).reduce<
+    ReturnType<typeof listArenaRuns>[number] | null
+  >((best, r) => (best === null || r.score > best.score ? r : best), null)
   const insight = accuracyInsight(listArenaRuns({ limit: 10 }))
   return Response.json({
     ok: true,
@@ -59,6 +64,7 @@ export const GET = withRoute(async (req: Request) => {
       name: deckById.get(d.deckId)?.name ?? 'Deleted deck',
       emoji: deckById.get(d.deckId)?.emoji ?? null,
     })),
+    bestRunId: bestRun?.id ?? null,
     trend: trendRows.map((r) => ({
       runId: r.referenceId,
       accuracy: r.rounds === 0 ? 0 : r.correct / r.rounds,

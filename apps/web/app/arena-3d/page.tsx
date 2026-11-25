@@ -165,6 +165,8 @@ interface HistoryPayload {
   ok: boolean
   stats: ArenaStats
   runs: ArenaRunRow[]
+  /** Highest-scoring run on the books (the rival ghost), null when none. */
+  bestRunId: number | null
   trend: Array<{
     runId: string
     accuracy: number
@@ -199,6 +201,8 @@ interface RunDetailPayload {
     timeMs: number
   }>
   cards: Array<{ id: number; content: ArenaCard['content'] | null }>
+  /** Cumulative score after each round, replayed server-side. */
+  scoreSeries: number[]
 }
 
 const GRADE_BUTTONS: { grade: Grade; label: string }[] = [
@@ -302,6 +306,7 @@ export default function Arena3DPage() {
   const [runDetailLoading, setRunDetailLoading] = useState(false)
   const [guardian, setGuardian] = useState<SessionPayload['guardian'] | null>(null)
   const [coachForced, setCoachForced] = useState(false)
+  const [ghostSeries, setGhostSeries] = useState<number[] | null>(null)
   const [modifier, setModifier] = useState<SessionPayload['modifier'] | null>(null)
 
   // The tuned config arrives with the session payload (guardian-specific).
@@ -413,6 +418,17 @@ export default function Arena3DPage() {
       setPhase('fighting')
       setShownAt(performance.now())
       arenaHandle.current?.reset()
+      // Rival ghost: pace against your best run. Fire-and-forget — the duel
+      // never waits on it, and a failed fetch just means no ghost today.
+      if (record?.bestRunId) {
+        apiGet<RunDetailPayload>(`/api/arena/history/${record.bestRunId}`)
+          .then((detail) =>
+            setGhostSeries(detail.scoreSeries.length > 0 ? detail.scoreSeries : null),
+          )
+          .catch(() => setGhostSeries(null))
+      } else {
+        setGhostSeries(null)
+      }
     } catch {
       setLoadError('The arena could not be reached. Check the connection and try again.')
       setPhase('setup')
@@ -965,6 +981,23 @@ export default function Arena3DPage() {
                 >
                   {arena.score}
                 </div>
+                {ghostSeries && ghostSeries.length > 0 ? (
+                  <p className="mt-1 text-xs text-faint" data-testid="arena-ghost">
+                    {(() => {
+                      // arena.round counts COMPLETED rounds; series[i] is the
+                      // ghost's score after its round i+1.
+                      const ghostAt =
+                        arena.round === 0
+                          ? 0
+                          : (ghostSeries[Math.min(arena.round - 1, ghostSeries.length - 1)] ?? 0)
+                      const delta = arena.score - ghostAt
+                      if (delta === 0) return 'Dead even with your best run’s pace'
+                      return delta > 0
+                        ? `Ahead of your best run’s pace by ${delta}`
+                        : `Behind your best run’s pace by ${-delta}`
+                    })()}
+                  </p>
+                ) : null}
               </Panel>
             </div>
 
