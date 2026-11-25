@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference -- ambient Workers types for the real LeagueRoom
 /// <reference path="../../../apps/worker/src/worker.d.ts" />
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { leaguesRemoteCommands } from '../../../apps/cli/src/commands/leagues-remote'

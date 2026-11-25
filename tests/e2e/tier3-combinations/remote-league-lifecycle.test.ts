@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference -- ambient Workers types for the real LeagueRoom
 /// <reference path="../../../apps/worker/src/worker.d.ts" />
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
