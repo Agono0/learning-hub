@@ -640,6 +640,502 @@ const RAW_SCENARIOS: StoredScenario[] = [
 
 RAW_SCENARIOS.push(
   {
+    id: 'fb-physics-newton-third',
+    domain: 'Physics',
+    concept: "Newton's third law: force pairs act on different bodies",
+    difficulty: 3,
+    stem: "A book rests on a table. Which pair of forces is a Newton's-third-law action-reaction pair?",
+    options: [
+      {
+        id: 'a',
+        text: 'The weight of the book and the normal force from the table on the book',
+        isCorrect: false,
+        misconceptionTag: 'same-body-force-pair',
+        feedback: {
+          task: 'Incorrect: weight and normal force both act on the book, and third-law pairs always act on different bodies.',
+          process:
+            'Use the swap test: an action-reaction pair has the form "A pushes B" and "B pushes A". Weight is Earth pulling the book; its partner is the book pulling Earth.',
+          selfRegulation:
+            'Before naming a pair, ask: would these two forces still balance if one body vanished? Weight and normal force both disappear-or-apply to the book alone, so they cannot be a third-law pair.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'The book pulling down on the Earth and the Earth pulling up on the book',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: the gravitational pull of Earth on the book and of the book on Earth are the action-reaction pair.',
+          process:
+            'You applied the swap test: two bodies, one interaction, two equal and opposite forces.',
+          selfRegulation:
+            'Notice the pair survives any motion: even if the book falls, both pulls remain equal and opposite.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'The normal force from the table and the friction force on the book',
+        isCorrect: false,
+        misconceptionTag: 'unrelated-force-pairing',
+        feedback: {
+          task: 'Incorrect: normal force and friction act at right angles and answer different interactions; they are not a third-law pair.',
+          process:
+            'Third-law pairs are always the same kind of force (both gravitational, both contact-normal, both friction). Pair forces by interaction type first.',
+          selfRegulation:
+            'Check direction: third-law partners are exactly opposite along one line. Normal is vertical, friction is horizontal, so they fail that test instantly.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'The weight of the book and the push of the book on the table',
+        isCorrect: false,
+        misconceptionTag: 'equal-forces-must-be-pair',
+        feedback: {
+          task: 'Incorrect: these two forces are equal here but are different kinds (gravitational vs contact) and act on different interactions.',
+          process:
+            'Equality is not the criterion; shared interaction is. The partner of "book pushes table" is "table pushes book" (the normal force).',
+          selfRegulation:
+            'Ask "same interaction, two bodies?" If the two forces come from different interactions, equal size is a coincidence of equilibrium, not a third-law pair.',
+        },
+      },
+    ],
+    explanation:
+      "Newton's third law pairs one interaction between two bodies: Earth pulls the book, the book pulls Earth. The table-book normal force has its own partner, the book pushing down on the table. Same-body pairs like weight and normal force are equilibrium pairs, not third-law pairs, and they cease to balance the moment the book accelerates.",
+  },
+  {
+    id: 'fb-chem-balancing',
+    domain: 'Chemistry',
+    concept: 'Conservation of atoms when balancing equations',
+    difficulty: 2,
+    stem: 'Balance: H2 + O2 -> H2O. Which is correctly balanced?',
+    options: [
+      {
+        id: 'a',
+        text: 'H2 + O2 -> H2O2',
+        isCorrect: false,
+        misconceptionTag: 'change-formula-to-balance',
+        feedback: {
+          task: 'Incorrect: the product formula was changed to H2O2 (hydrogen peroxide), a different substance, to force atom counts to match.',
+          process:
+            'Balance with coefficients only, never by editing subscripts: subscripts define the substance. Put a 2 in front of H2O and a 2 in front of H2.',
+          selfRegulation:
+            'After balancing, re-read every formula and ask: is this still the same chemical? If a subscript moved, you changed the reaction, not balanced it.',
+        },
+      },
+      {
+        id: 'b',
+        text: '2H2 + O2 -> 2H2O',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: 4 H and 2 O on each side; atoms are conserved.',
+          process:
+            'You scaled whole molecules with coefficients: 2 water molecules need 2 hydrogen molecules and 1 oxygen molecule.',
+          selfRegulation:
+            'Keep the audit habit: count each element left and right before declaring done. 4=4 and 2=2 closes the check.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'H2 + O2 -> 2H2O',
+        isCorrect: false,
+        misconceptionTag: 'balance-one-element-only',
+        feedback: {
+          task: 'Incorrect: oxygen balances (2 each side) but hydrogen does not: 2 H on the left, 4 H on the right.',
+          process:
+            'Balance one element, then re-audit the others. Fixing oxygen changed the hydrogen count, so hydrogen needs its own coefficient: 2H2.',
+          selfRegulation:
+            'Treat balancing as a loop, not a line: every new coefficient sends you back to recount every element it touches.',
+        },
+      },
+      {
+        id: 'd',
+        text: '2H2 + 2O2 -> 2H2O',
+        isCorrect: false,
+        misconceptionTag: 'multiply-everything',
+        feedback: {
+          task: 'Incorrect: hydrogen balances (4=4) but oxygen does not: 4 O on the left, 2 O on the right.',
+          process:
+            'Coefficients must reflect the ratio the formulas force. Water holds one O, so O2 feeds two waters; only one O2 is needed.',
+          selfRegulation:
+            'Resist symmetric-looking answers. Count atoms per element separately; symmetry of coefficients is not a conservation law.',
+        },
+      },
+    ],
+    explanation:
+      'Balancing conserves each element atom-by-atom. Coefficients scale whole molecules; subscripts define the substances and must never move. The balanced reaction 2H2 + O2 -> 2H2O keeps 4 H and 2 O on both sides.',
+  },
+  {
+    id: 'fb-bio-photosynthesis-source',
+    domain: 'Biology',
+    concept: 'Mass source of plant growth',
+    difficulty: 3,
+    stem: 'A tree gains 100 kg of dry mass over a decade. Where does most of that mass come from?',
+    options: [
+      {
+        id: 'a',
+        text: 'The soil, drawn up through the roots',
+        isCorrect: false,
+        misconceptionTag: 'mass-from-soil',
+        feedback: {
+          task: "Incorrect: soil contributes minerals and water but only a tiny fraction of dry mass; van Helmont's willow experiment showed the soil barely loses weight as a tree grows.",
+          process:
+            'Track the atoms: the carbon in wood arrives via photosynthesis, which fixes CO2 from the air into sugars.',
+          selfRegulation:
+            'When a growth question appears, ask where the carbon came from. Carbon accounting almost always points to the air, not the ground.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'Carbon dioxide from the air',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: most dry mass is carbon fixed from atmospheric CO2 during photosynthesis.',
+          process:
+            'You followed the carbon: CO2 plus water, powered by light, becomes glucose, the raw material of cellulose.',
+          selfRegulation:
+            'Hold the counterintuitive picture firmly: solid wood is mostly former air. Air is thin but the tree has years and a huge leaf area.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'Water absorbed by the roots',
+        isCorrect: false,
+        misconceptionTag: 'mass-from-water',
+        feedback: {
+          task: 'Partially reasonable but incorrect as the main source: water is a reactant, yet most of it transpires away and its hydrogen is a small share of dry mass.',
+          process:
+            'Separate flux from stock: enormous water flow through the tree does not mean water becomes the tree. The fixed carbon stays; the water leaves.',
+          selfRegulation:
+            'Ask what remains behind. A decade of water flow is vast, but the dry mass question concerns what was kept, and what is kept is carbon.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'Sunlight converted directly into matter',
+        isCorrect: false,
+        misconceptionTag: 'energy-becomes-matter',
+        feedback: {
+          task: 'Incorrect: sunlight provides energy, not atoms; everyday chemistry does not convert energy into macroscopic mass.',
+          process:
+            'Split the roles: light powers the reaction, CO2 supplies the carbon, water supplies hydrogen. Matter in, matter out; energy in, work done.',
+          selfRegulation:
+            'Guard the matter/energy boundary: whenever an explanation converts one into the other outside nuclear processes, flag it and recount the atoms.',
+        },
+      },
+    ],
+    explanation:
+      'Photosynthesis fixes atmospheric CO2 into glucose, which polymerizes into cellulose, the bulk of dry plant mass. Water contributes some hydrogen but mostly transpires away, soil contributes only minerals, and sunlight supplies energy rather than atoms.',
+  },
+  {
+    id: 'fb-prog-off-by-one',
+    domain: 'Programming',
+    concept: 'Loop bounds and off-by-one errors',
+    difficulty: 2,
+    stem: 'In Python, what does sum(list(range(1, 11))) compute?',
+    options: [
+      {
+        id: 'a',
+        text: 'The sum of 1 through 11 inclusive',
+        isCorrect: false,
+        misconceptionTag: 'range-end-inclusive',
+        feedback: {
+          task: 'Incorrect: range(1, 11) stops before 11, so it yields 1 through 10 only.',
+          process:
+            'Remember the half-open convention: range(start, stop) includes start and excludes stop. Check the stop value against the first missing number.',
+          selfRegulation:
+            'When a range feels off, list its first three and last value explicitly: 1, 2, 3 ... 10. Seeing the last value settles the bound faster than re-reading the signature.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'The sum of 1 through 10 inclusive, which is 55',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: range(1, 11) yields 1..10 and the sum is 55.',
+          process:
+            'You applied the half-open rule and verified with the n(n+1)/2 formula for n = 10.',
+          selfRegulation:
+            'Keep pairing code reading with a formula or tiny manual trace; the two cross-check each other.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'The sum of 0 through 10 inclusive',
+        isCorrect: false,
+        misconceptionTag: 'range-start-confusion',
+        feedback: {
+          task: 'Incorrect: range(1, 11) starts at 1, not 0; the explicit start argument overrides the default.',
+          process:
+            'Check the arguments positionally: the first is the start. Only a bare range(n) begins at 0.',
+          selfRegulation:
+            'Read argument lists aloud as start/stop when two are present; the habit prevents blending this with the one-argument form.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'It raises an error because ranges cannot be summed',
+        isCorrect: false,
+        misconceptionTag: 'lazy-sequence-misconception',
+        feedback: {
+          task: 'Incorrect: list() materializes the range into a real list, and sum() works on any iterable of numbers, lazy or not.',
+          process:
+            'Separate the two operations: list(range(...)) builds [1..10]; sum(...) then adds them. Each step is ordinary.',
+          selfRegulation:
+            'Before predicting an error, name the exact function you expect to fail and why. Vague error predictions usually mark an unexamined step.',
+        },
+      },
+    ],
+    explanation:
+      'Python ranges are half-open: range(1, 11) includes 1 and excludes 11, yielding 1..10. sum() then adds them to 55, which the n(n+1)/2 formula with n = 10 confirms.',
+  },
+  {
+    id: 'fb-stats-correlation-causation',
+    domain: 'Statistics',
+    concept: 'Correlation does not establish causation',
+    difficulty: 3,
+    stem: 'Cities with more firefighters at a fire tend to have more fire damage. What is the best interpretation?',
+    options: [
+      {
+        id: 'a',
+        text: 'Firefighters cause additional damage, so fewer should be sent',
+        isCorrect: false,
+        misconceptionTag: 'reverse-causation-miss',
+        feedback: {
+          task: 'Incorrect: the correlation runs through fire size, not through firefighters causing harm.',
+          process:
+            'Draw the causal arrows: bigger fires call more firefighters and also cause more damage. Fire size is a confounder driving both.',
+          selfRegulation:
+            'Whenever an intervention looks harmful in observational data, ask what forced the intervention. Need-driven assignment mimics harm.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'Larger fires require more firefighters and cause more damage; fire size confounds the link',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: fire size drives both variables, producing the correlation without firefighters causing damage.',
+          process:
+            'You searched for a third variable before accepting either direct-causation direction, the standard confounder check.',
+          selfRegulation:
+            'Keep the habit: for any X-Y correlation, list plausible confounders and reverse-causation stories before any causal claim.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'The correlation proves nothing at all and the data should be discarded',
+        isCorrect: false,
+        misconceptionTag: 'correlation-is-useless',
+        feedback: {
+          task: 'Too strong: correlation does not prove causation, but it is still evidence that constrains which causal stories fit.',
+          process:
+            'Use correlation as a screen, not a verdict: it rules out independence and invites a causal model, which the confounder analysis then supplies.',
+          selfRegulation:
+            'Replace "correlation is meaningless" with "correlation needs a causal model". The first throws away signal; the second uses it.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'Damage causes more firefighters to be sent, so the correlation is causal after all',
+        isCorrect: false,
+        misconceptionTag: 'confounder-as-cause',
+        feedback: {
+          task: 'Partially right but incomplete: damage does not summon firefighters; fire size does, and damage is its sibling outcome, not the cause.',
+          process:
+            'Order events in time: the fire grows, then crews are dispatched, then damage accrues. Damage cannot cause the dispatch it follows.',
+          selfRegulation:
+            'Sketch a timeline before accepting reverse causation; effects cannot precede their causes, and that single check kills many reversed stories.',
+        },
+      },
+    ],
+    explanation:
+      'Fire size confounds the firefighter-damage correlation: larger fires summon more crews and cause more damage. Before claiming causation, check confounders, reverse causation against a timeline, and remember correlation still screens out independence.',
+  },
+  {
+    id: 'fb-lang-comma-splice',
+    domain: 'Language',
+    concept: 'Comma splices between independent clauses',
+    difficulty: 2,
+    stem: 'Which sentence is punctuated correctly?',
+    options: [
+      {
+        id: 'a',
+        text: 'The experiment failed, we repeated it with fresh samples.',
+        isCorrect: false,
+        misconceptionTag: 'comma-splice',
+        feedback: {
+          task: 'Incorrect: two independent clauses are joined by a bare comma, a comma splice.',
+          process:
+            'Test each side: both parts stand alone as sentences, so the join needs a period, a semicolon, or a coordinating conjunction after the comma.',
+          selfRegulation:
+            'Read the clauses aloud separately; if each is a full sentence, a comma alone cannot hold them.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'The experiment failed, so we repeated it with fresh samples.',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: the coordinating conjunction "so" after the comma legally joins two independent clauses.',
+          process:
+            'You supplied the FANBOYS check: comma plus for/and/nor/but/or/yet/so joins independent clauses correctly.',
+          selfRegulation:
+            'Keep the two-fix toolkit ready: add a conjunction, or upgrade the comma to a semicolon. Choosing deliberately beats punctuating by feel.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'The experiment failed we repeated it with fresh samples.',
+        isCorrect: false,
+        misconceptionTag: 'run-on',
+        feedback: {
+          task: 'Incorrect: the clauses run together with no punctuation or conjunction at all.',
+          process:
+            'Same stand-alone test, harsher verdict: the splice removed the only boundary marker. Add a conjunction with a comma, or split the sentence.',
+          selfRegulation:
+            'Mark clause boundaries while drafting; a sentence with two complete thoughts and no join is always a fragment of revision, not a style.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'The experiment, failed we repeated it, with fresh samples.',
+        isCorrect: false,
+        misconceptionTag: 'comma-sprinkling',
+        feedback: {
+          task: 'Incorrect: commas were added but in the wrong places, splitting the subject from its verb and the verb from its object phrase.',
+          process:
+            'Commas mark boundaries that exist; they do not create them. Find the real clause boundary (after "failed") and put exactly one correct join there.',
+          selfRegulation:
+            'Never fix a splice by adding more commas. Diagnose the boundary first, then punctuate the boundary, not the neighbourhood.',
+        },
+      },
+    ],
+    explanation:
+      'Two independent clauses need a real join: a period, a semicolon, or a comma plus a coordinating conjunction (FANBOYS). A bare comma is a splice; no punctuation is a run-on; random commas near the boundary are not a fix.',
+  },
+  {
+    id: 'fb-history-causation',
+    domain: 'History',
+    concept: 'Single-cause versus multi-causal explanation',
+    difficulty: 4,
+    stem: 'Which is the strongest explanation for the outbreak of World War I in 1914?',
+    options: [
+      {
+        id: 'a',
+        text: 'The assassination of Franz Ferdinand alone caused the war',
+        isCorrect: false,
+        misconceptionTag: 'single-cause-fallacy',
+        feedback: {
+          task: 'Incorrect: the assassination was the trigger, but identical crises had been defused before; the alliance system, arms race and mobilization timetables made 1914 different.',
+          process:
+            'Separate trigger from underlying causes: ask what had to be true for one assassination to drag every great power in within weeks.',
+          selfRegulation:
+            'When a single event is credited with a huge outcome, list the background conditions that gave the event its power. Trigger and tinder are different claims.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'A web of alliances, militarism, imperial rivalry and mobilization plans made war likely; the assassination triggered it',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: structural causes created the conditions; the Sarajevo assassination lit the fuse.',
+          process:
+            'You layered long-term causes (alliances, arms races), medium-term pressures (imperial rivalry) and the short-term trigger, the standard causal hierarchy.',
+          selfRegulation:
+            'Keep the three-layer habit: structure, conjuncture, event. Strong historical claims name all three and their interactions.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'The war was inevitable, so no individual decisions mattered',
+        isCorrect: false,
+        misconceptionTag: 'overdetermination-fatalism',
+        feedback: {
+          task: 'Too strong: structural pressure raised the risk, but specific decisions (blank cheque, mobilization orders, rejected mediation) determined timing and scale.',
+          process:
+            "Test inevitability claims with counterfactuals: had any of several July decisions gone otherwise, the war's timing or scope would plausibly change.",
+          selfRegulation:
+            'Hold both truths: conditions constrain, agents choose. An explanation that erases either side explains less than the evidence offers.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'Economic competition was irrelevant; the war was purely a diplomatic accident',
+        isCorrect: false,
+        misconceptionTag: 'dismiss-structural-causes',
+        feedback: {
+          task: 'Incorrect: economic and imperial rivalry were central structural pressures; calling the war a pure accident ignores decades of documented tension.',
+          process:
+            'Check the primary record: prewar staff talks, naval races and colonial disputes are structural evidence, not background noise.',
+          selfRegulation:
+            'Be suspicious of "accident" explanations for outcomes many actors anticipated; widespread expectation is itself evidence of structure.',
+        },
+      },
+    ],
+    explanation:
+      'Strong historical explanation layers structure (alliances, militarism, imperial rivalry), conjuncture (July crisis decisions) and trigger (the Sarajevo assassination). Crediting the trigger alone, or declaring the war inevitable, each erase part of the causal story the evidence supports.',
+  },
+  {
+    id: 'fb-study-rereading-vs-retrieval',
+    domain: 'Study Skills',
+    concept: 'Retrieval practice versus rereading',
+    difficulty: 2,
+    stem: 'Two students prepare for the same exam. Ana rereads the chapter four times. Omar reads it once, then quizzes himself three times. Who typically retains more a week later, and why?',
+    options: [
+      {
+        id: 'a',
+        text: 'Ana, because more exposures mean stronger memory traces',
+        isCorrect: false,
+        misconceptionTag: 'exposure-count-fallacy',
+        feedback: {
+          task: 'Incorrect: raw exposure count is a weak predictor; rereading produces fluency, which feels like learning but fades fast (Roediger & Karpicke 2006).',
+          process:
+            'Weight study acts by demand, not count: retrieval forces reconstruction, which strengthens the trace far more than recognition-style review.',
+          selfRegulation:
+            'Watch for the fluency illusion: if the page feels familiar, test yourself instead of trusting the feeling.',
+        },
+      },
+      {
+        id: 'b',
+        text: 'Omar, because each self-quiz is retrieval practice, which strengthens long-term retention more than rereading',
+        isCorrect: true,
+        feedback: {
+          task: 'Correct: the testing effect is one of the most replicated results in learning science; retrieval beats restudy at delay.',
+          process:
+            'You identified the active ingredient: effortful recall, not re-exposure. Karpicke & Roediger (2008) show the gap grows with delay.',
+          selfRegulation:
+            'Turn this into a rule for your own sessions: close the book early and spend the saved time retrieving.',
+        },
+      },
+      {
+        id: 'c',
+        text: 'They will retain the same amount, because total study time was similar',
+        isCorrect: false,
+        misconceptionTag: 'time-on-task-fallacy',
+        feedback: {
+          task: 'Incorrect: equal time with different activities yields different retention; the activity, not the clock, drives the outcome.',
+          process:
+            'Compare mechanism, not minutes: retrieval reconsolidates memory; rereading mainly re-primes perception.',
+          selfRegulation:
+            'Audit your study log by activity type, not just hours. An hour of recall outperforms an hour of rereading at any delay that matters.',
+        },
+      },
+      {
+        id: 'd',
+        text: 'Ana, because quizzing only measures knowledge and cannot strengthen it',
+        isCorrect: false,
+        misconceptionTag: 'test-as-measurement-only',
+        feedback: {
+          task: 'Incorrect: tests are not neutral instruments; the act of retrieval modifies and strengthens the memory itself.',
+          process:
+            'Recall is a learning event: each successful retrieval re-encodes the material and cues later access, which is why practice tests double as study.',
+          selfRegulation:
+            'Reframe every quiz as training, not judgement. The measurement view of testing is the single most common study misconception.',
+        },
+      },
+    ],
+    explanation:
+      'The testing effect: retrieval practice strengthens long-term retention far more than rereading at any meaningful delay (Roediger & Karpicke 2006; Karpicke & Roediger 2008). Rereading inflates fluency, which masquerades as learning; self-quizzing is both measurement and training.',
+  },
+  {
     id: 'fb-code-equality-coercion',
     domain: 'Programming',
     concept: 'Strict vs loose equality',
