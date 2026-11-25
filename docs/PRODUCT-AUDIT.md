@@ -53,9 +53,59 @@ screenshots inspected on light AND dark themes.
 
 ### G2 — Leagues UX maturity (INSPECTED on feat/competitive-leagues)
 /leagues has Overview/Standings/Duels/Tournaments tabs, player profiles,
-h2h panel, achievements badges, transfer panel. Division drill-down (one
-division's standings + history as a focused view) is missing.
-**Proposal:** division detail views (backlog B2).
+h2h panel, achievements badges, transfer panel, division drill-down views.
+Duel creation and answering initially exposed administrative controls as
+the primary flow (see G3); the learner-facing flow is now the default.
+
+### G3 — Administrative controls exposed as learner flows (INSPECTED, partially FIXED)
+
+Found during the /leagues UI review (screenshots + code inspection):
+
+1. **Manual ID entry (FIXED on feat/competitive-leagues).** Duel creation
+   asked for a raw numeric deck id; answering asked the learner to type
+   the duel id and pick "Side A/B". Duels are now built from a deck
+   picker, duel ids auto-generate when left empty, and guided play starts
+   from a Play button on each open duel. Raw id/line entry remains under
+   an "Advanced" disclosure for power users and migrations.
+2. **Delimiter-formatted prompt/answer entry (FIXED as primary flow).**
+   Prompts were entered as `id::question::answer1|answer2` lines and
+   answers as `promptId::answer::milliseconds` lines, including
+   SELF-SUPPLIED answer timing. Guided play now walks one question at a
+   time and measures per-question time with performance.now() from when
+   the question becomes visible. The delimiter format remains under
+   "Advanced".
+3. **Answer confidentiality (FIXED).** `GET /api/leagues?view=duel`
+   returned the correct answers inside prompts while a duel was still
+   open, so any client could read them before answering. Open duels now
+   return questions only; answers are included once the duel is complete
+   for review.
+
+### G4 — Authorization and competitive integrity (INSPECTED, OPEN)
+
+The leagues engine is local-first with caller-supplied handles and no
+identity layer. INSPECTED consequences:
+
+1. **Self-awarded points.** "Log study points" lets any caller award
+   arbitrary review/focus points to ANY handle, including other players.
+   Nothing binds a points claim to actual review activity, although the
+   underlying review events exist in the local database.
+2. **Self-reported match results.** The bracket result controls let any
+   caller set the winner of any tournament match; duel answers for BOTH
+   sides can be submitted by the same client (guided play included — the
+   side toggle chooses who answers).
+3. **Client-measured timing is spoofable.** Guided play measures
+   elapsedMs in the browser; a tampered client can submit any value.
+   **Proposal (PROPOSED):** server-side timing — a duel-start ping per
+   side per question, elapsed computed server-side.
+4. **Points could be derived, not claimed (PROPOSED):** compute league
+   points from local review-session events instead of accepting counts,
+   or at minimum cap per-round points and flag outliers.
+
+**Readiness verdict:** leagues/duels/tournaments are suitable for
+friendly, self-organized play among trusted peers on a shared device or
+trusted group. They are NOT competitive-ready for stakes: scoring,
+timing, and identity are all self-asserted. Do not describe the feature
+as competitive-ready until G4 items 1-3 are addressed.
 
 ## 4. Competitive 3D assessment (parent question: study value, not novelty)
 

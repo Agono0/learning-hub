@@ -808,6 +808,12 @@ export const leagues = table('leagues', {
   /** Stable public identifier (core League.id). */
   slug: text('slug').notNull().unique(),
   title: text('title').notNull(),
+  /**
+   * 'practice' is the only mode: local & friendly play with no ranked
+   * effects (Elo stays frozen). Ranked/shared competition is disabled
+   * until leagues bind to the online identity + worker-verified scoring.
+   */
+  mode: text('mode').notNull().default('practice'),
   seasonStart: text('season_start').notNull(),
   roundLengthDays: integer('round_length_days').notNull().default(7),
   currentRound: integer('current_round').notNull().default(0),
@@ -852,6 +858,29 @@ export const leaguePlayers = table(
     index('league_players_league_idx').on(t.leagueId),
     index('league_players_tier_idx').on(t.leagueId, t.tier),
   ],
+)
+
+/**
+ * One local-activity scoring cursor per league. syncLeaguePoints credits NEW
+ * review/focus events (ids above the cursor) to one handle and advances the
+ * cursor, so device activity can never be credited twice. This is LOCAL
+ * ACTIVITY scoring — the cursor cannot identify who performed the activity
+ * on a shared device.
+ */
+export const leagueActivityCursors = table(
+  'league_activity_cursors',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    revlogCursor: integer('revlog_cursor').notNull().default(0),
+    focusCursor: integer('focus_cursor').notNull().default(0),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('league_activity_cursors_league_idx').on(t.leagueId)],
 )
 
 export const leagueRounds = table(

@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import {
   awardLeaguePoints,
+  syncLeaguePoints,
   closeDueRounds,
   createDuelFromDeck,
   closeLeagueRound,
@@ -27,6 +28,7 @@ import {
   leaguePlayerProfile,
   leagueStandings,
   listLeagueDuels,
+  redactLeagueDuelRow,
   listLeaguePlayers,
   listLeagueRounds,
   listLeagueRows,
@@ -186,7 +188,7 @@ export const leagueTools: RegisteredTool[] = [
   ),
   tool(
     'league_export',
-    'Export a league as a portable, checksummed transfer envelope (full state: players, rounds, duels, tournaments, seasons, Elo history).',
+    'Export a league as a portable, checksummed transfer envelope (players, rounds, completed duels, tournaments, seasons). Open duels never travel: their prompts carry correct answers and in-flight submissions.',
     { slug: z.string().min(1) },
     ({ slug }) => {
       const transfer = exportLeague(slug)
@@ -242,8 +244,14 @@ export const leagueTools: RegisteredTool[] = [
     ({ slug }) => json({ ok: true, players: listLeaguePlayers(slug) }),
   ),
   tool(
+    'league_sync_points',
+    'Local activity scoring: credit NEW review/focus activity on this device to a league player (forward-only cursor, idempotent, never retroactive). Not per-person verified — on a shared device the cursor cannot identify who studied.',
+    { slug: z.string().min(1), handle: z.string().min(1) },
+    ({ slug, handle }) => json({ ok: true, ...syncLeaguePoints(slug, handle) }),
+  ),
+  tool(
     'league_award_points',
-    'Award league points for a study event (reviews, focus minutes, duel result).',
+    'FRIENDLY/SELF-REPORTED: award league points for a claimed study event (reviews, focus minutes, duel result). Not verified — prefer league_sync_points for activity-derived scoring.',
     {
       slug: z.string().min(1),
       event: z.discriminatedUnion('kind', [
@@ -308,7 +316,7 @@ export const leagueTools: RegisteredTool[] = [
   ),
   tool(
     'duel_answer',
-    'Submit one side of a duel. When both sides are in, the duel is decided: accuracy first, then speed on correct answers; league duels move Elo and award duel points.',
+    'Submit one side of a duel. When both sides are in, the duel is decided: accuracy first, then speed on correct answers. Practice leagues are local & friendly: duel points are awarded, Elo stays frozen (no ranked effects).',
     { slug: z.string().min(1), side: z.enum(['A', 'B']), answers: z.array(answerSchema) },
     ({ slug, side, answers }) => {
       const r = submitDuelAnswers(slug, side, answers)
@@ -322,7 +330,7 @@ export const leagueTools: RegisteredTool[] = [
       leagueSlug: z.string().min(1).optional(),
       status: z.enum(['open', 'complete']).optional(),
     },
-    (opts) => json({ ok: true, duels: listLeagueDuels(opts) }),
+    (opts) => json({ ok: true, duels: listLeagueDuels(opts).map(redactLeagueDuelRow) }),
   ),
   tool(
     'tournament_create',

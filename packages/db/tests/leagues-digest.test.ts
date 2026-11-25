@@ -112,7 +112,7 @@ describe('buildLeagueDigest', () => {
     expect(amr.roundsWon).toBe(1)
   })
 
-  it('tracks duel activity and weekly Elo movers', () => {
+  it('tracks duel activity with no Elo movers in practice mode', () => {
     freshLeague()
     // amr answers both correctly, sara misses one -> amr wins, Elo moves
     playedDuel('d-1', ['4', 'Paris'], ['4', 'London'])
@@ -131,13 +131,8 @@ describe('buildLeagueDigest', () => {
       playerB: 'sara',
       winner: 'amr',
     })
-    const amr = digest.eloMovers.find((m) => m.handle === 'amr')!
-    const sara = digest.eloMovers.find((m) => m.handle === 'sara')!
-    expect(amr.delta).toBeGreaterThan(0)
-    expect(sara.delta).toBeLessThan(0)
-    expect(amr.duels).toBe(1)
-    // movers are ordered by delta, biggest gainer first
-    expect(digest.eloMovers[0].handle).toBe('amr')
+    // practice mode: duel activity is tracked but there are no Elo movers
+    expect(digest.eloMovers).toEqual([])
   })
 
   it('lists achievements earned inside the weekly window only', () => {

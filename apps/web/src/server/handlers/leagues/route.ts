@@ -3,7 +3,7 @@
  * divisions and promotion/relegation, duels, and tournaments, over the
  * shared leagues repository (packages/db repos/leagues).
  */
-import { z } from 'zod'
+import { redactLeagueDuelRow, syncLeaguePoints, z } from 'zod'
 import {
   awardLeaguePoints,
   createDuelFromDeck,
@@ -118,7 +118,7 @@ export const GET = withRoute(async (req: Request) => {
         standings: leagueStandings(slug, tier),
       })),
       rounds: listLeagueRounds(slug),
-      duels: listLeagueDuels({ leagueSlug: slug }),
+      duels: listLeagueDuels({ leagueSlug: slug }).map(redactLeagueDuelRow),
       tournaments: listLeagueTournaments({ leagueSlug: slug }),
     })
   }
@@ -146,27 +146,15 @@ export const GET = withRoute(async (req: Request) => {
       .parse(url.searchParams.get('status') ?? undefined)
     return Response.json({
       ok: true,
-      duels: listLeagueDuels({ leagueSlug: slug || undefined, status }),
+      duels: listLeagueDuels({ leagueSlug: slug || undefined, status }).map(redactLeagueDuelRow),
     })
   }
   if (view === 'duel') {
     const duel = getLeagueDuel(slug)
     if (!duel) return Response.json({ error: `duel not found: ${slug}` }, { status: 404 })
-    // Do not leak the correct answers while the duel is still playable —
-    // the guided play flow needs questions only. Completed duels return the
-    // full prompts so players can review what they missed.
-    const safe =
-      duel.status === 'open'
-        ? {
-            ...duel,
-            promptsJson: duel.promptsJson.map(({ id, question }) => ({
-              id,
-              question,
-              answers: [],
-            })),
-          }
-        : duel
-    return Response.json({ ok: true, duel: safe })
+    // Open duels expose questions only (no correct or submitted answers);
+    // completed duels return in full for review.
+    return Response.json({ ok: true, duel: redactLeagueDuelRow(duel) })
   }
   if (view === 'tournaments') {
     const status = z
@@ -208,6 +196,11 @@ const postSchema = z.discriminatedUnion('action', [
     handle: z.string().min(1),
     reviews: z.number().optional(),
     focusMinutes: z.number().optional(),
+  }),
+  z.object({
+    action: z.literal('points-sync'),
+    slug: z.string().min(1),
+    handle: z.string().min(1),
   }),
   z.object({ action: z.literal('close-round'), slug: z.string().min(1) }),
   z.object({ action: z.literal('import'), transfer: z.unknown() }),
@@ -309,6 +302,12 @@ export const POST = withRoute(async (req: Request) => {
             : ({ kind: 'focus', handle: body.handle, minutes: body.focusMinutes! } as const)
         const player = awardLeaguePoints(body.slug, event)
         return Response.json({ ok: true, awarded: player !== null, player })
+      }
+      case 'points-sync': {
+        // Local activity scoring: derive round points from real revlog/focus
+        // events since the league's activity cursor (forward-only, idempotent).
+        const result = syncLeaguePoints(body.slug, body.handle)
+        return Response.json({ ok: true, ...result })
       }
       case 'close-round': {
         const r = closeLeagueRound(body.slug)
