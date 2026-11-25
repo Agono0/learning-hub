@@ -80,7 +80,7 @@ export interface HeatmapDay {
   level: 0 | 1 | 2 | 3 | 4
 }
 
-export interface ActivityHeatmap {
+export interface ArenaActivityHeatmap {
   days: HeatmapDay[]
   totalRuns: number
   activeDays: number
@@ -110,11 +110,11 @@ function levelFor(runs: number, max: number): 0 | 1 | 2 | 3 | 4 {
  * A streak counts today only if today has a run; otherwise it may still be
  * alive through yesterday (the player has not played yet today).
  */
-export function buildActivityHeatmap(
+export function buildArenaActivityHeatmap(
   runs: ReadonlyArray<Pick<ProgressionRun, 'createdAt'>>,
   now: Date = new Date(),
   span = 84,
-): ActivityHeatmap {
+): ArenaActivityHeatmap {
   const n = Math.min(Math.max(Math.floor(span), 1), 366)
   const todayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   const counts = new Map<string, number>()

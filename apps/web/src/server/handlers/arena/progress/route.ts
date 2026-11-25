@@ -8,7 +8,12 @@
  */
 import { z } from 'zod'
 import { listArenaRunsForExport } from '@learning-hub/db'
-import { buildActivityHeatmap, paceStats, personalBests, practiceRank } from '@learning-hub/core'
+import {
+  buildArenaActivityHeatmap,
+  paceStats,
+  personalBests,
+  practiceRank,
+} from '@learning-hub/core'
 import { readQuery, withRoute } from '@/lib/api'
 
 const querySchema = z.object({
@@ -20,7 +25,7 @@ export const GET = withRoute(async (req: Request) => {
   const runs = listArenaRunsForExport({ limit: 5000 })
   return Response.json({
     rank: practiceRank(runs),
-    heatmap: buildActivityHeatmap(runs, new Date(), days),
+    heatmap: buildArenaActivityHeatmap(runs, new Date(), days),
     pace: paceStats(runs),
     bests: personalBests(runs),
     scope: 'local-practice',
