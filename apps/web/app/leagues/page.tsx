@@ -260,8 +260,13 @@ export default function LeaguesPage() {
     <div className="space-y-4">
       <PageHeader
         title="Leagues"
-        subtitle="Seasonal competition: climb from bronze to diamond across weekly rounds, win duels for Elo, and take the tournament bracket."
+        subtitle="Friendly local leagues: climb from bronze to diamond across weekly rounds, answer recall duels, and play the tournament bracket."
       />
+      <Callout tone="neutral" title="Practice leagues">
+        Local &amp; friendly play on this device — no ranked effects (Elo stays at baseline) and
+        scores are friendly/self-reported unless synced from real study activity. Verified
+        competition arrives when leagues connect to online accounts.
+      </Callout>
       {error && (
         <Callout tone="danger" title="Something went wrong">
           {error}
@@ -773,12 +778,20 @@ function StandingsTab({
               ))}
             </div>
           </Panel>
-          {profileHandle && <PlayerProfilePanel slug={selected} handle={profileHandle} />}
-          {divisionTier && <DivisionPanel slug={selected} tier={divisionTier} />}
+          {profileHandle && (
+            <PlayerProfilePanel slug={selected} handle={profileHandle} mode={detail.league.mode} />
+          )}
+          {divisionTier && (
+            <DivisionPanel slug={selected} tier={divisionTier} mode={detail.league.mode} />
+          )}
           <HeadToHeadPanel detail={detail} selected={selected} />
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel>
-              <h2 className="mb-2 text-base font-semibold">Log study points</h2>
+              <h2 className="mb-2 text-base font-semibold">Friendly points (self-reported)</h2>
+              <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+                Claims are entered as-is and not verified — friendly play only. To score real study
+                activity on this device, use the sync below instead.
+              </p>
               <form
                 className="space-y-3"
                 onSubmit={(e) => {
@@ -822,6 +835,25 @@ function StandingsTab({
                   Award points
                 </Button>
               </form>
+              <div className="mt-3 border-t border-neutral-200 pt-3 dark:border-neutral-700">
+                <p className="mb-2 text-xs text-neutral-500 dark:text-neutral-400">
+                  Local activity scoring: credit new reviews and completed focus time on this device
+                  to a handle. Forward-only and never retroactive.
+                </p>
+                <Button
+                  variant="secondary"
+                  data-testid="points-sync"
+                  disabled={!handle.trim()}
+                  onClick={() =>
+                    void act(
+                      { action: 'points-sync', slug: selected, handle: handle.trim() },
+                      `Synced ${handle.trim()} from local activity.`,
+                    )
+                  }
+                >
+                  Sync {handle.trim() || 'a handle'} from my activity
+                </Button>
+              </div>
             </Panel>
             <Panel>
               <h2 className="mb-2 text-base font-semibold">Round control</h2>
@@ -862,7 +894,16 @@ function StandingsTab({
 
 // ── Player profile ──────────────────────────────────────────────────────────
 
-function PlayerProfilePanel({ slug, handle }: { slug: string; handle: string }) {
+function PlayerProfilePanel({
+  slug,
+  handle,
+  mode,
+}: {
+  slug: string
+  handle: string
+  mode: string
+}) {
+  const practice = mode === 'practice'
   const [profile, setProfile] = useState<PlayerProfile | null>(null)
   const [achievements, setAchievements] = useState<
     { achievementId: string; title: string; description: string; earnedAt: string }[]
@@ -913,7 +954,8 @@ function PlayerProfilePanel({ slug, handle }: { slug: string; handle: string }) 
           <h2 className="text-base font-semibold">{handle}</h2>
           <Badge tone={TIER_TONE[player.tier] ?? 'neutral'}>{player.tier}</Badge>
           <Badge tone="accent">rank #{rank}</Badge>
-          <Badge tone="violet">elo {player.elo}</Badge>
+          {!practice && <Badge tone="violet">elo {player.elo}</Badge>}
+          {practice && <Badge tone="neutral">practice</Badge>}
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
@@ -934,14 +976,18 @@ function PlayerProfilePanel({ slug, handle }: { slug: string; handle: string }) 
               accuracy first, speed breaks ties
             </p>
           </div>
-          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">Elo trajectory</p>
-            {trajectory.length === 0 ? (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">No league duels yet.</p>
-            ) : (
-              <EloSparkline values={trajectory} start={1000} />
-            )}
-          </div>
+          {!practice && (
+            <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Elo trajectory</p>
+              {trajectory.length === 0 ? (
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                  No league duels yet.
+                </p>
+              ) : (
+                <EloSparkline values={trajectory} start={1000} />
+              )}
+            </div>
+          )}
         </div>
         {achievements.length > 0 && (
           <div data-testid="profile-achievements">
@@ -1020,7 +1066,8 @@ type DivisionDetail = {
   }[]
 }
 
-function DivisionPanel({ slug, tier }: { slug: string; tier: string }) {
+function DivisionPanel({ slug, tier, mode }: { slug: string; tier: string; mode: string }) {
+  const practice = mode === 'practice'
   const [division, setDivision] = useState<DivisionDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -1063,7 +1110,7 @@ function DivisionPanel({ slug, tier }: { slug: string; tier: string }) {
                       {i + 1}. {p.handle}
                     </span>
                     <span className="text-neutral-500 dark:text-neutral-400">
-                      {p.points} pts · elo {p.elo}
+                      {p.points} pts{practice ? '' : ` · elo ${p.elo}`}
                     </span>
                   </li>
                 ))}

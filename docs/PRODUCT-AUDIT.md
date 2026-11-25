@@ -42,6 +42,7 @@ No marker-tracked known defects.
 ## 3. Known UX gaps
 
 ### G1 — Guided material sharing (INSPECTED on PR #129, carried forward)
+
 Publishing/subscribing to shared-material channels requires pasting raw
 JSON manifests. Rendering is verified (screenshots incl. dark-contrast
 fix), but the end-to-end flow is power-user-only — against the user's
@@ -52,6 +53,7 @@ manifests become an advanced fallback.
 screenshots inspected on light AND dark themes.
 
 ### G2 — Leagues UX maturity (INSPECTED on feat/competitive-leagues)
+
 /leagues has Overview/Standings/Duels/Tournaments tabs, player profiles,
 h2h panel, achievements badges, transfer panel, division drill-down views.
 Duel creation and answering initially exposed administrative controls as
@@ -80,32 +82,61 @@ Found during the /leagues UI review (screenshots + code inspection):
    return questions only; answers are included once the duel is complete
    for review.
 
-### G4 — Authorization and competitive integrity (INSPECTED, OPEN)
+### G4 — Authorization and competitive integrity (INSPECTED; PRACTICE SCOPE SHIPPED on feat/competitive-leagues)
 
-The leagues engine is local-first with caller-supplied handles and no
-identity layer. INSPECTED consequences:
+**Architectural finding.** The project already has an authenticated online
+identity model (apps/web/src/server/handlers/online/: device_key ECDSA
+P-256 keypair registered with the online worker over a signed challenge,
+or magic_link), and apps/worker already runs authenticated social play
+(boss-raid / study-room Durable Objects). Leagues as built bypass that
+model: handles are caller-supplied strings and all scoring is local and
+self-asserted. A switchable local handle cannot change that, so no
+identity-setting shim was built.
 
-1. **Self-awarded points.** "Log study points" lets any caller award
-   arbitrary review/focus points to ANY handle, including other players.
-   Nothing binds a points claim to actual review activity, although the
-   underlying review events exist in the local database.
-2. **Self-reported match results.** The bracket result controls let any
-   caller set the winner of any tournament match; duel answers for BOTH
-   sides can be submitted by the same client (guided play included — the
-   side toggle chooses who answers).
-3. **Client-measured timing is spoofable.** Guided play measures
-   elapsedMs in the browser; a tampered client can submit any value.
-   **Proposal (PROPOSED):** server-side timing — a duel-start ping per
-   side per question, elapsed computed server-side.
-4. **Points could be derived, not claimed (PROPOSED):** compute league
-   points from local review-session events instead of accepting counts,
-   or at minimum cap per-round points and flag outliers.
+**Interim scope shipped on this branch — local & friendly practice only:**
 
-**Readiness verdict:** leagues/duels/tournaments are suitable for
-friendly, self-organized play among trusted peers on a shared device or
-trusted group. They are NOT competitive-ready for stakes: scoring,
-timing, and identity are all self-asserted. Do not describe the feature
-as competitive-ready until G4 items 1-3 are addressed.
+1. Ranked effects disabled. leagues.mode is 'practice' (only value). Duel
+   completion keeps the friendly W-L record and duel points but freezes
+   Elo at baseline and records no Elo events. Elo displays are hidden in
+   the UI in practice mode. Pass-and-play (both sides answered on one
+   device) is practice by construction. No competitive duel exists, so
+   none can be mutated or downgraded; the future competitive path must
+   reject unauthorized submissions without state change.
+2. Answer redaction on every read/export surface. Open duels expose
+   questions only — correct answers AND the opponent's submitted answers
+   stay hidden until completion (protects the recall value of the duel).
+   Applied to the web views, the MCP duel list, and CLI output; transfer
+   export excludes open duels entirely. Advanced raw entry cannot bypass:
+   the checks live in the repo functions shared by all surfaces.
+3. Scoring honesty. Claim-based points remain only as explicitly labeled
+   friendly/self-reported entry (UI, MCP tool text, CLI help all say so).
+   Local activity scoring (syncLeaguePoints) derives round points from
+   real revlog/completed-focus events through one forward-only cursor per
+   league: the first sync only establishes the cursor (nothing
+   retroactive), re-syncs are idempotent, and events can never be
+   double-credited. It is LOCAL ACTIVITY scoring — the cursor cannot
+   identify who performed the activity on a shared device, and no surface
+   claims otherwise.
+4. Result integrity guards (locked by negative tests): a completed duel
+   rejects further answers; a decided bracket match cannot be re-decided;
+   unknown leagues/handles are rejected by the sync path.
+
+**Not competitive-ready — by design, for now.** Nothing on this branch
+claims trusted scoring, real authorization, or competitive readiness.
+Client-measured answer timing stays spoofable (server timing belongs to
+the competitive path and does not resolve identity by itself).
+
+**The user's competitive-leagues goal is preserved and explicit.** The
+follow-through: bind leagues to the online identity model and verify
+participation and scoring on the worker, following the boss-raid
+pattern — signed league mutations (device key), worker-side duel/scoring
+state, server-side timing there. Engineering (client signing + worker
+endpoints + tests) can proceed inside the PR-only mission WITHOUT
+deploying anything; ACTIVATION is separate and needs: a Cloudflare
+account and a wrangler deploy approval (Durable Objects have been on the
+Workers Free plan since 2025-04-07 per the official changelog; D1 has a
+free tier — no paid plan is required at this scale, but the deploy itself
+is the user's call). Backlog B7.
 
 ## 4. Competitive 3D assessment (parent question: study value, not novelty)
 
@@ -152,6 +183,11 @@ OPEN: no systematic pass over the other ~200 modules yet — backlog B3.
 - **B4:** automated flow-connectivity audit: extract every apiGet/apiSend
   path from pages, assert a handler exists (script + CI check). Verify:
   script exits non-zero on a dangling path.
+- **B7 (goal-preserving, PR-only engineering unblocked):** competitive
+  leagues over the online identity model — signed league mutations,
+  worker-verified duel/scoring state (boss-raid pattern), server-side
+  timing, tests. Implementation without deploy; activation gated on the
+  user's Cloudflare deploy approval (see G4).
 - **B5:** 3D world expansion (candidate PR #3): palace-duel mode per §4,
   new room archetypes, guided publish/subscribe UX (G1) riding the same
   multi-feature PR. Verify per §3/§4 criteria.
