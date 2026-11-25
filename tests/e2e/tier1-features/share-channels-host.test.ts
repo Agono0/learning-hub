@@ -331,3 +331,52 @@ describe('channel collections routes', () => {
     expect((await post('/share/collections/delete', { id: 'col-e2e' })).status).toBe(404)
   })
 })
+
+describe('publish-from-library route', () => {
+  it('publishes a library deck as a channel and rejects empty requests', async () => {
+    const { findOrCreateDeck, createBasicCards } =
+      await import('../../../packages/db/src/repos/cards')
+    const deck = findOrCreateDeck('Publishable E2E Deck')
+    createBasicCards(deck.id, 'Capital of France? :: Paris\nCapital of Egypt? :: Cairo')
+
+    const published = await post('/share/channels/publish-from-library', {
+      channelId: 'ch-lib-e2e',
+      authorHandle: 'owner-e2e',
+      visibility: 'link',
+      deckId: deck.id,
+      title: 'Library Deck Channel',
+      changelog: 'initial from library',
+    })
+    expect(published.status).toBe(200)
+    expect(published.json.ok).toBe(true)
+    expect(published.json.manifest.channelId).toBe('ch-lib-e2e')
+    expect(published.json.manifest.currentVersion).toBe(1)
+    expect(published.json.manifest.versions[0].items).toHaveLength(2)
+
+    // the published channel can be hosted and served like any other
+    const hosted = await post('/share/host', { manifest: published.json.manifest })
+    expect(hosted.status).toBe(200)
+    const got = await post('/share/host/get', { channelId: 'ch-lib-e2e' })
+    expect(got.status).toBe(200)
+
+    // update path: republish against the existing manifest
+    const updated = await post('/share/channels/publish-from-library', {
+      channelId: 'ch-lib-e2e',
+      authorHandle: 'owner-e2e',
+      visibility: 'link',
+      deckId: deck.id,
+      manifest: published.json.manifest,
+      changelog: 'v2 from library',
+    })
+    expect(updated.status).toBe(200)
+    expect(updated.json.manifest.currentVersion).toBe(2)
+
+    // neither deckId nor courseId -> 400
+    const bad = await post('/share/channels/publish-from-library', {
+      channelId: 'ch-bad',
+      authorHandle: 'owner-e2e',
+      visibility: 'link',
+    })
+    expect(bad.status).toBe(400)
+  })
+})
