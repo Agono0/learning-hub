@@ -26,6 +26,9 @@ pub const READ_DEADLINE: Duration = Duration::from_secs(5);
 /// Time allowed to write a response before giving up on a stalled client.
 pub const WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Write timeout for the inline 503 reply.
+pub const BUSY_WRITE_TIMEOUT: Duration = Duration::from_millis(250);
+
 static ACTIVE: AtomicUsize = AtomicUsize::new(0);
 
 /// Holds one of the connection slots until dropped.
@@ -53,9 +56,11 @@ impl Drop for ConnGuard {
     }
 }
 
-/// Constant-time equality for secrets. Always walks `max(len)` bytes and folds a length
-/// difference into the result, so neither the position of the first mismatch nor the length
-/// of the guess changes how long the comparison takes.
+/// Equality for secrets with no early exit. Always walks `max(len)` bytes and folds a length
+/// difference into the result, so the position of the first mismatch does not change the work.
+/// Bounds, stated plainly: the work still grows with the longer input (the presented token is
+/// at most one header line of an 8 KiB head), so this does not hide token LENGTH from a
+/// caller that can measure that; it removes the easy byte-by-byte early-exit only.
 pub fn ct_eq(a: &[u8], b: &[u8]) -> bool {
     let n = a.len().max(b.len());
     let mut diff: usize = a.len() ^ b.len();
@@ -171,8 +176,12 @@ pub fn classify(head: &str, expected_token: &str) -> Route {
 }
 
 /// Reply to a connection that could not get a slot.
+///
+/// Runs inline in the accept loop (no worker is spawned for a rejected connection, so a flood
+/// cannot grow threads). The reply is ~100 bytes and the write timeout is short, so a client
+/// that never reads cannot stall accepting for long.
 pub fn write_busy(stream: &mut TcpStream) {
-    let _ = stream.set_write_timeout(Some(WRITE_TIMEOUT));
+    let _ = stream.set_write_timeout(Some(BUSY_WRITE_TIMEOUT));
     let _ = stream.write_all(
         b"HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nContent-Length: 16\r\nConnection: close\r\n\r\n{\"error\":\"Busy\"}",
     );
@@ -338,5 +347,97 @@ mod tests {
         assert_eq!(classify(&head, "secret"), Route::Heartbeat);
         assert_eq!(classify(&head, "wrong"), Route::Unauthorized);
         let _ = h.join();
+    }
+
+    fn pair_sc() -> (TcpStream, TcpStream) {
+        let l = TcpListener::bind("127.0.0.1:0").unwrap();
+        let c = TcpStream::connect(l.local_addr().unwrap()).unwrap();
+        let (srv, _) = l.accept().unwrap();
+        (srv, c)
+    }
+
+    #[test]
+    fn the_slot_is_released_after_every_read_failure_kind() {
+        static LOCAL: AtomicUsize = AtomicUsize::new(0);
+        // Timeout, TooLarge, Closed: each runs on a worker holding a slot, as in the server.
+        for kind in 0..3 {
+            let (mut srv, mut cli) = pair_sc();
+            let guard = ConnGuard::acquire_in(&LOCAL, 4).unwrap();
+            assert_eq!(LOCAL.load(Ordering::SeqCst), 1);
+            let h = thread::spawn(move || {
+                let _guard = guard;
+                read_request_head(&mut srv, Duration::from_millis(150))
+            });
+            match kind {
+                0 => {} // idle: stays open, no bytes
+                1 => {
+                    let _ = cli.write_all(&vec![b'a'; MAX_HEAD_BYTES + 10]);
+                }
+                _ => drop(
+                    cli.try_clone()
+                        .map(|c| c.shutdown(std::net::Shutdown::Both)),
+                ),
+            }
+            let r = h.join().unwrap();
+            assert!(r.is_err());
+            assert_eq!(
+                LOCAL.load(Ordering::SeqCst),
+                0,
+                "slot leaked for kind {kind}"
+            );
+            drop(cli);
+        }
+    }
+
+    #[test]
+    fn the_slot_is_released_when_the_worker_panics() {
+        static LOCAL: AtomicUsize = AtomicUsize::new(0);
+        let guard = ConnGuard::acquire_in(&LOCAL, 4).unwrap();
+        let h = thread::spawn(move || {
+            let _guard = guard;
+            panic!("worker failed");
+        });
+        assert!(h.join().is_err());
+        assert_eq!(LOCAL.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn a_burst_over_the_cap_is_rejected_inline_without_extra_workers() {
+        static LOCAL: AtomicUsize = AtomicUsize::new(0);
+        let mut held = Vec::new();
+        let mut rejected = 0;
+        let started = Instant::now();
+        for _ in 0..64 {
+            let (mut srv, _cli) = pair_sc();
+            match ConnGuard::acquire_in(&LOCAL, 4) {
+                Some(g) => held.push(g),
+                None => {
+                    write_busy(&mut srv);
+                    rejected += 1;
+                }
+            }
+        }
+        assert_eq!(held.len(), 4);
+        assert_eq!(rejected, 60);
+        assert_eq!(LOCAL.load(Ordering::SeqCst), 4, "rejects hold no slot");
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
+    #[test]
+    fn fragmented_head_with_mixed_case_header_is_authorized() {
+        let (mut srv, mut cli) = pair_sc();
+        let h = thread::spawn(move || read_request_head(&mut srv, Duration::from_secs(2)));
+        for part in [
+            &b"POST /v1/heartbeat HT"[..],
+            b"TP/1.1\r\nAUTHORIZATION: bEaReR tok",
+            b"en\r\n\r\n",
+        ] {
+            cli.write_all(part).unwrap();
+            cli.flush().unwrap();
+            thread::sleep(Duration::from_millis(30));
+        }
+        let head = h.join().unwrap().unwrap();
+        assert_eq!(classify(&head, "token"), Route::Heartbeat);
+        assert_eq!(classify(&head, "tokeN"), Route::Unauthorized);
     }
 }
