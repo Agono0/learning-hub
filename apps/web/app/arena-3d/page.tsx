@@ -167,6 +167,18 @@ interface HistoryPayload {
   runs: ArenaRunRow[]
   /** Highest-scoring run on the books (the rival ghost), null when none. */
   bestRunId: number | null
+  perGuardian: Array<{
+    archetype: GuardianArchetype
+    runs: number
+    victories: number
+    winRate: number
+    rounds: number
+    correct: number
+    accuracy: number
+    bestCombo: number
+    bestScore: number
+    bossWins: number
+  }>
   trend: Array<{
     runId: string
     accuracy: number
@@ -748,6 +760,45 @@ export default function Arena3DPage() {
 
       {phase === 'setup' ? (
         <ArenaCoachMarks forceOpen={coachForced} onClose={() => setCoachForced(false)} />
+      ) : null}
+
+      {phase === 'setup' ? (
+        <Panel title="Guardians" data-testid="arena-bestiary">
+          <p className="mb-3 text-xs text-faint">
+            The guardians rotate with each run. Long runs (15+ challenges) turn any of them into a
+            three-phase boss.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['warden', 'colossus', 'shade'] as GuardianArchetype[]).map((key) => {
+              const info = GUARDIANS[key]
+              const stats = record?.perGuardian?.find((g) => g.archetype === key)
+              return (
+                <div
+                  key={key}
+                  className="rounded-lg border border-(--hub-border) p-3"
+                  data-testid={`arena-bestiary-${key}`}
+                >
+                  <p className="text-sm font-semibold">{info.name}</p>
+                  <p className="mt-1 text-xs text-faint">{info.tagline}</p>
+                  {stats && stats.runs > 0 ? (
+                    <div
+                      className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-secondary"
+                      data-testid={`arena-bestiary-stats-${key}`}
+                    >
+                      <span>{stats.runs} runs</span>
+                      <span>{Math.round(stats.winRate * 100)}% win</span>
+                      <span>best {stats.bestScore}</span>
+                      <span>combo ×{stats.bestCombo}</span>
+                      {stats.bossWins > 0 ? <span>{stats.bossWins} boss wins</span> : null}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-faint">Not faced yet.</p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </Panel>
       ) : null}
 
       {(phase === 'setup' || phase === 'loading') && record && record.stats.runs > 0 ? (

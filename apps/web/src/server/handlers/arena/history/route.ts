@@ -13,6 +13,7 @@ import {
   decks,
   getArenaStats,
   getArenaStatsByDeck,
+  getArenaStatsByGuardian,
   listArenaRuns,
   type ArenaRunRow,
 } from '@learning-hub/db'
@@ -65,6 +66,7 @@ export const GET = withRoute(async (req: Request) => {
       emoji: deckById.get(d.deckId)?.emoji ?? null,
     })),
     bestRunId: bestRun?.id ?? null,
+    perGuardian: getArenaStatsByGuardian(),
     trend: trendRows.map((r) => ({
       runId: r.referenceId,
       accuracy: r.rounds === 0 ? 0 : r.correct / r.rounds,

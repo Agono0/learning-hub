@@ -28,6 +28,7 @@ import {
   createArenaSession,
   getArenaSession,
   getArenaStatsByDeck,
+  getArenaStatsByGuardian,
   getWeakCardIdsForRun,
   recordArenaRun,
   releaseArenaClaim,
@@ -415,5 +416,67 @@ describe('getArenaStatsByDeck', () => {
   it('an empty record book yields no per-deck rows', () => {
     const { db } = createTestDb()
     expect(getArenaStatsByDeck({ db })).toEqual([])
+  })
+})
+
+describe('getArenaStatsByGuardian', () => {
+  it('groups the record book by guardian archetype with exact rates', () => {
+    const { db } = createTestDb()
+    const run = (
+      archetype: 'warden' | 'colossus' | 'shade',
+      result: 'victory' | 'defeat',
+      boss: boolean,
+      correct: number,
+      rounds: number,
+      bestCombo: number,
+      score: number,
+      ref: string,
+    ) =>
+      recordArenaRun(
+        {
+          deckIds: [1],
+          result,
+          archetype,
+          boss,
+          rounds,
+          correct,
+          accuracy: rounds === 0 ? 0 : correct / rounds,
+          bestCombo,
+          crits: 0,
+          score,
+          coins: 1,
+          xp: 5,
+          durationMs: 1000,
+          referenceId: ref,
+        },
+        db,
+      )
+
+    run('warden', 'victory', false, 10, 10, 5, 1000, 'arena:g1')
+    run('warden', 'defeat', true, 6, 10, 3, 500, 'arena:g2')
+    run('shade', 'victory', true, 18, 20, 8, 2400, 'arena:g3')
+
+    const stats = getArenaStatsByGuardian({ db })
+    expect(stats).toHaveLength(2)
+    const warden = stats.find((g) => g.archetype === 'warden')!
+    expect(warden.runs).toBe(2)
+    expect(warden.victories).toBe(1)
+    expect(warden.winRate).toBe(0.5)
+    expect(warden.rounds).toBe(20)
+    expect(warden.correct).toBe(16)
+    expect(warden.accuracy).toBeCloseTo(0.8)
+    expect(warden.bestCombo).toBe(5)
+    expect(warden.bestScore).toBe(1000)
+    expect(warden.bossWins).toBe(0)
+    const shade = stats.find((g) => g.archetype === 'shade')!
+    expect(shade.runs).toBe(1)
+    expect(shade.winRate).toBe(1)
+    expect(shade.bossWins).toBe(1)
+    expect(stats.find((g) => g.archetype === 'colossus')).toBeUndefined()
+  })
+
+  it('an empty record book yields no guardian rows', () => {
+    const { db } = createTestDb()
+    expect(getArenaStatsByGuardian({ db })).toEqual([])
   })
 })
