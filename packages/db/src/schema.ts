@@ -2045,3 +2045,68 @@ export const taskViews = table('task_views', {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 })
+
+// ─── Shared Material Channels (lh-share/v2) ─────────────────────────────────
+// Local persistence for channel subscriptions: what the learner subscribed
+// to, the merge state of every mirrored item, and one append-only record per
+// sync attempt. Learner state lives ONLY in share_channel_items.learner_state
+// and is never written by an incoming channel update (see core share-channels
+// engine merge rules).
+
+export const shareChannelSubscriptions = table('share_channel_subscriptions', {
+  channelId: text('channel_id').primaryKey(),
+  localVersion: integer('local_version').notNull().default(0),
+  subscribedAt: text('subscribed_at').notNull(),
+  lastSyncAt: text('last_sync_at'),
+  // Denormalized display fields from the manifest, refreshed on each sync so
+  // the dashboard can render without fetching the manifest.
+  title: text('title').notNull().default(''),
+  authorHandle: text('author_handle').notNull().default(''),
+  contentType: text('content_type').notNull().default('deck'), // 'deck' | 'course'
+  visibility: text('visibility').notNull().default('link'), // 'link' | 'invite'
+  /** Manifest's currentVersion as last seen; > localVersion means updates wait. */
+  seenVersion: integer('seen_version').notNull().default(0),
+})
+
+export const shareChannelItems = table(
+  'share_channel_items',
+  {
+    channelId: text('channel_id').notNull(),
+    /** Channel item id for mirrored items, or `local:<uuid>` for learner-created. */
+    itemKey: text('item_key').notNull(),
+    /** Channel content as last synced (the merge base); null for learner-created. */
+    channelContent: text('channel_content', { mode: 'json' }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    channelRevision: integer('channel_revision'),
+    /** Learner's current content; may diverge from channelContent. */
+    localContent: text('local_content', { mode: 'json' })
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    /** Learner-owned state (notes, scheduling, progress) — sacred on updates. */
+    learnerState: text('learner_state', { mode: 'json' })
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+  },
+  (t) => [primaryKey({ columns: [t.channelId, t.itemKey] })],
+)
+
+export const shareChannelSyncRecords = table(
+  'share_channel_sync_records',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    channelId: text('channel_id').notNull(),
+    at: text('at').notNull(),
+    fromVersion: integer('from_version').notNull(),
+    toVersion: integer('to_version').notNull(),
+    outcome: text('outcome').notNull(), // 'updated' | 'already-current' | 'failed'
+    merge: text('merge', { mode: 'json' }).$type<Record<string, unknown> | null>(),
+    appliedVersions: text('applied_versions', { mode: 'json' }).$type<number[] | null>(),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+  },
+  (t) => [index('share_channel_sync_records_channel_at_idx').on(t.channelId, t.at)],
+)
