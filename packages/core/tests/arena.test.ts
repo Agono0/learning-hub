@@ -712,3 +712,27 @@ describe('card-format flavor', () => {
     expect(withFlavor.correct).toBe(plain.correct)
   })
 })
+
+describe('summarizeGradeLog queue sizing', () => {
+  const log = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      cardId: i + 1,
+      grade: 1 as const,
+      confidence: 0 as const,
+      timeMs: 4000,
+    }))
+
+  it('replays a truncated log against the full queue: defeat stays defeat', () => {
+    const short = summarizeGradeLog(log(6), ARENA_DEFAULTS, 'warden', null, undefined, 15)
+    expect(short.result).toBe('defeat')
+    // Without the issued queue size the same log would shrink the queue to 6.
+    const shrunk = summarizeGradeLog(log(6))
+    expect(shrunk.result).toBe('victory')
+  })
+
+  it('a complete log is unaffected by the queue size', () => {
+    const a = summarizeGradeLog(log(3))
+    const b = summarizeGradeLog(log(3), ARENA_DEFAULTS, 'warden', null, undefined, 3)
+    expect(b).toEqual(a)
+  })
+})

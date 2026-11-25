@@ -418,7 +418,14 @@ export const POST = withRoute(async (req: Request) => {
     .where(inArray(cards.id, claim.run.cardIds))
   const formatByCard = new Map(formatRows.map((r) => [r.id, r.type]))
   const formatOf = (cardId: number): string | undefined => formatByCard.get(cardId)
-  const summary = summarizeGradeLog(normalized, ARENA_DEFAULTS, archetype, runModifier, formatOf)
+  const summary = summarizeGradeLog(
+    normalized,
+    ARENA_DEFAULTS,
+    archetype,
+    runModifier,
+    formatOf,
+    claim.run.cardIds.length,
+  )
   const boss = claim.run.boss
   const referenceId = `arena:${runId}`
 
