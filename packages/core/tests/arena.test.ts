@@ -1,0 +1,224 @@
+/**
+ * Review Arena engine tests — deterministic combat-feedback math over the
+ * real SRS grade scale. No randomness anywhere: every expectation is exact.
+ */
+import { describe, expect, it } from 'vitest'
+import {
+  ARENA_DEFAULTS,
+  applyGrade,
+  arenaConfig,
+  arenaGradeEventSchema,
+  arenaSettlementSchema,
+  buildArenaSummary,
+  createArenaSession,
+  strikeFor,
+  summarizeGradeLog,
+  type ArenaChallenge,
+} from '../src/arena'
+
+const CH = (n: number): ArenaChallenge[] =>
+  Array.from({ length: n }, (_, i) => ({
+    cardId: i + 1,
+    prompt: `p${i + 1}`,
+    answer: `a${i + 1}`,
+  }))
+
+describe('strikeFor', () => {
+  it('grades a clean good answer at base damage', () => {
+    const s = strikeFor(3, 1, 9_999, 0)
+    expect(s.damage).toBe(ARENA_DEFAULTS.baseDamage)
+    expect(s.crit).toBe(false)
+    expect(s.counter).toBe(0)
+    expect(s.comboDelta).toBe(1)
+  })
+
+  it('crits only on fast + confident + correct', () => {
+    const crit = strikeFor(4, 1, ARENA_DEFAULTS.critTimeMs, 0)
+    expect(crit.crit).toBe(true)
+    expect(crit.damage).toBe(Math.floor(ARENA_DEFAULTS.baseDamage * 1.5))
+    // slower than the crit window: no crit even when confident
+    expect(strikeFor(4, 1, ARENA_DEFAULTS.critTimeMs + 1, 0).crit).toBe(false)
+    // guessed: no crit even when fast
+    expect(strikeFor(4, 0, 1_000, 0).crit).toBe(false)
+    // hard answers never crit
+    expect(strikeFor(2, 1, 1_000, 0).crit).toBe(false)
+  })
+
+  it('halves damage for guessed answers (confidence 0)', () => {
+    const s = strikeFor(3, 0, 9_999, 0)
+    expect(s.damage).toBe(Math.floor(ARENA_DEFAULTS.baseDamage / 2))
+  })
+
+  it('grows damage with combo and breaks combo on again', () => {
+    const s = strikeFor(3, 1, 9_999, 4)
+    expect(s.damage).toBe(Math.floor(ARENA_DEFAULTS.baseDamage * 1.4))
+    const again = strikeFor(1, 1, 9_999, 4)
+    expect(again.damage).toBe(0)
+    expect(again.comboDelta).toBe(-4)
+    expect(again.counter).toBe(ARENA_DEFAULTS.againCounter)
+  })
+
+  it('hard answers glance for half damage with a chip counter, combo holds', () => {
+    const s = strikeFor(2, 1, 9_999, 3)
+    expect(s.damage).toBe(Math.floor(Math.floor(ARENA_DEFAULTS.baseDamage / 2) * 1.3))
+    expect(s.counter).toBe(ARENA_DEFAULTS.hardCounter)
+    expect(s.comboDelta).toBe(0)
+  })
+
+  it('repairs one shield once the combo threshold is reached', () => {
+    expect(strikeFor(3, 1, 9_999, ARENA_DEFAULTS.shieldRepairCombo - 1).shieldRepair).toBe(1)
+    expect(strikeFor(3, 1, 9_999, 0).shieldRepair).toBe(0)
+    expect(strikeFor(1, 1, 9_999, 9).shieldRepair).toBe(0)
+  })
+})
+
+describe('session lifecycle', () => {
+  it('starts fighting with guardian HP scaled to the queue', () => {
+    const s = createArenaSession(CH(5))
+    expect(s.status).toBe('fighting')
+    expect(s.guardianMaxHp).toBe(5 * ARENA_DEFAULTS.baseDamage)
+    expect(s.hp).toBe(ARENA_DEFAULTS.maxHp)
+    expect(s.remaining).toBe(5)
+  })
+
+  it('an empty queue is an immediate victory', () => {
+    expect(createArenaSession([]).status).toBe('victory')
+  })
+
+  it('reaches victory when the queue is cleared', () => {
+    let s = createArenaSession(CH(2))
+    s = applyGrade(s, CH(2)[0]!, 3, 1, 5_000)
+    expect(s.status).toBe('fighting')
+    s = applyGrade(s, CH(2)[1]!, 3, 1, 5_000)
+    expect(s.status).toBe('victory')
+    expect(s.guardianHp).toBe(0)
+    expect(s.exchanges).toHaveLength(2)
+  })
+
+  it('reaches defeat when learner HP hits zero', () => {
+    let s = createArenaSession(CH(10), arenaConfig({ maxHp: 12, maxShield: 0 }))
+    // first again strips the starting shield floor of 0, counter 12 => hp 12-12
+    s = applyGrade(s, CH(10)[0]!, 1, 1, 5_000)
+    expect(s.hp).toBe(0)
+    expect(s.status).toBe('defeat')
+    // further grades are ignored once the session is over
+    const after = applyGrade(s, CH(10)[1]!, 4, 1, 1_000)
+    expect(after.exchanges).toHaveLength(1)
+    expect(after.status).toBe('defeat')
+  })
+
+  it('shield absorbs counters before HP and repair caps at maxShield', () => {
+    let s = createArenaSession(CH(6))
+    expect(s.shield).toBe(1)
+    s = applyGrade(s, CH(6)[0]!, 1, 1, 5_000) // counter 12, 1 shielded, 11 taken
+    expect(s.exchanges[0]!.counterShielded).toBe(1)
+    expect(s.exchanges[0]!.counterTaken).toBe(ARENA_DEFAULTS.againCounter - 1)
+    expect(s.shield).toBe(0)
+    expect(s.hp).toBe(ARENA_DEFAULTS.maxHp - (ARENA_DEFAULTS.againCounter - 1))
+    // rebuild combo to the repair threshold and confirm the cap
+    let t = createArenaSession(CH(6))
+    for (let i = 0; i < 5; i++) t = applyGrade(t, CH(6)[i]!, 3, 1, 5_000)
+    expect(t.shield).toBeLessThanOrEqual(t.maxShield)
+    expect(t.combo).toBe(5)
+    expect(t.bestCombo).toBe(5)
+  })
+
+  it('tracks best combo across a break', () => {
+    let s = createArenaSession(CH(5))
+    s = applyGrade(s, CH(5)[0]!, 3, 1, 5_000)
+    s = applyGrade(s, CH(5)[1]!, 3, 1, 5_000)
+    s = applyGrade(s, CH(5)[2]!, 1, 1, 5_000)
+    expect(s.combo).toBe(0)
+    expect(s.bestCombo).toBe(2)
+    s = applyGrade(s, CH(5)[3]!, 3, 1, 5_000)
+    expect(s.combo).toBe(1)
+    expect(s.bestCombo).toBe(2)
+  })
+
+  it('accumulates score and per-exchange records deterministically', () => {
+    let s = createArenaSession(CH(2))
+    s = applyGrade(s, CH(2)[0]!, 4, 1, 1_000) // crit: floor(10*1.5)=15 => 200 score
+    s = applyGrade(s, CH(2)[1]!, 2, 1, 9_000) // glance floor(5*1.1)=5 (combo 1) => 50+10
+    expect(s.exchanges[0]!.crit).toBe(true)
+    expect(s.exchanges[0]!.scoreDelta).toBe(15 * 10 + 50)
+    expect(s.exchanges[1]!.scoreDelta).toBe(5 * 10 + 10)
+    expect(s.score).toBe(200 + 60)
+  })
+})
+
+describe('buildArenaSummary', () => {
+  it('reports accuracy, crits and capped coins for a perfect run', () => {
+    let s = createArenaSession(CH(4))
+    for (const c of CH(4)) s = applyGrade(s, c, 4, 1, 1_000)
+    const sum = buildArenaSummary(s)
+    expect(sum.result).toBe('victory')
+    expect(sum.correct).toBe(4)
+    expect(sum.accuracy).toBe(1)
+    expect(sum.crits).toBe(4)
+    expect(sum.coins).toBeLessThanOrEqual(4 + 8)
+    expect(sum.xp).toBe(4 * 5 + 15)
+  })
+
+  it('rewards a defeat less and never below zero', () => {
+    let s = createArenaSession(CH(6), arenaConfig({ maxHp: 12, maxShield: 0 }))
+    s = applyGrade(s, CH(6)[0]!, 1, 1, 5_000)
+    const sum = buildArenaSummary(s)
+    expect(sum.result).toBe('defeat')
+    expect(sum.correct).toBe(0)
+    expect(sum.coins).toBe(0)
+    expect(sum.xp).toBe(0)
+  })
+})
+
+describe('payloads', () => {
+  it('accepts a well-formed grade event and rejects bad grades', () => {
+    expect(
+      arenaGradeEventSchema.safeParse({ cardId: 1, grade: 3, confidence: 1, timeMs: 900 }).success,
+    ).toBe(true)
+    expect(
+      arenaGradeEventSchema.safeParse({ cardId: 1, grade: 5, confidence: 1, timeMs: 900 }).success,
+    ).toBe(false)
+    expect(
+      arenaGradeEventSchema.safeParse({ cardId: 1, grade: 3, confidence: 2, timeMs: 900 }).success,
+    ).toBe(false)
+  })
+
+  it('settlement requires at least one exchange and a result', () => {
+    const ok = arenaSettlementSchema.safeParse({
+      deckIds: [1],
+      exchanges: [{ cardId: 1, grade: 3, confidence: 1, timeMs: 900 }],
+      bestCombo: 1,
+      result: 'victory',
+    })
+    expect(ok.success).toBe(true)
+    expect(
+      arenaSettlementSchema.safeParse({
+        deckIds: [1],
+        exchanges: [],
+        bestCombo: 0,
+        result: 'victory',
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe('summarizeGradeLog', () => {
+  it('replays a grade log into the same summary as a live session', () => {
+    const events = [
+      { cardId: 1, grade: 4 as const, confidence: 1 as const, timeMs: 1_000 },
+      { cardId: 2, grade: 1 as const, confidence: 0 as const, timeMs: 8_000 },
+      { cardId: 3, grade: 3 as const, confidence: 1 as const, timeMs: 6_000 },
+    ]
+    let live = createArenaSession(CH(3))
+    for (const e of events) {
+      live = applyGrade(
+        live,
+        { cardId: e.cardId, prompt: 'x', answer: 'x' },
+        e.grade,
+        e.confidence,
+        e.timeMs,
+      )
+    }
+    expect(summarizeGradeLog(events)).toEqual(buildArenaSummary(live))
+  })
+})

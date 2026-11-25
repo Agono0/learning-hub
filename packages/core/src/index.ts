@@ -12,6 +12,7 @@ export * from './fsrs'
 export * from './fsrs-optimizer'
 export * from './cards'
 export * from './practice'
+export * from './arena'
 // practice/text.ts also declares a richer (diacritics-stripping)
 // normalizeAnswer; the root barrel keeps the pre-existing `./cards` binding
 // and the `@learning-hub/core/practice` subpath keeps its own.
