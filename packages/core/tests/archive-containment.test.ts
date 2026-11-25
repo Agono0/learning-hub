@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { strToU8, zipSync } from 'fflate'
+import { Inflate, strToU8, zipSync } from 'fflate'
 import {
   ArchiveLimitError,
   INFLATE_PUSH_CHUNK,
@@ -42,6 +42,13 @@ function expectCode(fn: () => unknown, code: ArchiveLimitError['code']): void {
 }
 
 const small = zipSync({ 'a.txt': strToU8('hello hello hello hello'), 'b.txt': strToU8('world') })
+
+describe('fflate contract', () => {
+  it('Inflate exposes the unconsumed-input field the trailing-byte check relies on', () => {
+    const inf = new Inflate(() => {})
+    expect((inf as unknown as { p: unknown }).p).toBeInstanceOf(Uint8Array)
+  })
+})
 
 describe('openBoundedZip', () => {
   it('reads a normal archive and verifies size and CRC', () => {

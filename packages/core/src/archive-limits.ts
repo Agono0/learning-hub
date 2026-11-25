@@ -9,14 +9,50 @@
  *  1. Parse the central directory ourselves, with input size and entry count enforced and
  *     every central and local header structurally validated (overlaps included) BEFORE any
  *     inflation. Output caps (entry, total) apply to the entries actually read.
- *  2. Inflate only the entries a caller asks for, through fflate's streaming `Inflate`
- *     (0.8.3 source: `inflt` consumes a whole push before `ondata` fires, grows its buffer
- *     to at least `bt + 131072` by doubling, and a deflate symbol pair expands at most
- *     258 bytes per 2 bits = 1032:1). Each push is sized from the remaining declared
- *     budget, so the work past a violation is at most about (push + carry) * 1032 bytes of
- *     output, internal buffers up to roughly twice that plus 128 KiB, and one copy handed
- *     to `ondata`. A throw from `ondata` leaves `push` before another is issued; no timers
- *     or workers exist, so nothing continues inflating.
+ *  2. Inflate only the entries a caller asks for, through fflate's streaming `Inflate`.
+ *     The memory argument below is derived from the fflate 0.8.3 source
+ *     (node_modules/fflate/lib/index.cjs: `Inflate.e/.c/.push`, `inflt`), not from
+ *     observed chunk sizes.
+ *
+ * Memory and abort argument (fflate 0.8.3)
+ *  a. One `push(chunk, final)` does `e(chunk)`: `p = carry ++ chunk`, then `c(final)`:
+ *     `inflt(p, state, o)` runs to the end of `p` in ONE call, then `ondata` is called ONCE
+ *     with a fresh copy of that push's output. `ondata` never fires mid-push, so a limit
+ *     check in `ondata` can only run after a whole push has been inflated.
+ *  b. Per-push output O. Each Huffman symbol pair is at least 2 bits (1 bit length code,
+ *     1 bit distance code) and emits at most 258 bytes, so consumed input of k bytes emits
+ *     at most k * 1032 bytes (258 * 8 / 2). A stored block emits at most what it consumed.
+ *  c. Carry between pushes. When `inflt` runs out of input it stops at the last whole
+ *     symbol (`st.p = lpos`) and `c` keeps the unconsumed bytes: `p = slc(p, st.p / 8)`.
+ *     That carry is (i) under 8 bytes mid-symbol, (ii) a dynamic block header that was not
+ *     fully available, about 320 bytes at most, or (iii) a stored block that has not fully
+ *     arrived, at most 65,535 bytes, which cannot expand (1:1). So the output of one push
+ *     is O <= (c + 320) * 1032 + 65,535 where c is the bytes pushed.
+ *  d. Push size. `c = max(1, min(4096, ceil((remaining + 1) / 1032)))` with
+ *     `remaining = declared size - bytes emitted so far`. At c = 4096 that is O <= about
+ *     4.6 MB. Near a tiny budget (c = 1) it is about 0.4 MB ((1 + 320) * 1032 + 65,535).
+ *     A violation is therefore detected after at most about that much output past the
+ *     declared size, never "a few bytes".
+ *  e. fflate internal growth. In `inflt` with a supplied buffer `resize` is true, and
+ *     `cbuf(l)` replaces the buffer with `max(2 * length, l)` for `l = bt + 131072` before
+ *     each block and after each match. So the working buffer is at most
+ *     2 * (window 32,768 + O + 131,072). After the call `c` also makes copies: the
+ *     `ondata` slice (O bytes), the next window (32,768 bytes) and the unconsumed input.
+ *     The transient for one push is roughly 4 to 5 times O, about 20 MB at most.
+ *  f. Retained memory per read: the output is written straight into one buffer allocated at
+ *     the declared size, after the entry and total caps passed (so a header that lies large
+ *     costs at most one entry-cap allocation, and then fails). `cache` keeps every entry
+ *     read, bounded by the accepted total cap (128 MiB). Derived upper bound for a whole
+ *     import, above the JS baseline: caller input (<= 100 MiB) + cache (<= 128 MiB) + the
+ *     buffer being filled (<= entry cap) + fflate transient (~20 MB) + the consumer's own
+ *     copy (parseApkg gives better-sqlite3 a `Buffer.from` copy and SQLite deserializes it,
+ *     so the collection can exist 2 to 3 times). For APKG that can reach about 450 to
+ *     500 MiB, not 128 MiB. A derived bound, not a measurement.
+ *  g. Why a throw halts further work. `ondata` is called synchronously from `Inflate.c`
+ *     (sync class, not `AsyncInflate`: no worker, timer or promise). An exception from it
+ *     propagates out of `c`, `push` and our loop, which is inside the `try`. No further
+ *     `push` is issued, `inf` and its `o`/`p` buffers become unreachable, and the entry is
+ *     never cached. Work already done in the failing push is the overshoot bounded in (d).
  *  3. Require actual size == declared size and CRC-32 match, and count actual accepted
  *     bytes against the total limit. Nothing is truncated silently.
  *
@@ -307,7 +343,7 @@ export function openBoundedZip(
     if (e.method === 0) {
       out = data.slice()
     } else {
-      const chunks: Uint8Array[] = []
+      out = new Uint8Array(e.usize) // <= entry cap, allocated after the caps passed
       let n = 0
       const inf = new Inflate((chunk) => {
         observe?.(n + chunk.length)
@@ -317,7 +353,7 @@ export function openBoundedZip(
             'corrupt',
           )
         }
-        chunks.push(chunk) // fflate hands out a fresh copy per call
+        out.set(chunk, n)
         n += chunk.length
       })
       try {
@@ -337,8 +373,15 @@ export function openBoundedZip(
         } while (i < data.length)
         // After the final push fflate keeps unconsumed input in `p` (at most the one partial
         // byte of the last block). More means bytes trail the deflate stream.
-        const left = (inf as unknown as { p: Uint8Array }).p.length
-        if (left > 1) {
+        const pending = (inf as unknown as { p?: unknown }).p
+        if (!(pending instanceof Uint8Array)) {
+          // Contract with the pinned fflate (0.8.3): `Inflate.p` holds unconsumed input.
+          throw new ArchiveLimitError(
+            'unsupported fflate version: cannot verify trailing bytes after the deflate stream',
+            'unsupported',
+          )
+        }
+        if (pending.length > 1) {
           throw new ArchiveLimitError(
             `entry "${name}" has trailing bytes after its data`,
             'corrupt',
@@ -354,13 +397,6 @@ export function openBoundedZip(
           'corrupt',
         )
       }
-      out = new Uint8Array(n)
-      let at = 0
-      for (const c of chunks) {
-        out.set(c, at)
-        at += c.length
-      }
-      chunks.length = 0
     }
     if (crc32(out) !== e.crc) {
       throw new ArchiveLimitError(`entry "${name}" failed its CRC-32 check`, 'corrupt')
