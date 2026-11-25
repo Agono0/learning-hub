@@ -6,6 +6,7 @@ import { makeRoomCode } from '@learning-hub/core/online'
 import { getDefaultOnlineServer, getOnlineIdentity } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 import { remoteFetch } from '@/server/net'
+import { makeJoinAssertion } from '@/server/online-signing'
 
 const createRoomSchema = z.object({
   title: z.string().min(1).max(80),
@@ -30,7 +31,11 @@ export const GET = withRoute(async (req: Request) => {
     })
     if (res.ok) {
       const data = await res.json()
-      return Response.json({ ok: true, ...data, server })
+      // A single-use, short-lived proof that this device owns its key, bound to this worker and
+      // this room. The browser only forwards it; the private key stays on the server.
+      const roomCode = typeof data?.room?.code === 'string' ? data.room.code : code
+      const joinAssertion = await makeJoinAssertion(server, roomCode)
+      return Response.json({ ok: true, ...data, server, joinAssertion })
     }
   } catch {
     // Worker offline fallback
@@ -85,6 +90,7 @@ export const POST = withRoute(async (req: Request) => {
         room: data.room,
         wsUrl,
         userAlias: identity.alias,
+        joinAssertion: await makeJoinAssertion(server, data.code),
       })
     }
   } catch {

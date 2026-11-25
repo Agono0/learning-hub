@@ -6,6 +6,7 @@ import { communityItemSchema } from '@learning-hub/core/online'
 import { getDefaultOnlineServer, getOnlineIdentity } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
 import { remoteFetch } from '@/server/net'
+import { signWorkerRequest } from '@/server/online-signing'
 
 const publishSchema = z.object({
   type: z.enum(['deck', 'course']),
@@ -87,12 +88,23 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   try {
-    const res = await remoteFetch(`${server}/api/v1/library/publish`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(5000),
-    })
+    // The worker decides author, id and counters itself; only these fields are sent. A device
+    // with a registered key signs the exact body bytes so the worker can attribute the item.
+    const publishPath = '/api/v1/library/publish'
+    const bodyText = JSON.stringify(body)
+    const send = (extra: Record<string, string>) =>
+      remoteFetch(`${server}${publishPath}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...extra },
+        body: bodyText,
+        signal: AbortSignal.timeout(5000),
+      })
+    const signed = await signWorkerRequest(server, publishPath, bodyText)
+    let res = await send(signed ?? {})
+    // 403: this key is not registered with that worker yet. 503: the worker does not accept
+    // verified requests. In both cases publish anonymously (the worker labels it Anonymous)
+    // rather than failing. A stale or rejected signature (401) is never retried.
+    if (signed && (res.status === 403 || res.status === 503)) res = await send({})
 
     if (res.ok) {
       const data = await res.json()
