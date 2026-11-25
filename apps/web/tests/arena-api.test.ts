@@ -27,6 +27,7 @@ process.env.LEARNING_HUB_DB = tempDbFile
 type Modules = {
   arena: typeof import('../src/server/handlers/arena/route')
   history: typeof import('../src/server/handlers/arena/history/route')
+  nemesis: typeof import('../src/server/handlers/arena/nemesis/route')
   historyId: typeof import('../src/server/handlers/arena/history/[id]/route')
   db: typeof import('@learning-hub/db')
   core: typeof import('@learning-hub/core')
@@ -112,9 +113,17 @@ beforeAll(async () => {
   const dbMod = await import('@learning-hub/db')
   const arenaMod = await import('../src/server/handlers/arena/route')
   const historyMod = await import('../src/server/handlers/arena/history/route')
+  const nemesisMod = await import('../src/server/handlers/arena/nemesis/route')
   const historyIdMod = await import('../src/server/handlers/arena/history/[id]/route')
   const coreMod = await import('@learning-hub/core')
-  M = { arena: arenaMod, history: historyMod, historyId: historyIdMod, db: dbMod, core: coreMod }
+  M = {
+    arena: arenaMod,
+    history: historyMod,
+    nemesis: nemesisMod,
+    historyId: historyIdMod,
+    db: dbMod,
+    core: coreMod,
+  }
 })
 
 describe('Arena API — GET /api/arena', () => {
@@ -944,5 +953,55 @@ describe('Arena API — weekly trial', () => {
     expect(t.progress).toBeGreaterThanOrEqual(0)
     expect(t.progress).toBeLessThanOrEqual(t.target)
     expect(t.done).toBe(t.progress >= t.target)
+  })
+})
+
+describe('Arena API — nemesis cards', () => {
+  it('ranks missed cards from settled logs and resolves their fronts', async () => {
+    const { deckId } = seedDeckWithCards(5)
+    // Settled sessions are seeded directly (a real settlement reschedules the
+    // cards, so the same cards would not be dealt twice); the handler under
+    // test reads only the persisted accepted logs.
+    const { queue } = await startRun(deckId, 5)
+    const cardId = queue[0]!
+    for (let i = 0; i < 3; i++) {
+      M.db.db
+        .insert(M.db.arenaSessions)
+        .values({
+          id: crypto.randomUUID(),
+          deckIds: [deckId],
+          cardIds: [cardId],
+          status: 'settled',
+          gradeLog: [{ cardId, grade: 1, confidence: 1, timeMs: 3000 }],
+          settledAt: new Date(Date.now() + i).toISOString(),
+        })
+        .run()
+    }
+    const res = await M.nemesis.GET(new Request('http://localhost/api/arena/nemesis?limit=3'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.sampledRuns).toBeGreaterThan(0)
+    expect(body.cardsSeen).toBeGreaterThan(0)
+    expect(body.nemeses.length).toBeGreaterThan(0)
+    expect(body.nemeses.length).toBeLessThanOrEqual(3)
+    expect(body.nemeses[0].cardId).toBe(cardId)
+    expect(body.nemeses[0].attempts).toBeGreaterThanOrEqual(3)
+    expect(body.nemeses[0].front).toMatch(/^Arena D/)
+    const scores = body.nemeses.map((n: { nemesisScore: number }) => n.nemesisScore)
+    expect([...scores].sort((a: number, b: number) => b - a)).toEqual(scores)
+    for (const n of body.nemeses) {
+      expect(n.attempts).toBeGreaterThanOrEqual(2)
+      expect(typeof n.front).toBe('string')
+      expect(n.misses).toBeLessThanOrEqual(n.attempts)
+    }
+    const t = body.tiers
+    expect(t.new + t.shaky + t.learning + t.steady + t.mastered).toBe(body.cardsSeen)
+  })
+
+  it('clamps the limit parameter', async () => {
+    const res = await M.nemesis.GET(new Request('http://localhost/api/arena/nemesis?limit=9999'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.nemeses.length).toBeLessThanOrEqual(20)
   })
 })
