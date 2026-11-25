@@ -121,11 +121,14 @@ jobs:
         if: github.event_name != 'pull_request'
         run: npm run build
 
-      # Synthetic, isolated (no external DNS/network): the built server must register the pinned
+      # Synthetic, isolated, no network egress: the built server must register the pinned
       # fetch from src/instrumentation.ts and must refuse outbound fetches when it is missing.
       - name: Pinned fetch server smoke
         if: github.event_name != 'pull_request'
-        run: node apps/web/tests/smoke/pinned-server-smoke.mjs
+        # Run inside a fresh network namespace that has only loopback, so nothing can leave the
+        # runner even if the test harness is wrong. The script refuses to run otherwise.
+        run: |
+          sudo unshare -n sh -c "ip link set lo up && exec sudo -u $USER env PATH=$PATH SMOKE_REQUIRE_NO_EGRESS=1 node apps/web/tests/smoke/pinned-server-smoke.mjs"
 
       # The bundle the Windows/Android apps ship (static export + hub worker).
       # Fast, and catches anything that only breaks the native build.

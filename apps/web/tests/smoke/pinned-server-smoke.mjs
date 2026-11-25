@@ -34,47 +34,40 @@ const nextBin = [
   path.join(webDir, '../../node_modules/next/dist/bin/next'),
 ].find(existsSync)
 const tmp = mkdtempSync(path.join(tmpdir(), 'pinned-smoke-'))
+// Hard boundary: refuse to run unless the process has no network interface but loopback
+// (CI runs this inside `unshare -n`). Local filesystem read only, sends nothing.
+if (process.env.SMOKE_REQUIRE_NO_EGRESS === '1') {
+  // /proc/net/* is per network namespace. A fresh `unshare -n` namespace has no route through
+  // any interface but loopback (fallback tunnel devices may exist but are down and unrouted).
+  // Local reads only, nothing is sent.
+  const v4 = readFileSync('/proc/net/route', 'utf8')
+    .split('\n')
+    .slice(1)
+    .filter(Boolean)
+    .map((l) => l.split(/\s+/)[0])
+  let v6 = []
+  try {
+    v6 = readFileSync('/proc/net/ipv6_route', 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => l.trim().split(/\s+/).pop())
+  } catch {
+    // no IPv6 table
+  }
+  const routed = [...v4, ...v6].filter((dev) => dev !== 'lo')
+  if (routed.length > 0) {
+    console.error('[pinned-smoke] REFUSING TO RUN: routes via non-loopback devices exist:', [
+      ...new Set(routed),
+    ])
+    process.exit(2)
+  }
+  console.log('[pinned-smoke] egress boundary: no routes except loopback')
+}
 const FIX = 38411
 const PORT = 38412
 
-writeFileSync(
-  path.join(tmp, 'preload.cjs'),
-  `const dns = require('node:dns')
-const net = require('node:net')
-const fs = require('node:fs')
-const map = { 'fixture.test': '93.184.216.34', 'priv.test': '10.0.0.5' }
-dns.promises.lookup = async (host, opts) => {
-  if (map[host]) return opts && opts.all ? [{ address: map[host], family: 4 }] : { address: map[host], family: 4 }
-  throw Object.assign(new Error('no external DNS in smoke'), { code: 'ENOTFOUND' })
-}
-const origConnect = net.Socket.prototype.connect
-const LOCAL = new Set(['127.0.0.1', 'localhost', '::1'])
-net.Socket.prototype.connect = function (...args) {
-  // net.createConnection passes a normalized [options, cb] array (with an internal marker
-  // symbol), a direct call passes options: find the options object and edit it in place.
-  const o = Array.isArray(args[0]) ? args[0][0] : args[0]
-  if (o && typeof o === 'object' && typeof o.host === 'string') {
-    if (o.host === 'fixture.test' && typeof o.lookup === 'function') {
-      const lk = o.lookup
-      const remap = (x) => (x.address === '93.184.216.34' ? { address: '127.0.0.1', family: 4 } : x)
-      o.port = ${FIX}
-      o.lookup = (h, opt, cb) =>
-        lk(h, opt, (e, a, f) => {
-          if (e) return cb(e)
-          fs.appendFileSync(${JSON.stringify(path.join(tmp, 'pinned-lookup-used'))}, h + ' ' + JSON.stringify(a) + '\\n')
-          if (Array.isArray(a)) cb(null, a.map(remap), f)
-          else cb(null, a === '93.184.216.34' ? '127.0.0.1' : a, f)
-        })
-    } else if (!LOCAL.has(o.host)) {
-      // Nothing in this smoke may leave the machine: refuse any other outbound connect.
-      process.nextTick(() => this.destroy(new Error('smoke: external connect blocked: ' + o.host)))
-      return this
-    }
-  }
-  return origConnect.apply(this, args)
-}
-`,
-)
+const preload = path.join(path.dirname(fileURLToPath(import.meta.url)), 'smoke-preload.cjs')
+const marker = path.join(tmp, 'pinned-lookup-used')
 
 let hits = []
 const fixture = http.createServer((req, res) => {
@@ -100,7 +93,10 @@ async function startServer() {
     cwd: webDir,
     env: {
       ...process.env,
-      NODE_OPTIONS: `--require ${path.join(tmp, 'preload.cjs')}`,
+      NODE_OPTIONS: `--require ${preload}`,
+      SMOKE_FIXTURE_PORT: String(FIX),
+      SMOKE_MARKER: marker,
+      NEXT_TELEMETRY_DISABLED: '1',
       LEARNING_HUB_DB: path.join(tmp, 'smoke.db'),
       PORT: String(PORT),
     },
@@ -153,7 +149,6 @@ const stop = (child) =>
     setTimeout(r, 3000)
   })
 
-const marker = path.join(tmp, 'pinned-lookup-used')
 const inst = findInstrumentation()
 const moved = inst.filter((p) => /instrumentation\.(js|mjs)$/.test(p))
 try {
