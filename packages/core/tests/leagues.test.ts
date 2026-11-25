@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   awardPoints,
+  buildDuelPromptsFromCards,
   closeRound,
   createLeague,
   createTournament,
@@ -223,5 +224,42 @@ describe('tournaments', () => {
   it('rejects winners who are not in the match', () => {
     const t = createTournament('t3', 'Cup', ['a', 'b'], '2026-01-01T00:00:00Z')
     expect(() => recordMatchResult(t, 1, 0, 'ghost', 'd1')).toThrow('one of the match players')
+  })
+})
+
+describe('buildDuelPromptsFromCards', () => {
+  it('builds prompts from basic, typein and mcq cards and skips the rest', () => {
+    const prompts = buildDuelPromptsFromCards(
+      [
+        { id: 1, content: { basic: { front: '2+2?', back: '4' } } },
+        {
+          id: 2,
+          content: { typein: { question: 'Capital of France?', acceptedAnswers: ['Paris'] } },
+        },
+        {
+          id: 3,
+          content: { mcq: { question: 'Sky color?', options: ['blue', 'green'], correctIndex: 0 } },
+        },
+        { id: 4, content: { cloze: { text: '{{c1::x}}', answers: ['x'], mode: 'basic' } } },
+        { id: 5, content: { basic: { front: '', back: 'no question' } } },
+      ],
+      { seed: 42, limit: 10 },
+    )
+    expect(prompts).toHaveLength(3)
+    const byId = new Map(prompts.map((p) => [p.id, p]))
+    expect(byId.get('1')).toMatchObject({ question: '2+2?', answers: ['4'] })
+    expect(byId.get('2')!.answers).toEqual(['Paris'])
+    expect(byId.get('3')!.answers).toEqual(['blue'])
+  })
+
+  it('is deterministic for the same seed and respects the limit', () => {
+    const cards = Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      content: { basic: { front: `q${i}`, back: `a${i}` } },
+    }))
+    const a = buildDuelPromptsFromCards(cards, { seed: 7, limit: 5 })
+    const b = buildDuelPromptsFromCards(cards, { seed: 7, limit: 5 })
+    expect(a).toEqual(b)
+    expect(a).toHaveLength(5)
   })
 })

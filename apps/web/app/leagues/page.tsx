@@ -519,6 +519,8 @@ function DuelsTab({
   const [playerA, setPlayerA] = useState('')
   const [playerB, setPlayerB] = useState('')
   const [promptsText, setPromptsText] = useState('')
+  const [deckId, setDeckId] = useState('')
+  const [deckLimit, setDeckLimit] = useState('10')
   const [answerDuel, setAnswerDuel] = useState('')
   const [answerSide, setAnswerSide] = useState<'A' | 'B'>('A')
   const [answersText, setAnswersText] = useState('')
@@ -562,29 +564,32 @@ function DuelsTab({
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault()
-              const prompts = promptsText
-                .split('\n')
-                .map((line) => line.trim())
-                .filter(Boolean)
-                .map((line) => {
-                  const [id, question, answers] = line.split('::')
-                  return {
-                    id: id ?? '',
-                    question: question ?? '',
-                    answers: (answers ?? '').split('|').filter(Boolean),
-                  }
-                })
-              void act(
-                {
-                  action: 'duel-create',
-                  slug: duelSlug.trim(),
-                  leagueSlug: selected,
-                  playerA: playerA.trim(),
-                  playerB: playerB.trim(),
-                  prompts,
-                },
-                `Duel ${duelSlug.trim()} created.`,
-              ).then(() => {
+              const body: Record<string, unknown> = {
+                slug: duelSlug.trim(),
+                leagueSlug: selected,
+                playerA: playerA.trim(),
+                playerB: playerB.trim(),
+              }
+              if (deckId.trim()) {
+                body.action = 'duel-create-from-deck'
+                body.deckId = Number(deckId)
+                body.limit = Number(deckLimit) || 10
+              } else {
+                body.action = 'duel-create'
+                body.prompts = promptsText
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line) => {
+                    const [id, question, answers] = line.split('::')
+                    return {
+                      id: id ?? '',
+                      question: question ?? '',
+                      answers: (answers ?? '').split('|').filter(Boolean),
+                    }
+                  })
+              }
+              void act(body, `Duel ${duelSlug.trim()} created.`).then(() => {
                 setDuelSlug('')
                 setPromptsText('')
               })
@@ -609,16 +614,34 @@ function DuelsTab({
               data-testid="duel-player-b"
             />
             <TextField
-              label={'Prompts — one per line: id::question::answer1|answer2'}
-              value={promptsText}
-              onChange={(e) => setPromptsText(e.target.value)}
-              data-testid="duel-prompts"
+              label="Deck id (optional — build prompts from its cards)"
+              value={deckId}
+              onChange={(e) => setDeckId(e.target.value)}
+              data-testid="duel-deck-id"
             />
+            {deckId.trim() ? (
+              <TextField
+                label="Prompt count"
+                value={deckLimit}
+                onChange={(e) => setDeckLimit(e.target.value)}
+                data-testid="duel-deck-limit"
+              />
+            ) : (
+              <TextField
+                label={'Prompts — one per line: id::question::answer1|answer2'}
+                value={promptsText}
+                onChange={(e) => setPromptsText(e.target.value)}
+                data-testid="duel-prompts"
+              />
+            )}
             <Button
               type="submit"
               data-testid="duel-create"
               disabled={
-                !duelSlug.trim() || !playerA.trim() || !playerB.trim() || !promptsText.trim()
+                !duelSlug.trim() ||
+                !playerA.trim() ||
+                !playerB.trim() ||
+                (!deckId.trim() && !promptsText.trim())
               }
             >
               Create duel

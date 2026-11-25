@@ -11,6 +11,7 @@ import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   awardLeaguePoints,
+  createDuelFromDeck,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -86,6 +87,16 @@ const duelCreateSchema = z.object({
     )
     .min(1)
     .max(50),
+})
+
+const duelFromDeckSchema = z.object({
+  slug: z.string().min(1).max(60),
+  deckId: z.number().int().positive(),
+  leagueSlug: z.string().min(1).optional(),
+  playerA: z.string().min(1).max(50),
+  playerB: z.string().min(1).max(50),
+  limit: z.number().int().min(1).max(50).optional(),
+  seed: z.number().int().optional(),
 })
 
 const duelAnswersSchema = z.object({
@@ -213,6 +224,17 @@ async function postDuel(req: IncomingMessage, res: ServerResponse): Promise<void
   }
 }
 
+async function postDuelFromDeck(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, duelFromDeckSchema)
+  if (getLeagueDuel(body.slug)) return jsonError(res, 409, `duel exists: ${body.slug}`)
+  try {
+    const duel = createDuelFromDeck(body)
+    sendJson(res, 201, { ok: true, duel })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'duel creation failed')
+  }
+}
+
 async function postDuelAnswers(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJson(req, duelAnswersSchema)
   try {
@@ -319,6 +341,12 @@ export const leaguesRoutes: Route[] = [
     handler: getDuels,
   },
   { method: 'POST', path: '/leagues/duels', summary: 'create a duel', handler: postDuel },
+  {
+    method: 'POST',
+    path: '/leagues/duels/from-deck',
+    summary: 'create a duel from a deck of cards',
+    handler: postDuelFromDeck,
+  },
   {
     method: 'POST',
     path: '/leagues/duels/answers',

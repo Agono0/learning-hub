@@ -4,6 +4,9 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import {
   awardLeaguePoints,
+  createBasicCards,
+  createDuelFromDeck,
+  findOrCreateDeck,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -254,6 +257,60 @@ describe('league duels', () => {
       db,
     )
     expect(done.winner).toBe('amr')
+  })
+})
+
+describe('duels from a deck', () => {
+  it('creates a duel from a deck of basic cards, reproducibly by seed', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    joinLeagueRow('spring', 'sara', db)
+    const deck = findOrCreateDeck('Bio 101', { db })
+    createBasicCards(deck.id, '2+2? :: 4\nCapital of France? :: Paris\nSky color? :: Blue', db)
+
+    const d = createDuelFromDeck(
+      {
+        slug: 'deck-duel',
+        deckId: deck.id,
+        playerA: 'amr',
+        playerB: 'sara',
+        leagueSlug: 'spring',
+        limit: 2,
+        seed: 5,
+      },
+      db,
+    )
+    expect(d.promptsJson).toHaveLength(2)
+    expect(d.promptsJson[0]!.answers).toHaveLength(1)
+
+    // same seed, same deck: identical duel prompts
+    const d2 = createDuelFromDeck(
+      { slug: 'deck-duel-2', deckId: deck.id, playerA: 'amr', playerB: 'sara', limit: 2, seed: 5 },
+      db,
+    )
+    expect(d2.promptsJson).toEqual(d.promptsJson)
+
+    // the duel is playable end to end
+    const answersA = d.promptsJson.map((p) => ({
+      promptId: p.id,
+      answer: p.answers[0]!,
+      elapsedMs: 800,
+    }))
+    submitDuelAnswers('deck-duel', 'A', answersA, db)
+    const done = submitDuelAnswers(
+      'deck-duel',
+      'B',
+      d.promptsJson.map((p) => ({ promptId: p.id, answer: 'wrong', elapsedMs: 500 })),
+      db,
+    )
+    expect(done.winner).toBe('amr')
+  })
+
+  it('rejects a deck with no answerable cards', () => {
+    const deck = findOrCreateDeck('Empty deck', { db })
+    expect(() =>
+      createDuelFromDeck({ slug: 'deck-duel-3', deckId: deck.id, playerA: 'a', playerB: 'b' }, db),
+    ).toThrow()
   })
 })
 

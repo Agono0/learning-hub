@@ -108,3 +108,82 @@ export function duelEloUpdate(
     loserAfter: clampR(loserRating - delta),
   }
 }
+
+// ── Duel generation from deck cards ─────────────────────────────────────────
+
+export interface DuelCardLike {
+  id: string | number
+  content: Record<string, unknown>
+}
+
+/** Deterministic PRNG (mulberry32) so duel sets are reproducible by seed. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Turn study cards into duel prompts. Supports the three answerable formats:
+ * - basic: question = front, answers = [back]
+ * - typein: question = question, answers = acceptedAnswers
+ * - mcq: question = question, answers = [the correct option's text]
+ * Cards in any other format (cloze/occlusion) are skipped: they need their
+ * visual or deletions context to be fair in a timed duel.
+ *
+ * Selection is a seeded shuffle, so the same deck + seed yields the same duel
+ * on every device; omit the seed for a fresh draw each time.
+ */
+export function buildDuelPromptsFromCards(
+  cards: DuelCardLike[],
+  opts: { limit?: number; seed?: number } = {},
+): DuelPrompt[] {
+  const prompts: DuelPrompt[] = []
+  for (const card of cards) {
+    const c = card.content
+    let question: string | null = null
+    let answers: string[] = []
+    const basic = c.basic as { front?: unknown; back?: unknown } | undefined
+    const typein = c.typein as { question?: unknown; acceptedAnswers?: unknown } | undefined
+    const mcq = c.mcq as
+      { question?: unknown; options?: unknown; correctIndex?: unknown } | undefined
+    if (basic && typeof basic.front === 'string' && typeof basic.back === 'string') {
+      question = basic.front
+      answers = [basic.back]
+    } else if (
+      typein &&
+      typeof typein.question === 'string' &&
+      Array.isArray(typein.acceptedAnswers)
+    ) {
+      question = typein.question
+      answers = typein.acceptedAnswers.filter((a): a is string => typeof a === 'string')
+    } else if (
+      mcq &&
+      typeof mcq.question === 'string' &&
+      Array.isArray(mcq.options) &&
+      typeof mcq.correctIndex === 'number'
+    ) {
+      const correct = mcq.options[mcq.correctIndex]
+      if (typeof correct === 'string') {
+        question = mcq.question
+        answers = [correct]
+      }
+    }
+    if (question && question.length > 0 && answers.length > 0) {
+      prompts.push({ id: String(card.id), question, answers })
+    }
+  }
+  const rand = mulberry32(opts.seed ?? Date.now())
+  for (let i = prompts.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    const tmp = prompts[i]!
+    prompts[i] = prompts[j]!
+    prompts[j] = tmp
+  }
+  return prompts.slice(0, Math.max(1, opts.limit ?? 10))
+}

@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import {
   awardLeaguePoints,
+  createDuelFromDeck,
   closeLeagueRound,
   createLeagueDuel,
   createLeagueRow,
@@ -138,6 +139,20 @@ export const leagueTools: RegisteredTool[] = [
       prompts: z.array(promptSchema).min(1).max(50),
     },
     (args) => json({ ok: true, duel: createLeagueDuel(args) }),
+  ),
+  tool(
+    'duel_create_from_deck',
+    "Create a duel from a deck's answerable cards (basic/typein/mcq). Same seed + same deck = same duel on every device.",
+    {
+      slug: z.string().min(1).max(60),
+      deckId: z.number().int().positive(),
+      leagueSlug: z.string().min(1).optional(),
+      playerA: z.string().min(1).max(50),
+      playerB: z.string().min(1).max(50),
+      limit: z.number().int().min(1).max(50).optional(),
+      seed: z.number().int().optional(),
+    },
+    (args) => json({ ok: true, duel: createDuelFromDeck(args) }),
   ),
   tool(
     'duel_answer',
