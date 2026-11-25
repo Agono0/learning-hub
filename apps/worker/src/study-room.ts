@@ -2,6 +2,7 @@
  * StudyRoom Durable Object — manages real-time study sessions,
  * pomodoro sync, participant presence and room chat.
  */
+import { ROOM_MAX_PARTICIPANTS, WS_MAX_MESSAGE_CHARS, parseJoinParticipant } from './validation'
 import {
   filterContentSafety,
   type StudyRoomParticipant,
@@ -73,22 +74,21 @@ export class StudyRoom {
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    if (typeof message !== 'string') return
+    if (typeof message !== 'string' || message.length > WS_MAX_MESSAGE_CHARS) return
 
     try {
       const data = JSON.parse(message)
 
       switch (data.type) {
         case 'join': {
-          const p: StudyRoomParticipant = {
-            id: data.participant.id,
-            alias: data.participant.alias,
-            avatar: data.participant.avatar,
-            status: data.participant.status ?? 'studying',
-            streak: data.participant.streak ?? 0,
-            cardsReviewed: data.participant.cardsReviewed ?? 0,
+          const v = parseJoinParticipant(data.participant)
+          if (!v.ok) break
+          const already = this.room.participants.some((x) => x.id === v.value.id)
+          if (!already && this.room.participants.length >= ROOM_MAX_PARTICIPANTS) break
+          const p = {
+            ...v.value,
             joinedAt: new Date().toISOString(),
-          }
+          } as StudyRoomParticipant
           ws.serializeAttachment({ participantId: p.id } as WsSessionAttachment)
 
           // Add or replace

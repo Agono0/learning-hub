@@ -7,6 +7,7 @@ import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import { BossRaid } from './boss-raid'
 import { StudyRoom } from './study-room'
 import { handleCrashTelemetry } from './telemetry'
+import { parseStatsSync } from './validation'
 
 export { StudyRoom, BossRaid }
 
@@ -366,20 +367,12 @@ export default {
       }
 
       if (path === '/api/v1/stats/sync' && request.method === 'POST') {
-        const body = (await request.json()) as {
-          userId: string
-          alias: string
-          weeklyXp: number
-          streak: number
-          level: number
-        }
-
-        if (!body.userId || !body.alias) {
-          return jsonResponse({ error: 'userId and alias required' }, 400)
-        }
+        const parsed = parseStatsSync(await request.json().catch(() => null))
+        if (!parsed.ok) return jsonResponse({ error: parsed.error }, 400)
+        const body = parsed.value
 
         const nowIso = new Date().toISOString()
-        const { clean: cleanAlias } = filterContentSafety(body.alias.slice(0, 40))
+        const cleanAlias = body.alias
 
         if (env.DB) {
           await env.DB.prepare(
@@ -392,14 +385,7 @@ export default {
                level = excluded.level,
                updated_at = excluded.updated_at`,
           )
-            .bind(
-              body.userId,
-              cleanAlias,
-              Math.max(0, Number(body.weeklyXp) || 0),
-              Math.max(0, Number(body.streak) || 0),
-              Math.max(1, Number(body.level) || 1),
-              nowIso,
-            )
+            .bind(body.userId, cleanAlias, body.weeklyXp, body.streak, body.level, nowIso)
             .run()
         }
 
@@ -413,7 +399,10 @@ export default {
 
       return jsonResponse({ error: 'Not found' }, 404)
     } catch (err: unknown) {
-      return jsonResponse({ error: (err instanceof Error && err.message) || 'Internal error' }, 500)
+      // Never echo internal error text (DB/driver messages) to callers; log only the class.
+      console.error('worker error', err instanceof Error ? err.name : typeof err)
+      if (err instanceof SyntaxError) return jsonResponse({ error: 'Invalid JSON body' }, 400)
+      return jsonResponse({ error: 'Internal error' }, 500)
     }
   },
 }
