@@ -50,6 +50,26 @@ type MergeResult = {
   newVersion: number
 }
 
+type HostedChannel = {
+  channelId: string
+  title: string
+  currentVersion: number
+  updatedAt: string
+}
+
+type Proposal = {
+  id: string
+  channelId: string
+  authorHandle: string
+  title: string
+  note: string
+  baseVersion: number
+  operations: { kind: string }[]
+  status: 'open' | 'accepted' | 'declined'
+  createdAt: string
+  acceptedVersion?: number
+}
+
 const STORAGE_KEY = 'lh-share-channels-v1'
 
 function loadSubscriptions(): SubscriptionRecord[] {
@@ -66,7 +86,7 @@ function saveSubscriptions(subs: SubscriptionRecord[]): void {
 }
 
 export function ShareChannelsPanel() {
-  type PanelTab = 'subscriptions' | 'publish' | 'subscribe' | 'update'
+  type PanelTab = 'subscriptions' | 'publish' | 'subscribe' | 'update' | 'hosting'
   const [tab, setTab] = useState<PanelTab>('subscriptions')
   const [subs, setSubs] = useState<SubscriptionRecord[]>([])
   const [notice, setNotice] = useState<string | null>(null)
@@ -88,9 +108,24 @@ export function ShareChannelsPanel() {
   const [lastMerge, setLastMerge] = useState<MergeResult | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  // Hosting + proposals
+  const [hosted, setHosted] = useState<HostedChannel[]>([])
+  const [hostManifestText, setHostManifestText] = useState('')
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [proposalChannel, setProposalChannel] = useState<string | null>(null)
+  const [proposalAuthor, setProposalAuthor] = useState('')
+  const [proposalTitle, setProposalTitle] = useState('')
+  const [proposalNote, setProposalNote] = useState('')
+  const [proposalOps, setProposalOps] = useState('')
+
   useEffect(() => {
     setSubs(loadSubscriptions())
   }, [])
+
+  useEffect(() => {
+    if (tab !== 'hosting') return
+    void refreshHosted()
+  }, [tab])
 
   async function createCh() {
     setNotice(null)
@@ -222,6 +257,102 @@ export function ShareChannelsPanel() {
     setUpdateText('')
   }
 
+  async function refreshHosted() {
+    const res = await apiSend<{ ok: boolean; channels: HostedChannel[] }>(
+      '/api/share-channels',
+      'POST',
+      { action: 'host-list' },
+    )
+    setHosted(res.channels ?? [])
+    // refresh the open proposal inbox too
+    if (proposalChannel) {
+      await loadProposals(proposalChannel)
+    }
+  }
+
+  async function hostFromText() {
+    setNotice(null)
+    const manifest = JSON.parse(hostManifestText) as Manifest
+    const res = await apiSend<{ ok: boolean; error?: string }>('/api/share-channels', 'POST', {
+      action: 'host',
+      manifest,
+    })
+    if (!res.ok) {
+      setNotice(res.error ?? 'Could not host that channel.')
+      return
+    }
+    setNotice(`Channel ${manifest.channelId} is now hosted here.`)
+    setHostManifestText('')
+    await refreshHosted()
+  }
+
+  async function unhost(channelIdToRemove: string) {
+    setNotice(null)
+    await apiSend('/api/share-channels', 'POST', {
+      action: 'host-unhost',
+      channelId: channelIdToRemove,
+    })
+    setNotice(`Channel ${channelIdToRemove} is no longer hosted here.`)
+    if (proposalChannel === channelIdToRemove) {
+      setProposalChannel(null)
+      setProposals([])
+    }
+    await refreshHosted()
+  }
+
+  async function loadProposals(channelIdFor: string) {
+    const res = await apiSend<{ ok: boolean; proposals: Proposal[] }>(
+      '/api/share-channels',
+      'POST',
+      { action: 'proposal-list', channelId: channelIdFor },
+    )
+    setProposalChannel(channelIdFor)
+    setProposals(res.proposals ?? [])
+  }
+
+  async function submitProposal() {
+    setNotice(null)
+    if (!proposalChannel) return
+    const operations = JSON.parse(proposalOps) as { kind: string }[]
+    const res = await apiSend<{ ok: boolean; error?: string }>('/api/share-channels', 'POST', {
+      action: 'proposal-create',
+      channelId: proposalChannel,
+      authorHandle: proposalAuthor,
+      title: proposalTitle,
+      note: proposalNote,
+      operations,
+    })
+    if (!res.ok) {
+      setNotice(res.error ?? 'Proposal was rejected.')
+      return
+    }
+    setNotice('Proposal submitted. The channel owner can review it below.')
+    setProposalTitle('')
+    setProposalNote('')
+    setProposalOps('')
+    await loadProposals(proposalChannel)
+  }
+
+  async function decideProposal(proposalId: string, decision: 'accept' | 'decline') {
+    setNotice(null)
+    const res = await apiSend<{ ok: boolean; error?: string; version?: number }>(
+      '/api/share-channels',
+      'POST',
+      { action: 'proposal-decide', proposalId, decision },
+    )
+    if (!res.ok) {
+      setNotice(res.error ?? 'Could not record that decision.')
+      return
+    }
+    setNotice(
+      decision === 'accept'
+        ? `Proposal accepted; the channel is now at version ${res.version}.`
+        : 'Proposal declined.',
+    )
+    if (proposalChannel) await loadProposals(proposalChannel)
+    await refreshHosted()
+  }
+
   return (
     <div className="space-y-4">
       <Tabs<PanelTab>
@@ -233,6 +364,7 @@ export function ShareChannelsPanel() {
           { key: 'publish', label: 'Publish' },
           { key: 'subscribe', label: 'Subscribe' },
           { key: 'update', label: 'Apply update' },
+          { key: 'hosting', label: 'Hosting' },
         ]}
       />
 
@@ -412,6 +544,153 @@ export function ShareChannelsPanel() {
                 </p>
               </Callout>
             )}
+          </div>
+        </Panel>
+      )}
+
+      {tab === 'hosting' && (
+        <Panel>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium">Hosted on this hub</h3>
+              <p className="text-xs text-neutral-500">
+                Channels hosted here can be fetched over HTTP and accept change proposals from
+                subscribers.
+              </p>
+            </div>
+            {hosted.length === 0 ? (
+              <p className="text-sm text-neutral-500">No channels hosted yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {hosted.map((c) => (
+                  <li
+                    key={c.channelId}
+                    className="rounded-lg border border-neutral-200 p-3"
+                    data-testid={`hosted-channel-${c.channelId}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">{c.title}</p>
+                        <p className="text-xs text-neutral-500">
+                          {c.channelId} · v{c.currentVersion}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={() => void loadProposals(c.channelId)}>
+                          Proposals
+                        </Button>
+                        <Button variant="secondary" onClick={() => void unhost(c.channelId)}>
+                          Unhost
+                        </Button>
+                      </div>
+                    </div>
+                    {proposalChannel === c.channelId && (
+                      <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3">
+                        {proposals.length === 0 ? (
+                          <p className="text-sm text-neutral-500">No proposals yet.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {proposals.map((pr) => (
+                              <li
+                                key={pr.id}
+                                className="rounded-lg border border-neutral-100 p-2"
+                                data-testid={`proposal-${pr.id}`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-sm font-medium">{pr.title}</p>
+                                    <p className="text-xs text-neutral-500">
+                                      {pr.authorHandle} · base v{pr.baseVersion} ·{' '}
+                                      {pr.operations.length} change(s)
+                                      {pr.acceptedVersion
+                                        ? ` · accepted as v${pr.acceptedVersion}`
+                                        : ''}
+                                    </p>
+                                    {pr.note && (
+                                      <p className="mt-1 text-xs text-neutral-600">{pr.note}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge
+                                      tone={
+                                        pr.status === 'open'
+                                          ? 'accent'
+                                          : pr.status === 'accepted'
+                                            ? 'success'
+                                            : 'neutral'
+                                      }
+                                    >
+                                      {pr.status}
+                                    </Badge>
+                                    {pr.status === 'open' && (
+                                      <>
+                                        <Button
+                                          variant="primary"
+                                          onClick={() => void decideProposal(pr.id, 'accept')}
+                                        >
+                                          Accept
+                                        </Button>
+                                        <Button
+                                          variant="secondary"
+                                          onClick={() => void decideProposal(pr.id, 'decline')}
+                                        >
+                                          Decline
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="space-y-2 rounded-lg bg-neutral-50 p-3">
+                          <p className="text-xs font-medium text-neutral-600">
+                            Propose changes to this channel
+                          </p>
+                          <TextField
+                            label="Your handle"
+                            value={proposalAuthor}
+                            onChange={(e) => setProposalAuthor(e.target.value)}
+                          />
+                          <TextField
+                            label="Proposal title"
+                            value={proposalTitle}
+                            onChange={(e) => setProposalTitle(e.target.value)}
+                          />
+                          <TextField
+                            label="Note (optional)"
+                            value={proposalNote}
+                            onChange={(e) => setProposalNote(e.target.value)}
+                          />
+                          <TextArea
+                            label='Operations JSON, e.g. [{"kind":"upsert","item":{"id":"x","content":{...}}},{"kind":"remove","itemId":"y"}]'
+                            value={proposalOps}
+                            onChange={(e) => setProposalOps(e.target.value)}
+                            rows={4}
+                          />
+                          <Button variant="primary" onClick={() => void submitProposal()}>
+                            Submit proposal
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="space-y-2 border-t border-neutral-100 pt-3">
+              <p className="text-xs font-medium text-neutral-600">Host a channel you published</p>
+              <TextArea
+                label="Channel manifest JSON"
+                value={hostManifestText}
+                onChange={(e) => setHostManifestText(e.target.value)}
+                rows={5}
+              />
+              <Button variant="primary" onClick={() => void hostFromText()}>
+                Host channel
+              </Button>
+            </div>
           </div>
         </Panel>
       )}
