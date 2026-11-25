@@ -85,9 +85,9 @@ export function ConflictCard({
     <li className="rounded-[16px] border border-border-subtle p-3" data-testid="conflict">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="warning">{conflict.kind}</Badge>
-        <code className="text-xs">{conflict.path || 'course'}</code>
+        <code className="break-all text-xs">{conflict.path || 'course'}</code>
       </div>
-      <p className="mt-1 text-sm">{conflict.message}</p>
+      <p className="mt-1 break-words text-sm">{conflict.message}</p>
       <dl className="mt-1 grid gap-1 text-xs">
         <div>
           <dt className="inline font-medium">Base: </dt>

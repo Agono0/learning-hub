@@ -60,7 +60,8 @@ export function FindingCard({
       </div>
       <p className="mt-1 text-sm font-medium">{finding.message}</p>
       <p className="mt-1 text-xs opacity-80">
-        <span className="font-medium">Where:</span> <code>{finding.path}</code>
+        <span className="font-medium">Where:</span>{' '}
+        <code className="break-all">{finding.path}</code>
       </p>
       <p className="text-xs opacity-80">
         <span className="font-medium">What it saw:</span> {finding.evidence}
