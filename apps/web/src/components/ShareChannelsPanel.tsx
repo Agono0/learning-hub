@@ -6,6 +6,7 @@
  * and local item copies persist in localStorage (manual mode).
  */
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { apiSend } from '@/lib/transport'
 import { acceptChannelVersion, diffVersions } from '@learning-hub/core/share-channels'
 import { Badge, Button, Callout, Panel, Tabs, TextArea, TextField } from '@/ui'
@@ -132,6 +133,9 @@ export function ShareChannelsPanel() {
   const [proposalNote, setProposalNote] = useState('')
   const [proposalOps, setProposalOps] = useState('')
   const [analytics, setAnalytics] = useState<Record<string, ChannelAnalyticsView>>({})
+  const [inviteChannel, setInviteChannel] = useState<string | null>(null)
+  const [inviteSecret, setInviteSecret] = useState('')
+  const [inviteToken, setInviteToken] = useState<string | null>(null)
 
   useEffect(() => {
     setSubs(loadSubscriptions())
@@ -360,6 +364,23 @@ export function ShareChannelsPanel() {
       return
     }
     setAnalytics((prev) => ({ ...prev, [channelIdFor]: res.analytics! }))
+  }
+
+  async function issueInvite() {
+    setNotice(null)
+    setInviteToken(null)
+    if (!inviteChannel) return
+    const res = await apiSend<{ inviteToken?: string }>('/api/share-channels', 'POST', {
+      action: 'invite',
+      channelId: inviteChannel,
+      inviteSecret,
+    })
+    if (!res.inviteToken) {
+      setNotice('Could not issue an invite token.')
+      return
+    }
+    setInviteToken(res.inviteToken)
+    setInviteSecret('')
   }
 
   async function decideProposal(proposalId: string, decision: 'accept' | 'decline') {
@@ -605,6 +626,22 @@ export function ShareChannelsPanel() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Link
+                          href={`/shared/${c.channelId}`}
+                          className="text-xs text-indigo-600 underline"
+                          data-testid={`browse-${c.channelId}`}
+                        >
+                          Browse
+                        </Link>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setInviteChannel(inviteChannel === c.channelId ? null : c.channelId)
+                            setInviteToken(null)
+                          }}
+                        >
+                          Invite
+                        </Button>
                         <Button variant="secondary" onClick={() => void loadAnalytics(c.channelId)}>
                           Analytics
                         </Button>
@@ -616,6 +653,35 @@ export function ShareChannelsPanel() {
                         </Button>
                       </div>
                     </div>
+                    {inviteChannel === c.channelId && (
+                      <div
+                        className="mt-3 space-y-2 rounded-lg bg-neutral-50 p-3"
+                        data-testid={`invite-panel-${c.channelId}`}
+                      >
+                        <p className="text-xs font-medium text-neutral-600">
+                          Issue an invite token (invite-only channels). Rotating the secret
+                          invalidates every outstanding token.
+                        </p>
+                        <TextField
+                          label="Invite secret (min 8 chars)"
+                          value={inviteSecret}
+                          onChange={(e) => setInviteSecret(e.target.value)}
+                        />
+                        <Button variant="primary" onClick={() => void issueInvite()}>
+                          Issue token
+                        </Button>
+                        {inviteToken && (
+                          <Callout tone="success">
+                            <p className="text-xs break-all" data-testid="invite-token">
+                              {inviteToken}
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-500">
+                              Copy it now; it is not stored.
+                            </p>
+                          </Callout>
+                        )}
+                      </div>
+                    )}
                     {analytics[c.channelId] && (
                       <div
                         className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600"
