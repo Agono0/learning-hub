@@ -23,6 +23,7 @@ process.env.LEARNING_HUB_DB = tempDbFile
 
 type Modules = {
   arena: typeof import('../src/server/handlers/arena/route')
+  history: typeof import('../src/server/handlers/arena/history/route')
   db: typeof import('@learning-hub/db')
   core: typeof import('@learning-hub/core')
 }
@@ -49,8 +50,9 @@ function settleBody(overrides: Record<string, unknown> = {}): Record<string, unk
 beforeAll(async () => {
   const dbMod = await import('@learning-hub/db')
   const arenaMod = await import('../src/server/handlers/arena/route')
+  const historyMod = await import('../src/server/handlers/arena/history/route')
   const coreMod = await import('@learning-hub/core')
-  M = { arena: arenaMod, db: dbMod, core: coreMod }
+  M = { arena: arenaMod, history: historyMod, db: dbMod, core: coreMod }
 
   const past = new Date(Date.now() - 86_400_000).toISOString()
   const [deck] = M.db.db
@@ -158,7 +160,20 @@ describe('Arena API — POST /api/arena settlement', () => {
       new Request('http://localhost/api/arena', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(settleBody({ bestCombo: 999, result: 'defeat' })),
+        // Distinct timings → a distinct grade log (the first settlement's log
+        // would dedupe as a replay, which is correct and tested separately).
+        body: JSON.stringify(
+          settleBody({
+            bestCombo: 999,
+            result: 'defeat',
+            exchanges: cardIds.slice(0, 3).map((cardId, i) => ({
+              cardId,
+              grade: i === 2 ? 1 : 3,
+              confidence: i === 0 ? 1 : 0,
+              timeMs: 9100 + i * 550,
+            })),
+          }),
+        ),
       }),
     )
     const body = await res.json()
@@ -249,5 +264,41 @@ describe('Arena API — POST /api/arena settlement', () => {
       }),
     )
     expect(res.status).toBeGreaterThanOrEqual(400)
+  })
+})
+
+describe('Arena API — run history (/api/arena/history)', () => {
+  it('records one history row per settled run, never two on replay', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    // Three distinct grade logs settled above; replays added none.
+    expect(body.stats.runs).toBe(3)
+    expect(body.runs.length).toBe(3)
+  })
+
+  it('aggregates wins, accuracy and totals from append-only history', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history'))
+    const body = await res.json()
+    // All three settlements were all-rounds-resolved → all victories.
+    expect(body.stats.victories).toBe(3)
+    expect(body.stats.defeats).toBe(0)
+    expect(body.stats.winRate).toBe(1)
+    expect(body.stats.winStreak).toBe(3)
+    expect(body.stats.rounds).toBe(3 + 3 + 2)
+    expect(body.stats.totalCoins).toBeGreaterThan(0)
+    expect(body.stats.totalXp).toBeGreaterThan(0)
+    expect(body.stats.bestCombo).toBeGreaterThan(0)
+  })
+
+  it('lists runs newest-first with the settlement payloads', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=2'))
+    const body = await res.json()
+    expect(body.runs.length).toBe(2)
+    expect(body.runs[0].id).toBeGreaterThan(body.runs[1].id)
+    expect(body.runs[0].referenceId).toMatch(/^arena:/)
+    expect(body.runs[0].deckIds).toContain(deckId)
+    expect(body.runs[0].result).toBe('victory')
   })
 })

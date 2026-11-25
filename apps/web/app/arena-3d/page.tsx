@@ -99,6 +99,39 @@ interface SettlementResponse {
 
 type Phase = 'setup' | 'loading' | 'fighting' | 'settling' | 'results'
 
+interface ArenaStats {
+  runs: number
+  victories: number
+  defeats: number
+  winRate: number
+  rounds: number
+  correct: number
+  accuracy: number
+  bestCombo: number
+  bestScore: number
+  totalCoins: number
+  totalXp: number
+  winStreak: number
+}
+
+interface ArenaRunRow {
+  id: number
+  result: 'victory' | 'defeat'
+  rounds: number
+  correct: number
+  bestCombo: number
+  score: number
+  coins: number
+  xp: number
+  createdAt: string
+}
+
+interface HistoryPayload {
+  ok: boolean
+  stats: ArenaStats
+  runs: ArenaRunRow[]
+}
+
 const GRADE_BUTTONS: { grade: Grade; label: string }[] = [
   { grade: 1, label: 'Again' },
   { grade: 2, label: 'Hard' },
@@ -148,6 +181,7 @@ export default function Arena3DPage() {
   const [confident, setConfident] = useState(false)
   const [shownAt, setShownAt] = useState<number>(0)
   const [settlement, setSettlement] = useState<SettlementResponse | null>(null)
+  const [record, setRecord] = useState<HistoryPayload | null>(null)
 
   const cfg = useMemo(() => arenaConfig(), [])
 
@@ -157,6 +191,14 @@ export default function Arena3DPage() {
       .then((d) => setDecks(d.decks))
       .catch(() => setDecks([]))
   }, [])
+
+  // The record book refreshes every time the gate screen is (re)shown.
+  useEffect(() => {
+    if (phase !== 'setup') return
+    apiGet<HistoryPayload>('/api/arena/history', { limit: 5 })
+      .then(setRecord)
+      .catch(() => setRecord(null))
+  }, [phase])
 
   // Reduced-motion users never mount the canvas; the DOM HUD carries everything.
   const canvasEnabled = !reducedMotion
@@ -369,6 +411,73 @@ export default function Arena3DPage() {
               </p>
             </div>
           </div>
+        </Panel>
+      ) : null}
+
+      {(phase === 'setup' || phase === 'loading') && record && record.stats.runs > 0 ? (
+        <Panel title="Your record" data-testid="arena-record">
+          <div
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+            data-testid="arena-stats"
+          >
+            <div>
+              <p className="text-xs text-faint">Runs</p>
+              <p className="mt-0.5 text-base font-semibold" data-testid="record-runs">
+                {record.stats.runs}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-faint">Win rate</p>
+              <p className="mt-0.5 text-base font-semibold" data-testid="record-winrate">
+                {Math.round(record.stats.winRate * 100)}%
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-faint">Accuracy</p>
+              <p className="mt-0.5 text-base font-semibold" data-testid="record-accuracy">
+                {Math.round(record.stats.accuracy * 100)}%
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-faint">Best combo</p>
+              <p className="mt-0.5 text-base font-semibold" data-testid="record-best-combo">
+                ×{record.stats.bestCombo}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-faint">Best score</p>
+              <p className="mt-0.5 text-base font-semibold" data-testid="record-best-score">
+                {record.stats.bestScore}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-faint">Win streak</p>
+              <p className="mt-0.5 text-base font-semibold" data-testid="record-win-streak">
+                {record.stats.winStreak}
+              </p>
+            </div>
+          </div>
+          <ul className="flex flex-col gap-1.5" data-testid="arena-recent-runs">
+            {record.runs.map((run) => (
+              <li
+                key={run.id}
+                className="flex flex-wrap items-center gap-2 text-sm"
+                data-testid="arena-run-row"
+              >
+                <Badge tone={run.result === 'victory' ? 'success' : 'danger'}>
+                  {run.result === 'victory' ? 'Victory' : 'Defeat'}
+                </Badge>
+                <span>
+                  {run.correct}/{run.rounds} correct
+                </span>
+                <span className="text-faint">combo ×{run.bestCombo}</span>
+                <span className="text-faint">score {run.score}</span>
+                <span className="ml-auto text-xs text-faint">
+                  {new Date(run.createdAt).toLocaleDateString()}
+                </span>
+              </li>
+            ))}
+          </ul>
         </Panel>
       ) : null}
 
