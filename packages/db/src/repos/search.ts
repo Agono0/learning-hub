@@ -65,6 +65,10 @@ export interface SearchResult {
 
 const PER_KIND = 8
 
+// FTS candidates of one kind are ordered by SQLite's bm25(), where a LOWER value is a better
+// match (the scores are negative), with the FTS rowid as a stable tie break. bm25 scores are
+// only compared inside one kind's table, never across kinds: hits stay grouped in SPECS order.
+
 /** Per-kind source query (id + title), FTS join and LIKE fallback, deep link. */
 interface KindSpec {
   kind: SearchKind
@@ -263,6 +267,7 @@ export function searchAll(db: LearningHubDB, query: string, limit = 24): SearchR
             FROM ${sql.raw(spec.fts)} f
             JOIN (${spec.title}) s ON s.id = f.ref
             WHERE ${sql.raw(spec.fts)} MATCH ${match}
+            ORDER BY bm25(${sql.raw(spec.fts)}) ASC, f.rowid ASC
             LIMIT ${PER_KIND}`,
       )
       for (const r of rows)

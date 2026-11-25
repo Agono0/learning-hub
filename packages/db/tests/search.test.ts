@@ -183,3 +183,70 @@ import { ftsExpression } from '../src/repos/search'
 function sqlEq(id: number) {
   return eq(notes.id, id)
 }
+
+describe('fts ranking (bm25, per kind)', () => {
+  const titles = (q: string) =>
+    searchAll(db, q, 100)
+      .hits.filter((h) => h.kind === 'note')
+      .map((h) => h.title)
+  const addNote = (title: string, content: string) => db.insert(notes).values({ title, content })
+
+  it('bm25 is lower for the better match, and the strongest row inserted last beats 10 weaker rows', async () => {
+    for (let i = 0; i < 10; i++) {
+      await addNote(
+        `Filler ${i} about ranking`,
+        `rkdirx appears once in a long body ${'pad '.repeat(30)}`,
+      )
+    }
+    await addNote('rkdirx rkdirx rkdirx', 'rkdirx')
+    const scores = db.all<{ title: string; score: number }>(
+      `SELECT n.title AS title, bm25(fts_notes) AS score FROM fts_notes f
+         JOIN notes n ON n.id = f.ref WHERE fts_notes MATCH '"rkdirx"*' ORDER BY score ASC`,
+    )
+    expect(scores[0]!.title).toBe('rkdirx rkdirx rkdirx')
+    expect(scores[0]!.score).toBeLessThan(0)
+    expect(scores[0]!.score).toBeLessThan(scores[scores.length - 1]!.score)
+    const got = titles('rkdirx')
+    expect(got).toHaveLength(8)
+    expect(got[0]).toBe('rkdirx rkdirx rkdirx')
+  })
+
+  it('a note matching both terms outranks notes matching one (OR semantics kept)', async () => {
+    for (let i = 0; i < 9; i++) await addNote(`only alpha ${i}`, `zqalpha ${'pad '.repeat(10)}`)
+    await addNote('both terms', 'zqalpha zqbeta')
+    await addNote('only beta', `zqbeta ${'pad '.repeat(10)}`)
+    const got = titles('zqalpha zqbeta')
+    expect(got[0]).toBe('both terms')
+    // OR candidates are still returned: a beta-only note is a candidate, not filtered out
+    expect(titles('zqbeta')).toContain('only beta')
+  })
+
+  it('ties keep a deterministic order (insertion order via rowid)', async () => {
+    for (let i = 0; i < 4; i++) await addNote(`tie ${i}`, 'zqtie')
+    const run1 = titles('zqtie')
+    expect(run1).toEqual(['tie 0', 'tie 1', 'tie 2', 'tie 3'])
+    expect(titles('zqtie')).toEqual(run1)
+  })
+
+  it('prefix terms and escaping still work', async () => {
+    await addNote('prefixable zqpref', 'x')
+    expect(titles('zqpr')).toContain('prefixable zqpref')
+    expect(titles('"zqpref" (*)')).toContain('prefixable zqpref')
+    expect(searchAll(db, '"*()"').hits).toEqual([])
+    expect(searchAll(db, '   ').hits).toEqual([])
+  })
+
+  it('the LIKE fallback is unchanged when the shadow table is absent', async () => {
+    await addNote('likefallback zqlike', 'body')
+    db.run(`ALTER TABLE fts_notes RENAME TO fts_notes_off`)
+    try {
+      const res = searchAll(db, 'zqlike')
+      expect(res.mode).toBe('like')
+      expect(res.hits.some((h) => h.kind === 'note' && h.title === 'likefallback zqlike')).toBe(
+        true,
+      )
+    } finally {
+      db.run(`ALTER TABLE fts_notes_off RENAME TO fts_notes`)
+    }
+  })
+})
