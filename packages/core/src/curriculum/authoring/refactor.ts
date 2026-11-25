@@ -10,6 +10,7 @@
  */
 import type { Exercise } from '../../practice/schema'
 import type { LhcfCourse } from '../lhcf/schema'
+import { newDanglingRefs } from './dangling'
 import { validateLhcf, type LhcfValidation } from '../lhcf/validate'
 import { slugSchema } from '../lhcf/schema'
 import { cloneCourse } from './course-index'
@@ -114,6 +115,22 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
         `A skill "${op.to}" already exists; renaming would merge two skills.`,
       )
     const oldName = String(src.name).toLowerCase()
+    const nameShared = skills.some((s) => s !== src && String(s.name).toLowerCase() === oldName)
+    if (nameShared)
+      r.warnings.push(
+        `Another skill has the display name "${src.name}". Exercises that name the skill by its display name were left alone; only exercises that use the slug "${op.from}" were rewritten.`,
+      )
+    const rewriteSkillRef = (e: Exercise) => {
+      const ref = e.skill?.trim().toLowerCase()
+      if (!ref) return
+      if (ref === op.from.toLowerCase()) {
+        e.skill = op.to
+        r.rewritten += 1
+      } else if (ref === oldName && !nameShared) {
+        e.skill = op.name ?? String(src.name)
+        r.rewritten += 1
+      }
+    }
     src.slug = op.to
     if (op.name) src.name = op.name
     for (const s of skills) {
@@ -125,24 +142,14 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
       const x = replaceInList(lesson.skills, op.from, op.to)
       lesson.skills = x.list
       r.rewritten += x.hits
-      for (const e of lessonExercises(lesson)) {
-        if (e.skill && [op.from, oldName].includes(e.skill.trim().toLowerCase())) {
-          e.skill = op.name ?? op.to
-          r.rewritten += 1
-        }
-      }
+      for (const e of lessonExercises(lesson)) rewriteSkillRef(e)
     }
     for (const p of r.c.projects as Draft[]) {
       const x = replaceInList(p.skills, op.from, op.to)
       p.skills = x.list
       r.rewritten += x.hits
     }
-    for (const e of (r.c.finalExam?.exercises ?? []) as Exercise[]) {
-      if (e.skill && [op.from, oldName].includes(e.skill.trim().toLowerCase())) {
-        e.skill = op.name ?? op.to
-        r.rewritten += 1
-      }
-    }
+    for (const e of (r.c.finalExam?.exercises ?? []) as Exercise[]) rewriteSkillRef(e)
   },
   'rename-lesson'(r, op) {
     if (!checkSlug(r, op.to, 'lesson')) return
@@ -374,6 +381,21 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
       if ((lesson.skills as string[]).includes(op.slug)) refs.push(`lesson ${lesson.slug}`)
     for (const p of r.c.projects as Draft[])
       if ((p.skills as string[]).includes(op.slug)) refs.push(`project ${p.slug}`)
+    const gone = skills[idx]!
+    const goneName = String(gone.name).toLowerCase()
+    const nameShared = skills.some((s) => s !== gone && String(s.name).toLowerCase() === goneName)
+    const exRefs: Exercise[] = []
+    const allEx = [
+      ...lessonsOf(r.c).flatMap(({ lesson }) => lessonExercises(lesson)),
+      ...((r.c.finalExam?.exercises ?? []) as Exercise[]),
+    ]
+    for (const e of allEx) {
+      const ref = e.skill?.trim().toLowerCase()
+      if (ref && (ref === op.slug.toLowerCase() || (ref === goneName && !nameShared))) {
+        exRefs.push(e)
+        refs.push(`exercise tagged "${e.skill}"`)
+      }
+    }
     if (refs.length > 0 && !op.detach)
       return void r.errors.push(
         `Still used by ${refs.slice(0, 6).join(', ')}${refs.length > 6 ? ` and ${refs.length - 6} more` : ''}. Detach it first or set detach.`,
@@ -383,7 +405,10 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     for (const s of skills) s.requires = strip(s.requires)
     for (const { lesson } of lessonsOf(r.c)) lesson.skills = strip(lesson.skills)
     for (const p of r.c.projects as Draft[]) p.skills = strip(p.skills)
+    for (const e of exRefs) delete e.skill
     r.rewritten += refs.length
+    if (exRefs.length)
+      r.warnings.push(`${exRefs.length} exercise(s) lost their skill tag and are now untagged.`)
     if (refs.length)
       r.warnings.push(`Detached from ${refs.length} place(s): ${refs.slice(0, 6).join(', ')}.`)
   },
@@ -394,6 +419,13 @@ export function previewRefactor(course: LhcfCourse, op: RefactorOp): RefactorPre
   const r: Run = { c: cloneCourse(course) as Draft, errors: [], warnings: [], rewritten: 0 }
   ;(ops[op.type] as (run: Run, o: RefactorOp) => void)(r, op)
   const token = opToken(course, op)
+  if (r.errors.length === 0) {
+    const dangling = newDanglingRefs(course as unknown as Draft, r.c)
+    if (dangling.length > 0)
+      r.errors.push(
+        `This would leave references to skills that do not exist: ${dangling.slice(0, 5).join('; ')}${dangling.length > 5 ? ` and ${dangling.length - 5} more` : ''}. Validation would silently recreate or drop them, so the change is refused.`,
+      )
+  }
   if (r.errors.length > 0) {
     return {
       ok: false,
@@ -407,6 +439,13 @@ export function previewRefactor(course: LhcfCourse, op: RefactorOp): RefactorPre
     }
   }
   const validation = validateLhcf(r.c)
+  if (validation.ok && validation.fixes.length > 0)
+    r.warnings.push(
+      `Validation adjusted the course: ${validation.fixes
+        .slice(0, 4)
+        .map((f) => f.message)
+        .join('; ')}.`,
+    )
   if (!validation.ok) {
     return {
       ok: false,

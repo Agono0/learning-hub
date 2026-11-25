@@ -16,6 +16,7 @@
  */
 import type { Exercise } from '../../practice/schema'
 import { lhcfCourseSchema, type LhcfCourse } from '../lhcf/schema'
+import { danglingSkillRefs, newDanglingRefs } from './dangling'
 import { validateLhcf, type LhcfValidation } from '../lhcf/validate'
 import { cloneCourse } from './course-index'
 import { sharedOrderDiffers } from './diff'
@@ -57,6 +58,12 @@ export interface MergeResult {
   merged: Record<string, unknown>
   conflicts: MergeConflict[]
   status: 'clean' | 'conflicts'
+  /**
+   * References to skills that no longer exist in the merged course, for example
+   * a skill one side deleted that the other side started using. The merge never
+   * recreates the skill or drops the reference; `validation` stays null.
+   */
+  dangling: string[]
   /** Number of independent changes from either side that merged without a conflict. */
   autoMerged: number
   /** Present when the clean result passes validation. */
@@ -699,11 +706,16 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
   } else delete merged.finalExam
 
   const clean = undecorate(merged)
-  const status = ctx.conflicts.length === 0 ? 'clean' : 'conflicts'
+  const dangling = newDanglingRefs(
+    ours as unknown as Record<string, unknown>,
+    clean as Record<string, unknown>,
+  )
+  const status = ctx.conflicts.length === 0 && dangling.length === 0 ? 'clean' : 'conflicts'
   return {
     merged: clean,
     conflicts: ctx.conflicts,
     status,
+    dangling,
     autoMerged: ctx.auto,
     validation: status === 'clean' ? validateLhcf(clean) : null,
     keyed: merged,
@@ -741,6 +753,8 @@ export interface ResolveResult {
   unresolved: string[]
   /** Patches that could not be applied (target no longer exists). */
   failed: { id: string; patch: Patch }[]
+  /** Skill references still pointing at nothing after the choices. Blocks validation. */
+  dangling: string[]
   validation: LhcfValidation | null
 }
 
@@ -768,8 +782,10 @@ export function applyResolutions(
   chosen.sort((a, b) => Number(b.patch.op === 'order') - Number(a.patch.op === 'order'))
   for (const { id, patch } of chosen) if (!applyPatch(keyed, patch)) failed.push({ id, patch })
   const merged = undecorate(keyed)
-  const done = unresolved.length === 0 && failed.length === 0
-  return { merged, unresolved, failed, validation: done ? validateLhcf(merged) : null }
+  const was = new Set(result.dangling)
+  const dangling = danglingSkillRefs(merged).filter((x) => was.has(x))
+  const done = unresolved.length === 0 && failed.length === 0 && dangling.length === 0
+  return { merged, unresolved, failed, dangling, validation: done ? validateLhcf(merged) : null }
 }
 
 /** Strict parse of a merged document, for callers that only want the typed course. */

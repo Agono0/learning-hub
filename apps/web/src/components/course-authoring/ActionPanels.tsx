@@ -124,6 +124,14 @@ export function MergeView({
 }) {
   const [choices, setChoices] = useState<Record<string, Choice>>({})
   const resolved = useMemo(() => resolveMerge(result, choices), [result, choices])
+  const dangling = (
+    <Callout tone="danger" title="Missing skills after the merge">
+      <div data-testid="dangling">
+        {`These references point at skills the merged course does not have: ${result.dangling.slice(0, 6).join('; ')}. The merge will not recreate the skill or drop the reference. Edit the course text to fix it, then merge again.`}
+      </div>
+    </Callout>
+  )
+  if (result.conflicts.length === 0 && result.dangling.length > 0) return <div>{dangling}</div>
   if (result.conflicts.length === 0) {
     return (
       <div>
@@ -156,6 +164,7 @@ export function MergeView({
   const left = resolved.unresolved.length
   return (
     <div>
+      {result.dangling.length > 0 && dangling}
       <Callout tone="warning" title={`${result.conflicts.length} conflict(s) need your choice`}>
         Nothing is picked for you. The merged course stays unavailable until each conflict has a
         side.

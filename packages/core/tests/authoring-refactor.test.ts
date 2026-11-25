@@ -28,7 +28,7 @@ describe('previewRefactor', () => {
     expect(p.course.skills[1]!.requires).toEqual(['select-basics'])
     expect(p.course.modules[0]!.lessons[0]!.skills).toEqual(['select-basics'])
     expect(p.course.projects[0]!.skills).toEqual(['select-basics'])
-    expect(p.course.modules[0]!.lessons[0]!.exercises[0]!.skill).toBe('Basic SELECT')
+    expect(p.course.modules[0]!.lessons[0]!.exercises[0]!.skill).toBe('select-basics')
     expect(p.rewritten).toBe(5)
     expect(p.diff.changes.length).toBeGreaterThan(3)
     expect(JSON.stringify(p.course)).not.toContain('"select"')
@@ -252,7 +252,7 @@ describe('previewRefactor', () => {
     expect(forced.ok).toBe(true)
     expect(forced.course.skills.map((s) => s.slug)).toEqual(['joins'])
     expect(forced.course.skills[0]!.requires).toEqual([])
-    expect(forced.warnings[0]).toMatch(/Detached/)
+    expect(forced.warnings.join(' ')).toMatch(/Detached/)
   })
 })
 
