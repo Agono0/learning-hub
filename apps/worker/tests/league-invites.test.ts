@@ -249,4 +249,19 @@ describe('LeagueRoom invites', () => {
     await send(room, founder, { type: 'remove-member', target: bo.handle }, clock.t)
     expect(await view(room, '/spectate')).not.toContain(bo.handle)
   })
+
+  it('records moderation in the member state view but never in /spectate', async () => {
+    const { room, clock, founder } = await setup()
+    const inv = await mint(room, founder, clock.t + 1, 5)
+    const bo = await actor()
+    clock.t += 2
+    await send(room, bo, { type: 'join', alias: 'Bo', invite: inv.code }, clock.t)
+    clock.t += 1
+    await send(room, founder, { type: 'remove-member', target: bo.handle }, clock.t)
+    const full = JSON.parse(await view(room)) as { modLog?: Array<{ action: string }> }
+    expect(full.modLog?.map((e) => e.action)).toEqual(['remove'])
+    const spectate = await view(room, '/spectate')
+    expect(spectate).not.toContain('modLog')
+    expect(spectate).not.toContain('blocked')
+  })
 })

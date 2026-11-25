@@ -9,6 +9,7 @@
 import { z } from 'zod'
 
 export const MAX_ROSTER_ROWS = 200
+export const MAX_MOD_ROWS = 20
 const MAX_NAME = 40
 
 const PlayerSchema = z.object({
@@ -27,6 +28,18 @@ const StateSchema = z.object({
   aliases: z.record(z.string(), z.string()).default({}),
   inviteOnly: z.boolean().default(false),
   liveInvites: z.number().int().nonnegative().max(10_000).default(0),
+  blocked: z.array(z.string()).max(1000).default([]),
+  modLog: z
+    .array(
+      z.object({
+        at: z.number().int(),
+        by: z.string(),
+        action: z.enum(['remove', 'unblock']),
+        target: z.string(),
+      }),
+    )
+    .max(1000)
+    .default([]),
 })
 
 export interface RosterMember {
@@ -35,7 +48,19 @@ export interface RosterMember {
   duels: number
 }
 
+export interface ModerationRow {
+  at: number
+  action: 'remove' | 'unblock'
+  /** Alias of the founder who acted, or "a founder" if unknown. */
+  by: string
+  /** Alias if still known, otherwise "a former member". */
+  target: string
+}
+
 export interface RemoteRoster {
+  blockedCount: number
+  /** Newest first, at most MAX_MOD_ROWS. */
+  moderation: ModerationRow[]
   title: string
   round: number
   inviteOnly: boolean
@@ -67,7 +92,8 @@ export function parseRemoteRoster(raw: unknown): RemoteRoster | null {
   }
   const parsed = StateSchema.safeParse(candidate)
   if (!parsed.success) return null
-  const { league, aliases, inviteOnly, liveInvites } = parsed.data
+  const { league, aliases, inviteOnly, liveInvites, blocked, modLog } = parsed.data
+  const nameOf = (h: string, fallback: string) => cleanName(aliases[h] ?? '') || fallback
   const all: RosterMember[] = league.players.map((p) => ({
     name: cleanName(aliases[p.handle] ?? '') || 'member',
     activityPoints: p.seasonPoints,
@@ -79,6 +105,16 @@ export function parseRemoteRoster(raw: unknown): RemoteRoster | null {
     round: league.currentRound,
     inviteOnly,
     liveInvites,
+    blockedCount: blocked.length,
+    moderation: modLog
+      .slice(-MAX_MOD_ROWS)
+      .reverse()
+      .map((e) => ({
+        at: e.at,
+        action: e.action,
+        by: nameOf(e.by, 'a founder'),
+        target: nameOf(e.target, 'a former member'),
+      })),
     members: all.slice(0, MAX_ROSTER_ROWS),
     hidden: Math.max(0, all.length - MAX_ROSTER_ROWS),
   }

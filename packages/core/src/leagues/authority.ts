@@ -29,6 +29,7 @@ import {
   INVITE_TOMBSTONE_MS,
   MAX_ACTIVE_INVITES_PER_MEMBER,
   MAX_BLOCKED,
+  MAX_MOD_LOG,
   MAX_STORED_INVITES,
 } from './invites'
 import type { LeagueMutation } from './signed-schemas'
@@ -123,6 +124,17 @@ export const AuthorityStateSchema = z.object({
   inviteOnly: z.boolean().default(false),
   /** Handles the founder removed. They cannot rejoin until unblocked. */
   blocked: z.array(z.string()).default([]),
+  /** Newest-last record of founder removals and unblocks, capped. */
+  modLog: z
+    .array(
+      z.object({
+        at: z.number().int(),
+        by: z.string(),
+        action: z.enum(['remove', 'unblock']),
+        target: z.string(),
+      }),
+    )
+    .default([]),
   accepted: z.number().int().nonnegative(),
   log: z.array(AcceptedEntrySchema),
 })
@@ -140,6 +152,7 @@ export function createAuthorityState(league: League): AuthorityState {
     invites: {},
     inviteOnly: false,
     blocked: [],
+    modLog: [],
     accepted: 0,
     log: [],
   })
@@ -262,6 +275,16 @@ export function pruneInvites(invites: Record<string, Invite>, now: number): Reco
 }
 
 /** State changes shared by `leave` and `remove-member`. Pure. */
+function logMod(
+  log: AuthorityState['modLog'],
+  at: number,
+  by: string,
+  action: 'remove' | 'unblock',
+  target: string,
+): AuthorityState['modLog'] {
+  return [...log, { at, by, action, target }].slice(-MAX_MOD_LOG)
+}
+
 function withoutMember(
   state: AuthorityState,
   who: string,
@@ -294,6 +317,7 @@ function withoutMember(
       invites,
       inviteOnly: empty ? false : state.inviteOnly,
       blocked: empty ? [] : state.blocked,
+      modLog: empty ? [] : state.modLog,
     },
     cancelled,
   }
@@ -414,18 +438,33 @@ export function applyVerifiedMutation(
       }
       if (state.blocked.length >= MAX_BLOCKED) return reject(stateIn, 'block_list_full')
       const out = withoutMember(state, m.target)
-      return commit(state, v, now, { ...out.patch, blocked: [...state.blocked, m.target] }, [
-        { kind: 'removed', handle: m.target, cancelledDuels: out.cancelled },
-      ])
+      return commit(
+        state,
+        v,
+        now,
+        {
+          ...out.patch,
+          blocked: [...state.blocked, m.target],
+          modLog: logMod(state.modLog, now, handle, 'remove', m.target),
+        },
+        [{ kind: 'removed', handle: m.target, cancelledDuels: out.cancelled }],
+      )
     }
 
     case 'unblock-member': {
       if (!isMember) return reject(stateIn, 'not_member')
       if (state.league.players[0]?.handle !== handle) return reject(stateIn, 'not_founder')
       if (!state.blocked.includes(m.target)) return reject(stateIn, 'not_blocked')
-      return commit(state, v, now, { blocked: state.blocked.filter((h) => h !== m.target) }, [
-        { kind: 'unblocked', handle: m.target },
-      ])
+      return commit(
+        state,
+        v,
+        now,
+        {
+          blocked: state.blocked.filter((h) => h !== m.target),
+          modLog: logMod(state.modLog, now, handle, 'unblock', m.target),
+        },
+        [{ kind: 'unblocked', handle: m.target }],
+      )
     }
 
     case 'invite-create': {

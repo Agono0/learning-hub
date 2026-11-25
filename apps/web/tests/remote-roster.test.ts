@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_ROSTER_ROWS, cleanName, parseRemoteRoster } from '../src/lib/remote-roster'
+import {
+  MAX_MOD_ROWS,
+  MAX_ROSTER_ROWS,
+  cleanName,
+  parseRemoteRoster,
+} from '../src/lib/remote-roster'
 
 const player = (handle: string, seasonPoints = 0, duelsWon = 0, duelsLost = 0) => ({
   handle,
@@ -103,5 +108,54 @@ describe('cleanName', () => {
 
   it('leaves ordinary and non-latin names alone', () => {
     expect(cleanName('Zoë 学生')).toBe('Zoë 学生')
+  })
+})
+
+describe('parseRemoteRoster moderation', () => {
+  const log = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      at: 1_700_000_000_000 + i * 1000,
+      by: 'usr_a',
+      action: i % 2 ? ('unblock' as const) : ('remove' as const),
+      target: 'usr_gone',
+    }))
+
+  it('shows newest first with aliases, and falls back for unknown handles', () => {
+    const r = parseRemoteRoster(state({ blocked: ['usr_gone'], modLog: log(2) }))!
+    expect(r.blockedCount).toBe(1)
+    expect(r.moderation).toHaveLength(2)
+    expect(r.moderation[0]).toMatchObject({
+      action: 'unblock',
+      by: 'Zed',
+      target: 'a former member',
+    })
+    expect(r.moderation[1]?.action).toBe('remove')
+  })
+
+  it('caps the visible log at MAX_MOD_ROWS', () => {
+    const r = parseRemoteRoster(state({ modLog: log(50) }))!
+    expect(r.moderation).toHaveLength(MAX_MOD_ROWS)
+  })
+
+  it('old replies without moderation fields still parse', () => {
+    const r = parseRemoteRoster(state())!
+    expect(r.blockedCount).toBe(0)
+    expect(r.moderation).toEqual([])
+  })
+
+  it('cleans control characters out of a hostile alias in the log', () => {
+    const r = parseRemoteRoster(
+      state({
+        aliases: { usr_a: 'Zed', usr_b: 'Amy', usr_gone: 'Eve\u202e\u0007Mal' },
+        modLog: log(1),
+      }),
+    )!
+    expect(r.moderation[0]?.target).toBe('EveMal')
+  })
+
+  it('rejects an unknown moderation action rather than rendering it', () => {
+    expect(
+      parseRemoteRoster(state({ modLog: [{ at: 1, by: 'x', action: 'ban', target: 'y' }] })),
+    ).toBeNull()
   })
 })

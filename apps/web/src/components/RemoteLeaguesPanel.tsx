@@ -83,6 +83,19 @@ export function RemoteRosterView({ roster }: { roster: RemoteRoster | null }) {
           ))}
         </ul>
       )}
+      {roster.moderation.length > 0 && (
+        <div data-testid="remote-moderation">
+          <p className="font-medium">Moderation · {roster.blockedCount} blocked</p>
+          <ul className="space-y-0.5 text-xs opacity-80" data-testid="remote-moderation-list">
+            {roster.moderation.map((e, i) => (
+              <li key={`${e.at}-${i}`} data-testid="remote-moderation-row">
+                {new Date(e.at).toISOString().slice(0, 16).replace('T', ' ')} UTC · {e.by}{' '}
+                {e.action === 'remove' ? 'removed' : 'unblocked'} {e.target}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {roster.hidden > 0 && (
         <p className="opacity-70" data-testid="remote-roster-hidden">
           {roster.hidden} more not shown.

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_MOD_LOG } from '../src/leagues/invites'
 import {
   INVITE_MAX_TTL_MS,
   MAX_ACTIVE_INVITES_PER_MEMBER,
@@ -671,5 +672,35 @@ describe('founder moderation', () => {
     const legacy = JSON.parse(JSON.stringify(fresh())) as Record<string, unknown>
     delete legacy.blocked
     expect(AuthorityStateSchema.parse(legacy).blocked).toEqual([])
+  })
+
+  it('logs each removal and unblock with who, when and the target', async () => {
+    const { founder, bo, state } = await trio()
+    let s = await must(state, founder, { type: 'remove-member', target: bo.handle }, T0 + 3)
+    s = await must(s, founder, { type: 'unblock-member', target: bo.handle }, T0 + 4)
+    expect(s.modLog).toEqual([
+      { at: T0 + 3, by: founder.handle, action: 'remove', target: bo.handle },
+      { at: T0 + 4, by: founder.handle, action: 'unblock', target: bo.handle },
+    ])
+  })
+
+  it('a refused moderation attempt leaves the log untouched', async () => {
+    const { bo, cy, state } = await trio()
+    const r = await send(state, bo, { type: 'remove-member', target: cy.handle }, T0 + 3)
+    expect(r.ok).toBe(false)
+    expect(state.modLog).toEqual([])
+  })
+
+  it('keeps only the newest MAX_MOD_LOG entries', async () => {
+    const { founder, bo, state } = await trio()
+    let s = state
+    for (let i = 0; i < MAX_MOD_LOG; i++) {
+      const t = T0 + 10 + i * 60_000
+      s = await must(s, founder, { type: 'remove-member', target: bo.handle }, t)
+      s = await must(s, founder, { type: 'unblock-member', target: bo.handle }, t + 20_000)
+      s = await must(s, bo, { type: 'join', alias: 'Bo' }, t + 40_000)
+    }
+    expect(s.modLog).toHaveLength(MAX_MOD_LOG)
+    expect(s.modLog[MAX_MOD_LOG - 1]?.action).toBe('unblock')
   })
 })

@@ -61,6 +61,9 @@ export function publicLeagueView(state: AuthorityState, now: number = Date.now()
     /** Policy and a live-invite count only: digests and uses stay private. */
     inviteOnly: state.inviteOnly,
     liveInvites: countLiveInvites(state, now),
+    /** Moderation is visible to members: handles are public ids, not secrets. */
+    blocked: state.blocked,
+    modLog: state.modLog,
     duels: Object.values(state.duels).map((d) => ({
       id: d.id,
       playerA: d.playerA,

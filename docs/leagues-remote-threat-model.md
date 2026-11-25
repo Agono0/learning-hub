@@ -109,3 +109,13 @@ any invite is spent, so a removed member cannot return with a still-valid code.
 use `leave`, which passes founder status to the next member). The block list is
 cleared when the league empties. This is room-local moderation for friendly
 practice, not an identity ban: a person with a new device key is a new handle.
+
+### Moderation log
+
+Each removal and unblock is also recorded in a capped log (newest 50) with the
+acting founder, the target handle and the room time. Members see it in the
+room state view and the web panel shows the newest 20, so a founder cannot
+remove someone without it being visible to the rest of the league. The
+read-only `/spectate` view never includes the log or the block list. The log
+is cleared when the league empties. It is a transparency aid, not tamper
+evidence: the room operator can still edit stored state.

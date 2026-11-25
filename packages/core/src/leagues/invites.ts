@@ -41,5 +41,8 @@ export async function digestInviteCode(code: string): Promise<string> {
   return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+/** Most moderation entries a league keeps; older ones fall off. */
+export const MAX_MOD_LOG = 50
+
 /** Most handles a league will keep blocked. */
 export const MAX_BLOCKED = 200
