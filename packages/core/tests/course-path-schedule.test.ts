@@ -12,7 +12,7 @@ const lessonMinutes = (r: ReturnType<typeof planCourse>, slug: string) =>
 describe('planCourse', () => {
   it('fits a small course into a week and keeps prerequisites first', () => {
     const r = planCourse(basicModel(), {}, opts)
-    expect(r.fits).toBe(true)
+    expect(r.status).toBe('fits')
     expect(r.shortfallMinutes).toBe(0)
     expect(r.totalRemainingMinutes).toBe(140)
     expect(r.days).toHaveLength(7) // Dec 1..7, the day before the deadline is the last
@@ -46,11 +46,11 @@ describe('planCourse', () => {
       {},
       { startDate: '2026-12-01', deadline: '2026-12-03', minutesPerDay: 30 },
     )
-    expect(r.fits).toBe(false)
+    expect(r.status).toBe('does-not-fit')
     expect(r.capacityMinutes).toBe(60)
     expect(r.shortfallMinutes).toBe(r.unfinished.reduce((s, u) => s + u.minutesLeft, 0))
     expect(r.shortfallMinutes).toBe(80) // 140 minutes of content, 60 available
-    expect(r.reviewsSkipped).toBe(true) // no review time taken from content that does not fit
+    expect(r.reviewsScheduled).toBe(0) // no review time taken from content that does not fit
     expect(r.days.flatMap((d) => d.entries).some((e) => e.kind === 'review')).toBe(false)
     expect(r.unfinished.map((u) => u.lesson)).toContain('l3')
   })
@@ -110,7 +110,7 @@ describe('planCourse', () => {
       ),
     )
     expect(planCourse(m, {}, opts).days[0]!.entries[0]!.lesson).toBe('adv-lesson')
-    expect(planCourse(m, { mastery: { base: 0.95 } }, opts).fits).toBe(true)
+    expect(planCourse(m, { mastery: { base: 0.95 } }, opts).status).toBe('fits')
   })
 
   it('flags a lesson placed out of order when prerequisite lessons wait on each other', () => {
@@ -132,7 +132,7 @@ describe('planCourse', () => {
       ),
     )
     const r = planCourse(m, {}, opts)
-    expect(r.fits).toBe(true)
+    expect(r.status).toBe('fits')
     expect(r.outOfOrder.map((o) => o.lesson)).toEqual(['lx'])
   })
 
@@ -160,9 +160,10 @@ describe('planCourse', () => {
       {},
       { startDate: '2026-12-01', deadline: '2026-12-02', minutesPerDay: 200 },
     )
-    expect(r.fits).toBe(true)
-    expect(r.reviewsDropped).toBe(4)
-    expect(r.reviewsSkipped).toBe(false)
+    expect(r.status).toBe('fits')
+    expect(r.reviewsAfterLastStudyDay).toBe(4)
+    expect(r.reviewsOverdueUnscheduled).toBe(0)
+    expect(r.reviewsScheduled).toBe(0)
   })
 
   it('lists lessons that use the default estimate', () => {
@@ -187,7 +188,7 @@ describe('planCourse', () => {
   it('returns an empty plan when the deadline is not after the start', () => {
     const r = planCourse(basicModel(), {}, { ...opts, deadline: opts.startDate })
     expect(r.days).toEqual([])
-    expect(r.fits).toBe(false)
+    expect(r.status).toBe('does-not-fit')
     expect(r.shortfallMinutes).toBe(140)
   })
 
@@ -195,5 +196,96 @@ describe('planCourse', () => {
     const a = planCourse(basicModel(), { mastery: { a: 0.5 } }, opts)
     const b = planCourse(basicModel(), { mastery: { a: 0.5 } }, opts)
     expect(a).toEqual(b)
+  })
+
+  it('separates fits-without-reviews from fits with reviews', () => {
+    const tight = { startDate: '2026-12-01', deadline: '2026-12-03', minutesPerDay: 70 }
+    const r = planCourse(basicModel(), {}, tight)
+    expect(r.status).toBe('fits-without-reviews')
+    expect(r.reviewsScheduled).toBe(0)
+    expect(r.shortfallMinutes).toBe(0)
+    expect(r.unfinished).toEqual([])
+    // the same course with room for reviews is plain "fits" and has review entries
+    const roomy = planCourse(basicModel(), {}, { ...tight, minutesPerDay: 120 })
+    expect(roomy.status).toBe('fits')
+    expect(roomy.reviewsScheduled).toBeGreaterThan(0)
+  })
+
+  it('counts overdue reviews that got no room apart from those after the last study day', () => {
+    // 1-day window of content only fits; reviews of finished lessons come due after it
+    const r = planCourse(
+      basicModel(),
+      {},
+      { startDate: '2026-12-01', deadline: '2026-12-03', minutesPerDay: 80, reviewShare: 0.07 },
+    )
+    expect(r.status).toBe('fits')
+    // budget floor(80 * 0.07) = 5 min: one 5-minute review fits per day, the rest wait
+    expect(r.reviewsScheduled + r.reviewsOverdueUnscheduled + r.reviewsAfterLastStudyDay).toBe(4)
+    expect(r.reviewsOverdueUnscheduled).toBeGreaterThan(0)
+  })
+
+  it('echoes the exclusive study window and never studies on the deadline date', () => {
+    const r = planCourse(basicModel(), {}, opts)
+    expect(r.studyWindow).toEqual({ start: '2026-12-01', endExclusive: '2026-12-08' })
+    expect(r.days[r.days.length - 1]!.date).toBe('2026-12-07')
+    // end-of-date semantics are the caller's explicit choice: pass the next date
+    const inclusive = planCourse(basicModel(), {}, { ...opts, deadline: '2026-12-09' })
+    expect(inclusive.days[inclusive.days.length - 1]!.date).toBe('2026-12-08')
+  })
+
+  it('reports an unmastered prerequisite that no remaining lesson trains', () => {
+    const m = buildCourseModel(
+      course(
+        [
+          ['base', []],
+          ['adv', ['base']],
+        ],
+        [['m', [{ slug: 'adv-lesson', est: 30, skills: ['adv'] }]]],
+      ),
+    )
+    const r = planCourse(m, {}, opts)
+    expect(r.status).toBe('fits')
+    expect(r.prerequisiteSafe).toBe(false)
+    expect(r.unmetPrerequisites).toEqual([
+      {
+        lesson: 'adv-lesson',
+        skill: 'adv',
+        prerequisite: 'base',
+        reason: 'no-remaining-lesson-trains-it',
+      },
+    ])
+    // mastered, or taught by a remaining lesson: safe
+    expect(planCourse(m, { mastery: { base: 0.95 } }, opts).prerequisiteSafe).toBe(true)
+    expect(planCourse(basicModel(), {}, opts).prerequisiteSafe).toBe(true)
+  })
+
+  it('treats a prerequisite whose lessons are all completed but still unmastered as unmet', () => {
+    const r = planCourse(basicModel(), { status: { l1: 'completed' } }, opts)
+    expect(r.prerequisiteSafe).toBe(false)
+    expect(r.unmetPrerequisites.map((u) => `${u.lesson}:${u.prerequisite}`).sort()).toEqual([
+      'l2:a',
+      'l4:a',
+    ])
+  })
+
+  it('is not prerequisite-safe when lessons wait on each other', () => {
+    const m = buildCourseModel(
+      course(
+        [
+          ['x', ['y']],
+          ['y', ['x']],
+        ],
+        [
+          [
+            'm',
+            [
+              { slug: 'lx', est: 10, skills: ['x'] },
+              { slug: 'ly', est: 10, skills: ['y'] },
+            ],
+          ],
+        ],
+      ),
+    )
+    expect(planCourse(m, {}, opts).prerequisiteSafe).toBe(false)
   })
 })

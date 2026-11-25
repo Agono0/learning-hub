@@ -7,8 +7,16 @@
  * earlier. A lesson may span days. Each finished lesson gets one spaced review
  * at the Cepeda gap (`optimalGapDays`) for the days left to the deadline.
  *
- * The plan says plainly when it does not fit: minutes short, which lessons are
- * left, and which lessons use the default estimate.
+ * Meaning of the result, so it is not over-read:
+ * - `status` is about CONTENT time only. `fits-without-reviews` means every lesson
+ *   fits only if no reviews are scheduled; it says nothing about whether recall
+ *   will be adequate, and reviews are then not scheduled.
+ * - `prerequisiteSafe` is false when a lesson needs a prerequisite skill that is
+ *   unmastered and that no remaining lesson trains (`unmetPrerequisites`), or when
+ *   lessons wait on each other (`outOfOrder`). The order is then a best effort.
+ * - The deadline is EXCLUSIVE: the last study day is the day before it. A caller
+ *   that thinks in "through the end of date D" passes the next calendar date.
+ *   `studyWindow` echoes the window actually used; no silent one-day shift.
  */
 import { optimalGapDays } from '../curriculum/pedagogy'
 import { PREREQ_MASTERY_THRESHOLD } from '../curriculum/progress'
@@ -27,7 +35,10 @@ export class CoursePathInputError extends RangeError {
 export interface PlanOptions {
   /** First study day, `YYYY-MM-DD` (calendar date, no time zone math). */
   startDate: string
-  /** Due date, `YYYY-MM-DD`. Study days are startDate up to the day before it. */
+  /**
+   * Due date, `YYYY-MM-DD`, EXCLUSIVE: no study happens on this date. Study days
+   * are startDate through the day before. For "through the end of D", pass D + 1.
+   */
   deadline: string
   minutesPerDay: number
   /** Weekdays with no study, 0 = Sunday ... 6 = Saturday. */
@@ -52,9 +63,28 @@ export interface PlanDay {
   entries: PlanEntry[]
 }
 
+/**
+ * - `fits`: all lesson minutes are placed, with reviews scheduled where they fit.
+ * - `fits-without-reviews`: all lesson minutes are placed only when reviews are
+ *   left out. No reviews are scheduled. This is not a statement about retention.
+ * - `does-not-fit`: lesson minutes are left over even without reviews.
+ */
+export type PlanStatus = 'fits' | 'fits-without-reviews' | 'does-not-fit'
+
+export interface UnmetPrerequisite {
+  lesson: string
+  /** The skill the lesson trains that needs the prerequisite. */
+  skill: string
+  /** The unmastered prerequisite skill. */
+  prerequisite: string
+  reason: 'no-remaining-lesson-trains-it'
+}
+
 export interface PlanResult {
   days: PlanDay[]
-  fits: boolean
+  status: PlanStatus
+  /** The study window used: `start` is the first possible day, `endExclusive` has no study. */
+  studyWindow: { start: string; endExclusive: string }
   totalRemainingMinutes: number
   capacityMinutes: number
   shortfallMinutes: number
@@ -64,10 +94,16 @@ export interface PlanResult {
   defaultEstimate: string[]
   /** Lessons placed before a prerequisite lesson could be (nothing else was eligible). */
   outOfOrder: { lesson: string; reason: string }[]
-  /** Reviews that came due after the last study day. */
-  reviewsDropped: number
-  /** True when the plan does not fit, so no reviews were scheduled. */
-  reviewsSkipped: boolean
+  /** Unmastered prerequisites that no remaining lesson trains. The plan cannot make these safe. */
+  unmetPrerequisites: UnmetPrerequisite[]
+  /** True only when `unmetPrerequisites` and `outOfOrder` are both empty. */
+  prerequisiteSafe: boolean
+  /** Review entries in `days`. */
+  reviewsScheduled: number
+  /** Reviews due on or before the last study day that got no room (or were not scheduled). */
+  reviewsOverdueUnscheduled: number
+  /** Reviews that fall due after the last study day. */
+  reviewsAfterLastStudyDay: number
 }
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -94,10 +130,12 @@ export function planCourse(
   options: PlanOptions,
 ): PlanResult {
   const withReviews = place(model, state, options)
-  if (withReviews.fits) return withReviews
+  if (withReviews.status === 'fits') return withReviews
   // Reviews must not take time from content that already does not fit.
   const contentOnly = place(model, state, { ...options, reviewShare: 0 })
-  return { ...contentOnly, reviewsSkipped: true }
+  return contentOnly.status === 'fits'
+    ? { ...contentOnly, status: 'fits-without-reviews' }
+    : contentOnly
 }
 
 function place(model: CourseModel, state: LearnerState, options: PlanOptions): PlanResult {
@@ -122,6 +160,22 @@ function place(model: CourseModel, state: LearnerState, options: PlanOptions): P
   const trainers = new Map<number, number[]>()
   for (const l of remaining) {
     for (const s of l.skillIds) trainers.set(s, [...(trainers.get(s) ?? []), l.id])
+  }
+
+  const unmetPrerequisites: UnmetPrerequisite[] = []
+  for (const l of remaining) {
+    for (const sId of l.skillIds) {
+      for (const p of model.prereqs.get(sId) ?? []) {
+        if (isMastered(pKnown.get(p), threshold)) continue
+        if ((trainers.get(p) ?? []).some((id) => id !== l.id)) continue
+        unmetPrerequisites.push({
+          lesson: l.slug,
+          skill: model.skills[sId - 1]!.slug,
+          prerequisite: model.skills[p - 1]!.slug,
+          reason: 'no-remaining-lesson-trains-it',
+        })
+      }
+    }
   }
 
   const eligible = (lessonId: number): boolean => {
@@ -210,16 +264,24 @@ function place(model: CourseModel, state: LearnerState, options: PlanOptions): P
     lesson: model.lessons[p.lessonId - 1]!.slug,
     minutesLeft: p.left,
   }))
+  const lastStudyDay = studyDays.length ? studyDays[studyDays.length - 1]! : -Infinity
   return {
     days,
-    fits: unfinished.length === 0,
+    status: unfinished.length === 0 ? 'fits' : 'does-not-fit',
+    studyWindow: { start: options.startDate, endExclusive: options.deadline },
     totalRemainingMinutes: total,
     capacityMinutes: capacity,
     shortfallMinutes: unfinished.reduce((s, u) => s + u.minutesLeft, 0),
     unfinished,
     defaultEstimate: remaining.filter((l) => l.estimated).map((l) => l.slug),
     outOfOrder,
-    reviewsDropped: reviews.length,
-    reviewsSkipped: false,
+    unmetPrerequisites,
+    prerequisiteSafe: unmetPrerequisites.length === 0 && outOfOrder.length === 0,
+    reviewsScheduled: days.reduce(
+      (n, d) => n + d.entries.filter((e) => e.kind === 'review').length,
+      0,
+    ),
+    reviewsOverdueUnscheduled: reviews.filter((r) => r.due <= lastStudyDay).length,
+    reviewsAfterLastStudyDay: reviews.filter((r) => r.due > lastStudyDay).length,
   }
 }
