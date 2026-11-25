@@ -198,6 +198,10 @@ interface SessionPayload {
   cards: CardRow[]
   course: { id: number; title: string } | null
   corrections?: CorrectionCard[]
+  /** explicit card list (exam prep): cards come in the given order */
+  explicit?: boolean
+  /** explicit list: how many listed cards are not due yet */
+  earlyCount?: number
 }
 
 /** GET /api/settings response — only the learner profile's applied knobs are read here. */
@@ -1468,7 +1472,17 @@ function ReviewPageInner() {
       <ClayIn>
         <PageHeader
           title={session.data?.course ? 'Mixed practice' : 'Review'}
-          subtitle={session.data?.course ? session.data.course.title : undefined}
+          subtitle={
+            session.data?.course
+              ? session.data.course.title
+              : session.data?.explicit
+                ? `Your chosen cards, in the planned order.${
+                    session.data.earlyCount
+                      ? ` ${session.data.earlyCount} of them are not due yet. Reviewing early is allowed and changes their schedule like any review.`
+                      : ''
+                  }`
+                : undefined
+          }
           actions={
             <div className="flex items-center gap-3 text-sm text-tertiary">
               <span>
