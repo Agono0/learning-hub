@@ -26,6 +26,7 @@ import {
   leagueHeadToHead,
   listLeagueAchievements,
   leagueChampion,
+  buildLeagueDigest,
   leagueDivisionDetail,
   leagueStandings,
   listLeagueDuels,
@@ -371,6 +372,18 @@ function getLeagueDivision(req: IncomingMessage, res: ServerResponse, url: URL):
   sendJson(res, 200, { ok: true, division: detail })
 }
 
+const digestQuerySchema = z.object({
+  slug: z.string().min(1),
+})
+
+/** GET /leagues/digest?slug= — weekly recap: standings, last round, duels, Elo movers, badges. */
+function getLeagueDigest(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, digestQuerySchema)
+  const digest = buildLeagueDigest(q.slug)
+  if (!digest) return jsonError(res, 404, `league not found: ${q.slug}`)
+  sendJson(res, 200, { ok: true, digest })
+}
+
 /** POST /leagues/duels/rematch — new duel: same players/prompts, swapped seats. */
 async function postDuelRematch(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readJson(req, duelRematchSchema)
@@ -445,6 +458,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/division',
     summary: 'one division: standings, round history, movement, duels (?slug=&tier=)',
     handler: getLeagueDivision,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/digest',
+    summary: 'weekly recap: standings, last round, duel activity, Elo movers, badges (?slug=)',
+    handler: getLeagueDigest,
   },
   {
     method: 'GET',

@@ -20,6 +20,7 @@ import {
   leagueHeadToHead,
   listLeagueAchievements,
   leagueChampion,
+  buildLeagueDigest,
   leagueDivisionDetail,
   leaguePlayerProfile,
   leagueStandings,
@@ -54,6 +55,12 @@ export const GET = withRoute(async (req: Request) => {
       return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
     }
     return Response.json({ ok: true, division })
+  }
+
+  if (view === 'digest') {
+    const digest = buildLeagueDigest(slug)
+    if (!digest) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, digest })
   }
 
   if (view === 'achievements') {

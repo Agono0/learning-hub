@@ -13,6 +13,7 @@ import {
   createLeagueTournament,
   exportLeague,
   importLeague,
+  buildLeagueDigest,
   leagueDivisionDetail,
   leagueHeadToHead,
   listLeagueAchievements,
@@ -108,6 +109,16 @@ export const leagueTools: RegisteredTool[] = [
       const division = leagueDivisionDetail(slug, tier)
       if (!division) throw new Error(`league not found: ${slug}`)
       return json({ ok: true, division })
+    },
+  ),
+  tool(
+    'league_digest',
+    'Weekly league recap: division standings, the last closed round (winners, promotions, relegations), duel activity, 7-day Elo movers and newly earned badges.',
+    { slug: z.string().min(1) },
+    ({ slug }) => {
+      const digest = buildLeagueDigest(slug)
+      if (!digest) throw new Error(`league not found: ${slug}`)
+      return json({ ok: true, digest })
     },
   ),
   tool(
