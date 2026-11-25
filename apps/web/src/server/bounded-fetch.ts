@@ -52,7 +52,7 @@ export interface BoundedFetchResult {
 
 const BLOCKED_NAME_SUFFIXES = ['.localhost', '.local', '.internal', '.localdomain', '.lan', '.home']
 
-function ipv4Private(host: string): boolean {
+export function ipv4Private(host: string): boolean {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host)
   if (!m) return false
   const [a, b] = [Number(m[1]), Number(m[2])]
@@ -69,7 +69,7 @@ function ipv4Private(host: string): boolean {
   )
 }
 
-function ipv6Private(host: string): boolean {
+export function ipv6Private(host: string): boolean {
   const h = host.replace(/^\[|\]$/g, '').toLowerCase()
   if (!h.includes(':')) return false
   if (h === '::' || h === '::1') return true
@@ -86,6 +86,23 @@ function ipv6Private(host: string): boolean {
     return true
   }
   return false
+}
+
+/** True when a literal IP address (as returned by DNS or a URL) is private, loopback or link-local. */
+export function isPrivateAddress(address: string): boolean {
+  const a = address.replace(/^\[|\]$/g, '').toLowerCase()
+  return ipv4Private(a) || ipv6Private(a)
+}
+
+/**
+ * Optional connect-time fetch for Node. When registered (apps/web/instrumentation.ts on the
+ * Node server) `boundedFetchText` uses it instead of the shared network seam, so the address
+ * that is connected to is the address that was checked. It never falls back to an unpinned
+ * fetch: if it refuses or fails, the call fails.
+ */
+let pinnedFetch: ((url: string, init?: RequestInit) => Promise<Response>) | null = null
+export function setPinnedFetch(fn: typeof pinnedFetch): void {
+  pinnedFetch = fn
 }
 
 /** Refuses a URL the helper will not request; returns the parsed URL otherwise. */
@@ -175,7 +192,7 @@ export async function boundedFetchText(
   rawUrl: string,
   opts: BoundedFetchOptions,
 ): Promise<BoundedFetchResult> {
-  const fetchFn = opts.fetchFn ?? ((u, i) => remoteFetch(u, i))
+  const fetchFn = opts.fetchFn ?? pinnedFetch ?? ((u, i) => remoteFetch(u, i))
   const maxRedirects = opts.maxRedirects ?? 3
   const signal = AbortSignal.timeout(opts.timeoutMs)
   let url = assertAllowedUrl(rawUrl, opts.allowHttp)
