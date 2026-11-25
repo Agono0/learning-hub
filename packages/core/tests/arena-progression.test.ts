@@ -127,3 +127,64 @@ describe('buildActivityHeatmap', () => {
     expect(buildActivityHeatmap([], now, 0).days).toHaveLength(1)
   })
 })
+
+import { DEFAULT_MS_PER_CARD, estimateRunMinutes, paceStats } from '../src/arena'
+
+describe('paceStats', () => {
+  it('has no sample for empty or untimed runs', () => {
+    expect(paceStats([])).toEqual({ sampleRuns: 0, medianMsPerCard: null })
+    expect(
+      paceStats([
+        { rounds: 0, durationMs: 5000 },
+        { rounds: 5, durationMs: 0 },
+      ]),
+    ).toEqual({
+      sampleRuns: 0,
+      medianMsPerCard: null,
+    })
+  })
+  it('uses the median, so one outlier does not skew it', () => {
+    const runs = [
+      { rounds: 10, durationMs: 80_000 },
+      { rounds: 10, durationMs: 90_000 },
+      { rounds: 10, durationMs: 900_000 },
+    ]
+    expect(paceStats(runs).medianMsPerCard).toBe(9000)
+  })
+  it('averages the two middle values for an even sample', () => {
+    const runs = [
+      { rounds: 10, durationMs: 60_000 },
+      { rounds: 10, durationMs: 100_000 },
+    ]
+    expect(paceStats(runs).medianMsPerCard).toBe(8000)
+  })
+  it('only considers the most recent runs', () => {
+    const old = Array.from({ length: 5 }, () => ({ rounds: 10, durationMs: 500_000 }))
+    const recent = Array.from({ length: 3 }, () => ({ rounds: 10, durationMs: 50_000 }))
+    expect(paceStats([...old, ...recent], 3).medianMsPerCard).toBe(5000)
+  })
+})
+
+describe('estimateRunMinutes', () => {
+  const none = { sampleRuns: 0, medianMsPerCard: null }
+  it('falls back to the default pace', () => {
+    const e = estimateRunMinutes(10, none, 15)
+    expect(e.personal).toBe(false)
+    expect(e.minutes).toBe(Math.round((10 * DEFAULT_MS_PER_CARD) / 60_000))
+  })
+  it('uses the personal pace when known', () => {
+    const e = estimateRunMinutes(20, { sampleRuns: 4, medianMsPerCard: 6000 }, 15)
+    expect(e.personal).toBe(true)
+    expect(e.minutes).toBe(2)
+  })
+  it('never reports less than one minute', () => {
+    expect(estimateRunMinutes(1, { sampleRuns: 1, medianMsPerCard: 1000 }, 15).minutes).toBe(1)
+  })
+  it('flags boss-length runs at the threshold', () => {
+    expect(estimateRunMinutes(14, none, 15).boss).toBe(false)
+    expect(estimateRunMinutes(15, none, 15).boss).toBe(true)
+  })
+  it('clamps negative counts to zero cards', () => {
+    expect(estimateRunMinutes(-3, none, 15).cards).toBe(0)
+  })
+})

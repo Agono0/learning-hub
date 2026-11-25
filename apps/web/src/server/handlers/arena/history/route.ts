@@ -15,8 +15,10 @@ import {
   getArenaStatsByDeck,
   getArenaStatsByGuardian,
   listArenaRuns,
+  listArenaRunsForExport,
   type ArenaRunRow,
 } from '@learning-hub/db'
+import { paceStats } from '@learning-hub/core'
 import { withRoute } from '@/lib/api'
 
 // ─── Weekly trial ───────────────────────────────────────────────────────────
@@ -161,6 +163,7 @@ export const GET = withRoute(async (req: Request) => {
     bestRunId: bestRun?.id ?? null,
     perGuardian: getArenaStatsByGuardian(),
     trial,
+    pace: paceStats(listArenaRunsForExport({ limit: 50 })),
     trend: trendRows.map((r) => ({
       runId: r.referenceId,
       accuracy: r.rounds === 0 ? 0 : r.correct / r.rounds,

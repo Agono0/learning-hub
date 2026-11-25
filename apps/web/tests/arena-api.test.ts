@@ -1112,6 +1112,8 @@ describe('Arena API — practice progression', () => {
     expect(body.rank.progressPct).toBeGreaterThanOrEqual(0)
     expect(body.rank.progressPct).toBeLessThanOrEqual(100)
     expect(body.heatmap.days).toHaveLength(84)
+    expect(body.pace.sampleRuns).toBeGreaterThanOrEqual(0)
+    if (body.pace.medianMsPerCard !== null) expect(body.pace.medianMsPerCard).toBeGreaterThan(0)
     const hist = await (
       await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
     ).json()

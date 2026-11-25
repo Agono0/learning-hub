@@ -52,6 +52,7 @@ import {
 } from '@/ui'
 import { ArenaCoachMarks, ArenaCoachReopenButton } from '@/components/arena/ArenaCoachMarks'
 import { ArenaProgressPanel } from '@/components/arena/ArenaProgressPanel'
+import { RunEstimateLine } from '@/components/arena/RunEstimateLine'
 import { NemesisPanel } from '@/components/arena/NemesisPanel'
 import { ArenaExportButtons } from '@/components/arena/ArenaExportButtons'
 import { ChipPicker } from '@/components/ui/chip-picker'
@@ -167,6 +168,7 @@ interface ArenaRunRow {
 interface HistoryPayload {
   ok: boolean
   stats: ArenaStats
+  pace?: { sampleRuns: number; medianMsPerCard: number | null }
   runs: ArenaRunRow[]
   /** Highest-scoring run on the books (the rival ghost), null when none. */
   bestRunId: number | null
@@ -727,6 +729,10 @@ export default function Arena3DPage() {
                 items={CHALLENGE_OPTIONS.map((n) => ({ value: n, label: `${n} challenges` }))}
                 value={challengeCount}
                 onChange={setChallengeCount}
+              />
+              <RunEstimateLine
+                cards={Number(challengeCount)}
+                pace={record?.pace ?? { sampleRuns: 0, medianMsPerCard: null }}
               />
             </div>
 

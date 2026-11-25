@@ -158,3 +158,57 @@ export function buildActivityHeatmap(
     busiestDay: busiest ? { date: busiest.date, runs: busiest.runs } : null,
   }
 }
+
+// ─── Run planning ───────────────────────────────────────────────────────────
+
+export interface PaceRun {
+  rounds: number
+  durationMs: number
+}
+
+export interface PaceStats {
+  /** Runs that carried usable timing (rounds > 0 and durationMs > 0). */
+  sampleRuns: number
+  /** Median milliseconds per card across the sample, or null with no sample. */
+  medianMsPerCard: number | null
+}
+
+/** Per-card pace from past runs. Median, so one abandoned tab does not skew it. */
+export function paceStats(runs: ReadonlyArray<PaceRun>, maxRuns = 20): PaceStats {
+  const perCard = runs
+    .filter((r) => r.rounds > 0 && r.durationMs > 0)
+    .slice(-Math.max(1, maxRuns))
+    .map((r) => r.durationMs / r.rounds)
+    .sort((a, b) => a - b)
+  if (perCard.length === 0) return { sampleRuns: 0, medianMsPerCard: null }
+  const mid = Math.floor(perCard.length / 2)
+  const median = perCard.length % 2 ? perCard[mid]! : (perCard[mid - 1]! + perCard[mid]!) / 2
+  return { sampleRuns: perCard.length, medianMsPerCard: Math.round(median) }
+}
+
+export const DEFAULT_MS_PER_CARD = 9000
+
+export interface RunEstimate {
+  cards: number
+  minutes: number
+  /** True when the estimate uses the player's own pace, false for the default. */
+  personal: boolean
+  /** True when the run is long enough to spawn a boss (threshold passed in). */
+  boss: boolean
+}
+
+/** Whole-minute estimate (at least 1) for a run of `cards` cards. */
+export function estimateRunMinutes(
+  cards: number,
+  pace: PaceStats,
+  bossThreshold: number,
+): RunEstimate {
+  const n = Math.max(0, Math.floor(cards))
+  const perCard = pace.medianMsPerCard ?? DEFAULT_MS_PER_CARD
+  return {
+    cards: n,
+    minutes: Math.max(1, Math.round((n * perCard) / 60_000)),
+    personal: pace.medianMsPerCard !== null,
+    boss: n >= bossThreshold,
+  }
+}
