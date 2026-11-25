@@ -27,6 +27,7 @@ import {
   completeArenaSettlementInTx,
   createArenaSession,
   getArenaSession,
+  getArenaStatsByDeck,
   getWeakCardIdsForRun,
   recordArenaRun,
   releaseArenaClaim,
@@ -352,5 +353,67 @@ describe('getWeakCardIdsForRun', () => {
     }, db)
     expect(getWeakCardIdsForRun(run.id, { userId: 'intruder', db })).toBeUndefined()
     expect(getWeakCardIdsForRun(run.id, { db })).toEqual([])
+  })
+})
+
+describe('getArenaStatsByDeck', () => {
+  it('attributes a run to every deck it touched and computes per-deck rates', () => {
+    const { db } = createTestDb()
+    db.insert(schema.decks)
+      .values({ id: 2, name: 'Second Deck', createdAt: new Date().toISOString() })
+      .run()
+
+    const run = (
+      deckIds: number[],
+      result: 'victory' | 'defeat',
+      correct: number,
+      rounds: number,
+      bestCombo: number,
+      score: number,
+      ref: string,
+    ) =>
+      recordArenaRun(
+        {
+          deckIds,
+          result,
+          rounds,
+          correct,
+          accuracy: rounds === 0 ? 0 : correct / rounds,
+          bestCombo,
+          crits: 0,
+          score,
+          coins: 1,
+          xp: 5,
+          durationMs: 1000,
+          referenceId: ref,
+        },
+        db,
+      )
+
+    run([1], 'victory', 9, 10, 4, 900, 'arena:r1')
+    run([2], 'defeat', 3, 10, 2, 300, 'arena:r2')
+    run([1, 2], 'victory', 8, 10, 6, 1200, 'arena:r3')
+
+    const stats = getArenaStatsByDeck({ db })
+    expect(stats).toHaveLength(2)
+    // Most-played first; tied runs → higher win rate first.
+    expect(stats[0]!.deckId).toBe(1)
+    expect(stats[0]!.runs).toBe(2) // [1] and [1,2]
+    expect(stats[0]!.victories).toBe(2)
+    expect(stats[0]!.winRate).toBe(1)
+    expect(stats[0]!.rounds).toBe(20)
+    expect(stats[0]!.correct).toBe(17)
+    expect(stats[0]!.accuracy).toBeCloseTo(17 / 20)
+    expect(stats[0]!.bestCombo).toBe(6)
+    expect(stats[0]!.bestScore).toBe(1200)
+    expect(stats[1]!.deckId).toBe(2)
+    expect(stats[1]!.runs).toBe(2) // [2] and [1,2]
+    expect(stats[1]!.winRate).toBe(0.5)
+    expect(stats[1]!.accuracy).toBeCloseTo(11 / 20)
+  })
+
+  it('an empty record book yields no per-deck rows', () => {
+    const { db } = createTestDb()
+    expect(getArenaStatsByDeck({ db })).toEqual([])
   })
 })

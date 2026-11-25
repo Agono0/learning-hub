@@ -661,3 +661,30 @@ describe('Arena API — daily modifier', () => {
     expect(settled.summary.coins).toBe(expected.coins)
   })
 })
+
+describe('Arena API — per-deck record', () => {
+  it('history returns per-deck aggregates enriched with deck names', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const post = await postSettlement(settlePayload(runId, gradeLog(queue, [0, queue.length])))
+    expect(post.status).toBe(200)
+
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.perDeck)).toBe(true)
+    const row = body.perDeck.find((d: { deckId: number }) => d.deckId === deckId)
+    expect(row).toBeTruthy()
+    expect(row.runs).toBeGreaterThanOrEqual(1)
+    expect(row.winRate).toBeGreaterThanOrEqual(0)
+    expect(row.winRate).toBeLessThanOrEqual(1)
+    expect(typeof row.name).toBe('string')
+    expect(row.name.length).toBeGreaterThan(0)
+    // Aggregate sanity: per-deck totals stay consistent with the run row.
+    const runRow = body.runs.find(
+      (r: { referenceId: string }) => r.referenceId === `arena:${runId}`,
+    )
+    expect(runRow).toBeTruthy()
+    expect(row.bestScore).toBeGreaterThanOrEqual(runRow.score)
+  })
+})
