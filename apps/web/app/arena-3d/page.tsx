@@ -1169,6 +1169,23 @@ export default function Arena3DPage() {
                     {'\u2726'} {modifier.name}: {modifier.description}
                   </p>
                 ) : null}
+                {settlement.drill && settlement.drill.compared > 0 ? (
+                  <div data-testid="results-drill">
+                    <Callout
+                      tone={
+                        settlement.drill.slipped > settlement.drill.improved ? 'warning' : 'success'
+                      }
+                    >
+                      Drill check: {settlement.drill.improved} of {settlement.drill.compared} weak
+                      cards improved
+                      {settlement.drill.steady > 0 ? `, ${settlement.drill.steady} steady` : ''}
+                      {settlement.drill.slipped > 0
+                        ? `, ${settlement.drill.slipped} slipped — another drill may help`
+                        : ''}
+                      .
+                    </Callout>
+                  </div>
+                ) : null}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Panel className="p-3">
                     <p className="text-xs text-faint">Score</p>

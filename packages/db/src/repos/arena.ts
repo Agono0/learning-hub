@@ -268,6 +268,7 @@ export function createArenaSession(
     archetype: string
     boss: boolean
     modifier?: string | null
+    drillOfRunId?: string | null
   },
   db: LearningHubDB = getDb(),
 ): ArenaSessionRow {
@@ -282,6 +283,7 @@ export function createArenaSession(
       archetype: input.archetype,
       boss: input.boss,
       modifier: input.modifier ?? null,
+      drillOfRunId: input.drillOfRunId ?? null,
       status: 'open',
     })
     .returning()
@@ -291,7 +293,7 @@ export function createArenaSession(
 
 export function getArenaSession(
   id: string,
-  db: LearningHubDB = getDb(),
+  db: LearningHubDB | Transaction = getDb(),
 ): ArenaSessionRow | undefined {
   return db.select().from(arenaSessions).where(eq(arenaSessions.id, id)).limit(1).all()[0]
 }

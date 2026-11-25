@@ -46,6 +46,7 @@ import { maxFocusSessions } from './033-max-focus-sessions'
 import { spTaskColumns } from './034-sp-task-columns'
 import { taskFts } from './035-task-fts'
 import { arenaSessionModifier } from './036-arena-session-modifier'
+import { arenaSessionDrillOf } from './037-arena-session-drill-of'
 import type { Migration } from './runner'
 
 export const MIGRATIONS: readonly Migration[] = [
@@ -85,6 +86,7 @@ export const MIGRATIONS: readonly Migration[] = [
   spTaskColumns,
   taskFts,
   arenaSessionModifier,
+  arenaSessionDrillOf,
 ]
 
 export { createMigrationContext, runMigrations, assertMigrationOrder } from './runner'
