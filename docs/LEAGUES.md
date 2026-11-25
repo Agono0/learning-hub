@@ -366,7 +366,8 @@ learning-hub leagues-remote invite-new <serverUrl> <leagueId> [--uses N] [--hour
 
 Read tools: `remote_league_links`, `remote_league_queue`. Enqueue tools:
 `remote_league_rename`, `remote_league_leave`, `remote_league_invite_revoke`,
-`remote_league_invite_policy`. There is deliberately no MCP tool that makes an
+`remote_league_invite_policy`, `remote_league_remove_member`,
+`remote_league_unblock_member`. There is deliberately no MCP tool that makes an
 invite code, so an agent never holds one.
 
 ### Spectating

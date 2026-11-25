@@ -482,4 +482,18 @@ export const remoteLeagueMembershipTools: RegisteredTool[] = [
     { ...remoteTarget, required: z.boolean() },
     ({ required, ...target }) => queueRemoteMutation(target, { type: 'invite-policy', required }),
   ),
+  tool(
+    'remote_league_remove_member',
+    'Queue removing a member and blocking their handle (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, handle: z.string().min(1).max(80) },
+    ({ handle, ...target }) =>
+      queueRemoteMutation(target, { type: 'remove-member', target: handle }),
+  ),
+  tool(
+    'remote_league_unblock_member',
+    'Queue lifting a block on a handle (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, handle: z.string().min(1).max(80) },
+    ({ handle, ...target }) =>
+      queueRemoteMutation(target, { type: 'unblock-member', target: handle }),
+  ),
 ]
