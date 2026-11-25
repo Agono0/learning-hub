@@ -542,3 +542,18 @@ export function listSettledGradeLogs(
   }
   return logs
 }
+
+/** Every settled run, oldest first, capped — the source for the record-book export. */
+export function listArenaRunsForExport(
+  opts: { userId?: string; limit?: number; db?: LearningHubDB } = {},
+): ArenaRunRow[] {
+  const db = opts.db ?? getDb()
+  return db
+    .select()
+    .from(arenaRuns)
+    .where(eq(arenaRuns.userId, opts.userId ?? 'default'))
+    .orderBy(desc(arenaRuns.id))
+    .limit(Math.min(Math.max(opts.limit ?? 2000, 1), 5000))
+    .all()
+    .reverse()
+}

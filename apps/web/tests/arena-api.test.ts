@@ -28,6 +28,7 @@ type Modules = {
   arena: typeof import('../src/server/handlers/arena/route')
   history: typeof import('../src/server/handlers/arena/history/route')
   nemesis: typeof import('../src/server/handlers/arena/nemesis/route')
+  exportRoute: typeof import('../src/server/handlers/arena/export/route')
   historyId: typeof import('../src/server/handlers/arena/history/[id]/route')
   db: typeof import('@learning-hub/db')
   core: typeof import('@learning-hub/core')
@@ -114,12 +115,14 @@ beforeAll(async () => {
   const arenaMod = await import('../src/server/handlers/arena/route')
   const historyMod = await import('../src/server/handlers/arena/history/route')
   const nemesisMod = await import('../src/server/handlers/arena/nemesis/route')
+  const exportMod = await import('../src/server/handlers/arena/export/route')
   const historyIdMod = await import('../src/server/handlers/arena/history/[id]/route')
   const coreMod = await import('@learning-hub/core')
   M = {
     arena: arenaMod,
     history: historyMod,
     nemesis: nemesisMod,
+    exportRoute: exportMod,
     historyId: historyIdMod,
     db: dbMod,
     core: coreMod,
@@ -1003,5 +1006,45 @@ describe('Arena API — nemesis cards', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.nemeses.length).toBeLessThanOrEqual(20)
+  })
+})
+
+describe('Arena API — record-book export', () => {
+  it('serves CSV by default with an attachment header and one row per run', async () => {
+    const res = await M.exportRoute.GET(new Request('http://localhost/api/arena/export'))
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/csv')
+    expect(res.headers.get('content-disposition')).toMatch(
+      /attachment; filename="arena-record-\d{4}-\d{2}-\d{2}\.csv"/,
+    )
+    const text = await res.text()
+    const lines = text.trim().split('\r\n')
+    expect(lines[0]).toBe(
+      'run_id,played_at,result,guardian,boss,rounds,correct,accuracy_pct,best_combo,crits,score,coins,xp,duration_s,deck_ids',
+    )
+    const hist = await (
+      await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    ).json()
+    expect(lines.length - 1).toBe(hist.stats.runs)
+  })
+
+  it('serves versioned JSON flagged self-reported, totals matching the rows', async () => {
+    const res = await M.exportRoute.GET(
+      new Request('http://localhost/api/arena/export?format=json'),
+    )
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('application/json')
+    const doc = await res.json()
+    expect(doc.version).toBe(1)
+    expect(doc.selfReported).toBe(true)
+    expect(doc.runCount).toBe(doc.runs.length)
+    expect(doc.totals.victories + doc.totals.defeats).toBe(doc.runCount)
+    const ids = doc.runs.map((r: { id: number }) => r.id)
+    expect([...ids].sort((a: number, b: number) => a - b)).toEqual(ids)
+  })
+
+  it('rejects an unknown format', async () => {
+    const res = await M.exportRoute.GET(new Request('http://localhost/api/arena/export?format=xml'))
+    expect(res.status).toBe(400)
   })
 })
