@@ -468,6 +468,7 @@ export const NAV: NavGroup[] = [
         shortLabel: 'Weekly',
       },
       { href: '/physiology', label: 'Physiology', icon: Dumbbell },
+      { href: '/implementation-intentions', label: 'Implementation Intentions', icon: Sparkles },
     ],
   },
   {

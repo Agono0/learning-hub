@@ -63,6 +63,14 @@ piece by piece before composing on their own.
 
 ---
 
+### Implementation Intentions & Habit Formation — Gollwitzer (1999); Lally et al. (2009); Oettingen & Gollwitzer (2010)
+
+"If situation X arises, then I will do Y" moves goal-directed behavior under situational control; habits then grow automatic along an asymptotic curve.
+
+- **Evidence:** Gollwitzer & Sheeran's (2006) meta-analysis reports d ≈ 0.65 for goal attainment; Lally et al. (2009) found a median of 66 days to 95% automaticity (range 18-254), with single missed opportunities not disrupting formation; MCII outperforms either technique alone.
+- **In Learning HUB:** the Implementation Intentions Studio — if-then plan builder with a transparent quality rubric, Lally-curve automaticity projection, MCII obstacle library, and an FSRS-6 bridge deck. Core `packages/core/src/implementation-intentions/`, page `apps/web/app/implementation-intentions/`, API `apps/web/app/api/implementation-intentions/`, MCP `ii_*` tools, CLI `ii-*` commands, server `/discipline/ii/*`; docs [implementation-intentions.md](implementation-intentions.md).
+- **Status:** ✅
+
 ## 2. Early modern (1600 – 1900)
 
 ### Dual coding (pictures + words) — Comenius, _Orbis Pictus_, 1658

@@ -72,6 +72,7 @@ import {
   zpdCommands,
 } from './commands/advanced-learning'
 import { prototypeExemplarCommands } from './commands/prototype-exemplar'
+import { implementationIntentionCommands } from './commands/implementation-intentions'
 import { feedbackCommands } from './commands/feedback'
 import { shareChannelCommands } from './commands/share-channels'
 import { cognitiveLoadCommands } from './commands/cognitive-load'
@@ -142,6 +143,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...systemDynamicsCommands,
   ...modelInquiryCommands,
   ...prototypeExemplarCommands,
+  ...implementationIntentionCommands,
   ...feedbackCommands,
   ...shareChannelCommands,
   ...cognitiveLoadCommands,
