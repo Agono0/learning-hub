@@ -178,7 +178,7 @@ describe('redirects through the pinned adapter (stub resolver)', () => {
         allowHttp: true,
         fetchFn,
       }),
-    ).rejects.toBeInstanceOf(BoundedFetchError)
+    ).rejects.toMatchObject({ code: 'blocked' })
     expect(calls).toEqual(['a.test', 'evil.test'])
     expect(httpSeen.length).toBe(before + 1)
   })

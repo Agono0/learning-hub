@@ -255,6 +255,13 @@ export async function boundedFetchText(
   } catch (err) {
     if (err instanceof BoundedFetchError) throw err
     if (signal.aborted) throw new BoundedFetchError('timeout', 'The request timed out')
+    // A refusal by the connect-time address policy is a policy decision, not a network fault.
+    if (err instanceof Error && err.name === 'AddressRefusedError') {
+      throw new BoundedFetchError(
+        'blocked',
+        'Private, local and internal addresses are not allowed',
+      )
+    }
     // Never echo the underlying message: it can carry the host or URL (secret iCal tokens).
     const code = (err as { code?: unknown } | null)?.code
     throw new BoundedFetchError(
