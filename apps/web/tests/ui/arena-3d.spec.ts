@@ -126,7 +126,7 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
   // victory precedence (queue cleared) would win the final exchange instead.
   // Again counter is 12; the first hit is shielded (11 taken), so HP 60
   // reaches 0 on the 6th Again with 3 cards still in the queue.
-  const deckId = await seedArenaDeck(request, CARD_COUNT + 3)
+  const deckId = await seedArenaDeck(request, CARD_COUNT + 9)
 
   await page.goto('/arena-3d')
   await expect(page.getByRole('heading', { name: 'Review Arena', level: 1 })).toBeVisible({
@@ -136,8 +136,9 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
   await page.getByTestId('arena-start').click()
   await expect(page.getByTestId('arena-session')).toBeVisible()
 
+  const queueLabel = await page.getByTestId('guardian-progress-label').textContent()
   const track = trackSettlements(page)
-  for (let round = 0; round < 6; round++) {
+  for (let round = 0; round < 8; round++) {
     // The run can end on any grade; once the HUD leaves the fighting state the
     // reveal/grade controls disappear, so a short-timeout miss means "done".
     try {
@@ -149,7 +150,10 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
   }
 
   await expectSettled(page, track)
-  await expect(page.getByTestId('arena-result-badge')).toHaveText('Defeat')
+  await expect(
+    page.getByTestId('arena-result-badge'),
+    `defeat expected before the queue emptied (last HUD label: ${queueLabel}; ${track.lastReport()})`,
+  ).toHaveText('Defeat')
 })
 
 test('reduced motion: the canvas never mounts and the DOM loop still completes', async ({
