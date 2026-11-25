@@ -13,6 +13,7 @@ import {
   createLeagueTournament,
   exportLeague,
   importLeague,
+  leagueDivisionDetail,
   leagueHeadToHead,
   listLeagueAchievements,
   syncLeagueAchievements,
@@ -91,6 +92,16 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'league_division',
+    'Focused view of one division: standings with Elo, round-win history, promotion/relegation movement, and duels between current members.',
+    { slug: z.string().min(1), tier: tierEnum },
+    ({ slug, tier }) => {
+      const division = leagueDivisionDetail(slug, tier)
+      if (!division) throw new Error(`league not found: ${slug}`)
+      return json({ ok: true, division })
+    },
   ),
   tool(
     'league_achievements',

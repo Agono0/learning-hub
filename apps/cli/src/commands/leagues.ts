@@ -26,6 +26,7 @@
  *   leagues tournament list [--league <slug>] [--status open|complete]
  *   leagues h2h <slug> <handleA> <handleB>
  *   leagues achievements <slug> <handle>
+ *   leagues division <slug> <tier>
  *   leagues export <slug> [--out FILE]
  *   leagues import <file>
  */
@@ -40,6 +41,7 @@ import {
   exportLeague,
   getLeagueBySlug,
   importLeague,
+  leagueDivisionDetail,
   leagueHeadToHead,
   listLeagueAchievements,
   syncLeagueAchievements,
@@ -552,6 +554,47 @@ function achievementsCommand(args: string[]): void {
   )
 }
 
+function divisionCommand(args: string[]): void {
+  const [slug, tier] = args
+  if (!slug || !tier) return fail('Usage: learning-hub leagues division <slug> <tier>')
+  if (!DIVISION_ORDER.includes(tier as DivisionTier))
+    return fail(`Unknown tier: ${tier} (${DIVISION_ORDER.join(', ')})`)
+  const d = leagueDivisionDetail(slug, tier as DivisionTier)
+  if (!d) return fail(`League not found: ${slug}`)
+  const lines = [
+    ...d.standings.map(
+      (p, i) => `#${i + 1} ${p.handle} — ${p.points} pts (${p.seasonPoints} season) · elo ${p.elo}`,
+    ),
+    ...(d.standings.length === 0 ? ['(empty division)'] : []),
+    ...(d.roundHistory.length > 0
+      ? [
+          '',
+          'Round winners:',
+          ...d.roundHistory.slice(0, 5).map((r) => `  round ${r.round}: ${r.winner}`),
+        ]
+      : []),
+    ...(d.movements.length > 0
+      ? [
+          '',
+          'Movement:',
+          ...d.movements
+            .slice(0, 8)
+            .map((m) => `  round ${m.round}: ${m.handle} ${m.kind.replace('_', ' ')}`),
+        ]
+      : []),
+    ...(d.duels.length > 0
+      ? [
+          '',
+          'Division duels:',
+          ...d.duels
+            .slice(0, 5)
+            .map((x) => `  ${x.slug}: ${x.playerA} vs ${x.playerB} → ${x.winner ?? x.status}`),
+        ]
+      : []),
+  ]
+  console.log(panel(`${slug} — ${tier} division`, lines))
+}
+
 function leaguesCommand(args: string[]): void {
   const sub = args[0] || 'list'
   if (sub === 'list') return listLeaguesCommand()
@@ -567,6 +610,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'seasons') return seasonsCommand(args.slice(1))
   if (sub === 'h2h') return h2hCommand(args.slice(1))
   if (sub === 'achievements') return achievementsCommand(args.slice(1))
+  if (sub === 'division') return divisionCommand(args.slice(1))
   if (sub === 'export') return exportCommand(args.slice(1))
   if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
