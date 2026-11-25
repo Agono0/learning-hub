@@ -23,6 +23,7 @@ const day = 86_400_000
 const iso = (d: number) => new Date(Date.now() + d * day).toISOString()
 const futureDate = (d: number) => iso(d).slice(0, 10)
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function get(qs = ''): Promise<{ status: number; body: any }> {
   const res = await M.route.GET(new Request(`http://localhost/api/readiness${qs}`))
   return { status: res.status, body: await res.json() }

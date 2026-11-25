@@ -164,6 +164,7 @@ export const NAV: NavGroup[] = [
         shortLabel: 'Sleep',
       },
       { href: '/workload', label: 'Workload', icon: Gauge },
+      { href: '/readiness', label: 'Exam readiness', icon: Target, shortLabel: 'Readiness' },
     ],
   },
   {
