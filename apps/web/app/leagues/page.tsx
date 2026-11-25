@@ -19,6 +19,8 @@ type LeagueRow = {
   seasonStart: string
   roundLengthDays: number
   currentRound: number
+  season: number
+  seasonLengthRounds: number
   promotionSlots: number
   relegationSlots: number
 }
@@ -398,7 +400,8 @@ function StandingsTab({
           <Panel>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold">
-                {detail.league.title} — round {detail.league.currentRound}
+                {detail.league.title} — season {detail.league.season} · round{' '}
+                {detail.league.currentRound} of {detail.league.seasonLengthRounds}
               </h2>
               {detail.champion && (
                 <Badge tone="success" data-testid="champion-badge">

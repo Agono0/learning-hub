@@ -2056,6 +2056,8 @@ export const leagues = table('leagues', {
   seasonStart: text('season_start').notNull(),
   roundLengthDays: integer('round_length_days').notNull().default(7),
   currentRound: integer('current_round').notNull().default(0),
+  season: integer('season').notNull().default(1),
+  seasonLengthRounds: integer('season_length_rounds').notNull().default(10),
   promotionSlots: integer('promotion_slots').notNull().default(3),
   relegationSlots: integer('relegation_slots').notNull().default(3),
   scoringJson: text('scoring', { mode: 'json' })
@@ -2179,6 +2181,37 @@ export const leagueEloEvents = table(
   (t) => [
     index('league_elo_events_league_idx').on(t.leagueId),
     index('league_elo_events_handle_idx').on(t.leagueId, t.handle),
+  ],
+)
+
+/** Archived seasons: one row per completed season with the final table. */
+export const leagueSeasons = table(
+  'league_seasons',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    season: integer('season').notNull(),
+    champion: text('champion'),
+    finalStandingsJson: text('final_standings', { mode: 'json' })
+      .$type<
+        {
+          handle: string
+          tier: string
+          seasonPoints: number
+          roundsWon: number
+          elo: number
+        }[]
+      >()
+      .notNull(),
+    closedAt: text('closed_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    uniqueIndex('league_seasons_league_season_uidx').on(t.leagueId, t.season),
+    index('league_seasons_league_idx').on(t.leagueId),
   ],
 )
 

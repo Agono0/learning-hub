@@ -19,6 +19,7 @@ import {
   listLeaguePlayers,
   listLeagueRounds,
   listLeagueRows,
+  listLeagueSeasons,
   listLeagueTournaments,
   openTournamentMatches,
   recordTournamentMatchResult,
@@ -50,10 +51,19 @@ export const leagueTools: RegisteredTool[] = [
       title: z.string().min(1).max(200),
       seasonStart: z.string().optional().describe('ISO date of round 1; defaults to today'),
       roundLengthDays: z.number().int().min(1).max(28).optional(),
+      seasonLengthRounds: z.number().int().min(2).max(52).optional(),
       promotionSlots: z.number().int().min(1).max(10).optional(),
       relegationSlots: z.number().int().min(0).max(10).optional(),
     },
-    ({ slug, title, seasonStart, roundLengthDays, promotionSlots, relegationSlots }) =>
+    ({
+      slug,
+      title,
+      seasonStart,
+      roundLengthDays,
+      seasonLengthRounds,
+      promotionSlots,
+      relegationSlots,
+    }) =>
       json({
         ok: true,
         league: createLeagueRow({
@@ -61,6 +71,7 @@ export const leagueTools: RegisteredTool[] = [
           title,
           seasonStart,
           roundLengthDays,
+          seasonLengthRounds,
           promotionSlots,
           relegationSlots,
         }),
@@ -74,6 +85,12 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'league_seasons',
+    'Archived seasons for a league (champion + final table), newest first.',
+    { slug: z.string().min(1) },
+    ({ slug }) => json({ ok: true, seasons: listLeagueSeasons(slug) }),
   ),
   tool(
     'league_player_profile',

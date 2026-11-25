@@ -3,11 +3,13 @@ import {
   awardPoints,
   buildDuelPromptsFromCards,
   closeRound,
+  closeSeason,
   createLeague,
   createTournament,
   decideDuel,
   duelEloUpdate,
   isRoundDue,
+  isSeasonComplete,
   roundEndsAt,
   isDuelComplete,
   joinLeague,
@@ -17,6 +19,59 @@ import {
   scoreDuelSide,
   type Duel,
 } from '../src/leagues'
+
+describe('seasons', () => {
+  it('isSeasonComplete tracks rounds against the season length', () => {
+    let league = createLeague({
+      id: 's1',
+      title: 'Season Cup',
+      seasonStart: '2026-01-05',
+      seasonLengthRounds: 2,
+    })
+    league = joinLeague(league, 'fox')
+    expect(isSeasonComplete(league)).toBe(false)
+    league = closeRound(league).league
+    expect(isSeasonComplete(league)).toBe(false)
+    league = closeRound(league).league
+    expect(isSeasonComplete(league)).toBe(true)
+  })
+
+  it('closeSeason crowns the leader, archives the table and resets to bronze', () => {
+    let league = createLeague({
+      id: 's2',
+      title: 'Season Cup',
+      seasonStart: '2026-01-05',
+      seasonLengthRounds: 2,
+    })
+    league = joinLeague(league, 'fox')
+    league = joinLeague(league, 'owl')
+    league = awardPoints(league, { kind: 'reviews', handle: 'fox', count: 50 })
+    league = awardPoints(league, { kind: 'reviews', handle: 'owl', count: 10 })
+    league = closeRound(league).league // both promote; fox won bronze
+
+    const result = closeSeason(league, '2026-02-01')
+    expect(result.season).toBe(1)
+    expect(result.champion).toBe('fox')
+    expect(result.finalStandings[0]!.handle).toBe('fox')
+
+    const next = result.league
+    expect(next.season).toBe(2)
+    expect(next.currentRound).toBe(0)
+    expect(next.seasonStart).toBe('2026-02-01')
+    for (const p of next.players) {
+      expect(p.tier).toBe('bronze')
+      expect(p.points).toBe(0)
+      expect(p.seasonPoints).toBe(0)
+    }
+    // career stats persist across seasons
+    expect(next.players.find((p) => p.handle === 'fox')!.roundsWon).toBe(1)
+  })
+
+  it('crowns nobody in an empty league', () => {
+    const league = createLeague({ id: 's3', title: 'Empty', seasonStart: '2026-01-05' })
+    expect(closeSeason(league, '2026-02-01').champion).toBeNull()
+  })
+})
 
 describe('round scheduling', () => {
   const league = createLeague({

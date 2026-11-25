@@ -38,6 +38,10 @@ export const LeagueSchema = z.object({
   seasonStart: z.string().min(1),
   roundLengthDays: z.number().int().min(1).max(28).default(7),
   currentRound: z.number().int().nonnegative().default(0),
+  /** 1-based season counter; bumps at season close. */
+  season: z.number().int().positive().default(1),
+  /** Rounds per season; closing the last round ends the season. */
+  seasonLengthRounds: z.number().int().min(2).max(52).default(10),
   players: z.array(LeaguePlayerSchema),
   /** How many promote/relegate per division at round end. */
   promotionSlots: z.number().int().min(1).max(10).default(3),
@@ -59,6 +63,7 @@ export interface LeagueInput {
   title: string
   seasonStart: string
   roundLengthDays?: number
+  seasonLengthRounds?: number
   promotionSlots?: number
   relegationSlots?: number
 }
@@ -70,6 +75,7 @@ export function createLeague(input: LeagueInput): League {
     title: input.title,
     seasonStart: input.seasonStart,
     roundLengthDays: input.roundLengthDays ?? 7,
+    seasonLengthRounds: input.seasonLengthRounds ?? 10,
     currentRound: 0,
     players: [],
     promotionSlots: input.promotionSlots ?? 3,
@@ -224,6 +230,59 @@ export function roundEndsAt(league: LeagueSchedule): Date {
 /** True once the current round's end instant has passed. */
 export function isRoundDue(league: LeagueSchedule, now: Date = new Date()): boolean {
   return now.getTime() >= roundEndsAt(league).getTime()
+}
+
+/** True when the league has played its full season (all rounds closed). */
+export function isSeasonComplete(league: League): boolean {
+  return league.currentRound >= league.seasonLengthRounds
+}
+
+export interface SeasonResult {
+  /** The league reset for the next season. */
+  league: League
+  /** Season that just ended (1-based). */
+  season: number
+  /** Leader of the highest non-empty division at close; null for an empty league. */
+  champion: string | null
+  /** Final table across all divisions, best first. */
+  finalStandings: LeaguePlayer[]
+}
+
+/**
+ * End the season: crown the champion (the leader at close — season points
+ * break ties inside a division, and higher divisions outrank lower ones),
+ * archive the final table, and reset everyone to bronze with zeroed points
+ * for the next season. Elo, roundsWon and duel records persist across
+ * seasons — they are career stats, not seasonal ones.
+ */
+export function closeSeason(league: League, today: string): SeasonResult {
+  const champion = leagueLeader(league)?.handle ?? null
+  const finalStandings = league.players
+    .map((p) => ({ ...p }))
+    .sort(
+      (a, b) =>
+        DIVISION_ORDER.indexOf(b.tier) - DIVISION_ORDER.indexOf(a.tier) ||
+        b.seasonPoints - a.seasonPoints ||
+        a.handle.localeCompare(b.handle),
+    )
+  const players = league.players.map((p) => ({
+    ...p,
+    tier: 'bronze' as const,
+    points: 0,
+    seasonPoints: 0,
+  }))
+  return {
+    league: LeagueSchema.parse({
+      ...league,
+      players,
+      season: league.season + 1,
+      currentRound: 0,
+      seasonStart: today,
+    }),
+    season: league.season,
+    champion,
+    finalStandings,
+  }
 }
 
 /** Champion at any moment: leader of the highest non-empty division. */

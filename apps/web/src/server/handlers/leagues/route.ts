@@ -114,6 +114,7 @@ const postSchema = z.discriminatedUnion('action', [
     title: z.string().min(1).max(200),
     seasonStart: z.string().min(1).optional(),
     roundLengthDays: z.number().int().min(1).max(28).optional(),
+    seasonLengthRounds: z.number().int().min(2).max(52).optional(),
     promotionSlots: z.number().int().min(1).max(10).optional(),
     relegationSlots: z.number().int().min(0).max(10).optional(),
   }),

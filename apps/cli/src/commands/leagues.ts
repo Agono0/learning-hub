@@ -5,6 +5,7 @@
  *
  *   leagues list
  *   leagues create <slug> "<title>" [--season-start DATE] [--round-days N]
+ *                  [--season-rounds N]
  *                  [--promote N] [--relegate N]
  *   leagues join <slug> <handle>
  *   leagues standings <slug> [--tier bronze|silver|gold|platinum|diamond]
@@ -14,6 +15,7 @@
  *   leagues close-round <slug>
  *   leagues close-due
  *   leagues rounds <slug>
+ *   leagues seasons <slug>
  *   leagues duel create <slug> <playerA> <playerB> [--league <slug>]
  *                      --prompt "id::question::ans1|ans2" [--prompt …]
  *   leagues duel answer <slug> <A|B> --answer "promptId::answer::ms" [--answer …]
@@ -40,6 +42,7 @@ import {
   listLeaguePlayers,
   listLeagueRounds,
   listLeagueRows,
+  listLeagueSeasons,
   listLeagueTournaments,
   openTournamentMatches,
   recordTournamentMatchResult,
@@ -103,6 +106,7 @@ function createLeagueCommand(args: string[]): void {
       title,
       seasonStart: parseFlag(args, '--season-start'),
       roundLengthDays: num(parseFlag(args, '--round-days')),
+      seasonLengthRounds: num(parseFlag(args, '--season-rounds')),
       promotionSlots: num(parseFlag(args, '--promote')),
       relegationSlots: num(parseFlag(args, '--relegate')),
     })
@@ -217,6 +221,20 @@ function profileCommand(args: string[]): void {
     `elo ${player.elo}${eloHistory.length > 0 ? ` (${eloHistory[0]!.result} ${eloHistory[0]!.eloBefore} → ${eloHistory[0]!.eloAfter} vs ${eloHistory[0]!.opponent})` : ''}`,
   ]
   console.log(panel(`${handle} @ ${slug}`, lines))
+}
+
+function seasonsCommand(args: string[]): void {
+  const [slug] = args
+  if (!slug) return fail('Usage: learning-hub leagues seasons <slug>')
+  const seasons = listLeagueSeasons(slug)
+  if (seasons.length === 0) return console.log(`No completed seasons for ${slug} yet.`)
+  for (const s of seasons) {
+    const top = s.finalStandingsJson[0]
+    console.log(
+      `season ${s.season} · champion ${s.champion ?? '—'} · ${s.finalStandingsJson.length} players` +
+        (top ? ` · top: ${top.handle} (${top.tier}, ${top.seasonPoints} pts)` : ''),
+    )
+  }
 }
 
 function closeDueCommand(): void {
@@ -463,6 +481,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'close-round') return closeRoundCommand(args.slice(1))
   if (sub === 'close-due') return closeDueCommand()
   if (sub === 'rounds') return roundsCommand(args.slice(1))
+  if (sub === 'seasons') return seasonsCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
   if (sub === 'tournament') return tournamentCommand(args.slice(1))
   fail(USAGE)
