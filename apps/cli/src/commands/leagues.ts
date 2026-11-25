@@ -24,6 +24,8 @@
  *   leagues tournament open <slug>
  *   leagues tournament result <slug> <round> <position> <winner> [--duel <id>]
  *   leagues tournament list [--league <slug>] [--status open|complete]
+ *   leagues export <slug> [--out FILE]
+ *   leagues import <file>
  */
 import {
   awardLeaguePoints,
@@ -33,7 +35,9 @@ import {
   createLeagueDuel,
   createLeagueRow,
   createLeagueTournament,
+  exportLeague,
   getLeagueBySlug,
+  importLeague,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -49,6 +53,7 @@ import {
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER, type DivisionTier } from '@learning-hub/core'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { panel } from './ui'
 import type { RegisteredCommand } from './registry'
 
@@ -469,6 +474,36 @@ function tournamentCommand(args: string[]): void {
   fail('Usage: learning-hub leagues tournament [create|open|result|list] …')
 }
 
+function exportCommand(args: string[]): void {
+  const slug = args[0]
+  if (!slug) return fail('Usage: learning-hub leagues export <slug> [--out FILE]')
+  const transfer = exportLeague(slug)
+  if (!transfer) return fail(`League not found: ${slug}`)
+  const json = JSON.stringify(transfer, null, 2)
+  const out = parseFlag(args, '--out')
+  if (out) {
+    writeFileSync(out, json, 'utf8')
+    console.log(
+      `Exported ${slug} to ${out} (${transfer.payload.players.length} players, ${transfer.payload.duels.length} duels, ${transfer.payload.rounds.length} closed rounds).`,
+    )
+  } else {
+    console.log(json)
+  }
+}
+
+function importCommand(args: string[]): void {
+  const file = args[0]
+  if (!file) return fail('Usage: learning-hub leagues import <file>')
+  if (!existsSync(file)) return fail(`File not found: ${file}`)
+  const raw = readFileSync(file, 'utf8')
+  try {
+    const league = importLeague(raw)
+    console.log(`Imported league '${league.slug}' (${league.title}).`)
+  } catch (err) {
+    fail(err instanceof Error ? err.message : 'import failed')
+  }
+}
+
 function leaguesCommand(args: string[]): void {
   const sub = args[0] || 'list'
   if (sub === 'list') return listLeaguesCommand()
@@ -482,6 +517,8 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'close-due') return closeDueCommand()
   if (sub === 'rounds') return roundsCommand(args.slice(1))
   if (sub === 'seasons') return seasonsCommand(args.slice(1))
+  if (sub === 'export') return exportCommand(args.slice(1))
+  if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
   if (sub === 'tournament') return tournamentCommand(args.slice(1))
   fail(USAGE)

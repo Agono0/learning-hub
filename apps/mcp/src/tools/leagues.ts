@@ -11,6 +11,8 @@ import {
   createLeagueDuel,
   createLeagueRow,
   createLeagueTournament,
+  exportLeague,
+  importLeague,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -85,6 +87,22 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'league_export',
+    'Export a league as a portable, checksummed transfer envelope (full state: players, rounds, duels, tournaments, seasons, Elo history).',
+    { slug: z.string().min(1) },
+    ({ slug }) => {
+      const transfer = exportLeague(slug)
+      if (!transfer) throw new Error(`league not found: ${slug}`)
+      return json({ ok: true, transfer })
+    },
+  ),
+  tool(
+    'league_import',
+    'Import a league transfer envelope as a NEW league (its slug and duel/tournament slugs must be free).',
+    { transfer: z.unknown() },
+    ({ transfer }) => json({ ok: true, slug: importLeague(transfer).slug }),
   ),
   tool(
     'league_seasons',
