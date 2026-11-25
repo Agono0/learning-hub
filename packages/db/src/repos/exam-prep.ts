@@ -106,7 +106,8 @@ export async function runExamPrep(
     maxReviewsPerCard: q.maxReviewsPerCard,
     restWeekdays: q.restWeekdays,
   })
-  if (!plan) return { ok: false, status: 422, error: 'exam date is not a valid date' }
+  if (!plan)
+    return { ok: false, status: 422, error: 'exam date is invalid or more than 366 days away' }
 
   const ids = [...new Set(plan.days.flatMap((d) => d.reviews.map((r) => r.cardId)))]
   const labels = new Map<number, string>()

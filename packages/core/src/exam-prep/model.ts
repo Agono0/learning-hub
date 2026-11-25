@@ -29,6 +29,12 @@ export const PREP_DEFAULTS = {
   maxReviewsPerCard: 3,
   maxPerDay: 500,
   maxCards: 4000,
+  /** Hard ceiling on maxCards, whatever a caller asks for. */
+  maxCardsCeiling: 8000,
+  /** Farthest exam the planner accepts. Longer horizons are refused, not silently shortened. */
+  maxHorizonDays: 366,
+  /** Upper bound on (cards considered x study days), about 3.5 s of CPU in one request. */
+  maxCardDays: 300_000,
 } as const
 
 /** One card on one day, in the order to review it. */

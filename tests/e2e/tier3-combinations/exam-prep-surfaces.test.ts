@@ -184,6 +184,15 @@ describe('Tier 3 E2E: exam prep through API, CLI, MCP and the review queue', () 
     const mcp = await client.callTool<Body>('exam_prep_plan', { date: 'soon' })
     expect(mcp.ok).toBe(false)
 
+    const far = '2999-01-01'
+    expect(
+      (await callRoute<Body>(examPrepRoute.GET, { method: 'GET', query: { date: far } })).status,
+    ).toBe(422)
+    expect(
+      (await runCli(['exam-prep', 'plan', '--date', far], getActiveDbPath())).exitCode,
+    ).not.toBe(0)
+    expect((await client.callTool<Body>('exam_prep_plan', { date: far })).ok).toBe(false)
+
     const [c] = await db.select().from(cards).where(eq(cards.deckId, deckId)).limit(1)
     await db.update(cards).set({ suspended: true }).where(eq(cards.id, c!.id))
     const bad = await callRoute<ReviewBody>(reviewRoute.GET, {

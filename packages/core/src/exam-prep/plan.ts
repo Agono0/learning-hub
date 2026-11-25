@@ -48,7 +48,6 @@ export async function planExamPrep(
     10,
     PREP_DEFAULTS.maxReviewsPerCard,
   )
-  const maxCards = clampInt(options.maxCards, 1, 50000, PREP_DEFAULTS.maxCards)
   const rest = [
     ...new Set((options.restWeekdays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)),
   ].sort()
@@ -60,6 +59,16 @@ export async function planExamPrep(
   const { startOfDay, getScheduler, reviewOnce, fsrsRecall, toFsrs } = simulationKit
   const first = startOfDay(now)
   const last = startOfDay(exam)
+  // A far-off exam is refused rather than shortened: a plan that stops early would not describe exam day.
+  if ((last - first) / MS_PER_DAY > PREP_DEFAULTS.maxHorizonDays) return null
+  const horizon = Math.max(1, (last - first) / MS_PER_DAY)
+  const maxCards = Math.max(
+    1,
+    Math.min(
+      clampInt(options.maxCards, 1, PREP_DEFAULTS.maxCardsCeiling, PREP_DEFAULTS.maxCards),
+      Math.floor(PREP_DEFAULTS.maxCardDays / horizon),
+    ),
+  )
   const expired = exam.getTime() <= now.getTime()
 
   const state: Live[] = seen.map((src) => ({

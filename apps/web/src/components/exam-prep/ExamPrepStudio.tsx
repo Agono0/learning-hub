@@ -184,7 +184,9 @@ export function ExamPrepStudio() {
                   <Callout tone="neutral">
                     You have a very large collection. The schedule only considers the{' '}
                     {plan.summary.consideredCards} cards the model expects you to remember least on
-                    exam day. The other cards are counted at their no-review figure.
+                    exam day, which is a prioritization and not a full-collection optimal plan. The
+                    other {plan.summary.seenCards - plan.summary.consideredCards} cards are counted
+                    at their no-review figure.
                   </Callout>
                 )}
                 {plan.summary.capacityBound && (

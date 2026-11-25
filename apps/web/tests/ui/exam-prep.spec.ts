@@ -199,3 +199,42 @@ for (const view of [
     })
   })
 }
+
+for (const view of [
+  { name: 'desktop', width: 1280, height: 900 },
+  { name: 'narrow', width: 390, height: 844 },
+]) {
+  test(`exam prep discloses the card cap (${view.name})`, async ({ page }) => {
+    await page.setViewportSize({ width: view.width, height: view.height })
+    await page.route('**/api/exam-prep**', (route) =>
+      route.fulfill({
+        json: {
+          ...plan,
+          plan: {
+            ...plan.plan,
+            summary: {
+              ...plan.plan.summary,
+              truncated: true,
+              consideredCards: 4000,
+              seenCards: 9000,
+            },
+          },
+        },
+      }),
+    )
+    await page.route('**/api/readiness**', (route) =>
+      route.fulfill({
+        json: { ok: true, exams: [{ id: 7, title: 'Finals', date: '2026-12-15', courseId: null }] },
+      }),
+    )
+    await page.goto('/exam-prep')
+    await page.getByTestId('prep-exam').selectOption('7')
+    const note = page.getByText(
+      'only considers the 4000 cards the model expects you to remember least',
+    )
+    await expect(note).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('not a full-collection optimal plan')).toBeVisible()
+    await note.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: `ui-screenshots/exam-prep-cap-note-${view.name}.png` })
+  })
+}
