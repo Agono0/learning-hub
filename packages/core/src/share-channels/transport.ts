@@ -38,6 +38,8 @@ import {
   type MergeResult,
   type Subscription,
 } from './engine'
+import { BodyLimitError, MAX_MANIFEST_BODY_BYTES, readBoundedText } from './bounded-body'
+import { checkHostUrl, MAX_REDIRECT_HOPS, type HostPolicyOptions } from './host-policy'
 
 /* ==========================================================================
  * ERRORS
@@ -58,6 +60,10 @@ export type TransportErrorCode =
   | 'not-found'
   /** The host did not answer within the configured timeout. */
   | 'timeout'
+  /** The destination or a redirect was refused by the host URL policy. Never retried. */
+  | 'host-refused'
+  /** The response body exceeded the size cap. Never retried. */
+  | 'too-large'
 
 export class TransportError extends Error {
   readonly code: TransportErrorCode
@@ -238,6 +244,13 @@ export interface HttpChannelTransportOptions {
   backoffBaseMs?: number
   /** Test hook overriding the backoff wait. */
   sleepFn?: (ms: number) => Promise<void>
+  /**
+   * Allow loopback hosts and plain http for them ONLY (local dev and tests).
+   * Off by default; never enables LAN or private addresses.
+   */
+  allowHttpLoopback?: boolean
+  /** Max response body bytes (default MAX_MANIFEST_BODY_BYTES). */
+  maxBodyBytes?: number
 }
 
 /**
@@ -252,6 +265,8 @@ export class HttpChannelTransport implements ChannelTransport {
   private readonly maxAttempts: number
   private readonly backoffBaseMs: number
   private readonly sleepFn: (ms: number) => Promise<void>
+  private readonly policy: HostPolicyOptions
+  private readonly maxBodyBytes: number
 
   constructor(opts: HttpChannelTransportOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, '')
@@ -260,6 +275,8 @@ export class HttpChannelTransport implements ChannelTransport {
     this.maxAttempts = Math.max(1, opts.maxAttempts ?? 3)
     this.backoffBaseMs = opts.backoffBaseMs ?? 250
     this.sleepFn = opts.sleepFn ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
+    this.policy = { allowHttpLoopback: opts.allowHttpLoopback === true }
+    this.maxBodyBytes = opts.maxBodyBytes ?? MAX_MANIFEST_BODY_BYTES
   }
 
   private manifestUrl(channelId: string): string {
@@ -297,6 +314,72 @@ export class HttpChannelTransport implements ChannelTransport {
     }
   }
 
+  /**
+   * The ONLY place this transport calls fetch. Every request (reads and
+   * publishes, every attempt, every redirect hop) passes the host URL policy
+   * first. Redirects are never followed by the runtime: same-origin hops are
+   * re-validated and re-issued here (GET only, at most MAX_REDIRECT_HOPS);
+   * cross-origin, downgrade and opaque redirects are refused.
+   */
+  private async guardedFetch(
+    rawUrl: string,
+    init: RequestInit,
+    channelId: string,
+  ): Promise<Response> {
+    const refuse = (reason: string): never => {
+      throw new TransportError('host-refused', `host refused: ${reason}`, { channelId })
+    }
+    const first = checkHostUrl(rawUrl, this.policy)
+    if (!first.ok) return refuse(first.reason)
+    const origin = first.url.origin
+    let current = first.url
+    for (let hop = 0; ; hop += 1) {
+      const res = await this.fetchFn(current.href, { ...init, redirect: 'manual' })
+      if (res.type === 'opaqueredirect') {
+        void res.body?.cancel().catch(() => undefined)
+        return refuse('opaque redirect cannot be validated')
+      }
+      const isRedirect = res.status >= 300 && res.status < 400 && res.status !== 304
+      if (!isRedirect) return res
+      void res.body?.cancel().catch(() => undefined)
+      if ((init.method ?? 'GET') !== 'GET') return refuse('redirect on a non-GET request')
+      const location = res.headers.get('location')
+      if (!location) return refuse('redirect without a location')
+      if (hop >= MAX_REDIRECT_HOPS) return refuse('too many redirects')
+      let next: URL
+      try {
+        next = new URL(location, current)
+      } catch {
+        return refuse('redirect to an invalid URL')
+      }
+      if (next.origin !== origin) return refuse('cross-origin redirect')
+      const verdict = checkHostUrl(next, this.policy)
+      if (!verdict.ok) return refuse(verdict.reason)
+      current = verdict.url
+    }
+  }
+
+  /** Read the body under the byte cap and parse it as JSON. */
+  private async readJsonBody(res: Response, channelId: string): Promise<unknown> {
+    let text: string
+    try {
+      text = await readBoundedText(res, this.maxBodyBytes)
+    } catch (err) {
+      if (err instanceof BodyLimitError && err.kind === 'too-large') {
+        throw new TransportError('too-large', err.message, { channelId })
+      }
+      if (err instanceof BodyLimitError) {
+        throw new TransportError('invalid-manifest', err.message, { channelId })
+      }
+      throw err
+    }
+    try {
+      return JSON.parse(text)
+    } catch {
+      throw new TransportError('invalid-manifest', 'response was not valid JSON', { channelId })
+    }
+  }
+
   private parseManifest(body: unknown, channelId: string): ChannelManifest {
     const parsed = ChannelManifestSchema.safeParse(body)
     if (!parsed.success) {
@@ -327,18 +410,25 @@ export class HttpChannelTransport implements ChannelTransport {
         const headers: Record<string, string> = { accept: 'application/json' }
         if (opts.inviteToken) headers['x-lh-invite-token'] = opts.inviteToken
         if (opts.ifNoneMatch) headers['if-none-match'] = opts.ifNoneMatch
-        const res = await this.withTimeout(
-          (signal) => this.fetchFn(this.manifestUrl(channelId), { method: 'GET', headers, signal }),
-          opts.signal,
-        )
-        if (res.status === 304) return null
-        if (!res.ok) {
-          throw new TransportError(codeForStatus(res.status), `host answered ${res.status}`, {
-            status: res.status,
+        // Fetch AND body read share one timeout so a host cannot drip bytes forever.
+        const body = await this.withTimeout(async (signal) => {
+          const res = await this.guardedFetch(
+            this.manifestUrl(channelId),
+            { method: 'GET', headers, signal },
             channelId,
-          })
-        }
-        return this.parseManifest(await res.json(), channelId)
+          )
+          if (res.status === 304) return null
+          if (!res.ok) {
+            void res.body?.cancel().catch(() => undefined)
+            throw new TransportError(codeForStatus(res.status), `host answered ${res.status}`, {
+              status: res.status,
+              channelId,
+            })
+          }
+          return { json: await this.readJsonBody(res, channelId) }
+        }, opts.signal)
+        if (body === null) return null
+        return this.parseManifest(body.json, channelId)
       } catch (err) {
         const wrapped =
           err instanceof TransportError
@@ -371,14 +461,14 @@ export class HttpChannelTransport implements ChannelTransport {
         if (opts.inviteSecret) headers['x-lh-invite-secret'] = opts.inviteSecret
         const res = await this.withTimeout(
           (signal) =>
-            this.fetchFn(this.manifestUrl(manifest.channelId), {
-              method: 'PUT',
-              headers,
-              body: JSON.stringify(manifest),
-              signal,
-            }),
+            this.guardedFetch(
+              this.manifestUrl(manifest.channelId),
+              { method: 'PUT', headers, body: JSON.stringify(manifest), signal },
+              manifest.channelId,
+            ),
           opts.signal,
         )
+        void res.body?.cancel().catch(() => undefined)
         if (!res.ok) {
           throw new TransportError(codeForStatus(res.status), `host answered ${res.status}`, {
             status: res.status,

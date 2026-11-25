@@ -28,6 +28,15 @@
 import { z } from 'zod'
 
 import { computeEnvelopeChecksum } from '../share/index'
+import {
+  MAX_CHANNEL_ID_LENGTH,
+  MAX_CONTENT_DEPTH,
+  MAX_CONTENT_NODES,
+  MAX_ITEM_CONTENT_BYTES,
+  MAX_ITEMS_PER_VERSION,
+  MAX_VERSIONS_PER_MANIFEST,
+  measureJson,
+} from './bounded-body'
 
 /* ==========================================================================
  * SCHEMAS
@@ -42,9 +51,20 @@ export type ChannelContentType = z.infer<typeof ChannelContentTypeSchema>
 /** One published item inside a channel payload (card, lesson, ...). */
 export const ChannelItemSchema = z.object({
   /** Stable id assigned by the publisher; never reused across versions. */
-  id: z.string().min(1),
-  /** Publisher-owned content; updates flow to subscribers. */
-  content: z.record(z.string(), z.unknown()),
+  id: z.string().min(1).max(MAX_CHANNEL_ID_LENGTH),
+  /**
+   * Publisher-owned content; updates flow to subscribers. Size, depth and node
+   * count are bounded so a manifest that fits the body cap cannot still expand
+   * into an unbounded in-memory tree.
+   */
+  content: z.record(z.string(), z.unknown()).superRefine((value, ctx) => {
+    const m = measureJson(value, {
+      maxBytes: MAX_ITEM_CONTENT_BYTES,
+      maxDepth: MAX_CONTENT_DEPTH,
+      maxNodes: MAX_CONTENT_NODES,
+    })
+    if (!m.ok) ctx.addIssue({ code: 'custom', message: `item content ${m.reason}` })
+  }),
   /** Monotonic per-item revision, bumped by the publisher on every change. */
   revision: z.number().int().nonnegative(),
 })
@@ -57,7 +77,7 @@ export const ChannelVersionSchema = z.object({
   changelog: z.string().max(500).default(''),
   /** Checksum over this version's items, for integrity verification. */
   checksum: z.string().min(4),
-  items: z.array(ChannelItemSchema),
+  items: z.array(ChannelItemSchema).max(MAX_ITEMS_PER_VERSION),
 })
 export type ChannelVersion = z.infer<typeof ChannelVersionSchema>
 
@@ -65,7 +85,7 @@ export type ChannelVersion = z.infer<typeof ChannelVersionSchema>
 export const ChannelManifestSchema = z.object({
   v: z.literal(2),
   schema: z.literal('lh-share/v2'),
-  channelId: z.string().min(1),
+  channelId: z.string().min(1).max(MAX_CHANNEL_ID_LENGTH),
   type: ChannelContentTypeSchema,
   title: z.string().min(1).max(200),
   description: z.string().max(1000).default(''),
@@ -74,7 +94,7 @@ export const ChannelManifestSchema = z.object({
   visibility: ChannelVisibilitySchema,
   createdAt: z.string(),
   currentVersion: z.number().int().positive(),
-  versions: z.array(ChannelVersionSchema).min(1),
+  versions: z.array(ChannelVersionSchema).min(1).max(MAX_VERSIONS_PER_MANIFEST),
 })
 export type ChannelManifest = z.infer<typeof ChannelManifestSchema>
 
