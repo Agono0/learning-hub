@@ -28,8 +28,12 @@ function trackSettlements(page: Page): { lastReport: () => string } {
   const seen: string[] = []
   page.on('response', (r) => {
     if (r.url().endsWith('/api/arena') && r.request().method() === 'POST') {
-      void r.text().then((t) => seen.push(`${r.status()} ${t.slice(0, 400)}`))
+      void r.text().then((t) => seen.push(`${r.status()} ${t.slice(0, 80)} ... ${t.slice(-160)}`))
     }
+  })
+  page.on('pageerror', (e) => seen.push(`pageerror: ${e.message.slice(0, 200)}`))
+  page.on('console', (m) => {
+    if (m.type() === 'error') seen.push(`console: ${m.text().slice(0, 200)}`)
   })
   return { lastReport: () => (seen.length ? seen.join(' | ') : 'no settlement POST seen') }
 }
