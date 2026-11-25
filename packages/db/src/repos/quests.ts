@@ -13,6 +13,7 @@ import {
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import {
+  arenaRuns,
   achievements,
   cards,
   certificates,
@@ -347,6 +348,16 @@ export function getAchievementStats(opts: { db?: LearningHubDB } = {}): Achievem
     .where(sql`${courseExamAttempts.score} >= 0.8`)
     .all()
 
+  const [arenaAgg] = db
+    .select({
+      runs: sql<number>`count(*)`,
+      victories: sql<number>`sum(case when ${arenaRuns.result} = 'victory' then 1 else 0 end)`,
+      bestCombo: sql<number>`coalesce(max(${arenaRuns.bestCombo}), 0)`,
+      bossWins: sql<number>`sum(case when ${arenaRuns.result} = 'victory' and ${arenaRuns.boss} = true then 1 else 0 end)`,
+    })
+    .from(arenaRuns)
+    .all()
+
   return {
     totalReviews: reviewCount?.n ?? 0,
     streakBest: streakRow?.best ?? 0,
@@ -363,6 +374,10 @@ export function getAchievementStats(opts: { db?: LearningHubDB } = {}): Achievem
     palacesBuilt: palaceCount?.n ?? 0,
     certificates: certificateCount?.n ?? 0,
     examsAced: examsAced?.n ?? 0,
+    arenaRuns: Number(arenaAgg?.runs ?? 0),
+    arenaVictories: Number(arenaAgg?.victories ?? 0),
+    arenaBestCombo: Number(arenaAgg?.bestCombo ?? 0),
+    arenaBossWins: Number(arenaAgg?.bossWins ?? 0),
   }
 }
 

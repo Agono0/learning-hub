@@ -105,6 +105,7 @@ interface SettlementResponse {
   reviewXp: number
   coinsAwarded: number
   coinBalance: number
+  achievements: string[]
   streak: { current: number; best: number } | null
 }
 
@@ -389,6 +390,13 @@ export default function Arena3DPage() {
         boss: final.boss,
       })
       setSettlement(response)
+      if (response.achievements.length > 0) {
+        toast({
+          tone: 'success',
+          title: `${response.achievements.length} badge${response.achievements.length > 1 ? 's' : ''} unlocked`,
+          description: response.achievements.join(', '),
+        })
+      }
     } catch {
       toast({
         tone: 'danger',
@@ -814,6 +822,20 @@ export default function Arena3DPage() {
                     </p>
                   </Panel>
                 </div>
+                {settlement.achievements.length > 0 ? (
+                  <div
+                    className="flex flex-wrap items-center gap-2"
+                    data-testid="results-achievements"
+                  >
+                    <span className="text-xs text-faint">Unlocked:</span>
+                    {settlement.achievements.map((key) => (
+                      <Badge key={key} tone="accent" data-testid={`achievement-${key}`}>
+                        {key.replace(/^arena_/, '').replaceAll('_', ' ')}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+
                 {arena && arena.exchanges.length > 0 ? (
                   <div>
                     <h3 className="mb-2 text-sm font-semibold">Round by round</h3>

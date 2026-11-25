@@ -119,6 +119,14 @@ export interface AchievementStats {
   certificates: number
   /** course exam attempts with score ≥ 0.8 */
   examsAced: number
+  /** settled review-arena runs */
+  arenaRuns: number
+  /** arena victories (queue cleared) */
+  arenaVictories: number
+  /** best combo ever landed in the arena */
+  arenaBestCombo: number
+  /** boss runs won (15+ challenge queues cleared) */
+  arenaBossWins: number
 }
 
 /** One achievement badge and its unlock predicate over AchievementStats. */
@@ -131,6 +139,31 @@ export interface Achievement {
 
 /** The full achievement catalog (white-hat milestones only). */
 export const ACHIEVEMENTS: Achievement[] = [
+  {
+    key: 'arena_first',
+    title: 'First Blood',
+    description: 'Finish your first Review Arena run.',
+    check: (s) => s.arenaRuns >= 1,
+  },
+  {
+    key: 'arena_10_wins',
+    title: 'Arena Regular',
+    description: 'Win 10 Review Arena runs. Retrieval under pressure, repeated.',
+    check: (s) => s.arenaVictories >= 10,
+  },
+  {
+    key: 'arena_combo_10',
+    title: 'Untouchable',
+    description: 'Land a 10-combo in the arena — ten confident strikes in a row.',
+    check: (s) => s.arenaBestCombo >= 10,
+  },
+  {
+    key: 'arena_boss_slayer',
+    title: 'Boss Slayer',
+    description: 'Win a boss run (15+ challenges). Long queues, held nerve.',
+    check: (s) => s.arenaBossWins >= 1,
+  },
+
   {
     key: 'first_review',
     title: 'First Step',
