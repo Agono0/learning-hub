@@ -1,4 +1,5 @@
 import {
+  normalizeAnswerSource,
   parseTemplate,
   UnsupportedModelError,
   validateTemplate,
@@ -80,7 +81,7 @@ export function readNotetype(model: unknown, fallbackName: string): ReadNotetype
       throw new UnsupportedModelError('bad-notetype', 'template ord invalid or duplicated')
     }
     const question = parseTemplate(t.qfmt)
-    const answer = parseTemplate(t.afmt)
+    const answer = parseTemplate(normalizeAnswerSource(t.afmt))
     validateTemplate(question, known, 'question')
     validateTemplate(answer, known, 'answer')
     collectKeys(question, referenced)

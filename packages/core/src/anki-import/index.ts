@@ -1,3 +1,4 @@
+export { normalizeAnswerSource, ANSWER_DIVIDER } from './template'
 export { mapUnmatchedModel, MAP_LIMITS } from './map'
 export type { MapResult, MappedCard, MappedNote } from './map'
 export { readNotetype, NOTETYPE_LIMITS, SPECIAL_FIELDS } from './notetype'

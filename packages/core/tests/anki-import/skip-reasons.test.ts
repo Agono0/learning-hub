@@ -216,33 +216,7 @@ describe('resource caps on the new path', () => {
   })
 })
 
-// Upstream stock templates, as rslib/src/notetype/stock.rs at tag 25.09.2 builds them with
-// format!("{}\n\n<hr id=answer>\n\n{}", fieldref("FrontSide"), fieldref(back)); read through the
-// GitHub contents API (raw media type), which preserved the markup.
-describe('verbatim stock templates under a renamed notetype', () => {
-  const stock = '{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}'
-  it.each([
-    ['Basic copy', [{ qfmt: '{{Front}}', afmt: stock }]],
-    [
-      'Basic (optional reversed card) copy',
-      [
-        { qfmt: '{{Front}}', afmt: stock },
-        {
-          qfmt: '{{#Add Reverse}}{{Back}}{{/Add Reverse}}',
-          afmt: '{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}',
-        },
-      ],
-    ],
-  ])('%s stays skipped with html-or-media', async (_n, tmpls) => {
-    const { deck, diagnostics } = await parse({
-      models: [{ id: 5, name: 'Basic-copy', flds: ['Front', 'Back', 'Add Reverse'], tmpls }],
-      notes: [{ id: 1, mid: 5, flds: ['q', 'a', 'y'] }],
-      cards: [{ nid: 1, ord: 0 }],
-    })
-    expect(deck.skippedModels).toEqual(['Basic-copy'])
-    expect(diagnostics[0]).toMatchObject({ code: 'html-or-media' })
-  })
-
+describe('answer side', () => {
   it('an empty answer side renders the "..." placeholder, so the card is always valid', async () => {
     const { deck } = await parse({
       models: [

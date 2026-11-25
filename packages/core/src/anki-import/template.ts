@@ -59,6 +59,28 @@ export function hasHtmlOrMedia(text: string): boolean {
   return /[<&]|\[(?:sound|type):/i.test(text)
 }
 
+/** The one presentation token Anki's stock answer templates use between front and back. */
+export const ANSWER_DIVIDER = '<hr id=answer>'
+const STOCK_ANSWER_PREFIX = /^\{\{FrontSide\}\}[ \t\r\n]+<hr id=answer>[ \t\r\n]+/
+
+/**
+ * Answer-template source with the exact divider token handled; nothing else with markup is
+ * accepted. A stock prefix (`{{FrontSide}}`, whitespace, token, whitespace) is dropped whole,
+ * because the card already stores the front separately. Any other single token becomes one
+ * newline. The token only ever matches as these exact bytes (case-sensitive, no quotes,
+ * attributes or slash), and more than one token is refused. This is not an HTML parser.
+ */
+export function normalizeAnswerSource(afmt: string): string {
+  const count = afmt.split(ANSWER_DIVIDER).length - 1
+  if (count === 0) return afmt
+  if (count > 1) {
+    throw new UnsupportedModelError('html-or-media', 'more than one answer divider token')
+  }
+  const stripped = afmt.replace(STOCK_ANSWER_PREFIX, '')
+  if (stripped !== afmt) return stripped
+  return afmt.replace(ANSWER_DIVIDER, '\n')
+}
+
 export function parseTemplate(source: string): TemplateNode[] {
   if (source.length > TEMPLATE_LIMITS.maxTemplateChars) {
     throw new UnsupportedModelError('template-too-large', `${source.length} chars`)

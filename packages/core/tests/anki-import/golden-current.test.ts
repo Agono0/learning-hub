@@ -80,11 +80,4 @@ describe('name-matched models are unchanged', () => {
       { basic: { front: 'A', back: 'Q' } },
     ])
   })
-
-  it('stock default answer template has markup, so a renamed copy stays skipped by name', async () => {
-    const r = await run(basic('Basic-a1b2c'), ['Q', 'A'])
-    expect(r.cards).toEqual([])
-    expect(r.skipped).toEqual(['Basic-a1b2c'])
-    expect(r.diagnostics.map((d) => d.code)).toEqual(['html-or-media'])
-  })
 })
