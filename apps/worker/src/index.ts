@@ -2,6 +2,7 @@
  * Learning HUB Cloudflare Worker — Live Study Rooms, Boss Raids,
  * Community Deck/Course Library, and Global Opt-in Engagement.
  */
+import { deriveUserId } from './identity-id'
 import { communityItemSchema, filterContentSafety, makeRoomCode } from '@learning-hub/core/online'
 import { BOSS_ROSTER } from '@learning-hub/core/boss'
 import { BossRaid } from './boss-raid'
@@ -123,11 +124,17 @@ export default {
           return jsonResponse({ error: 'malformed key or signature' }, 400)
         }
 
-        const userId = `usr_${body.pubkey.slice(0, 16)}`
+        // A key that is already registered keeps its stored id (no rebinding of existing rows);
+        // a new key gets an id derived from the whole key, so keys no longer collide.
+        let userId = await deriveUserId(body.pubkey)
         const nowIso = new Date().toISOString()
         const { clean: cleanAlias } = filterContentSafety(body.alias.slice(0, 40))
 
         if (env.DB) {
+          const existing = await env.DB.prepare('SELECT id FROM users WHERE pubkey = ?')
+            .bind(body.pubkey)
+            .first<{ id: string }>()
+          if (existing?.id) userId = existing.id
           await env.DB.prepare(
             `INSERT INTO users (id, pubkey, alias, created_at)
              VALUES (?, ?, ?, ?)
