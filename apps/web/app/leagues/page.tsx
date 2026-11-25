@@ -1341,10 +1341,41 @@ function TournamentsTab({
                 </div>
                 <div className="mt-2 space-y-1" data-testid={`bracket-${t.slug}`}>
                   {t.matchesJson.map((m) => (
-                    <p key={`${m.round}-${m.position}`} className="text-xs text-neutral-500">
-                      R{m.round} #{m.position}: {m.playerA ?? '…'} vs {m.playerB ?? '…'}
-                      {m.winner ? ` → ${m.winner}` : ''}
-                    </p>
+                    <div
+                      key={`${m.round}-${m.position}`}
+                      className="flex flex-wrap items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400"
+                    >
+                      <span>
+                        R{m.round} #{m.position}: {m.playerA ?? '…'} vs {m.playerB ?? '…'}
+                        {m.winner ? ` → ${m.winner}` : ''}
+                      </span>
+                      {t.status === 'open' && !m.winner && m.playerA && m.playerB && (
+                        <span className="flex gap-1">
+                          {[m.playerA, m.playerB].map((w) => (
+                            <button
+                              key={w}
+                              type="button"
+                              data-testid={`match-win-${t.slug}-${m.round}-${m.position}-${w}`}
+                              onClick={() =>
+                                void act(
+                                  {
+                                    action: 'tournament-result',
+                                    slug: t.slug,
+                                    round: m.round,
+                                    position: m.position,
+                                    winner: w,
+                                  },
+                                  `${w} takes R${m.round} #${m.position} of ${t.title}.`,
+                                )
+                              }
+                              className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs transition hover:border-accent hover:text-accent dark:border-neutral-600"
+                            >
+                              {w} wins
+                            </button>
+                          ))}
+                        </span>
+                      )}
+                    </div>
                   ))}
                 </div>
               </li>
