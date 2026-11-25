@@ -2156,6 +2156,32 @@ export const leagueDuels = table(
   ],
 )
 
+/** Append-only Elo history: two rows per decided league duel (one per side). */
+export const leagueEloEvents = table(
+  'league_elo_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    leagueId: integer('league_id')
+      .notNull()
+      .references(() => leagues.id),
+    duelId: integer('duel_id')
+      .notNull()
+      .references(() => leagueDuels.id),
+    handle: text('handle').notNull(),
+    opponent: text('opponent').notNull(),
+    result: text('result').$type<'win' | 'loss' | 'draw'>().notNull(),
+    eloBefore: integer('elo_before').notNull(),
+    eloAfter: integer('elo_after').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('league_elo_events_league_idx').on(t.leagueId),
+    index('league_elo_events_handle_idx').on(t.leagueId, t.handle),
+  ],
+)
+
 export const leagueTournaments = table(
   'league_tournaments',
   {

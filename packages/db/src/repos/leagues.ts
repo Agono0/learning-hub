@@ -7,7 +7,7 @@
  * reconstructs that state. Every function takes an optional trailing database
  * handle so tests and transactions can share a connection.
  */
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, or } from 'drizzle-orm'
 import {
   LEAGUES_SCHEMA,
   awardPoints,
@@ -35,6 +35,7 @@ import type { Transaction } from '../transaction'
 import {
   cards as cardsTable,
   leagueDuels,
+  leagueEloEvents,
   leaguePlayers,
   leagueRounds,
   leagues,
@@ -49,6 +50,7 @@ export type LeaguePlayerRow = typeof leaguePlayers.$inferSelect
 export type LeagueRoundRow = typeof leagueRounds.$inferSelect
 export type LeagueDuelRow = typeof leagueDuels.$inferSelect
 export type LeagueTournamentRow = typeof leagueTournaments.$inferSelect
+export type LeagueEloEventRow = typeof leagueEloEvents.$inferSelect
 
 // ─── Row <-> core type mapping ─────────────────────────────────────────────
 
@@ -542,6 +544,28 @@ export function submitDuelAnswers(
               .set({ elo: elo.loserAfter, duelsLost: loserRow.duelsLost + 1 })
               .where(eq(leaguePlayers.id, loserRow.id))
               .run()
+            tx.insert(leagueEloEvents)
+              .values([
+                {
+                  leagueId: league.id,
+                  duelId: row.id,
+                  handle: winnerRow.handle,
+                  opponent: loserRow.handle,
+                  result: 'win' as const,
+                  eloBefore: winnerRow.elo,
+                  eloAfter: elo.winnerAfter,
+                },
+                {
+                  leagueId: league.id,
+                  duelId: row.id,
+                  handle: loserRow.handle,
+                  opponent: winnerRow.handle,
+                  result: 'loss' as const,
+                  eloBefore: loserRow.elo,
+                  eloAfter: elo.loserAfter,
+                },
+              ])
+              .run()
           } else if (result.draw) {
             const elo = duelEloUpdate(pa.elo, pb.elo, true)
             tx.update(leaguePlayers)
@@ -551,6 +575,28 @@ export function submitDuelAnswers(
             tx.update(leaguePlayers)
               .set({ elo: elo.loserAfter, points: pb.points + league.scoringJson.duelDraw })
               .where(eq(leaguePlayers.id, pb.id))
+              .run()
+            tx.insert(leagueEloEvents)
+              .values([
+                {
+                  leagueId: league.id,
+                  duelId: row.id,
+                  handle: pa.handle,
+                  opponent: pb.handle,
+                  result: 'draw' as const,
+                  eloBefore: pa.elo,
+                  eloAfter: elo.winnerAfter,
+                },
+                {
+                  leagueId: league.id,
+                  duelId: row.id,
+                  handle: pb.handle,
+                  opponent: pa.handle,
+                  result: 'draw' as const,
+                  eloBefore: pb.elo,
+                  eloAfter: elo.loserAfter,
+                },
+              ])
               .run()
           }
         }
@@ -724,4 +770,86 @@ export function closeDueRounds(
     }
   }
   return closed
+}
+
+/** Elo history for one player in a league, newest first (profile sparkline). */
+export function listLeagueEloEvents(
+  slug: string,
+  handle: string,
+  limit = 50,
+  database?: LearningHubDB,
+): LeagueEloEventRow[] {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return []
+  return conn
+    .select()
+    .from(leagueEloEvents)
+    .where(and(eq(leagueEloEvents.leagueId, league.id), eq(leagueEloEvents.handle, handle)))
+    .orderBy(desc(leagueEloEvents.id))
+    .limit(limit)
+    .all()
+}
+
+/**
+ * One player's full competitive profile in a league: standing, duel record
+ * (draws counted from completed duels, since the player row tracks only
+ * wins/losses), recent duels and the Elo trajectory.
+ */
+export function leaguePlayerProfile(
+  slug: string,
+  handle: string,
+  database?: LearningHubDB,
+): {
+  player: LeaguePlayerRow
+  record: { wins: number; losses: number; draws: number }
+  recentDuels: LeagueDuelRow[]
+  eloHistory: LeagueEloEventRow[]
+  rank: number
+} | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const player = conn
+    .select()
+    .from(leaguePlayers)
+    .where(and(eq(leaguePlayers.leagueId, league.id), eq(leaguePlayers.handle, handle)))
+    .get()
+  if (!player) return null
+
+  const completed = conn
+    .select()
+    .from(leagueDuels)
+    .where(
+      and(
+        eq(leagueDuels.leagueId, league.id),
+        eq(leagueDuels.status, 'complete'),
+        or(eq(leagueDuels.playerA, handle), eq(leagueDuels.playerB, handle)),
+      ),
+    )
+    .orderBy(desc(leagueDuels.id))
+    .all()
+  const wins = completed.filter((d) => d.winner === handle).length
+  const draws = completed.filter((d) => d.winner === null).length
+  const losses = completed.length - wins - draws
+
+  // rank inside the player's division by the standings ordering
+  const division = conn
+    .select()
+    .from(leaguePlayers)
+    .where(and(eq(leaguePlayers.leagueId, league.id), eq(leaguePlayers.tier, player.tier)))
+    .all()
+    .sort(
+      (a, b) =>
+        b.points - a.points || b.seasonPoints - a.seasonPoints || a.handle.localeCompare(b.handle),
+    )
+  const rank = division.findIndex((p) => p.handle === handle) + 1
+
+  return {
+    player,
+    record: { wins, losses, draws },
+    recentDuels: completed.slice(0, 10),
+    eloHistory: listLeagueEloEvents(slug, handle, 50, conn),
+    rank,
+  }
 }

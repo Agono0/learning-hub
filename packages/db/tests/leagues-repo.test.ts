@@ -32,6 +32,9 @@ import {
   listLeagueRounds,
   listLeagueRows,
   listLeagueTournaments,
+  leagueEloEvents,
+  leaguePlayerProfile,
+  listLeagueEloEvents,
   loadLeague,
   notificationLog,
   openTournamentMatches,
@@ -50,6 +53,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(leagueEloEvents).run()
   db.delete(xpEvents).run()
   db.delete(notificationLog).run()
   db.delete(leagueTournaments).run()
@@ -376,6 +380,73 @@ describe('league duels', () => {
       db,
     )
     expect(done.winner).toBe('amr')
+  })
+})
+
+describe('player profiles and Elo history', () => {
+  it('records one Elo event per side and assembles a profile', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    joinLeagueRow('spring', 'sara', db)
+    createLeagueDuel(
+      {
+        slug: 'd1',
+        leagueSlug: 'spring',
+        playerA: 'amr',
+        playerB: 'sara',
+        prompts: [{ id: 'p1', question: '2+2?', answers: ['4'] }],
+      },
+      db,
+    )
+    submitDuelAnswers('d1', 'A', [{ promptId: 'p1', answer: '4', elapsedMs: 900 }], db)
+    submitDuelAnswers('d1', 'B', [{ promptId: 'p1', answer: '5', elapsedMs: 500 }], db)
+
+    // append-only history: one row per side, winner up, loser down
+    const events = db.select().from(leagueEloEvents).all()
+    expect(events).toHaveLength(2)
+    const amrEvent = events.find((e) => e.handle === 'amr')!
+    expect(amrEvent.result).toBe('win')
+    expect(amrEvent.opponent).toBe('sara')
+    expect(amrEvent.eloBefore).toBe(1000)
+    expect(amrEvent.eloAfter).toBeGreaterThan(1000)
+    expect(events.find((e) => e.handle === 'sara')!.result).toBe('loss')
+
+    const profile = leaguePlayerProfile('spring', 'amr', db)!
+    expect(profile.record).toEqual({ wins: 1, losses: 0, draws: 0 })
+    expect(profile.rank).toBe(1)
+    expect(profile.eloHistory).toHaveLength(1)
+    expect(profile.eloHistory[0]!.eloAfter).toBe(profile.player.elo)
+    expect(profile.recentDuels[0]!.slug).toBe('d1')
+
+    const saraProfile = leaguePlayerProfile('spring', 'sara', db)!
+    expect(saraProfile.record).toEqual({ wins: 0, losses: 1, draws: 0 })
+    expect(saraProfile.rank).toBe(2)
+
+    expect(leaguePlayerProfile('spring', 'ghost', db)).toBeNull()
+    expect(leaguePlayerProfile('missing', 'amr', db)).toBeNull()
+    expect(listLeagueEloEvents('missing', 'amr', 50, db)).toEqual([])
+  })
+
+  it('records draw events for both sides of a drawn duel', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    joinLeagueRow('spring', 'sara', db)
+    createLeagueDuel(
+      {
+        slug: 'd1',
+        leagueSlug: 'spring',
+        playerA: 'amr',
+        playerB: 'sara',
+        prompts: [{ id: 'p1', question: '2+2?', answers: ['4'] }],
+      },
+      db,
+    )
+    submitDuelAnswers('d1', 'A', [{ promptId: 'p1', answer: '4', elapsedMs: 900 }], db)
+    submitDuelAnswers('d1', 'B', [{ promptId: 'p1', answer: '4', elapsedMs: 900 }], db)
+
+    const events = db.select().from(leagueEloEvents).all()
+    expect(events.map((e) => e.result)).toEqual(['draw', 'draw'])
+    expect(leaguePlayerProfile('spring', 'amr', db)!.record.draws).toBe(1)
   })
 })
 

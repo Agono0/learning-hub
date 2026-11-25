@@ -101,6 +101,23 @@ test.describe('leagues season lifecycle', () => {
     await expect(page.getByTestId('duel-list').getByText('won by amr')).toBeVisible()
   })
 
+  test('player profile shows duel record and Elo trajectory', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+
+    // duel-1 was decided in the previous test: amr beat sara
+    await page.getByTestId('standings-row-amr').click()
+    await expect(page.getByTestId('player-profile')).toBeVisible()
+    await expect(page.getByTestId('profile-record')).toContainText('1W · 0D · 0L')
+    await expect(page.getByTestId('profile-elo-sparkline')).toBeVisible()
+    await expect(page.getByTestId('profile-duels')).toContainText('duel-1')
+
+    // clicking the row again collapses the panel
+    await page.getByTestId('standings-row-amr').click()
+    await expect(page.getByTestId('player-profile')).toHaveCount(0)
+  })
+
   test('seed a tournament bracket', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()

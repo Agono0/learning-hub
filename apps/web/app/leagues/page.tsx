@@ -34,6 +34,21 @@ type PlayerRow = {
   elo: number
 }
 
+type PlayerProfile = {
+  player: PlayerRow
+  record: { wins: number; losses: number; draws: number }
+  recentDuels: DuelRow[]
+  eloHistory: {
+    handle: string
+    opponent: string
+    result: 'win' | 'loss' | 'draw'
+    eloBefore: number
+    eloAfter: number
+    createdAt: string
+  }[]
+  rank: number
+}
+
 type Division = {
   tier: string
   standings: { handle: string; points: number; seasonPoints: number }[]
@@ -354,6 +369,7 @@ function StandingsTab({
   const [handle, setHandle] = useState('')
   const [reviews, setReviews] = useState('')
   const [focusMinutes, setFocusMinutes] = useState('')
+  const [profileHandle, setProfileHandle] = useState<string | null>(null)
 
   if (!selected) {
     return (
@@ -405,13 +421,24 @@ function StandingsTab({
                   ) : (
                     <ol className="space-y-1" data-testid={`standings-${d.tier}`}>
                       {d.standings.map((s, i) => (
-                        <li key={s.handle} className="flex justify-between text-sm">
-                          <span>
-                            {i + 1}. {s.handle}
-                          </span>
-                          <span className="text-neutral-500">
-                            {s.points} <span className="text-xs">({s.seasonPoints} season)</span>
-                          </span>
+                        <li key={s.handle}>
+                          <button
+                            type="button"
+                            data-testid={`standings-row-${s.handle}`}
+                            onClick={() =>
+                              setProfileHandle((cur) => (cur === s.handle ? null : s.handle))
+                            }
+                            className={`flex w-full justify-between rounded px-1 py-0.5 text-left text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                              profileHandle === s.handle ? 'bg-accent/10' : ''
+                            }`}
+                          >
+                            <span>
+                              {i + 1}. {s.handle}
+                            </span>
+                            <span className="text-neutral-500">
+                              {s.points} <span className="text-xs">({s.seasonPoints} season)</span>
+                            </span>
+                          </button>
                         </li>
                       ))}
                     </ol>
@@ -420,6 +447,7 @@ function StandingsTab({
               ))}
             </div>
           </Panel>
+          {profileHandle && <PlayerProfilePanel slug={selected} handle={profileHandle} />}
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel>
               <h2 className="mb-2 text-base font-semibold">Log study points</h2>
@@ -501,6 +529,119 @@ function StandingsTab({
         </>
       )}
     </div>
+  )
+}
+
+// ── Player profile ──────────────────────────────────────────────────────────
+
+function PlayerProfilePanel({ slug, handle }: { slug: string; handle: string }) {
+  const [profile, setProfile] = useState<PlayerProfile | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setProfile(null)
+    setError(null)
+    apiGet<{ ok: boolean; profile: PlayerProfile }>(
+      `/api/leagues?view=player&slug=${encodeURIComponent(slug)}&handle=${encodeURIComponent(handle)}`,
+    )
+      .then((res) => setProfile(res.profile))
+      .catch((err) => setError(err instanceof Error ? err.message : 'failed to load profile'))
+  }, [slug, handle])
+
+  if (error) {
+    return (
+      <Callout tone="danger" title="Profile failed to load">
+        {error}
+      </Callout>
+    )
+  }
+  if (!profile) return null
+
+  const { player, record, recentDuels, eloHistory, rank } = profile
+  // newest-first history → oldest-first sparkline of eloAfter values
+  const trajectory = [...eloHistory].reverse().map((e) => e.eloAfter)
+
+  return (
+    <Panel>
+      <div data-testid="player-profile" className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold">{handle}</h2>
+          <Badge tone={TIER_TONE[player.tier] ?? 'neutral'}>{player.tier}</Badge>
+          <Badge tone="accent">rank #{rank}</Badge>
+          <Badge tone="violet">elo {player.elo}</Badge>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">This round</p>
+            <p className="text-lg font-semibold" data-testid="profile-points">
+              {player.points}
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              {player.seasonPoints} season · {player.roundsWon} rounds won
+            </p>
+          </div>
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Duels</p>
+            <p className="text-lg font-semibold" data-testid="profile-record">
+              {record.wins}W · {record.draws}D · {record.losses}L
+            </p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              accuracy first, speed breaks ties
+            </p>
+          </div>
+          <div className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Elo trajectory</p>
+            {trajectory.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">No league duels yet.</p>
+            ) : (
+              <EloSparkline values={trajectory} start={1000} />
+            )}
+          </div>
+        </div>
+        {recentDuels.length > 0 && (
+          <ul className="space-y-1" data-testid="profile-duels">
+            {recentDuels.map((d) => (
+              <li
+                key={d.slug}
+                className="flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-300"
+              >
+                <span>
+                  {d.slug} — {d.playerA} vs {d.playerB}
+                </span>
+                <span>{d.winner === null ? 'draw' : d.winner === handle ? 'won' : 'lost'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
+  )
+}
+
+/** Tiny inline SVG sparkline (no chart dependency) for the Elo trajectory. */
+function EloSparkline({ values, start }: { values: number[]; start: number }) {
+  const all = [start, ...values]
+  const min = Math.min(...all)
+  const max = Math.max(...all)
+  const span = Math.max(1, max - min)
+  const w = 160
+  const h = 36
+  const points = all
+    .map(
+      (v, i) =>
+        `${((i / Math.max(1, all.length - 1)) * w).toFixed(1)},${(h - ((v - min) / span) * h).toFixed(1)}`,
+    )
+    .join(' ')
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className="h-9 w-full text-indigo-500"
+      data-testid="profile-elo-sparkline"
+      role="img"
+      aria-label={`Elo trajectory ending at ${all[all.length - 1]}`}
+    >
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
   )
 }
 

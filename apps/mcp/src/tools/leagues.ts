@@ -13,6 +13,7 @@ import {
   createLeagueTournament,
   joinLeagueRow,
   leagueChampion,
+  leaguePlayerProfile,
   leagueStandings,
   listLeagueDuels,
   listLeaguePlayers,
@@ -73,6 +74,19 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'league_player_profile',
+    "One player's competitive profile: division rank, duel record, recent duels and Elo trajectory.",
+    {
+      slug: z.string().min(1),
+      handle: z.string().min(1),
+    },
+    ({ slug, handle }) => {
+      const profile = leaguePlayerProfile(slug, handle)
+      if (!profile) throw new Error(`player not found: ${handle}`)
+      return json({ ok: true, profile })
+    },
   ),
   tool(
     'league_standings',
