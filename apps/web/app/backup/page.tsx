@@ -33,6 +33,8 @@ import { Callout, EmptyState, PageHeader, Skeleton } from '@/ui'
 import { ClayIn } from '@/lib/motion'
 import { getDeviceIdentity } from '@/lib/device'
 import { queryKeys } from '@/lib/query-keys'
+import { summarizeImport } from '@/lib/import-summary'
+import { StatusLineView, type StatusLine } from '@/components/StatusLineView'
 import { SectionHeader } from '@/components/ui/section-header'
 import {
   AlertDialog,
@@ -119,11 +121,6 @@ interface RestoreResult {
   tombstoned?: number
   rescheduledCards?: number
   error?: string
-}
-
-interface StatusLine {
-  kind: 'ok' | 'error' | 'info'
-  text: string
 }
 
 const APKG_MAX_BYTES = 50 * 1024 * 1024
@@ -287,9 +284,10 @@ export default function BackupPage() {
       apiSend<ImportResult>('/api/import', 'POST', body),
     onSuccess: (data, vars) => {
       if (data.ok) {
+        const summary = summarizeImport(data)
         log({
-          kind: 'ok',
-          text: `imported "${vars.deckName || data.deckName}": ${data.imported} cards${data.rejectedCards ? `, ${data.rejectedCards} rejected` : ''}${data.skippedModels?.length ? `, skipped models: ${data.skippedModels.join(', ')}` : ''}`,
+          kind: summary.warning ? 'warn' : 'ok',
+          text: `${summary.headline} into "${vars.deckName || data.deckName}".${summary.warning ? ` ${summary.warning}` : ''}`,
         })
         void qc.invalidateQueries({ queryKey: queryKeys.decks })
       } else {
@@ -853,18 +851,7 @@ export default function BackupPage() {
         {status.length > 0 && (
           <div className="space-y-1">
             {status.map((line, i) => (
-              <div
-                key={i}
-                className={`rounded-lg border p-2 text-xs ${
-                  line.kind === 'ok'
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-status-success-text'
-                    : line.kind === 'error'
-                      ? 'border-rose-500/40 bg-rose-500/10 text-danger-text'
-                      : 'border-neutral-500/30 bg-neutral-500/5 text-faint'
-                }`}
-              >
-                {line.text}
-              </div>
+              <StatusLineView key={i} line={line} />
             ))}
           </div>
         )}

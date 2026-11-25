@@ -29,6 +29,7 @@ import { applyThemePreference, normalizeThemePreference, type ThemePreference } 
 import { SpFirstRunStep } from './onboarding/SpFirstRunStep'
 import { apiGet, apiSend } from '@/lib/transport'
 import { Button, Sheet, useToast } from '@/ui'
+import { summarizeImport } from '@/lib/import-summary'
 import { queryKeys } from '@/lib/query-keys'
 
 const DISMISSED_KEY = 'lh-onboarding-dismissed'
@@ -170,6 +171,7 @@ export function OnboardingWizard() {
         deckName?: string
         imported?: number
         rejectedCards?: number
+        skippedModels?: string[]
       }>('/api/import', 'POST', {
         kind,
         payload,
@@ -179,12 +181,13 @@ export function OnboardingWizard() {
     },
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: queryKeys.decks })
+      const summary = summarizeImport(res)
       toast({
-        title: `Imported ${res.imported ?? 0} card${(res.imported ?? 0) === 1 ? '' : 's'}`,
-        description: res.rejectedCards
-          ? `${res.rejectedCards} card${res.rejectedCards === 1 ? '' : 's'} skipped.`
-          : undefined,
-        tone: 'success',
+        title: summary.headline,
+        description: summary.warning ?? undefined,
+        // A partial import is a warning and stays up long enough to read.
+        tone: summary.warning ? 'warning' : 'success',
+        ...(summary.warning ? { durationMs: 15000 } : {}),
       })
     },
     onError: (e: Error) => toast({ title: e.message, tone: 'danger' }),
