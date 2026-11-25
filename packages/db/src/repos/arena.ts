@@ -337,3 +337,23 @@ export function releaseArenaClaim(
     )
     .run()
 }
+
+/** Card ids graded Again (1) or Hard (2) in a settled run — the drill pool. */
+export function getWeakCardIdsForRun(
+  runId: string,
+  opts: { userId?: string; db?: LearningHubDB } = {},
+): number[] | undefined {
+  const db = opts.db ?? getDb()
+  const run = getArenaSession(runId, db)
+  if (!run || run.userId !== (opts.userId ?? 'default') || run.status !== 'settled') {
+    return undefined
+  }
+  const log = (run.gradeLog ?? []) as Array<{ cardId?: unknown; grade?: unknown }>
+  const weak = new Set<number>()
+  for (const e of log) {
+    if (typeof e.cardId === 'number' && typeof e.grade === 'number' && e.grade <= 2) {
+      weak.add(e.cardId)
+    }
+  }
+  return [...weak]
+}

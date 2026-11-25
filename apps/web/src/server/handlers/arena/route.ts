@@ -1,7 +1,8 @@
 /**
  * /api/arena — the 3D Review Arena's server side.
  *
- * GET { deckIds?, limit } → build an arena queue from REAL due cards via the
+ * GET { deckIds?, limit, rematch? } → build an arena queue from REAL due
+ *   cards via the
  *   same `buildSession` engine the review pipeline uses (weak-first priority,
  *   FSRS untouched), then ISSUE a server-owned run (`arena_sessions` row)
  *   binding that exact queue, guardian and boss flag to a fresh runId. The
@@ -48,6 +49,7 @@ import {
   evaluateAndUnlockAchievements,
   executeBatchReview,
   getArenaStats,
+  getWeakCardIdsForRun,
   recordArenaRun,
   recordCoinTransactionInTx,
   releaseArenaClaim,
@@ -77,6 +79,7 @@ const DAY_MS = 86_400_000
 
 const ARENA_MIN_LIMIT = 5
 const ARENA_MAX_LIMIT = 20
+const ARENA_DEFAULT_LIMIT = 10
 
 /**
  * The app's owner context. This is a single-tenant local-first app: every
@@ -120,14 +123,12 @@ function toPreviewRecord(items: { grade: Grade; label: string }[]): Record<Grade
   return out
 }
 
-export async function GET(req: Request) {
+export const GET = withRoute(async function GET(req: Request) {
   const url = new URL(req.url)
   const deckIdsParam = url.searchParams.get('deckIds')
+  const rematchParam = url.searchParams.get('rematch')
   const limit = Math.min(
-    Math.max(
-      Number(url.searchParams.get('limit') ?? ARENA_DEFAULTS.challengesPerRun),
-      ARENA_MIN_LIMIT,
-    ),
+    Math.max(Number(url.searchParams.get('limit') ?? ARENA_DEFAULT_LIMIT), ARENA_MIN_LIMIT),
     ARENA_MAX_LIMIT,
   )
   const now = new Date()
@@ -139,8 +140,34 @@ export async function GET(req: Request) {
         .filter((n) => Number.isInteger(n) && n > 0)
     : []
 
+  // Weak-card drill: rematch=<runId> rebuilds the queue from the cards the
+  // player graded Again or Hard in that settled run. Deliberately ignores
+  // the due-window — a drill is user-initiated extra practice, and grading
+  // still runs the canonical review engine (FSRS reschedules normally).
+  // Ownership is enforced: another owner's run is a 404, same as unknown.
+  let drillCardIds: number[] | null = null
+  if (rematchParam) {
+    const weak = getWeakCardIdsForRun(rematchParam, { userId: ARENA_OWNER_ID })
+    if (!weak) throw new ApiError(404, 'arena run not found')
+    drillCardIds = weak
+  }
+
   const filters = [eq(cards.suspended, false)]
-  if (requestedDeckIds.length === 1) {
+  if (drillCardIds !== null) {
+    if (drillCardIds.length === 0) {
+      // No weak cards in that run — nothing to drill.
+      return Response.json({
+        ok: true,
+        runId: null,
+        cards: [],
+        limit,
+        config: guardianConfig(guardianForRun(getArenaStats().runs), ARENA_DEFAULTS),
+        guardian: null,
+        drillEmpty: true,
+      })
+    }
+    filters.push(inArray(cards.id, drillCardIds))
+  } else if (requestedDeckIds.length === 1) {
     filters.push(eq(cards.deckId, requestedDeckIds[0]!))
   } else if (requestedDeckIds.length > 1) {
     filters.push(inArray(cards.deckId, requestedDeckIds))
@@ -149,7 +176,11 @@ export async function GET(req: Request) {
   const candidateRows = await db
     .select()
     .from(cards)
-    .where(and(...filters, lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString())))
+    .where(
+      drillCardIds !== null
+        ? and(...filters)
+        : and(...filters, lte(cards.due, new Date(now.getTime() + 7 * DAY_MS).toISOString())),
+    )
     .limit(1000)
 
   const recent = await db.all<{
@@ -169,27 +200,33 @@ export async function GET(req: Request) {
   `)
   const recentByCard = new Map(recent.map((r) => [r.card_id, r]))
 
+  // Drills bypass the due window at BOTH levels: the SQL filter above and
+  // buildSession's own asOf cutoff (graded weak cards are usually due
+  // minutes-to-days ahead; the player explicitly asked to re-drill them).
+  const sessionAsOf = drillCardIds !== null ? new Date(now.getTime() + 365 * DAY_MS) : now
+
+  const sessionRows = candidateRows.map((row) => ({
+    id: row.id,
+    deckId: row.deckId,
+    due: row.due,
+    state: row.state,
+    reps: row.reps,
+    stability: row.stability,
+    suspended: row.suspended,
+    buryUntil: row.buryUntil,
+    recentRevlog: recentByCard.has(row.id)
+      ? {
+          rating: recentByCard.get(row.id)!.rating,
+          confidence: recentByCard.get(row.id)!.confidence,
+          reviewedAt: recentByCard.get(row.id)!.reviewed_at,
+        }
+      : null,
+  }))
   const session = buildSession({
-    rows: candidateRows.map((row) => ({
-      id: row.id,
-      deckId: row.deckId,
-      due: row.due,
-      state: row.state,
-      reps: row.reps,
-      stability: row.stability,
-      suspended: row.suspended,
-      buryUntil: row.buryUntil,
-      recentRevlog: recentByCard.has(row.id)
-        ? {
-            rating: recentByCard.get(row.id)!.rating,
-            confidence: recentByCard.get(row.id)!.confidence,
-            reviewedAt: recentByCard.get(row.id)!.reviewed_at,
-          }
-        : null,
-    })),
+    rows: sessionRows,
     limit,
     mode: 'normal',
-    asOf: now,
+    asOf: sessionAsOf,
   })
 
   const sessionIds = new Set(session.map((r) => r.id))
@@ -264,6 +301,7 @@ export async function GET(req: Request) {
     cards: cardsWithPreviews,
     limit,
     config: tunedConfig,
+    drill: drillCardIds !== null,
     guardian: {
       archetype,
       name: GUARDIANS[archetype].name,
@@ -271,7 +309,7 @@ export async function GET(req: Request) {
       boss,
     },
   })
-}
+})
 
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, arenaSettlementSchema)
