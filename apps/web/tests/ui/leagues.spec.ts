@@ -118,6 +118,81 @@ test.describe('leagues season lifecycle', () => {
     await expect(page.getByTestId('player-profile')).toHaveCount(0)
   })
 
+  test('profile shows earned achievement badges', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+
+    // amr won duel-1 and the round: first-blood (auto-banked on duel
+    // completion) and more badges show on his profile
+    await page.getByTestId('standings-row-amr').click()
+    await expect(page.getByTestId('player-profile')).toBeVisible()
+    await expect(page.getByTestId('profile-achievements')).toBeVisible()
+    await expect(page.getByTestId('achievement-first-blood')).toBeVisible()
+
+    // sara lost the duel and never scored: no badges
+    await page.getByTestId('standings-row-amr').click()
+    await page.getByTestId('standings-row-sara').click()
+    await expect(page.getByTestId('player-profile')).toBeVisible()
+    await expect(page.getByTestId('profile-achievements')).toHaveCount(0)
+  })
+
+  test('division drill-down shows standings, winners and movement', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+
+    // amr was promoted to silver in the earlier round close
+    await page.getByTestId('division-open-silver').click()
+    await expect(page.getByTestId('division-detail')).toBeVisible()
+    await expect(page.getByTestId('division-standings')).toContainText('amr')
+    await expect(page.getByTestId('division-movements')).toContainText('amr promoted in')
+
+    // bronze named amr its winner before he promoted out
+    await page.getByTestId('division-open-silver').click()
+    await page.getByTestId('division-open-bronze').click()
+    await expect(page.getByTestId('division-history')).toContainText('amr')
+
+    // clicking the header again collapses the panel
+    await page.getByTestId('division-open-bronze').click()
+    await expect(page.getByTestId('division-detail')).toHaveCount(0)
+  })
+
+  test('head-to-head panel compares the two duelists', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+
+    await page.getByTestId('h2h-a').fill('amr')
+    await page.getByTestId('h2h-b').fill('sara')
+    await page.getByTestId('h2h-submit').click()
+
+    await expect(page.getByTestId('h2h-result')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('h2h-result')).toContainText('1 duel')
+    await expect(page.getByTestId('h2h-result')).toContainText('amr leads by 1')
+    await expect(page.getByTestId('h2h-side-A')).toContainText('1 wins')
+    await expect(page.getByTestId('h2h-side-B')).toContainText('0 wins')
+  })
+
+  test('export panel produces a transfer envelope', async ({ page }) => {
+    await page.goto('/leagues')
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+
+    await page.getByRole('tab', { name: 'Overview' }).click()
+    await page.getByTestId('export-league-submit').click()
+    await expect(page.getByTestId('export-league-json')).toHaveValue(/lh-leagues-transfer\/v1/, {
+      timeout: 60_000,
+    })
+    await expect(page.getByTestId('export-league-json')).toHaveValue(/Spring E2E Cup/)
+
+    // importing the same envelope is rejected: the slug already exists
+    await page
+      .getByTestId('import-league-json')
+      .fill(await page.getByTestId('export-league-json').inputValue())
+    await page.getByTestId('import-league-submit').click()
+    await expect(page.getByText(/already exists/)).toBeVisible()
+  })
+
   test('seed a tournament bracket', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
