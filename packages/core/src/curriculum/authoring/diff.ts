@@ -15,7 +15,8 @@ import { deepEqual, exerciseKeys, isPlainObject, keyedSegment, matchExercises } 
 import { clip } from './types'
 
 export type ChangeKind = 'added' | 'removed' | 'changed' | 'moved' | 'reordered'
-export type EntityKind = 'course' | 'skill' | 'module' | 'lesson' | 'project' | 'stage' | 'exercise' | 'exam'
+export type EntityKind =
+  'course' | 'skill' | 'module' | 'lesson' | 'project' | 'stage' | 'exercise' | 'exam'
 
 export interface Change {
   kind: ChangeKind
@@ -74,7 +75,8 @@ export function fieldChanges(
   ) {
     const out: FieldChange[] = []
     const n = Math.max(before.length, after.length)
-    for (let i = 0; i < n; i++) out.push(...fieldChanges(before[i], after[i], `${prefix}[${i}]`, skip))
+    for (let i = 0; i < n; i++)
+      out.push(...fieldChanges(before[i], after[i], `${prefix}[${i}]`, skip))
     return out
   }
   return [{ field: prefix, before, after }]
@@ -101,12 +103,26 @@ function pushFields(
   detail?: string,
 ): void {
   for (const f of fieldChanges(before, after, '', skip))
-    out.push({ kind: 'changed', entity, key, path, label, field: f.field, before: f.before, after: f.after, detail })
+    out.push({
+      kind: 'changed',
+      entity,
+      key,
+      path,
+      label,
+      field: f.field,
+      before: f.before,
+      after: f.after,
+      detail,
+    })
 }
 
-function lessonLocations(course: LhcfCourse): Map<string, { module: LhcfModule; lesson: LhcfLesson }> {
+function lessonLocations(
+  course: LhcfCourse,
+): Map<string, { module: LhcfModule; lesson: LhcfLesson }> {
   const m = new Map<string, { module: LhcfModule; lesson: LhcfLesson }>()
-  for (const module of course.modules) for (const lesson of module.lessons) if (!m.has(lesson.slug)) m.set(lesson.slug, { module, lesson })
+  for (const module of course.modules)
+    for (const lesson of module.lessons)
+      if (!m.has(lesson.slug)) m.set(lesson.slug, { module, lesson })
   return m
 }
 
@@ -175,9 +191,25 @@ export function diffCourses(a: LhcfCourse, b: LhcfCourse): CourseDiff {
     else pushFields(out, 'skill', slug, path, s.name, old, s, new Set())
   }
   for (const [slug, s] of aSkills)
-    if (!bSkills.has(slug)) out.push({ kind: 'removed', entity: 'skill', key: slug, path: `skills${keyedSegment('slug', slug)}`, label: s.name, before: s })
+    if (!bSkills.has(slug))
+      out.push({
+        kind: 'removed',
+        entity: 'skill',
+        key: slug,
+        path: `skills${keyedSegment('slug', slug)}`,
+        label: s.name,
+        before: s,
+      })
   if (sharedOrderDiffers([...aSkills.keys()], [...bSkills.keys()]))
-    out.push({ kind: 'reordered', entity: 'skill', key: 'skills', path: 'skills', label: 'Skills', before: [...aSkills.keys()], after: [...bSkills.keys()] })
+    out.push({
+      kind: 'reordered',
+      entity: 'skill',
+      key: 'skills',
+      path: 'skills',
+      label: 'Skills',
+      before: [...aSkills.keys()],
+      after: [...bSkills.keys()],
+    })
 
   // modules and lessons
   const aMods = new Map(a.modules.map((m) => [m.slug, m]))
@@ -187,32 +219,102 @@ export function diffCourses(a: LhcfCourse, b: LhcfCourse): CourseDiff {
   for (const [slug, m] of bMods) {
     const path = `modules${keyedSegment('slug', slug)}`
     const old = aMods.get(slug)
-    if (!old) out.push({ kind: 'added', entity: 'module', key: slug, path, label: m.title, after: { slug, title: m.title, lessons: m.lessons.map((l) => l.slug) } })
+    if (!old)
+      out.push({
+        kind: 'added',
+        entity: 'module',
+        key: slug,
+        path,
+        label: m.title,
+        after: { slug, title: m.title, lessons: m.lessons.map((l) => l.slug) },
+      })
     else {
       pushFields(out, 'module', slug, path, m.title, old, m, new Set(['lessons']))
-      if (sharedOrderDiffers(old.lessons.map((l) => l.slug), m.lessons.map((l) => l.slug)))
-        out.push({ kind: 'reordered', entity: 'lesson', key: slug, path: `${path}.lessons`, label: m.title, before: old.lessons.map((l) => l.slug), after: m.lessons.map((l) => l.slug) })
+      if (
+        sharedOrderDiffers(
+          old.lessons.map((l) => l.slug),
+          m.lessons.map((l) => l.slug),
+        )
+      )
+        out.push({
+          kind: 'reordered',
+          entity: 'lesson',
+          key: slug,
+          path: `${path}.lessons`,
+          label: m.title,
+          before: old.lessons.map((l) => l.slug),
+          after: m.lessons.map((l) => l.slug),
+        })
     }
   }
   for (const [slug, m] of aMods)
-    if (!bMods.has(slug)) out.push({ kind: 'removed', entity: 'module', key: slug, path: `modules${keyedSegment('slug', slug)}`, label: m.title, before: { slug, title: m.title, lessons: m.lessons.map((l) => l.slug) } })
+    if (!bMods.has(slug))
+      out.push({
+        kind: 'removed',
+        entity: 'module',
+        key: slug,
+        path: `modules${keyedSegment('slug', slug)}`,
+        label: m.title,
+        before: { slug, title: m.title, lessons: m.lessons.map((l) => l.slug) },
+      })
   if (sharedOrderDiffers([...aMods.keys()], [...bMods.keys()]))
-    out.push({ kind: 'reordered', entity: 'module', key: 'modules', path: 'modules', label: 'Modules', before: [...aMods.keys()], after: [...bMods.keys()] })
+    out.push({
+      kind: 'reordered',
+      entity: 'module',
+      key: 'modules',
+      path: 'modules',
+      label: 'Modules',
+      before: [...aMods.keys()],
+      after: [...bMods.keys()],
+    })
 
   for (const [slug, nb] of bLoc) {
     const path = lessonPath(nb.module.slug, slug)
     const old = aLoc.get(slug)
     if (!old) {
-      out.push({ kind: 'added', entity: 'lesson', key: slug, path, label: nb.lesson.title, after: nb.lesson })
+      out.push({
+        kind: 'added',
+        entity: 'lesson',
+        key: slug,
+        path,
+        label: nb.lesson.title,
+        after: nb.lesson,
+      })
       continue
     }
     if (old.module.slug !== nb.module.slug)
-      out.push({ kind: 'moved', entity: 'lesson', key: slug, path, label: nb.lesson.title, before: old.module.slug, after: nb.module.slug, detail: `module ${old.module.slug} → ${nb.module.slug}` })
-    pushFields(out, 'lesson', slug, path, nb.lesson.title, old.lesson, nb.lesson, new Set(['exercises']))
+      out.push({
+        kind: 'moved',
+        entity: 'lesson',
+        key: slug,
+        path,
+        label: nb.lesson.title,
+        before: old.module.slug,
+        after: nb.module.slug,
+        detail: `module ${old.module.slug} → ${nb.module.slug}`,
+      })
+    pushFields(
+      out,
+      'lesson',
+      slug,
+      path,
+      nb.lesson.title,
+      old.lesson,
+      nb.lesson,
+      new Set(['exercises']),
+    )
     diffExercises(out, old.lesson.exercises, nb.lesson.exercises, path, nb.lesson.title)
   }
   for (const [slug, old] of aLoc)
-    if (!bLoc.has(slug)) out.push({ kind: 'removed', entity: 'lesson', key: slug, path: lessonPath(old.module.slug, slug), label: old.lesson.title, before: old.lesson })
+    if (!bLoc.has(slug))
+      out.push({
+        kind: 'removed',
+        entity: 'lesson',
+        key: slug,
+        path: lessonPath(old.module.slug, slug),
+        label: old.lesson.title,
+        before: old.lesson,
+      })
 
   // projects and stages
   const aProj = new Map(a.projects.map((p) => [p.slug, p]))
@@ -230,30 +332,86 @@ export function diffCourses(a: LhcfCourse, b: LhcfCourse): CourseDiff {
     for (const [ss, st] of bSt) {
       const sp = `${path}.stages${keyedSegment('slug', ss)}`
       const o = aSt.get(ss)
-      if (!o) out.push({ kind: 'added', entity: 'stage', key: ss, path: sp, label: st.title, after: st })
+      if (!o)
+        out.push({ kind: 'added', entity: 'stage', key: ss, path: sp, label: st.title, after: st })
       else pushFields(out, 'stage', ss, sp, st.title, o, st, new Set())
     }
     for (const [ss, st] of aSt)
-      if (!bSt.has(ss)) out.push({ kind: 'removed', entity: 'stage', key: ss, path: `${path}.stages${keyedSegment('slug', ss)}`, label: st.title, before: st })
+      if (!bSt.has(ss))
+        out.push({
+          kind: 'removed',
+          entity: 'stage',
+          key: ss,
+          path: `${path}.stages${keyedSegment('slug', ss)}`,
+          label: st.title,
+          before: st,
+        })
     if (sharedOrderDiffers([...aSt.keys()], [...bSt.keys()]))
-      out.push({ kind: 'reordered', entity: 'stage', key: slug, path: `${path}.stages`, label: p.title, before: [...aSt.keys()], after: [...bSt.keys()] })
+      out.push({
+        kind: 'reordered',
+        entity: 'stage',
+        key: slug,
+        path: `${path}.stages`,
+        label: p.title,
+        before: [...aSt.keys()],
+        after: [...bSt.keys()],
+      })
   }
   for (const [slug, p] of aProj)
-    if (!bProj.has(slug)) out.push({ kind: 'removed', entity: 'project', key: slug, path: `projects${keyedSegment('slug', slug)}`, label: p.title, before: p })
+    if (!bProj.has(slug))
+      out.push({
+        kind: 'removed',
+        entity: 'project',
+        key: slug,
+        path: `projects${keyedSegment('slug', slug)}`,
+        label: p.title,
+        before: p,
+      })
 
   // final exam
   if (a.finalExam && b.finalExam) {
-    pushFields(out, 'exam', 'finalExam', 'finalExam', 'Final exam', a.finalExam, b.finalExam, new Set(['exercises']))
+    pushFields(
+      out,
+      'exam',
+      'finalExam',
+      'finalExam',
+      'Final exam',
+      a.finalExam,
+      b.finalExam,
+      new Set(['exercises']),
+    )
     diffExercises(out, a.finalExam.exercises, b.finalExam.exercises, 'finalExam', 'Final exam')
-  } else if (b.finalExam) out.push({ kind: 'added', entity: 'exam', key: 'finalExam', path: 'finalExam', label: 'Final exam', after: b.finalExam })
-  else if (a.finalExam) out.push({ kind: 'removed', entity: 'exam', key: 'finalExam', path: 'finalExam', label: 'Final exam', before: a.finalExam })
+  } else if (b.finalExam)
+    out.push({
+      kind: 'added',
+      entity: 'exam',
+      key: 'finalExam',
+      path: 'finalExam',
+      label: 'Final exam',
+      after: b.finalExam,
+    })
+  else if (a.finalExam)
+    out.push({
+      kind: 'removed',
+      entity: 'exam',
+      key: 'finalExam',
+      path: 'finalExam',
+      label: 'Final exam',
+      before: a.finalExam,
+    })
 
   return summarizeDiff(out)
 }
 
 /** Wrap a change list with counts. */
 export function summarizeDiff(changes: Change[]): CourseDiff {
-  const counts: Record<ChangeKind, number> = { added: 0, removed: 0, changed: 0, moved: 0, reordered: 0 }
+  const counts: Record<ChangeKind, number> = {
+    added: 0,
+    removed: 0,
+    changed: 0,
+    moved: 0,
+    reordered: 0,
+  }
   const byEntity: Partial<Record<EntityKind, number>> = {}
   for (const c of changes) {
     counts[c.kind] += 1
@@ -282,7 +440,10 @@ export function describeChange(c: Change): string {
     case 'reordered':
       return `Reordered ${c.entity === 'exercise' ? 'exercises' : `${c.entity}s`} in "${c.label}"`
     default:
-      return `Changed ${what} ${c.field ?? ''}: ${show(c.before)} → ${show(c.after)}${c.detail ? ` (${c.detail})` : ''}`.replace(/\s+:/, ':')
+      return `Changed ${what} ${c.field ?? ''}: ${show(c.before)} → ${show(c.after)}${c.detail ? ` (${c.detail})` : ''}`.replace(
+        /\s+:/,
+        ':',
+      )
   }
 }
 
@@ -291,8 +452,20 @@ export function diffToMarkdown(diff: CourseDiff, title = 'Course changes'): stri
   if (diff.identical) return `# ${title}\n\nNo changes.\n`
   const lines = [`# ${title}`, '']
   const c = diff.counts
-  lines.push(`${c.added} added, ${c.removed} removed, ${c.changed} changed, ${c.moved} moved, ${c.reordered} reordered.`, '')
-  const order: EntityKind[] = ['course', 'skill', 'module', 'lesson', 'exercise', 'project', 'stage', 'exam']
+  lines.push(
+    `${c.added} added, ${c.removed} removed, ${c.changed} changed, ${c.moved} moved, ${c.reordered} reordered.`,
+    '',
+  )
+  const order: EntityKind[] = [
+    'course',
+    'skill',
+    'module',
+    'lesson',
+    'exercise',
+    'project',
+    'stage',
+    'exam',
+  ]
   for (const entity of order) {
     const items = diff.changes.filter((x) => x.entity === entity)
     if (items.length === 0) continue

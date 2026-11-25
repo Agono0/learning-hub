@@ -8,8 +8,7 @@ import type { LhcfCourse, LhcfLesson, LhcfModule } from '../lhcf/schema'
 
 /** Where an exercise lives. */
 export type ExerciseHome =
-  | { kind: 'lesson'; moduleIndex: number; lessonIndex: number }
-  | { kind: 'finalExam' }
+  { kind: 'lesson'; moduleIndex: number; lessonIndex: number } | { kind: 'finalExam' }
 
 export interface IndexedExercise {
   exercise: Exercise
@@ -57,7 +56,14 @@ export function indexCourse(course: LhcfCourse): CourseIndex {
     else moduleBySlug.set(module.slug, { module, index: moduleIndex })
     module.lessons.forEach((lesson, lessonIndex) => {
       const path = `modules[${moduleIndex}].lessons[${lessonIndex}]`
-      const entry: IndexedLesson = { lesson, module, moduleIndex, lessonIndex, path, order: order++ }
+      const entry: IndexedLesson = {
+        lesson,
+        module,
+        moduleIndex,
+        lessonIndex,
+        path,
+        order: order++,
+      }
       lessons.push(entry)
       if (lessonBySlug.has(lesson.slug)) dup.lesson.add(lesson.slug)
       else lessonBySlug.set(lesson.slug, entry)

@@ -23,7 +23,10 @@ describe('mergeCourses', () => {
     })
     const r = mergeCourses(b, ours, theirs)
     expect(r.status).toBe('clean')
-    const m = r.merged as { title: string; modules: { lessons: { title: string; estMinutes?: number; objective: string }[] }[] }
+    const m = r.merged as {
+      title: string
+      modules: { lessons: { title: string; estMinutes?: number; objective: string }[] }[]
+    }
     expect(m.title).toBe('SQL Basics (2nd ed.)')
     expect(m.modules[1]!.lessons[0]!.title).toBe('Inner joins')
     expect(m.modules[0]!.lessons[1]!.estMinutes).toBe(10)
@@ -52,7 +55,9 @@ describe('mergeCourses', () => {
     expect(lessons[0]!.title).toBe('Filtering rows')
     expect(picked.validation?.ok).toBe(true)
     const keep = applyResolutions(r, { [c.id]: 'ours' })
-    expect((keep.merged.modules as { lessons: { title: string }[] }[])[0]!.lessons[0]!.title).toBe('Select + Where')
+    expect((keep.merged.modules as { lessons: { title: string }[] }[])[0]!.lessons[0]!.title).toBe(
+      'Select + Where',
+    )
   })
 
   it('merges set-like lists such as lesson skills from both sides', () => {
@@ -101,7 +106,9 @@ describe('mergeCourses', () => {
     expect(r.conflicts.map((c) => c.kind)).toContain('add-add')
     const c = r.conflicts.find((x) => x.kind === 'add-add')!
     const picked = applyResolutions(r, { [c.id]: 'theirs' })
-    const titles = (picked.merged.modules as { lessons: { title: string }[] }[])[0]!.lessons.map((l) => l.title)
+    const titles = (picked.merged.modules as { lessons: { title: string }[] }[])[0]!.lessons.map(
+      (l) => l.title,
+    )
     expect(titles).toContain('Grouping')
     expect(titles).not.toContain('GROUP BY')
   })
@@ -115,10 +122,18 @@ describe('mergeCourses', () => {
       })
     const one = mergeCourses(b, makeCourse(), move(1))
     expect(one.status).toBe('clean')
-    expect((one.merged.modules as { lessons: { slug: string }[] }[])[1]!.lessons.map((l) => l.slug)).toContain('sorting')
+    expect(
+      (one.merged.modules as { lessons: { slug: string }[] }[])[1]!.lessons.map((l) => l.slug),
+    ).toContain('sorting')
 
     const extra = edit((c) => {
-      c.modules.push({ slug: 'extra', title: 'Extra', lessons: [{ ...JSON.parse(JSON.stringify(c.modules[1]!.lessons[0]!)), slug: 'x1', title: 'X1' }] })
+      c.modules.push({
+        slug: 'extra',
+        title: 'Extra',
+        lessons: [
+          { ...JSON.parse(JSON.stringify(c.modules[1]!.lessons[0]!)), slug: 'x1', title: 'X1' },
+        ],
+      })
     })
     const bb = extra
     const o = edit((c) => c.modules[1]!.lessons.push(c.modules[0]!.lessons.splice(1, 1)[0]!), bb)
@@ -129,8 +144,12 @@ describe('mergeCourses', () => {
     expect(mv.ours).toBe('joining')
     expect(mv.theirs).toBe('extra')
     const picked = applyResolutions(two, { [mv.id]: 'theirs' })
-    expect((picked.merged.modules as { lessons: { slug: string }[] }[])[2]!.lessons.map((l) => l.slug)).toContain('sorting')
-    expect((picked.merged.modules as { lessons: { slug: string }[] }[])[1]!.lessons.map((l) => l.slug)).not.toContain('sorting')
+    expect(
+      (picked.merged.modules as { lessons: { slug: string }[] }[])[2]!.lessons.map((l) => l.slug),
+    ).toContain('sorting')
+    expect(
+      (picked.merged.modules as { lessons: { slug: string }[] }[])[1]!.lessons.map((l) => l.slug),
+    ).not.toContain('sorting')
   })
 
   it('keeps one side reorder and conflicts when both reorder differently', () => {
@@ -140,10 +159,14 @@ describe('mergeCourses', () => {
         { slug: 'b', name: 'B' },
         { slug: 'c', name: 'C' },
       ],
-      modules: makeCourse().modules.map((m) => ({ ...m, lessons: m.lessons.map((l) => ({ ...l, skills: [] })) })),
+      modules: makeCourse().modules.map((m) => ({
+        ...m,
+        lessons: m.lessons.map((l) => ({ ...l, skills: [] })),
+      })),
       projects: [],
     })
-    const names = (r: { merged: Record<string, unknown> }) => (r.merged.skills as { slug: string }[]).map((s) => s.slug)
+    const names = (r: { merged: Record<string, unknown> }) =>
+      (r.merged.skills as { slug: string }[]).map((s) => s.slug)
     const ours = edit((c) => c.skills.reverse(), b)
     const oneSided = mergeCourses(b, ours, b)
     expect(oneSided.status).toBe('clean')
@@ -159,14 +182,20 @@ describe('mergeCourses', () => {
 
   it('merges exercise edits by id and conflicts on the same exercise field', () => {
     const b = makeCourse()
-    const ours = edit((c) => (c.modules[0]!.lessons[0]!.exercises[0]!.explanation = 'Because it filters.'))
+    const ours = edit(
+      (c) => (c.modules[0]!.lessons[0]!.exercises[0]!.explanation = 'Because it filters.'),
+    )
     const theirs = edit((c) => {
       const e = c.modules[0]!.lessons[0]!.exercises[1]!
       if (e.type === 'typein') e.answers.push('select')
     })
     const r = mergeCourses(b, ours, theirs)
     expect(r.status).toBe('clean')
-    const ex = (r.merged.modules as { lessons: { exercises: { explanation?: string; answers?: string[] }[] }[] }[])[0]!.lessons[0]!.exercises
+    const ex = (
+      r.merged.modules as {
+        lessons: { exercises: { explanation?: string; answers?: string[] }[] }[]
+      }[]
+    )[0]!.lessons[0]!.exercises
     expect(ex[0]!.explanation).toBe('Because it filters.')
     expect(ex[1]!.answers).toEqual(['SELECT', 'select'])
     const clash = mergeCourses(
@@ -177,7 +206,9 @@ describe('mergeCourses', () => {
     expect(clash.conflicts).toHaveLength(1)
     expect(clash.conflicts[0]!.path).toContain('explanation')
     const picked = applyResolutions(clash, { [clash.conflicts[0]!.id]: 'theirs' })
-    const e0 = (picked.merged.modules as { lessons: { exercises: { explanation?: string }[] }[] }[])[0]!.lessons[0]!.exercises[0]!
+    const e0 = (
+      picked.merged.modules as { lessons: { exercises: { explanation?: string }[] }[] }[]
+    )[0]!.lessons[0]!.exercises[0]!
     expect(e0.explanation).toBe('B')
     expect(JSON.stringify(picked.merged)).not.toContain('__key')
   })
@@ -186,11 +217,19 @@ describe('mergeCourses', () => {
     const b = makeCourse()
     const mk = (id: string) =>
       edit((c) =>
-        c.modules[0]!.lessons[1]!.exercises.push({ id, type: 'truefalse', prompt: `Statement ${id} is true.`, answer: true, explanation: 'x' }),
+        c.modules[0]!.lessons[1]!.exercises.push({
+          id,
+          type: 'truefalse',
+          prompt: `Statement ${id} is true.`,
+          answer: true,
+          explanation: 'x',
+        }),
       )
     const r = mergeCourses(b, mk('n1'), mk('n2'))
     expect(r.status).toBe('clean')
-    const ids = (r.merged.modules as { lessons: { exercises: { id?: string }[] }[] }[])[0]!.lessons[1]!.exercises.map((e) => e.id)
+    const ids = (
+      r.merged.modules as { lessons: { exercises: { id?: string }[] }[] }[]
+    )[0]!.lessons[1]!.exercises.map((e) => e.id)
     expect(ids).toEqual(['o1', 'n1', 'n2'])
   })
 

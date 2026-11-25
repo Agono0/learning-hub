@@ -31,10 +31,17 @@ export function makeCourse(overrides: Record<string, unknown> = {}): LhcfCourse 
             estMinutes: 20,
             skills: ['select'],
             theory: [
-              { heading: 'Selecting', body: 'SELECT chooses columns from a table. WHERE keeps only the rows that match a condition.' },
+              {
+                heading: 'Selecting',
+                body: 'SELECT chooses columns from a table. WHERE keeps only the rows that match a condition.',
+              },
             ],
             workedExamples: [
-              { problem: 'List customers from Cairo.', steps: ['SELECT name FROM customers', 'Add WHERE city = \'Cairo\''], answer: "SELECT name FROM customers WHERE city = 'Cairo'" },
+              {
+                problem: 'List customers from Cairo.',
+                steps: ['SELECT name FROM customers', "Add WHERE city = 'Cairo'"],
+                answer: "SELECT name FROM customers WHERE city = 'Cairo'",
+              },
             ],
             keyTerms: [{ term: 'WHERE', definition: 'Filters rows by a condition.' }],
             exercises: [
@@ -58,7 +65,7 @@ export function makeCourse(overrides: Record<string, unknown> = {}): LhcfCourse 
                 id: 'q3',
                 type: 'cloze',
                 prompt: 'Complete the query that filters rows.',
-                text: 'SELECT name FROM customers {{WHERE}} city = \'Cairo\'',
+                text: "SELECT name FROM customers {{WHERE}} city = 'Cairo'",
                 explanation: 'WHERE comes after FROM.',
               },
             ],
@@ -71,7 +78,11 @@ export function makeCourse(overrides: Record<string, unknown> = {}): LhcfCourse 
             type: 'concept',
             estMinutes: 15,
             skills: ['select'],
-            theory: [{ body: 'ORDER BY sorts the result rows by one or more columns. Use DESC for descending order.' }],
+            theory: [
+              {
+                body: 'ORDER BY sorts the result rows by one or more columns. Use DESC for descending order.',
+              },
+            ],
             exercises: [
               {
                 id: 'o1',
@@ -95,7 +106,9 @@ export function makeCourse(overrides: Record<string, unknown> = {}): LhcfCourse 
             type: 'concept',
             estMinutes: 25,
             skills: ['joins'],
-            theory: [{ body: 'An INNER JOIN returns rows that have matching values in both tables.' }],
+            theory: [
+              { body: 'An INNER JOIN returns rows that have matching values in both tables.' },
+            ],
             exercises: [
               {
                 id: 'j1',
@@ -143,7 +156,10 @@ export function makeCourse(overrides: Record<string, unknown> = {}): LhcfCourse 
 }
 
 /** Mutate a fresh copy with a callback and return it. */
-export function edit(mutator: (c: LhcfCourse) => void, base: LhcfCourse = makeCourse()): LhcfCourse {
+export function edit(
+  mutator: (c: LhcfCourse) => void,
+  base: LhcfCourse = makeCourse(),
+): LhcfCourse {
   const c = JSON.parse(JSON.stringify(base)) as LhcfCourse
   mutator(c)
   return c

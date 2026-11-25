@@ -65,7 +65,10 @@ export function exerciseSeconds(e: Exercise, model: TimeModel = DEFAULT_TIME_MOD
 }
 
 /** Reference minutes for one lesson. */
-export function lessonReference(lesson: LhcfLesson, model: TimeModel = DEFAULT_TIME_MODEL): LessonTimeReference['parts'] & { total: number } {
+export function lessonReference(
+  lesson: LhcfLesson,
+  model: TimeModel = DEFAULT_TIME_MODEL,
+): LessonTimeReference['parts'] & { total: number } {
   const readWords =
     lesson.theory.reduce((n, s) => n + wordCount(stripMarkdown(s.body)), 0) +
     (lesson.summary ? wordCount(stripMarkdown(lesson.summary)) : 0)
@@ -78,7 +81,10 @@ export function lessonReference(lesson: LhcfLesson, model: TimeModel = DEFAULT_T
 }
 
 /** Per-lesson comparison of author minutes and reference minutes. */
-export function timeReferences(course: LhcfCourse, model: TimeModel = DEFAULT_TIME_MODEL): LessonTimeReference[] {
+export function timeReferences(
+  course: LhcfCourse,
+  model: TimeModel = DEFAULT_TIME_MODEL,
+): LessonTimeReference[] {
   const out: LessonTimeReference[] = []
   course.modules.forEach((m, mi) =>
     m.lessons.forEach((lesson, li) => {
@@ -88,8 +94,16 @@ export function timeReferences(course: LhcfCourse, model: TimeModel = DEFAULT_TI
         path: `modules[${mi}].lessons[${li}]`,
         authorMinutes: lesson.estMinutes,
         referenceMinutes: r.total,
-        parts: { reading: r.reading, examples: r.examples, exercises: r.exercises, reflection: r.reflection },
-        ratio: lesson.estMinutes === undefined ? undefined : Math.round((lesson.estMinutes / r.total) * 100) / 100,
+        parts: {
+          reading: r.reading,
+          examples: r.examples,
+          exercises: r.exercises,
+          reflection: r.reflection,
+        },
+        ratio:
+          lesson.estMinutes === undefined
+            ? undefined
+            : Math.round((lesson.estMinutes / r.total) * 100) / 100,
       })
     }),
   )
@@ -110,7 +124,10 @@ export interface TimeSummary {
 
 export function summarizeTime(course: LhcfCourse, refs = timeReferences(course)): TimeSummary {
   const authorMinutesTotal = refs.reduce((n, r) => n + (r.authorMinutes ?? 0), 0)
-  const projectMinutes = course.projects.reduce((n, p) => n + p.stages.reduce((m, s) => m + (s.estMinutes ?? 0), 0), 0)
+  const projectMinutes = course.projects.reduce(
+    (n, p) => n + p.stages.reduce((m, s) => m + (s.estMinutes ?? 0), 0),
+    0,
+  )
   return {
     authorMinutesTotal,
     referenceMinutesTotal: Math.round(refs.reduce((n, r) => n + r.referenceMinutes, 0)),
@@ -128,14 +145,16 @@ export const TIME_RULES: RuleInfo[] = [
     title: 'Author estimate is far below the content-size reference',
     severity: 'info',
     measures: 'Author minutes divided by reference minutes (below 0.4).',
-    falsePositive: 'Skimmable lessons, or readers who already know the material, take less than the reference.',
+    falsePositive:
+      'Skimmable lessons, or readers who already know the material, take less than the reference.',
   },
   {
     ruleId: 'time.lesson-estimate-high',
     title: 'Author estimate is far above the content-size reference',
     severity: 'info',
     measures: 'Author minutes divided by reference minutes (above 2.5).',
-    falsePositive: 'Lessons with videos, labs or external reading carry time that the text does not show.',
+    falsePositive:
+      'Lessons with videos, labs or external reading carry time that the text does not show.',
   },
   {
     ruleId: 'time.hours-mismatch',
@@ -161,9 +180,23 @@ export const TIME_RULES: RuleInfo[] = [
 ]
 
 const info = new Map(TIME_RULES.map((r) => [r.ruleId, r]))
-function mk(ruleId: string, path: string, message: string, evidence: string, suggestion?: string): Finding {
+function mk(
+  ruleId: string,
+  path: string,
+  message: string,
+  evidence: string,
+  suggestion?: string,
+): Finding {
   const r = info.get(ruleId)!
-  return finding({ ruleId, severity: r.severity, path, message, evidence, falsePositive: r.falsePositive, suggestion })
+  return finding({
+    ruleId,
+    severity: r.severity,
+    path,
+    message,
+    evidence,
+    falsePositive: r.falsePositive,
+    suggestion,
+  })
 }
 
 const NOTE = 'Reference is a content-size budget, not measured learner time.'
@@ -175,22 +208,62 @@ export function timeFindings(course: LhcfCourse, model: TimeModel = DEFAULT_TIME
   for (const r of refs) {
     if (r.ratio === undefined) continue
     if (r.ratio < 0.4)
-      out.push(mk('time.lesson-estimate-low', `${r.path}.estMinutes`, `Author estimate ${r.authorMinutes} min is well below the reference ${r.referenceMinutes} min.`, `${NOTE} Reading ${r.parts.reading.toFixed(1)}, examples ${r.parts.examples.toFixed(1)}, exercises ${r.parts.exercises.toFixed(1)}, reflection ${r.parts.reflection.toFixed(1)} min.`))
+      out.push(
+        mk(
+          'time.lesson-estimate-low',
+          `${r.path}.estMinutes`,
+          `Author estimate ${r.authorMinutes} min is well below the reference ${r.referenceMinutes} min.`,
+          `${NOTE} Reading ${r.parts.reading.toFixed(1)}, examples ${r.parts.examples.toFixed(1)}, exercises ${r.parts.exercises.toFixed(1)}, reflection ${r.parts.reflection.toFixed(1)} min.`,
+        ),
+      )
     else if (r.ratio > 2.5 && r.referenceMinutes >= 3)
-      out.push(mk('time.lesson-estimate-high', `${r.path}.estMinutes`, `Author estimate ${r.authorMinutes} min is well above the reference ${r.referenceMinutes} min.`, `${NOTE} Lesson type counts videos and projects at their typed minutes only.`))
+      out.push(
+        mk(
+          'time.lesson-estimate-high',
+          `${r.path}.estMinutes`,
+          `Author estimate ${r.authorMinutes} min is well above the reference ${r.referenceMinutes} min.`,
+          `${NOTE} Lesson type counts videos and projects at their typed minutes only.`,
+        ),
+      )
   }
   const summary = summarizeTime(course, refs)
   if (summary.lessonCount >= 4 && summary.lessonsWithAuthorMinutes / summary.lessonCount < 0.5)
-    out.push(mk('time.estimates-missing', 'modules', `${summary.lessonCount - summary.lessonsWithAuthorMinutes} of ${summary.lessonCount} lessons have no estimated minutes.`, `Reference total ${summary.referenceMinutesTotal} min.`))
-  if (summary.authorHours !== undefined && summary.authorMinutesTotal + summary.projectMinutes > 0) {
-    const diff = Math.abs(summary.authorHours - summary.impliedHours) / Math.max(summary.authorHours, 0.1)
+    out.push(
+      mk(
+        'time.estimates-missing',
+        'modules',
+        `${summary.lessonCount - summary.lessonsWithAuthorMinutes} of ${summary.lessonCount} lessons have no estimated minutes.`,
+        `Reference total ${summary.referenceMinutesTotal} min.`,
+      ),
+    )
+  if (
+    summary.authorHours !== undefined &&
+    summary.authorMinutesTotal + summary.projectMinutes > 0
+  ) {
+    const diff =
+      Math.abs(summary.authorHours - summary.impliedHours) / Math.max(summary.authorHours, 0.1)
     if (diff > 0.25)
-      out.push(mk('time.hours-mismatch', 'estHours', `estHours is ${summary.authorHours} but lesson and project minutes add up to ${summary.impliedHours} h.`, `Author-entered: lessons ${summary.authorMinutesTotal} min, projects ${summary.projectMinutes} min. ${summary.lessonCount - summary.lessonsWithAuthorMinutes} lesson(s) have no minutes.`))
+      out.push(
+        mk(
+          'time.hours-mismatch',
+          'estHours',
+          `estHours is ${summary.authorHours} but lesson and project minutes add up to ${summary.impliedHours} h.`,
+          `Author-entered: lessons ${summary.authorMinutesTotal} min, projects ${summary.projectMinutes} min. ${summary.lessonCount - summary.lessonsWithAuthorMinutes} lesson(s) have no minutes.`,
+        ),
+      )
   }
   if (course.finalExam?.minutes) {
-    const refMin = course.finalExam.exercises.reduce((n, e) => n + exerciseSeconds(e, model), 0) / 60
+    const refMin =
+      course.finalExam.exercises.reduce((n, e) => n + exerciseSeconds(e, model), 0) / 60
     if (course.finalExam.minutes < refMin * 0.7)
-      out.push(mk('time.exam-minutes-tight', 'finalExam.minutes', `The exam allows ${course.finalExam.minutes} min; the reference is about ${Math.round(refMin)} min.`, `${course.finalExam.exercises.length} items. ${NOTE}`))
+      out.push(
+        mk(
+          'time.exam-minutes-tight',
+          'finalExam.minutes',
+          `The exam allows ${course.finalExam.minutes} min; the reference is about ${Math.round(refMin)} min.`,
+          `${course.finalExam.exercises.length} items. ${NOTE}`,
+        ),
+      )
   }
   return out
 }

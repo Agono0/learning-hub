@@ -22,7 +22,6 @@ import { sharedOrderDiffers } from './diff'
 import {
   deepEqual,
   exerciseKeys,
-  getAtPath,
   isPlainObject,
   keyedSegment,
   matchExercises,
@@ -77,15 +76,13 @@ interface Ctx {
 const KEY = '__key'
 const SET_FIELDS = new Set(['skills', 'tags', 'requires', 'outcomes', 'prerequisites'])
 
-function conflict(
-  ctx: Ctx,
-  c: Omit<MergeConflict, 'id'>,
-): void {
+function conflict(ctx: Ctx, c: Omit<MergeConflict, 'id'>): void {
   ctx.n += 1
   ctx.conflicts.push({ id: `c${ctx.n}`, ...c })
 }
 
-const show = (v: unknown) => (typeof v === 'string' ? clip(v, 40) : clip(JSON.stringify(v) ?? 'unset', 40))
+const show = (v: unknown) =>
+  typeof v === 'string' ? clip(v, 40) : clip(JSON.stringify(v) ?? 'unset', 40)
 
 // ─── values ─────────────────────────────────────────────────────────────────
 
@@ -127,18 +124,33 @@ function mergeValue(
     return out
   }
   const lastKey = path.split('.').pop() ?? ''
-  if (Array.isArray(o) && Array.isArray(t) && SET_FIELDS.has(lastKey) && [...o, ...t].every((x) => typeof x === 'string')) {
+  if (
+    Array.isArray(o) &&
+    Array.isArray(t) &&
+    SET_FIELDS.has(lastKey) &&
+    [...o, ...t].every((x) => typeof x === 'string')
+  ) {
     const bs = new Set(Array.isArray(b) ? (b as string[]) : [])
     const os = new Set(o as string[])
     const ts = new Set(t as string[])
-    const keep = (x: string) => (!bs.has(x) || (os.has(x) && ts.has(x)))
-    const merged = [...(o as string[]).filter(keep), ...(t as string[]).filter((x) => !os.has(x) && keep(x))]
+    const keep = (x: string) => !bs.has(x) || (os.has(x) && ts.has(x))
+    const merged = [
+      ...(o as string[]).filter(keep),
+      ...(t as string[]).filter((x) => !os.has(x) && keep(x)),
+    ]
     ctx.auto += 1
     return merged
   }
-  if (Array.isArray(o) && Array.isArray(t) && Array.isArray(b) && o.length === t.length && b.length === o.length) {
+  if (
+    Array.isArray(o) &&
+    Array.isArray(t) &&
+    Array.isArray(b) &&
+    o.length === t.length &&
+    b.length === o.length
+  ) {
     const out: unknown[] = []
-    for (let i = 0; i < o.length; i++) out.push(mergeValue(ctx, `${path}[${i}]`, label, b[i], o[i], t[i], skip, false))
+    for (let i = 0; i < o.length; i++)
+      out.push(mergeValue(ctx, `${path}[${i}]`, label, b[i], o[i], t[i], skip, false))
     return out
   }
   conflict(ctx, {
@@ -210,7 +222,10 @@ function mergeOrder(
         base: [...b],
         ours: oFinal,
         theirs: tFinal,
-        patches: { ours: [], theirs: [{ op: 'order', path, value: theirsOrder.map((k) => items.get(k)) }] },
+        patches: {
+          ours: [],
+          theirs: [{ op: 'order', path, value: theirsOrder.map((k) => items.get(k)) }],
+        },
       })
     }
   } else if (oursChanged || theirsChanged) ctx.auto += 1
@@ -227,7 +242,13 @@ interface ListSpec {
   ours: Record<string, unknown>[]
   theirs: Record<string, unknown>[]
   /** Merge two edited entities that exist on all three sides. */
-  item: (key: string, path: string, b: Record<string, unknown>, o: Record<string, unknown>, t: Record<string, unknown>) => Record<string, unknown>
+  item: (
+    key: string,
+    path: string,
+    b: Record<string, unknown>,
+    o: Record<string, unknown>,
+    t: Record<string, unknown>,
+  ) => Record<string, unknown>
   itemLabel: (x: Record<string, unknown>) => string
   /** Skip the order step (when the caller decides placement itself). */
   noOrder?: boolean
@@ -358,7 +379,8 @@ function undecorate<T>(value: T): T {
 
 // ─── course ─────────────────────────────────────────────────────────────────
 
-const asList = (x: unknown): Record<string, unknown>[] => (Array.isArray(x) ? (x as Record<string, unknown>[]) : [])
+const asList = (x: unknown): Record<string, unknown>[] =>
+  Array.isArray(x) ? (x as Record<string, unknown>[]) : []
 
 function mergeLesson(
   ctx: Ctx,
@@ -368,7 +390,14 @@ function mergeLesson(
   t: Record<string, unknown>,
 ): Record<string, unknown> {
   const label = String(o.title ?? t.title ?? b.title ?? 'lesson')
-  const merged = mergeValue(ctx, path, label, { ...b, exercises: undefined }, { ...o, exercises: undefined }, { ...t, exercises: undefined }) as Record<string, unknown>
+  const merged = mergeValue(
+    ctx,
+    path,
+    label,
+    { ...b, exercises: undefined },
+    { ...o, exercises: undefined },
+    { ...t, exercises: undefined },
+  ) as Record<string, unknown>
   delete merged.exercises
   merged.exercises = mergeExercises(
     ctx,
@@ -389,7 +418,8 @@ interface Placed {
 function placements(course: Record<string, unknown>): Map<string, Placed> {
   const m = new Map<string, Placed>()
   for (const mod of asList(course.modules))
-    for (const l of asList(mod.lessons)) m.set(String(l.slug), { lesson: l, moduleSlug: String(mod.slug) })
+    for (const l of asList(mod.lessons))
+      m.set(String(l.slug), { lesson: l, moduleSlug: String(mod.slug) })
   return m
 }
 
@@ -410,7 +440,8 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
     base: asList(B.skills),
     ours: asList(O.skills),
     theirs: asList(T.skills),
-    item: (_k, p, b, o, t) => mergeValue(ctx, p, String(o.name ?? ''), b, o, t) as Record<string, unknown>,
+    item: (_k, p, b, o, t) =>
+      mergeValue(ctx, p, String(o.name ?? ''), b, o, t) as Record<string, unknown>,
     itemLabel: (x) => String(x.name ?? x.slug),
   })
 
@@ -426,7 +457,14 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
     ours: asList(O.modules),
     theirs: asList(T.modules),
     item: (_k, p, b, o, t) =>
-      mergeValue(ctx, p, String(o.title ?? ''), { ...b, lessons: undefined }, { ...o, lessons: undefined }, { ...t, lessons: undefined }) as Record<string, unknown>,
+      mergeValue(
+        ctx,
+        p,
+        String(o.title ?? ''),
+        { ...b, lessons: undefined },
+        { ...o, lessons: undefined },
+        { ...t, lessons: undefined },
+      ) as Record<string, unknown>,
     itemLabel: (x) => String(x.title ?? x.slug),
   })
   const moduleSlugs = new Set(mods.map((m) => String(m.slug)))
@@ -438,7 +476,8 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
     const b = bP.get(slug)
     const o = oP.get(slug)
     const t = tP.get(slug)
-    const lp = (mod: string) => `modules${keyedSegment('slug', mod)}.lessons${keyedSegment('slug', slug)}`
+    const lp = (mod: string) =>
+      `modules${keyedSegment('slug', mod)}.lessons${keyedSegment('slug', slug)}`
     if (!b) {
       if (o && t) {
         if (deepEqual(o.lesson, t.lesson) && o.moduleSlug === t.moduleSlug) {
@@ -536,7 +575,12 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
       ours: undefined,
       theirs: undefined,
       patches: {
-        ours: [{ op: 'remove', path: `modules${keyedSegment('slug', fallback)}.lessons${keyedSegment('slug', slug)}` }],
+        ours: [
+          {
+            op: 'remove',
+            path: `modules${keyedSegment('slug', fallback)}.lessons${keyedSegment('slug', slug)}`,
+          },
+        ],
         theirs: [],
       },
     })
@@ -544,7 +588,8 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
   merged.modules = mods.map((m) => {
     const slug = String(m.slug)
     const here = [...placeAt].filter(([, mod]) => mod === slug).map(([s]) => s)
-    const listOf = (p: Map<string, Placed>) => [...p].filter(([, v]) => v.moduleSlug === slug).map(([s]) => s)
+    const listOf = (p: Map<string, Placed>) =>
+      [...p].filter(([, v]) => v.moduleSlug === slug).map(([s]) => s)
     const ordered = mergeOrder(
       ctx,
       `modules${keyedSegment('slug', slug)}.lessons`,
@@ -568,7 +613,14 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
     theirs: asList(T.projects),
     item: (_k, p, b, o, t) => {
       const label = String(o.title ?? '')
-      const meta = mergeValue(ctx, p, label, { ...b, stages: undefined }, { ...o, stages: undefined }, { ...t, stages: undefined }) as Record<string, unknown>
+      const meta = mergeValue(
+        ctx,
+        p,
+        label,
+        { ...b, stages: undefined },
+        { ...o, stages: undefined },
+        { ...t, stages: undefined },
+      ) as Record<string, unknown>
       meta.stages = mergeList(ctx, {
         path: `${p}.stages`,
         label,
@@ -576,7 +628,8 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
         base: asList(b.stages),
         ours: asList(o.stages),
         theirs: asList(t.stages),
-        item: (_sk, sp, sb, so, st) => mergeValue(ctx, sp, String(so.title ?? ''), sb, so, st) as Record<string, unknown>,
+        item: (_sk, sp, sb, so, st) =>
+          mergeValue(ctx, sp, String(so.title ?? ''), sb, so, st) as Record<string, unknown>,
         itemLabel: (x) => String(x.title ?? x.slug),
       })
       return meta
@@ -589,13 +642,36 @@ export function mergeCourses(base: LhcfCourse, ours: LhcfCourse, theirs: LhcfCou
   const ox = O.finalExam as Record<string, unknown> | undefined
   const tx = T.finalExam as Record<string, unknown> | undefined
   if (ox && tx && bx) {
-    const meta = mergeValue(ctx, 'finalExam', 'Final exam', { ...bx, exercises: undefined }, { ...ox, exercises: undefined }, { ...tx, exercises: undefined }) as Record<string, unknown>
-    meta.exercises = mergeExercises(ctx, 'finalExam', 'Final exam', asList(bx.exercises) as unknown as Exercise[], asList(ox.exercises) as unknown as Exercise[], asList(tx.exercises) as unknown as Exercise[])
+    const meta = mergeValue(
+      ctx,
+      'finalExam',
+      'Final exam',
+      { ...bx, exercises: undefined },
+      { ...ox, exercises: undefined },
+      { ...tx, exercises: undefined },
+    ) as Record<string, unknown>
+    meta.exercises = mergeExercises(
+      ctx,
+      'finalExam',
+      'Final exam',
+      asList(bx.exercises) as unknown as Exercise[],
+      asList(ox.exercises) as unknown as Exercise[],
+      asList(tx.exercises) as unknown as Exercise[],
+    )
     merged.finalExam = meta
   } else if (ox && tx) {
     if (deepEqual(ox, tx)) merged.finalExam = ox
     else {
-      conflict(ctx, { kind: 'add-add', path: 'finalExam', label: 'Final exam', message: 'Both sides added a final exam.', base: undefined, ours: ox, theirs: tx, patches: { ours: [], theirs: [{ op: 'set', path: 'finalExam', value: tx }] } })
+      conflict(ctx, {
+        kind: 'add-add',
+        path: 'finalExam',
+        label: 'Final exam',
+        message: 'Both sides added a final exam.',
+        base: undefined,
+        ours: ox,
+        theirs: tx,
+        patches: { ours: [], theirs: [{ op: 'set', path: 'finalExam', value: tx }] },
+      })
       merged.finalExam = ox
     }
   } else if (ox || tx) {
@@ -672,7 +748,10 @@ export interface ResolveResult {
  * Apply explicit choices. Without a choice a conflict stays unresolved and the
  * result carries no validation, so it cannot be mistaken for a finished merge.
  */
-export function applyResolutions(result: MergeResult, choices: Readonly<Record<string, Choice>>): ResolveResult {
+export function applyResolutions(
+  result: MergeResult,
+  choices: Readonly<Record<string, Choice>>,
+): ResolveResult {
   const keyed = cloneCourse(result.keyed)
   const unresolved: string[] = []
   const failed: { id: string; patch: Patch }[] = []

@@ -9,13 +9,7 @@
 import type { Exercise } from '../../practice/schema'
 import { exerciseToText } from '../../practice/to-text'
 import type { LhcfCourse } from '../lhcf/schema'
-import {
-  BLOOM_LEVELS,
-  bloomRank,
-  formatCanReach,
-  readObjective,
-  type BloomLevel,
-} from './bloom'
+import { BLOOM_LEVELS, bloomRank, formatCanReach, readObjective, type BloomLevel } from './bloom'
 import { indexCourse, type CourseIndex, type IndexedExercise } from './course-index'
 import { containment, sharedTerms, termSet, termSetOf } from './terms'
 import { clip, finding, pct, type Finding, type RuleInfo } from './types'
@@ -85,7 +79,10 @@ function skillMatches(exSkill: string | undefined, lessonSkills: readonly string
 }
 
 /** Build the alignment matrix for a validated course. */
-export function alignCourse(course: LhcfCourse, index: CourseIndex = indexCourse(course)): AlignmentMatrix {
+export function alignCourse(
+  course: LhcfCourse,
+  index: CourseIndex = indexCourse(course),
+): AlignmentMatrix {
   const examExercises = index.exercises.filter((e) => e.home.kind === 'finalExam')
   const examTerms = examExercises.map((e) => ({ e, terms: exerciseTerms(e.exercise) }))
   const skillNames = new Map(course.skills.map((s) => [s.slug, s.name.toLowerCase()]))
@@ -103,13 +100,16 @@ export function alignCourse(course: LhcfCourse, index: CourseIndex = indexCourse
     levelCounts[reading.level ?? 'unknown'] += 1
     const objTerms = termSet(reading.object || lesson.objective)
     const skillLabels = lesson.skills.flatMap((s) => [s, skillNames.get(s) ?? ''])
-    const own = index.exercises.filter((e) => e.lessonSlug === lesson.slug && e.home.kind === 'lesson')
+    const own = index.exercises.filter(
+      (e) => e.lessonSlug === lesson.slug && e.home.kind === 'lesson',
+    )
     const cells: AlignmentCell[] = own.map((ie) => {
       const terms = exerciseTerms(ie.exercise)
       const score = containment(objTerms, terms)
       const bySkill = skillMatches(ie.exercise.skill, skillLabels.filter(Boolean))
       const byTerms = score >= ALIGN_MATCH_THRESHOLD
-      const basis: MatchBasis = bySkill && byTerms ? 'skill+terms' : bySkill ? 'skill' : byTerms ? 'terms' : 'none'
+      const basis: MatchBasis =
+        bySkill && byTerms ? 'skill+terms' : bySkill ? 'skill' : byTerms ? 'terms' : 'none'
       return {
         exercisePath: ie.path,
         score: Math.round(score * 100) / 100,
@@ -146,8 +146,16 @@ export function alignCourse(course: LhcfCourse, index: CourseIndex = indexCourse
     const terms = termSet(reading.object || outcome)
     const lessons = index.lessons
       .map((il) => {
-        const lt = termSetOf([il.lesson.objective, il.lesson.title, ...il.lesson.keyTerms.map((k) => k.term)])
-        return { slug: il.lesson.slug, score: containment(terms, lt), shared: sharedTerms(terms, lt) }
+        const lt = termSetOf([
+          il.lesson.objective,
+          il.lesson.title,
+          ...il.lesson.keyTerms.map((k) => k.term),
+        ])
+        return {
+          slug: il.lesson.slug,
+          score: containment(terms, lt),
+          shared: sharedTerms(terms, lt),
+        }
       })
       .filter((l) => l.score >= OUTCOME_MATCH_THRESHOLD)
       .sort((a, b) => b.score - a.score || a.slug.localeCompare(b.slug))
@@ -175,7 +183,8 @@ export const ALIGNMENT_RULES: RuleInfo[] = [
     ruleId: 'align.objective-unmatched',
     title: 'No exercise overlaps the objective',
     severity: 'notice',
-    measures: 'Shared stemmed terms between the objective and each exercise, or a shared skill link.',
+    measures:
+      'Shared stemmed terms between the objective and each exercise, or a shared skill link.',
     falsePositive:
       'Synonyms, translated content and objectives phrased abstractly score low even when practice fits.',
   },
@@ -212,7 +221,10 @@ export const ALIGNMENT_RULES: RuleInfo[] = [
 ]
 
 /** Turn an alignment matrix into findings. */
-export function alignmentFindings(course: LhcfCourse, matrix: AlignmentMatrix = alignCourse(course)): Finding[] {
+export function alignmentFindings(
+  course: LhcfCourse,
+  matrix: AlignmentMatrix = alignCourse(course),
+): Finding[] {
   const out: Finding[] = []
   for (const row of matrix.rows) {
     if (row.cells.length === 0) {
@@ -225,7 +237,8 @@ export function alignmentFindings(course: LhcfCourse, matrix: AlignmentMatrix = 
           evidence: `0 exercises; ${row.examMatches.length} final exam item(s) overlap the objective.`,
           falsePositive:
             'Reading, video or project lessons may be practiced elsewhere. Dismiss if that is intended.',
-          suggestion: 'Add one production exercise (type-in, cloze or code) that uses the objective wording.',
+          suggestion:
+            'Add one production exercise (type-in, cloze or code) that uses the objective wording.',
         }),
       )
       continue
@@ -241,7 +254,8 @@ export function alignmentFindings(course: LhcfCourse, matrix: AlignmentMatrix = 
           evidence: `Best overlap ${pct(best.score * 100, 100)} (needs ${pct(ALIGN_MATCH_THRESHOLD * 100, 100)}) at ${best.exercisePath}.`,
           falsePositive:
             'Synonyms or a different language can hide a real match. Link the exercise skill to the lesson skills to override.',
-          suggestion: 'Reword the objective or an exercise so they use the same key terms, or set the exercise skill.',
+          suggestion:
+            'Reword the objective or an exercise so they use the same key terms, or set the exercise skill.',
         }),
       )
     } else if (row.level && row.reachingCount === 0 && bloomRank(row.level) >= 3) {
@@ -282,7 +296,8 @@ export function alignmentFindings(course: LhcfCourse, matrix: AlignmentMatrix = 
           path: o.path,
           message: `Outcome "${clip(o.outcome, 70)}" does not overlap any lesson objective or title.`,
           evidence: `Checked ${course.modules.reduce((n, m) => n + m.lessons.length, 0)} lessons at ${pct(OUTCOME_MATCH_THRESHOLD * 100, 100)} overlap.`,
-          falsePositive: 'Broad outcomes may be met by several lessons together without sharing words with any one.',
+          falsePositive:
+            'Broad outcomes may be met by several lessons together without sharing words with any one.',
           suggestion: 'Add a lesson for it, or reword the outcome with the course vocabulary.',
         }),
       )

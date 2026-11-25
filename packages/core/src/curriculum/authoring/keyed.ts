@@ -88,7 +88,10 @@ export interface ExerciseMatch {
  * exercise of the same type whose question is at least 0.6 similar. The
  * second step is a guess, so callers surface it as "changed", never silently.
  */
-export function matchExercises(base: readonly Exercise[], other: readonly Exercise[]): ExerciseMatch {
+export function matchExercises(
+  base: readonly Exercise[],
+  other: readonly Exercise[],
+): ExerciseMatch {
   const baseKeys = exerciseKeys(base)
   const otherKeys = exerciseKeys(other)
   const baseByKey = new Map(baseKeys.map((k, i) => [k, i]))
@@ -182,7 +185,10 @@ export function setAtPath(root: unknown, path: string, value: unknown): boolean 
     return true
   }
   if (!Array.isArray(node)) return false
-  const idx = 'index' in last ? last.index : node.findIndex((x) => isPlainObject(x) && x[last.by] === last.value)
+  const idx =
+    'index' in last
+      ? last.index
+      : node.findIndex((x) => isPlainObject(x) && x[last.by] === last.value)
   if (idx < 0) return false
   if (value === undefined) node.splice(idx, 1)
   else node[idx] = value

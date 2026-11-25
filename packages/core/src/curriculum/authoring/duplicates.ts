@@ -79,7 +79,9 @@ export function findDuplicateExercises(
       }
     }
   }
-  pairs.sort((x, y) => y.score - x.score || x.a.path.localeCompare(y.a.path, 'en', { numeric: true }))
+  pairs.sort(
+    (x, y) => y.score - x.score || x.a.path.localeCompare(y.a.path, 'en', { numeric: true }),
+  )
   return pairs.slice(0, limit)
 }
 
@@ -123,13 +125,30 @@ export const DUPLICATE_RULES: RuleInfo[] = [
 ]
 
 const ruleSeverity = new Map(DUPLICATE_RULES.map((r) => [r.ruleId, r]))
-function mk(ruleId: string, path: string, message: string, evidence: string, suggestion?: string): Finding {
+function mk(
+  ruleId: string,
+  path: string,
+  message: string,
+  evidence: string,
+  suggestion?: string,
+): Finding {
   const r = ruleSeverity.get(ruleId)!
-  return finding({ ruleId, severity: r.severity, path, message, evidence, falsePositive: r.falsePositive, suggestion })
+  return finding({
+    ruleId,
+    severity: r.severity,
+    path,
+    message,
+    evidence,
+    falsePositive: r.falsePositive,
+    suggestion,
+  })
 }
 
 /** All duplicate-related findings for a course. */
-export function duplicateFindings(course: LhcfCourse, index: CourseIndex = indexCourse(course)): Finding[] {
+export function duplicateFindings(
+  course: LhcfCourse,
+  index: CourseIndex = indexCourse(course),
+): Finding[] {
   const out: Finding[] = []
   const lessonEx = index.exercises.filter((e) => e.home.kind === 'lesson')
   const examEx = index.exercises.filter((e) => e.home.kind === 'finalExam')
@@ -140,13 +159,16 @@ export function duplicateFindings(course: LhcfCourse, index: CourseIndex = index
         p.b.path,
         `Exercise is ${Math.round(p.score * 100)}% similar to ${p.a.path}.`,
         `"${clip(questionKey(p.a), 60)}" vs "${clip(questionKey(p.b), 60)}"${p.sameAnswer ? '; same answer' : '; different answers'}.`,
-        p.sameAnswer ? 'Remove one, or change what it asks.' : 'Check that the pair is not contradictory.',
+        p.sameAnswer
+          ? 'Remove one, or change what it asks.'
+          : 'Check that the pair is not contradictory.',
       ),
     )
   }
   const combined = [...lessonEx, ...examEx]
   for (const p of findDuplicateExercises(combined, { threshold: EXAM_OVERLAP_THRESHOLD })) {
-    const examSide = p.a.home.kind === 'finalExam' ? p.a : p.b.home.kind === 'finalExam' ? p.b : null
+    const examSide =
+      p.a.home.kind === 'finalExam' ? p.a : p.b.home.kind === 'finalExam' ? p.b : null
     const lessonSide = examSide === p.a ? p.b : p.a
     if (!examSide || lessonSide.home.kind !== 'lesson') continue
     out.push(
@@ -163,7 +185,15 @@ export function duplicateFindings(course: LhcfCourse, index: CourseIndex = index
   for (const il of index.lessons) {
     const key = il.lesson.title.trim().toLowerCase()
     const prev = titles.get(key)
-    if (prev) out.push(mk('dup.lesson-title', `${il.path}.title`, `Same title as ${prev}.`, `"${il.lesson.title}"`))
+    if (prev)
+      out.push(
+        mk(
+          'dup.lesson-title',
+          `${il.path}.title`,
+          `Same title as ${prev}.`,
+          `"${il.lesson.title}"`,
+        ),
+      )
     else titles.set(key, il.path)
   }
   const objTerms = index.lessons.map((il) => termSet(il.lesson.objective))
@@ -193,6 +223,13 @@ export function duplicateFindings(course: LhcfCourse, index: CourseIndex = index
     }
   for (const [term, lessons] of terms)
     if (lessons.length > 1)
-      out.push(mk('dup.key-term-repeated', 'modules', `"${clip(term, 40)}" is a key term in ${lessons.length} lessons.`, lessons.join(', ')))
+      out.push(
+        mk(
+          'dup.key-term-repeated',
+          'modules',
+          `"${clip(term, 40)}" is a key term in ${lessons.length} lessons.`,
+          lessons.join(', '),
+        ),
+      )
   return out
 }

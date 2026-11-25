@@ -37,16 +37,7 @@ export const BLOOM_LEVEL_OF_VERB: Readonly<Record<BloomVerb, BloomLevel>> = (() 
       'contrast',
       'illustrate',
     ],
-    apply: [
-      'apply',
-      'compute',
-      'solve',
-      'use',
-      'demonstrate',
-      'implement',
-      'calculate',
-      'sketch',
-    ],
+    apply: ['apply', 'compute', 'solve', 'use', 'demonstrate', 'implement', 'calculate', 'sketch'],
     analyze: [
       'analyze',
       'derive',
@@ -61,8 +52,7 @@ export const BLOOM_LEVEL_OF_VERB: Readonly<Record<BloomVerb, BloomLevel>> = (() 
     create: ['design', 'construct', 'create', 'formulate', 'propose', 'write', 'build', 'compose'],
   }
   const out = {} as Record<BloomVerb, BloomLevel>
-  for (const level of BLOOM_LEVELS)
-    for (const v of groups[level]) out[v as BloomVerb] = level
+  for (const level of BLOOM_LEVELS) for (const v of groups[level]) out[v as BloomVerb] = level
   return out
 })()
 
@@ -83,7 +73,10 @@ export interface ObjectiveReading {
 export function readObjective(objective: string): ObjectiveReading {
   const cleaned = objective
     .trim()
-    .replace(/^(?:you will be able to|students? will be able to|learners? will be able to|swbat|by the end,?)\s*/i, '')
+    .replace(
+      /^(?:you will be able to|students? will be able to|learners? will be able to|swbat|by the end,?)\s*/i,
+      '',
+    )
     .replace(/^[-*•\d.)\s]+/, '')
   const m = /^([\p{L}'-]+)\s*(.*)$/su.exec(cleaned)
   if (!m) return { verb: '', level: null, object: cleaned }

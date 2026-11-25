@@ -9,7 +9,7 @@
  * onto an existing slug is refused, and a split or merge lists what it moved.
  */
 import type { Exercise } from '../../practice/schema'
-import type { LhcfCourse, LhcfLesson } from '../lhcf/schema'
+import type { LhcfCourse } from '../lhcf/schema'
 import { validateLhcf, type LhcfValidation } from '../lhcf/validate'
 import { slugSchema } from '../lhcf/schema'
 import { cloneCourse } from './course-index'
@@ -65,7 +65,9 @@ interface Run {
 }
 
 const lessonsOf = (c: Draft): { lesson: Draft; module: Draft }[] =>
-  (c.modules as Draft[]).flatMap((module) => (module.lessons as Draft[]).map((lesson) => ({ lesson, module })))
+  (c.modules as Draft[]).flatMap((module) =>
+    (module.lessons as Draft[]).map((lesson) => ({ lesson, module })),
+  )
 
 function findLesson(r: Run, slug: string): { lesson: Draft; module: Draft } | null {
   const hit = lessonsOf(r.c).find((x) => x.lesson.slug === slug)
@@ -108,7 +110,9 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     const src = skills.find((s) => s.slug === op.from)
     if (!src) return void r.errors.push(`No skill "${op.from}".`)
     if (op.from !== op.to && skills.some((s) => s.slug === op.to))
-      return void r.errors.push(`A skill "${op.to}" already exists; renaming would merge two skills.`)
+      return void r.errors.push(
+        `A skill "${op.to}" already exists; renaming would merge two skills.`,
+      )
     const oldName = String(src.name).toLowerCase()
     src.slug = op.to
     if (op.name) src.name = op.name
@@ -147,14 +151,17 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     if (op.from !== op.to && lessonsOf(r.c).some((x) => x.lesson.slug === op.to))
       return void r.errors.push(`A lesson "${op.to}" already exists.`)
     hit.lesson.slug = op.to
-    r.warnings.push('Learner progress is stored by lesson slug; renaming a published lesson resets its progress on re-import.')
+    r.warnings.push(
+      'Learner progress is stored by lesson slug; renaming a published lesson resets its progress on re-import.',
+    )
   },
   'rename-module'(r, op) {
     if (!checkSlug(r, op.to, 'module')) return
     const mods = r.c.modules as Draft[]
     const m = mods.find((x) => x.slug === op.from)
     if (!m) return void r.errors.push(`No module "${op.from}".`)
-    if (op.from !== op.to && mods.some((x) => x.slug === op.to)) return void r.errors.push(`A module "${op.to}" already exists.`)
+    if (op.from !== op.to && mods.some((x) => x.slug === op.to))
+      return void r.errors.push(`A module "${op.to}" already exists.`)
     m.slug = op.to
   },
   'move-lesson'(r, op) {
@@ -162,9 +169,12 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     if (!hit) return
     const target = (r.c.modules as Draft[]).find((m) => m.slug === op.toModule)
     if (!target) return void r.errors.push(`No module "${op.toModule}".`)
-    if (hit.module.slug === target.slug && op.index === undefined) return void r.errors.push('The lesson is already in that module.')
+    if (hit.module.slug === target.slug && op.index === undefined)
+      return void r.errors.push('The lesson is already in that module.')
     if (hit.module.lessons.length === 1 && hit.module !== target)
-      return void r.errors.push(`"${hit.module.slug}" would be left with no lessons; a module needs at least one.`)
+      return void r.errors.push(
+        `"${hit.module.slug}" would be left with no lessons; a module needs at least one.`,
+      )
     const from = hit.module.lessons as Draft[]
     from.splice(from.indexOf(hit.lesson), 1)
     const to = target.lessons as Draft[]
@@ -175,15 +185,27 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     const m = (r.c.modules as Draft[]).find((x) => x.slug === op.module)
     if (!m) return void r.errors.push(`No module "${op.module}".`)
     const have = (m.lessons as Draft[]).map((l) => l.slug as string)
-    if (op.order.length !== have.length || [...op.order].sort().join() !== [...have].sort().join() || new Set(op.order).size !== op.order.length)
-      return void r.errors.push(`The new order must list exactly these lessons once each: ${have.join(', ')}.`)
+    if (
+      op.order.length !== have.length ||
+      [...op.order].sort().join() !== [...have].sort().join() ||
+      new Set(op.order).size !== op.order.length
+    )
+      return void r.errors.push(
+        `The new order must list exactly these lessons once each: ${have.join(', ')}.`,
+      )
     const by = new Map((m.lessons as Draft[]).map((l) => [l.slug, l]))
     m.lessons = op.order.map((s) => by.get(s))
   },
   'reorder-modules'(r, op) {
     const have = (r.c.modules as Draft[]).map((m) => m.slug as string)
-    if (op.order.length !== have.length || [...op.order].sort().join() !== [...have].sort().join() || new Set(op.order).size !== op.order.length)
-      return void r.errors.push(`The new order must list exactly these modules once each: ${have.join(', ')}.`)
+    if (
+      op.order.length !== have.length ||
+      [...op.order].sort().join() !== [...have].sort().join() ||
+      new Set(op.order).size !== op.order.length
+    )
+      return void r.errors.push(
+        `The new order must list exactly these modules once each: ${have.join(', ')}.`,
+      )
     const by = new Map((r.c.modules as Draft[]).map((m) => [m.slug, m]))
     r.c.modules = op.order.map((s) => by.get(s))
   },
@@ -191,19 +213,29 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     if (!checkSlug(r, op.newSlug, 'lesson')) return
     const hit = findLesson(r, op.slug)
     if (!hit) return
-    if (lessonsOf(r.c).some((x) => x.lesson.slug === op.newSlug)) return void r.errors.push(`A lesson "${op.newSlug}" already exists.`)
+    if (lessonsOf(r.c).some((x) => x.lesson.slug === op.newSlug))
+      return void r.errors.push(`A lesson "${op.newSlug}" already exists.`)
     const l = hit.lesson
     const theory = l.theory as Draft[]
     const exs = lessonExercises(l)
-    if (!Number.isInteger(op.theoryFrom) || op.theoryFrom < 0 || op.theoryFrom > theory.length) return void r.errors.push(`theoryFrom must be between 0 and ${theory.length}.`)
-    if (!Number.isInteger(op.exercisesFrom) || op.exercisesFrom < 0 || op.exercisesFrom > exs.length) return void r.errors.push(`exercisesFrom must be between 0 and ${exs.length}.`)
-    if (!op.newTitle.trim() || !op.newObjective.trim()) return void r.errors.push('The new lesson needs a title and an objective.')
+    if (!Number.isInteger(op.theoryFrom) || op.theoryFrom < 0 || op.theoryFrom > theory.length)
+      return void r.errors.push(`theoryFrom must be between 0 and ${theory.length}.`)
+    if (
+      !Number.isInteger(op.exercisesFrom) ||
+      op.exercisesFrom < 0 ||
+      op.exercisesFrom > exs.length
+    )
+      return void r.errors.push(`exercisesFrom must be between 0 and ${exs.length}.`)
+    if (!op.newTitle.trim() || !op.newObjective.trim())
+      return void r.errors.push('The new lesson needs a title and an objective.')
     const moveTheory = theory.splice(op.theoryFrom)
     const moveExercises = exs.splice(op.exercisesFrom)
     if (moveTheory.length + moveExercises.length === 0) {
       theory.push(...moveTheory)
       exs.push(...moveExercises)
-      return void r.errors.push('Nothing would move to the new lesson. Pick a split point inside the lesson.')
+      return void r.errors.push(
+        'Nothing would move to the new lesson. Pick a split point inside the lesson.',
+      )
     }
     if (theory.length + exs.length === 0) {
       theory.unshift(...moveTheory)
@@ -226,11 +258,17 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     const mod = hit.module.lessons as Draft[]
     mod.splice(mod.indexOf(l) + 1, 0, fresh)
     if (l.estMinutes !== undefined) {
-      r.warnings.push(`"${l.slug}" keeps its ${l.estMinutes} min estimate and the new lesson has none. Enter minutes for both.`)
+      r.warnings.push(
+        `"${l.slug}" keeps its ${l.estMinutes} min estimate and the new lesson has none. Enter minutes for both.`,
+      )
     }
     if (l.workedExamples.length + l.keyTerms.length + l.reflection.length + l.resources.length > 0)
-      r.warnings.push('Worked examples, key terms, resources and reflection prompts stay in the original lesson. Move them by hand if they belong to the new part.')
-    r.warnings.push('Both lessons share the same skills. Adjust them if the parts train different skills.')
+      r.warnings.push(
+        'Worked examples, key terms, resources and reflection prompts stay in the original lesson. Move them by hand if they belong to the new part.',
+      )
+    r.warnings.push(
+      'Both lessons share the same skills. Adjust them if the parts train different skills.',
+    )
   },
   'merge-lessons'(r, op) {
     if (op.keep === op.absorb) return void r.errors.push('Pick two different lessons.')
@@ -242,10 +280,20 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     keep.theory = [...keep.theory, ...take.theory]
     keep.workedExamples = [...keep.workedExamples, ...take.workedExamples]
     const terms = new Set((keep.keyTerms as Draft[]).map((t) => String(t.term).toLowerCase()))
-    keep.keyTerms = [...keep.keyTerms, ...(take.keyTerms as Draft[]).filter((t) => !terms.has(String(t.term).toLowerCase()))]
+    keep.keyTerms = [
+      ...keep.keyTerms,
+      ...(take.keyTerms as Draft[]).filter((t) => !terms.has(String(t.term).toLowerCase())),
+    ]
     const urls = new Set((keep.resources as Draft[]).map((x) => x.url))
-    keep.resources = [...keep.resources, ...(take.resources as Draft[]).filter((x) => !urls.has(x.url))]
-    const ids = new Set(lessonExercises(keep).map((e) => e.id).filter(Boolean))
+    keep.resources = [
+      ...keep.resources,
+      ...(take.resources as Draft[]).filter((x) => !urls.has(x.url)),
+    ]
+    const ids = new Set(
+      lessonExercises(keep)
+        .map((e) => e.id)
+        .filter(Boolean),
+    )
     for (const e of lessonExercises(take)) {
       if (e.id && ids.has(e.id)) {
         r.warnings.push(`Exercise id "${e.id}" clashed and was renamed to "${take.slug}-${e.id}".`)
@@ -256,15 +304,20 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     keep.exercises = [...keep.exercises, ...take.exercises]
     keep.reflection = [...keep.reflection, ...take.reflection].slice(0, 10)
     keep.skills = [...new Set([...(keep.skills as string[]), ...(take.skills as string[])])]
-    if (keep.estMinutes !== undefined && take.estMinutes !== undefined) keep.estMinutes = Math.min(600, keep.estMinutes + take.estMinutes)
-    else if (take.estMinutes !== undefined && keep.estMinutes === undefined) r.warnings.push('Only the absorbed lesson had minutes; the merged lesson has none.')
+    if (keep.estMinutes !== undefined && take.estMinutes !== undefined)
+      keep.estMinutes = Math.min(600, keep.estMinutes + take.estMinutes)
+    else if (take.estMinutes !== undefined && keep.estMinutes === undefined)
+      r.warnings.push('Only the absorbed lesson had minutes; the merged lesson has none.')
     if (!keep.summary && take.summary) keep.summary = take.summary
-    r.warnings.push(`The objective of "${take.slug}" ("${String(take.objective).slice(0, 60)}") is dropped; "${keep.slug}" keeps its own.`)
+    r.warnings.push(
+      `The objective of "${take.slug}" ("${String(take.objective).slice(0, 60)}") is dropped; "${keep.slug}" keeps its own.`,
+    )
     if (lessonExercises(keep).length > 60) {
       r.errors.push('The merged lesson would have more than 60 exercises.')
       return
     }
-    if (b.module.lessons.length === 1 && b.module !== a.module) return void r.errors.push(`Merging would leave module "${b.module.slug}" empty.`)
+    if (b.module.lessons.length === 1 && b.module !== a.module)
+      return void r.errors.push(`Merging would leave module "${b.module.slug}" empty.`)
     const arr = b.module.lessons as Draft[]
     arr.splice(arr.indexOf(take), 1)
   },
@@ -273,7 +326,8 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     const to = findLesson(r, op.toLesson)
     if (!from || !to) return
     const src = lessonExercises(from.lesson)
-    if (!Number.isInteger(op.index) || op.index < 0 || op.index >= src.length) return void r.errors.push(`index must be between 0 and ${src.length - 1}.`)
+    if (!Number.isInteger(op.index) || op.index < 0 || op.index >= src.length)
+      return void r.errors.push(`index must be between 0 and ${src.length - 1}.`)
     const dst = lessonExercises(to.lesson)
     const [e] = src.splice(op.index, 1)
     if (e!.id && dst.some((x) => x.id === e!.id)) {
@@ -281,15 +335,22 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
       delete e!.id
     }
     const at = op.toIndex === undefined ? dst.length : Math.max(0, Math.min(op.toIndex, dst.length))
-    if (dst.length >= 60 && from.lesson !== to.lesson) return void r.errors.push('The target lesson already has 60 exercises.')
+    if (dst.length >= 60 && from.lesson !== to.lesson)
+      return void r.errors.push('The target lesson already has 60 exercises.')
     dst.splice(at, 0, e!)
   },
   'stamp-exercise-ids'(r, op) {
-    const targets = op.lesson ? lessonsOf(r.c).filter((x) => x.lesson.slug === op.lesson) : lessonsOf(r.c)
+    const targets = op.lesson
+      ? lessonsOf(r.c).filter((x) => x.lesson.slug === op.lesson)
+      : lessonsOf(r.c)
     if (targets.length === 0) return void r.errors.push(`No lesson "${op.lesson}".`)
     let stamped = 0
     for (const { lesson } of targets) {
-      const used = new Set(lessonExercises(lesson).map((e) => e.id).filter(Boolean) as string[])
+      const used = new Set(
+        lessonExercises(lesson)
+          .map((e) => e.id)
+          .filter(Boolean) as string[],
+      )
       let n = 1
       for (const e of lessonExercises(lesson)) {
         if (e.id) continue
@@ -307,17 +368,24 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     const idx = skills.findIndex((s) => s.slug === op.slug)
     if (idx < 0) return void r.errors.push(`No skill "${op.slug}".`)
     const refs: string[] = []
-    for (const s of skills) if ((s.requires as string[]).includes(op.slug)) refs.push(`skill ${s.slug}`)
-    for (const { lesson } of lessonsOf(r.c)) if ((lesson.skills as string[]).includes(op.slug)) refs.push(`lesson ${lesson.slug}`)
-    for (const p of r.c.projects as Draft[]) if ((p.skills as string[]).includes(op.slug)) refs.push(`project ${p.slug}`)
-    if (refs.length > 0 && !op.detach) return void r.errors.push(`Still used by ${refs.slice(0, 6).join(', ')}${refs.length > 6 ? ` and ${refs.length - 6} more` : ''}. Detach it first or set detach.`)
+    for (const s of skills)
+      if ((s.requires as string[]).includes(op.slug)) refs.push(`skill ${s.slug}`)
+    for (const { lesson } of lessonsOf(r.c))
+      if ((lesson.skills as string[]).includes(op.slug)) refs.push(`lesson ${lesson.slug}`)
+    for (const p of r.c.projects as Draft[])
+      if ((p.skills as string[]).includes(op.slug)) refs.push(`project ${p.slug}`)
+    if (refs.length > 0 && !op.detach)
+      return void r.errors.push(
+        `Still used by ${refs.slice(0, 6).join(', ')}${refs.length > 6 ? ` and ${refs.length - 6} more` : ''}. Detach it first or set detach.`,
+      )
     skills.splice(idx, 1)
     const strip = (list: unknown) => (list as string[]).filter((x) => x !== op.slug)
     for (const s of skills) s.requires = strip(s.requires)
     for (const { lesson } of lessonsOf(r.c)) lesson.skills = strip(lesson.skills)
     for (const p of r.c.projects as Draft[]) p.skills = strip(p.skills)
     r.rewritten += refs.length
-    if (refs.length) r.warnings.push(`Detached from ${refs.length} place(s): ${refs.slice(0, 6).join(', ')}.`)
+    if (refs.length)
+      r.warnings.push(`Detached from ${refs.length} place(s): ${refs.slice(0, 6).join(', ')}.`)
   },
 }
 
@@ -327,7 +395,16 @@ export function previewRefactor(course: LhcfCourse, op: RefactorOp): RefactorPre
   ;(ops[op.type] as (run: Run, o: RefactorOp) => void)(r, op)
   const token = opToken(course, op)
   if (r.errors.length > 0) {
-    return { ok: false, errors: r.errors, warnings: r.warnings, rewritten: 0, course, diff: diffCourses(course, course), validation: validateLhcf(course), token }
+    return {
+      ok: false,
+      errors: r.errors,
+      warnings: r.warnings,
+      rewritten: 0,
+      course,
+      diff: diffCourses(course, course),
+      validation: validateLhcf(course),
+      token,
+    }
   }
   const validation = validateLhcf(r.c)
   if (!validation.ok) {
@@ -361,7 +438,11 @@ export type ApplyResult =
 /** Apply a previewed refactor. Needs the token from the matching preview. */
 export function applyRefactor(course: LhcfCourse, op: RefactorOp, token: string): ApplyResult {
   if (token !== opToken(course, op))
-    return { ok: false, reason: 'stale-token', errors: ['The course or the operation changed since the preview. Preview again.'] }
+    return {
+      ok: false,
+      reason: 'stale-token',
+      errors: ['The course or the operation changed since the preview. Preview again.'],
+    }
   const preview = previewRefactor(course, op)
   if (!preview.ok) return { ok: false, reason: 'invalid', errors: preview.errors }
   return { ok: true, course: preview.course, preview }
@@ -394,4 +475,3 @@ export function describeRefactor(op: RefactorOp): string {
       return `Remove skill ${op.slug}`
   }
 }
-
