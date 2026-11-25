@@ -60,6 +60,8 @@ const plan = {
       seenCards: 110,
       unseenCards: 10,
       capacityBound: true,
+      truncated: false,
+      consideredCards: 110,
     },
     confidence: { level: 'moderate', reason: 'Based on 110 studied cards.' },
     options: { perDay: 30, minGain: 0.01, maxReviewsPerCard: 3, restWeekdays: [0, 6] },

@@ -33,9 +33,17 @@ export interface PrepPlanDto {
     seenCards: number
     unseenCards: number
     capacityBound: boolean
+    truncated: boolean
+    consideredCards: number
   }
   confidence: { level: 'insufficient' | 'low' | 'moderate' | 'good'; reason: string }
-  options: { perDay: number; minGain: number; maxReviewsPerCard: number; restWeekdays: number[] }
+  options: {
+    perDay: number
+    minGain: number
+    maxReviewsPerCard: number
+    maxCards: number
+    restWeekdays: number[]
+  }
   expired: boolean
   assumptions: string[]
 }

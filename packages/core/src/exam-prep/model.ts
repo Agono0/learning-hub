@@ -16,6 +16,8 @@ export interface PrepOptions {
   minGain?: number
   /** Most times one card may appear in the whole plan. Default 3. */
   maxReviewsPerCard?: number
+  /** Most studied cards the planner will consider, lowest exam-day recall first. Default 4000. Keeps a large collection fast. */
+  maxCards?: number
   /** Learner's desired retention for the simulated scheduler. */
   desiredRetention?: number
   weights?: readonly number[] | null
@@ -26,6 +28,7 @@ export const PREP_DEFAULTS = {
   minGain: 0.01,
   maxReviewsPerCard: 3,
   maxPerDay: 500,
+  maxCards: 4000,
 } as const
 
 /** One card on one day, in the order to review it. */
@@ -66,6 +69,9 @@ export interface PrepSummary {
   unseenCards: number
   /** True when days ran out of capacity while reviews with gain >= minGain remained. */
   capacityBound: boolean
+  /** True when more studied cards exist than `maxCards`: only the weakest were considered, the rest are counted at their no-review figure. */
+  truncated: boolean
+  consideredCards: number
 }
 
 export interface PrepPlan {
@@ -76,7 +82,7 @@ export interface PrepPlan {
   days: PlanDay[]
   summary: PrepSummary
   confidence: ReadinessConfidence
-  options: Required<Pick<PrepOptions, 'perDay' | 'minGain' | 'maxReviewsPerCard'>> & {
+  options: Required<Pick<PrepOptions, 'perDay' | 'minGain' | 'maxReviewsPerCard' | 'maxCards'>> & {
     restWeekdays: number[]
   }
   /** True when the exam date is today or past: there is nothing to plan. */
