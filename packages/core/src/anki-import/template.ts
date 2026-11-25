@@ -36,7 +36,6 @@ export type RefusalCode =
   | 'field-count'
   | 'no-template-for-ord'
   | 'empty-question'
-  | 'invalid-card'
   | 'unsupported-kind'
 
 /** A template, notetype or note this path will not map. Carries a stable code. */

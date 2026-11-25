@@ -89,10 +89,11 @@ export function mapUnmatchedModel(
             'rendered cards over the output budget',
           )
         }
+        // Unreachable refusal: front is non-empty after trim (checked above) and back falls
+        // back to '...', so the basic schema (both min length 1, no max) always accepts.
+        // A failure here is a programming error, not a model refusal.
         const validated = validateCardContent('basic', { front, back })
-        if (!validated.ok) {
-          throw new UnsupportedModelError('invalid-card', validated.errors.join('; '))
-        }
+        if (!validated.ok) throw new Error(`anki-import invariant: ${validated.errors.join('; ')}`)
         cards.push({ format: 'basic', content: validated.data, tags: note.tags })
       }
     }
