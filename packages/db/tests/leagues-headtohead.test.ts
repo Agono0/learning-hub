@@ -89,17 +89,18 @@ describe('league head-to-head', () => {
     expect(h2h.summary.accuracyA).toBe(1)
     expect(h2h.summary.accuracyB).toBe(0)
     expect(h2h.leader).toEqual({ leader: 'amr', edge: 2, even: false })
-    // winner gained Elo, loser dropped
-    expect(h2h.elo.eloA).toBeGreaterThan(1000)
-    expect(h2h.elo.eloB).toBeLessThan(1000)
-    expect(h2h.elo.higher).toBe('A')
+    // practice mode: Elo frozen for everyone, no ranked framing
+    expect(h2h.elo.eloA).toBe(1000)
+    expect(h2h.elo.eloB).toBe(1000)
+    expect(h2h.elo.gap).toBe(0)
+    expect(h2h.elo.higher).toBeNull()
     expect(h2h.recentDuels.map((d) => d.duelId)).toEqual(['d2', 'd1'])
 
     // mirrored arguments mirror the record
     const flip = leagueHeadToHead('spring', 'sara', 'amr', db)!
     expect(flip.summary.winsA).toBe(0)
     expect(flip.summary.winsB).toBe(2)
-    expect(flip.elo.higher).toBe('B')
+    expect(flip.elo.higher).toBeNull()
   })
 
   it('returns null for a missing league or player', () => {

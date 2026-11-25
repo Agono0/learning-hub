@@ -91,7 +91,7 @@ describe('league export/import', () => {
     expect(transfer!.payload.players).toHaveLength(2)
     expect(transfer!.payload.duels).toHaveLength(1)
     expect(transfer!.payload.rounds).toHaveLength(1)
-    expect(transfer!.payload.eloEvents.length).toBeGreaterThan(0)
+    expect(transfer!.payload.eloEvents).toHaveLength(0) // practice mode: no ranked history
 
     const snapshot = JSON.parse(JSON.stringify(transfer)) // JSON round-trip, as over the wire
 
@@ -117,7 +117,7 @@ describe('league export/import', () => {
     expect(players.map((p) => p.handle).sort()).toEqual(['amr', 'sara'])
     const amr = players.find((p) => p.handle === 'amr')!
     expect(amr.duelsWon).toBe(1)
-    expect(amr.elo).toBeGreaterThan(1000)
+    expect(amr.elo).toBe(1000) // practice mode: Elo frozen
 
     const rounds = listLeagueRounds('spring', db)
     expect(rounds).toHaveLength(1)
@@ -129,13 +129,9 @@ describe('league export/import', () => {
     expect(duels[0]!.status).toBe('complete')
     expect(duels[0]!.winner).toBe('amr')
 
-    // Elo history survived and points at the re-imported duel (new numeric id)
-    const events = listLeagueEloEvents('spring', 'amr', 50, db)
-    expect(events.length).toBeGreaterThan(0)
-    expect(events.every((e) => e.handle === 'amr')).toBe(true)
-    expect(events.every((e) => e.duelId === duels[0]!.id)).toBe(true)
-    const saraEvents = listLeagueEloEvents('spring', 'sara', 50, db)
-    expect(saraEvents.length).toBeGreaterThan(0)
+    // practice mode: no ranked history exists to re-import
+    expect(listLeagueEloEvents('spring', 'amr', 50, db)).toEqual([])
+    expect(listLeagueEloEvents('spring', 'sara', 50, db)).toEqual([])
   })
 
   it('rejects importing a slug that already exists', () => {

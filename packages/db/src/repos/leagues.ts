@@ -7,7 +7,7 @@
  * reconstructs that state. Every function takes an optional trailing database
  * handle so tests and transactions can share a connection.
  */
-import { and, desc, eq, or } from 'drizzle-orm'
+import { and, count, desc, eq, gt, max, or, sql } from 'drizzle-orm'
 import {
   LEAGUES_SCHEMA,
   awardPoints,
@@ -51,6 +51,8 @@ import { getDb, type LearningHubDB } from '../index'
 import type { Transaction } from '../transaction'
 import {
   cards as cardsTable,
+  focusSessions,
+  leagueActivityCursors,
   leagueDuels,
   leagueEloEvents,
   leagueAchievements,
@@ -59,6 +61,7 @@ import {
   leagueSeasons,
   leagues,
   leagueTournaments,
+  revlog,
 } from '../schema'
 import { withTransaction } from '../transaction'
 import { getNotificationPrefs, logNotification } from './notification-center'
@@ -108,6 +111,23 @@ function rowToDuel(row: LeagueDuelRow): Duel {
     answersA: row.answersAJson,
     answersB: row.answersBJson,
     createdAt: row.createdAt,
+  }
+}
+
+/**
+ * Read/export redaction for duel rows leaving the process (web views, CLI,
+ * MCP, transfer export). An OPEN duel exposes questions only: correct answers
+ * and both sides' submitted answers stay hidden until completion, protecting
+ * the recall value of the duel. Completed duels are returned unchanged so
+ * players can review what they missed.
+ */
+export function redactLeagueDuelRow(row: LeagueDuelRow): LeagueDuelRow {
+  if (row.status !== 'open') return row
+  return {
+    ...row,
+    promptsJson: row.promptsJson.map(({ id, question }) => ({ id, question, answers: [] })),
+    answersAJson: [],
+    answersBJson: [],
   }
 }
 
@@ -283,6 +303,99 @@ export function awardLeaguePoints(
       first = first ?? row ?? null
     }
     return first
+  }, conn)
+}
+
+/**
+ * LOCAL ACTIVITY scoring: credit NEW review/focus activity on this device to
+ * one league handle and advance the league's single activity cursor so the
+ * same events can never be credited twice (idempotent re-sync). The first
+ * sync only establishes the cursor at the current position — activity from
+ * before the first sync is never retroactively credited.
+ *
+ * This is NOT per-person verified scoring: the cursor cannot identify who
+ * performed the activity on a shared device. Friendly/self-reported entry
+ * stays on awardLeaguePoints and is labeled as such on every surface.
+ */
+export function syncLeaguePoints(
+  slug: string,
+  handle: string,
+  database?: LearningHubDB,
+): { established: boolean; reviews: number; focusMinutes: number; points: number } {
+  const conn = database ?? getDb()
+  return withTransaction((tx) => {
+    const league = getLeagueBySlug(slug, tx)
+    if (!league) throw new Error(`league not found: ${slug}`)
+    const player = tx
+      .select()
+      .from(leaguePlayers)
+      .where(and(eq(leaguePlayers.leagueId, league.id), eq(leaguePlayers.handle, handle)))
+      .get()
+    if (!player) throw new Error(`player not found in ${slug}: ${handle}`)
+
+    const now = new Date().toISOString()
+    const maxRev =
+      tx
+        .select({ m: max(revlog.id) })
+        .from(revlog)
+        .get()?.m ?? 0
+    const maxFocus =
+      tx
+        .select({ m: max(focusSessions.id) })
+        .from(focusSessions)
+        .get()?.m ?? 0
+
+    const cursor = tx
+      .select()
+      .from(leagueActivityCursors)
+      .where(eq(leagueActivityCursors.leagueId, league.id))
+      .get()
+    if (!cursor) {
+      tx.insert(leagueActivityCursors)
+        .values({
+          leagueId: league.id,
+          revlogCursor: maxRev,
+          focusCursor: maxFocus,
+          updatedAt: now,
+        })
+        .run()
+      return { established: true, reviews: 0, focusMinutes: 0, points: player.points }
+    }
+
+    const reviews =
+      tx.select({ c: count() }).from(revlog).where(gt(revlog.id, cursor.revlogCursor)).get()?.c ?? 0
+    const focusMinutes = Number(
+      tx
+        .select({
+          m: sql<number>`coalesce(sum(${focusSessions.actualMinutes}), 0)`,
+        })
+        .from(focusSessions)
+        .where(and(gt(focusSessions.id, cursor.focusCursor), eq(focusSessions.completed, true)))
+        .get()?.m ?? 0,
+    )
+
+    const players = tx
+      .select()
+      .from(leaguePlayers)
+      .where(eq(leaguePlayers.leagueId, league.id))
+      .all()
+    let after = rowsToLeague(league, players)
+    if (reviews > 0) after = awardPoints(after, { kind: 'reviews', handle, count: reviews })
+    if (focusMinutes > 0)
+      after = awardPoints(after, { kind: 'focus', handle, minutes: focusMinutes })
+    const updated = after.players.find((p) => p.handle === handle)
+    const points = updated?.points ?? player.points
+    if (updated && updated.points !== player.points) {
+      tx.update(leaguePlayers)
+        .set({ points: updated.points })
+        .where(eq(leaguePlayers.id, player.id))
+        .run()
+    }
+    tx.update(leagueActivityCursors)
+      .set({ revlogCursor: maxRev, focusCursor: maxFocus, updatedAt: now })
+      .where(eq(leagueActivityCursors.id, cursor.id))
+      .run()
+    return { established: false, reviews, focusMinutes, points }
   }, conn)
 }
 
@@ -675,11 +788,37 @@ export function submitDuelAnswers(
           .where(and(eq(leaguePlayers.leagueId, league.id), eq(leaguePlayers.handle, row.playerB)))
           .get()
         if (pa && pb) {
+          // Practice leagues are local & friendly: W-L records and duel
+          // points are kept, but there are NO ranked effects — Elo stays
+          // frozen and no Elo events are recorded until leagues bind to the
+          // online identity + worker-verified scoring.
+          const practice = league.mode === 'practice'
           const winnerRow =
             result.winner === row.playerA ? pa : result.winner === row.playerB ? pb : null
           const loserRow =
             result.loser === row.playerA ? pa : result.loser === row.playerB ? pb : null
-          if (winnerRow && loserRow) {
+          if (practice && winnerRow && loserRow) {
+            tx.update(leaguePlayers)
+              .set({
+                duelsWon: winnerRow.duelsWon + 1,
+                points: winnerRow.points + league.scoringJson.duelWin,
+              })
+              .where(eq(leaguePlayers.id, winnerRow.id))
+              .run()
+            tx.update(leaguePlayers)
+              .set({ duelsLost: loserRow.duelsLost + 1 })
+              .where(eq(leaguePlayers.id, loserRow.id))
+              .run()
+          } else if (practice && result.draw) {
+            tx.update(leaguePlayers)
+              .set({ points: pa.points + league.scoringJson.duelDraw })
+              .where(eq(leaguePlayers.id, pa.id))
+              .run()
+            tx.update(leaguePlayers)
+              .set({ points: pb.points + league.scoringJson.duelDraw })
+              .where(eq(leaguePlayers.id, pb.id))
+              .run()
+          } else if (winnerRow && loserRow) {
             const elo = duelEloUpdate(winnerRow.elo, loserRow.elo, result.draw)
             tx.update(leaguePlayers)
               .set({
@@ -1270,7 +1409,15 @@ export function exportLeague(slug: string, database?: LearningHubDB): LeagueTran
     .where(eq(leagueRounds.leagueId, league.id))
     .orderBy(desc(leagueRounds.round))
     .all()
-  const duels = conn.select().from(leagueDuels).where(eq(leagueDuels.leagueId, league.id)).all()
+  // OPEN duels never travel: their prompts carry the correct answers and
+  // both sides' submitted answers, and an in-progress duel is device-local
+  // state. Completed duels export in full for review.
+  const duels = conn
+    .select()
+    .from(leagueDuels)
+    .where(eq(leagueDuels.leagueId, league.id))
+    .all()
+    .filter((d) => d.status === 'complete')
   const tournaments = conn
     .select()
     .from(leagueTournaments)
