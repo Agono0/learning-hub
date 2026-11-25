@@ -640,7 +640,7 @@ const RAW_SCENARIOS: StoredScenario[] = [
 
 RAW_SCENARIOS.push(
   {
-    id: 'fb-physics-newton-third',
+    id: 'fb-physics-action-reaction',
     domain: 'Physics',
     concept: "Newton's third law: force pairs act on different bodies",
     difficulty: 3,
@@ -888,7 +888,7 @@ RAW_SCENARIOS.push(
       'Python ranges are half-open: range(1, 11) includes 1 and excludes 11, yielding 1..10. sum() then adds them to 55, which the n(n+1)/2 formula with n = 10 confirms.',
   },
   {
-    id: 'fb-stats-correlation-causation',
+    id: 'fb-stats-firefighter-confounder',
     domain: 'Statistics',
     concept: 'Correlation does not establish causation',
     difficulty: 3,
