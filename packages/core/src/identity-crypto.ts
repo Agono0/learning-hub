@@ -107,3 +107,49 @@ export function identityChallenge(userId: string, timestamp: number): string {
 export function identitySigningPayload(challenge: string, alias: string): string {
   return `${challenge}|${alias}`
 }
+
+// ─── Signed requests and join assertions ─────────────────────────────────────
+
+/** How far a signed request timestamp may differ from the verifier's clock. */
+export const SIGNED_REQUEST_WINDOW_MS = 5 * 60_000
+
+/** Longest lifetime a join assertion may claim, measured from the verifier's clock. */
+export const JOIN_ASSERTION_MAX_TTL_MS = 5 * 60_000
+
+/** Lowercase hex SHA-256 of a string (UTF-8) or raw bytes. */
+export async function digestHex(data: string | Uint8Array): Promise<string> {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data
+  const digest = await subtle().digest('SHA-256', bytes as unknown as ArrayBuffer)
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Canonical string signed for one HTTP request: binds the method, the audience host, the path
+ * and query, the timestamp and the SHA-256 of the exact body bytes.
+ */
+export function requestSigningPayload(parts: {
+  method: string
+  host: string
+  pathAndQuery: string
+  timestamp: number
+  bodySha256: string
+}): string {
+  return [
+    'lh-req:v1',
+    parts.method.toUpperCase(),
+    parts.host,
+    parts.pathAndQuery,
+    String(parts.timestamp),
+    parts.bodySha256,
+  ].join('|')
+}
+
+/** Canonical string signed for a study-room join: audience, action, room, expiry, unique id. */
+export function joinAssertionPayload(parts: {
+  host: string
+  room: string
+  exp: number
+  jti: string
+}): string {
+  return ['lh-join:v1', parts.host, parts.room, String(parts.exp), parts.jti].join('|')
+}
