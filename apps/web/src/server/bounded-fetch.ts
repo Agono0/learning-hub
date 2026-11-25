@@ -100,7 +100,16 @@ export function isPrivateAddress(address: string): boolean {
  * that is connected to is the address that was checked. It never falls back to an unpinned
  * fetch: if it refuses or fails, the call fails.
  */
-let pinnedFetch: ((url: string, init?: RequestInit) => Promise<Response>) | null = null
+type FetchLike = (url: string, init?: RequestInit) => Promise<Response>
+/**
+ * Held on globalThis, not in a module variable: Next compiles instrumentation.ts and each route
+ * into separate bundles with their own copy of this module, so a module-level slot set by the
+ * instrumentation hook would never be seen by the handlers (found by the built-server smoke).
+ */
+const PINNED_KEY = Symbol.for('learning-hub.pinned-fetch')
+function getPinned(): FetchLike | null {
+  return ((globalThis as Record<symbol, unknown>)[PINNED_KEY] as FetchLike | undefined) ?? null
+}
 /** True on a Node process (Next server, CLI, tests). False in browsers and web workers. */
 function isNodeRuntime(): boolean {
   return typeof process !== 'undefined' && process.release?.name === 'node'
@@ -112,7 +121,8 @@ function isNodeRuntime(): boolean {
  * global fetch. Browser and worker runtimes (native bridge) keep `remoteFetch`.
  */
 function defaultFetch(): (url: string, init?: RequestInit) => Promise<Response> {
-  if (pinnedFetch) return pinnedFetch
+  const pinned = getPinned()
+  if (pinned) return pinned
   if (isNodeRuntime()) {
     return async () => {
       throw new BoundedFetchError(
@@ -124,8 +134,8 @@ function defaultFetch(): (url: string, init?: RequestInit) => Promise<Response> 
   return (u, i) => remoteFetch(u, i)
 }
 
-export function setPinnedFetch(fn: typeof pinnedFetch): void {
-  pinnedFetch = fn
+export function setPinnedFetch(fn: FetchLike | null): void {
+  ;(globalThis as Record<symbol, unknown>)[PINNED_KEY] = fn ?? undefined
 }
 
 /** Refuses a URL the helper will not request; returns the parsed URL otherwise. */
