@@ -14,6 +14,7 @@ import { Badge, Panel, ProgressBar, Skeleton } from '@/ui'
 import { apiGet } from '@/lib/transport'
 
 export interface ProgressPayload {
+  pace?: { sampleRuns: number; medianMsPerCard: number | null }
   rank: {
     points: number
     tier: { key: string; name: string; min: number }
