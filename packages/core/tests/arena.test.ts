@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ARENA_DEFAULTS,
+  ARENA_FORMAT_INFO,
   ARENA_MODIFIER_INFO,
   BOSS_PHASE_INFO,
   applyArenaModifier,
@@ -632,5 +633,82 @@ describe('boss phases', () => {
     const last = after.exchanges[after.exchanges.length - 1]!
     expect(last.phase).toBe(3)
     expect(last.crit).toBe(false)
+  })
+})
+
+describe('card-format flavor', () => {
+  it('typein strikes land +1 damage on confident good/easy answers only', () => {
+    const plain = strikeFor(3, 1, 5_000, 0, ARENA_DEFAULTS)
+    const typed = strikeFor(3, 1, 5_000, 0, ARENA_DEFAULTS, 0, 'typein')
+    expect(typed.damage).toBe(plain.damage + 1)
+    expect(typed.flavor).toBe('typein_power')
+    // Guessed or weak answers get no boost.
+    expect(strikeFor(3, 0, 5_000, 0, ARENA_DEFAULTS, 0, 'typein').flavor).toBe(null)
+    expect(strikeFor(3, 0, 5_000, 0, ARENA_DEFAULTS, 0, 'typein').damage).toBe(
+      strikeFor(3, 0, 5_000, 0, ARENA_DEFAULTS).damage,
+    )
+    expect(strikeFor(2, 1, 5_000, 0, ARENA_DEFAULTS, 0, 'typein').flavor).toBe(null)
+    expect(strikeFor(1, 1, 5_000, 0, ARENA_DEFAULTS, 0, 'typein').flavor).toBe(null)
+  })
+
+  it('cloze criticals land +2 damage; non-crits are unaffected', () => {
+    const crit = strikeFor(3, 1, 1_000, 0, ARENA_DEFAULTS)
+    expect(crit.crit).toBe(true)
+    const clozeCrit = strikeFor(3, 1, 1_000, 0, ARENA_DEFAULTS, 0, 'cloze')
+    expect(clozeCrit.damage).toBe(crit.damage + 2)
+    expect(clozeCrit.flavor).toBe('cloze_precision')
+    // Slow answer: no crit, no precision bonus.
+    const slow = strikeFor(3, 1, 9_000, 0, ARENA_DEFAULTS, 0, 'cloze')
+    expect(slow.crit).toBe(false)
+    expect(slow.flavor).toBe(null)
+    expect(slow.damage).toBe(strikeFor(3, 1, 9_000, 0, ARENA_DEFAULTS).damage)
+  })
+
+  it('occlusion Hard answers graze: counter comes back 1 softer', () => {
+    const hard = strikeFor(2, 0, 5_000, 0, ARENA_DEFAULTS)
+    expect(hard.counter).toBeGreaterThan(0)
+    const grazed = strikeFor(2, 0, 5_000, 0, ARENA_DEFAULTS, 0, 'occlusion')
+    expect(grazed.counter).toBe(hard.counter - 1)
+    expect(grazed.flavor).toBe('occlusion_graze')
+    // Again answers keep the full counter.
+    expect(strikeFor(1, 0, 5_000, 0, ARENA_DEFAULTS, 0, 'occlusion').counter).toBe(
+      ARENA_DEFAULTS.againCounter,
+    )
+  })
+
+  it('every flavor has player-facing copy; other formats fight by the book', () => {
+    for (const key of ['typein', 'cloze', 'occlusion']) {
+      expect(ARENA_FORMAT_INFO[key]!.flavor.length).toBeGreaterThan(0)
+      expect(ARENA_FORMAT_INFO[key]!.description.length).toBeGreaterThan(0)
+    }
+    for (const fmt of ['basic', 'mcq', 'sketch', 'proof_step', 'grammar', undefined]) {
+      const s = strikeFor(3, 1, 5_000, 0, ARENA_DEFAULTS, 0, fmt)
+      expect(s.flavor).toBe(null)
+      expect(s.damage).toBe(strikeFor(3, 1, 5_000, 0, ARENA_DEFAULTS).damage)
+    }
+  })
+
+  it('summarizeGradeLog replays flavors from a format lookup', () => {
+    const events = [
+      { cardId: 1, grade: 3 as const, confidence: 1 as const, timeMs: 1_000 },
+      { cardId: 2, grade: 2 as const, confidence: 0 as const, timeMs: 5_000 },
+      { cardId: 3, grade: 3 as const, confidence: 1 as const, timeMs: 1_200 },
+    ]
+    const formats: Record<number, string> = { 1: 'cloze', 2: 'occlusion', 3: 'typein' }
+    const withFlavor = summarizeGradeLog(
+      events,
+      ARENA_DEFAULTS,
+      'warden',
+      null,
+      (id) => formats[id],
+    )
+    const plain = summarizeGradeLog(events, ARENA_DEFAULTS, 'warden', null)
+    expect(withFlavor.score).toBeGreaterThan(plain.score)
+    // Deterministic under the same lookup.
+    const again = summarizeGradeLog(events, ARENA_DEFAULTS, 'warden', null, (id) => formats[id])
+    expect(again).toEqual(withFlavor)
+    // Rewards stay learning-derived.
+    expect(withFlavor.coins).toBe(plain.coins)
+    expect(withFlavor.correct).toBe(plain.correct)
   })
 })

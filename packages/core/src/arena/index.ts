@@ -278,6 +278,8 @@ export const arenaChallengeSchema = z.object({
   prompt: z.string().min(1),
   answer: z.string().min(1),
   deckName: z.string().optional(),
+  /** Card format (basic/cloze/typein/…) — drives small combat flavor. */
+  format: z.string().optional(),
 })
 export type ArenaChallenge = z.infer<typeof arenaChallengeSchema>
 
@@ -308,6 +310,8 @@ export interface ArenaExchange {
   dodged: boolean
   /** The boss phase this exchange was graded in (1 for non-boss runs). */
   phase: BossPhase
+  /** The card-format flavor that fired this exchange (null: none). */
+  flavor: ArenaStrikeFlavor
 }
 
 export interface ArenaState {
@@ -351,6 +355,41 @@ export interface Strike {
   armorBlocked: number
   /** True when the guardian dodged this round (config.dodgeEvery). */
   dodged: boolean
+  /** The card-format flavor that fired this strike (null: none). */
+  flavor: ArenaStrikeFlavor
+}
+
+// ─── Card-format flavor ─────────────────────────────────────────────────────
+
+/**
+ * Small deterministic nudges that make the card FORMAT felt in combat. Like
+ * every combat number these are feedback only — rewards stay learning-
+ * derived — and they are pure functions of (grade, confidence, time, combo,
+ * config, format), so the server-side settlement recompute reproduces them
+ * exactly from the run's queue snapshot.
+ *
+ * - typein (typed from memory — max retrieval effort): confident good/easy
+ *   strikes land +1 damage.
+ * - cloze (precision recall): critical strikes land +2 damage on top.
+ * - occlusion (partial visual recall): Hard answers graze — the counter
+ *   comes back 1 point softer.
+ * Every other format fights by the book.
+ */
+export type ArenaStrikeFlavor = 'typein_power' | 'cloze_precision' | 'occlusion_graze' | null
+
+export const ARENA_FORMAT_INFO: Record<string, { flavor: string; description: string }> = {
+  typein: {
+    flavor: 'Recall power',
+    description: 'Typed-from-memory answers strike 1 point harder when confident.',
+  },
+  cloze: {
+    flavor: 'Precision',
+    description: 'Cloze criticals land 2 extra damage — the gap snaps shut.',
+  },
+  occlusion: {
+    flavor: 'Graze',
+    description: 'Hard occlusion answers counter 1 point softer — you saw the shape.',
+  },
 }
 
 /**
@@ -373,6 +412,8 @@ export function strikeFor(
   config: ArenaConfig = ARENA_DEFAULTS,
   /** 1-based round index — only the dodge mechanic uses it. */
   round = 0,
+  /** Card format — drives the small deterministic flavor nudges. */
+  format?: string,
 ): Strike {
   if (grade === 1) {
     return {
@@ -384,6 +425,7 @@ export function strikeFor(
       comboDelta: -combo,
       armorBlocked: 0,
       dodged: false,
+      flavor: null,
     }
   }
 
@@ -399,6 +441,19 @@ export function strikeFor(
   if (confidence === 0) damage = Math.floor(damage / 2)
   damage = Math.floor(damage * comboMultiplier)
   if (crit) damage = Math.floor(damage * 1.5)
+
+  // Card-format flavor (see ARENA_FORMAT_INFO): tiny deterministic nudges.
+  let flavor: ArenaStrikeFlavor = null
+  if (format === 'typein' && grade >= 3 && confidence === 1) {
+    damage += 1
+    flavor = 'typein_power'
+  } else if (format === 'cloze' && crit) {
+    damage += 2
+    flavor = 'cloze_precision'
+  } else if (format === 'occlusion' && counter > 0) {
+    counter -= 1
+    flavor = 'occlusion_graze'
+  }
 
   // Guardian plating: flat reduction, but a genuine strike always lands for 1.
   const armorBlocked = config.strikeArmor > 0 ? Math.min(config.strikeArmor, damage - 1) : 0
@@ -420,6 +475,7 @@ export function strikeFor(
     comboDelta: grade === 2 ? 0 : 1,
     armorBlocked,
     dodged,
+    flavor,
   }
 }
 
@@ -481,6 +537,7 @@ export function applyGrade(
     state.combo,
     phaseCfg,
     state.round + 1,
+    challenge.format,
   )
 
   // Boss phase two: once the guardian falls below half HP the counters come
@@ -515,6 +572,7 @@ export function applyGrade(
     armorBlocked: strike.armorBlocked,
     dodged: strike.dodged,
     phase: strikePhase,
+    flavor: strike.flavor,
   }
 
   const phase = bossPhaseFor(guardianHpAfter, state.guardianMaxHp, state.boss)
@@ -619,22 +677,23 @@ export function summarizeGradeLog(
   archetype: GuardianArchetype = 'warden',
   /** The daily modifier the run was issued under — reapplied for the replay. */
   modifier: ArenaModifier | null = null,
+  /**
+   * Card-format lookup for the flavor nudges, resolved from the server's
+   * queue snapshot at settlement. Omitted: no flavor (pre-flavor runs).
+   */
+  formatOf?: (cardId: number) => string | undefined,
 ): ArenaSummary {
   const tuned = applyArenaModifier(modifier, guardianConfig(archetype, config))
-  let state = createArenaSession(
-    exchanges.map((e) => ({ cardId: e.cardId, prompt: 'x', answer: 'x' })),
-    tuned,
-    archetype,
-  )
-  for (const e of exchanges) {
-    state = applyGrade(
-      state,
-      { cardId: e.cardId, prompt: 'x', answer: 'x' },
-      e.grade,
-      e.confidence,
-      e.timeMs,
-      tuned,
-    )
+  const challenges = exchanges.map((e) => ({
+    cardId: e.cardId,
+    prompt: 'x',
+    answer: 'x',
+    format: formatOf?.(e.cardId),
+  }))
+  let state = createArenaSession(challenges, tuned, archetype)
+  for (let i = 0; i < exchanges.length; i++) {
+    const e = exchanges[i]!
+    state = applyGrade(state, challenges[i]!, e.grade, e.confidence, e.timeMs, tuned)
   }
   return buildArenaSummary(state)
 }

@@ -20,6 +20,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Coins, Flame, Heart, RotateCcw, Shield, Swords, Trophy } from 'lucide-react'
 import {
+  ARENA_FORMAT_INFO,
   ARENA_MODIFIER_INFO,
   BOSS_CHALLENGE_THRESHOLD,
   BOSS_PHASE_INFO,
@@ -396,6 +397,7 @@ export default function Arena3DPage() {
         cardId: c.id,
         prompt: cardFront(c),
         answer: cardBack(c),
+        format: c.type,
       }))
       setCards(payload.cards)
       setChallenges(nextChallenges)
@@ -556,7 +558,9 @@ export default function Arena3DPage() {
         cardId: c.id,
         prompt: cardFront(c),
         answer: cardBack(c),
+        format: c.type,
       }))
+
       setCards(payload.cards)
       setChallenges(nextChallenges)
       setRunId(payload.runId)
@@ -1024,6 +1028,15 @@ export default function Arena3DPage() {
             {/* Last exchange feedback */}
             {lastExchange && !revealed ? (
               <div data-testid="arena-exchange-feedback">
+                {lastExchange.flavor ? (
+                  <p className="mb-1 text-xs text-faint" data-testid="arena-flavor-note">
+                    {lastExchange.flavor === 'typein_power'
+                      ? ARENA_FORMAT_INFO.typein.description
+                      : lastExchange.flavor === 'cloze_precision'
+                        ? ARENA_FORMAT_INFO.cloze.description
+                        : ARENA_FORMAT_INFO.occlusion.description}
+                  </p>
+                ) : null}
                 {lastExchange.counterTaken > 0 ? (
                   <Callout tone="danger">The guardian countered — that one slipped.</Callout>
                 ) : lastExchange.counterShielded > 0 ? (

@@ -387,7 +387,17 @@ export const POST = withRoute(async (req: Request) => {
   // a run spanning midnight keeps its own rules, and a client can never
   // pick a friendlier twist at settlement time.
   const runModifier = (claim.run.modifier as ArenaModifier | null) ?? null
-  const summary = summarizeGradeLog(normalized, ARENA_DEFAULTS, archetype, runModifier)
+  // Card-format flavor: formats come from the SERVER's queue snapshot (the
+  // cards table), never from the client's log — same rule as every other
+  // combat input. A card's format is fixed at creation, so this lookup is
+  // stable across replays.
+  const formatRows = await db
+    .select({ id: cards.id, type: cards.type })
+    .from(cards)
+    .where(inArray(cards.id, claim.run.cardIds))
+  const formatByCard = new Map(formatRows.map((r) => [r.id, r.type]))
+  const formatOf = (cardId: number): string | undefined => formatByCard.get(cardId)
+  const summary = summarizeGradeLog(normalized, ARENA_DEFAULTS, archetype, runModifier, formatOf)
   const boss = claim.run.boss
   const referenceId = `arena:${runId}`
 

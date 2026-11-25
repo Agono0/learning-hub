@@ -746,3 +746,68 @@ describe('Arena API — accuracy trend and insight', () => {
     }
   })
 })
+
+describe('Arena API — card-format flavor at settlement', () => {
+  it('recomputes the summary with the queue cards’ real formats', async () => {
+    // A deck of cloze + typein cards: flavor nudges must flow into the
+    // server-side recompute from the queue snapshot, not the client.
+    deckSeq += 1
+    const past = new Date(Date.now() - 86_400_000).toISOString()
+    const [deck] = M.db.db
+      .insert(M.db.decks)
+      .values({ name: `Flavor Deck ${deckSeq}`, description: 'format flavor harness' })
+      .returning()
+      .all()
+    const cardIds: number[] = []
+    for (let i = 0; i < 6; i++) {
+      const [card] = M.db.db
+        .insert(M.db.cards)
+        .values({
+          deckId: deck!.id,
+          type: i % 2 === 0 ? 'cloze' : 'typein',
+          content: { basic: { front: `Flavor D${deckSeq} Q${i + 1}`, back: `A${i + 1}` } },
+          due: past,
+        })
+        .returning()
+        .all()
+      cardIds.push(card!.id)
+    }
+
+    const res = await M.arena.GET(
+      new Request(`http://localhost/api/arena?deckIds=${deck!.id}&limit=5`),
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const queue: number[] = body.cards.map((c: { id: number }) => c.id)
+    // Fast, confident Good answers: crits (cloze +2) and typein +1 both fire.
+    const log = queue.map((cardId, i) => ({
+      cardId,
+      grade: 3,
+      confidence: 1,
+      timeMs: 900 + i * 100,
+    }))
+    const post = await postSettlement(settlePayload(body.runId as string, log))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+
+    const formatByCard = new Map(
+      body.cards.map((c: { id: number; type: string }) => [c.id, c.type]),
+    )
+    const expected = M.core.summarizeGradeLog(
+      log,
+      M.core.ARENA_DEFAULTS,
+      body.guardian.archetype,
+      body.modifier.key,
+      (id) => formatByCard.get(id),
+    )
+    expect(settled.summary.score).toBe(expected.score)
+    // And it really is the flavored score, not the plain one.
+    const plain = M.core.summarizeGradeLog(
+      log,
+      M.core.ARENA_DEFAULTS,
+      body.guardian.archetype,
+      body.modifier.key,
+    )
+    expect(settled.summary.score).not.toBe(plain.score)
+  })
+})
