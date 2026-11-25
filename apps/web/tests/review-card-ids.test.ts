@@ -78,6 +78,7 @@ describe('GET /api/review explicit card list', () => {
   it('leaves the ordinary queue alone when no list is given', async () => {
     const { body } = await get('')
     expect(body.explicit).toBe(false)
+    expect(body.earlyCount).toBe(0)
     const got = body.cards.map((c: { id: number }) => c.id)
     expect(got).toContain(idsOf.due)
     expect(got).not.toContain(idsOf.far1)
@@ -89,6 +90,9 @@ describe('GET /api/review explicit card list', () => {
     expect(body.explicit).toBe(true)
     expect(body.cards.map((c: { id: number }) => c.id)).toEqual([idsOf.far2, idsOf.far1])
     expect(body.cards[0].previews[3]).toBeTruthy()
+    expect(body.earlyCount).toBe(2) // both far cards are not due yet
+    const mixed = await get(`?cardIds=${idsOf.due},${idsOf.far1}`)
+    expect(mixed.body.earlyCount).toBe(1)
   })
 
   it('rejects unknown, suspended and buried cards and names them', async () => {

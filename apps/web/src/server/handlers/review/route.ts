@@ -285,6 +285,8 @@ export async function GET(req: Request) {
     ok: true,
     cards: cardsWithPreviews,
     explicit: explicitRows !== null,
+    // explicit lists only: how many of the listed cards are not due yet (an early review)
+    earlyCount: explicitRows ? explicitRows.filter((r) => r.due > now.toISOString()).length : 0,
     mode: course ? 'cram' : mode,
     course: course ? { id: course.id, title: course.title } : null,
     retention: globalCfg.desiredRetention,

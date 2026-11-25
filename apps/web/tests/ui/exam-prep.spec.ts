@@ -163,7 +163,7 @@ for (const view of [
 
     // Open the first day: the cards, and a link that opens exactly those cards.
     await page.getByTestId('prep-day').first().locator('summary').click()
-    await expect(page.getByTestId('prep-review')).toHaveCount(8)
+    await expect(page.getByTestId('prep-day').first().getByTestId('prep-review')).toHaveCount(8)
     const href = await page.getByTestId('prep-study-link').first().getAttribute('href')
     expect(href).toBe('/review?cardIds=' + days[0]!.reviews.map((r) => r.cardId).join(','))
     await expect(page.getByTestId('prep-day').first()).toContainText('You answer each one yourself')
