@@ -498,3 +498,47 @@ export function getWeakCardIdsForRun(
   }
   return [...weak]
 }
+
+/**
+ * Accepted grade logs of settled sessions, oldest first — the input to the
+ * per-card nemesis analysis. Only the server-normalized log persisted at
+ * settlement is read (never client-supplied fields), and only `settled`
+ * sessions count, so open or half-claimed runs can never skew insights.
+ */
+export function listSettledGradeLogs(
+  opts: { userId?: string; limit?: number; db?: LearningHubDB } = {},
+): Array<Array<{ cardId: number; grade: number; confidence: number; timeMs: number }>> {
+  const db = opts.db ?? getDb()
+  const rows = db
+    .select({ gradeLog: arenaSessions.gradeLog })
+    .from(arenaSessions)
+    .where(
+      and(eq(arenaSessions.userId, opts.userId ?? 'default'), eq(arenaSessions.status, 'settled')),
+    )
+    .orderBy(desc(arenaSessions.settledAt))
+    .limit(Math.min(Math.max(opts.limit ?? 100, 1), 500))
+    .all()
+    .reverse()
+  const logs: Array<Array<{ cardId: number; grade: number; confidence: number; timeMs: number }>> =
+    []
+  for (const r of rows) {
+    const entries: Array<{ cardId: number; grade: number; confidence: number; timeMs: number }> = []
+    for (const e of (r.gradeLog ?? []) as Array<Record<string, unknown>>) {
+      if (
+        typeof e.cardId === 'number' &&
+        typeof e.grade === 'number' &&
+        typeof e.confidence === 'number' &&
+        typeof e.timeMs === 'number'
+      ) {
+        entries.push({
+          cardId: e.cardId,
+          grade: e.grade,
+          confidence: e.confidence,
+          timeMs: e.timeMs,
+        })
+      }
+    }
+    if (entries.length > 0) logs.push(entries)
+  }
+  return logs
+}

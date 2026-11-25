@@ -51,6 +51,7 @@ import {
   useToast,
 } from '@/ui'
 import { ArenaCoachMarks, ArenaCoachReopenButton } from '@/components/arena/ArenaCoachMarks'
+import { NemesisPanel } from '@/components/arena/NemesisPanel'
 import { ChipPicker } from '@/components/ui/chip-picker'
 import type { ArenaCanvasHandle } from '@/ui/ArenaCanvas'
 
@@ -774,6 +775,8 @@ export default function Arena3DPage() {
                 </div>
               </div>
             ) : null}
+
+            <NemesisPanel refreshKey={phase} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
