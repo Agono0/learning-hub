@@ -87,7 +87,7 @@ export function recommend(points: readonly GridPoint[], budget: number) {
   const best = fits[fits.length - 1]!
   return {
     retention: best.retention,
-    basis: `Highest tested retention whose modeled mean daily time (${best.meanDailyMinutes.toFixed(1)} min) is within ${budget} min. It is not a learning-optimal value.`,
+    basis: `Modeled mean daily time at that retention is ${best.meanDailyMinutes.toFixed(1)} min. This is not a learning-optimal value.`,
   }
 }
 

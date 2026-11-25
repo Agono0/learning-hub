@@ -32,7 +32,7 @@ export function AssumptionsBlock({ r, truncated }: { r: PlannerResult; truncated
           {c.eligible.toLocaleString()} eligible Review-state cards (
           {c.selection === 'all-eligible'
             ? 'all of them'
-            : `every ${c.stride}th by id, scaled up x${c.scaleUp.toFixed(2)}`}
+            : `one in every ${c.stride} by id, scaled up x${c.scaleUp.toFixed(2)}`}
           ). Not included: {c.excludedNew.toLocaleString()} new,{' '}
           {c.excludedLearning.toLocaleString()} learning, {c.excludedRelearning.toLocaleString()}{' '}
           relearning, {c.excludedSuspended.toLocaleString()} suspended.

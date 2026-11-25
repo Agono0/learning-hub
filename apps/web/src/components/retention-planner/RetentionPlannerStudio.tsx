@@ -73,7 +73,9 @@ export function RetentionPlannerStudio() {
             </div>
             <p className="text-sm">{r.message}</p>
             {r.status === 'no-eligible-cards' ? (
-              <EmptyState title="Nothing to model yet">Cards need to be in Review state before their future load can be modeled.</EmptyState>
+              <EmptyState title="Nothing to model yet">
+                Cards need to be in Review state before their future load can be modeled.
+              </EmptyState>
             ) : null}
             {r.grid.length > 0 ? <RetentionCurve points={r.grid} budget={r.budgetMinutes} /> : null}
             {r.grid.length > 0 ? (

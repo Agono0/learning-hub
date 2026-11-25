@@ -53,7 +53,8 @@ const base = {
   maxCalls: 400000,
   recommendation: {
     retention: 0.85,
-    basis: 'Highest tested retention within budget. Not a learning-optimal value.',
+    basis:
+      'Modeled mean daily time at that retention is 1.9 min. This is not a learning-optimal value.',
   },
   calibration: {
     heldOutReviews: 400,

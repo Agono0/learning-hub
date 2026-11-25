@@ -17,7 +17,7 @@ export function RetentionCurve({ points, budget }: { points: GridPoint[]; budget
     .map((p) => `${pct(p.retention)}: ${formatMinutes(p.meanDailyMinutes)}`)
     .join(', ')
   return (
-    <figure className="m-0">
+    <figure className="m-0 mx-auto max-w-lg">
       <svg
         viewBox={`0 0 ${w} ${h}`}
         role="img"
