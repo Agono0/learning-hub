@@ -34,6 +34,9 @@ export const MAX_MEMBERS = 500
 export const MAX_OPEN_DUELS_PER_MEMBER = 5
 export const DUEL_LIFETIME_MS = 24 * 60 * 60_000
 export const MAX_LOG_ENTRIES = 200
+/** Accepted mutations per signer inside RATE_WINDOW_MS. */
+export const RATE_LIMIT = 60
+export const RATE_WINDOW_MS = 60_000
 
 const SideRuntimeSchema = z.object({
   startedAt: z.number().int(),
@@ -94,6 +97,8 @@ export const AuthorityStateSchema = z.object({
   lastSeq: z.record(z.string(), z.number().int().nonnegative()),
   /** nonce -> acceptance time, pruned after NONCE_RETENTION_MS. */
   nonces: z.record(z.string(), z.number().int()),
+  /** signer id -> acceptance times inside the rate window. */
+  rate: z.record(z.string(), z.array(z.number().int())).default({}),
   accepted: z.number().int().nonnegative(),
   log: z.array(AcceptedEntrySchema),
 })
@@ -107,6 +112,7 @@ export function createAuthorityState(league: League): AuthorityState {
     duels: {},
     lastSeq: {},
     nonces: {},
+    rate: {},
     accepted: 0,
     log: [],
   })
@@ -137,6 +143,7 @@ export type ReduceFailureCode =
   | 'out_of_order'
   | 'round_not_due'
   | 'season_complete'
+  | 'rate_limited'
 
 export type ReduceEffect =
   | { kind: 'joined'; handle: string }
@@ -205,6 +212,9 @@ function commit(
   effects: ReduceEffect[],
 ): ReduceResult {
   const accepted = state.accepted + 1
+  const windowStart = now - RATE_WINDOW_MS
+  const recent = (state.rate[v.signer] ?? []).filter((t) => t > windowStart)
+  recent.push(now)
   const log = [
     ...state.log,
     { n: accepted, at: now, signer: v.signer, seq: v.seq, type: v.mutation.type },
@@ -214,6 +224,7 @@ function commit(
     ...patch,
     lastSeq: { ...state.lastSeq, [v.signer]: v.seq },
     nonces: { ...state.nonces, [v.nonce]: now },
+    rate: { ...state.rate, [v.signer]: recent },
     accepted,
     log,
   }
@@ -234,6 +245,8 @@ export function applyVerifiedMutation(
   const m: LeagueMutation = v.mutation
   const handle = v.signer
   const isMember = state.league.players.some((p) => p.handle === handle)
+  const recentCount = (state.rate[handle] ?? []).filter((t) => t > now - RATE_WINDOW_MS).length
+  if (recentCount >= RATE_LIMIT) return reject(stateIn, 'rate_limited')
 
   switch (m.type) {
     case 'join': {

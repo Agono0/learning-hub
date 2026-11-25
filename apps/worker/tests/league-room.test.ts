@@ -280,6 +280,35 @@ describe('LeagueRoom', () => {
     expect(text).toContain('promptCount')
   })
 
+  it('surfaces advisory timing flags as codes only, never as score changes', async () => {
+    const clock = { now: T0 }
+    const { room } = makeRoom(clock)
+    await initRoom(room)
+    const a = await actor()
+    const b = await actor()
+    const send = async (who: Actor, m: LeagueMutation, at: number) => {
+      clock.now = at
+      const res = await room.fetch(post('/mutate', { envelope: await envelopeFor(who, m, at) }))
+      expect(res.status).toBe(200)
+    }
+    await send(a, { type: 'join', alias: 'A' }, T0)
+    await send(b, { type: 'join', alias: 'B' }, T0 + 1)
+    const prompts = [
+      { id: 'p1', question: 'q', answers: ['x'] },
+      { id: 'p2', question: 'q', answers: ['x'] },
+    ]
+    await send(a, { type: 'duel-open', duelId: 'd1', opponent: b.handle, prompts }, T0 + 2)
+    await send(a, { type: 'duel-start', duelId: 'd1' }, T0 + 3)
+    await send(a, { type: 'duel-answer', duelId: 'd1', promptId: 'p1', answer: 'x' }, T0 + 53)
+    await send(a, { type: 'duel-answer', duelId: 'd1', promptId: 'p2', answer: 'x' }, T0 + 103)
+    const view = (await (await room.fetch(new Request('http://do/state'))).json()) as {
+      advisoryFlags: Record<string, string[]>
+      league: { players: { handle: string; points: number }[] }
+    }
+    expect(view.advisoryFlags[a.handle]).toContain('faster_than_reading')
+    expect(view.league.players.every((p) => p.points === 0)).toBe(true)
+  })
+
   it('refuses an oversized body before parsing it', async () => {
     const clock = { now: T0 }
     const { room } = makeRoom(clock)

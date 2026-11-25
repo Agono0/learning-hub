@@ -23,6 +23,7 @@ import {
   LeagueSchema,
   applyVerifiedMutation,
   createAuthorityState,
+  leaguePlausibilityReport,
   ledgerOf,
   verifyLeagueEnvelope,
   webCryptoVerifier,
@@ -59,6 +60,13 @@ export function publicLeagueView(state: AuthorityState) {
       result: d.result,
     })),
     accepted: state.accepted,
+    /** Advisory timing flags per member (counts only; see plausibility.ts). */
+    advisoryFlags: Object.fromEntries(
+      Object.entries(leaguePlausibilityReport(state.duels)).map(([h, f]) => [
+        h,
+        f.map((x) => x.code),
+      ]),
+    ),
   }
 }
 

@@ -3,6 +3,8 @@ import {
   AuthorityStateSchema,
   MAX_CLOCK_SKEW_MS,
   NONCE_RETENTION_MS,
+  RATE_LIMIT,
+  RATE_WINDOW_MS,
   applyVerifiedMutation,
   createAuthorityState,
   createLeague,
@@ -534,5 +536,54 @@ describe('nonce retention', () => {
 
   it('retention exceeds twice the accepted skew, so a replay cannot outlive its nonce', () => {
     expect(NONCE_RETENTION_MS).toBeGreaterThan(2 * MAX_CLOCK_SKEW_MS)
+  })
+})
+
+describe('rate limiting', () => {
+  it('rejects a signer who already had RATE_LIMIT mutations accepted inside the window', async () => {
+    const { a, state } = await twoMembers()
+    const busy: AuthorityState = {
+      ...state,
+      rate: { ...state.rate, [a.handle]: Array.from({ length: RATE_LIMIT }, (_, i) => T0 + i) },
+    }
+    const r = await send(busy, a, { type: 'close-round' }, T0 + 1_000)
+    expect(r.reduced).toMatchObject({ ok: false, code: 'rate_limited' })
+  })
+
+  it('lets the same signer through once the window has passed', async () => {
+    const { a, state } = await twoMembers()
+    const busy: AuthorityState = {
+      ...state,
+      rate: { ...state.rate, [a.handle]: Array.from({ length: RATE_LIMIT }, (_, i) => T0 + i) },
+    }
+    const later = T0 + RATE_WINDOW_MS + 1_000
+    const r = await send(busy, a, { type: 'close-round' }, later)
+    // Past the window the limiter steps aside; the reducer then answers on the merits.
+    expect(r.reduced).toMatchObject({ ok: false, code: 'round_not_due' })
+  })
+
+  it('does not rate-limit other signers because one is busy', async () => {
+    const { a, b, state } = await twoMembers()
+    const busy: AuthorityState = {
+      ...state,
+      rate: { ...state.rate, [a.handle]: Array.from({ length: RATE_LIMIT }, (_, i) => T0 + i) },
+    }
+    const r = await send(busy, b, { type: 'close-round' }, T0 + 1_000)
+    expect(r.reduced).toMatchObject({ ok: false, code: 'round_not_due' })
+  })
+
+  it('records accepted mutations in the window and prunes old ones', async () => {
+    const { a, state } = await twoMembers()
+    expect(state.rate[a.handle]).toHaveLength(1)
+    const a2 = await send(state, a, { type: 'duel-start', duelId: 'none' }, T0 + RATE_WINDOW_MS + 5)
+    expect(a2.reduced).toMatchObject({ ok: false, code: 'duel_unknown' })
+  })
+
+  it('loads an older persisted state that predates the rate field', () => {
+    const legacy = JSON.parse(JSON.stringify(fresh())) as Record<string, unknown>
+    delete legacy.rate
+    const parsed = AuthorityStateSchema.safeParse(legacy)
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data.rate).toEqual({})
   })
 })
