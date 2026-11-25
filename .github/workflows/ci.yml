@@ -128,7 +128,9 @@ jobs:
         # Run inside a fresh network namespace that has only loopback, so nothing can leave the
         # runner even if the test harness is wrong. The script refuses to run otherwise.
         run: |
-          sudo unshare -n sh -c "ip link set lo up && exec sudo -u $USER env PATH=$PATH SMOKE_REQUIRE_NO_EGRESS=1 node apps/web/tests/smoke/pinned-server-smoke.mjs"
+          PARENT_NS=$(readlink /proc/self/ns/net)
+          echo "runner netns: $PARENT_NS"
+          sudo unshare -n sh -c "ip link set lo up && exec sudo -u $USER env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY -u ALL_PROXY -u all_proxy PATH=$PATH SMOKE_PARENT_NETNS=$PARENT_NS SMOKE_REQUIRE_NO_EGRESS=1 NEXT_TELEMETRY_DISABLED=1 node apps/web/tests/smoke/pinned-server-smoke.mjs"
 
       # The bundle the Windows/Android apps ship (static export + hub worker).
       # Fast, and catches anything that only breaks the native build.

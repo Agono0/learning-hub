@@ -17,6 +17,7 @@ import {
   existsSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   rmSync,
   renameSync,
@@ -24,7 +25,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import http from 'node:http'
-import { tmpdir } from 'node:os'
+import { networkInterfaces, tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -54,13 +55,30 @@ if (process.env.SMOKE_REQUIRE_NO_EGRESS === '1') {
   } catch {
     // no IPv6 table
   }
-  const routed = [...v4, ...v6].filter((dev) => dev !== 'lo')
-  if (routed.length > 0) {
-    console.error('[pinned-smoke] REFUSING TO RUN: routes via non-loopback devices exist:', [
-      ...new Set(routed),
-    ])
+  const fail = (msg, extra) => {
+    console.error('[pinned-smoke] REFUSING TO RUN:', msg, extra ?? '')
     process.exit(2)
   }
+  const ns = readlinkSync('/proc/self/ns/net')
+  const parentNs = process.env.SMOKE_PARENT_NETNS
+  if (!parentNs) fail('SMOKE_PARENT_NETNS not provided')
+  if (ns === parentNs) fail('network namespace is the same as the parent runner', ns)
+  const devs = readFileSync('/proc/net/dev', 'utf8')
+    .split('\n')
+    .slice(2)
+    .map((l) => l.split(':')[0].trim())
+    .filter(Boolean)
+  if (devs.length !== 1 || devs[0] !== 'lo') fail('interfaces other than lo exist:', devs)
+  const up = networkInterfaces()
+  if (Object.keys(up).some((k) => k !== 'lo'))
+    fail('non-loopback interface is up:', Object.keys(up))
+  if (!up.lo || !up.lo.some((a) => a.address === '127.0.0.1')) fail('loopback is not up')
+  const routed = [...v4, ...v6].filter((dev) => dev !== 'lo')
+  if (routed.length > 0) fail('routes via non-loopback devices exist:', [...new Set(routed)])
+  console.log(
+    '[pinned-smoke] netns=' + ns + ' parent=' + parentNs + ' interfaces=' + devs.join(','),
+  )
+  console.log('[pinned-smoke] v4 routes=' + v4.length + ' v6 routes=' + v6.length + ' (all lo)')
   console.log('[pinned-smoke] egress boundary: no routes except loopback')
 }
 const FIX = 38411
@@ -92,7 +110,11 @@ async function startServer() {
   const child = spawn(process.execPath, [nextBin, 'start', '-p', String(PORT)], {
     cwd: webDir,
     env: {
-      ...process.env,
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(
+          ([k]) => !/^(https?_proxy|all_proxy|no_proxy)$/i.test(k),
+        ),
+      ),
       NODE_OPTIONS: `--require ${preload}`,
       SMOKE_FIXTURE_PORT: String(FIX),
       SMOKE_MARKER: marker,
