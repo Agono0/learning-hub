@@ -20,7 +20,7 @@ import { z } from 'zod'
 import { canonicalSignaturePayload, signedEnvelopeSchema, type SignedEnvelope } from '../online'
 import { LeagueMutationSchema, type LeagueMutation } from './signed-schemas'
 
-export { LeagueMutationSchema, type LeagueMutation }
+export { LeagueMutationSchema, signedEnvelopeSchema, type LeagueMutation }
 
 export const LEAGUE_MUTATION_DOMAIN = 'lh-league-mutation/v1'
 

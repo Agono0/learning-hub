@@ -25,6 +25,9 @@ import {
   createAuthorityState,
   leaguePlausibilityReport,
   ledgerOf,
+  leagueSigningMessage,
+  signedEnvelopeSchema,
+  signerIdFromPubKey,
   verifyLeagueEnvelope,
   webCryptoVerifier,
   type AuthorityState,
@@ -132,6 +135,28 @@ export class LeagueRoom {
     }
   }
 
+  /**
+   * Last accepted sequence for the sender, so an out-of-sync client can catch
+   * up. The seq check runs before the signature check, so this verifies the
+   * signature itself first: an unsigned caller learns nothing about any key.
+   */
+  private async seqHint(body: unknown, state: AuthorityState): Promise<{ lastSeq?: number }> {
+    const parsed = signedEnvelopeSchema.safeParse((body as { envelope?: unknown } | null)?.envelope)
+    if (!parsed.success) return {}
+    const env = parsed.data
+    try {
+      const ok = await this.verify({
+        pubKey: env.pubKey,
+        message: leagueSigningMessage(env.payload, env.timestamp, env.nonce),
+        signature: env.signature,
+      })
+      if (!ok) return {}
+      return { lastSeq: ledgerOf(state).lastSeq(await signerIdFromPubKey(env.pubKey)) }
+    } catch {
+      return {}
+    }
+  }
+
   private async init(request: Request): Promise<Response> {
     if (this.authority)
       return Response.json({ error: 'league already initialized' }, { status: 409 })
@@ -163,6 +188,12 @@ export class LeagueRoom {
     })
     if (!verified.ok) {
       const status = verified.code === 'bad_signature' ? 401 : 400
+      if (verified.code === 'bad_seq') {
+        return Response.json(
+          { ok: false, code: verified.code, ...(await this.seqHint(body, current)) },
+          { status },
+        )
+      }
       return Response.json({ ok: false, code: verified.code }, { status })
     }
 

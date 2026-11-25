@@ -511,3 +511,44 @@ describe('register-key identity', () => {
     expect(await signerIdFromPubKey(x.pubKey)).not.toBe(await signerIdFromPubKey(y.pubKey))
   })
 })
+
+describe('LeagueRoom bad_seq hint', () => {
+  async function joined() {
+    const clock = { now: T0 }
+    const { room } = makeRoom(clock)
+    await initRoom(room)
+    const a = await actor()
+    const join = await envelopeFor(a, { type: 'join', alias: 'Ann' }, T0)
+    expect((await room.fetch(post('/mutate', { envelope: join }))).status).toBe(200)
+    return { room, a, clock }
+  }
+
+  it('tells a correctly signed stale sender the last accepted seq', async () => {
+    const { room, a } = await joined()
+    const stale = await envelopeFor(a, { type: 'close-round' }, T0 + 1, 1)
+    const res = await room.fetch(post('/mutate', { envelope: stale }))
+    const body = (await res.json()) as { code: string; lastSeq?: number }
+    expect(res.status).toBe(400)
+    expect(body.code).toBe('bad_seq')
+    expect(body.lastSeq).toBe(1)
+  })
+
+  it('discloses nothing when the signature is forged', async () => {
+    const { room, a } = await joined()
+    const stale = await envelopeFor(a, { type: 'close-round' }, T0 + 1, 1)
+    // Same claimed key, tampered signature: seq fails first, hint must stay hidden.
+    const forged = { ...stale, signature: stale.signature.slice(0, -4) + 'AAAA' }
+    const res = await room.fetch(post('/mutate', { envelope: forged }))
+    const body = (await res.json()) as { code: string; lastSeq?: number }
+    expect(body.code).toBe('bad_seq')
+    expect(body.lastSeq).toBeUndefined()
+  })
+
+  it('other codes never carry a seq hint', async () => {
+    const { room } = await joined()
+    const res = await room.fetch(post('/mutate', { envelope: { nope: true } }))
+    const body = (await res.json()) as { code: string; lastSeq?: number }
+    expect(body.code).toBe('bad_envelope')
+    expect('lastSeq' in body).toBe(false)
+  })
+})
