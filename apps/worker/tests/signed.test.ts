@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import worker, { type Env } from '../src/index'
+import worker, { isVerifiedItemId, type Env } from '../src/index'
 import { StudyRoom } from '../src/study-room'
 import {
   digestHex,
@@ -114,6 +114,7 @@ describe('publish authentication', () => {
       item: { id: string; author: string; downloads: number; rating: number }
     }
     expect(out.item.author).toBe('Anonymous')
+    expect((out.item as { authorVerified?: boolean }).authorVerified).toBe(false)
     expect(out.item.id).not.toBe('item_evil')
     expect(out.item.downloads).toBe(0)
     expect(out.item.rating).toBe(5)
@@ -131,6 +132,7 @@ describe('publish authentication', () => {
     const a = (await r1.json()) as { item: { id: string; author: string } }
     const b = (await r2.json()) as { item: { id: string; author: string } }
     expect(a.item.author).toBe('Ada')
+    expect((a.item as { authorVerified?: boolean }).authorVerified).toBe(true)
     expect(b.item.id).toBe(a.item.id)
     expect(new Set(inserts).size).toBe(1)
     expect(library.size).toBe(1)
@@ -481,5 +483,14 @@ describe('study room join identity', () => {
     expect(Object.keys(store.get('jtis') as Record<string, number>).length).toBe(1000)
     expect((store.get('jtis') as Record<string, number>)['one-more-jti']).toBeUndefined()
     vi.restoreAllMocks()
+  })
+})
+
+describe('isVerifiedItemId', () => {
+  it('is true only for ids derived from a signed request digest', () => {
+    expect(isVerifiedItemId(`item_${'a'.repeat(32)}`)).toBe(true)
+    expect(isVerifiedItemId('item_1764110000000_ab12')).toBe(false) // anonymous and legacy shape
+    expect(isVerifiedItemId('item_evil')).toBe(false)
+    expect(isVerifiedItemId(undefined)).toBe(false)
   })
 })

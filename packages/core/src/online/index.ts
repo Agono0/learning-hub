@@ -93,6 +93,8 @@ export const communityItemSchema = z.object({
   title: z.string().min(1).max(120),
   description: z.string().max(1000).optional(),
   author: z.string().min(1).max(60),
+  /** True only when the worker attributed the item to a registered device key. */
+  authorVerified: z.boolean().optional(),
   downloads: z.number().int().nonnegative().default(0),
   rating: z.number().min(0).max(5).default(5),
   tags: z.array(z.string()).default([]),

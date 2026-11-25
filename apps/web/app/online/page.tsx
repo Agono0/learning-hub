@@ -679,7 +679,7 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
                   key={m.id}
                   className="flex items-center justify-between rounded-lg bg-neutral-100 p-2.5 text-xs dark:bg-(--hub-panel)"
                 >
-                  <span className="font-medium">{m.alias}</span>
+                  <OnlineIdentityLabel alias={m.alias} />
                   <span className="text-status-warning-text font-mono">+{m.damageDealt} dmg</span>
                 </div>
               ))}
@@ -796,7 +796,14 @@ function CommunityLibrarySection() {
                   <Badge tone={item.type === 'deck' ? 'accent' : 'success'}>
                     {item.type === 'deck' ? 'Deck' : 'Course'}
                   </Badge>
-                  <span className="text-xs text-tertiary">By {item.author}</span>
+                  <span className="flex items-center gap-1 text-xs text-tertiary">
+                    By{' '}
+                    <OnlineIdentityLabel
+                      alias={item.author}
+                      verified={item.authorVerified}
+                      className="text-xs text-tertiary"
+                    />
+                  </span>
                 </div>
                 <h4 className="mt-2 text-base font-bold">{item.title}</h4>
                 <p className="mt-1 text-xs text-faint line-clamp-2">
