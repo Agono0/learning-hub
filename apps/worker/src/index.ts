@@ -44,6 +44,16 @@ function corsHeaders(): HeadersInit {
   }
 }
 
+/**
+ * A library item is attributed to a verified device only when its id came from the signed
+ * request digest (`item_` + 32 hex). Anonymous ids are `item_<millis>_<rand>`, and items
+ * from before signing are the same shape, so they are never reported as verified. This is
+ * derived from data only the worker writes, so it needs no schema change.
+ */
+export function isVerifiedItemId(id: unknown): boolean {
+  return typeof id === 'string' && /^item_[0-9a-f]{32}$/.test(id)
+}
+
 /** A community_library row as stored in D1 (tags is a JSON array string). */
 interface LibraryRow {
   id: string
@@ -302,6 +312,7 @@ export default {
           title: r.title,
           description: r.description,
           author: r.author,
+          authorVerified: isVerifiedItemId(r.id),
           downloads: r.downloads,
           rating: r.rating,
           tags: parseTags(r.tags),
@@ -388,6 +399,7 @@ export default {
                   title: existing.title,
                   description: existing.description,
                   author: existing.author,
+                  authorVerified: isVerifiedItemId(existing.id),
                   downloads: existing.downloads,
                   rating: existing.rating,
                   tags: safeTags(existing.tags),
@@ -399,7 +411,13 @@ export default {
           }
         }
 
-        return jsonResponse({ ok: true, item })
+        return jsonResponse({
+          ok: true,
+          item: {
+            ...item,
+            authorVerified: principal.kind === 'registered' && isVerifiedItemId(item.id),
+          },
+        })
       }
 
       if (path === '/api/v1/library/download' && request.method === 'POST') {
