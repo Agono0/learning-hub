@@ -495,3 +495,71 @@ export function migrateV1Envelope(input: {
     now: input.now,
   })
 }
+
+/* ==========================================================================
+ * TYPED PAYLOADS (deck cards, course lessons)
+ * ========================================================================== */
+
+/** Payload shape for one card inside a deck channel. */
+export const DeckCardPayloadSchema = z.object({
+  front: z.string().min(1),
+  back: z.string().min(1),
+  hint: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+})
+export type DeckCardPayload = z.infer<typeof DeckCardPayloadSchema>
+
+/** Payload shape for one lesson inside a course channel. */
+export const CourseLessonPayloadSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().min(1),
+  objectives: z.array(z.string()).default([]),
+  estimatedMinutes: z.number().int().positive().optional(),
+})
+export type CourseLessonPayload = z.infer<typeof CourseLessonPayloadSchema>
+
+export interface PayloadIssue {
+  itemId: string
+  message: string
+}
+
+/**
+ * Validate every item payload in a version against the schema for the
+ * channel's content type. Returns one issue per invalid item; empty means
+ * the whole version is well-formed. Channels are transport-agnostic about
+ * content, but creators and subscribers both benefit from catching malformed
+ * payloads before they spread.
+ */
+export function validateVersionPayloads(
+  type: ChannelContentType,
+  version: ChannelVersion,
+): PayloadIssue[] {
+  const schema = type === 'deck' ? DeckCardPayloadSchema : CourseLessonPayloadSchema
+  const issues: PayloadIssue[] = []
+  for (const item of version.items) {
+    const parsed = schema.safeParse(item.content)
+    if (!parsed.success) {
+      issues.push({
+        itemId: item.id,
+        message: parsed.error.issues
+          .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+          .join('; '),
+      })
+    }
+  }
+  return issues
+}
+
+/** Validate all versions in a manifest; returns issues keyed by version. */
+export function validateManifestPayloads(manifest: ChannelManifest): {
+  ok: boolean
+  issues: { version: number; itemId: string; message: string }[]
+} {
+  const issues: { version: number; itemId: string; message: string }[] = []
+  for (const v of manifest.versions) {
+    for (const issue of validateVersionPayloads(manifest.type, v)) {
+      issues.push({ version: v.version, ...issue })
+    }
+  }
+  return { ok: issues.length === 0, issues }
+}

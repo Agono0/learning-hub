@@ -13,6 +13,7 @@ import {
   hasPendingUpdate,
   publishUpdate,
   subscribeToChannel,
+  validateManifestPayloads,
   verifyManifest,
   type ChannelManifest,
   type LocalItem,
@@ -308,5 +309,47 @@ describe('migrateV1Envelope', () => {
     const ids = m.versions[0].items.map((i) => i.id)
     expect(ids).toEqual(['a', 'item-2'])
     expect(verifyManifest(m).ok).toBe(true)
+  })
+})
+
+describe('typed payload validation', () => {
+  it('accepts well-formed deck cards', () => {
+    const m = manifestWithTwo()
+    expect(validateManifestPayloads(m).ok).toBe(true)
+  })
+
+  it('flags malformed items with their ids and reasons', () => {
+    const m = createChannel({
+      channelId: 'ch-bad',
+      type: 'deck',
+      title: 'Bad Deck',
+      authorHandle: 'owl',
+      visibility: 'link',
+      items: [
+        { id: 'good', content: { front: 'Q', back: 'A' } },
+        { id: 'bad', content: { front: '', back: 'A' } },
+        { id: 'ugly', content: { nope: true } },
+      ],
+    })
+    const report = validateManifestPayloads(m)
+    expect(report.ok).toBe(false)
+    expect(report.issues.map((i) => i.itemId).sort()).toEqual(['bad', 'ugly'])
+    expect(report.issues.find((i) => i.itemId === 'bad')?.message).toMatch(/front/)
+  })
+
+  it('validates course lessons with the lesson schema', () => {
+    const m = createChannel({
+      channelId: 'ch-course',
+      type: 'course',
+      title: 'Course',
+      authorHandle: 'owl',
+      visibility: 'invite',
+      items: [
+        { id: 'l1', content: { title: 'Intro', body: 'Welcome', objectives: ['orient'] } },
+        { id: 'l2', content: { title: 'Broken' } },
+      ],
+    })
+    const report = validateManifestPayloads(m)
+    expect(report.issues.map((i) => i.itemId)).toEqual(['l2'])
   })
 })
