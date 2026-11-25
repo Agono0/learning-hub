@@ -77,6 +77,23 @@ export const GET = withRoute(async (req: Request) => {
   return Response.json({ ok: true, items: filtered, offlineFallback: true })
 })
 
+/** Stable machine-readable reason for a refused signed publish. */
+export function publishRefusalCode(status: number): string {
+  if (status === 403) return 'register_required'
+  if (status === 503) return 'verification_unavailable'
+  if (status === 401) return 'signature_rejected'
+  return 'publish_failed'
+}
+
+export function publishRefusalMessage(status: number): string {
+  if (status === 403) {
+    return 'This device is not registered with the online server. Register it in Identity, then publish again.'
+  }
+  if (status === 503) return 'The online server is not set up for verified publishing yet.'
+  if (status === 401) return "The online server rejected this device's signature."
+  return 'The online server could not publish this item.'
+}
+
 export const POST = withRoute(async (req: Request) => {
   const body = await readJson(req, publishSchema)
   const server = getDefaultOnlineServer()
@@ -92,23 +109,31 @@ export const POST = withRoute(async (req: Request) => {
     // with a registered key signs the exact body bytes so the worker can attribute the item.
     const publishPath = '/api/v1/library/publish'
     const bodyText = JSON.stringify(body)
-    const send = (extra: Record<string, string>) =>
-      remoteFetch(`${server}${publishPath}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...extra },
-        body: bodyText,
-        signal: AbortSignal.timeout(5000),
-      })
     const signed = await signWorkerRequest(server, publishPath, bodyText)
-    let res = await send(signed ?? {})
-    // 403: this key is not registered with that worker yet. 503: the worker does not accept
-    // verified requests. In both cases publish anonymously (the worker labels it Anonymous)
-    // rather than failing. A stale or rejected signature (401) is never retried.
-    if (signed && (res.status === 403 || res.status === 503)) res = await send({})
+    const res = await remoteFetch(`${server}${publishPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(signed ?? {}) },
+      body: bodyText,
+      signal: AbortSignal.timeout(5000),
+    })
 
     if (res.ok) {
       const data = await res.json()
       return Response.json(data)
+    }
+    // A device with a key always publishes as itself. If the server cannot verify that, say
+    // so; never fall back to publishing anonymously (that would silently drop the identity).
+    if (signed) {
+      return Response.json(
+        {
+          ok: false,
+          code: publishRefusalCode(res.status),
+          error: publishRefusalMessage(res.status),
+        },
+        {
+          status: res.status === 401 || res.status === 403 || res.status === 503 ? res.status : 502,
+        },
+      )
     }
   } catch {
     // Offline simulated publish

@@ -112,7 +112,11 @@ export class StudyRoom {
             this.reject(ws, 'room_full')
             break
           }
-          const p = { ...v.value, joinedAt: new Date().toISOString() } as StudyRoomParticipant
+          const p = {
+            ...v.value,
+            verified: who.verified,
+            joinedAt: new Date().toISOString(),
+          } as StudyRoomParticipant
           ws.serializeAttachment({ ...attach, participantId: p.id } as WsSessionAttachment)
           this.room.participants = [...this.room.participants.filter((x) => x.id !== p.id), p]
           await this.persistAndBroadcast()
@@ -153,6 +157,7 @@ export class StudyRoom {
                 roomCode: this.room.code,
                 senderId: p.id,
                 senderAlias: p.alias,
+                senderVerified: p.verified === true,
                 content: clean,
                 sentAt: new Date().toISOString(),
               },
@@ -191,12 +196,15 @@ export class StudyRoom {
     ws: WebSocket,
     attach: WsSessionAttachment,
     data: Record<string, unknown>,
-  ): Promise<{ ok: true; id: string; alias?: string } | { ok: false; code: string }> {
+  ): Promise<
+    { ok: true; id: string; alias?: string; verified: boolean } | { ok: false; code: string }
+  > {
     const a = data.assertion
     if (a === undefined || a === null) {
       const bytes = crypto.getRandomValues(new Uint8Array(8))
       return {
         ok: true,
+        verified: false,
         id: `anon_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`,
       }
     }
@@ -245,7 +253,12 @@ export class StudyRoom {
       seen[jti] = exp
       await this.state.storage.put('jtis', seen)
       if (taken) return { ok: false as const, code: 'already_joined' }
-      return { ok: true as const, id: found.id, alias: filterContentSafety(found.alias).clean }
+      return {
+        ok: true as const,
+        verified: true,
+        id: found.id,
+        alias: filterContentSafety(found.alias).clean,
+      }
     })
   }
 
