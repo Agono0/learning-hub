@@ -143,11 +143,13 @@ test.describe('leagues season lifecycle', () => {
     await expect(page.getByTestId('profile-achievements')).toBeVisible()
     await expect(page.getByTestId('achievement-first-blood')).toBeVisible()
 
-    // sara lost the duel and never scored: no badges
+    // sara lost the duel (no first-blood) but promoted with her 10 reviews:
+    // she holds silver-climb, not the duel badges
     await page.getByTestId('standings-row-amr').click()
     await page.getByTestId('standings-row-sara').click()
     await expect(page.getByTestId('player-profile')).toBeVisible()
-    await expect(page.getByTestId('profile-achievements')).toHaveCount(0)
+    await expect(page.getByTestId('achievement-first-blood')).toHaveCount(0)
+    await expect(page.getByTestId('achievement-silver-climb')).toBeVisible()
   })
 
   test('division drill-down shows standings, winners and movement', async ({ page }) => {
