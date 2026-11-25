@@ -149,6 +149,17 @@ alternative, and no API key is ever needed. When you _do_ want AI (Settings → 
 Full details: the provider registry, the custom-endpoint HTTP contract and the "add a provider" checklist live
 in [`docs/ai-providers.md`](docs/ai-providers.md).
 
+## Shared channels — living decks and courses
+
+Publish any deck or course as a **channel**, share the link (or invite tokens for private
+circles), and keep teaching after you publish: every update you ship reaches subscribers as a
+versioned, checksummed manifest they can review and apply. The merge never overwrites the
+learner — notes, FSRS scheduling state, progress and local edits are sacred; conflicts are
+surfaced, not silently resolved. Subscriptions sync from any static HTTPS host or a peer hub,
+and one click imports a channel into your library as a reviewable deck or a full curriculum
+course that stays current as the creator publishes. See
+[`docs/share-channels.md`](docs/share-channels.md).
+
 ## Plugins — grow the product without touching it
 
 Everything is an extension point: hosts (web, MCP, CLI, server) load plugins at startup, and a plugin is a

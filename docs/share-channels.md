@@ -40,22 +40,53 @@ the subscriber's local items:
   version schemas (zod), `createChannel`, `publishUpdate`,
   `subscribeToChannel`, `hasPendingUpdate`, `applyChannelUpdate`,
   `acceptChannelVersion`, `verifyManifest`, invite tokens
-  (`issueInviteToken`, `verifyInviteToken`, `canSubscribe`).
-- `packages/core/tests/share-channels.test.ts` — merge semantics,
-  idempotency, conflicts, removals, tamper detection, invite gating.
-- `apps/mcp/src/tools/share-channels.ts` — six `share_channel_*` tools.
+  (`issueInviteToken`, `verifyInviteToken`, `canSubscribe`), version diffs,
+  batch application and typed deck/course payload validation.
+- `packages/core/src/share-channels/transport.ts` — `ChannelTransport`
+  with in-memory and fetch-injected HTTP implementations (schema + checksum
+  verification before trust, exponential backoff on transient failures,
+  invite-token auth, conditional 304 fetches) plus the `SyncCoordinator`
+  that walks the subscription roster with bounded concurrency and records
+  one `SyncRecord` per attempt.
+- `packages/core/src/share-channels/import.ts` — pure mapping from local
+  channel items to deck-card drafts and validated LHCF course specs.
+- `packages/db/src/repos/share-channels.ts` — SQLite persistence:
+  `share_channel_subscriptions` (with host + denormalized manifest view),
+  `share_channel_items` (mirrored items with learner state),
+  `share_channel_sync_records` (append-only sync log), and
+  `DbChannelSyncStore` implementing the core store contract.
+- `packages/db/src/repos/share-channel-import.ts` — import execution:
+  decks upsert by `sourceKey` (content refreshes in place, FSRS state
+  survives); courses re-import by slug through `importCurriculum`.
+- `packages/db/src/share-channel-sync.ts` — `syncSubscriptionOverHttp`, the
+  one-channel sync helper every Node host shares.
+- `apps/server/src/routes/share-channels.ts` — the `/share/channels/*`
+  routes, including stateful `subscribe`, `subscriptions`, `sync`,
+  `sync-all`, `sync-records` and `import` (registered in the TD-11
+  composition guard).
+- `apps/mcp/src/tools/share-channels.ts` — `share_channel_*` tools,
+  including subscribe/list/sync/sync-all/sync-records/import.
 - `apps/cli/src/commands/share-channels.ts` — `learning-hub share-channels
-[create|publish|apply|verify|describe|status]`.
-- `apps/server/src/routes/share-channels.ts` — six `/share/channels/*`
-  routes (registered in the TD-11 composition guard).
-- `apps/web/src/server/handlers/share-channels/route.ts` +
-  `apps/web/app/shared/page.tsx` + `ShareChannelsPanel.tsx` — publish,
-  subscribe, and merge-update flows; subscriptions persist in localStorage.
+  [create|publish|apply|verify|describe|status|subscribe|subscriptions|
+  sync|sync-all|sync-records|import]`.
+- `apps/web/src/server/handlers/share-channels/route.ts` — runtime-neutral
+  engine actions plus `fetch-manifest` (HTTP transport) and `sync-plan`
+  (per-version diffs + merge preview); `apps/web/app/shared/page.tsx` hosts
+  `ShareChannelsPanel` (publish/subscribe/merge over localStorage) and
+  `ChannelUpdatesBanner` (remote update checks + one-click apply).
 
-## What a later transport PR adds
+## Hosting a channel
 
-- Channel hosting/discovery over the sync worker, so manifests propagate
-  without copy-paste.
-- DB-backed subscriptions and update banners in the dashboard.
+Any HTTPS host that answers `GET /share/channels/<channelId>/manifest`
+with the manifest JSON works — a static file host, a gist, or a peer
+Learning HUB instance. Subscribers record the host URL when subscribing;
+`sync` then fetches, verifies schema and checksums, and applies pending
+versions through the learner-state-preserving merge. Hosts that support
+`If-None-Match` get conditional 304 responses for free.
+
+## What a later PR adds
+
+- Channel discovery and a directory of public channels.
 - Invite-token issuance UI and creator-side revocation (secret rotation
   already invalidates outstanding tokens by design).
+- Background sync scheduling instead of manual/CLI-triggered syncs.
