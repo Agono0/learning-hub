@@ -95,8 +95,17 @@ interface SessionPayload {
   }
 }
 
+interface ScheduleEntry {
+  cardId: number
+  due: string
+  state: number
+  reps: number
+  xpEarned: number
+}
+
 interface SettlementResponse {
   ok: boolean
+  schedule?: ScheduleEntry[]
   summary: {
     result: 'victory' | 'defeat'
     rounds: number
@@ -166,6 +175,25 @@ const GRADE_TONE: Record<number, 'danger' | 'warning' | 'accent' | 'success'> = 
   2: 'warning',
   3: 'accent',
   4: 'success',
+}
+
+const STATE_LABEL: Record<number, string> = {
+  0: 'New',
+  1: 'Learning',
+  2: 'Review',
+  3: 'Relearning',
+}
+
+/** Compact "in 5m / in 2d" style label for a due timestamp. */
+function dueLabel(dueIso: string, nowMs: number): string {
+  const diffMs = Date.parse(dueIso) - nowMs
+  if (diffMs <= 0) return 'due now'
+  const mins = Math.round(diffMs / 60_000)
+  if (mins < 60) return `in ${mins}m`
+  const hours = Math.round(mins / 60)
+  if (hours < 48) return `in ${hours}h`
+  const days = Math.round(hours / 24)
+  return `in ${days}d`
 }
 
 // ─── Card text extraction (mirrors the review page's voice helpers) ─────────
@@ -905,6 +933,7 @@ export default function Arena3DPage() {
                     >
                       {arena.exchanges.map((ex, i) => {
                         const card = cards.find((c) => c.id === ex.cardId)
+                        const sched = settlement.schedule?.find((sc) => sc.cardId === ex.cardId)
                         return (
                           <li
                             key={`${ex.cardId}-${i}`}
@@ -929,6 +958,16 @@ export default function Arena3DPage() {
                             <span className="ml-auto text-xs text-faint">
                               +{ex.scoreDelta} · {(ex.timeMs / 1000).toFixed(1)}s
                             </span>
+                            {sched ? (
+                              <span
+                                className="text-xs text-faint"
+                                data-testid="recap-schedule"
+                                title={`${STATE_LABEL[sched.state] ?? 'Review'} · rep ${sched.reps}`}
+                              >
+                                → {STATE_LABEL[sched.state] ?? 'Review'}{' '}
+                                {dueLabel(sched.due, Date.now())}
+                              </span>
+                            ) : null}
                           </li>
                         )
                       })}
