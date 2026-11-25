@@ -73,6 +73,35 @@ export function publicLeagueView(state: AuthorityState) {
   }
 }
 
+/**
+ * Read-only spectator summary. Deliberately smaller than publicLeagueView:
+ * no duel ids, no per-player timing flags, no public keys. Members are listed
+ * alphabetically by alias, never ranked: points here are local activity
+ * scoring from signed mutations, not a verified skill measure.
+ */
+export function spectatorView(state: AuthorityState) {
+  const duelStatus: Record<string, number> = {}
+  for (const d of Object.values(state.duels)) {
+    duelStatus[d.status] = (duelStatus[d.status] ?? 0) + 1
+  }
+  const members = state.league.players
+    .map((p) => ({
+      alias: state.aliases[p.handle] ?? 'member',
+      activityPoints: p.seasonPoints,
+      duels: p.duelsWon + p.duelsLost,
+    }))
+    .sort((a, b) => a.alias.localeCompare(b.alias))
+  return {
+    ok: true as const,
+    title: state.league.title,
+    round: state.league.currentRound,
+    practiceOnly: true as const,
+    members,
+    duelStatus,
+    acceptedMutations: state.accepted,
+  }
+}
+
 export class LeagueRoom {
   private state: DurableObjectState
   private authority: AuthorityState | null = null
@@ -110,6 +139,17 @@ export class LeagueRoom {
       if (!this.authority)
         return Response.json({ error: 'league not initialized' }, { status: 404 })
       return Response.json(publicLeagueView(this.authority))
+    }
+
+    if (request.method === 'GET' && url.pathname.endsWith('/spectate')) {
+      if (!this.authority)
+        return Response.json({ error: 'league not initialized' }, { status: 404 })
+      const etag = `"lg-${this.authority.accepted}"`
+      const headers = { ETag: etag, 'Cache-Control': 'no-store' }
+      if (request.headers.get('If-None-Match') === etag) {
+        return new Response(null, { status: 304, headers })
+      }
+      return Response.json(spectatorView(this.authority), { headers })
     }
 
     if (request.method === 'POST' && url.pathname.endsWith('/init')) {
