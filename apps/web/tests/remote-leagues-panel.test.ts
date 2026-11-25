@@ -1,9 +1,12 @@
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { parseRemoteRoster } from '../src/lib/remote-roster'
 import {
   RemoteLeaguesView,
   RemoteLinkActions,
+  RemoteRosterSection,
+  RemoteRosterView,
   describeLinkStatus,
   describeSyncedAt,
   type RemoteLeaguesState,
@@ -120,5 +123,59 @@ describe('RemoteLinkActions', () => {
       links: [link, { ...link, remoteLeagueId: 'lg-2' }],
     })
     expect(panel.match(/data-testid="remote-leave"/g)).toHaveLength(2)
+  })
+})
+
+describe('RemoteRosterView', () => {
+  const roster = parseRemoteRoster({
+    league: {
+      title: 'Friendly league',
+      currentRound: 1,
+      players: [
+        { handle: 'usr_a', seasonPoints: 4, duelsWon: 1, duelsLost: 0 },
+        { handle: 'usr_b', seasonPoints: 0, duelsWon: 0, duelsLost: 0 },
+      ],
+    },
+    aliases: { usr_a: 'Zed <b>x</b>', usr_b: 'Amy' },
+    inviteOnly: true,
+    liveInvites: 1,
+  })
+
+  it('renders nothing without a roster', () => {
+    expect(renderToString(React.createElement(RemoteRosterView, { roster: null }))).toBe('')
+  })
+
+  it('shows policy, alphabetical rows and the not-a-ranking note', () => {
+    const html = renderToString(React.createElement(RemoteRosterView, { roster }))
+    expect(html).toContain('Invite only')
+    expect(html).toContain('1 live invite')
+    expect(html.indexOf('Amy')).toBeLessThan(html.indexOf('Zed'))
+    expect(html).toContain('not a ranking')
+    expect(html.match(/data-testid="remote-roster-row"/g)).toHaveLength(2)
+  })
+
+  it('escapes hostile names instead of injecting markup', () => {
+    const html = renderToString(React.createElement(RemoteRosterView, { roster }))
+    expect(html).not.toContain('<b>x</b>')
+    expect(html).toContain('&lt;b&gt;')
+  })
+
+  it('shows the empty state for a league with no members', () => {
+    const empty = parseRemoteRoster({
+      league: { title: 'Empty', currentRound: 0, players: [] },
+    })
+    const html = renderToString(React.createElement(RemoteRosterView, { roster: empty }))
+    expect(html).toContain('Open to join')
+    expect(html).toContain('remote-roster-empty')
+  })
+
+  it('the section starts with a refresh button and no roster', () => {
+    const html = renderToString(
+      React.createElement(RemoteRosterSection, {
+        target: { serverUrl: 'https://league.example', remoteLeagueId: 'lg-1' },
+      }),
+    )
+    expect(html).toContain('remote-roster-refresh')
+    expect(html).not.toContain('data-testid="remote-roster"')
   })
 })

@@ -9,6 +9,7 @@
 import React, { useEffect, useState } from 'react'
 import { Badge, Button, Callout, Panel, TextField } from '@/ui'
 import { apiGet, apiSend } from '@/lib/transport'
+import { parseRemoteRoster, type RemoteRoster } from '@/lib/remote-roster'
 import {
   buildMembershipRequest,
   buildNewInvite,
@@ -47,6 +48,99 @@ export function describeSyncedAt(at: string | number | null | undefined): string
   const ms = typeof at === 'number' ? at : Date.parse(at)
   if (!Number.isFinite(ms)) return 'never'
   return new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' UTC'
+}
+
+/** Read-only roster of one remote league: alphabetical, never ranked. */
+export function RemoteRosterView({ roster }: { roster: RemoteRoster | null }) {
+  if (!roster) return null
+  return (
+    <div className="space-y-1 text-sm" data-testid="remote-roster">
+      <p className="font-medium" data-testid="remote-roster-title">
+        {roster.title} · round {roster.round}
+      </p>
+      <p className="opacity-70" data-testid="remote-roster-policy">
+        {roster.inviteOnly
+          ? `Invite only · ${roster.liveInvites} live invite${roster.liveInvites === 1 ? '' : 's'}`
+          : 'Open to join'}
+      </p>
+      {roster.members.length === 0 ? (
+        <p className="opacity-70" data-testid="remote-roster-empty">
+          No members yet.
+        </p>
+      ) : (
+        <ul className="space-y-0.5" data-testid="remote-roster-list">
+          {roster.members.map((m, i) => (
+            <li
+              key={`${m.name}-${i}`}
+              className="flex flex-wrap gap-2"
+              data-testid="remote-roster-row"
+            >
+              <span className="font-medium">{m.name}</span>
+              <span className="opacity-70">
+                {m.activityPoints} activity points · {m.duels} duel{m.duels === 1 ? '' : 's'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {roster.hidden > 0 && (
+        <p className="opacity-70" data-testid="remote-roster-hidden">
+          {roster.hidden} more not shown.
+        </p>
+      )}
+      <p className="text-xs opacity-60">
+        Listed alphabetically. Activity points are not a ranking.
+      </p>
+    </div>
+  )
+}
+
+/** Fetches the league state through the route and shows the roster. */
+export function RemoteRosterSection({
+  target,
+  transport = send,
+}: {
+  target: LinkTarget
+  transport?: RemoteSend
+}) {
+  const [roster, setRoster] = useState<RemoteRoster | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  async function refresh() {
+    setBusy(true)
+    try {
+      const raw = await transport<unknown>('/api/leagues/remote', 'POST', {
+        action: 'state',
+        ...target,
+      })
+      const parsed = parseRemoteRoster(raw)
+      setRoster(parsed)
+      setNote(parsed ? null : 'The league did not return a readable roster.')
+    } catch (err) {
+      setRoster(null)
+      setNote(err instanceof Error && err.message ? err.message : 'Could not reach the league.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="space-y-2">
+      <Button
+        variant="secondary"
+        disabled={busy}
+        data-testid="remote-roster-refresh"
+        onClick={refresh}
+      >
+        Refresh roster
+      </Button>
+      {note && (
+        <span role="status" className="text-sm" data-testid="remote-roster-note">
+          {note}
+        </span>
+      )}
+      <RemoteRosterView roster={roster} />
+    </div>
+  )
 }
 
 const send: RemoteSend = (path, method, body) => apiSend(path, method, body)
@@ -259,6 +353,9 @@ export function RemoteLeaguesView({ state }: { state: RemoteLeaguesState | null 
               <span>{describeLinkStatus(l.lastStatus)}</span>
               <span className="opacity-70">Last synced {describeSyncedAt(l.lastSyncedAt)}</span>
               <div className="basis-full">
+                <RemoteRosterSection
+                  target={{ serverUrl: l.serverUrl, remoteLeagueId: l.remoteLeagueId }}
+                />
                 <RemoteLinkActions
                   target={{ serverUrl: l.serverUrl, remoteLeagueId: l.remoteLeagueId }}
                 />
