@@ -138,17 +138,14 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
 
   const track = trackSettlements(page)
   for (let round = 0; round < 6; round++) {
-    const reveal = page.getByTestId('arena-reveal')
-    // Once the run ends the HUD swaps to settling/results; stop grading then.
-    if (
-      !(await reveal.waitFor({ state: 'visible', timeout: 4_000 }).then(
-        () => true,
-        () => false,
-      ))
-    )
+    // The run can end on any grade; once the HUD leaves the fighting state the
+    // reveal/grade controls disappear, so a short-timeout miss means "done".
+    try {
+      await page.getByTestId('arena-reveal').click({ timeout: 5_000 })
+      await page.getByTestId('arena-grade-1').click({ timeout: 5_000 })
+    } catch {
       break
-    await reveal.click()
-    await page.getByTestId('arena-grade-1').click()
+    }
   }
 
   await expectSettled(page, track)
