@@ -93,6 +93,20 @@ export interface ReadinessReport {
   decks: GroupReadiness[]
   skills: GroupReadiness[]
   confidence: Confidence
+  /** Plain-language limits of this forecast, to show next to the numbers. */
+  assumptions: string[]
   /** True when the exam date is today or already past, so no review can help. */
   expired: boolean
 }
+
+/**
+ * Limits that must be shown with every readiness report. The scenario is a
+ * model run, not a prediction of what the learner will do or score.
+ */
+export const READINESS_ASSUMPTIONS: readonly string[] = [
+  'Recall figures come from the FSRS memory model applied to your review history. They are estimates, not validated exam scores.',
+  'The no-review baseline assumes you stop studying today.',
+  'The review scenario assumes every scheduled review happens on the first day it is possible and is answered Good. It shows what the plan could do, not what will happen.',
+  'Figures measure recall on the exam date only. A scenario with fewer or later reviews can show a slightly higher number on that one day while leaving you less prepared in between, so do not read a lower review count as better learning.',
+  'New cards you have not studied are counted separately and are not treated as forgotten.',
+]

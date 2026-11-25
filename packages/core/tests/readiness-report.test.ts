@@ -205,6 +205,9 @@ describe('buildReadinessReport', () => {
     // Nov 1 12:00 to the end of Nov 21 is 20.5 days, rounded up.
     expect(r.daysLeft).toBe(21)
     expect(r.expired).toBe(false)
+    expect(r.assumptions.length).toBeGreaterThanOrEqual(4)
+    expect(r.assumptions.join(' ')).toMatch(/not validated exam scores/)
+    expect(r.assumptions.join(' ')).toMatch(/exam date only/)
     expect(r.plan).toEqual({ kind: 'on-schedule' })
     expect(r.confidence.seenCards).toBeGreaterThan(0)
   })

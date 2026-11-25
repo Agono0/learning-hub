@@ -5,6 +5,7 @@ import {
   isSeen,
   plannedRecall,
   recallAt,
+  type SimulatedReview,
 } from '../src/readiness/forecast'
 import { DAY, iso, mixedDeck, newCard, NOW, seenCard } from './readiness-fixtures'
 
@@ -89,10 +90,7 @@ describe('plannedRecall', () => {
     for (const c of deck) expect(planned.get(c.id)).toBe(recallAt(c, EXAM))
   })
 
-  it('reviewing helps overall: unlimited capacity beats none, and small steps never fall far', async () => {
-    // Not strictly monotone per step: FSRS grows stability more from a late review than a
-    // timely one, so a larger budget that reviews sooner can end a hair lower. The
-    // invariant that must hold is the overall direction and a small tolerance per step.
+  it('reviewing helps overall, and per-step differences stay small (see the counterexample below)', async () => {
     const mean = async (perDay: number) => {
       const planned = await plannedRecall(deck, NOW, EXAM, { kind: 'capacity', perDay })
       const seen = deck.filter(isSeen)
@@ -101,9 +99,70 @@ describe('plannedRecall', () => {
     const caps = [0, 2, 5, 15, 100]
     const means: number[] = []
     for (const c of caps) means.push(await mean(c))
-    expect(means[4]!).toBeGreaterThan(means[0]!)
+    expect(means[4]!).toBeGreaterThan(means[0]! + 0.05)
     for (let i = 1; i < means.length; i++) {
       expect(means[i]!).toBeGreaterThanOrEqual(means[i - 1]! - 0.01)
+    }
+  })
+
+  it('counterexample: a bigger budget can leave one card slightly lower on exam day, for a model reason', async () => {
+    // mixedDeck(60) seed 7, card 17: stability 9 days, last reviewed 10 days ago, due yesterday.
+    const exam = new Date(NOW.getTime() + 30 * DAY)
+    const deck = mixedDeck(60)
+    const run = async (perDay: number) => {
+      const events: SimulatedReview[] = []
+      const planned = await plannedRecall(
+        deck,
+        NOW,
+        exam,
+        { kind: 'capacity', perDay },
+        { onReview: (e) => e.cardId === 17 && events.push(e) },
+      )
+      return { recall: planned.get(17)!, events }
+    }
+    const small = await run(2)
+    const big = await run(15)
+    // The card is reviewed once either way. The small budget reaches it later.
+    expect(small.events).toHaveLength(1)
+    expect(big.events).toHaveLength(1)
+    expect(small.events[0]!.at.getTime()).toBeGreaterThan(big.events[0]!.at.getTime())
+    // FSRS gives a bigger stability gain to a review made at lower recall (spacing effect).
+    expect(small.events[0]!.recallBefore).toBeLessThan(big.events[0]!.recallBefore)
+    expect(small.events[0]!.stabilityAfter).toBeGreaterThan(big.events[0]!.stabilityAfter)
+    // So on the single exam day the later review leaves it slightly higher.
+    expect(small.recall).toBeGreaterThan(big.recall)
+    // Both are far above doing nothing, and the gap is small. This is model behaviour,
+    // not a planner defect, and it is why the report states that exam-day recall is one
+    // instant and not a measure of how prepared the learner was in between.
+    const base = recallAt(
+      deck.find((c) => c.id === 17)!,
+      exam,
+    )
+    expect(big.recall).toBeGreaterThan(base + 0.1)
+    expect(small.recall - big.recall).toBeLessThan(0.03)
+  })
+
+  it('every simulated review is graded Good: stability only grows and recall before a review is a probability', async () => {
+    const events: SimulatedReview[] = []
+    const deck = mixedDeck(40, 2)
+    const before = new Map(deck.map((c) => [c.id, c.stability]))
+    await plannedRecall(
+      deck,
+      NOW,
+      new Date(NOW.getTime() + 40 * DAY),
+      { kind: 'on-schedule' },
+      {
+        onReview: (e) => events.push(e),
+      },
+    )
+    expect(events.length).toBeGreaterThan(0)
+    const last = new Map<number, number>()
+    for (const e of events) {
+      expect(e.recallBefore).toBeGreaterThanOrEqual(0)
+      expect(e.recallBefore).toBeLessThanOrEqual(1)
+      const prev = last.get(e.cardId) ?? before.get(e.cardId)!
+      expect(e.stabilityAfter).toBeGreaterThanOrEqual(prev - 1e-9)
+      last.set(e.cardId, e.stabilityAfter)
     }
   })
 
