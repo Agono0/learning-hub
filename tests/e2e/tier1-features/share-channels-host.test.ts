@@ -380,3 +380,89 @@ describe('publish-from-library route', () => {
     expect(bad.status).toBe(400)
   })
 })
+
+describe('hosting route error paths', () => {
+  it('rejects publishes to unhosted channels and malformed bodies', async () => {
+    const publishGhost = await post('/share/host/publish', {
+      channelId: 'ch-never-hosted',
+      items: [{ id: 'x', content: { front: 'Q?', back: 'A' } }],
+      changelog: 'nope',
+    })
+    expect(publishGhost.status).toBe(422)
+    expect(publishGhost.json.ok).toBe(false)
+
+    const unhostGhost = await post('/share/host/unhost', { channelId: 'ch-never-hosted' })
+    expect(unhostGhost.status).toBe(404)
+
+    const decideGhost = await post('/share/proposals/decide', {
+      proposalId: 'no-such-proposal',
+      decision: 'accept',
+    })
+    expect(decideGhost.status).toBe(422)
+
+    // malformed: operations array empty (schema min 1)
+    const badProposal = await post('/share/proposals/create', {
+      channelId: 'ch-never-hosted',
+      authorHandle: 'x',
+      title: 't',
+      operations: [],
+    })
+    expect([400, 422]).toContain(badProposal.status)
+
+    // malformed: items not an array of {id, content}
+    const badPublish = await post('/share/host/publish', {
+      channelId: 'ch-never-hosted',
+      items: [{ nope: true }],
+      changelog: 'x',
+    })
+    expect([400, 422]).toContain(badPublish.status)
+  })
+
+  it('host/list and proposals/list stay consistent after churn', async () => {
+    await post('/share/host', {
+      manifest: createChannel({
+        channelId: 'ch-consistency',
+        type: 'deck',
+        title: 'Consistency',
+        authorHandle: 'owner-e2e',
+        visibility: 'link',
+        items: [{ id: 'c1', content: { front: 'Q?', back: 'A' } }],
+        now: '2026-01-01T00:00:00Z',
+      }),
+    })
+    for (let i = 0; i < 3; i++) {
+      const proposal = await post('/share/proposals/create', {
+        channelId: 'ch-consistency',
+        authorHandle: `learner-${i}`,
+        title: `proposal ${i}`,
+        operations: [
+          { kind: 'upsert', item: { id: `p${i}`, content: { front: `PQ${i}?`, back: 'A' } } },
+        ],
+      })
+      expect(proposal.status).toBe(200)
+      if (i % 2 === 0) {
+        await post('/share/proposals/decide', {
+          proposalId: proposal.json.proposal.id,
+          decision: 'accept',
+        })
+      }
+    }
+    const all = await post('/share/proposals/list', { channelId: 'ch-consistency' })
+    expect(all.json.proposals).toHaveLength(3)
+    const open = await post('/share/proposals/list', {
+      channelId: 'ch-consistency',
+      status: 'open',
+    })
+    expect(open.json.proposals).toHaveLength(1)
+    const accepted = await post('/share/proposals/list', {
+      channelId: 'ch-consistency',
+      status: 'accepted',
+    })
+    expect(accepted.json.proposals).toHaveLength(2)
+
+    const got = await post('/share/host/get', { channelId: 'ch-consistency' })
+    expect(got.json.manifest.currentVersion).toBe(3) // initial + 2 accepts
+    expect(got.json.manifest.versions[2].items).toHaveLength(3) // c1 + p0 + p2
+    await post('/share/host/unhost', { channelId: 'ch-consistency' })
+  })
+})
