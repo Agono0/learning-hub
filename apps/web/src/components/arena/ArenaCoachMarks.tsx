@@ -83,7 +83,7 @@ function useCoachDismissed(): [boolean | null, () => void] {
 /** Reopenable trigger for the setup gate. */
 export function ArenaCoachReopenButton({ onOpen }: { onOpen: () => void }) {
   return (
-    <Button variant="ghost" size="sm" onClick={onOpen} data-testid="arena-coach-reopen">
+    <Button variant="ghost" onClick={onOpen} data-testid="arena-coach-reopen">
       How the arena works
     </Button>
   )
@@ -142,20 +142,20 @@ export function ArenaCoachMarks({
         </div>
         <div className="ml-auto flex gap-2">
           {step > 0 ? (
-            <Button variant="ghost" size="sm" onClick={() => setStep(step - 1)}>
+            <Button variant="ghost" onClick={() => setStep(step - 1)}>
               Back
             </Button>
           ) : null}
           {last ? (
-            <Button size="sm" onClick={close} data-testid="arena-coach-finish">
+            <Button onClick={close} data-testid="arena-coach-finish">
               Enter the arena
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={close} data-testid="arena-coach-skip">
+              <Button variant="ghost" onClick={close} data-testid="arena-coach-skip">
                 Skip
               </Button>
-              <Button size="sm" onClick={() => setStep(step + 1)} data-testid="arena-coach-next">
+              <Button onClick={() => setStep(step + 1)} data-testid="arena-coach-next">
                 Next
               </Button>
             </>

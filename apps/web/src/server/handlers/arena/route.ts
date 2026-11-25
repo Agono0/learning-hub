@@ -58,6 +58,7 @@ import {
   studyCoinLedger,
   userSettings,
   type ReviewPayload,
+  type ReviewResult,
 } from '@learning-hub/db'
 import {
   ARENA_DEFAULTS,

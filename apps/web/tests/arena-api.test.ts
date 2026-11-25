@@ -41,6 +41,13 @@ let deckSeq = 0
 
 type Exchange = { cardId: number; grade: number; confidence: number; timeMs: number }
 
+/** summarizeGradeLog takes the strict grade/confidence unions; test logs are loose. */
+function strict(
+  log: Exchange[],
+): Parameters<typeof import('@learning-hub/core').summarizeGradeLog>[0] {
+  return log as Parameters<typeof import('@learning-hub/core').summarizeGradeLog>[0]
+}
+
 /**
  * Seed a fresh deck with `n` due cards. Settlement tests each get their own
  * deck because the settlement runs REAL reviews: FSRS reschedules graded
@@ -669,7 +676,7 @@ describe('Arena API — daily modifier', () => {
     expect(post.status).toBe(200)
     const settled = await post.json()
     const expected = M.core.summarizeGradeLog(
-      log,
+      strict(log),
       M.core.ARENA_DEFAULTS,
       body.guardian.archetype,
       flipped,
@@ -809,19 +816,19 @@ describe('Arena API — card-format flavor at settlement', () => {
     const settled = await post.json()
 
     const formatByCard = new Map(
-      body.cards.map((c: { id: number; type: string }) => [c.id, c.type]),
+      body.cards.map((c: { id: number; type: string }): [number, string] => [c.id, c.type]),
     )
     const expected = M.core.summarizeGradeLog(
-      log,
+      strict(log),
       M.core.ARENA_DEFAULTS,
       body.guardian.archetype,
       body.modifier.key,
-      (id) => formatByCard.get(id),
+      (id) => formatByCard.get(id) as string | undefined,
     )
     expect(settled.summary.score).toBe(expected.score)
     // And it really is the flavored score, not the plain one.
     const plain = M.core.summarizeGradeLog(
-      log,
+      strict(log),
       M.core.ARENA_DEFAULTS,
       body.guardian.archetype,
       body.modifier.key,
