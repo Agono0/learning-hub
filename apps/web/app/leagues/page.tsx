@@ -1172,6 +1172,7 @@ function DivisionPanel({ slug, tier, mode }: { slug: string; tier: string; mode:
 }
 
 function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: string }) {
+  const practice = detail.league.mode !== 'competitive'
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [result, setResult] = useState<HeadToHead | null>(null)
@@ -1196,8 +1197,9 @@ function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: strin
     <Panel>
       <h2 className="mb-2 text-base font-semibold">Head-to-head</h2>
       <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
-        The full rivalry record between two players: every duel they played, accuracy, speed,
-        streaks and the Elo gap.
+        {practice
+          ? 'The full friendly rivalry record between two players: every duel they played, accuracy, speed and streaks.'
+          : 'The full rivalry record between two players: every duel they played, accuracy, speed, streaks and the Elo gap.'}
       </p>
       {h2hError && (
         <Callout tone="danger" title="Head-to-head failed">
@@ -1248,9 +1250,11 @@ function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: strin
                 ? `${result.leader.leader} leads by ${result.leader.edge}`
                 : 'All square'}
             </Badge>
-            <Badge tone="cyan">
-              Elo {result.elo.eloA} vs {result.elo.eloB}
-            </Badge>
+            {!practice && (
+              <Badge tone="cyan">
+                Elo {result.elo.eloA} vs {result.elo.eloB}
+              </Badge>
+            )}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {(['A', 'B'] as const).map((side) => {
