@@ -160,6 +160,21 @@ describe('secret routes', () => {
     expect(isSecretRoute(`${p}/x`)).toBe(true)
     expect(isSecretRoute('/api/focus/bridgex')).toBe(false)
   })
+  it('cannot be dodged by encoding, case, dot segments or extra slashes', () => {
+    for (const path of [
+      '/api/focus/%62ridge',
+      '/api/focus/%2562ridge',
+      '/API/focus/Bridge',
+      '//api//focus//bridge',
+      '/api/focus/x/../bridge',
+      '/api/focus/bridge/',
+      '/api/focus\\bridge',
+    ]) {
+      expect(isSecretRoute(path), path).toBe(true)
+      expect(status(req({ pathname: path, origin: 'https://evil.example' })), path).toBe(403)
+    }
+    expect(isSecretRoute('/api/focus/max')).toBe(false)
+  })
   it('is reachable from the app itself and from a plain client', () => {
     expect(
       status(req({ pathname: p, secFetchSite: 'same-origin', origin: 'http://localhost:3000' })),

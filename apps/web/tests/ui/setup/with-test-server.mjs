@@ -84,7 +84,12 @@ import { createRequire } from 'node:module'
 const nextBin = createRequire(path.join(webDir, 'package.json')).resolve('next/dist/bin/next')
 const child = spawn(process.execPath, [nextBin, 'dev', '-p', String(PORT)], {
   cwd: webDir,
-  env: { ...process.env, LEARNING_HUB_DB: clone },
+  env: {
+    ...process.env,
+    LEARNING_HUB_DB: clone,
+    // Host/Origin guard check (tests/ui/host-guard.spec.ts): a configured custom host.
+    LEARNING_HUB_ALLOWED_HOSTS: 'lan-test.invalid',
+  },
   stdio: 'inherit',
 })
 

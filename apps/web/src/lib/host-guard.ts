@@ -30,8 +30,34 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 /** Routes that return a secret. Never reachable cross-origin, by any allowlist or extension. */
 export const SECRET_ROUTE_PREFIXES = ['/api/focus/bridge'] as const
 
+/**
+ * Canonical form used only for matching secret routes: percent-decoded (repeatedly, bounded),
+ * lower-cased, duplicate slashes and dot segments resolved. A route is secret if EITHER the raw
+ * or the canonical path matches, so an encoded or oddly cased spelling cannot dodge the rule.
+ */
+export function canonicalPath(pathname: string): string {
+  let p = pathname
+  for (let i = 0; i < 3; i++) {
+    try {
+      const d = decodeURIComponent(p)
+      if (d === p) break
+      p = d
+    } catch {
+      break
+    }
+  }
+  const out: string[] = []
+  for (const seg of p.replace(/\\/g, '/').toLowerCase().split('/')) {
+    if (seg === '' || seg === '.') continue
+    if (seg === '..') out.pop()
+    else out.push(seg)
+  }
+  return `/${out.join('/')}`
+}
+
 export function isSecretRoute(pathname: string): boolean {
-  return SECRET_ROUTE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  const match = (x: string) => SECRET_ROUTE_PREFIXES.some((p) => x === p || x.startsWith(`${p}/`))
+  return match(pathname) || match(canonicalPath(pathname))
 }
 
 function list(value: string | undefined): string[] {
