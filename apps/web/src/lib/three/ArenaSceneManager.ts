@@ -135,6 +135,17 @@ export class ArenaSceneManager {
   private torches: Torch[] = []
   private particles: Particle[] = []
   private strikes: StrikeFx[] = []
+  private projectiles: {
+    mesh: THREE.Mesh
+    t: number
+    from: THREE.Vector3
+    to: THREE.Vector3
+    crit: boolean
+    active: boolean
+  }[] = []
+  private playerLunge = 0
+  private victoryRain = 0
+  private defeatDim = 0
 
   private cameraShake = 0
   private moodGlow: THREE.PointLight
@@ -177,6 +188,7 @@ export class ArenaSceneManager {
     this.shield = shieldMeshes.dome
     this.shieldRim = shieldMeshes.rim
     this.buildParticles()
+    this.buildProjectiles()
 
     this.moodGlow = new THREE.PointLight(PALETTE.victory, 0, 24, 1.6)
     this.moodGlow.position.set(0, 6, 0)
@@ -443,6 +455,43 @@ export class ArenaSceneManager {
     }
   }
 
+  private buildProjectiles(): void {
+    // Pooled strike projectiles: a glowing orb arcs from the player's sword
+    // toward the guardian on every landed hit.
+    for (let i = 0; i < 6; i++) {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.14, 10, 10),
+        new THREE.MeshBasicMaterial({ color: PALETTE.strike, transparent: true, opacity: 0 }),
+      )
+      mesh.visible = false
+      this.scene.add(mesh)
+      this.projectiles.push({
+        mesh,
+        t: 0,
+        from: new THREE.Vector3(),
+        to: new THREE.Vector3(),
+        crit: false,
+        active: false,
+      })
+    }
+  }
+
+  private fireProjectile(crit: boolean): void {
+    const slot = this.projectiles.find((p) => !p.active)
+    if (!slot) return
+    slot.active = true
+    slot.t = 0
+    slot.crit = crit
+    slot.from.set(0.5, 1.6, 3.0)
+    slot.to.set(0, 2.8, -2.4)
+    slot.mesh.visible = true
+    ;(slot.mesh.material as THREE.MeshBasicMaterial).color.setHex(
+      crit ? PALETTE.crit : PALETTE.strike,
+    )
+    ;(slot.mesh.material as THREE.MeshBasicMaterial).opacity = 1
+    slot.mesh.scale.setScalar(crit ? 1.6 : 1)
+  }
+
   // ─── Public imperative API ───────────────────────────────────────────────
 
   /** Guardian HP as a progress bar: 0 = untouched, 1 = cleared queue. */
@@ -450,7 +499,7 @@ export class ArenaSceneManager {
     this.guardianProgress = Math.min(1, Math.max(0, progress))
   }
 
-  /** A landed strike — particle burst at the guardian, camera kick. */
+  /** A landed strike — projectile, lunge, burst at the guardian, camera kick. */
   strike(options: { crit: boolean }): void {
     this.strikes.push({
       t: 0,
@@ -458,6 +507,8 @@ export class ArenaSceneManager {
       origin: new THREE.Vector3(0, 2.6, -2.6),
       active: true,
     })
+    this.fireProjectile(options.crit)
+    this.playerLunge = 1
     this.guardianFlash = 1
     this.cameraShake = Math.min(1, this.cameraShake + (options.crit ? 0.9 : 0.45))
     this.spawnBurst(new THREE.Vector3(0, 2.8, -2.4), options.crit ? 26 : 12, options.crit)
@@ -480,11 +531,13 @@ export class ArenaSceneManager {
 
   guardianDefeated(): void {
     this.endState = 'victory'
+    this.victoryRain = 1
     this.spawnBurst(new THREE.Vector3(0, 3, -2.6), 40, true, PALETTE.victory)
   }
 
   playerDefeated(): void {
     this.endState = 'defeat'
+    this.defeatDim = 1
     this.cameraShake = Math.min(1, this.cameraShake + 1)
   }
 
@@ -515,7 +568,17 @@ export class ArenaSceneManager {
     this.endGlow = 0
     this.enraged = false
     this.enrageGlow = 0
+    this.playerLunge = 0
+    this.victoryRain = 0
+    this.defeatDim = 0
     this.cameraShake = 0
+    for (const proj of this.projectiles) {
+      proj.active = false
+      proj.mesh.visible = false
+    }
+    for (const torch of this.torches) {
+      torch.baseIntensity = 1.5
+    }
     for (const p of this.particles) {
       p.active = false
       p.mesh.visible = false
@@ -641,6 +704,31 @@ export class ArenaSceneManager {
       this.enrageGlow * (0.35 + Math.sin(t * 6) * 0.1),
     )
 
+    // Projectiles: ease-out arc player → guardian, then a small impact flash.
+    for (const proj of this.projectiles) {
+      if (!proj.active) continue
+      proj.t += dt * 2.4
+      if (proj.t >= 1) {
+        proj.active = false
+        proj.mesh.visible = false
+        this.spawnBurst(proj.to, proj.crit ? 10 : 5, proj.crit)
+        continue
+      }
+      const k = 1 - Math.pow(1 - proj.t, 2)
+      proj.mesh.position.lerpVectors(proj.from, proj.to, k)
+      proj.mesh.position.y += Math.sin(proj.t * Math.PI) * 1.1
+      ;(proj.mesh.material as THREE.MeshBasicMaterial).opacity = 0.6 + (1 - proj.t) * 0.4
+    }
+
+    // Player attack lunge: quick forward drive, spring back.
+    if (this.playerLunge > 0) {
+      this.playerLunge = Math.max(0, this.playerLunge - dt * 3.4)
+      const drive = Math.sin((1 - this.playerLunge) * Math.PI) * 1.1
+      this.player.position.z = 3.2 - drive
+    } else {
+      this.player.position.z = 3.2
+    }
+
     // Player idle sway + counter flash.
     this.player.position.y = Math.sin(t * 1.9 + 1) * 0.04
     if (this.playerFlash > 0) {
@@ -682,6 +770,29 @@ export class ArenaSceneManager {
       const k = 1 - p.life / p.maxLife
       ;(p.mesh.material as THREE.MeshBasicMaterial).opacity = k
       p.mesh.scale.setScalar(0.5 + k * 0.8)
+    }
+
+    // Victory rain: golden motes drift down while the end glow is up.
+    if (this.victoryRain > 0 && this.endState === 'victory') {
+      if (Math.random() < 0.35) {
+        this.spawnBurst(
+          new THREE.Vector3(
+            (Math.random() - 0.5) * 8,
+            7 + Math.random() * 2,
+            (Math.random() - 0.5) * 6,
+          ),
+          2,
+          false,
+          PALETTE.victory,
+        )
+      }
+    }
+
+    // Defeat: the torches gutter out.
+    if (this.defeatDim > 0) {
+      for (const torch of this.torches) {
+        torch.baseIntensity = Math.max(0.25, torch.baseIntensity - dt * 1.1)
+      }
     }
 
     // End-state mood glow.
