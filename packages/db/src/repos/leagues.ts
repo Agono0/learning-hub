@@ -30,6 +30,7 @@ import {
   type LeagueEvent,
   type Tournament,
   isRoundDue,
+  roundEndsAt,
   isSeasonComplete,
   closeSeason,
   createLeagueTransfer,
@@ -787,6 +788,92 @@ export function createLeagueTournament(
     .returning()
     .all()
   return row!
+}
+
+/** When one round starts/ends, derived from the season calendar. */
+export type LeagueRoundWindow = { round: number; startsAt: string; endsAt: string }
+
+/** Forward-looking view of a league's round calendar. */
+export type LeagueRoundPreview = {
+  slug: string
+  title: string
+  seasonStart: string
+  roundLengthDays: number
+  seasonLengthRounds: number
+  currentRound: number
+  current: LeagueRoundWindow
+  dueNow: boolean
+  msUntilRoundEnd: number
+  roundsRemaining: number
+  seasonComplete: boolean
+  seasonEndsAt: string
+  upcoming: LeagueRoundWindow[]
+}
+
+const DAY_MS = 86_400_000
+
+function roundWindow(
+  seasonStart: string,
+  roundLengthDays: number,
+  round: number,
+): LeagueRoundWindow {
+  const base = new Date(`${seasonStart}T00:00:00.000Z`).getTime()
+  return {
+    round,
+    startsAt: new Date(base + round * roundLengthDays * DAY_MS).toISOString(),
+    endsAt: new Date(base + (round + 1) * roundLengthDays * DAY_MS).toISOString(),
+  }
+}
+
+/**
+ * The league's round calendar: when the current round started and ends,
+ * whether it is due to close, how many rounds remain, the season end, and a
+ * preview of the next rounds. Pure calendar math over the stored league row
+ * (same basis as the engine's roundEndsAt), so it never writes anything.
+ */
+export function leagueRoundPreview(
+  slug: string,
+  opts: { upcoming?: number } = {},
+  database?: LearningHubDB,
+): LeagueRoundPreview | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const core = rowsToLeague(league, players)
+  const schedule = {
+    seasonStart: core.seasonStart,
+    roundLengthDays: core.roundLengthDays,
+    currentRound: core.currentRound,
+  }
+  const endsAt = roundEndsAt(schedule)
+  const now = Date.now()
+  const roundsRemaining = Math.max(0, core.seasonLengthRounds - core.currentRound)
+  const upcomingCount = Math.min(opts.upcoming ?? 3, roundsRemaining)
+  const upcoming: LeagueRoundWindow[] = []
+  for (let i = 1; i <= upcomingCount; i += 1) {
+    upcoming.push(roundWindow(core.seasonStart, core.roundLengthDays, core.currentRound + i))
+  }
+  return {
+    slug: league.slug,
+    title: league.title,
+    seasonStart: core.seasonStart,
+    roundLengthDays: core.roundLengthDays,
+    seasonLengthRounds: core.seasonLengthRounds,
+    currentRound: core.currentRound,
+    current: roundWindow(core.seasonStart, core.roundLengthDays, core.currentRound),
+    dueNow: isRoundDue(schedule, new Date(now)),
+    msUntilRoundEnd: endsAt.getTime() - now,
+    roundsRemaining,
+    seasonComplete: isSeasonComplete(core),
+    seasonEndsAt: roundWindow(core.seasonStart, core.roundLengthDays, core.seasonLengthRounds)
+      .startsAt,
+    upcoming,
+  }
 }
 
 /**

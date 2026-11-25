@@ -114,6 +114,17 @@ type LeagueDigest = {
   newAchievements: { handle: string; achievementId: string; earnedAt: string }[]
 }
 
+type LeagueSchedule = {
+  currentRound: number
+  seasonLengthRounds: number
+  current: { round: number; startsAt: string; endsAt: string }
+  dueNow: boolean
+  msUntilRoundEnd: number
+  roundsRemaining: number
+  seasonEndsAt: string
+  upcoming: { round: number; startsAt: string; endsAt: string }[]
+}
+
 type TournamentRow = {
   slug: string
   title: string
@@ -280,6 +291,7 @@ type ActFn = (body: Record<string, unknown>, okMessage: string) => Promise<void>
 
 function DigestPanel({ slug }: { slug: string }) {
   const [digest, setDigest] = useState<LeagueDigest | null>(null)
+  const [schedule, setSchedule] = useState<LeagueSchedule | null>(null)
   useEffect(() => {
     let alive = true
     apiGet<{ ok: boolean; digest: LeagueDigest }>(
@@ -290,6 +302,15 @@ function DigestPanel({ slug }: { slug: string }) {
       })
       .catch(() => {
         if (alive) setDigest(null)
+      })
+    apiGet<{ ok: boolean; schedule: LeagueSchedule }>(
+      `/api/leagues?view=schedule&slug=${encodeURIComponent(slug)}`,
+    )
+      .then((res) => {
+        if (alive) setSchedule(res.schedule)
+      })
+      .catch(() => {
+        if (alive) setSchedule(null)
       })
     return () => {
       alive = false
@@ -309,6 +330,22 @@ function DigestPanel({ slug }: { slug: string }) {
             duels
           </span>
         </div>
+        {schedule && (
+          <p
+            className="mb-2 text-xs text-neutral-500 dark:text-neutral-400"
+            data-testid="digest-schedule"
+          >
+            Round {schedule.currentRound} of {schedule.seasonLengthRounds} ·{' '}
+            {schedule.current.startsAt.slice(0, 10)} → {schedule.current.endsAt.slice(0, 10)}
+            {schedule.dueNow
+              ? ' · due to close'
+              : ` · ${Math.max(0, Math.round(schedule.msUntilRoundEnd / 86_400_000))}d left`}
+            {schedule.upcoming.length > 0 &&
+              ` · next: ${schedule.upcoming
+                .map((u) => `R${u.round} ${u.startsAt.slice(0, 10)}`)
+                .join(', ')}`}
+          </p>
+        )}
         {digest.lastRound ? (
           <p className="text-sm text-neutral-600 dark:text-neutral-300">
             Round {digest.lastRound.round} closed {digest.lastRound.closedAt.slice(0, 10)} —

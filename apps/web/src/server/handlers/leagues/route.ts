@@ -22,6 +22,7 @@ import {
   listLeagueAchievements,
   leagueChampion,
   buildLeagueDigest,
+  leagueRoundPreview,
   leagueDivisionDetail,
   leaguePlayerProfile,
   leagueStandings,
@@ -56,6 +57,12 @@ export const GET = withRoute(async (req: Request) => {
       return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
     }
     return Response.json({ ok: true, division })
+  }
+
+  if (view === 'schedule') {
+    const schedule = leagueRoundPreview(slug, { upcoming: 5 })
+    if (!schedule) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })
+    return Response.json({ ok: true, schedule })
   }
 
   if (view === 'digest') {

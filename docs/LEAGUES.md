@@ -271,3 +271,16 @@ Surfaces: `POST /leagues/tournaments/seed` (server), web action
 `tournament-seed` plus the Seed-from-standings button in the /leagues
 Tournaments tab, `learning-hub leagues tournament seed <slug> "<title>"
 --league <slug> [--size N]`, and the `tournament_seed` MCP tool.
+
+## Round schedule preview
+
+`leagueRoundPreview(slug, { upcoming? })` reads the league's round calendar:
+when the current round starts and ends, whether it is due to close (same
+basis as the engine's roundEndsAt), milliseconds until the deadline, rounds
+remaining, the season end date, and a preview of the next rounds (capped at
+the rounds left in the season). Pure calendar math — it never writes.
+
+Surfaces: `GET /leagues/schedule?slug=` (server), `GET
+/api/leagues?view=schedule&slug=` (web, rendered as the calendar strip in
+the Weekly digest panel), `learning-hub leagues schedule <slug>`, and the
+`league_schedule` MCP tool.
