@@ -38,8 +38,11 @@ import {
   recordTournamentMatchResult,
   rematchLeagueDuel,
   submitDuelAnswers,
+  getRemoteLink,
+  listRemoteLinks,
+  loadLeagueQueue,
 } from '@learning-hub/db'
-import { DIVISION_ORDER } from '@learning-hub/core'
+import { DIVISION_ORDER, summarizeQueue } from '@learning-hub/core'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 
 const tierEnum = z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond'])
@@ -373,5 +376,45 @@ export const leagueTools: RegisteredTool[] = [
       status: z.enum(['open', 'complete']).optional(),
     },
     (opts) => json({ ok: true, tournaments: listLeagueTournaments(opts) }),
+  ),
+  tool(
+    'remote_league_links',
+    'List linked remote leagues (optional local/friendly practice groundwork). Read-only: shows link status and queue counts, never scores or ranks, and never signing keys.',
+    {},
+    () =>
+      json({
+        ok: true,
+        links: listRemoteLinks().map((l) => ({
+          remoteLeagueId: l.remoteLeagueId,
+          serverUrl: l.serverUrl,
+          nextSeq: l.nextSeq,
+          lastStatus: l.lastStatus ?? null,
+          queue: summarizeQueue(loadLeagueQueue(l.id).queue),
+        })),
+      }),
+  ),
+  tool(
+    'remote_league_queue',
+    'Inspect the offline mutation queue for one linked remote league. Read-only; payloads are not echoed.',
+    {
+      serverUrl: z.string().min(1),
+      remoteLeagueId: z.string().min(1),
+    },
+    ({ serverUrl, remoteLeagueId }) => {
+      let link
+      try {
+        link = getRemoteLink(serverUrl, remoteLeagueId)
+      } catch (err) {
+        return json({ ok: false, error: err instanceof Error ? err.message : 'invalid server url' })
+      }
+      if (!link) return json({ ok: false, error: 'no such link' })
+      const { queue, recovered } = loadLeagueQueue(link.id)
+      return json({
+        ok: true,
+        recovered,
+        summary: summarizeQueue(queue),
+        items: queue.items.length,
+      })
+    },
   ),
 ]
