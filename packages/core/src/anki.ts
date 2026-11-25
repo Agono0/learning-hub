@@ -715,21 +715,28 @@ export async function parseApkg(
     ? options.openDatabase(collection)
     : await openSqliteNode(collection)
   try {
-    const colRow = db.prepare('SELECT models, decks FROM col LIMIT 1').get() as
-      { models: string; decks: string } | undefined
+    const colRow = db
+      .prepare(
+        `SELECT substr(models, 1, ${APKG_SQLITE_BUDGETS.maxJsonChars + 1}) AS models, ` +
+          `substr(decks, 1, ${APKG_SQLITE_BUDGETS.maxJsonChars + 1}) AS decks FROM col LIMIT 1`,
+      )
+      .get() as { models: string; decks: string } | undefined
     if (!colRow) throw new Error(`invalid ${collectionKey}: missing col table row`)
 
-    const models = JSON.parse(colRow.models) as Record<string, AnkiModel>
-    const ankiDecks = JSON.parse(colRow.decks) as Record<string, { name?: string }>
+    const models = parseBoundedJson<Record<string, AnkiModel>>(colRow.models, 'col.models')
+    const ankiDecks = parseBoundedJson<Record<string, { name?: string }>>(colRow.decks, 'col.decks')
+    if (Object.keys(models).length > APKG_SQLITE_BUDGETS.maxModels) {
+      throw new ApkgBudgetError(`col.models has more than ${APKG_SQLITE_BUDGETS.maxModels} entries`)
+    }
 
-    const notes = db.prepare('SELECT mid, tags, flds FROM notes').all() as {
-      mid: number | string
-      tags: string
-      flds: string
-    }[]
-    const deckIds = (db.prepare('SELECT DISTINCT did FROM cards').all() as { did: number }[])
-      .map((r) => r.did)
-      .filter((did) => ankiDecks[String(did)]?.name)
+    const notes = readNotesBounded(db)
+    const deckRows = db
+      .prepare(`SELECT DISTINCT did FROM cards LIMIT ${APKG_SQLITE_BUDGETS.maxDecks + 1}`)
+      .all() as { did: number }[]
+    if (deckRows.length > APKG_SQLITE_BUDGETS.maxDecks) {
+      throw new ApkgBudgetError(`cards reference more than ${APKG_SQLITE_BUDGETS.maxDecks} decks`)
+    }
+    const deckIds = deckRows.map((r) => r.did).filter((did) => ankiDecks[String(did)]?.name)
 
     const cards: ParsedCard[] = []
     const skipped = new Set<string>()
@@ -760,13 +767,138 @@ export async function parseApkg(
 }
 
 /**
+ * Explicit budgets for the collection database. Every limit is checked on values the query
+ * has already capped (`substr`, `LIMIT`), and exceeding one is a named refusal, never a
+ * silent truncation. These bound what JS receives and parses; they do NOT bound the SQLite
+ * engine's own work on a hostile image (no interrupt API exists in better-sqlite3 13.x), which
+ * is a stated residual. Row counts and character totals are in JS string units (UTF-16).
+ */
+export const APKG_SQLITE_BUDGETS = {
+  /** Max chars read from `col.models` / `col.decks` each. */
+  maxJsonChars: 8 * 1024 * 1024,
+  maxModels: 10_000,
+  maxDecks: 100_000,
+  maxNotes: 200_000,
+  /** Rows fetched per keyset page. */
+  pageSize: 1_000,
+  /** Max chars of one note's `flds`. */
+  maxFieldsChars: 1024 * 1024,
+  maxTagsChars: 64 * 1024,
+  /** Max chars of `flds` + `tags` summed over all notes. */
+  maxTotalChars: 64 * 1024 * 1024,
+} as const
+
+/** A collection exceeded an {@link APKG_SQLITE_BUDGETS} limit or is structurally unacceptable. */
+export class ApkgBudgetError extends Error {
+  constructor(message: string) {
+    super(`invalid .apkg: ${message}`)
+    this.name = 'ApkgBudgetError'
+  }
+}
+
+function parseBoundedJson<T extends object>(text: unknown, what: string): T {
+  if (typeof text !== 'string') throw new ApkgBudgetError(`${what} is not text`)
+  if (text.length > APKG_SQLITE_BUDGETS.maxJsonChars) {
+    throw new ApkgBudgetError(`${what} is larger than ${APKG_SQLITE_BUDGETS.maxJsonChars} chars`)
+  }
+  let value: unknown
+  try {
+    value = JSON.parse(text)
+  } catch {
+    // includes RangeError from pathologically deep nesting
+    throw new ApkgBudgetError(`${what} is not parseable JSON`)
+  }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ApkgBudgetError(`${what} is not a JSON object`)
+  }
+  return value as T
+}
+
+type NoteRow = { mid: number | string; tags: string; flds: string }
+
+/**
+ * Reads `notes` in rowid-keyset pages (`WHERE rowid > last ORDER BY rowid LIMIT n`): bounded
+ * result sets, no OFFSET rescans. Paging stops on a short page, so openers that return all
+ * rows at once still work. Statements take no bound parameters, so the integer cursor is
+ * inlined; it only ever comes from a prior row's rowid after a `typeof === 'number'` check.
+ */
+function readNotesBounded(db: SqliteHandle): NoteRow[] {
+  const b = APKG_SQLITE_BUDGETS
+  const out: NoteRow[] = []
+  let total = 0
+  let after = 0
+  for (;;) {
+    const page = db
+      .prepare(
+        `SELECT rowid AS id, mid, substr(tags, 1, ${b.maxTagsChars + 1}) AS tags, ` +
+          `substr(flds, 1, ${b.maxFieldsChars + 1}) AS flds FROM notes ` +
+          `WHERE rowid > ${after} ORDER BY rowid LIMIT ${b.pageSize}`,
+      )
+      .all() as (NoteRow & { id?: unknown })[]
+    for (const row of page) {
+      if (out.length >= b.maxNotes) throw new ApkgBudgetError(`more than ${b.maxNotes} notes`)
+      const flds = row.flds ?? ''
+      const tags = row.tags ?? ''
+      if (typeof flds !== 'string' || typeof tags !== 'string') {
+        throw new ApkgBudgetError('a note has non-text fields or tags')
+      }
+      if (flds.length > b.maxFieldsChars) {
+        throw new ApkgBudgetError(`a note's fields exceed ${b.maxFieldsChars} chars`)
+      }
+      if (tags.length > b.maxTagsChars) {
+        throw new ApkgBudgetError(`a note's tags exceed ${b.maxTagsChars} chars`)
+      }
+      total += flds.length + tags.length
+      if (total > b.maxTotalChars) {
+        throw new ApkgBudgetError(`notes exceed ${b.maxTotalChars} chars in total`)
+      }
+      out.push({ mid: row.mid, tags, flds })
+    }
+    if (page.length < b.pageSize) return out
+    const last = page[page.length - 1]!.id
+    if (typeof last !== 'number' || !(last > after)) {
+      throw new ApkgBudgetError('notes paging cursor did not advance')
+    }
+    after = last
+  }
+}
+
+const SQLITE_MAGIC = 'SQLite format 3\0'
+
+/**
  * Node default opener: better-sqlite3, imported lazily so that merely loading
  * this module (and the barrel) never resolves the driver — the dynamic import
  * only fires when parseApkg runs WITHOUT a custom `openDatabase`.
+ *
+ * Adapter-level hardening (applies to this opener only; custom openers own theirs):
+ * the image must start with the SQLite magic; `query_only` and `trusted_schema=OFF` are set
+ * (verified: both read back as 1 / 0 on better-sqlite3 13.x); and the tables parseApkg reads
+ * (`col`, `notes`, `cards`) must be real tables in `sqlite_master`, not views or virtual
+ * tables. Other schema objects are not inspected or refused.
  */
 async function openSqliteNode(bytes: Uint8Array): Promise<SqliteHandle> {
   const { default: Database } = await import('better-sqlite3')
-  return new Database(Buffer.from(bytes))
+  const magic = Buffer.from(bytes.subarray(0, SQLITE_MAGIC.length)).toString('latin1')
+  if (magic !== SQLITE_MAGIC) throw new ApkgBudgetError('collection is not a SQLite database image')
+  const db = new Database(Buffer.from(bytes))
+  try {
+    db.pragma('query_only = ON')
+    db.pragma('trusted_schema = OFF')
+    const rows = db
+      .prepare("SELECT name, type, sql FROM sqlite_master WHERE name IN ('col', 'notes', 'cards')")
+      .all() as { name: string; type: string; sql: string | null }[]
+    for (const want of ['col', 'notes', 'cards']) {
+      const row = rows.find((r) => r.name === want)
+      if (!row) continue // a missing table surfaces as the driver's own error on first read
+      if (row.type !== 'table' || /^\s*CREATE\s+VIRTUAL\s/i.test(row.sql ?? '')) {
+        throw new ApkgBudgetError(`${want} is not an ordinary table`)
+      }
+    }
+  } catch (err) {
+    db.close()
+    throw err
+  }
+  return db
 }
 
 /** Map one Anki note onto our card formats, or null when the model is unsupported. */
