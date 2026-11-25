@@ -19,6 +19,7 @@ import {
   TextField,
 } from '@/ui'
 import { apiGet, apiSend } from '@/lib/transport'
+import { RemoteLeaguesPanel } from '@/components/RemoteLeaguesPanel'
 
 // ── Types mirroring the /api/leagues payloads ────────────────────────────────
 
@@ -296,6 +297,7 @@ export default function LeaguesPage() {
           act={act}
         />
       )}
+      {tab === 'overview' && <RemoteLeaguesPanel />}
       {tab === 'standings' && (
         <StandingsTab
           detail={detail}
