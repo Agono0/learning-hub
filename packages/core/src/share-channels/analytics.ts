@@ -21,7 +21,11 @@ export interface ChannelManifestAnalytics {
     removed: number
     changed: number
   }[]
-  /** How often items change per publish (0-1; lower means a stable channel). */
+  /**
+   * Item touches (adds + removes + changes) per published item-slot across
+   * all versions. Below 1 means a stable channel; above 1 means items are
+   * edited repeatedly between publishes.
+   */
   churnRate: number
 }
 
