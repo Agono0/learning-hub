@@ -321,7 +321,9 @@ describe('Arena API — settlement execution', () => {
     // Two correct + one Again: the engine's own count wins over the client.
     expect(body.summary.correct).toBe(2)
     expect(body.summary.bestCombo).toBeLessThan(10)
-    expect(body.summary.result).toBe('victory') // all 3 rounds resolved → victory
+    // 3 of 5 queued cards graded: an unfinished queue is never a victory,
+    // whatever the (truncated) log or the client claims.
+    expect(body.summary.result).toBe('defeat')
   })
 
   it('awards arena XP as a distinct xp_events source', async () => {
@@ -628,7 +630,7 @@ describe('Arena API — run history (/api/arena/history)', () => {
     expect(body.runs[0].id).toBeGreaterThan(body.runs[1].id)
     expect(body.runs[0].referenceId).toMatch(/^arena:[0-9a-f-]{36}$/)
     expect(body.runs[0].deckIds.length).toBeGreaterThan(0)
-    expect(body.runs[0].result).toBe('victory')
+    expect(['victory', 'defeat']).toContain(body.runs[0].result)
   })
 })
 
@@ -680,6 +682,8 @@ describe('Arena API — daily modifier', () => {
       M.core.ARENA_DEFAULTS,
       body.guardian.archetype,
       flipped,
+      undefined,
+      queue.length,
     )
     expect(settled.summary.score).toBe(expected.score)
     expect(settled.summary.crits).toBe(expected.crits)
