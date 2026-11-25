@@ -35,6 +35,12 @@ import {
   parseLeagueTransfer,
   type LeagueTransfer,
   type LeagueTransferPayload,
+  scoreDuelSide,
+  summarizeHeadToHead,
+  headToHeadLeader,
+  headToHeadEloGap,
+  type HeadToHeadEncounter,
+  type HeadToHeadSummary,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
 import type { Transaction } from '../transaction'
@@ -1177,4 +1183,94 @@ export function importLeague(raw: string | unknown, database?: LearningHubDB): L
     }
     return league!
   }, conn)
+}
+
+// ─── Head-to-head ───────────────────────────────────────────────────────────
+
+export interface LeagueHeadToHead {
+  summary: HeadToHeadSummary
+  /** Who leads the pairing (null when even). */
+  leader: { leader: string | null; edge: number; even: boolean }
+  /** Current Elo values and gap framing. */
+  elo: { eloA: number; eloB: number; gap: number; higher: 'A' | 'B' | null }
+  /** Recent completed duels between the pair, newest first (slugs). */
+  recentDuels: { duelId: string; winner: string | null; completedAt: string }[]
+}
+
+/**
+ * Full rivalry record between two players of one league: every completed
+ * duel they played against each other (any seating), distilled by the core
+ * head-to-head engine, plus current Elo framing. Returns null when the
+ * league or either player does not exist.
+ */
+export function leagueHeadToHead(
+  slug: string,
+  handleA: string,
+  handleB: string,
+  database?: LearningHubDB,
+): LeagueHeadToHead | null {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(slug, conn)
+  if (!league) return null
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const pa = players.find((p) => p.handle === handleA)
+  const pb = players.find((p) => p.handle === handleB)
+  if (!pa || !pb) return null
+
+  const rows = conn
+    .select()
+    .from(leagueDuels)
+    .where(
+      and(
+        eq(leagueDuels.leagueId, league.id),
+        eq(leagueDuels.status, 'complete'),
+        or(
+          and(eq(leagueDuels.playerA, handleA), eq(leagueDuels.playerB, handleB)),
+          and(eq(leagueDuels.playerA, handleB), eq(leagueDuels.playerB, handleA)),
+        ),
+      ),
+    )
+    .orderBy(desc(leagueDuels.completedAt))
+    .all()
+
+  // Normalize each duel into the requested handle order (A = handleA).
+  const encounters: HeadToHeadEncounter[] = rows.map((r) => {
+    const duel = rowToDuel(r)
+    const scoreA = scoreDuelSide(duel, 'A')
+    const scoreB = scoreDuelSide(duel, 'B')
+    const mine = r.playerA === handleA ? scoreA : scoreB
+    const theirs = r.playerA === handleA ? scoreB : scoreA
+    return {
+      duelId: r.slug,
+      winner: r.winner,
+      correctA: mine.correct,
+      correctB: theirs.correct,
+      total: mine.total,
+      correctTimeMsA: mine.correctTimeMs,
+      correctTimeMsB: theirs.correctTimeMs,
+      completedAt: r.completedAt ?? r.createdAt,
+    }
+  })
+
+  const summary = summarizeHeadToHead(handleA, handleB, encounters)
+  const eloGap = headToHeadEloGap(pa.elo, pb.elo)
+  return {
+    summary,
+    leader: headToHeadLeader(summary),
+    elo: {
+      eloA: pa.elo,
+      eloB: pb.elo,
+      gap: eloGap.gap,
+      higher: eloGap.higher === 'A' ? 'A' : eloGap.higher === 'B' ? 'B' : null,
+    },
+    recentDuels: rows.slice(0, 5).map((r) => ({
+      duelId: r.slug,
+      winner: r.winner,
+      completedAt: r.completedAt ?? r.createdAt,
+    })),
+  }
 }

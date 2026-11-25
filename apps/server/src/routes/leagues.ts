@@ -23,6 +23,7 @@ import {
   getLeagueTournament,
   importLeague,
   joinLeagueRow,
+  leagueHeadToHead,
   leagueChampion,
   leagueStandings,
   listLeagueDuels,
@@ -327,6 +328,20 @@ async function postLeagueImport(req: IncomingMessage, res: ServerResponse): Prom
   }
 }
 
+const h2hQuerySchema = z.object({
+  slug: z.string().min(1),
+  a: z.string().min(1),
+  b: z.string().min(1),
+})
+
+/** GET /leagues/head-to-head?slug=&a=&b= — full rivalry record. */
+function getLeagueHeadToHead(req: IncomingMessage, res: ServerResponse, url: URL): void {
+  const q = readQuery(url, h2hQuerySchema)
+  const h2h = leagueHeadToHead(q.slug, q.a, q.b)
+  if (!h2h) return jsonError(res, 404, 'league or player not found')
+  sendJson(res, 200, { ok: true, headToHead: h2h })
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -384,6 +399,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/standings',
     summary: 'division standings or full table + champion (?slug=&tier=)',
     handler: getLeagueStandings,
+  },
+  {
+    method: 'GET',
+    path: '/leagues/head-to-head',
+    summary: 'rivalry record between two players (?slug=&a=&b=)',
+    handler: getLeagueHeadToHead,
   },
   {
     method: 'GET',
