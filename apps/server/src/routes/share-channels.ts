@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
+  ProposalOperationSchema,
   applyAllPendingVersions,
   applyChannelUpdate,
   canSubscribe,
@@ -36,6 +37,14 @@ import {
   publishDeckAsChannel,
   publishCourseAsChannel,
   publishDeckUpdateFromLibrary,
+  hostChannel,
+  getHostedChannel,
+  listHostedChannels,
+  publishHostedChannelVersion,
+  unhostChannel,
+  createChannelProposal,
+  listChannelProposals,
+  decideChannelProposal,
 } from '@learning-hub/db'
 import { sendJson, readJson } from '../http'
 import type { Route } from './shared'
@@ -463,6 +472,147 @@ async function postChannelPublishFromLibrary(
           })
   sendJson(res, result.ok ? 200 : 422, result)
 }
+
+/* ── Local hosting + subscription pull requests ────────────────────────── */
+
+const hostChannelBodySchema = z.object({ manifest: ChannelManifestSchema })
+
+async function postHostChannel(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, hostChannelBodySchema)
+  const result = hostChannel(body.manifest)
+  sendJson(res, result.ok ? 200 : 409, result)
+}
+
+async function postHostList(_req: IncomingMessage, res: ServerResponse): Promise<void> {
+  sendJson(res, 200, { ok: true, channels: listHostedChannels() })
+}
+
+const channelIdBodySchema = z.object({ channelId: z.string().min(1) })
+
+async function postHostGet(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, channelIdBodySchema)
+  const manifest = getHostedChannel(body.channelId)
+  if (!manifest) {
+    sendJson(res, 404, { ok: false, error: 'channel not hosted here' })
+    return
+  }
+  sendJson(res, 200, { ok: true, manifest })
+}
+
+const hostPublishBodySchema = z.object({
+  channelId: z.string().min(1),
+  items: z
+    .array(z.object({ id: z.string().min(1), content: z.record(z.string(), z.unknown()) }))
+    .min(1),
+  changelog: z.string().max(500),
+})
+
+async function postHostPublish(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, hostPublishBodySchema)
+  const result = publishHostedChannelVersion(body)
+  sendJson(res, result.ok ? 200 : 422, result)
+}
+
+async function postHostUnhost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, channelIdBodySchema)
+  const result = unhostChannel(body.channelId)
+  sendJson(res, result.ok ? 200 : 404, result)
+}
+
+const proposalCreateBodySchema = z.object({
+  channelId: z.string().min(1),
+  authorHandle: z.string().min(1).max(50),
+  title: z.string().min(1).max(200),
+  note: z.string().max(2000).optional(),
+  operations: z.array(ProposalOperationSchema).min(1).max(500),
+})
+
+async function postProposalCreate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, proposalCreateBodySchema)
+  const result = createChannelProposal({
+    channelId: body.channelId,
+    authorHandle: body.authorHandle,
+    title: body.title,
+    operations: body.operations,
+    ...(body.note !== undefined ? { note: body.note } : {}),
+  })
+  sendJson(res, result.ok ? 200 : 422, result)
+}
+
+const proposalListBodySchema = z.object({
+  channelId: z.string().min(1),
+  status: z.enum(['open', 'accepted', 'declined']).optional(),
+})
+
+async function postProposalList(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, proposalListBodySchema)
+  sendJson(res, 200, {
+    ok: true,
+    proposals: listChannelProposals(body.channelId, body.status),
+  })
+}
+
+const proposalDecideBodySchema = z.object({
+  proposalId: z.string().min(1),
+  decision: z.enum(['accept', 'decline']),
+})
+
+async function postProposalDecide(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, proposalDecideBodySchema)
+  const result = decideChannelProposal(body.proposalId, body.decision)
+  sendJson(res, result.ok ? 200 : 422, result)
+}
+
+shareChannelRoutes.push(
+  {
+    method: 'POST',
+    path: '/share/host',
+    summary: 'host a channel manifest locally',
+    handler: postHostChannel,
+  },
+  {
+    method: 'POST',
+    path: '/share/host/list',
+    summary: 'list locally hosted channels',
+    handler: postHostList,
+  },
+  {
+    method: 'POST',
+    path: '/share/host/get',
+    summary: 'fetch a locally hosted manifest',
+    handler: postHostGet,
+  },
+  {
+    method: 'POST',
+    path: '/share/host/publish',
+    summary: 'publish the next version of a hosted channel',
+    handler: postHostPublish,
+  },
+  {
+    method: 'POST',
+    path: '/share/host/unhost',
+    summary: 'stop hosting a channel',
+    handler: postHostUnhost,
+  },
+  {
+    method: 'POST',
+    path: '/share/proposals/create',
+    summary: 'propose changes to a hosted channel',
+    handler: postProposalCreate,
+  },
+  {
+    method: 'POST',
+    path: '/share/proposals/list',
+    summary: 'list proposals for a channel',
+    handler: postProposalList,
+  },
+  {
+    method: 'POST',
+    path: '/share/proposals/decide',
+    summary: 'accept or decline a proposal',
+    handler: postProposalDecide,
+  },
+)
 
 const importBodySchema = z.object({ channelId: z.string().min(1) })
 
