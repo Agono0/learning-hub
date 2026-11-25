@@ -16,6 +16,7 @@ import {
 import { createSource } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 import { boundedFetchText, BoundedFetchError } from '@/server/bounded-fetch'
+import { htmlLimitError } from '@/lib/html-limit'
 
 /** Article HTML cap: real pages are well under 5 MB; larger bodies are refused, not truncated. */
 const MAX_ARTICLE_BYTES = 5 * 1024 * 1024
@@ -126,7 +127,12 @@ export const POST = withRoute(async (req: Request) => {
       )
     }
 
-    const extracted = extractArticleFromHtml(html, body.url)
+    let extracted: ReturnType<typeof extractArticleFromHtml>
+    try {
+      extracted = extractArticleFromHtml(html, body.url)
+    } catch (err) {
+      throw htmlLimitError(err) ?? err
+    }
     if (!extracted.content || extracted.content.length < 40) {
       throw new ApiError(
         422,
@@ -235,7 +241,10 @@ export const POST = withRoute(async (req: Request) => {
     try {
       extracted = extractEpubBytes(bytes)
     } catch (err) {
-      throw new ApiError(400, err instanceof Error ? err.message : 'Invalid EPUB')
+      throw (
+        htmlLimitError(err) ??
+        new ApiError(400, err instanceof Error ? err.message : 'Invalid EPUB')
+      )
     }
     const source = createSource({
       kind: 'epub',

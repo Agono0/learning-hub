@@ -14,7 +14,16 @@
  * 4. SQ3R Survey heading / section landmark extraction (Robinson 1946,
  *    *Effective Study*).
  */
-import { unzipSync } from 'fflate'
+import {
+  allElements,
+  allOpeningTags,
+  assertHtmlWithinLimit,
+  firstElement,
+  replaceComments,
+  replaceElements,
+  replaceTags,
+} from './html-scan'
+import { ArchiveLimitError, EPUB_LIMITS, openBoundedZip } from './archive-limits'
 
 export interface EpubChapter {
   id: string
@@ -68,9 +77,11 @@ function getAttr(tagAttrs: string, attrName: string): string | null {
 }
 
 function stripNonContentBlocks(html: string): string {
-  return html
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<(script|style|noscript|svg|canvas|iframe|template)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+  return replaceElements(
+    replaceComments(html, ' '),
+    ['script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'template'],
+    () => ' ',
+  )
 }
 
 /** Convert an HTML/XHTML fragment into clean, readable Markdown paragraphs and headings. */
@@ -78,21 +89,21 @@ export function htmlFragmentToMarkdown(html: string): string {
   let s = stripNonContentBlocks(html)
 
   // Convert headings <h1>..<h4>
-  s = s.replace(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi, '\n\n# $1\n\n')
-  s = s.replace(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi, '\n\n## $1\n\n')
-  s = s.replace(/<h3\b[^>]*>([\s\S]*?)<\/h3>/gi, '\n\n### $1\n\n')
-  s = s.replace(/<h4\b[^>]*>([\s\S]*?)<\/h4>/gi, '\n\n#### $1\n\n')
+  s = replaceElements(s, ['h1'], (_n, inner) => `\n\n# ${inner}\n\n`)
+  s = replaceElements(s, ['h2'], (_n, inner) => `\n\n## ${inner}\n\n`)
+  s = replaceElements(s, ['h3'], (_n, inner) => `\n\n### ${inner}\n\n`)
+  s = replaceElements(s, ['h4'], (_n, inner) => `\n\n#### ${inner}\n\n`)
 
   // Convert code/pre, blockquotes, lists, line breaks, and block boundaries
-  s = s.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, '\n\n```\n$1\n```\n\n')
-  s = s.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, '`$1`')
-  s = s.replace(/<blockquote\b[^>]*>([\s\S]*?)<\/blockquote>/gi, '\n\n> $1\n\n')
-  s = s.replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, '\n- $1')
+  s = replaceElements(s, ['pre'], (_n, inner) => `\n\n\`\`\`\n${inner}\n\`\`\`\n\n`)
+  s = replaceElements(s, ['code'], (_n, inner) => `\`${inner}\``)
+  s = replaceElements(s, ['blockquote'], (_n, inner) => `\n\n> ${inner}\n\n`)
+  s = replaceElements(s, ['li'], (_n, inner) => `\n- ${inner}`)
   s = s.replace(/<br\s*\/?>/gi, '\n')
   s = s.replace(/<\/(p|div|section|article|tr|ul|ol|table)>/gi, '\n\n')
 
   // Strip remaining tags
-  s = s.replace(/<[^>]+>/g, '')
+  s = replaceTags(s, '')
   s = decodeHtmlEntities(s)
 
   // Normalize horizontal whitespace & collapse excessive blank lines
@@ -121,27 +132,44 @@ function normalizeZipPath(baseDir: string, relativeHref: string): string {
  * Extract structured Markdown text and chapter metadata from an `.epub` byte buffer.
  */
 export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
-  let archive: Record<string, Uint8Array>
+  let zip: ReturnType<typeof openBoundedZip>
   try {
-    archive = unzipSync(bytes)
-  } catch {
+    zip = openBoundedZip(bytes, EPUB_LIMITS)
+  } catch (err) {
+    if (err instanceof ArchiveLimitError) {
+      throw new Error(
+        err.code === 'not-zip'
+          ? 'Invalid EPUB file — could not unpack ZIP archive'
+          : `Invalid EPUB file — ${err.message}`,
+      )
+    }
     throw new Error('Invalid EPUB file — could not unpack ZIP archive')
   }
 
   const decoder = new TextDecoder('utf-8')
-  const fileMap = new Map<string, Uint8Array>()
-  const lowerMap = new Map<string, Uint8Array>()
-  for (const [k, v] of Object.entries(archive)) {
-    const norm = k.replace(/\\/g, '/').replace(/^\/+/, '')
-    fileMap.set(norm, v)
-    lowerMap.set(norm.toLowerCase(), v)
+  // Names only; entries are inflated lazily, one at a time, and only if the parser reads
+  // them (container.xml, the OPF, and spine/manifest chapters). Images, fonts, CSS, NCX
+  // and nav are never inflated.
+  const fileMap = new Map<string, string>()
+  const lowerMap = new Map<string, string>()
+  for (const k of zip.names) {
+    if (k.endsWith('/')) continue
+    fileMap.set(k, k)
+    lowerMap.set(k.toLowerCase(), k)
   }
 
   const readEntry = (path: string): string | null => {
-    const exact = fileMap.get(path) ?? lowerMap.get(path.toLowerCase())
-    if (!exact) return null
+    const key = fileMap.get(path) ?? lowerMap.get(path.toLowerCase())
+    if (!key) return null
+    let data: Uint8Array
     try {
-      return decoder.decode(exact)
+      data = zip.read(key)
+    } catch (err) {
+      if (err instanceof ArchiveLimitError) throw new Error(`Invalid EPUB file — ${err.message}`)
+      throw err
+    }
+    try {
+      return decoder.decode(data)
     } catch {
       return null
     }
@@ -151,9 +179,9 @@ export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
   let opfPath: string | null = null
   const containerXml = readEntry('META-INF/container.xml')
   if (containerXml) {
-    const rootMatch = /<rootfile\b([^>]*?)\/?>/i.exec(containerXml)
-    if (rootMatch) {
-      opfPath = getAttr(rootMatch[1] ?? '', 'full-path')
+    const rootAttrs = allOpeningTags(containerXml, 'rootfile')[0]
+    if (rootAttrs !== undefined) {
+      opfPath = getAttr(rootAttrs, 'full-path')
     }
   }
   if (!opfPath) {
@@ -172,21 +200,18 @@ export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
   const opfDir = lastSlash >= 0 ? opfPath.slice(0, lastSlash) : ''
 
   // 2. Metadata: dc:title & dc:creator
-  const titleMatch = /<(?:dc:)?title\b[^>]*>([\s\S]*?)<\/(?:dc:)?title>/i.exec(opfXml)
-  const creatorMatch = /<(?:dc:)?creator\b[^>]*>([\s\S]*?)<\/(?:dc:)?creator>/i.exec(opfXml)
+  const titleMatch = firstElement(opfXml, ['dc:title', 'title'])
+  const creatorMatch = firstElement(opfXml, ['dc:creator', 'creator'])
   const bookTitle = titleMatch
-    ? decodeHtmlEntities(titleMatch[1]!.replace(/<[^>]+>/g, '').trim()) || 'Imported Book'
+    ? decodeHtmlEntities(replaceTags(titleMatch.inner, '').trim()) || 'Imported Book'
     : 'Imported Book'
   const author = creatorMatch
-    ? decodeHtmlEntities(creatorMatch[1]!.replace(/<[^>]+>/g, '').trim()) || null
+    ? decodeHtmlEntities(replaceTags(creatorMatch.inner, '').trim()) || null
     : null
 
   // 3. Manifest items (id -> { href, mediaType })
   const manifest = new Map<string, { href: string; mediaType: string }>()
-  const itemRe = /<item\b([^>]*?)\/?>/gi
-  let m: RegExpExecArray | null
-  while ((m = itemRe.exec(opfXml)) !== null) {
-    const attrs = m[1] ?? ''
+  for (const attrs of allOpeningTags(opfXml, 'item')) {
     const id = getAttr(attrs, 'id')
     const href = getAttr(attrs, 'href')
     const mediaType = getAttr(attrs, 'media-type') ?? ''
@@ -197,9 +222,7 @@ export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
 
   // 4. Spine reading order (<itemref idref="..."/>)
   const spineIds: string[] = []
-  const itemrefRe = /<itemref\b([^>]*?)\/?>/gi
-  while ((m = itemrefRe.exec(opfXml)) !== null) {
-    const attrs = m[1] ?? ''
+  for (const attrs of allOpeningTags(opfXml, 'itemref')) {
     const linear = getAttr(attrs, 'linear')
     if (linear && linear.toLowerCase() === 'no') continue
     const idref = getAttr(attrs, 'idref')
@@ -219,18 +242,22 @@ export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
     if (!item) continue
     const resolvedPath = normalizeZipPath(opfDir, item.href)
     const rawChapter = readEntry(resolvedPath)
-    if (!rawChapter) continue
+    if (rawChapter === null) {
+      // A chapter the OPF lists but the archive lacks is refused, not silently dropped.
+      throw new Error(`Invalid EPUB file — chapter "${item.href}" listed in the OPF is missing`)
+    }
 
-    const bodyMatch = /<body\b[^>]*>([\s\S]*?)<\/body>/i.exec(rawChapter)
-    const bodyHtml = bodyMatch ? bodyMatch[1]! : rawChapter
+    assertHtmlWithinLimit(rawChapter, 'chapter')
+    const bodyMatch = firstElement(rawChapter, ['body'])
+    const bodyHtml = bodyMatch ? bodyMatch.inner : rawChapter
     const md = htmlFragmentToMarkdown(bodyHtml)
     if (md.length < 20) continue
 
     const chHeadingMatch = /^#{1,3}\s+(.+)$/m.exec(md)
-    const htmlTitleMatch = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(rawChapter)
+    const htmlTitleMatch = firstElement(rawChapter, ['title'])
     const chTitle =
       chHeadingMatch?.[1]?.trim() ||
-      (htmlTitleMatch ? decodeHtmlEntities(htmlTitleMatch[1]!.trim()) : '') ||
+      (htmlTitleMatch ? decodeHtmlEntities(htmlTitleMatch.inner.trim()) : '') ||
       `Section ${chapters.length + 1}`
 
     chapters.push({ id, title: chTitle, content: md })
@@ -256,31 +283,37 @@ export function extractArticleFromHtml(
   html: string,
   fallbackUrl?: string,
 ): { title: string; content: string } {
+  assertHtmlWithinLimit(html, 'article')
   const cleaned = stripNonContentBlocks(html)
 
   // Title priority: og:title -> <title> -> first <h1> -> hostname
   let title = ''
-  const ogMatch =
-    /<meta\b[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i.exec(cleaned) ??
-    /<meta\b[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i.exec(cleaned)
-  if (ogMatch?.[1]) title = decodeHtmlEntities(ogMatch[1].trim())
+  for (const attrs of allOpeningTags(cleaned, 'meta')) {
+    if (getAttr(attrs, 'property')?.toLowerCase() !== 'og:title') continue
+    const content = getAttr(attrs, 'content')
+    if (content) {
+      title = decodeHtmlEntities(content.trim())
+      break
+    }
+  }
   if (!title) {
-    const titleTag = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(cleaned)
-    if (titleTag?.[1]) title = decodeHtmlEntities(titleTag[1].replace(/\s+/g, ' ').trim())
+    const titleTag = firstElement(cleaned, ['title'])
+    if (titleTag?.inner) title = decodeHtmlEntities(titleTag.inner.replace(/\s+/g, ' ').trim())
   }
 
   // Strip site chrome (<nav>, <header>, <footer>, <aside>, <form>) before choosing main region
-  const chromeFree = cleaned.replace(
-    /<(nav|footer|aside|form|menu|dialog)\b[^>]*>[\s\S]*?<\/\1>/gi,
-    ' ',
+  const chromeFree = replaceElements(
+    cleaned,
+    ['nav', 'footer', 'aside', 'form', 'menu', 'dialog'],
+    () => ' ',
   )
 
-  const articleMatch = /<article\b[^>]*>([\s\S]*?)<\/article>/i.exec(chromeFree)
-  const mainMatch = /<main\b[^>]*>([\s\S]*?)<\/main>/i.exec(chromeFree)
-  const bodyMatch = /<body\b[^>]*>([\s\S]*?)<\/body>/i.exec(chromeFree)
+  const articleMatch = firstElement(chromeFree, ['article'])
+  const mainMatch = firstElement(chromeFree, ['main'])
+  const bodyMatch = firstElement(chromeFree, ['body'])
 
   let candidateMd = ''
-  for (const region of [articleMatch?.[1], mainMatch?.[1], bodyMatch?.[1], chromeFree]) {
+  for (const region of [articleMatch?.inner, mainMatch?.inner, bodyMatch?.inner, chromeFree]) {
     if (!region) continue
     const md = htmlFragmentToMarkdown(region)
     if (md.length >= 200) {
@@ -348,9 +381,9 @@ export function extractYoutubeCaptionTrackFromHtml(watchHtml: string): {
   captionUrl: string | null
 } {
   let title = 'YouTube Video'
-  const titleMatch = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(watchHtml)
-  if (titleMatch?.[1]) {
-    title = decodeHtmlEntities(titleMatch[1].replace(/\s*-\s*YouTube\s*$/i, '').trim()) || title
+  const titleMatch = firstElement(watchHtml, ['title'])
+  if (titleMatch?.inner) {
+    title = decodeHtmlEntities(titleMatch.inner.replace(/\s*-\s*YouTube\s*$/i, '').trim()) || title
   }
 
   // Locate `"captionTracks":[...]` inside ytInitialPlayerResponse
@@ -432,22 +465,15 @@ export function parseYoutubeCaptionPayload(payload: string): string {
       // fall through
     }
   } else {
-    const textRe = /<text\b([^>]*)>([\s\S]*?)<\/text>/gi
-    let m: RegExpExecArray | null
-    while ((m = textRe.exec(trimmed)) !== null) {
-      const start = Number(getAttr(m[1] ?? '', 'start') ?? 0)
-      const txt = decodeHtmlEntities(m[2]!.replace(/<[^>]+>/g, ' '))
-        .replace(/\s+/g, ' ')
-        .trim()
+    for (const el of allElements(trimmed, ['text'])) {
+      const start = Number(getAttr(el.attrs, 'start') ?? 0)
+      const txt = decodeHtmlEntities(replaceTags(el.inner, ' ')).replace(/\s+/g, ' ').trim()
       if (txt) cues.push({ sec: Number.isFinite(start) ? start : 0, text: txt })
     }
     if (cues.length === 0) {
-      const pRe = /<p\b([^>]*)>([\s\S]*?)<\/p>/gi
-      while ((m = pRe.exec(trimmed)) !== null) {
-        const tMs = Number(getAttr(m[1] ?? '', 't') ?? 0)
-        const txt = decodeHtmlEntities(m[2]!.replace(/<[^>]+>/g, ' '))
-          .replace(/\s+/g, ' ')
-          .trim()
+      for (const el of allElements(trimmed, ['p'])) {
+        const tMs = Number(getAttr(el.attrs, 't') ?? 0)
+        const txt = decodeHtmlEntities(replaceTags(el.inner, ' ')).replace(/\s+/g, ' ').trim()
         if (txt) cues.push({ sec: Number.isFinite(tMs) ? tMs / 1000 : 0, text: txt })
       }
     }
