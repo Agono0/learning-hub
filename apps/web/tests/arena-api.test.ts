@@ -719,3 +719,30 @@ describe('Arena API — expanded achievements', () => {
     expect(row!.unlockedAt).not.toBeNull()
   })
 })
+
+describe('Arena API — accuracy trend and insight', () => {
+  it('history returns an oldest-to-newest trend and a structured insight', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.trend)).toBe(true)
+    expect(body.trend.length).toBeGreaterThan(0)
+    expect(body.trend.length).toBeLessThanOrEqual(10)
+    for (const point of body.trend) {
+      expect(typeof point.runId).toBe('string')
+      expect(point.accuracy).toBeGreaterThanOrEqual(0)
+      expect(point.accuracy).toBeLessThanOrEqual(1)
+      expect(['victory', 'defeat']).toContain(point.result)
+    }
+    // Oldest first: createdAt never decreases along the series.
+    const stamps = body.trend.map((p: { createdAt: string }) => Date.parse(p.createdAt))
+    for (let i = 1; i < stamps.length; i++) {
+      expect(stamps[i]!).toBeGreaterThanOrEqual(stamps[i - 1]!)
+    }
+    expect(body.insight).toBeTruthy()
+    if (body.insight.direction !== null) {
+      expect(['up', 'down', 'flat']).toContain(body.insight.direction)
+      expect(body.insight.deltaPercent).toBeGreaterThanOrEqual(0)
+    }
+  })
+})

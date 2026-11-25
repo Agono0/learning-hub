@@ -164,6 +164,13 @@ interface HistoryPayload {
   ok: boolean
   stats: ArenaStats
   runs: ArenaRunRow[]
+  trend: Array<{
+    runId: string
+    accuracy: number
+    result: 'victory' | 'defeat'
+    createdAt: string
+  }>
+  insight: { direction: 'up' | 'down' | 'flat' | null; deltaPercent: number }
   perDeck: Array<{
     deckId: number
     name: string
@@ -766,6 +773,55 @@ export default function Arena3DPage() {
               </p>
             </div>
           </div>
+          {record.trend && record.trend.length > 1 ? (
+            <div className="mt-1" data-testid="arena-trend">
+              <p className="mb-1 text-xs font-medium text-faint">Accuracy, latest runs</p>
+              <svg
+                viewBox="0 0 200 40"
+                className="h-10 w-full"
+                role="img"
+                aria-label="Accuracy trend over your latest arena runs"
+              >
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-indigo-500"
+                  points={record.trend
+                    .map((t, i) => {
+                      const x =
+                        record.trend.length === 1 ? 100 : (i / (record.trend.length - 1)) * 196 + 2
+                      const y = 38 - Math.min(1, Math.max(0, t.accuracy)) * 34
+                      return `${x},${y}`
+                    })
+                    .join(' ')}
+                />
+                {record.trend.map((t, i) => {
+                  const x =
+                    record.trend.length === 1 ? 100 : (i / (record.trend.length - 1)) * 196 + 2
+                  const y = 38 - Math.min(1, Math.max(0, t.accuracy)) * 34
+                  return (
+                    <circle
+                      key={t.runId}
+                      cx={x}
+                      cy={y}
+                      r="2.5"
+                      className={t.result === 'victory' ? 'fill-emerald-500' : 'fill-rose-500'}
+                    />
+                  )
+                })}
+              </svg>
+              {record.insight && record.insight.direction ? (
+                <p className="mt-1 text-xs text-faint" data-testid="arena-insight">
+                  {record.insight.direction === 'flat'
+                    ? 'Accuracy is holding steady across your last ten runs.'
+                    : record.insight.direction === 'up'
+                      ? `Accuracy is up ${record.insight.deltaPercent}% over your last five runs.`
+                      : `Accuracy is down ${record.insight.deltaPercent}% over your last five runs — a drill run might help.`}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {record.perDeck && record.perDeck.length > 0 ? (
             <div className="mt-1" data-testid="arena-perdeck">
               <p className="mb-2 text-xs font-medium text-faint">By deck</p>
