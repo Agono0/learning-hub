@@ -51,6 +51,7 @@ import {
   useToast,
 } from '@/ui'
 import { ArenaCoachMarks, ArenaCoachReopenButton } from '@/components/arena/ArenaCoachMarks'
+import { ArenaProgressPanel } from '@/components/arena/ArenaProgressPanel'
 import { NemesisPanel } from '@/components/arena/NemesisPanel'
 import { ArenaExportButtons } from '@/components/arena/ArenaExportButtons'
 import { ChipPicker } from '@/components/ui/chip-picker'
@@ -783,6 +784,7 @@ export default function Arena3DPage() {
               </div>
             ) : null}
 
+            <ArenaProgressPanel refreshKey={phase} />
             <NemesisPanel refreshKey={phase} onDrill={() => void startDrill('nemesis')} />
             <ArenaExportButtons disabled={(record?.stats?.runs ?? 0) === 0} />
 
