@@ -63,6 +63,29 @@ piece by piece before composing on their own.
 
 ---
 
+### Embodied Learning, Gesture & Concreteness Fading — Goldin-Meadow (2003); Bruner (1966); Fyfe et al. (2014)
+
+Cognition is shaped by the body: gesture externalises implicit spatial and
+dynamic knowledge, gesture-speech mismatch marks transitional readiness to
+learn, self-performed action adds a durable motor memory trace, and
+instruction that fades from enactive to iconic to symbolic representations
+outperforms purely concrete or purely abstract teaching.
+
+- **Evidence:** Cook, Mitchell & Goldin-Meadow (2008): gesture-plus-speech
+  improves retention and transfer; Church & Goldin-Meadow (1986): mismatch
+  indexes transitional knowledge; Engelkamp & Zimmer (1984): the enactment
+  effect for self-performed tasks; Hu, Ginns & Bobis (2015): tracing worked
+  examples improves learning; Fyfe, McNeil, Son & Goldstone (2014):
+  concreteness fading with explicit bridging.
+- **In Learning HUB:** `evaluateGesturePlan`, `analyzeMismatch`,
+  `validateFadingLadder`, and `scoreEnactmentSession` in
+  `packages/core/src/embodied-learning/engine.ts`; the
+  `CANONICAL_EMBODIED_SCENARIOS` library (6 scenarios); the
+  `embodied_*` MCP tools, `learning-hub embodied-learning` CLI command, and
+  `/cognitive/embodied/*` headless routes; rendered in the
+  /embodied-learning studio.
+- **Status:** ✅
+
 ### Implementation Intentions & Habit Formation — Gollwitzer (1999); Lally et al. (2009); Oettingen & Gollwitzer (2010)
 
 "If situation X arises, then I will do Y" moves goal-directed behavior under situational control; habits then grow automatic along an asymptotic curve.
