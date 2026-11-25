@@ -910,3 +910,24 @@ describe('Arena API — drill improvement tracking', () => {
     expect(settled.drill ?? null).toBeNull()
   })
 })
+
+describe('Arena API — guardian bestiary', () => {
+  it('history returns per-guardian records consistent with the run rows', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(Array.isArray(body.perGuardian)).toBe(true)
+    // The suite has settled runs across all three rotating guardians.
+    expect(body.perGuardian.length).toBeGreaterThanOrEqual(1)
+    let totalRuns = 0
+    for (const g of body.perGuardian) {
+      expect(['warden', 'colossus', 'shade']).toContain(g.archetype)
+      expect(g.runs).toBeGreaterThan(0)
+      expect(g.winRate).toBeGreaterThanOrEqual(0)
+      expect(g.winRate).toBeLessThanOrEqual(1)
+      expect(g.bestScore).toBeGreaterThanOrEqual(0)
+      totalRuns += g.runs
+    }
+    expect(totalRuns).toBe(body.stats.runs)
+  })
+})

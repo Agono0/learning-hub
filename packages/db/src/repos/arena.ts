@@ -124,6 +124,62 @@ export function getArenaStatsByDeck(
   return out
 }
 
+/** Per-guardian record for the bestiary: how you fare against each archetype. */
+export interface ArenaGuardianStats {
+  archetype: string
+  runs: number
+  victories: number
+  winRate: number
+  rounds: number
+  correct: number
+  accuracy: number
+  bestCombo: number
+  bestScore: number
+  bossWins: number
+}
+
+/**
+ * Aggregate the record book per guardian archetype. One SQL group-by over
+ * the append-only run rows — never mutable counters.
+ */
+export function getArenaStatsByGuardian(
+  opts: { userId?: string; db?: LearningHubDB } = {},
+): ArenaGuardianStats[] {
+  const db = opts.db ?? getDb()
+  const rows = db
+    .select({
+      archetype: arenaRuns.archetype,
+      runs: sql<number>`count(*)`,
+      victories: sql<number>`sum(case when ${arenaRuns.result} = 'victory' then 1 else 0 end)`,
+      rounds: sql<number>`coalesce(sum(${arenaRuns.rounds}), 0)`,
+      correct: sql<number>`coalesce(sum(${arenaRuns.correct}), 0)`,
+      bestCombo: sql<number>`coalesce(max(${arenaRuns.bestCombo}), 0)`,
+      bestScore: sql<number>`coalesce(max(${arenaRuns.score}), 0)`,
+      bossWins: sql<number>`sum(case when ${arenaRuns.result} = 'victory' and ${arenaRuns.boss} = true then 1 else 0 end)`,
+    })
+    .from(arenaRuns)
+    .where(eq(arenaRuns.userId, opts.userId ?? 'default'))
+    .groupBy(arenaRuns.archetype)
+    .all()
+  return rows.map((r) => {
+    const runs = Number(r.runs ?? 0)
+    const victories = Number(r.victories ?? 0)
+    const rounds = Number(r.rounds ?? 0)
+    return {
+      archetype: r.archetype,
+      runs,
+      victories,
+      winRate: runs === 0 ? 0 : victories / runs,
+      rounds,
+      correct: Number(r.correct ?? 0),
+      accuracy: rounds === 0 ? 0 : Number(r.correct ?? 0) / rounds,
+      bestCombo: Number(r.bestCombo ?? 0),
+      bestScore: Number(r.bestScore ?? 0),
+      bossWins: Number(r.bossWins ?? 0),
+    }
+  })
+}
+
 /**
  * Record a settled run. Idempotent: the unique `referenceId` makes a replay
  * a silent no-op (returns false) instead of a duplicate row.
