@@ -44,4 +44,5 @@ export const XP_REWARDS = {
   courseComplete: 500,
   achievement: 100,
   debate: 35, // judged debate ruling or protégé explanation (dialectic arena)
+  leagueRoundWin: 75, // topping a division when a league round closes
 } as const

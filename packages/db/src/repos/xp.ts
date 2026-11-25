@@ -29,6 +29,7 @@ export const XP_SOURCES = {
   idea: XP_REWARDS.ideaEvolve,
   achievement: XP_REWARDS.achievement,
   debate: XP_REWARDS.debate,
+  league: XP_REWARDS.leagueRoundWin,
 } as const
 
 /** Sources with a canonical default amount ('boss' and any future dynamic source live only in XPSource). */

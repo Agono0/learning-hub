@@ -40,6 +40,7 @@ import {
   leagueTournaments,
 } from '../schema'
 import { withTransaction } from '../transaction'
+import { awardXp } from './xp'
 
 export type LeagueRow = typeof leagues.$inferSelect
 export type LeaguePlayerRow = typeof leaguePlayers.$inferSelect
@@ -294,6 +295,16 @@ export function closeLeagueRound(
       .set({ currentRound: result.league.currentRound, updatedAt: new Date().toISOString() })
       .where(eq(leagues.id, league.id))
       .run()
+    // canonical XP for every division winner who actually scored this round
+    // (AGENTS rule 7: one XP path; no reward for an uncontested zero-point top)
+    for (const w of result.roundWinners) {
+      const row = players.find((p) => p.handle === w.handle && p.tier === w.tier)
+      if (!row || row.points <= 0) continue
+      awardXp(tx, {
+        source: 'league',
+        meta: { leagueSlug: slug, round: league.currentRound, tier: w.tier, handle: w.handle },
+      })
+    }
     const [round] = tx
       .insert(leagueRounds)
       .values({
