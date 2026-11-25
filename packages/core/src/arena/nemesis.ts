@@ -43,6 +43,9 @@ export interface CardArenaStats {
 
 export const NEMESIS_MIN_ATTEMPTS = 2
 
+/** Cards dealt in a nemesis drill (top-N by nemesisScore). */
+export const NEMESIS_DRILL_SIZE = 8
+
 /** Aggregate raw log entries into per-card stats (insertion order = log order). */
 export function analyzeCardPerformance(
   logs: ReadonlyArray<ReadonlyArray<NemesisGradeEntry>>,

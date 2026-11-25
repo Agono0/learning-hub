@@ -51,6 +51,7 @@ import {
   getArenaSession,
   getArenaStats,
   getWeakCardIdsForRun,
+  listSettledGradeLogs,
   recordArenaRun,
   recordCoinTransactionInTx,
   releaseArenaClaim,
@@ -63,6 +64,8 @@ import {
   ARENA_MODIFIER_INFO,
   BOSS_CHALLENGE_THRESHOLD,
   GUARDIANS,
+  NEMESIS_DRILL_SIZE,
+  analyzeCardPerformance,
   applyArenaModifier,
   arenaModifierForDate,
   arenaSettlementSchema,
@@ -71,6 +74,7 @@ import {
   guardianForRun,
   interleaveBySemanticDistance,
   previewGrades,
+  rankNemeses,
   summarizeGradeLog,
   type ArenaGradeEvent,
   type ArenaModifier,
@@ -158,10 +162,21 @@ export const GET = withRoute(async function GET(req: Request) {
   // still runs the canonical review engine (FSRS reschedules normally).
   // Ownership is enforced: another owner's run is a 404, same as unknown.
   let drillCardIds: number[] | null = null
+  let nemesisDrill = false
   if (rematchParam) {
     const weak = getWeakCardIdsForRun(rematchParam, { userId: ARENA_OWNER_ID })
     if (!weak) throw new ApiError(404, 'arena run not found')
     drillCardIds = weak
+  } else if (url.searchParams.get('nemesis') === '1') {
+    // Nemesis drill: the cards the player's own settled runs keep missing,
+    // derived server-side from persisted accepted logs (client supplies no
+    // ids). Same bypass of the due window as a weak-card drill; grading
+    // still runs the canonical review engine. No source run, so no lineage.
+    nemesisDrill = true
+    drillCardIds = rankNemeses(
+      analyzeCardPerformance(listSettledGradeLogs({ userId: ARENA_OWNER_ID, limit: 100 })),
+      NEMESIS_DRILL_SIZE,
+    ).map((n) => n.cardId)
   }
 
   const filters = [eq(cards.suspended, false)]
@@ -313,7 +328,7 @@ export const GET = withRoute(async function GET(req: Request) {
     // Drill lineage: a rematch run records the OWNED, SETTLED run it drills
     // (getWeakCardIdsForRun already enforced both). The client never sends
     // this — it is server state, like the queue snapshot itself.
-    drillOfRunId: drillCardIds !== null ? (rematchParam ?? null) : null,
+    drillOfRunId: drillCardIds !== null && !nemesisDrill ? (rematchParam ?? null) : null,
   })
 
   return Response.json({

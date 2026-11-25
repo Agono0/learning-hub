@@ -10,8 +10,8 @@
  * never a scheduler input, never an economy input.
  */
 import { useEffect, useState } from 'react'
-import { Skull, Sparkles } from 'lucide-react'
-import { Badge, EmptyState, Panel, ProgressBar, Skeleton } from '@/ui'
+import { Skull, Sparkles, Swords } from 'lucide-react'
+import { Badge, Button, EmptyState, Panel, ProgressBar, Skeleton } from '@/ui'
 import { apiGet } from '@/lib/transport'
 
 type Tier = 'new' | 'shaky' | 'learning' | 'steady' | 'mastered'
@@ -65,7 +65,14 @@ export function nemesisReason(c: NemesisCard): string {
   return parts.join(' · ')
 }
 
-export function NemesisPanel({ refreshKey }: { refreshKey?: unknown }): React.ReactElement {
+export function NemesisPanel({
+  refreshKey,
+  onDrill,
+}: {
+  refreshKey?: unknown
+  /** Starts a server-built drill over the current nemeses. */
+  onDrill?: () => void
+}): React.ReactElement {
   const [data, setData] = useState<NemesisPayload | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -142,6 +149,19 @@ export function NemesisPanel({ refreshKey }: { refreshKey?: unknown }): React.Re
               ))}
             </ul>
           )}
+
+          {onDrill && data.nemeses.length > 0 ? (
+            <div className="mt-3">
+              <Button variant="secondary" data-testid="arena-nemesis-drill" onClick={onDrill}>
+                <Swords className="mr-2 h-4 w-4" aria-hidden="true" />
+                Drill my nemeses
+              </Button>
+              <p className="mt-1 text-[11px] text-faint">
+                Deals these cards now, even if they are not due. Grades still go through the normal
+                review scheduler.
+              </p>
+            </div>
+          ) : null}
 
           {data.redeemed.length > 0 ? (
             <div className="mt-3" data-testid="arena-nemesis-redeemed">
