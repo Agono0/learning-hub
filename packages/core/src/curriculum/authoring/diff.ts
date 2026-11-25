@@ -150,7 +150,10 @@ function diffExercises(
       return
     }
     const old = base[baseKeys.indexOf(key)]!
-    const detail = match.edited.has(i) ? 'matched by similarity' : undefined
+    const ev = match.evidence.get(i)
+    const detail = ev
+      ? `matched by similarity ${ev.score}${ev.ambiguous ? ' (ambiguous: another exercise scored within 0.1)' : ''}: "${clip(ev.before, 60)}" paired with "${clip(ev.after, 60)}"`
+      : undefined
     if (!deepEqual(old, e)) pushFields(out, 'exercise', key, path, label, old, e, new Set(), detail)
   })
   baseKeys.forEach((key, i) => {

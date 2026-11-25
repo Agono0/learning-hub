@@ -52,7 +52,10 @@ export function stableStringify(value: unknown): string {
 
 /** Short stable hash of any JSON value. */
 export function contentHash(value: unknown): string {
-  return hashString(stableStringify(value)).toString(36)
+  // Four 32-bit hashes with different prefixes: 128 bits, enough to catch any
+  // accidental change. It is a staleness check, not a defence against an attacker.
+  const text = stableStringify(value)
+  return ['a', 'b', 'c', 'd'].map((p) => hashString(`${p}:${text}`).toString(36)).join('')
 }
 
 export const isPlainObject = (v: unknown): v is Record<string, unknown> =>
@@ -76,11 +79,22 @@ export function exerciseKeys(list: readonly Exercise[]): string[] {
   })
 }
 
+/** Why two exercises were paired by similarity instead of by id or exact content. */
+export interface PairEvidence {
+  score: number
+  before: string
+  after: string
+  /** Another unmatched exercise scored within 0.1, so the pairing may be wrong. */
+  ambiguous: boolean
+}
+
 export interface ExerciseMatch {
   /** For each item in `other`, the base key it corresponds to, or its own key if new. */
   keys: string[]
   /** Base keys that matched an edited exercise (not identical), by other index. */
   edited: Set<number>
+  /** The paired texts and score for each similarity match, by other index. */
+  evidence: Map<number, PairEvidence>
 }
 
 /**
@@ -106,26 +120,35 @@ export function matchExercises(
     } else unmatched.push(i)
   })
   const edited = new Set<number>()
+  const evidence = new Map<number, PairEvidence>()
   for (const i of unmatched) {
     const e = other[i]!
     const front = exerciseToText(e).front
     let best = -1
     let bestScore = 0.6
+    let runnerUp = 0
     baseKeys.forEach((bk, bi) => {
       if (taken.has(bk) || base[bi]!.type !== e.type) return
       const score = textSimilarity(exerciseToText(base[bi]!).front, front)
       if (score > bestScore) {
+        if (bestScore > 0.6) runnerUp = Math.max(runnerUp, bestScore)
         bestScore = score
         best = bi
-      }
+      } else if (score > 0.6) runnerUp = Math.max(runnerUp, score)
     })
     if (best >= 0) {
       keys[i] = baseKeys[best]!
       taken.add(baseKeys[best]!)
       edited.add(i)
+      evidence.set(i, {
+        score: Math.round(bestScore * 100) / 100,
+        before: exerciseToText(base[best]!).front,
+        after: front,
+        ambiguous: runnerUp > 0 && bestScore - runnerUp < 0.1,
+      })
     } else keys[i] = otherKeys[i]!
   }
-  return { keys, edited }
+  return { keys, edited, evidence }
 }
 
 /**

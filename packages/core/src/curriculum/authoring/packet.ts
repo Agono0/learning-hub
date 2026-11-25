@@ -2,23 +2,44 @@
  * Static course packet: one self-contained HTML file for reading or printing.
  *
  * Safety: all course text is escaped or rendered with `renderMarkdownSafe`,
- * the page carries a Content-Security-Policy that blocks scripts, network and
- * frames, and it loads nothing remote (no fonts, images or scripts). Answers
- * sit inside native `<details>` elements, so no JavaScript is needed. A size
+ * the page carries a meta Content-Security-Policy that blocks scripts and
+ * automatic network loads, and it loads nothing remote on its own (no fonts,
+ * images or scripts). External links only open when the reader clicks them.
+ * A meta policy cannot stop other sites from framing the file, so no framing
+ * protection is claimed. Answers sit inside native `<details>` elements, so no
+ * JavaScript is needed. A size
  * cap stops runaway courses: past `maxBytes` the build fails with a reason
  * instead of returning a truncated file.
  */
 import { exerciseToText } from '../../practice/to-text'
 import type { Exercise } from '../../practice/schema'
 import type { LhcfCourse, LhcfLesson } from '../lhcf/schema'
+import { hashString } from '../../math'
 import { lhcfStats } from '../lhcf/stats'
 import {
   escapeHtml,
   htmlHasActiveContent,
+  markdownProblems,
+  PACKET_CSP,
   renderMarkdownSafe,
   renderPlain,
   safeUrl,
 } from './sanitize'
+
+/**
+ * Show items in an order the answer key cannot be read from. Items are sorted
+ * by a hash, and if that happens to equal the author's order (the answer), the
+ * list is rotated by one. A list of one or of identical items is returned as is.
+ */
+export function scrambled<T>(items: readonly T[], text: (x: T) => string): T[] {
+  const out = [...items].sort(
+    (a, b) => hashString(text(a)) - hashString(text(b)) || text(a).localeCompare(text(b)),
+  )
+  const same = (x: readonly T[]) => x.every((v, i) => text(v) === text(items[i]!))
+  if (out.length > 1 && same(out) && !items.every((v) => text(v) === text(items[0]!)))
+    out.push(out.shift()!)
+  return out
+}
 
 export const DEFAULT_PACKET_MAX_BYTES = 3 * 1024 * 1024
 
@@ -43,7 +64,7 @@ export type PacketResult =
     }
   | { ok: false; reason: 'too-large' | 'unsafe-output'; bytes: number; detail: string }
 
-const CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+const CSP = PACKET_CSP
 
 const CSS = `
 :root{color-scheme:light dark}
@@ -79,33 +100,33 @@ function exerciseHtml(e: Exercise, n: number, includeAnswers: boolean): string {
       break
     case 'ordering':
       parts.push(
-        `<ul>${[...e.items]
-          .sort((a, b) => a.localeCompare(b))
+        `<ul>${scrambled(e.items, (x) => x)
           .map((o) => `<li>${renderPlain(o)}</li>`)
           .join('')}</ul>`,
       )
       break
     case 'parsons':
       parts.push(
-        `<pre><code>${escapeHtml([...e.lines, ...(e.distractors ?? [])].sort((a, b) => a.localeCompare(b)).join('\n'))}</code></pre>`,
+        `<pre><code>${escapeHtml(scrambled([...e.lines, ...(e.distractors ?? [])], (x) => x).join('\n'))}</code></pre>`,
       )
       break
     case 'matching':
       parts.push(
-        `<p class="meta">Left: ${e.pairs.map((p) => renderPlain(p.left)).join('; ')}<br>Right: ${[
-          ...e.pairs,
-        ]
-          .map((p) => renderPlain(p.right))
-          .sort()
+        `<p class="meta">Left: ${e.pairs.map((p) => renderPlain(p.left)).join('; ')}<br>Right: ${scrambled(
+          e.pairs.map((p) => p.right),
+          (x) => x,
+        )
+          .map(renderPlain)
           .join('; ')}</p>`,
       )
       break
     case 'categorize':
       parts.push(
-        `<p class="meta">Categories: ${e.categories.map((c) => renderPlain(c.name)).join('; ')}<br>Items: ${e.categories
-          .flatMap((c) => c.items)
+        `<p class="meta">Categories: ${e.categories.map((c) => renderPlain(c.name)).join('; ')}<br>Items: ${scrambled(
+          e.categories.flatMap((c) => c.items),
+          (x) => x,
+        )
           .map(renderPlain)
-          .sort()
           .join('; ')}</p>`,
       )
       break
@@ -254,6 +275,25 @@ export function buildPacket(course: LhcfCourse, options: PacketOptions = {}): Pa
     course.finalExam.exercises.forEach((e, i) => body.push(exerciseHtml(e, i + 1, includeAnswers)))
     sections += 1
   }
+  for (const m of course.modules)
+    for (const l of m.lessons) {
+      const fields = [
+        l.summary ?? '',
+        ...l.theory.map((t) => t.body),
+        ...l.workedExamples.map((w) => w.problem),
+      ]
+      if (fields.some((f) => markdownProblems(f).length > 0))
+        warnings.push(
+          `Lesson "${l.slug}": a code fence is never closed, so the rest of that text renders as code. Close it with a line of three backticks.`,
+        )
+    }
+  const shownAnswers = course.modules
+    .flatMap((m) => m.lessons)
+    .filter((l) => l.workedExamples.some((w) => w.answer))
+  if (!includeAnswers && shownAnswers.length > 0)
+    warnings.push(
+      `Worked examples are teaching material and are always included, with their answers, even though exercise answers are left out (${shownAnswers.length} lesson(s) have them).`,
+    )
   if (!includeAnswers) warnings.push('Answers and explanations are left out of this packet.')
 
   const footer = options.footer

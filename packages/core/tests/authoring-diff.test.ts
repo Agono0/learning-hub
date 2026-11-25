@@ -78,7 +78,7 @@ describe('diffCourses', () => {
     expect(ch[0]).toMatchObject({
       kind: 'changed',
       field: 'prompt',
-      detail: 'matched by similarity',
+      detail: expect.stringMatching(/^matched by similarity 0\.\d+: ".*" paired with "/),
     })
   })
   it('detects added, removed and reordered exercises', () => {

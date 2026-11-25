@@ -286,15 +286,34 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
     const take = b.lesson
     keep.theory = [...keep.theory, ...take.theory]
     keep.workedExamples = [...keep.workedExamples, ...take.workedExamples]
-    const terms = new Set((keep.keyTerms as Draft[]).map((t) => String(t.term).toLowerCase()))
+    const keepTerms = new Map(
+      (keep.keyTerms as Draft[]).map((t) => [String(t.term).toLowerCase(), t] as const),
+    )
+    const droppedTerms: string[] = []
+    for (const t of take.keyTerms as Draft[]) {
+      const mine = keepTerms.get(String(t.term).toLowerCase())
+      if (mine && String(mine.definition ?? '') !== String(t.definition ?? ''))
+        droppedTerms.push(String(t.term))
+    }
+    if (droppedTerms.length)
+      r.warnings.push(
+        `Key term(s) defined differently in both lessons; only the definition in "${keep.slug}" is kept: ${droppedTerms.join(', ')}.`,
+      )
     keep.keyTerms = [
       ...keep.keyTerms,
-      ...(take.keyTerms as Draft[]).filter((t) => !terms.has(String(t.term).toLowerCase())),
+      ...(take.keyTerms as Draft[]).filter((t) => !keepTerms.has(String(t.term).toLowerCase())),
     ]
-    const urls = new Set((keep.resources as Draft[]).map((x) => x.url))
+    const keepRes = new Map((keep.resources as Draft[]).map((x) => [x.url, x] as const))
+    const droppedRes = (take.resources as Draft[]).filter(
+      (x) => keepRes.has(x.url) && JSON.stringify(keepRes.get(x.url)) !== JSON.stringify(x),
+    )
+    if (droppedRes.length)
+      r.warnings.push(
+        `${droppedRes.length} resource(s) share a URL with one in "${keep.slug}" but differ (title or note); the "${keep.slug}" version is kept.`,
+      )
     keep.resources = [
       ...keep.resources,
-      ...(take.resources as Draft[]).filter((x) => !urls.has(x.url)),
+      ...(take.resources as Draft[]).filter((x) => !keepRes.has(x.url)),
     ]
     const ids = new Set(
       lessonExercises(keep)
@@ -309,13 +328,28 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
       if (e.id) ids.add(e.id)
     }
     keep.exercises = [...keep.exercises, ...take.exercises]
-    keep.reflection = [...keep.reflection, ...take.reflection].slice(0, 10)
+    const allReflection = [...keep.reflection, ...take.reflection]
+    if (allReflection.length > 10)
+      r.warnings.push(
+        `${allReflection.length - 10} reflection prompt(s) beyond the limit of 10 are dropped: ${allReflection
+          .slice(10)
+          .map((x) => `"${String(x).slice(0, 40)}"`)
+          .join(', ')}.`,
+      )
+    keep.reflection = allReflection.slice(0, 10)
     keep.skills = [...new Set([...(keep.skills as string[]), ...(take.skills as string[])])]
-    if (keep.estMinutes !== undefined && take.estMinutes !== undefined)
+    if (keep.estMinutes !== undefined && take.estMinutes !== undefined) {
+      if (keep.estMinutes + take.estMinutes > 600)
+        r.warnings.push(
+          `Combined minutes (${keep.estMinutes + take.estMinutes}) are capped at 600, so ${keep.estMinutes + take.estMinutes - 600} author-entered minute(s) are lost.`,
+        )
       keep.estMinutes = Math.min(600, keep.estMinutes + take.estMinutes)
-    else if (take.estMinutes !== undefined && keep.estMinutes === undefined)
+    } else if (take.estMinutes !== undefined && keep.estMinutes === undefined)
       r.warnings.push('Only the absorbed lesson had minutes; the merged lesson has none.')
     if (!keep.summary && take.summary) keep.summary = take.summary
+    r.warnings.push(
+      `Learner progress is stored by lesson slug: progress on "${take.slug}" no longer maps to any lesson after this merge.`,
+    )
     r.warnings.push(
       `The objective of "${take.slug}" ("${String(take.objective).slice(0, 60)}") is dropped; "${keep.slug}" keeps its own.`,
     )
@@ -414,6 +448,33 @@ const ops: { [K in RefactorOp['type']]: (r: Run, op: Extract<RefactorOp, { type:
   },
 }
 
+/** Lessons whose skill prerequisites now come later in the course than before. */
+function orderImpact(before: Draft, after: Draft): string[] {
+  const firstIndex = (c: Draft) => {
+    const m = new Map<string, number>()
+    lessonsOf(c).forEach(({ lesson }, i) => {
+      for (const sk of (lesson.skills ?? []) as string[]) if (!m.has(sk)) m.set(sk, i)
+    })
+    return m
+  }
+  const bi = firstIndex(before)
+  const ai = firstIndex(after)
+  const out: string[] = []
+  for (const s of (after.skills ?? []) as Draft[])
+    for (const req of (s.requires ?? []) as string[]) {
+      const sa = ai.get(s.slug)
+      const ra = ai.get(req)
+      if (sa === undefined || ra === undefined || ra <= sa) continue
+      const sb = bi.get(s.slug)
+      const rb = bi.get(req)
+      if (sb !== undefined && rb !== undefined && rb > sb) continue
+      out.push(
+        `Skill "${s.slug}" is now first taught before its prerequisite "${req}" (it was not before).`,
+      )
+    }
+  return out.slice(0, 6)
+}
+
 /** Compute a refactor without changing the input. */
 export function previewRefactor(course: LhcfCourse, op: RefactorOp): RefactorPreview {
   const r: Run = { c: cloneCourse(course) as Draft, errors: [], warnings: [], rewritten: 0 }
@@ -438,6 +499,15 @@ export function previewRefactor(course: LhcfCourse, op: RefactorOp): RefactorPre
       token,
     }
   }
+  for (const w of orderImpact(course as unknown as Draft, r.c)) r.warnings.push(w)
+  if (op.type === 'split-lesson')
+    r.warnings.push(
+      `Learner progress is stored by lesson slug: the new lesson "${op.newSlug}" starts with no progress, and "${op.slug}" keeps progress it earned for content that moved out.`,
+    )
+  if (op.type === 'move-lesson')
+    r.warnings.push(
+      `"${op.slug}" keeps its slug, so its progress stays, but module "${op.toModule}" and the module it left now count different lessons toward completion.`,
+    )
   const validation = validateLhcf(r.c)
   if (validation.ok && validation.fixes.length > 0)
     r.warnings.push(

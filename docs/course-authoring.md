@@ -33,3 +33,25 @@ linter helpers.
 - Minutes are what the author entered. They are not measured learner time.
 - Ignoring a finding only hides it in the current session.
 - Lesson and skill graph lint stays in course-path and is not duplicated here.
+
+## Safety behavior
+
+- **Missing skills.** A refactor that would leave a reference to a skill that does not exist is refused.
+  A merge where one side deleted a skill and the other started using it is reported as a problem
+  and never produces a finished course. Validation is not allowed to recreate or drop the reference.
+- **Rename skill.** Slug references are always rewritten. A display-name reference is rewritten only
+  when no other skill has the same name; otherwise it is left alone and a warning says so.
+- **Merge lessons.** Every loss is listed in the preview: reflection prompts over 10, key terms
+  defined differently, resources with the same URL but different text, minutes over 600, and the
+  absorbed lesson's progress (progress is stored by lesson slug).
+- **Order.** Any operation that makes a skill first appear before its prerequisite warns.
+- **Renames in a compare** show as one removed and one added entity, not as a rename. Exercises
+  paired by similarity show both texts, the score and whether another exercise scored within 0.1.
+- **Preview token.** A 128-bit digest of the course and operation. It detects a stale preview and is
+  not a security boundary. Apply checks it and validates again.
+- **Packet.** The file carries only four fixed meta tags; the export check fails on any other.
+  Nothing loads automatically; external links open only when clicked. A meta policy cannot stop
+  other sites from framing the file, and no framing protection is claimed. Ordering, parsons,
+  matching and categorize items are shown in a hash order that is never the author order.
+  Worked examples are always included with their answers; the packet warns when answers are
+  otherwise excluded. An unclosed code fence produces a warning.

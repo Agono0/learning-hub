@@ -137,6 +137,26 @@ export function renderPlain(text: string): string {
   return escapeHtml(stripControl(text)).replace(/\n/g, '<br>')
 }
 
+/** The only Content-Security-Policy the packet carries. */
+export const PACKET_CSP =
+  "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"
+
+/** The only <meta> tags a packet may contain, as `attribute=value` lists. */
+const ALLOWED_META = new Set([
+  'charset=utf-8',
+  `http-equiv=content-security-policy|content=${PACKET_CSP}`,
+  'name=viewport|content=width=device-width,initial-scale=1',
+  'name=referrer|content=no-referrer',
+])
+
+/** Markdown problems that change what a reader sees, such as a code fence that never closes. */
+export function markdownProblems(text: string): string[] {
+  const fences = text.split('\n').filter((l) => /^```/.test(l.trim())).length
+  return fences % 2 === 1
+    ? ['a code fence is never closed, so the rest of the text renders as code']
+    : []
+}
+
 const ALLOWED_TAGS = new Set(
   'html head meta title style body header nav section footer h1 h2 h3 h4 h5 h6 p br ul ol li dl dt dd a strong em code pre blockquote details summary div span'.split(
     ' ',
@@ -179,15 +199,24 @@ export function htmlHasActiveContent(html: string): string[] {
     const name = m[1]!.toLowerCase()
     if (!ALLOWED_TAGS.has(name)) problems.add(`tag <${name}>`)
     const attrRe = /\s+([^\s=>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g
+    const metaParts: string[] = []
     let a: RegExpExecArray | null
     while ((a = attrRe.exec(m[2] ?? ''))) {
       const attr = a[1]!.toLowerCase()
       if (!ALLOWED_ATTRS.has(attr)) problems.add(`attribute ${attr}`)
+      if (name === 'meta') {
+        const raw = a[2] ?? a[3] ?? a[4] ?? ''
+        metaParts.push(
+          `${attr}=${attr === 'http-equiv' || attr === 'charset' ? raw.toLowerCase() : raw}`,
+        )
+      }
       if (attr === 'href') {
         const v = (a[2] ?? a[3] ?? a[4] ?? '').replace(/&amp;/g, '&')
         if (!v.startsWith('#') && !safeUrl(v)) problems.add('unsafe href')
       }
     }
+    if (name === 'meta' && !m[0]!.startsWith('</') && !ALLOWED_META.has(metaParts.join('|')))
+      problems.add('meta tag outside the fixed set')
   }
   // A stray "<" that starts something tag-like but was not parsed above is suspicious.
   const rest = stripped.replace(tagRe, '')

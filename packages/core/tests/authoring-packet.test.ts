@@ -144,9 +144,70 @@ describe('buildPacket', () => {
     const r = buildPacket(c, { includeAnswers: false })
     expect(r.ok).toBe(true)
     if (r.ok) {
-      const q = r.html.indexOf('apple second')
-      const z = r.html.indexOf('zebra first')
-      expect(q).toBeLessThan(z)
+      const order = ['zebra first', 'apple second', 'mango third'].map((t) => r.html.indexOf(t))
+      expect(order).not.toEqual([...order].sort((a, b) => a - b))
     }
+  })
+  it('does not show the author order even when it matches the sorted order', () => {
+    const items = ['apple first', 'banana second', 'cherry third']
+    const c = edit((x) => {
+      x.modules[0]!.lessons[1]!.exercises = [
+        { id: 'o', type: 'ordering', prompt: 'Put the SQL steps in order now.', items },
+      ]
+    })
+    const r = buildPacket(c, { includeAnswers: false })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      const pos = items.map((t) => r.html.indexOf(t))
+      expect(pos).not.toEqual([...pos].sort((a, b) => a - b))
+    }
+  })
+  it('says worked-example answers stay when exercise answers are left out', () => {
+    const r = buildPacket(makeCourse(), { includeAnswers: false })
+    expect(r.ok && r.warnings.join(' ')).toMatch(/Worked examples are teaching material/)
+  })
+  it('warns about an unclosed code fence', () => {
+    const c = edit((x) => {
+      x.modules[0]!.lessons[0]!.theory[0]!.body = 'Intro\n```sql\nSELECT 1'
+    })
+    const r = buildPacket(c)
+    expect(r.ok && r.warnings.join(' ')).toMatch(/code fence is never closed/)
+  })
+})
+
+import {
+  scrambled,
+  htmlHasActiveContent as audit,
+  markdownProblems,
+} from '../src/curriculum/authoring'
+
+describe('packet hardening', () => {
+  it('scrambled never equals the author order, even when the sorted order does', () => {
+    const items = ['alpha', 'beta', 'gamma', 'delta', 'epsilon']
+    for (let n = 2; n <= 6; n++) {
+      const list = items.slice(0, n)
+      expect(scrambled(list, (x) => x)).not.toEqual(list)
+      expect(scrambled(list, (x) => x).sort()).toEqual([...list].sort())
+    }
+    expect(scrambled(['a'], (x) => x)).toEqual(['a'])
+    expect(scrambled(['a', 'a'], (x) => x)).toEqual(['a', 'a'])
+  })
+  it('the audit accepts only the fixed meta tags', () => {
+    const ok =
+      '<html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"></head></html>'
+    expect(audit(ok)).toEqual([])
+    expect(
+      audit('<head><meta http-equiv="refresh" content="0;url=https://x.example"></head>'),
+    ).toContain('meta tag outside the fixed set')
+    expect(
+      audit(`<head><meta http-equiv="Content-Security-Policy" content="default-src *"></head>`),
+    ).toContain('meta tag outside the fixed set')
+    expect(audit('<head><meta name="referrer" content="unsafe-url"></head>')).toContain(
+      'meta tag outside the fixed set',
+    )
+  })
+  it('detects an unclosed code fence', () => {
+    expect(markdownProblems('text\n```js\nlet a = 1')).toHaveLength(1)
+    expect(markdownProblems('```\nx\n```')).toEqual([])
   })
 })
