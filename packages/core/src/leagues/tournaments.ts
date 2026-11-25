@@ -106,7 +106,7 @@ export function recordMatchResult(
   round: number,
   position: number,
   winner: string,
-  duelId: string,
+  duelId?: string,
 ): Tournament {
   const matches = tournament.matches.map((m) => ({ ...m }))
   const match = matches.find((m) => m.round === round && m.position === position)
