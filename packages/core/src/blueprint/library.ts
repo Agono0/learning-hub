@@ -64,25 +64,35 @@ export function serializeLibrary(lib: BlueprintLibrary): string {
   return JSON.stringify(lib)
 }
 
+/** Most blueprints a library keeps; extra stored entries are dropped on load. */
+export const MAX_INSTALLED_BLUEPRINTS = 50
+
+/** Result of reading an untrusted library value. */
+export interface LibraryRead {
+  library: BlueprintLibrary
+  /** Installed blueprints or sessions that were invalid, duplicate or over the cap. */
+  dropped: number
+}
+
 /**
- * Parse stored JSON defensively: bad JSON or invalid entries are dropped, and
- * a session that no longer matches its blueprint version is discarded.
+ * Read an already-parsed JSON value as a library, defensively: invalid or
+ * duplicate blueprints are dropped (and counted), at most
+ * {@link MAX_INSTALLED_BLUEPRINTS} are kept, and a session that no longer
+ * matches its blueprint version or phases is discarded.
  */
-export function parseLibrary(raw: string | null | undefined): BlueprintLibrary {
-  if (!raw) return emptyLibrary()
-  let data: unknown
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return emptyLibrary()
-  }
-  if (typeof data !== 'object' || data === null) return emptyLibrary()
+export function readLibrary(data: unknown): LibraryRead {
+  const empty = { library: emptyLibrary(), dropped: 0 }
+  if (typeof data !== 'object' || data === null) return empty
   const obj = data as { installed?: unknown; sessions?: unknown }
   const installed: Blueprint[] = []
+  let dropped = 0
   if (Array.isArray(obj.installed)) {
     for (const item of obj.installed) {
       const res = validateBlueprint(item)
-      if (res.ok && !installed.some((b) => b.id === res.blueprint.id)) installed.push(res.blueprint)
+      if (res.ok && !installed.some((b) => b.id === res.blueprint.id)) {
+        if (installed.length < MAX_INSTALLED_BLUEPRINTS) installed.push(res.blueprint)
+        else dropped++
+      } else dropped++
     }
   }
   const sessions: Record<string, BlueprintSession> = {}
@@ -97,7 +107,18 @@ export function parseLibrary(raw: string | null | undefined): BlueprintLibrary {
         Array.isArray(s.history)
       )
         sessions[id] = s
+      else dropped++
     }
   }
-  return { installed, sessions }
+  return { library: { installed, sessions }, dropped }
+}
+
+/** Parse stored JSON defensively: bad JSON yields an empty library. */
+export function parseLibrary(raw: string | null | undefined): BlueprintLibrary {
+  if (!raw) return emptyLibrary()
+  try {
+    return readLibrary(JSON.parse(raw)).library
+  } catch {
+    return emptyLibrary()
+  }
 }

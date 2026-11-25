@@ -1,0 +1,11 @@
+{
+  "name": "@learning-hub/plugin-study-blueprints",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Registers the bundled study blueprints and any valid *.json blueprint found in the blueprints directory at host boot",
+  "main": "./index.ts",
+  "peerDependencies": {
+    "@learning-hub/core": "*"
+  }
+}

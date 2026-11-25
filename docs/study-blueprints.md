@@ -6,9 +6,59 @@ tunable settings and optional event counters. Install one and it runs in the
 dashboard widget, MCP tool, CLI command).
 
 Code: `packages/core/src/blueprint/` (pure, no I/O). UI:
-`apps/web/src/components/blueprints/BlueprintStudio.tsx`. Installed blueprints
-and sessions live in the browser (`localStorage`, key
-`learning-hub.blueprints.v1`); there is no server state or migration.
+`apps/web/src/components/blueprints/BlueprintStudio.tsx`. Boot loader:
+`plugins/study-blueprints/`.
+
+## Two separate stores
+
+Blueprints live in two places that are **not synced**:
+
+| Store     | Who uses it                                    | Where                                                                                                                   | When it changes                                       |
+| --------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Browser   | the `/blueprints` page                         | `localStorage` key `learning-hub.blueprints.v2` (library + session history), per browser and device                     | immediately, on each install, run or finished session |
+| Directory | web server, MCP, CLI and headless server hosts | `*.json` files in `LEARNING_HUB_BLUEPRINTS_DIR` (default `./blueprints` under the working directory the host starts in) | **only at host boot**                                 |
+
+The directory loader runs once when a host starts. There is no hot reload: add or
+edit a file, then restart the host. A blueprint installed on the page does not
+appear in the MCP tool list, and a file on disk does not appear on the page's
+installed list; the page still offers the starter methods and a paste box.
+
+### Directory loader rules
+
+The `study-blueprints` plugin registers the three starter methods, then every
+valid `*.json` file in the directory, as `blueprint-<id>` plugins (palette action,
+dashboard widget, MCP tool, CLI command). Files are untrusted input:
+
+- plain files named `*.json` directly inside the directory only; symlinks,
+  subdirectories and other file types are skipped, and a file whose real path is
+  outside the directory is refused;
+- at most 50 files, 64 KB per file, 1 MB in total, read with a byte bound
+  (an oversized file is refused, never truncated);
+- parsed as JSON and validated against the schema, never evaluated; unknown keys
+  are rejected;
+- a file cannot replace a starter method, another directory blueprint (first file
+  by name wins) or any plugin already registered as `blueprint-<id>`;
+- every failure is logged as `[blueprints] skipped <file>: <reason>` and skipped.
+  Loading never throws, so a bad file cannot stop the host.
+
+The loader's file access is in `plugins/study-blueprints/node-source.ts` (Node
+only). Core and the web page import no Node built-ins and nothing from `plugins/`;
+a test enforces it.
+
+## Session history and scores
+
+Finished or stopped sessions are archived (newest first, up to 200) with the
+blueprint id and version, the settings used, and each step with its round. **Every
+score is entered by the learner**, so each stored score carries
+`source: "self-reported"`. Nothing computes or grades a score today; the field
+lets a future graded source be told apart instead of averaged together.
+
+Storage migrates from the first format (`learning-hub.blueprints.v1`, library
+only) on first load; the old key is left in place. Unreadable data (damaged
+JSON, a newer version, over 2 MB) is never overwritten: the page says so, works
+from memory, and "Reset saved data" first keeps a copy under
+`learning-hub.blueprints.v2.backup`. A full or blocked browser store shows a
+"Could not save" notice and the page keeps working in memory.
 
 ## Format
 
