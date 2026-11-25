@@ -203,6 +203,24 @@
   --hub-border-strong: #453f8f;
 }
 
+/* Candidate palette: Lagoon. Prototype only: nothing selects it by default.
+   Light: paper-white surfaces with a faint teal cast and deep teal ink.
+   Dark: ink-teal surfaces with a mint accent. Activate with
+   document.documentElement.dataset.theme = 'lagoon' (see the prototype PR). */
+[data-theme='lagoon'] {
+  --tint: #14b8a6;
+  --ac-strong: #0f766e;
+  --ac-mid: #14b8a6;
+  --ac-soft: #99f6e4;
+  --ac-deep: #134e4a;
+  --hub-bg: #07161a;
+  --hub-panel: #0c2227;
+  --hub-panel-2: #112c32;
+  --hub-sunken: #05121a;
+  --hub-border: #17383f;
+  --hub-border-strong: #25535c;
+}
+
 /* Perceived-lightness ramp derived from the palette tint (one source of truth).
    The ramp is mode-independent and stays for SURFACES; muted TEXT is
    mode-scoped — see --text-* below and docs/ui-design-signature.md §3.1. */
