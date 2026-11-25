@@ -27,6 +27,7 @@ process.env.LEARNING_HUB_DB = tempDbFile
 type Modules = {
   arena: typeof import('../src/server/handlers/arena/route')
   history: typeof import('../src/server/handlers/arena/history/route')
+  historyId: typeof import('../src/server/handlers/arena/history/[id]/route')
   db: typeof import('@learning-hub/db')
   core: typeof import('@learning-hub/core')
 }
@@ -111,8 +112,9 @@ beforeAll(async () => {
   const dbMod = await import('@learning-hub/db')
   const arenaMod = await import('../src/server/handlers/arena/route')
   const historyMod = await import('../src/server/handlers/arena/history/route')
+  const historyIdMod = await import('../src/server/handlers/arena/history/[id]/route')
   const coreMod = await import('@learning-hub/core')
-  M = { arena: arenaMod, history: historyMod, db: dbMod, core: coreMod }
+  M = { arena: arenaMod, history: historyMod, historyId: historyIdMod, db: dbMod, core: coreMod }
 })
 
 describe('Arena API — GET /api/arena', () => {
@@ -484,6 +486,91 @@ describe('Arena API — weak-card drill (rematch)', () => {
   })
 })
 
+describe('Arena API — run detail (/api/arena/history/[id])', () => {
+  it('returns the run with its accepted round-by-round grade log', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = queue.slice(0, 3).map((cardId, i) => ({
+      cardId,
+      grade: [3, 1, 4][i]!,
+      confidence: i === 1 ? 0 : 1,
+      timeMs: 1200 + i * 400,
+    }))
+    const settle = await postSettlement(settlePayload(runId, exchanges))
+    expect(settle.status).toBe(200)
+
+    // Find the run row id via the record book.
+    const hist = await (
+      await M.history.GET(new Request('http://localhost/api/arena/history'))
+    ).json()
+    const row = hist.runs.find((r: { referenceId: string }) => r.referenceId === `arena:${runId}`)
+    expect(row).toBeDefined()
+
+    const res = await M.historyId.GET(new Request(`http://localhost/api/arena/history/${row.id}`))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.run.id).toBe(row.id)
+    expect(body.settledAt).toBeTruthy()
+    // The accepted log, in order, exactly as validated at settlement.
+    expect(body.rounds.length).toBe(3)
+    expect(body.rounds.map((r: { cardId: number }) => r.cardId)).toEqual(
+      exchanges.map((e) => e.cardId),
+    )
+    expect(body.rounds.map((r: { grade: number }) => r.grade)).toEqual([3, 1, 4])
+    expect(body.rounds[0].round).toBe(1)
+    // Card content resolves for still-existing cards.
+    const contents = body.cards as Array<{
+      id: number
+      content: { basic?: { front: string } } | null
+    }>
+    expect(contents.length).toBe(3)
+    for (const c of contents) {
+      expect(c.content?.basic?.front).toMatch(/^Arena D/)
+    }
+  })
+
+  it('a deleted card renders with null content, log intact', async () => {
+    const { deckId, cardIds } = seedDeckWithCards(5)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = queue.slice(0, 2).map((cardId, i) => ({
+      cardId,
+      grade: 3,
+      confidence: 1,
+      timeMs: 900 + i * 300,
+    }))
+    const settle = await postSettlement(settlePayload(runId, exchanges))
+    expect(settle.status).toBe(200)
+
+    const hist = await (
+      await M.history.GET(new Request('http://localhost/api/arena/history'))
+    ).json()
+    const row = hist.runs.find((r: { referenceId: string }) => r.referenceId === `arena:${runId}`)
+
+    // Delete one graded card (and its dependents) — history must survive.
+    const victim = exchanges[0]!.cardId
+    expect(cardIds).toContain(victim)
+    M.db.db.delete(M.db.revlog).where(eq(M.db.revlog.cardId, victim)).run()
+    M.db.db.delete(M.db.cards).where(eq(M.db.cards.id, victim)).run()
+
+    const res = await M.historyId.GET(new Request(`http://localhost/api/arena/history/${row.id}`))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.rounds.length).toBe(2)
+    const victimEntry = (body.cards as Array<{ id: number; content: unknown }>).find(
+      (c) => c.id === victim,
+    )
+    expect(victimEntry?.content).toBeNull()
+  })
+
+  it('400 on a non-numeric id, 404 on an unknown run', async () => {
+    const bad = await M.historyId.GET(new Request('http://localhost/api/arena/history/abc'))
+    expect(bad.status).toBe(400)
+    const missing = await M.historyId.GET(new Request('http://localhost/api/arena/history/999999'))
+    expect(missing.status).toBe(404)
+  })
+})
+
 describe('Arena API — achievements', () => {
   it('arena_first unlocked exactly once across all settlements above', async () => {
     const achievementsRes = await import('../src/server/handlers/achievements/route').then((m) =>
@@ -503,10 +590,10 @@ describe('Arena API — run history (/api/arena/history)', () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
     // Settled runs above: canonical + lying-client + replay-first +
-    // altered-first + stale-reclaim + concurrent + the two drill-test runs.
-    // 400/409 settlements and replays added none.
-    expect(body.stats.runs).toBe(8)
-    expect(body.runs.length).toBe(8)
+    // altered-first + stale-reclaim + concurrent + the two drill-test runs +
+    // the two detail-test runs. 400/409 settlements and replays added none.
+    expect(body.stats.runs).toBe(10)
+    expect(body.runs.length).toBe(10)
   })
 
   it('lists runs newest-first keyed by the server-issued run id', async () => {

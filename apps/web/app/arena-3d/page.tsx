@@ -159,6 +159,20 @@ interface HistoryPayload {
   runs: ArenaRunRow[]
 }
 
+interface RunDetailPayload {
+  ok: boolean
+  run: ArenaRunRow
+  settledAt: string | null
+  rounds: Array<{
+    round: number
+    cardId: number
+    grade: number
+    confidence: number
+    timeMs: number
+  }>
+  cards: Array<{ id: number; content: ArenaCard['content'] | null }>
+}
+
 const GRADE_BUTTONS: { grade: Grade; label: string }[] = [
   { grade: 1, label: 'Again' },
   { grade: 2, label: 'Hard' },
@@ -207,6 +221,17 @@ function cardFront(card: ArenaCard): string {
   return 'Review item'
 }
 
+/** Front text from a raw content payload (run-detail view, cards may be gone). */
+function contentFront(content: ArenaCard['content'] | null): string {
+  if (!content) return 'Card removed from the collection'
+  if (content.basic) return content.basic.front
+  if (content.exercise?.prompt) return content.exercise.prompt
+  if (content.typein?.question) return content.typein.question
+  if (content.cloze?.text) return content.cloze.text
+  if (content.mcq?.question) return content.mcq.question
+  return 'Review item'
+}
+
 function cardBack(card: ArenaCard): string {
   if (card.content.basic) return card.content.basic.back
   if (card.content.typein) return card.content.typein.acceptedAnswers.join(' · ')
@@ -244,6 +269,9 @@ export default function Arena3DPage() {
     tone: 'strike' | 'crit' | 'counter' | 'shield'
   } | null>(null)
   const [record, setRecord] = useState<HistoryPayload | null>(null)
+  const [expandedRunId, setExpandedRunId] = useState<number | null>(null)
+  const [runDetail, setRunDetail] = useState<RunDetailPayload | null>(null)
+  const [runDetailLoading, setRunDetailLoading] = useState(false)
   const [guardian, setGuardian] = useState<SessionPayload['guardian'] | null>(null)
 
   // The tuned config arrives with the session payload (guardian-specific).
@@ -497,6 +525,21 @@ export default function Arena3DPage() {
     }
   }
 
+  function toggleRunDetail(runId: number): void {
+    if (expandedRunId === runId) {
+      setExpandedRunId(null)
+      setRunDetail(null)
+      return
+    }
+    setExpandedRunId(runId)
+    setRunDetail(null)
+    setRunDetailLoading(true)
+    apiGet<RunDetailPayload>(`/api/arena/history/${runId}`)
+      .then((payload) => setRunDetail(payload))
+      .catch(() => setRunDetail(null))
+      .finally(() => setRunDetailLoading(false))
+  }
+
   function playAgain(): void {
     setPhase('setup')
     setArena(null)
@@ -663,22 +706,59 @@ export default function Arena3DPage() {
           </div>
           <ul className="flex flex-col gap-1.5" data-testid="arena-recent-runs">
             {record.runs.map((run) => (
-              <li
-                key={run.id}
-                className="flex flex-wrap items-center gap-2 text-sm"
-                data-testid="arena-run-row"
-              >
-                <Badge tone={run.result === 'victory' ? 'success' : 'danger'}>
-                  {run.result === 'victory' ? 'Victory' : 'Defeat'}
-                </Badge>
-                <span>
-                  {run.correct}/{run.rounds} correct
-                </span>
-                <span className="text-faint">combo ×{run.bestCombo}</span>
-                <span className="text-faint">score {run.score}</span>
-                <span className="ml-auto text-xs text-faint">
-                  {new Date(run.createdAt).toLocaleDateString()}
-                </span>
+              <li key={run.id} data-testid="arena-run-row">
+                <button
+                  type="button"
+                  className="flex w-full flex-wrap items-center gap-2 text-left text-sm"
+                  onClick={() => toggleRunDetail(run.id)}
+                  aria-expanded={expandedRunId === run.id}
+                  data-testid={`arena-run-toggle-${run.id}`}
+                >
+                  <Badge tone={run.result === 'victory' ? 'success' : 'danger'}>
+                    {run.result === 'victory' ? 'Victory' : 'Defeat'}
+                  </Badge>
+                  <span>
+                    {run.correct}/{run.rounds} correct
+                  </span>
+                  <span className="text-faint">combo ×{run.bestCombo}</span>
+                  <span className="text-faint">score {run.score}</span>
+                  <span className="ml-auto text-xs text-faint">
+                    {new Date(run.createdAt).toLocaleDateString()}
+                  </span>
+                </button>
+                {expandedRunId === run.id ? (
+                  <div className="mt-1.5 pl-4" data-testid="arena-run-detail">
+                    {runDetailLoading ? (
+                      <p className="text-xs text-faint">Loading the round log…</p>
+                    ) : runDetail && runDetail.rounds.length > 0 ? (
+                      <ul className="flex flex-col gap-1">
+                        {runDetail.rounds.map((round) => {
+                          const entry = runDetail.cards.find((c) => c.id === round.cardId)
+                          return (
+                            <li
+                              key={`${round.cardId}-${round.round}`}
+                              className="flex flex-wrap items-center gap-2 text-xs"
+                              data-testid="arena-run-detail-row"
+                            >
+                              <span className="w-8 text-faint">#{round.round}</span>
+                              <span className="min-w-0 flex-1 truncate">
+                                {contentFront(entry?.content ?? null)}
+                              </span>
+                              <Badge tone={GRADE_TONE[round.grade] ?? 'neutral'}>
+                                {GRADE_LABEL[round.grade] ?? round.grade}
+                              </Badge>
+                              <span className="ml-auto text-faint">
+                                {(round.timeMs / 1000).toFixed(1)}s
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-faint">No round log recorded for this run.</p>
+                    )}
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
