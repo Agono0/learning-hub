@@ -40,8 +40,11 @@ function trackSettlements(page: Page): { lastReport: () => string } {
 
 async function expectSettled(page: Page, track: { lastReport: () => string }): Promise<void> {
   await expect(page.getByTestId('arena-results')).toBeVisible({ timeout: 30_000 })
-  const ok = await page.getByTestId('arena-result-badge').count()
-  expect(ok, `settlement did not complete: ${track.lastReport()}`).toBeGreaterThan(0)
+  try {
+    await expect(page.getByTestId('arena-result-badge')).toBeVisible({ timeout: 30_000 })
+  } catch {
+    throw new Error(`settlement did not complete: ${track.lastReport()}`)
+  }
 }
 
 async function seedArenaDeck(request: APIRequestContext, count = CARD_COUNT): Promise<number> {
