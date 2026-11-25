@@ -37,6 +37,7 @@
  */
 import {
   awardLeaguePoints,
+  syncLeaguePoints,
   createDuelFromDeck,
   closeDueRounds,
   closeLeagueRound,
@@ -215,7 +216,7 @@ function pointsCommand(args: string[]): void {
   const focus = num(parseFlag(args, '--focus-minutes'))
   if (!slug || !handle || (reviews === undefined && focus === undefined)) {
     return fail(
-      'Usage: learning-hub leagues points <slug> <handle> [--reviews N | --focus-minutes N]',
+      'Usage: learning-hub leagues points <slug> <handle> [--reviews N | --focus-minutes N] (friendly/self-reported — prefer `leagues sync` for activity-derived scoring)',
     )
   }
   try {
@@ -228,6 +229,25 @@ function pointsCommand(args: string[]): void {
     console.log(`${p.handle} now has ${p.points} points this round in ${slug}.`)
   } catch (err) {
     fail(err instanceof Error ? err.message : 'points failed')
+  }
+}
+
+function syncCommand(args: string[]): void {
+  const [slug, handle] = args
+  if (!slug || !handle) return fail('Usage: learning-hub leagues sync <slug> <handle>')
+  try {
+    const r = syncLeaguePoints(slug, handle)
+    if (r.established) {
+      console.log(
+        `Activity cursor established for ${slug} — only activity from now on can be credited (nothing retroactive).`,
+      )
+    } else {
+      console.log(
+        `${handle} credited ${r.reviews} reviews + ${r.focusMinutes} focus minutes → ${r.points} points this round in ${slug}.`,
+      )
+    }
+  } catch (err) {
+    fail(err instanceof Error ? err.message : 'sync failed')
   }
 }
 
@@ -732,6 +752,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'profile') return profileCommand(args.slice(1))
   if (sub === 'players') return playersCommand(args.slice(1))
   if (sub === 'points') return pointsCommand(args.slice(1))
+  if (sub === 'sync') return syncCommand(args.slice(1))
   if (sub === 'close-round') return closeRoundCommand(args.slice(1))
   if (sub === 'close-due') return closeDueCommand()
   if (sub === 'rounds') return roundsCommand(args.slice(1))

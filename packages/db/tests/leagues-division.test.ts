@@ -64,7 +64,7 @@ describe('league division detail', () => {
     // omar's duel win scored duelWin points, so he promoted with the scorers;
     // only lina (0 points) stays in bronze
     expect(bronze.standings.map((p) => p.handle)).toEqual(['lina'])
-    expect(bronze.standings[0]!.elo).toBeLessThan(1000) // lost the duel
+    expect(bronze.standings[0]!.elo).toBe(1000) // practice mode: Elo frozen
     // the duel followed omar out of bronze: no all-bronze duels remain
     expect(bronze.duels).toEqual([])
     // bronze's round winner is amr (winners are recorded in the scoring tier)
@@ -79,8 +79,8 @@ describe('league division detail', () => {
 
     const silver = leagueDivisionDetail('spring', 'silver', db)!
     expect(silver.standings.map((p) => p.handle).sort()).toEqual(['amr', 'omar', 'sara'])
-    // omar carries his duel-win elo into silver
-    expect(silver.standings.find((p) => p.handle === 'omar')!.elo).toBeGreaterThan(1000)
+    // practice mode: omar's Elo stays at the 1000 baseline
+    expect(silver.standings.find((p) => p.handle === 'omar')!.elo).toBe(1000)
     expect(
       silver.movements
         .filter((m) => m.kind === 'promoted_in')

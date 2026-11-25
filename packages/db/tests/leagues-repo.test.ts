@@ -345,7 +345,7 @@ describe('round close persistence', () => {
 })
 
 describe('league duels', () => {
-  it('creates, answers, decides a duel and moves Elo and points', () => {
+  it('creates, answers and decides a practice duel: W-L + points, Elo frozen', () => {
     makeLeague()
     joinLeagueRow('spring', 'amr', db)
     joinLeagueRow('spring', 'sara', db)
@@ -388,8 +388,10 @@ describe('league duels', () => {
     const sara = players.find((p) => p.handle === 'sara')!
     expect(amr.duelsWon).toBe(1)
     expect(sara.duelsLost).toBe(1)
-    expect(amr.elo).toBeGreaterThan(1000)
-    expect(sara.elo).toBeLessThan(1000)
+    // practice mode: friendly record + duel points, but Elo stays frozen
+    expect(amr.elo).toBe(1000)
+    expect(sara.elo).toBe(1000)
+    expect(db.select().from(leagueEloEvents).all()).toHaveLength(0)
     expect(amr.points).toBe(25) // duelWin scoring
     expect(() => submitDuelAnswers('d1', 'A', [], db)).toThrow() // no double-decide
   })
@@ -412,6 +414,7 @@ describe('league duels', () => {
     const players = listLeaguePlayers('spring', db)
     expect(players.find((p) => p.handle === 'amr')!.elo).toBe(1000)
     expect(players.find((p) => p.handle === 'sara')!.points).toBe(10) // duelDraw
+    expect(db.select().from(leagueEloEvents).all()).toHaveLength(0)
   })
 
   it('rejects unknown prompts and same-player duels', () => {
@@ -447,7 +450,7 @@ describe('league duels', () => {
 })
 
 describe('player profiles and Elo history', () => {
-  it('records one Elo event per side and assembles a profile', () => {
+  it('assembles a profile with no ranked history in practice mode', () => {
     makeLeague()
     joinLeagueRow('spring', 'amr', db)
     joinLeagueRow('spring', 'sara', db)
@@ -464,21 +467,15 @@ describe('player profiles and Elo history', () => {
     submitDuelAnswers('d1', 'A', [{ promptId: 'p1', answer: '4', elapsedMs: 900 }], db)
     submitDuelAnswers('d1', 'B', [{ promptId: 'p1', answer: '5', elapsedMs: 500 }], db)
 
-    // append-only history: one row per side, winner up, loser down
+    // practice mode: no ranked history is recorded at all
     const events = db.select().from(leagueEloEvents).all()
-    expect(events).toHaveLength(2)
-    const amrEvent = events.find((e) => e.handle === 'amr')!
-    expect(amrEvent.result).toBe('win')
-    expect(amrEvent.opponent).toBe('sara')
-    expect(amrEvent.eloBefore).toBe(1000)
-    expect(amrEvent.eloAfter).toBeGreaterThan(1000)
-    expect(events.find((e) => e.handle === 'sara')!.result).toBe('loss')
+    expect(events).toHaveLength(0)
 
     const profile = leaguePlayerProfile('spring', 'amr', db)!
     expect(profile.record).toEqual({ wins: 1, losses: 0, draws: 0 })
     expect(profile.rank).toBe(1)
-    expect(profile.eloHistory).toHaveLength(1)
-    expect(profile.eloHistory[0]!.eloAfter).toBe(profile.player.elo)
+    expect(profile.eloHistory).toHaveLength(0)
+    expect(profile.player.elo).toBe(1000)
     expect(profile.recentDuels[0]!.slug).toBe('d1')
 
     const saraProfile = leaguePlayerProfile('spring', 'sara', db)!
@@ -490,7 +487,7 @@ describe('player profiles and Elo history', () => {
     expect(listLeagueEloEvents('missing', 'amr', 50, db)).toEqual([])
   })
 
-  it('records draw events for both sides of a drawn duel', () => {
+  it('records the friendly record but no Elo events for a drawn duel', () => {
     makeLeague()
     joinLeagueRow('spring', 'amr', db)
     joinLeagueRow('spring', 'sara', db)
@@ -508,7 +505,7 @@ describe('player profiles and Elo history', () => {
     submitDuelAnswers('d1', 'B', [{ promptId: 'p1', answer: '4', elapsedMs: 900 }], db)
 
     const events = db.select().from(leagueEloEvents).all()
-    expect(events.map((e) => e.result)).toEqual(['draw', 'draw'])
+    expect(events).toHaveLength(0)
     expect(leaguePlayerProfile('spring', 'amr', db)!.record.draws).toBe(1)
   })
 })
