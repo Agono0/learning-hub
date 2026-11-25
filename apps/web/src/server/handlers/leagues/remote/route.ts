@@ -16,7 +16,11 @@
 import { z } from 'zod'
 import {
   LeagueRemoteInputError,
+  bumpSeqAtLeast,
+  enqueueLeagueMutation,
   getOnlineIdentity,
+  loadLeagueQueue,
+  saveLeagueQueue,
   getRemoteLink,
   linkRemoteLeague,
   listRemoteLinks,
@@ -25,8 +29,15 @@ import {
 } from '@learning-hub/db'
 import {
   LeagueMutationSchema,
+  SyncQueueFullError,
+  createSeqTracker,
+  flushQueue,
   leagueSignerFromStoredKey,
+  pruneQueue,
   signLeagueMutation,
+  summarizeQueue,
+  type SignedEnvelope,
+  type TransportReply,
 } from '@learning-hub/core'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 import { remoteFetch } from '@/server/net'
@@ -55,6 +66,10 @@ const bodySchema = z.discriminatedUnion('action', [
   target.extend({ action: z.literal('link') }),
   target.extend({ action: z.literal('state') }),
   target.extend({ action: z.literal('mutate'), mutation: LeagueMutationSchema }),
+  // Offline path: queue a mutation now, deliver it on a later sync.
+  target.extend({ action: z.literal('enqueue'), mutation: LeagueMutationSchema }),
+  target.extend({ action: z.literal('sync') }),
+  target.extend({ action: z.literal('queue') }),
 ])
 
 export const GET = withRoute(async () => {
@@ -105,6 +120,69 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   const base = `${link.serverUrl}/api/v1/leagues/${link.remoteLeagueId}`
+
+  if (body.action === 'enqueue') {
+    try {
+      const { itemId, queue } = enqueueLeagueMutation(link.id, body.mutation)
+      return Response.json({ ok: true, itemId, queue: summarizeQueue(queue) }, { status: 202 })
+    } catch (err) {
+      if (err instanceof SyncQueueFullError) throw new ApiError(409, err.message)
+      throw err
+    }
+  }
+
+  if (body.action === 'queue') {
+    const { queue, recovered } = loadLeagueQueue(link.id)
+    return Response.json({ ok: true, recovered, queue: summarizeQueue(queue) })
+  }
+
+  if (body.action === 'sync') {
+    const identity = getOnlineIdentity()
+    if (identity.mode !== 'device_key' || !identity.pubKey || !identity.privKey) {
+      throw new ApiError(409, 'A device key identity is required to sign league mutations')
+    }
+    const signer = await leagueSignerFromStoredKey({
+      publicKey: identity.pubKey,
+      privateKey: identity.privKey,
+    })
+    const { queue: stored, recovered } = loadLeagueQueue(link.id)
+    const tracker = { next: { ...createSeqTracker().next, [link.remoteLeagueId]: link.nextSeq } }
+    const result = await flushQueue(stored, tracker, {
+      signer,
+      leagueId: link.remoteLeagueId,
+      now: () => Date.now(),
+      newNonce: () => crypto.randomUUID().replace(/-/g, ''),
+      send: async (_id: string, envelope: SignedEnvelope): Promise<TransportReply> => {
+        try {
+          const res = await remoteFetch(`${base}/mutate`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ envelope }),
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          })
+          return { kind: 'http', status: res.status, body: await readBounded(res) }
+        } catch {
+          return { kind: 'network-error' }
+        }
+      },
+    })
+    const kept = pruneQueue(result.queue, Date.now())
+    saveLeagueQueue(link.id, kept)
+    // The tracker only ever advances: persist the counter, never lower it.
+    bumpSeqAtLeast(link.id, result.tracker.next[link.remoteLeagueId] ?? link.nextSeq)
+    const last = result.attempted.at(-1)
+    recordRemoteOutcome(
+      link.id,
+      last ? (last.outcome.kind === 'accepted' ? 'ok' : last.outcome.kind) : 'idle',
+    )
+    return Response.json({
+      ok: true,
+      recovered,
+      attempted: result.attempted.length,
+      nextWakeAt: result.nextWakeAt,
+      queue: summarizeQueue(kept),
+    })
+  }
 
   if (body.action === 'state') {
     const res = await remoteFetch(`${base}/state`, {

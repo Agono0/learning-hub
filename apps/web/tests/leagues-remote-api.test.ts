@@ -30,6 +30,7 @@ beforeAll(async () => {
 })
 
 beforeEach(() => {
+  db.delete(tables.leagueRemoteQueues).run()
   db.delete(tables.leagueRemoteLinks).run()
   delete process.env.LH_REMOTE_LEAGUES
 })
@@ -261,5 +262,79 @@ describe('state', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ ok: true, remote: { league: { id: LEAGUE } } })
     expect(seenUrls[0]).toBe(`${SERVER}/api/v1/leagues/${LEAGUE}/state`)
+  })
+})
+
+describe('offline queue: enqueue, queue, sync', () => {
+  const T = { serverUrl: SERVER, remoteLeagueId: LEAGUE }
+  const join = (alias: string) => ({ type: 'join', alias })
+
+  it('enqueue is gated, validated, and stores without sending or signing', async () => {
+    const { seen } = fakeAuthority()
+    // gate
+    const off = await H.POST(post({ action: 'enqueue', ...T, mutation: join('Ann') }))
+    expect(off.status).toBe(503)
+    process.env.LH_REMOTE_LEAGUES = '1'
+    // unknown mutation type never reaches storage
+    const bad = await H.POST(
+      post({ action: 'enqueue', ...T, mutation: { type: 'set-points', points: 1 } }),
+    )
+    expect(bad.status).toBe(400)
+    const ok = await H.POST(post({ action: 'enqueue', ...T, mutation: join('Ann') }))
+    expect(ok.status).toBe(202)
+    expect(await ok.json()).toMatchObject({ ok: true, queue: { pending: 1 } })
+    expect(seen.calls).toBe(0)
+    const q = await (await H.POST(post({ action: 'queue', ...T }))).json()
+    expect(q).toMatchObject({ ok: true, recovered: false, queue: { pending: 1 } })
+  })
+
+  it('sync needs a device key and sends nothing without one', async () => {
+    process.env.LH_REMOTE_LEAGUES = '1'
+    tables.updateOnlineIdentity({ mode: 'offline', pubKey: null, privKey: null })
+    const { seen } = fakeAuthority()
+    await H.POST(post({ action: 'enqueue', ...T, mutation: join('Ann') }))
+    const res = await H.POST(post({ action: 'sync', ...T }))
+    expect(res.status).toBe(409)
+    expect(seen.calls).toBe(0)
+  })
+
+  it('sync signs queued work with the device key and clears it on acceptance', async () => {
+    await enableWithDeviceKey()
+    const { seen } = fakeAuthority()
+    await H.POST(post({ action: 'enqueue', ...T, mutation: join('Ann') }))
+    const res = await H.POST(post({ action: 'sync', ...T }))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toMatchObject({ ok: true, attempted: 1, queue: { pending: 0 } })
+    expect(seen.lastSeq.size).toBe(1)
+    const link = tables.listRemoteLinks()[0]!
+    expect(link.nextSeq).toBe(2)
+    expect(link.lastStatus).toBe('ok')
+    // Nothing is due now: a second sync sends nothing.
+    const again = await (await H.POST(post({ action: 'sync', ...T }))).json()
+    expect(again.attempted).toBe(0)
+  })
+
+  it('an unreachable authority keeps the item and schedules a retry', async () => {
+    await enableWithDeviceKey()
+    setRemoteFetch(async () => {
+      throw new Error('offline')
+    })
+    await H.POST(post({ action: 'enqueue', ...T, mutation: join('Ann') }))
+    const res = await H.POST(post({ action: 'sync', ...T }))
+    const body = await res.json()
+    expect(body).toMatchObject({ ok: true, attempted: 1, queue: { pending: 1 } })
+    expect(body.nextWakeAt).toBeGreaterThan(Date.now())
+    expect(tables.listRemoteLinks()[0]!.lastStatus).toBe('transport-error')
+    // The reserved sequence is spent even though the send failed: gaps are safe.
+    expect(tables.listRemoteLinks()[0]!.nextSeq).toBe(2)
+  })
+
+  it('a corrupt stored queue is reset, reported, and does not block the route', async () => {
+    process.env.LH_REMOTE_LEAGUES = '1'
+    const link = tables.linkRemoteLeague({ serverUrl: SERVER, remoteLeagueId: LEAGUE })
+    db.insert(tables.leagueRemoteQueues).values({ linkId: link.id, queueJson: 'garbage' }).run()
+    const q = await (await H.POST(post({ action: 'queue', ...T }))).json()
+    expect(q).toMatchObject({ ok: true, recovered: true, queue: { pending: 0 } })
   })
 })
