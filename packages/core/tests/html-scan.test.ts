@@ -290,3 +290,39 @@ describe('size caps refuse instead of importing a partial result', () => {
     ).toThrow(HtmlTooLargeError)
   })
 })
+
+// Old-vs-new og:title behavior. "Old" values were measured by running the same inputs against
+// the pre-#150 extractor (base d271174). The correct title is the meta tag's content attribute
+// value, as the author wrote it, so the new results are the intended behavior.
+describe('og:title per-tag attribute reading (old vs new)', () => {
+  const body =
+    '<main><article><p>' + 'Readable paragraph text here. '.repeat(10) + '</p></article></main>'
+  const page = (meta: string) =>
+    `<html><head><title>Fallback Title</title>${meta}</head><body>${body}</body></html>`
+  const cases: [string, string, string, string][] = [
+    // [name, meta tag, old output, new output]
+    [
+      'apostrophe in value',
+      `<meta property="og:title" content="Don't Panic: A Guide">`,
+      'Don',
+      "Don't Panic: A Guide",
+    ],
+    [
+      'spaces around =',
+      `<meta property = "og:title" content = "Spaced Title">`,
+      'Fallback Title',
+      'Spaced Title',
+    ],
+    [
+      'content before property',
+      `<meta content="Reversed Order" property="og:title">`,
+      'Reversed Order',
+      'Reversed Order',
+    ],
+  ]
+  for (const [name, meta, , expected] of cases) {
+    it(name, () => {
+      expect(extractArticleFromHtml(page(meta), 'https://example.com').title).toBe(expected)
+    })
+  }
+})
