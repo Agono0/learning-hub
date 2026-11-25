@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- CommonJS preload, loaded with node --require */
 /**
  * Test-only preload for the built-server smoke (never shipped, never loaded by the app).
  *
