@@ -66,14 +66,6 @@ interface EnactmentReport {
   interpretation: string
 }
 
-const CHANNELS = [
-  'spatial-layout',
-  'dynamic-process',
-  'force-causality',
-  'magnitude-scale',
-  'deictic-reference',
-]
-
 export function EmbodiedLearningStudio() {
   const { data, isLoading } = useQuery({
     queryKey: ['embodied-learning'],
