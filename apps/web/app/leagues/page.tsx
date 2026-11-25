@@ -1536,11 +1536,12 @@ function DuelsTab({
                   onChange={(e) => setDeckId(e.target.value)}
                   data-testid="duel-deck-id"
                 />
-                <TextField
+                <TextArea
                   label={'Prompts — one per line: id::question::answer1|answer2'}
                   value={promptsText}
                   onChange={(e) => setPromptsText(e.target.value)}
                   data-testid="duel-prompts"
+                  rows={3}
                 />
               </div>
             </details>
