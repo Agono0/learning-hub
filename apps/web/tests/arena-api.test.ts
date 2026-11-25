@@ -931,3 +931,18 @@ describe('Arena API — guardian bestiary', () => {
     expect(totalRuns).toBe(body.stats.runs)
   })
 })
+
+describe('Arena API — weekly trial', () => {
+  it('history returns this week’s trial with bounded progress', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const t = body.trial
+    expect(t.weekKey).toMatch(/^\d{4}-W\d{2}$/)
+    expect(['three_wins', 'boss_win', 'combo_12']).toContain(t.key)
+    expect(t.target).toBeGreaterThan(0)
+    expect(t.progress).toBeGreaterThanOrEqual(0)
+    expect(t.progress).toBeLessThanOrEqual(t.target)
+    expect(t.done).toBe(t.progress >= t.target)
+  })
+})

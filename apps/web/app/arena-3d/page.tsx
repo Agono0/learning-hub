@@ -167,6 +167,15 @@ interface HistoryPayload {
   runs: ArenaRunRow[]
   /** Highest-scoring run on the books (the rival ghost), null when none. */
   bestRunId: number | null
+  trial: {
+    weekKey: string
+    key: string
+    name: string
+    description: string
+    target: number
+    progress: number
+    done: boolean
+  }
   perGuardian: Array<{
     archetype: GuardianArchetype
     runs: number
@@ -739,6 +748,32 @@ export default function Arena3DPage() {
               </Badge>
               <span className="text-faint">{todayModifier.description}</span>
             </div>
+
+            {record?.trial ? (
+              <div
+                className="rounded-lg border border-(--hub-border) p-3"
+                data-testid="arena-trial"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone={record.trial.done ? 'success' : 'accent'}>
+                    {record.trial.done ? 'Trial complete' : 'This week’s trial'}
+                  </Badge>
+                  <span className="text-sm font-semibold" data-testid="arena-trial-name">
+                    {record.trial.name}
+                  </span>
+                  <span className="text-xs text-faint" data-testid="arena-trial-progress">
+                    {record.trial.progress} / {record.trial.target}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-faint">{record.trial.description}</p>
+                <div className="mt-2">
+                  <ProgressBar
+                    value={(record.trial.progress / Math.max(1, record.trial.target)) * 100}
+                    label="Weekly trial progress"
+                  />
+                </div>
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
