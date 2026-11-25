@@ -164,6 +164,12 @@ export const NAV: NavGroup[] = [
         shortLabel: 'Sleep',
       },
       { href: '/workload', label: 'Workload', icon: Gauge },
+      {
+        href: '/retention-planner',
+        label: 'Retention Planner',
+        icon: Gauge,
+        shortLabel: 'Retention',
+      },
     ],
   },
   {
