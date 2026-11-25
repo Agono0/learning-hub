@@ -36,6 +36,8 @@ test.describe('leagues season lifecycle', () => {
     for (const handle of ['amr', 'sara']) {
       await page.getByTestId('join-league-slug').fill(LEAGUE)
       await page.getByTestId('join-league-handle').fill(handle)
+      // a join re-renders the list; make sure the fill survived before clicking
+      await expect(page.getByTestId('join-league-handle')).toHaveValue(handle)
       await page.getByTestId('join-league-submit').click()
       await expect(page.getByText(`${handle} joined ${LEAGUE} in bronze.`)).toBeVisible()
     }
