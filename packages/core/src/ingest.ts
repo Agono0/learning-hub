@@ -14,7 +14,7 @@
  * 4. SQ3R Survey heading / section landmark extraction (Robinson 1946,
  *    *Effective Study*).
  */
-import { unzipSync } from 'fflate'
+import { ArchiveLimitError, EPUB_LIMITS, openBoundedZip } from './archive-limits'
 
 export interface EpubChapter {
   id: string
@@ -121,27 +121,44 @@ function normalizeZipPath(baseDir: string, relativeHref: string): string {
  * Extract structured Markdown text and chapter metadata from an `.epub` byte buffer.
  */
 export function extractEpubBytes(bytes: Uint8Array): EpubExtractResult {
-  let archive: Record<string, Uint8Array>
+  let zip: ReturnType<typeof openBoundedZip>
   try {
-    archive = unzipSync(bytes)
-  } catch {
+    zip = openBoundedZip(bytes, EPUB_LIMITS)
+  } catch (err) {
+    if (err instanceof ArchiveLimitError) {
+      throw new Error(
+        err.code === 'not-zip'
+          ? 'Invalid EPUB file — could not unpack ZIP archive'
+          : `Invalid EPUB file — ${err.message}`,
+      )
+    }
     throw new Error('Invalid EPUB file — could not unpack ZIP archive')
   }
 
   const decoder = new TextDecoder('utf-8')
-  const fileMap = new Map<string, Uint8Array>()
-  const lowerMap = new Map<string, Uint8Array>()
-  for (const [k, v] of Object.entries(archive)) {
-    const norm = k.replace(/\\/g, '/').replace(/^\/+/, '')
-    fileMap.set(norm, v)
-    lowerMap.set(norm.toLowerCase(), v)
+  // Names only; entries are inflated lazily, one at a time, and only if the parser reads
+  // them (container.xml, the OPF, and spine/manifest chapters). Images, fonts, CSS, NCX
+  // and nav are never inflated.
+  const fileMap = new Map<string, string>()
+  const lowerMap = new Map<string, string>()
+  for (const k of zip.names) {
+    if (k.endsWith('/')) continue
+    fileMap.set(k, k)
+    lowerMap.set(k.toLowerCase(), k)
   }
 
   const readEntry = (path: string): string | null => {
-    const exact = fileMap.get(path) ?? lowerMap.get(path.toLowerCase())
-    if (!exact) return null
+    const key = fileMap.get(path) ?? lowerMap.get(path.toLowerCase())
+    if (!key) return null
+    let data: Uint8Array
     try {
-      return decoder.decode(exact)
+      data = zip.read(key)
+    } catch (err) {
+      if (err instanceof ArchiveLimitError) throw new Error(`Invalid EPUB file — ${err.message}`)
+      throw err
+    }
+    try {
+      return decoder.decode(data)
     } catch {
       return null
     }
