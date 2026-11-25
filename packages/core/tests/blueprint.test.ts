@@ -11,6 +11,7 @@ import {
   describeBlueprint,
   emptyLibrary,
   estimateMinutes,
+  explainIssue,
   getBlueprintCounters,
   installBlueprint,
   installIntoLibrary,
@@ -654,5 +655,59 @@ describe('library', () => {
       sessions: {},
     })
     expect(parseLibrary(raw).installed).toHaveLength(1)
+  })
+})
+
+describe('explainIssue', () => {
+  const explain = (input: unknown) => {
+    const r = validateBlueprint(input)
+    if (r.ok) throw new Error('expected invalid')
+    return r.issues.map(explainIssue)
+  }
+
+  it('asks for missing fields in plain words', () => {
+    const out = explain({ schemaVersion: 1, id: 'x', phases: [] })
+    expect(out).toContain('Add a name.')
+    expect(out).toContain('Add a version.')
+    expect(out).toContain('Add a short summary.')
+    expect(out).toContain('Add at least one phase.')
+  })
+
+  it('explains id format, unknown fields and schemaVersion', () => {
+    expect(explain({ ...base(), id: 'Bad Id' })[0]).toBe(
+      'id: use only lowercase letters, numbers and single dashes (for example "my-method").',
+    )
+    expect(explain({ ...base(), extra: 1 })).toEqual(['Remove the unknown field "extra".'])
+    expect(explain({ ...base(), schemaVersion: 2 })).toEqual(['Set "schemaVersion" to 1.'])
+  })
+
+  it('names the phase and lists allowed values', () => {
+    const input = base()
+    // @ts-expect-error invalid kind on purpose
+    input.phases[1] = { ...input.phases[1], kind: 'nap' }
+    expect(explain(input)).toEqual([
+      'Phase 2, kind: pick one of learn, practice, recall, reflect, rest.',
+    ])
+  })
+
+  it('rewrites semantic issues and never returns an empty string', () => {
+    const input = base()
+    input.phases[0] = {
+      id: 'a',
+      title: 'A',
+      kind: 'learn',
+      minutes: 1,
+      instructions: 'x',
+      next: 'zz',
+    }
+    expect(explain(input)).toEqual([
+      'Phase 1, next: there is no phase with id "zz". Check the spelling.',
+    ])
+    expect(explain({ ...base(), version: '1' })[0]).toContain('write the version like 1.0.0')
+    for (const issue of [
+      { path: 'x', message: 'weird' },
+      { path: 'json', message: 'Unexpected token' },
+    ])
+      expect(explainIssue(issue).length).toBeGreaterThan(5)
   })
 })

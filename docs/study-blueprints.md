@@ -66,6 +66,18 @@ and sessions live in the browser (`localStorage`, key
 Unknown keys are rejected. Validation returns every problem at once with a path;
 unreachable phases and loops with no exit are warnings.
 
+## Reading the results
+
+A phase with `repeat` runs once per round and each round is its own step in the
+session log, so "Explain it simply" can appear twice in the finished list
+(labelled "round 1 of 2", "round 2 of 2"). The average score is the mean of the
+scores the learner entered, one per scored step; skipped steps are not counted.
+Branches on a repeated phase are checked after its last round. The `/blueprints`
+overview shows "N rounds" next to such phases, using the current settings.
+
+`explainIssue(issue)` rewrites a validation issue as a plain sentence for the UI
+(for example "Add a name." or "Phase 2, kind: pick one of learn, practice, ...").
+
 ## API
 
 ```ts

@@ -29,3 +29,16 @@ describe('/blueprints page', () => {
     if (res.ok) expect(parseLibrary(serializeLibrary(res.library)).installed).toHaveLength(1)
   })
 })
+
+describe('validation messages shown in the studio', () => {
+  it('are plain-language sentences, not raw schema text', async () => {
+    const { validateBlueprint, explainIssue } = await import('@learning-hub/core/blueprint')
+    const res = validateBlueprint({ schemaVersion: 1, id: 'Bad Id', phases: [] })
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    const text = res.issues.map(explainIssue).join(' ')
+    expect(text).toContain('Add a name.')
+    expect(text).toContain('Add at least one phase.')
+    expect(text).not.toMatch(/Invalid input|expected string|received undefined/)
+  })
+})

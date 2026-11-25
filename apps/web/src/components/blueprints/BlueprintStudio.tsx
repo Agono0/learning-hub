@@ -9,8 +9,11 @@ import {
   currentPhase,
   emptyLibrary,
   estimateMinutes,
+  explainIssue,
   installIntoLibrary,
   parseLibrary,
+  resolveNumber,
+  resolveParams,
   roundsFor,
   serializeLibrary,
   startInLibrary,
@@ -40,13 +43,23 @@ function IssueList({ issues }: { issues: BlueprintIssue[] }) {
     <Callout tone="danger" title="This blueprint has problems">
       <ul className="list-disc pl-5" data-testid="blueprint-issues">
         {issues.map((i, n) => (
-          <li key={n}>
-            <code>{i.path}</code>: {i.message}
-          </li>
+          <li key={n}>{explainIssue(i)}</li>
         ))}
       </ul>
     </Callout>
   )
+}
+
+/** Rounds a phase will run with the params currently chosen in the form. */
+function overviewRounds(
+  blueprint: Blueprint,
+  phase: Blueprint['phases'][number],
+  values: Record<string, unknown>,
+): number {
+  if (phase.repeat === undefined) return 1
+  const { params } = resolveParams(blueprint, values)
+  const n = resolveNumber(phase.repeat, params)
+  return n === null ? 1 : Math.max(1, Math.floor(n))
 }
 
 function ParamForm({
@@ -133,18 +146,30 @@ function SessionRunner({
       <Panel title="Session finished" data-testid="session-finished">
         <p className="text-sm">
           {session.endReason === 'aborted' ? 'Stopped early.' : 'All phases done.'} {sum.steps}{' '}
-          steps
-          {sum.scoreAverage !== null ? `, average score ${sum.scoreAverage}%` : ''}
-          {sum.skipped > 0 ? `, ${sum.skipped} skipped` : ''}.
+          {sum.steps === 1 ? 'step' : 'steps'} completed
+          {sum.skipped > 0 ? `, ${sum.skipped} skipped` : ''}. A phase with rounds counts once per
+          round, so it can appear more than once below.
         </p>
+        {sum.scoreAverage !== null && (
+          <p className="text-sm" data-testid="session-average">
+            Average score: {sum.scoreAverage}%. This is the mean of the {sum.scoreCount} score
+            {sum.scoreCount === 1 ? '' : 's'} you entered (one per scored step); skipped steps are
+            not counted.
+          </p>
+        )}
         <ol className="list-decimal space-y-1 pl-5 text-sm">
-          {session.history.map((h, i) => (
-            <li key={i}>
-              {blueprint.phases.find((p) => p.id === h.phaseId)?.title ?? h.phaseId}
-              {h.score !== undefined ? ` (${h.score}%)` : ''}
-              {h.skipped ? ' (skipped)' : ''}
-            </li>
-          ))}
+          {session.history.map((h, i) => {
+            const phase = blueprint.phases.find((p) => p.id === h.phaseId)
+            const total = roundsFor(blueprint, session, h.phaseId)
+            return (
+              <li key={i}>
+                {phase?.title ?? h.phaseId}
+                {total > 1 ? `, round ${h.round} of ${total}` : ''}
+                {h.score !== undefined ? `: score ${h.score}%` : ''}
+                {h.skipped ? ': skipped' : ''}
+              </li>
+            )
+          })}
         </ol>
         <Button
           variant="secondary"
@@ -369,6 +394,12 @@ export function BlueprintStudio() {
                 {active.phases.map((p) => (
                   <li key={p.id}>
                     <strong>{p.title}</strong> <span className="opacity-60">({p.kind})</span>
+                    {overviewRounds(active, p, paramValues) > 1 && (
+                      <span className="opacity-60">
+                        {' '}
+                        · {overviewRounds(active, p, paramValues)} rounds
+                      </span>
+                    )}
                   </li>
                 ))}
               </ol>
