@@ -52,7 +52,7 @@ export function parseStatsSync(raw: unknown): Validated<StatsSync> {
 
 export const WS_MAX_MESSAGE_CHARS = 4096
 export const ROOM_MAX_PARTICIPANTS = 50
-const STATUSES = ['studying', 'break', 'away']
+const STATUSES = ['studying', 'break', 'idle']
 
 export interface JoinParticipant {
   id: string

@@ -223,6 +223,11 @@ describe('stats and join validation', () => {
   it('validates join participants', () => {
     const p = { id: 'usr_1', alias: 'Ada', status: 'studying', streak: 1, cardsReviewed: 2 }
     expect(parseJoinParticipant(p).ok).toBe(true)
+    // Status values come from the shared participant schema: studying | break | idle.
+    for (const status of ['studying', 'break', 'idle']) {
+      expect(parseJoinParticipant({ ...p, status }).ok).toBe(true)
+    }
+    expect(parseJoinParticipant({ ...p, status: 'away' }).ok).toBe(false)
     for (const bad of [
       null,
       { ...p, id: '<x>' },
