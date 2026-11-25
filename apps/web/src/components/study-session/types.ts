@@ -28,6 +28,7 @@ export interface StudySessionDto {
   selected: number
   truncated: boolean
   noRecallEstimate: number
+  decaySource: { custom: number; default: number }
   fingerprint: string
   cards: SessionCardDto[]
   startHref: string

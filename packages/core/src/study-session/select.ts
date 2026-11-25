@@ -1,4 +1,4 @@
-import { calculateRetrievability } from '../fsrs'
+import { calculateRetrievability, FSRS6_DEFAULT_DECAY } from '../fsrs'
 import type {
   FunnelStep,
   SessionCardRow,
@@ -25,7 +25,11 @@ export function estimateRecall(card: SessionCardRow, nowMs: number): number | nu
   if (card.state === 0 || !(card.stability > 0) || !card.lastReview) return null
   const last = Date.parse(card.lastReview)
   if (Number.isNaN(last)) return null
-  const r = calculateRetrievability(card.stability, Math.max(0, (nowMs - last) / DAY_MS))
+  const r = calculateRetrievability(
+    card.stability,
+    Math.max(0, (nowMs - last) / DAY_MS),
+    card.decay ?? FSRS6_DEFAULT_DECAY,
+  )
   return Number.isFinite(r) ? r : null
 }
 
@@ -115,7 +119,14 @@ export function selectStudySession(
   }
 
   const matched = work.length
-  for (const w of work) if (w.recall === null) w.recall = estimateRecall(w.row, nowMs)
+  const decaySource = { custom: 0, default: 0 }
+  for (const w of work) {
+    if (w.recall === null) w.recall = estimateRecall(w.row, nowMs)
+    if (w.recall !== null) {
+      if (w.row.decay != null) decaySource.custom++
+      else decaySource.default++
+    }
+  }
 
   const order: Record<StudySessionFilter['sort'], (a: Work, b: Work) => number> = {
     'most-overdue': (a, b) => a.dueMs - b.dueMs || cmpId(a, b),
@@ -149,8 +160,11 @@ export function selectStudySession(
     truncated: matched > filter.limit,
     fingerprint: sessionFingerprint(selected.map((s) => s.id)),
     noRecallEstimate,
+    decaySource,
     assumptions: [
-      `Estimated recall is the model's estimate as of ${nowIso.slice(0, 10)} from the default FSRS-6 forgetting curve and each card's stored stability and last review. Your fitted weights are not applied, and it is not a validated prediction.`,
+      decaySource.custom > 0
+        ? `Estimated recall is the model's estimate as of ${nowIso.slice(0, 10)} from each card's stored stability and last review. ${decaySource.custom} of ${decaySource.custom + decaySource.default} matching cards use the forgetting-curve decay from your stored FSRS weights (deck weights, else global). The rest use the default FSRS-6 decay. The weights are not refit here, and it is not a validated prediction.`
+        : `Estimated recall is the model's estimate as of ${nowIso.slice(0, 10)} from the default FSRS-6 forgetting curve and each card's stored stability and last review. No custom weights were found for these cards, and it is not a validated prediction.`,
       'New cards and cards with no stored stability or last review have no recall estimate.',
       'Suspended and buried cards are left out because the review queue refuses them.',
       'The list is a snapshot. Start opens exactly these cards. If one changed since this preview, the review queue refuses the list and you can preview again.',

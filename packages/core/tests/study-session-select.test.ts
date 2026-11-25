@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  decayFromWeights,
   estimateRecall,
   parseStudySessionFilter,
   selectStudySession,
@@ -205,6 +206,37 @@ describe('selectStudySession', () => {
       const a = selectStudySession(rows, f(), NOW)
       const b = selectStudySession([card(1), card(2, { suspended: true })], f(), NOW)
       expect(a.fingerprint).not.toBe(b.fingerprint)
+    })
+  })
+
+  describe('forgetting-curve decay', () => {
+    it('decayFromWeights accepts only a 21-value set with an in-range decay', () => {
+      const w = Array.from({ length: 21 }, () => 1)
+      expect(decayFromWeights(null)).toBeNull()
+      expect(decayFromWeights(w.slice(0, 19))).toBeNull()
+      expect(decayFromWeights([...w.slice(0, 20), 0.3])).toBe(0.3)
+      expect(decayFromWeights([...w.slice(0, 20), 0.05])).toBeNull()
+      expect(decayFromWeights([...w.slice(0, 20), 0.9])).toBeNull()
+      expect(decayFromWeights([...w.slice(0, 20), NaN])).toBeNull()
+    })
+
+    it('a different decay changes the estimate for the same card', () => {
+      const base = card(1, { stability: 10, lastReview: day(-40) })
+      const a = estimateRecall({ ...base, decay: null }, NOW.getTime())!
+      const b = estimateRecall({ ...base, decay: 0.5 }, NOW.getTime())!
+      expect(a).not.toBeCloseTo(b, 3)
+    })
+
+    it('counts and discloses which cards used a custom decay', () => {
+      const rows = [card(1, { decay: 0.3 }), card(2), card(3, { state: 0, decay: 0.3 })]
+      const s = selectStudySession(rows, f({ limit: 10 }), NOW)
+      expect(s.decaySource).toEqual({ custom: 1, default: 1 })
+      expect(s.assumptions[0]).toMatch(/1 of 2 matching cards use the forgetting-curve decay/)
+      expect(s.assumptions[0]).toMatch(/not a validated prediction/)
+      const none = selectStudySession([card(1)], f(), NOW)
+      expect(none.decaySource).toEqual({ custom: 0, default: 1 })
+      expect(none.assumptions[0]).toMatch(/default FSRS-6 forgetting curve/)
+      expect(none.assumptions[0]).not.toMatch(/personal/i)
     })
   })
 

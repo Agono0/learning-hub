@@ -10,6 +10,7 @@
  */
 import { count, inArray } from 'drizzle-orm'
 import {
+  decayFromWeights,
   parseStudySessionFilter,
   selectStudySession,
   STUDY_SESSION_LIMITS,
@@ -17,7 +18,7 @@ import {
   type StudySessionFilter,
 } from '@learning-hub/core'
 import { getDb, type LearningHubDB } from '../index'
-import { cards, decks } from '../schema'
+import { cards, decks, userSettings } from '../schema'
 import { cardLabel } from './exam-prep'
 
 export interface StudySessionCard {
@@ -42,6 +43,7 @@ export interface StudySessionRun {
   selected: number
   truncated: boolean
   noRecallEstimate: number
+  decaySource: SessionSelection['decaySource']
   fingerprint: string
   cards: StudySessionCard[]
   /** The review queue link for exactly these cards, in this order. Empty when nothing matched. */
@@ -100,7 +102,18 @@ export async function runStudySession(
     .where(scope)
     .all()
 
-  const sel = selectStudySession(rows, filter, now)
+  // Stored stability was produced by the deck's weights if it has its own, else the global
+  // weights. Use that decay for recall so the estimate matches how the card was scheduled.
+  const globalDecay = decayFromWeights(db.select().from(userSettings).limit(1).get()?.fsrsWeights)
+  const deckDecay = new Map<number, number | null>()
+  for (const d of db.select({ id: decks.id, w: decks.fsrsWeights }).from(decks).all())
+    if (d.w && d.w.length > 0) deckDecay.set(d.id, decayFromWeights(d.w))
+  const withDecay = rows.map((r) => ({
+    ...r,
+    decay: deckDecay.has(r.deckId) ? deckDecay.get(r.deckId)! : globalDecay,
+  }))
+
+  const sel = selectStudySession(withDecay, filter, now)
 
   const ids = sel.selected.map((p) => p.id)
   const labels = new Map<number, string>()
@@ -133,6 +146,7 @@ export async function runStudySession(
       selected: sel.selected.length,
       truncated: sel.truncated,
       noRecallEstimate: sel.noRecallEstimate,
+      decaySource: sel.decaySource,
       fingerprint: sel.fingerprint,
       cards: sel.selected.map((p) => ({
         id: p.id,

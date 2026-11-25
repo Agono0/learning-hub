@@ -198,6 +198,24 @@ describe('GET /api/study-session/preview', () => {
   })
 })
 
+describe('custom weights', () => {
+  it('uses the deck weights decay for that deck and reports it', async () => {
+    const w = Array.from({ length: 21 }, () => 1)
+    w[20] = 0.4
+    M.db.db.update(M.db.decks).set({ fsrsWeights: w }).where(eq(M.db.decks.id, deckB)).run()
+    const { body } = await get('?states=2&recallBelow=0.99&limit=100')
+    expect(body.decaySource.custom).toBeGreaterThan(0)
+    expect(body.decaySource.default).toBeGreaterThan(0)
+    expect(body.assumptions[0]).toMatch(
+      /use the forgetting-curve decay from your stored FSRS weights/,
+    )
+    expect(body.assumptions[0]).toMatch(/not a validated prediction/)
+    M.db.db.update(M.db.decks).set({ fsrsWeights: null }).where(eq(M.db.decks.id, deckB)).run()
+    const again = await get('?states=2&recallBelow=0.99&limit=100')
+    expect(again.body.decaySource.custom).toBe(0)
+  })
+})
+
 describe('scan bound', () => {
   it('refuses, rather than samples, when more cards are in scope than a session can scan', async () => {
     const { runStudySession } = await import('@learning-hub/db')

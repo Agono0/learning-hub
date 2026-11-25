@@ -26,6 +26,13 @@ export const STUDY_SESSION_LIMITS = {
   maxScan: 50_000,
 } as const
 
+/** FSRS-6 decay lives at index 20 of a 21-value weight set. Anything else (or an out-of-range value) means "use the default". */
+export function decayFromWeights(weights: readonly number[] | null | undefined): number | null {
+  if (!weights || weights.length !== 21) return null
+  const d = weights[20]!
+  return Number.isFinite(d) && d >= 0.1 && d <= 0.8 ? d : null
+}
+
 export interface StudySessionFilter {
   /** Only cards in these decks. */
   deckIds?: number[]
@@ -53,6 +60,8 @@ export interface SessionCardRow {
   stability: number
   lapses: number
   lastReview: string | null
+  /** Forgetting-curve decay from the card's own FSRS weights (deck weights, else global), or null for the default. */
+  decay?: number | null
   suspended: boolean
   buryUntil: string | null
   createdAt: string
@@ -98,6 +107,8 @@ export interface SessionSelection {
   fingerprint: string
   /** Cards dropped by the recall filter because the model has no estimate for them. */
   noRecallEstimate: number
+  /** Cards with a recall estimate, split by which forgetting-curve decay produced it. */
+  decaySource: { custom: number; default: number }
   assumptions: string[]
 }
 
