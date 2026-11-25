@@ -33,7 +33,7 @@ import {
   userSettings,
   xpEvents,
 } from '../schema'
-import { withTransaction } from '../transaction'
+import { withTransaction, type Transaction } from '../transaction'
 import { awardXp } from './xp'
 
 export type QuestRow = typeof quests.$inferSelect
@@ -254,7 +254,7 @@ export function getDailyQuest(date: string, opts: { db?: LearningHubDB } = {}): 
 /**
  * Ensure all catalog items from ACHIEVEMENTS exist in the database.
  */
-export function ensureAchievementCatalog(opts: { db?: LearningHubDB } = {}): void {
+export function ensureAchievementCatalog(opts: { db?: LearningHubDB | Transaction } = {}): void {
   const db = opts.db ?? getDb()
   const rows = db.select().from(achievements).all()
   const known = new Set(rows.map((r) => r.key))
@@ -270,7 +270,9 @@ export function ensureAchievementCatalog(opts: { db?: LearningHubDB } = {}): voi
 /**
  * Compute current aggregates across review, focus, streak, courses, skills, and ideas.
  */
-export function getAchievementStats(opts: { db?: LearningHubDB } = {}): AchievementStats {
+export function getAchievementStats(
+  opts: { db?: LearningHubDB | Transaction } = {},
+): AchievementStats {
   const db = opts.db ?? getDb()
 
   const [reviewCount] = db
@@ -388,7 +390,7 @@ export function getAchievementStats(opts: { db?: LearningHubDB } = {}): Achievem
 export function evaluateAndUnlockAchievements(
   opts: {
     now?: Date
-    db?: LearningHubDB
+    db?: LearningHubDB | Transaction
   } = {},
 ): UnlockedAchievementsResult {
   const db = opts.db ?? getDb()

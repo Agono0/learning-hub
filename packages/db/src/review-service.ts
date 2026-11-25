@@ -63,6 +63,13 @@ export interface ReviewResult {
 export interface ReviewOptions {
   db?: LearningHubDB
   now?: Date
+  /**
+   * Runs INSIDE the same atomic transaction, after every review row is
+   * applied and before commit. A settlement whose rewards depend on the
+   * review outcome uses this hook so grades, rewards and dependent state
+   * commit or roll back together. A throw here aborts the whole batch.
+   */
+  afterReviews?: (tx: Transaction, results: ReviewResult[]) => void
 }
 
 /** Thrown when a review references a cardId that does not exist (→ 404). */
@@ -382,6 +389,7 @@ export async function executeBatchReview(
           : new Date())
       results.push(executeReviewInTx(tx, payload, sched, now))
     }
+    opts?.afterReviews?.(tx, results)
     return results
   }, database)
 

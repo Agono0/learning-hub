@@ -78,6 +78,8 @@ interface DeckInfo {
 
 interface SessionPayload {
   ok: boolean
+  /** Server-issued run identity — settlement is bound to this run. */
+  runId: string
   cards: ArenaCard[]
   limit: number
   config: ArenaConfig
@@ -195,6 +197,7 @@ export default function Arena3DPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const [cards, setCards] = useState<ArenaCard[]>([])
+  const [runId, setRunId] = useState<string | null>(null)
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
   const [arena, setArena] = useState<ArenaState | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -297,6 +300,7 @@ export default function Arena3DPage() {
       }))
       setCards(payload.cards)
       setChallenges(nextChallenges)
+      setRunId(payload.runId)
       setCfg(payload.config)
       setGuardian(payload.guardian)
       setArena(createArenaSession(nextChallenges, payload.config, payload.guardian.archetype))
@@ -374,10 +378,22 @@ export default function Arena3DPage() {
   async function settle(final: ArenaState): Promise<void> {
     setPhase('settling')
     const summary = buildArenaSummary(final)
-    const fallbackDeckIds = [...new Set(cards.map((c) => c.deckId))]
+    if (!runId) {
+      // No server-issued run — the session never started server-side, so
+      // there is nothing to settle against. Do not invent a payload.
+      toast({
+        tone: 'danger',
+        title: 'Settlement unavailable',
+        description:
+          'This run has no server session. Start a new arena run to record your reviews.',
+      })
+      setSettlement(null)
+      setPhase('results')
+      return
+    }
     try {
       const response = await apiSend<SettlementResponse>('/api/arena', 'POST', {
-        deckIds: selectedDeckIds.length ? selectedDeckIds : fallbackDeckIds,
+        runId,
         exchanges: final.exchanges.map((e) => ({
           cardId: e.cardId,
           grade: e.grade,
@@ -386,8 +402,6 @@ export default function Arena3DPage() {
         })),
         bestCombo: final.bestCombo,
         result: summary.result,
-        archetype: final.archetype,
-        boss: final.boss,
       })
       setSettlement(response)
       if (response.achievements.length > 0) {
@@ -402,7 +416,7 @@ export default function Arena3DPage() {
         tone: 'danger',
         title: 'Settlement failed',
         description:
-          'The grades were not recorded. Reopen the arena to retry — the cards are still due, nothing was scheduled from this run.',
+          'The settlement could not be completed. If this run was already settled, your grades are recorded; otherwise nothing was scheduled and you can retry from the arena.',
       })
       setSettlement(null)
     }

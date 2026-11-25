@@ -185,9 +185,10 @@ describe('payloads', () => {
     ).toBe(false)
   })
 
-  it('settlement requires at least one exchange and a result', () => {
+  it('settlement requires a server-issued run id, exchanges and a result', () => {
+    const runId = '7d3f2e10-4c5b-4a1e-9c2d-8f6a5b4c3d2e'
     const ok = arenaSettlementSchema.safeParse({
-      deckIds: [1],
+      runId,
       exchanges: [{ cardId: 1, grade: 3, confidence: 1, timeMs: 900 }],
       bestCombo: 1,
       result: 'victory',
@@ -195,7 +196,15 @@ describe('payloads', () => {
     expect(ok.success).toBe(true)
     expect(
       arenaSettlementSchema.safeParse({
-        deckIds: [1],
+        runId: 'not-a-uuid',
+        exchanges: [{ cardId: 1, grade: 3, confidence: 1, timeMs: 900 }],
+        bestCombo: 0,
+        result: 'victory',
+      }).success,
+    ).toBe(false)
+    expect(
+      arenaSettlementSchema.safeParse({
+        runId,
         exchanges: [],
         bestCombo: 0,
         result: 'victory',

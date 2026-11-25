@@ -11,8 +11,9 @@
  * never stored as mutable counters that could drift from it.
  */
 import { and, desc, eq, sql } from 'drizzle-orm'
-import { arenaRuns } from '../schema'
+import { arenaRuns, arenaSessions } from '../schema'
 import { getDb, type LearningHubDB } from '../index'
+import { withTransaction, type Transaction } from '../transaction'
 
 export interface ArenaRunRecord {
   userId?: string
@@ -55,7 +56,10 @@ export interface ArenaStats {
  * a silent no-op (returns false) instead of a duplicate row.
  * @returns true when the row was inserted, false when it already existed.
  */
-export function recordArenaRun(record: ArenaRunRecord, db: LearningHubDB = getDb()): boolean {
+export function recordArenaRun(
+  record: ArenaRunRecord,
+  db: LearningHubDB | Transaction = getDb(),
+): boolean {
   const inserted = db
     .insert(arenaRuns)
     .values({
@@ -165,4 +169,171 @@ export function getArenaRunByReference(
     .where(and(eq(arenaRuns.referenceId, referenceId)))
     .limit(1)
     .all()[0]
+}
+
+// ─── Session lifecycle (server-issued run identity) ─────────────────────────
+
+/**
+ * How long a 'settling' claim may linger before a retry may reclaim it. A
+ * crash between the claim and the commit would otherwise wedge the run
+ * forever. Two minutes is far beyond any real settle time (one SQLite tx).
+ * Reclaim is safe because of the settleAttempt fencing token: the stale
+ * claimant's commit matches zero rows and its whole transaction rolls back.
+ */
+export const ARENA_SETTLING_TTL_MS = 120_000
+
+export type ArenaSessionStatus = 'open' | 'settling' | 'settled'
+
+export type ArenaSessionRow = typeof arenaSessions.$inferSelect
+
+/** Issue a run: the exact queue the server dealt, bound to a fresh id and owner. */
+export function createArenaSession(
+  input: {
+    userId?: string
+    deckIds: number[]
+    cardIds: number[]
+    archetype: string
+    boss: boolean
+  },
+  db: LearningHubDB = getDb(),
+): ArenaSessionRow {
+  const id = crypto.randomUUID()
+  const [row] = db
+    .insert(arenaSessions)
+    .values({
+      id,
+      userId: input.userId ?? 'default',
+      deckIds: input.deckIds,
+      cardIds: input.cardIds,
+      archetype: input.archetype,
+      boss: input.boss,
+      status: 'open',
+    })
+    .returning()
+    .all()
+  return row!
+}
+
+export function getArenaSession(
+  id: string,
+  db: LearningHubDB = getDb(),
+): ArenaSessionRow | undefined {
+  return db.select().from(arenaSessions).where(eq(arenaSessions.id, id)).limit(1).all()[0]
+}
+
+export type ClaimOutcome =
+  | { kind: 'claimed'; run: ArenaSessionRow; attempt: number }
+  | { kind: 'in_progress' }
+  | { kind: 'settled'; run: ArenaSessionRow }
+  | { kind: 'missing' }
+
+/**
+ * Atomically claim the right to settle a run (open → settling, or reclaim a
+ * stale settling), incrementing the settleAttempt fencing token. Runs inside
+ * an IMMEDIATE transaction, so concurrent claimants serialize and exactly
+ * one wins. Owner-scoped: a run belonging to another userId reports
+ * 'missing' — possession of the UUID alone is not authorization.
+ */
+export function claimArenaSettlement(
+  runId: string,
+  opts: {
+    userId?: string
+    now?: Date
+    settlingTtlMs?: number
+    db?: LearningHubDB
+  } = {},
+): ClaimOutcome {
+  const db = opts.db ?? getDb()
+  const userId = opts.userId ?? 'default'
+  const now = opts.now ?? new Date()
+  const ttl = opts.settlingTtlMs ?? ARENA_SETTLING_TTL_MS
+
+  return withTransaction((tx) => {
+    const run = tx.select().from(arenaSessions).where(eq(arenaSessions.id, runId)).get()
+    if (!run || run.userId !== userId) return { kind: 'missing' } as const
+    if (run.status === 'settled') return { kind: 'settled', run } as const
+    if (run.status === 'settling') {
+      const startedAt = run.settlingStartedAt ? Date.parse(run.settlingStartedAt) : 0
+      const stale = now.getTime() - startedAt > ttl
+      if (!stale) return { kind: 'in_progress' } as const
+      // Stale claim (crashed settler): reclaim below with a fresh token.
+    }
+    const attempt = run.settleAttempt + 1
+    const [updated] = tx
+      .update(arenaSessions)
+      .set({
+        status: 'settling',
+        settlingStartedAt: now.toISOString(),
+        settleAttempt: attempt,
+      })
+      .where(eq(arenaSessions.id, runId))
+      .returning()
+      .all()
+    return { kind: 'claimed', run: updated!, attempt } as const
+  }, db)
+}
+
+/** Thrown when a fenced settlement commit loses the run to a newer claim. */
+export class ArenaSettlementFencedError extends Error {
+  constructor(runId: string) {
+    super(`Arena settlement claim lost for run ${runId}`)
+    this.name = 'ArenaSettlementFencedError'
+  }
+}
+
+/**
+ * Mark a claimed run settled — with the normalized accepted grade log and
+ * the exact response the client received — inside the caller's settlement
+ * transaction. The conditional update enforces the fencing token: if a
+ * newer claim owns the run, zero rows match, we throw, and the caller's
+ * transaction (reviews, coins, run record) rolls back with it.
+ */
+export function completeArenaSettlementInTx(
+  tx: Transaction,
+  runId: string,
+  attempt: number,
+  gradeLog: unknown[],
+  settlement: Record<string, unknown>,
+): void {
+  const res = tx
+    .update(arenaSessions)
+    .set({
+      status: 'settled',
+      gradeLog,
+      settlementJson: settlement,
+      settledAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(arenaSessions.id, runId),
+        eq(arenaSessions.status, 'settling'),
+        eq(arenaSessions.settleAttempt, attempt),
+      ),
+    )
+    .run()
+  if (res.changes === 0) {
+    throw new ArenaSettlementFencedError(runId)
+  }
+}
+
+/**
+ * Abandon a claim without settling (post-claim validation failed). Fenced:
+ * only reopens while THIS attempt still owns the claim, so a stale
+ * claimant's release can never clobber the run's new owner.
+ */
+export function releaseArenaClaim(
+  runId: string,
+  attempt: number,
+  db: LearningHubDB = getDb(),
+): void {
+  db.update(arenaSessions)
+    .set({ status: 'open', settlingStartedAt: null })
+    .where(
+      and(
+        eq(arenaSessions.id, runId),
+        eq(arenaSessions.status, 'settling'),
+        eq(arenaSessions.settleAttempt, attempt),
+      ),
+    )
+    .run()
 }
