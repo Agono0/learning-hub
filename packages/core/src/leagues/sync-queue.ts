@@ -62,6 +62,11 @@ export function laneFor(mutation: LeagueMutation): string {
     case 'duel-answer':
       return `duel:${mutation.duelId}`
     case 'join':
+    case 'leave':
+    case 'rename':
+    case 'invite-create':
+    case 'invite-revoke':
+    case 'invite-policy':
       return 'membership'
     case 'close-round':
       return 'round'
@@ -89,6 +94,13 @@ const PERMANENT_CODES = new Set([
   'side_finished',
   'out_of_order',
   'season_complete',
+  'invite_required',
+  'invite_invalid',
+  'invite_exists',
+  'too_many_invites',
+  'invite_unknown',
+  'not_invite_owner',
+  'not_founder',
 ])
 
 /** Codes that mean "try again later": the item itself may still be fine. */

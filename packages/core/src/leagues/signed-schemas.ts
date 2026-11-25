@@ -23,7 +23,31 @@ export const DuelPromptInputSchema = z.object({
 
 export const LeagueMutationSchema = z.discriminatedUnion('type', [
   /** Join the league as the signing key. Alias is display-only. */
-  z.object({ type: z.literal('join'), alias: z.string().min(1).max(40) }),
+  z.object({
+    type: z.literal('join'),
+    alias: z.string().min(1).max(40),
+    /** Secret invite code. Required only while the league is invite-only. */
+    invite: z.string().min(16).max(128).optional(),
+  }),
+  /** Change my display alias. Display only, never an identity. */
+  z.object({ type: z.literal('rename'), alias: z.string().min(1).max(40) }),
+  /** Leave the league. Open duels of mine are cancelled; history stays. */
+  z.object({ type: z.literal('leave') }),
+  /** Publish the digest of an invite code I generated. The code is never sent. */
+  z.object({
+    type: z.literal('invite-create'),
+    digest: z.string().regex(/^[0-9a-f]{64}$/),
+    maxUses: z.number().int().min(1).max(20),
+    ttlMs: z
+      .number()
+      .int()
+      .min(60_000)
+      .max(7 * 24 * 60 * 60_000),
+  }),
+  /** Revoke an invite I created (the founder may revoke any). */
+  z.object({ type: z.literal('invite-revoke'), digest: z.string().regex(/^[0-9a-f]{64}$/) }),
+  /** Founder only: require an invite to join. */
+  z.object({ type: z.literal('invite-policy'), required: z.boolean() }),
   /** Challenge another joined member to a duel the challenger authors. */
   z.object({
     type: z.literal('duel-open'),

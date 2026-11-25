@@ -25,6 +25,7 @@ import {
 } from './engine'
 import { decideDuel, type Duel, type DuelResult } from './duels'
 import { pruneDuels } from './retention'
+import { INVITE_TOMBSTONE_MS, MAX_ACTIVE_INVITES_PER_MEMBER, MAX_STORED_INVITES } from './invites'
 import type { LeagueMutation } from './signed-schemas'
 import type { ReplayLedger, VerifiedMutation } from './signed'
 import { NONCE_RETENTION_MS } from './signed'
@@ -80,6 +81,17 @@ const DuelRuntimeSchema = z.object({
 })
 export type DuelRuntime = z.infer<typeof DuelRuntimeSchema>
 
+const InviteSchema = z.object({
+  creator: z.string(),
+  createdAt: z.number().int(),
+  expiresAt: z.number().int(),
+  maxUses: z.number().int().min(1),
+  /** Handles that joined with this invite. Never exposed in public views. */
+  uses: z.array(z.string()),
+  revoked: z.boolean(),
+})
+export type Invite = z.infer<typeof InviteSchema>
+
 export const AcceptedEntrySchema = z.object({
   n: z.number().int().positive(),
   at: z.number().int(),
@@ -100,6 +112,10 @@ export const AuthorityStateSchema = z.object({
   nonces: z.record(z.string(), z.number().int()),
   /** signer id -> acceptance times inside the rate window. */
   rate: z.record(z.string(), z.array(z.number().int())).default({}),
+  /** Invite digest -> invite. Only digests are stored, never codes. */
+  invites: z.record(z.string(), InviteSchema).default({}),
+  /** When true, joining needs a live invite (unless the league is empty). */
+  inviteOnly: z.boolean().default(false),
   accepted: z.number().int().nonnegative(),
   log: z.array(AcceptedEntrySchema),
 })
@@ -114,6 +130,8 @@ export function createAuthorityState(league: League): AuthorityState {
     lastSeq: {},
     nonces: {},
     rate: {},
+    invites: {},
+    inviteOnly: false,
     accepted: 0,
     log: [],
   })
@@ -145,6 +163,13 @@ export type ReduceFailureCode =
   | 'round_not_due'
   | 'season_complete'
   | 'rate_limited'
+  | 'invite_required'
+  | 'invite_invalid'
+  | 'invite_exists'
+  | 'too_many_invites'
+  | 'invite_unknown'
+  | 'not_invite_owner'
+  | 'not_founder'
 
 export type ReduceEffect =
   | { kind: 'joined'; handle: string }
@@ -153,6 +178,11 @@ export type ReduceEffect =
   | { kind: 'duel-answered'; duelId: string; handle: string; elapsedMs: number }
   | { kind: 'duel-decided'; duelId: string; result: DuelResult }
   | { kind: 'round-closed'; round: RoundResult }
+  | { kind: 'renamed'; handle: string }
+  | { kind: 'left'; handle: string; cancelledDuels: number }
+  | { kind: 'invite-created'; digest: string }
+  | { kind: 'invite-revoked'; digest: string }
+  | { kind: 'invite-policy'; required: boolean }
 
 export type ReduceResult =
   | { ok: true; state: AuthorityState; effects: ReduceEffect[] }
@@ -190,6 +220,32 @@ function openDuelsFor(state: AuthorityState, handle: string): number {
   ).length
 }
 
+/** Extra facts the async room computes before the sync reducer runs. */
+export interface ApplyContext {
+  /** SHA-256 hex digest of the join's `invite` code, when it carried one. */
+  inviteDigest?: string
+}
+
+function inviteIsLive(inv: Invite, now: number): boolean {
+  return !inv.revoked && now < inv.expiresAt && inv.uses.length < inv.maxUses
+}
+
+function activeInvitesFor(state: AuthorityState, handle: string, now: number): number {
+  return Object.values(state.invites).filter((i) => i.creator === handle && inviteIsLive(i, now))
+    .length
+}
+
+/** Drop invites that ended more than the tombstone window ago, then cap size. */
+export function pruneInvites(invites: Record<string, Invite>, now: number): Record<string, Invite> {
+  // Every invite is dead once expired, whatever its other state, so the
+  // expiry time alone decides when its tombstone can go.
+  const kept = Object.entries(invites).filter(
+    ([, inv]) => now - inv.expiresAt <= INVITE_TOMBSTONE_MS,
+  )
+  kept.sort((a, b) => b[1].createdAt - a[1].createdAt)
+  return Object.fromEntries(kept.slice(0, MAX_STORED_INVITES))
+}
+
 function reject(state: AuthorityState, code: ReduceFailureCode): ReduceResult {
   return { ok: false, code, state }
 }
@@ -224,6 +280,7 @@ function commit(
   const next: AuthorityState = {
     ...merged,
     duels: pruneDuels(merged.duels, now).duels,
+    invites: pruneInvites(merged.invites, now),
     lastSeq: { ...state.lastSeq, [v.signer]: v.seq },
     nonces: { ...state.nonces, [v.nonce]: now },
     rate: { ...state.rate, [v.signer]: recent },
@@ -242,6 +299,7 @@ export function applyVerifiedMutation(
   stateIn: AuthorityState,
   v: Extract<VerifiedMutation, { ok: true }>,
   now: number,
+  ctx: ApplyContext = {},
 ): ReduceResult {
   const state = pruneNonces(stateIn, now)
   const m: LeagueMutation = v.mutation
@@ -254,9 +312,113 @@ export function applyVerifiedMutation(
     case 'join': {
       if (isMember) return reject(stateIn, 'already_member')
       if (state.league.players.length >= MAX_MEMBERS) return reject(stateIn, 'league_full')
+      let invites = state.invites
+      // An empty league is always open: its next member becomes the founder.
+      if (state.inviteOnly && state.league.players.length > 0) {
+        if (!m.invite) return reject(stateIn, 'invite_required')
+        const inv = ctx.inviteDigest ? state.invites[ctx.inviteDigest] : undefined
+        if (!ctx.inviteDigest || !inv || !inviteIsLive(inv, now)) {
+          // One code for unknown, expired, revoked and spent: no probing oracle.
+          return reject(stateIn, 'invite_invalid')
+        }
+        invites = {
+          ...state.invites,
+          [ctx.inviteDigest]: { ...inv, uses: [...inv.uses, handle] },
+        }
+      }
       const league = joinLeague(state.league, handle)
-      return commit(state, v, now, { league, aliases: { ...state.aliases, [handle]: m.alias } }, [
-        { kind: 'joined', handle },
+      return commit(
+        state,
+        v,
+        now,
+        { league, invites, aliases: { ...state.aliases, [handle]: m.alias } },
+        [{ kind: 'joined', handle }],
+      )
+    }
+
+    case 'rename': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      return commit(state, v, now, { aliases: { ...state.aliases, [handle]: m.alias } }, [
+        { kind: 'renamed', handle },
+      ])
+    }
+
+    case 'leave': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      const players = state.league.players.filter((p) => p.handle !== handle)
+      const league = LeagueSchema.parse({ ...state.league, players })
+      const aliases = { ...state.aliases }
+      delete aliases[handle]
+      const duels: Record<string, DuelRuntime> = {}
+      let cancelled = 0
+      for (const [id, d] of Object.entries(state.duels)) {
+        if (d.status === 'open' && (d.playerA === handle || d.playerB === handle)) cancelled++
+        else duels[id] = d
+      }
+      // The leaver's invites die with them; an empty league resets to open.
+      const invites: Record<string, Invite> =
+        players.length === 0
+          ? {}
+          : Object.fromEntries(
+              Object.entries(state.invites).map(([d, inv]) => [
+                d,
+                inv.creator === handle ? { ...inv, revoked: true } : inv,
+              ]),
+            )
+      return commit(
+        state,
+        v,
+        now,
+        {
+          league,
+          aliases,
+          duels,
+          invites,
+          inviteOnly: players.length === 0 ? false : state.inviteOnly,
+        },
+        [{ kind: 'left', handle, cancelledDuels: cancelled }],
+      )
+    }
+
+    case 'invite-create': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      if (state.invites[m.digest]) return reject(stateIn, 'invite_exists')
+      if (activeInvitesFor(state, handle, now) >= MAX_ACTIVE_INVITES_PER_MEMBER) {
+        return reject(stateIn, 'too_many_invites')
+      }
+      const invite: Invite = {
+        creator: handle,
+        createdAt: now,
+        expiresAt: now + m.ttlMs,
+        maxUses: m.maxUses,
+        uses: [],
+        revoked: false,
+      }
+      return commit(state, v, now, { invites: { ...state.invites, [m.digest]: invite } }, [
+        { kind: 'invite-created', digest: m.digest },
+      ])
+    }
+
+    case 'invite-revoke': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      const inv = state.invites[m.digest]
+      if (!inv) return reject(stateIn, 'invite_unknown')
+      const founder = state.league.players[0]?.handle
+      if (inv.creator !== handle && founder !== handle) return reject(stateIn, 'not_invite_owner')
+      return commit(
+        state,
+        v,
+        now,
+        { invites: { ...state.invites, [m.digest]: { ...inv, revoked: true } } },
+        [{ kind: 'invite-revoked', digest: m.digest }],
+      )
+    }
+
+    case 'invite-policy': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      if (state.league.players[0]?.handle !== handle) return reject(stateIn, 'not_founder')
+      return commit(state, v, now, { inviteOnly: m.required }, [
+        { kind: 'invite-policy', required: m.required },
       ])
     }
 
