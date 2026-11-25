@@ -49,6 +49,7 @@ import {
   Skeleton,
   useToast,
 } from '@/ui'
+import { ArenaCoachMarks, ArenaCoachReopenButton } from '@/components/arena/ArenaCoachMarks'
 import { ChipPicker } from '@/components/ui/chip-picker'
 import type { ArenaCanvasHandle } from '@/ui/ArenaCanvas'
 
@@ -292,6 +293,7 @@ export default function Arena3DPage() {
   const [runDetail, setRunDetail] = useState<RunDetailPayload | null>(null)
   const [runDetailLoading, setRunDetailLoading] = useState(false)
   const [guardian, setGuardian] = useState<SessionPayload['guardian'] | null>(null)
+  const [coachForced, setCoachForced] = useState(false)
   const [modifier, setModifier] = useState<SessionPayload['modifier'] | null>(null)
 
   // The tuned config arrives with the session payload (guardian-specific).
@@ -711,9 +713,14 @@ export default function Arena3DPage() {
               <p className="text-xs text-faint">
                 Grades land in the same review log as a normal session.
               </p>
+              <ArenaCoachReopenButton onOpen={() => setCoachForced(true)} />
             </div>
           </div>
         </Panel>
+      ) : null}
+
+      {phase === 'setup' ? (
+        <ArenaCoachMarks forceOpen={coachForced} onClose={() => setCoachForced(false)} />
       ) : null}
 
       {(phase === 'setup' || phase === 'loading') && record && record.stats.runs > 0 ? (
