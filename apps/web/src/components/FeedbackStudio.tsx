@@ -254,11 +254,11 @@ function AnalyzerPanel() {
           formative guidelines.
         </p>
         <TextArea
+          label="Feedback statements"
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
           rows={5}
           placeholder={'e.g. You are so smart, well done!\nCheck your units in step 2.'}
-          aria-label="Feedback statements to analyze"
         />
         <div className="mt-3">
           <Button onClick={analyze} disabled={raw.trim().length === 0} className="min-h-11">
