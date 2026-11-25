@@ -92,20 +92,13 @@ test.beforeEach(async ({ context }) => {
   })
 })
 
-test('debug digest endpoint', async ({ request }) => {
-  const r = await request.get(`/api/leagues?view=digest&slug=${LEAGUE}`)
-  console.log('DIGEST STATUS', r.status())
-  console.log('DIGEST BODY', (await r.text()).slice(0, 2000))
-  const s2 = await request.get(`/api/leagues?view=schedule&slug=${LEAGUE}`)
-  console.log('SCHED STATUS', s2.status())
-  console.log('SCHED BODY', (await s2.text()).slice(0, 1200))
-})
-
 test('capture all /leagues surfaces', async ({ page }) => {
   test.setTimeout(300_000)
   await page.goto('/leagues')
   await expect(page.getByTestId(`league-card-${LEAGUE}`)).toBeVisible({ timeout: 60_000 })
   await page.getByTestId(`league-card-${LEAGUE}`).click()
+  // card click selects + jumps to Standings; the digest lives on Overview
+  await page.getByRole('tab', { name: 'Overview' }).click()
   // digest panel with schedule strip, Elo movers and recent results
   await expect(page.getByTestId('league-digest')).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('digest-elo-movers').getByText(/amr \+/)).toBeVisible()
