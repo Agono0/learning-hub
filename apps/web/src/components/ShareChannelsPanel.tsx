@@ -72,6 +72,15 @@ type ChannelAnalyticsView = {
   }
 }
 
+type SyncStats = {
+  totalSyncs: number
+  updated: number
+  alreadyCurrent: number
+  failed: number
+  lastSyncAt: string | null
+  lastError: string | null
+}
+
 type CollectionSummary = {
   id: string
   title: string
@@ -158,6 +167,7 @@ export function ShareChannelsPanel() {
   const [newCollectionTitle, setNewCollectionTitle] = useState('')
   const [newCollectionHandle, setNewCollectionHandle] = useState('')
   const [collectionPick, setCollectionPick] = useState<string[]>([])
+  const [syncStats, setSyncStats] = useState<Record<string, SyncStats>>({})
 
   useEffect(() => {
     setSubs(loadSubscriptions())
@@ -377,6 +387,16 @@ export function ShareChannelsPanel() {
     await loadProposals(proposalChannel)
   }
 
+  async function loadSyncStats(channelIdFor: string) {
+    const res = await apiSend<{ ok: boolean; stats?: SyncStats }>('/api/share-channels', 'POST', {
+      action: 'sync-stats',
+      channelId: channelIdFor,
+    })
+    if (res.ok && res.stats) {
+      setSyncStats((prev) => ({ ...prev, [channelIdFor]: res.stats! }))
+    }
+  }
+
   async function refreshCollections() {
     const res = await apiSend<{ ok: boolean; collections: CollectionSummary[] }>(
       '/api/share-channels',
@@ -579,8 +599,40 @@ export function ShareChannelsPanel() {
                         <Badge tone="accent">{itemConflicts(s).length} conflict(s)</Badge>
                       )}
                       <Badge tone="neutral">{s.manifest.visibility}</Badge>
+                      <button
+                        type="button"
+                        className="text-xs text-indigo-600 underline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void loadSyncStats(s.manifest.channelId)
+                        }}
+                        data-testid={`sync-health-${s.manifest.channelId}`}
+                      >
+                        Sync health
+                      </button>
                     </div>
                   </button>
+                  {expandedId === s.manifest.channelId && syncStats[s.manifest.channelId] && (
+                    <div
+                      className="mt-3 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600"
+                      data-testid={`sync-stats-${s.manifest.channelId}`}
+                    >
+                      <p>
+                        {syncStats[s.manifest.channelId].totalSyncs} sync(s):{' '}
+                        {syncStats[s.manifest.channelId].updated} updated,{' '}
+                        {syncStats[s.manifest.channelId].alreadyCurrent} already current,{' '}
+                        {syncStats[s.manifest.channelId].failed} failed
+                        {syncStats[s.manifest.channelId].lastSyncAt
+                          ? ` · last ${syncStats[s.manifest.channelId].lastSyncAt!.slice(0, 16).replace('T', ' ')}`
+                          : ''}
+                      </p>
+                      {syncStats[s.manifest.channelId].lastError && (
+                        <p className="text-status-warning-text">
+                          Last error: {syncStats[s.manifest.channelId].lastError}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {expandedId === s.manifest.channelId && (
                     <ul className="mt-3 space-y-1 border-t border-neutral-100 pt-3">
                       {s.localItems.slice(0, 50).map((i) => {

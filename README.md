@@ -160,6 +160,14 @@ and one click imports a channel into your library as a reviewable deck or a full
 course that stays current as the creator publishes. See
 [`docs/share-channels.md`](docs/share-channels.md).
 
+A hub can also **host channels itself** (`/shared` → Hosting): hosted channels are fetchable
+by subscribers over HTTP and open to **subscription pull requests** — learners propose card
+fixes or additions, the owner accepts or declines, and an accepted proposal ships as the next
+channel version everyone receives through normal sync. **Collections** bundle whole channels
+into one portable JSON (a semester pack in a single paste, subscribe-all in one click), and
+per-channel **analytics** show version activity, churn and top contributors. All of it works
+from the web UI, the server routes, MCP tools and the CLI alike.
+
 ## Plugins — grow the product without touching it
 
 Everything is an extension point: hosts (web, MCP, CLI, server) load plugins at startup, and a plugin is a
