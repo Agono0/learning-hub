@@ -59,6 +59,27 @@ describe('buildMembershipRequest', () => {
   })
 })
 
+describe('founder moderation requests', () => {
+  it('builds remove-member and unblock-member mutations from a handle', () => {
+    expect(buildMembershipRequest(T, { kind: 'remove', handle: ' usr_bo ' })).toMatchObject({
+      ok: true,
+      body: { action: 'enqueue', mutation: { type: 'remove-member', target: 'usr_bo' } },
+    })
+    expect(buildMembershipRequest(T, { kind: 'unblock', handle: 'usr_bo' })).toMatchObject({
+      ok: true,
+      body: { mutation: { type: 'unblock-member', target: 'usr_bo' } },
+    })
+  })
+
+  it('asks for a handle instead of queueing an empty target', () => {
+    expect(buildMembershipRequest(T, { kind: 'remove', handle: '  ' })).toEqual({
+      ok: false,
+      error: 'Pick a member handle first.',
+    })
+    expect(buildMembershipRequest(T, { kind: 'unblock', handle: '' }).ok).toBe(false)
+  })
+})
+
 describe('buildNewInvite', () => {
   it('returns a code that is not part of the request, only its digest', async () => {
     const inv = await buildNewInvite(T, { uses: 3, hours: 2 })

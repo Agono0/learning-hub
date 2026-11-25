@@ -28,6 +28,8 @@ export type MembershipForm =
   | { kind: 'join'; alias: string; invite?: string }
   | { kind: 'revoke'; digest: string }
   | { kind: 'policy'; required: boolean }
+  | { kind: 'remove'; handle: string }
+  | { kind: 'unblock'; handle: string }
 
 function enqueueBody(target: LinkTarget, candidate: unknown): BuiltRequest {
   const parsed = LeagueMutationSchema.safeParse(candidate)
@@ -68,6 +70,15 @@ export function buildMembershipRequest(target: LinkTarget, form: MembershipForm)
     case 'revoke': {
       const digest = form.digest.trim().toLowerCase()
       return enqueueBody(target, { type: 'invite-revoke', digest })
+    }
+    case 'remove':
+    case 'unblock': {
+      const handle = form.handle.trim()
+      if (!handle) return { ok: false, error: 'Pick a member handle first.' }
+      return enqueueBody(target, {
+        type: form.kind === 'remove' ? 'remove-member' : 'unblock-member',
+        target: handle,
+      })
     }
     case 'policy':
       return enqueueBody(target, { type: 'invite-policy', required: form.required })

@@ -206,4 +206,47 @@ describe('LeagueRoom invites', () => {
     )
     expect(joined.body.ok).toBe(true)
   })
+
+  it('founder removal answers 200, then the removed member gets 409 blocked on rejoin', async () => {
+    const { room, clock, founder } = await setup()
+    const inv = await mint(room, founder, clock.t + 1, 5)
+    const bo = await actor()
+    clock.t += 2
+    expect(
+      (await send(room, bo, { type: 'join', alias: 'Bo', invite: inv.code }, clock.t)).body.ok,
+    ).toBe(true)
+    clock.t += 1
+    const removed = await send(room, founder, { type: 'remove-member', target: bo.handle }, clock.t)
+    expect(removed.body.ok).toBe(true)
+    clock.t += 1
+    const back = await send(room, bo, { type: 'join', alias: 'Bo', invite: inv.code }, clock.t)
+    expect(back.status).toBe(409)
+    expect(back.body.code).toBe('blocked')
+  })
+
+  it('a non-founder cannot remove anyone (403 or 409, never 200)', async () => {
+    const { room, clock, founder } = await setup()
+    const inv = await mint(room, founder, clock.t + 1, 5)
+    const bo = await actor()
+    const cy = await actor()
+    clock.t += 2
+    await send(room, bo, { type: 'join', alias: 'Bo', invite: inv.code }, clock.t)
+    await send(room, cy, { type: 'join', alias: 'Cy', invite: inv.code }, clock.t + 1)
+    clock.t += 3
+    const r = await send(room, bo, { type: 'remove-member', target: cy.handle }, clock.t)
+    expect(r.body.ok).toBe(false)
+    expect(r.body.code).toBe('not_founder')
+    expect(r.status).not.toBe(200)
+  })
+
+  it('the spectate view does not list blocked handles', async () => {
+    const { room, clock, founder } = await setup()
+    const inv = await mint(room, founder, clock.t + 1, 5)
+    const bo = await actor()
+    clock.t += 2
+    await send(room, bo, { type: 'join', alias: 'Bo', invite: inv.code }, clock.t)
+    clock.t += 1
+    await send(room, founder, { type: 'remove-member', target: bo.handle }, clock.t)
+    expect(await view(room, '/spectate')).not.toContain(bo.handle)
+  })
 })

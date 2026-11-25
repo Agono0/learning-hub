@@ -164,6 +164,7 @@ export function RemoteLinkActions({
   const [uses, setUses] = useState('1')
   const [hours, setHours] = useState('24')
   const [revokeDigest, setRevokeDigest] = useState('')
+  const [modHandle, setModHandle] = useState('')
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -275,6 +276,42 @@ export function RemoteLinkActions({
           }
         >
           Revoke
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        <TextField
+          label="Member handle (founder only)"
+          value={modHandle}
+          onChange={(e) => setModHandle(e.target.value)}
+          autoComplete="off"
+          data-testid={testid('mod-handle')}
+        />
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('remove-member')}
+          onClick={() =>
+            go(() =>
+              run(buildMembershipRequest(target, { kind: 'remove', handle: modHandle }), transport),
+            )
+          }
+        >
+          Remove member
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('unblock-member')}
+          onClick={() =>
+            go(() =>
+              run(
+                buildMembershipRequest(target, { kind: 'unblock', handle: modHandle }),
+                transport,
+              ),
+            )
+          }
+        >
+          Unblock
         </Button>
       </div>
       {shownCode && (
