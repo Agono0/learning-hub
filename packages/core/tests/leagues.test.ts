@@ -6,8 +6,9 @@ import {
   createLeague,
   createTournament,
   decideDuel,
-  divisionStandings,
   duelEloUpdate,
+  isRoundDue,
+  roundEndsAt,
   isDuelComplete,
   joinLeague,
   leagueLeader,
@@ -16,6 +17,38 @@ import {
   scoreDuelSide,
   type Duel,
 } from '../src/leagues'
+
+describe('round scheduling', () => {
+  const league = createLeague({
+    id: 'sched',
+    title: 'Sched',
+    seasonStart: '2026-01-05', // a Monday
+    roundLengthDays: 7,
+  })
+
+  it('round 0 ends exactly one round length after the season start', () => {
+    expect(roundEndsAt(league).toISOString()).toBe('2026-01-12T00:00:00.000Z')
+  })
+
+  it('is due at the boundary and not before, and tracks the current round', () => {
+    expect(isRoundDue(league, new Date('2026-01-11T23:59:59.000Z'))).toBe(false)
+    expect(isRoundDue(league, new Date('2026-01-12T00:00:00.000Z'))).toBe(true)
+    // after a close the window slides one round length forward
+    const closed = closeRound(league).league
+    expect(isRoundDue(closed, new Date('2026-01-12T00:00:00.000Z'))).toBe(false)
+    expect(roundEndsAt(closed).toISOString()).toBe('2026-01-19T00:00:00.000Z')
+  })
+
+  it('honors custom round lengths', () => {
+    const daily = createLeague({
+      id: 'daily',
+      title: 'Daily',
+      seasonStart: '2026-03-01',
+      roundLengthDays: 1,
+    })
+    expect(roundEndsAt(daily).toISOString()).toBe('2026-03-02T00:00:00.000Z')
+  })
+})
 
 describe('league engine', () => {
   it('creates a league, joins players into bronze, and awards points', () => {

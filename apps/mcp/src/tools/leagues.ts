@@ -5,6 +5,7 @@
 import { z } from 'zod'
 import {
   awardLeaguePoints,
+  closeDueRounds,
   createDuelFromDeck,
   closeLeagueRound,
   createLeagueDuel,
@@ -112,6 +113,12 @@ export const leagueTools: RegisteredTool[] = [
       ]),
     },
     ({ slug, event }) => json({ ok: true, player: awardLeaguePoints(slug, event) }),
+  ),
+  tool(
+    'league_close_due',
+    'Scheduling sweep: close every league round whose end instant has passed (empty catch-up rounds are recorded silently).',
+    {},
+    () => json({ ok: true, closed: closeDueRounds() }),
   ),
   tool(
     'league_close_round',

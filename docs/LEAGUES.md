@@ -74,6 +74,16 @@ single `awardXp` path to every division winner who actually scored that
 round. An uncontested zero-point division top earns nothing, matching the
 must-score-to-advance rule.
 
+## Scheduling
+
+Round boundaries are deterministic UTC math: a round ends at `seasonStart`
+(UTC midnight) plus `(currentRound + 1) × roundLengthDays`. Nothing closes
+rounds automatically in the background — call the sweep
+(`POST /leagues/close-due`, `leagues close-due`, or `league_close_due`)
+from a cron job, OS scheduler, or app launch. The sweep closes every
+elapsed round, recording empty catch-up rounds silently (no XP, no
+notifications) and capping at 104 closes per league per call.
+
 ## API
 
 `POST /api/leagues` dispatches on `action`:
@@ -105,6 +115,7 @@ leagues standings <slug> [--tier bronze|silver|gold|platinum|diamond]
 leagues players <slug>
 leagues points <slug> <handle> [--reviews N | --focus-minutes N]
 leagues close-round <slug>
+leagues close-due
 leagues rounds <slug>
 leagues duel create <slug> <playerA> <playerB> [--league <slug>]
                    --prompt "id::question::ans1|ans2" [--prompt …]
@@ -122,7 +133,7 @@ leagues tournament list [--league <slug>] [--status open|complete]
 
 Sixteen tools mirror the repository surface: `league_create`,
 `league_join`, `league_standings`, `league_players`, `league_award_points`,
-`league_close_round`, `league_rounds`, `league_list`, `duel_create`,
+`league_close_round`, `league_close_due`, `league_rounds`, `league_list`, `duel_create`,
 `duel_create_from_deck`, `duel_answer`, `duel_list`, `tournament_create`,
 `tournament_open_matches`, `tournament_record_result`, `tournament_list`.
 
