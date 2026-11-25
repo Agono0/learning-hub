@@ -23,10 +23,15 @@ enabled = true
 # [durable_objects]
 # bindings = [
 #   { name = "STUDY_ROOM", class_name = "StudyRoom" },
-#   { name = "BOSS_RAID", class_name = "BossRaid" }
+#   { name = "BOSS_RAID", class_name = "BossRaid" },
+#   { name = "LEAGUE_ROOM", class_name = "LeagueRoom" }
 # ]
 #
 # [[migrations]]
 # tag = "v1"
 # new_classes = ["StudyRoom", "BossRaid"]
+#
+# Authenticated leagues are inactive groundwork. Enabling them needs the
+# LEAGUE_ROOM binding above, a migration adding "LeagueRoom", and
+# LEAGUES_ENABLED = "true". All three are the owner's call; none ships on.
 

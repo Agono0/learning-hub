@@ -1,0 +1,177 @@
+/**
+ * LeagueRoom Durable Object: the authoritative state for ONE league.
+ *
+ * INACTIVE GROUNDWORK. The worker only routes to this class when the
+ * LEAGUES_ENABLED variable is exactly "true"; it ships unset, and the app
+ * does not call these routes. Turning it on, deploying it and binding the
+ * Durable Object are the owner's decisions.
+ *
+ * Every state change arrives as a signed envelope. A request is handled in
+ * this order, all inside one serialized critical section:
+ *
+ *   verify envelope (shape, clock window, nonce, sequence, signature)
+ *   -> reduce on the authority clock
+ *   -> persist the new state in ONE storage write
+ *   -> only then replace the in-memory state
+ *
+ * The critical section matters: signature verification is async, so without
+ * it two identical envelopes could both pass the replay check before either
+ * commits. A failed storage write leaves memory and storage unchanged.
+ */
+import {
+  AuthorityStateSchema,
+  LeagueSchema,
+  applyVerifiedMutation,
+  createAuthorityState,
+  ledgerOf,
+  verifyLeagueEnvelope,
+  webCryptoVerifier,
+  type AuthorityState,
+  type SignatureVerifier,
+} from '@learning-hub/core/leagues'
+
+const STATE_KEY = 'authority'
+
+/** Body size cap: a mutation is tiny; refuse anything near abuse territory. */
+export const MAX_MUTATION_BODY_BYTES = 64 * 1024
+
+export interface LeagueRoomDeps {
+  /** Epoch ms; injectable so tests control the authority clock. */
+  now?: () => number
+  verify?: SignatureVerifier
+}
+
+/** What a client may see: standings and duel progress, never accepted answers. */
+export function publicLeagueView(state: AuthorityState) {
+  return {
+    ok: true as const,
+    league: state.league,
+    aliases: state.aliases,
+    duels: Object.values(state.duels).map((d) => ({
+      id: d.id,
+      playerA: d.playerA,
+      playerB: d.playerB,
+      status: d.status,
+      promptCount: d.prompts.length,
+      answeredA: d.answersA.length,
+      answeredB: d.answersB.length,
+      expiresAt: d.expiresAt,
+      result: d.result,
+    })),
+    accepted: state.accepted,
+  }
+}
+
+export class LeagueRoom {
+  private state: DurableObjectState
+  private authority: AuthorityState | null = null
+  private readonly now: () => number
+  private readonly verify: SignatureVerifier
+  /** Tail of the serialized critical section. */
+  private chain: Promise<unknown> = Promise.resolve()
+  /** Resolves once persisted state has been loaded (input gate in production). */
+  private readonly ready: Promise<void>
+
+  constructor(state: DurableObjectState, deps: LeagueRoomDeps = {}) {
+    this.state = state
+    this.now = deps.now ?? (() => Date.now())
+    this.verify = deps.verify ?? webCryptoVerifier
+    this.ready = this.state.blockConcurrencyWhile(async () => {
+      const stored = await this.state.storage.get<unknown>(STATE_KEY)
+      if (stored) {
+        const parsed = AuthorityStateSchema.safeParse(stored)
+        if (parsed.success) this.authority = parsed.data
+      }
+    })
+  }
+
+  private serialize<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(work, work)
+    this.chain = run.catch(() => undefined)
+    return run
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    await this.ready
+    const url = new URL(request.url)
+
+    if (request.method === 'GET' && url.pathname.endsWith('/state')) {
+      if (!this.authority)
+        return Response.json({ error: 'league not initialized' }, { status: 404 })
+      return Response.json(publicLeagueView(this.authority))
+    }
+
+    if (request.method === 'POST' && url.pathname.endsWith('/init')) {
+      return this.serialize(() => this.init(request))
+    }
+
+    if (request.method === 'POST' && url.pathname.endsWith('/mutate')) {
+      return this.serialize(() => this.mutate(request))
+    }
+
+    return new Response('Not Found', { status: 404 })
+  }
+
+  private async readJson(request: Request): Promise<unknown | Response> {
+    const text = await request.text()
+    if (text.length > MAX_MUTATION_BODY_BYTES) {
+      return Response.json({ error: 'body too large' }, { status: 413 })
+    }
+    try {
+      return JSON.parse(text)
+    } catch {
+      return Response.json({ error: 'body is not JSON' }, { status: 400 })
+    }
+  }
+
+  private async init(request: Request): Promise<Response> {
+    if (this.authority)
+      return Response.json({ error: 'league already initialized' }, { status: 409 })
+    const body = await this.readJson(request)
+    if (body instanceof Response) return body
+    const parsed = LeagueSchema.safeParse((body as { league?: unknown } | null)?.league)
+    if (!parsed.success) return Response.json({ error: 'invalid league' }, { status: 400 })
+    // A new league starts empty: members only ever arrive through signed joins.
+    const league = { ...parsed.data, players: [], currentRound: 0 }
+    const next = createAuthorityState(league)
+    await this.state.storage.put(STATE_KEY, next)
+    this.authority = next
+    return Response.json(publicLeagueView(next), { status: 201 })
+  }
+
+  private async mutate(request: Request): Promise<Response> {
+    const current = this.authority
+    if (!current) return Response.json({ error: 'league not initialized' }, { status: 404 })
+    const body = await this.readJson(request)
+    if (body instanceof Response) return body
+
+    const now = this.now()
+    const verified = await verifyLeagueEnvelope({
+      envelope: (body as { envelope?: unknown } | null)?.envelope,
+      expectedLeagueId: current.league.id,
+      now,
+      ledger: ledgerOf(current),
+      verify: this.verify,
+    })
+    if (!verified.ok) {
+      const status = verified.code === 'bad_signature' ? 401 : 400
+      return Response.json({ ok: false, code: verified.code }, { status })
+    }
+
+    const reduced = applyVerifiedMutation(current, verified, now)
+    if (!reduced.ok) return Response.json({ ok: false, code: reduced.code }, { status: 409 })
+
+    // Persist first; memory only advances once storage accepted the write.
+    try {
+      await this.state.storage.put(STATE_KEY, reduced.state)
+    } catch {
+      return Response.json({ ok: false, code: 'storage_failed' }, { status: 503 })
+    }
+    this.authority = reduced.state
+    return Response.json({
+      ok: true,
+      effects: reduced.effects.map((e) => e.kind),
+      accepted: reduced.state.accepted,
+    })
+  }
+}
