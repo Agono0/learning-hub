@@ -548,4 +548,269 @@ export const CANONICAL_EMBODIED_SCENARIOS: EmbodiedScenario[] = [
       'Fyfe, E. R., et al. (2014). Concreteness fading in mathematics and science instruction. Educational Psychology Review, 26(1), 9-25.',
     ],
   },
+  {
+    id: 'vsepr-molecular-geometry',
+    title: 'Molecular shapes with your hands',
+    domain: 'Chemistry',
+    concept: 'VSEPR: electron domains repel into predictable 3D geometries',
+    whyEmbodied:
+      'Molecular geometry is literally a spatial arrangement problem, and flat textbook drawings are the main reason learners mislearn it. Holding the center with one fist and arranging electron domains with the other hand makes the repulsion logic something the body can feel: domains push as far apart as space allows.',
+    gesturePlan: [
+      {
+        element: 'central atom',
+        channel: 'deictic-reference',
+        gestureDescription: 'Hold one fist at chest height: the central atom.',
+        verbalAnchor: 'This fist is the central atom.',
+        rationale: 'A fixed bodily referent for the center anchors every later arrangement.',
+      },
+      {
+        element: 'electron domains repelling',
+        channel: 'force-causality',
+        gestureDescription:
+          'Extend fingers of the other hand outward from the fist, pushing them apart until each is maximally distant from the others.',
+        verbalAnchor: 'The domains shove each other as far apart as they can.',
+        rationale:
+          'The pushing-apart motion enacts repulsion, the single causal idea behind every VSEPR shape.',
+      },
+      {
+        element: 'linear versus bent geometry',
+        channel: 'spatial-layout',
+        gestureDescription:
+          'Show two fingers opposite (straight line), then bring in a third domain and watch the shape flatten into a trigonal plane, then bend it with a lone pair.',
+        verbalAnchor: 'Two opposite, three flat, and a lone pair bends it down.',
+        rationale:
+          'Morphing the same hand arrangement between shapes encodes the family relationships, not isolated names.',
+      },
+      {
+        element: 'lone pairs squeeze harder',
+        channel: 'magnitude-scale',
+        gestureDescription:
+          'Make one domain visibly fatter (thumb and finger spread wide) and let it compress the angles between the others.',
+        verbalAnchor: 'The lone pair is greedy: it squeezes the bonds closer.',
+        rationale:
+          'The fat-domain gesture encodes why bond angles shrink below the ideal, the detail exams test.',
+      },
+    ],
+    ladder: {
+      concept: 'VSEPR geometry',
+      rungs: [
+        {
+          modality: 'enactive',
+          activity:
+            'Use a balloon or foam-ball model (or your fists) for CH4, NH3 and H2O: arrange four domains each time, then hide the lone pairs and name the visible shape.',
+          bridgePrompt:
+            'Sketch each arrangement you held: dots for domains, lines for bonds, a cloud for each lone pair.',
+        },
+        {
+          modality: 'iconic',
+          activity:
+            'Draw wedge-dash structures for the three molecules and mark each bond angle; compare the angles side by side (109.5, 107, 104.5).',
+          bridgePrompt:
+            'Write the rule your drawings show: each lone pair costs about two degrees of bond angle.',
+        },
+        {
+          modality: 'symbolic',
+          activity:
+            'Write the AXE notation (AX4, AX3E, AX2E2) for each molecule and map every symbol back to the fist, fingers and fat lone pair from the first rung.',
+          bridgePrompt:
+            'Close the loop: for a new formula like SF4, predict the AXE class, then act it out with your hands before checking.',
+        },
+      ],
+    },
+    tracingExercise:
+      'On a printed chart of the five basic VSEPR geometries, trace each shape slowly with a finger while counting its domains aloud, then trace only the lone-pair positions across all shapes.',
+    enactmentTask: {
+      verbalVersion: 'Read: "Water is AX2E2 and bent, with a bond angle near 104.5 degrees."',
+      enactedVersion:
+        'Fist-and-fingers act out water: four domains, two hidden as lone pairs, the visible two bent, and announce the squeezed angle.',
+      domain: 'Chemistry',
+    },
+    reflectionPrompts: [
+      'Where did the flat drawings you have seen mislead your hands?',
+      'How does the fat-lone-pair gesture explain the angle ordering across CH4, NH3 and H2O?',
+      'Which is easier to recall a week from now: the AXE table or the hand shapes, and why?',
+    ],
+    citations: [
+      'Goldin-Meadow, S. (2003). Hearing Gesture. Harvard University Press.',
+      'Stieff, M. (2011). Fostering representational competence through 3D models. Chemistry Education Research and Practice, 12(4), 460-468.',
+      'Fyfe, E. R., et al. (2014). Concreteness fading in mathematics and science instruction. Educational Psychology Review, 26(1), 9-25.',
+    ],
+  },
+  {
+    id: 'supply-demand-shifts',
+    title: 'Supply and demand you can push around',
+    domain: 'Economics',
+    concept: 'Curve shifts versus movements along a curve',
+    whyEmbodied:
+      'The most common economics error is confusing a movement along a curve with a shift of the curve. The distinction is inherently spatial: sliding a point along a line versus sliding the whole line. Arms as curves make the two motions physically different, so the concepts stop blending.',
+    gesturePlan: [
+      {
+        element: 'the two curves',
+        channel: 'spatial-layout',
+        gestureDescription:
+          'Left forearm sloping down (demand), right forearm sloping up (supply), crossed in front of you.',
+        verbalAnchor: 'Down-sloping demand, up-sloping supply, meeting here.',
+        rationale:
+          'Two arms crossing gives the market a stable spatial layout both hands can later manipulate.',
+      },
+      {
+        element: 'movement along a curve',
+        channel: 'dynamic-process',
+        gestureDescription:
+          'Slide a finger of the other hand along the demand forearm, up or down its length.',
+        verbalAnchor: 'Price changed, so we slide along the same curve.',
+        rationale:
+          'Sliding along the arm embodies that only the price-quantity pair moved; the relationship itself did not.',
+      },
+      {
+        element: 'shift of the whole curve',
+        channel: 'force-causality',
+        gestureDescription: 'Move the entire demand forearm outward or inward, parallel to itself.',
+        verbalAnchor: 'Tastes changed: the whole curve moved.',
+        rationale:
+          'Moving the whole arm enacts a changed relationship at every price, the definition of a shift.',
+      },
+      {
+        element: 'new equilibrium',
+        channel: 'magnitude-scale',
+        gestureDescription:
+          'After shifting one arm, walk a finger to the new crossing point and compare its height and position with the old.',
+        verbalAnchor: 'Higher price, larger quantity at the new crossing.',
+        rationale:
+          'Comparing crossing points before and after embodies comparative statics as geometry.',
+      },
+    ],
+    ladder: {
+      concept: 'Supply and demand',
+      rungs: [
+        {
+          modality: 'enactive',
+          activity:
+            'Arm-curve a market, then act three news events (a fad, a tax, a cheaper input): decide for each whether you slide along an arm or move the whole arm, and find the new crossing.',
+          bridgePrompt:
+            'Draw the three cases on axes: one panel per event, showing exactly what your arms did.',
+        },
+        {
+          modality: 'iconic',
+          activity:
+            'On your drawn panels, label each arrow A (along) or S (shift), mark old and new equilibria, and record the direction of price and quantity change.',
+          bridgePrompt:
+            'Write each panel as a sentence: event, which curve, which direction, price effect, quantity effect.',
+        },
+        {
+          modality: 'symbolic',
+          activity:
+            'For one panel, write demand and supply as linear equations, solve both equilibria algebraically, and check they match the crossings your arms found.',
+          bridgePrompt:
+            'Note the correspondence: shifting the arm is adding a constant to the intercept; sliding along is solving at a fixed equation.',
+        },
+      ],
+    },
+    tracingExercise:
+      'On a printed supply-demand diagram with one shifted curve, trace the original demand curve, then the shifted one, then walk your finger from the old equilibrium to the new one, saying price and quantity directions aloud.',
+    enactmentTask: {
+      verbalVersion:
+        'Read: "An increase in demand shifts the demand curve rightward, raising equilibrium price and quantity."',
+      enactedVersion:
+        'Arm-curve the market, physically shift the demand arm right, and announce the new price and quantity directions at the new crossing.',
+      domain: 'Economics',
+    },
+    reflectionPrompts: [
+      'Which felt different in your arms: sliding along versus shifting? Where in words do they blur?',
+      'Why does a tax on sellers move the supply arm and not the demand arm?',
+      'How would you act out a simultaneous shift of both curves?',
+    ],
+    citations: [
+      'Goldin-Meadow, S. (2003). Hearing Gesture. Harvard University Press.',
+      'Wilson, M. (2002). Six views of embodied cognition. Psychonomic Bulletin & Review, 9(4), 625-636.',
+      'Bruner, J. S. (1966). Toward a Theory of Instruction. Harvard University Press.',
+    ],
+  },
+  {
+    id: 'homeostasis-feedback-loop',
+    title: 'Homeostasis as a loop you can walk',
+    domain: 'Biology',
+    concept: 'Negative feedback: sensor, control center, effector',
+    whyEmbodied:
+      'Feedback loops are processes in time with causal direction, and students routinely draw them as static boxes. Walking the loop, sensor to control to effector and back, with your own body as the thermostat turns the cycle into a felt sequence, which is what makes "negative" feedback (opposing the change) click.',
+    gesturePlan: [
+      {
+        element: 'the loop itself',
+        channel: 'dynamic-process',
+        gestureDescription:
+          'Trace a circle in the air with one finger, over and over, in one direction.',
+        verbalAnchor: 'Around and around: sense, decide, act, sense again.',
+        rationale: 'A traced circle encodes recurrence, the feature box diagrams hide.',
+      },
+      {
+        element: 'sensor detecting a change',
+        channel: 'deictic-reference',
+        gestureDescription:
+          'Point outward at the imagined disturbance, then point to yourself as the detector.',
+        verbalAnchor: 'Something changed, and the sensor caught it.',
+        rationale: 'Pointing marks the causal entry point of the loop.',
+      },
+      {
+        element: 'control center comparing against set point',
+        channel: 'magnitude-scale',
+        gestureDescription:
+          'Hold one hand flat as the set point, hover the other hand above or below it, and bring them level.',
+        verbalAnchor: 'Too high or too low versus the set point?',
+        rationale: 'The level-comparison gesture is the physical form of the error signal.',
+      },
+      {
+        element: 'effector opposing the change',
+        channel: 'force-causality',
+        gestureDescription:
+          'Push both hands against the direction of the disturbance, visibly resisting it.',
+        verbalAnchor: 'The response pushes back against the change.',
+        rationale: 'Pushing against the disturbance enacts "negative" as opposition, not as bad.',
+      },
+    ],
+    ladder: {
+      concept: 'Homeostasis',
+      rungs: [
+        {
+          modality: 'enactive',
+          activity:
+            'Be the thermostat: a partner calls out temperatures; you point (sense), compare with your flat set-point hand (control), and mime fanning or shivering (effector) until level.',
+          bridgePrompt:
+            'Draw the loop you just walked as three boxes with arrows: sensor, control center, effector.',
+        },
+        {
+          modality: 'iconic',
+          activity:
+            'On the drawn loop, annotate each arrow with its signal (nerve impulse, hormone), then swap in blood glucose: label sensor (pancreas), hormones (insulin, glucagon), effectors (liver, muscle).',
+          bridgePrompt:
+            'Write the mapping sentence: the same loop shape, different biological parts.',
+        },
+        {
+          modality: 'symbolic',
+          activity:
+            'Write the loop as a signed diagram (change -> sensor -> control -> effector -> opposing change) with plus and minus signs on each arrow, and state in one line why the product of signs is negative.',
+          bridgePrompt:
+            'Point back at your pushing hands: the minus sign is that push, written down.',
+        },
+      ],
+    },
+    tracingExercise:
+      'On a printed homeostasis loop diagram, trace the arrows in their causal direction three times, pausing at each box to name its role aloud; then trace once more with the box labels covered.',
+    enactmentTask: {
+      verbalVersion:
+        'Read: "Negative feedback opposes the initial disturbance and returns the variable toward its set point."',
+      enactedVersion:
+        'Walk the thermostat loop twice with a partner calling temperatures, announcing sense, compare and oppose at each stage.',
+      domain: 'Biology',
+    },
+    reflectionPrompts: [
+      'Where does walking the loop beat staring at the box diagram?',
+      'What would "positive" feedback look like in the same gestures, and why does it not stabilize?',
+      'How does the level-comparison gesture show up in your own hunger or thirst right now?',
+    ],
+    citations: [
+      'Goldin-Meadow, S. (2003). Hearing Gesture. Harvard University Press.',
+      'Wilson, M. (2002). Six views of embodied cognition. Psychonomic Bulletin & Review, 9(4), 625-636.',
+      'Engelkamp, J., & Zimmer, H. D. (1984). Motor programme information as a separable memory unit. Psychological Research, 46(3), 283-299.',
+    ],
+  },
 ]
