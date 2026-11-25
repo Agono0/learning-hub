@@ -103,6 +103,26 @@ async function expectNoOcclusion(page: Page) {
   expect(covered).toEqual([])
 }
 
+/** At maximum scroll, the last control on the page must sit wholly above the bottom nav. */
+async function expectLastControlClearsBottomNav(page: Page) {
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  const nav = page.getByRole('navigation', { name: 'Primary' })
+  if (!(await nav.isVisible())) return
+  const navTop = (await nav.boundingBox())!.y
+  const last = await page.evaluate(() => {
+    const all = [...document.querySelectorAll('main button, main input, main a')].filter((el) => {
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && r.height > 0
+    })
+    const el = all.at(-1)!
+    const r = el.getBoundingClientRect()
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return { bottom: r.bottom, hit: hit === el || el.contains(hit) || !!hit?.contains(el) }
+  })
+  expect(last.bottom).toBeLessThanOrEqual(navTop)
+  expect(last.hit).toBe(true)
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -154,6 +174,8 @@ for (const view of [
 
     await panel.scrollIntoViewIfNeeded()
     await expectNoOcclusion(page)
+    await expectLastControlClearsBottomNav(page)
+    await page.screenshot({ path: `ui-screenshots/remote-leagues-${view.name}-bottom.png` })
     await panel.screenshot({ path: `ui-screenshots/remote-leagues-${view.name}.png` })
     await page.screenshot({ path: `ui-screenshots/remote-leagues-${view.name}-page.png` })
   })
