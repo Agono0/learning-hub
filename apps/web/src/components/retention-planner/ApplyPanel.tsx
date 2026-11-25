@@ -170,10 +170,17 @@ export function ApplyPanel({
         Global retention now: <strong>{now === null ? 'unknown' : pct(now)}</strong>
       </p>
       {candidate !== null && now !== null && Math.abs(now - baseline) > 1e-9 ? (
-        <Callout tone="warning">
-          The live setting ({pct(now)}) differs from the {pct(baseline)} this model started from.
-          Run the model again before applying.
-        </Callout>
+        record && Math.abs(now - record.applied) < 1e-9 ? (
+          <p data-testid="rp-apply-after">
+            The setting changed because of this apply. Run the model again to get another
+            recommendation from the new setting.
+          </p>
+        ) : (
+          <Callout tone="warning">
+            The live setting ({pct(now)}) differs from the {pct(baseline)} this model started from.
+            Run the model again before applying.
+          </Callout>
+        )
       ) : null}
       {candidate !== null && !confirming ? (
         <Button

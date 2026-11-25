@@ -159,6 +159,8 @@ test('apply needs confirmation, then restore returns the previous value', async 
   await expect(page.getByRole('group', { name: 'Confirm change' })).toContainText('93%')
   await page.getByRole('button', { name: 'Confirm and apply' }).click()
   await expect(page.getByTestId('rp-restore')).toContainText('Previous value was 93%')
+  await expect(page.getByTestId('rp-apply')).not.toContainText('differs from the 93%')
+  await expect(page.getByTestId('rp-apply-after')).toContainText('changed because of this apply')
   expect(puts).toEqual([0.9])
   await page.getByRole('button', { name: 'Restore 93%' }).click()
   await expect.poll(() => puts).toEqual([0.9, 0.93])

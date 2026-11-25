@@ -63,8 +63,10 @@ export function AssumptionsBlock({ r, truncated }: { r: PlannerResult; truncated
           extra reviews at the time for the grade given.
         </li>
         <li>
-          <strong>Left out</strong>: new-card introduction, learning-step time, easy days, fuzz,
-          future new cards.
+          <strong>Left out</strong>: cards that start in learning or relearning, new-card
+          introduction and its learning steps, easy days, fuzz, future new cards. This is different
+          from the same-day relearning steps after a simulated lapse in a Review card, which are
+          included (see Window).
         </li>
         <li>
           <strong>Calibration</strong> (measured, not a gate): {cal.note}
