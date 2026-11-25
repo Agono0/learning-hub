@@ -1,14 +1,17 @@
 /**
- * `leagues-remote` CLI command: local bookkeeping for the signed remote
- * league authority. INACTIVE GROUNDWORK, and offline by design: nothing here
- * signs or sends. It links a remote league, queues mutations and shows the
- * queue. Delivery happens through the app's /api/leagues/remote sync action,
- * which only works when the owner has enabled remote leagues.
+ * `leagues-remote` CLI command for the signed remote league authority.
+ * INACTIVE GROUNDWORK. Linking, queueing and showing the queue are offline.
+ * `sync` and `state` reach the network, so they refuse to run unless the owner
+ * set LH_REMOTE_LEAGUES=1, the same gate the app's route uses. `sync` signs
+ * with the stored device key and sends the queue; the authority decides what
+ * counts.
  *
  *   leagues-remote link <serverUrl> <remoteLeagueId>
  *   leagues-remote list
  *   leagues-remote enqueue <serverUrl> <remoteLeagueId> <mutation…>
  *   leagues-remote queue <serverUrl> <remoteLeagueId>
+ *   leagues-remote sync <serverUrl> <remoteLeagueId>     (needs LH_REMOTE_LEAGUES=1)
+ *   leagues-remote state <serverUrl> <remoteLeagueId>    (needs LH_REMOTE_LEAGUES=1)
  *
  * Mutations: join <alias> | duel-open <id> <opponent> --prompt "id::q::a|b"
  *            | duel-start <id> | duel-answer <id> <promptId> <answer> | close-round
@@ -19,6 +22,8 @@
 import {
   LeagueRemoteInputError,
   enqueueLeagueMutation,
+  fetchRemoteState,
+  syncRemoteLeague,
   getRemoteLink,
   linkRemoteLeague,
   listRemoteLinks,
@@ -26,16 +31,18 @@ import {
 } from '@learning-hub/db'
 import {
   SyncQueueFullError,
+  describeRosterLines,
   digestInviteCode,
   generateInviteCode,
   parseMutationArgs,
+  parseRemoteRoster,
   summarizeQueue,
 } from '@learning-hub/core'
 import { panel } from './ui'
 import type { RegisteredCommand } from './registry'
 
 const USAGE =
-  'Usage: learning-hub leagues-remote [list | link <serverUrl> <leagueId> | enqueue <serverUrl> <leagueId> <mutation…> | queue <serverUrl> <leagueId> | invite-new <serverUrl> <leagueId> [--uses N] [--hours H]]'
+  'Usage: learning-hub leagues-remote [list | link <serverUrl> <leagueId> | enqueue <serverUrl> <leagueId> <mutation…> | queue <serverUrl> <leagueId> | invite-new <serverUrl> <leagueId> [--uses N] [--hours H] | sync <serverUrl> <leagueId> | state <serverUrl> <leagueId>]'
 
 function fail(msg: string): void {
   console.error(msg)
@@ -136,6 +143,68 @@ function queueCommand(args: string[]): void {
   console.log(panel(`QUEUE ${remoteLeagueId}`, lines.length > 0 ? lines : ['Queue is empty.']))
 }
 
+const NOT_ENABLED =
+  'Remote leagues are not enabled. Set LH_REMOTE_LEAGUES=1 to let this command reach a league server.'
+
+/** Resolve a linked league for a network command, or print why not. */
+function linkedForNetwork(args: string[]) {
+  if (process.env.LH_REMOTE_LEAGUES !== '1') {
+    fail(NOT_ENABLED)
+    return null
+  }
+  const [serverUrl, remoteLeagueId] = args
+  if (!serverUrl || !remoteLeagueId) {
+    fail(USAGE)
+    return null
+  }
+  try {
+    const link = getRemoteLink(serverUrl, remoteLeagueId)
+    if (!link) {
+      fail('No such link. Run `leagues-remote link` first.')
+      return null
+    }
+    return link
+  } catch (err) {
+    if (err instanceof LeagueRemoteInputError) {
+      fail(err.message)
+      return null
+    }
+    throw err
+  }
+}
+
+const netFetch = (url: string, init?: RequestInit) => fetch(url, init)
+
+async function syncCommand(args: string[]): Promise<void> {
+  const link = linkedForNetwork(args)
+  if (!link) return
+  const outcome = await syncRemoteLeague(link, { fetch: netFetch })
+  if (!outcome.ok) return fail(outcome.message)
+  const q = outcome.queue
+  console.log(
+    `Sent ${outcome.attempted} item${outcome.attempted === 1 ? '' : 's'}. ` +
+      `${q.pending} pending, ${q.rejected} refused by the league.`,
+  )
+  if (outcome.recovered) console.log('The stored queue was unreadable and has been reset.')
+  if (q.pending > 0) console.log('Run sync again to send the rest. Items are sent in order.')
+  if (q.rejected > 0) console.log('Run `leagues-remote queue` to see which were refused and why.')
+}
+
+async function stateCommand(args: string[]): Promise<void> {
+  const link = linkedForNetwork(args)
+  if (!link) return
+  let res
+  try {
+    res = await fetchRemoteState(link, { fetch: netFetch })
+  } catch {
+    return fail('Could not reach the league server.')
+  }
+  if (!res.ok) return fail(`The league server answered ${res.status}.`)
+  const roster = parseRemoteRoster(res.remote)
+  if (!roster) return fail('The league did not return a readable roster.')
+  console.log(panel(`LEAGUE ${link.remoteLeagueId}`, describeRosterLines(roster)))
+}
+
 async function run(args: string[]): Promise<void> {
   const sub = args[0] || 'list'
   if (sub === 'list') return listCommand()
@@ -143,6 +212,8 @@ async function run(args: string[]): Promise<void> {
   if (sub === 'enqueue') return enqueueCommand(args.slice(1))
   if (sub === 'queue') return queueCommand(args.slice(1))
   if (sub === 'invite-new') return inviteNewCommand(args.slice(1))
+  if (sub === 'sync') return syncCommand(args.slice(1))
+  if (sub === 'state') return stateCommand(args.slice(1))
   fail(USAGE)
 }
 
@@ -150,7 +221,7 @@ export const leaguesRemoteCommands: RegisteredCommand[] = [
   {
     name: 'leagues-remote',
     description: 'Link and queue signed remote league mutations (offline, inactive groundwork)',
-    usage: '[list|link|enqueue|queue|invite-new]',
+    usage: '[list|link|enqueue|queue|invite-new|sync|state]',
     run: (runArgs) => run(runArgs),
   },
 ]

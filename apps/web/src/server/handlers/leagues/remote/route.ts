@@ -16,35 +16,29 @@
 import { z } from 'zod'
 import {
   LeagueRemoteInputError,
-  bumpSeqAtLeast,
   enqueueLeagueMutation,
   getOnlineIdentity,
   loadLeagueQueue,
-  saveLeagueQueue,
   getRemoteLink,
   linkRemoteLeague,
   listRemoteLinks,
   recordRemoteOutcome,
   reserveNextSeq,
+  fetchRemoteState,
+  readBoundedReply,
+  syncRemoteLeague,
+  REMOTE_REQUEST_TIMEOUT_MS,
+  remoteBase,
 } from '@learning-hub/db'
 import {
   LeagueMutationSchema,
   SyncQueueFullError,
-  createSeqTracker,
-  flushQueue,
   leagueSignerFromStoredKey,
-  pruneQueue,
   signLeagueMutation,
   summarizeQueue,
-  type SignedEnvelope,
-  type TransportReply,
 } from '@learning-hub/core'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 import { remoteFetch } from '@/server/net'
-
-/** Largest authority reply we will read. */
-const MAX_REPLY_BYTES = 64 * 1024
-const REQUEST_TIMEOUT_MS = 8_000
 
 export function remoteLeaguesEnabled(): boolean {
   return process.env.LH_REMOTE_LEAGUES === '1'
@@ -89,16 +83,6 @@ export const GET = withRoute(async () => {
   })
 })
 
-async function readBounded(res: Response): Promise<unknown> {
-  const text = await res.text()
-  if (text.length > MAX_REPLY_BYTES) return { error: 'authority reply too large' }
-  try {
-    return JSON.parse(text)
-  } catch {
-    return { error: 'authority reply was not JSON' }
-  }
-}
-
 export const POST = withRoute(async (req: Request) => {
   if (!remoteLeaguesEnabled()) return disabled()
   const body = await readJson(req, bodySchema)
@@ -119,7 +103,7 @@ export const POST = withRoute(async (req: Request) => {
     })
   }
 
-  const base = `${link.serverUrl}/api/v1/leagues/${link.remoteLeagueId}`
+  const base = remoteBase(link)
 
   if (body.action === 'enqueue') {
     try {
@@ -137,59 +121,14 @@ export const POST = withRoute(async (req: Request) => {
   }
 
   if (body.action === 'sync') {
-    const identity = getOnlineIdentity()
-    if (identity.mode !== 'device_key' || !identity.pubKey || !identity.privKey) {
-      throw new ApiError(409, 'A device key identity is required to sign league mutations')
-    }
-    const signer = await leagueSignerFromStoredKey({
-      publicKey: identity.pubKey,
-      privateKey: identity.privKey,
-    })
-    const { queue: stored, recovered } = loadLeagueQueue(link.id)
-    const tracker = { next: { ...createSeqTracker().next, [link.remoteLeagueId]: link.nextSeq } }
-    const result = await flushQueue(stored, tracker, {
-      signer,
-      leagueId: link.remoteLeagueId,
-      now: () => Date.now(),
-      newNonce: () => crypto.randomUUID().replace(/-/g, ''),
-      send: async (_id: string, envelope: SignedEnvelope): Promise<TransportReply> => {
-        try {
-          const res = await remoteFetch(`${base}/mutate`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ envelope }),
-            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-          })
-          return { kind: 'http', status: res.status, body: await readBounded(res) }
-        } catch {
-          return { kind: 'network-error' }
-        }
-      },
-    })
-    const kept = pruneQueue(result.queue, Date.now())
-    saveLeagueQueue(link.id, kept)
-    // The tracker only ever advances: persist the counter, never lower it.
-    bumpSeqAtLeast(link.id, result.tracker.next[link.remoteLeagueId] ?? link.nextSeq)
-    const last = result.attempted.at(-1)
-    recordRemoteOutcome(
-      link.id,
-      last ? (last.outcome.kind === 'accepted' ? 'ok' : last.outcome.kind) : 'idle',
-    )
-    return Response.json({
-      ok: true,
-      recovered,
-      attempted: result.attempted.length,
-      nextWakeAt: result.nextWakeAt,
-      queue: summarizeQueue(kept),
-    })
+    const outcome = await syncRemoteLeague(link, { fetch: (url, init) => remoteFetch(url, init) })
+    if (!outcome.ok) throw new ApiError(409, outcome.message)
+    return Response.json(outcome)
   }
 
   if (body.action === 'state') {
-    const res = await remoteFetch(`${base}/state`, {
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    })
-    const data = await readBounded(res)
-    return Response.json({ ok: res.ok, status: res.status, remote: data })
+    const res = await fetchRemoteState(link, { fetch: (url, init) => remoteFetch(url, init) })
+    return Response.json({ ok: res.ok, status: res.status, remote: res.remote })
   }
 
   // mutate: needs a real device identity. No key, no signature, no request.
@@ -220,13 +159,13 @@ export const POST = withRoute(async (req: Request) => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ envelope }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(REMOTE_REQUEST_TIMEOUT_MS),
     })
   } catch {
     recordRemoteOutcome(link.id, 'unreachable')
     return Response.json({ ok: false, status: 0, code: 'unreachable', seq }, { status: 502 })
   }
-  const data = (await readBounded(res)) as { ok?: boolean; code?: string }
+  const data = (await readBoundedReply(res)) as { ok?: boolean; code?: string }
   const code = res.ok ? 'ok' : (data.code ?? `http_${res.status}`)
   recordRemoteOutcome(link.id, code)
   const stored = getRemoteLink(link.serverUrl, link.remoteLeagueId)
