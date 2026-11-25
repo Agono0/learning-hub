@@ -36,7 +36,7 @@ test('practice flow: choose an option, set confidence, commit, see feedback', as
 
   // Pick the first answer option and commit.
   const firstOption = page
-    .locator('button[type="button"]')
+    .locator('button[type="button"].w-full')
     .filter({ has: page.locator('span.rounded-full') })
     .first()
   await firstOption.click()
