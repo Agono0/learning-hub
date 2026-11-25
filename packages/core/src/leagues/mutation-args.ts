@@ -6,7 +6,12 @@
  * run through LeagueMutationSchema, so a typo can never queue a mutation the
  * authority would reject as malformed.
  *
- *   join <alias…>
+ *   join <alias…> [--invite <code>]
+ *   rename <alias…>
+ *   leave
+ *   invite-create <digest> [--uses N] [--hours H]
+ *   invite-revoke <digest>
+ *   invite-policy on|off
  *   duel-open <duelId> <opponentSignerId> --prompt "id::question::ans1|ans2" [--prompt …]
  *   duel-start <duelId>
  *   duel-answer <duelId> <promptId> <answer…>
@@ -51,9 +56,48 @@ export function parseMutationArgs(args: string[]): ParsedMutation {
   let candidate: unknown
   switch (type) {
     case 'join': {
-      const alias = tail.join(' ').trim()
+      const { values, rest } = flagValues(tail, '--invite')
+      const alias = rest.join(' ').trim()
       if (!alias) return { ok: false, error: 'join needs an alias' }
+      if (values.length > 1) return { ok: false, error: 'join takes at most one --invite' }
+      candidate = values[0] === undefined ? { type, alias } : { type, alias, invite: values[0] }
+      break
+    }
+    case 'rename': {
+      const alias = tail.join(' ').trim()
+      if (!alias) return { ok: false, error: 'rename needs an alias' }
       candidate = { type, alias }
+      break
+    }
+    case 'leave':
+      if (tail.length > 0) return { ok: false, error: 'leave takes no arguments' }
+      candidate = { type }
+      break
+    case 'invite-create': {
+      const uses = flagValues(tail, '--uses')
+      const hours = flagValues(uses.rest, '--hours')
+      const [digest, ...extra] = hours.rest
+      if (!digest || extra.length > 0) {
+        return { ok: false, error: 'invite-create needs exactly one <digest>' }
+      }
+      const maxUses = uses.values[0] === undefined ? 1 : Number(uses.values[0])
+      const hoursNum = hours.values[0] === undefined ? 24 : Number(hours.values[0])
+      if (!Number.isFinite(maxUses) || !Number.isFinite(hoursNum)) {
+        return { ok: false, error: '--uses and --hours must be numbers' }
+      }
+      candidate = { type, digest, maxUses, ttlMs: Math.round(hoursNum * 60 * 60_000) }
+      break
+    }
+    case 'invite-revoke': {
+      if (tail.length !== 1) return { ok: false, error: 'invite-revoke needs exactly one <digest>' }
+      candidate = { type, digest: tail[0] }
+      break
+    }
+    case 'invite-policy': {
+      if (tail.length !== 1 || (tail[0] !== 'on' && tail[0] !== 'off')) {
+        return { ok: false, error: 'invite-policy needs on or off' }
+      }
+      candidate = { type, required: tail[0] === 'on' }
       break
     }
     case 'close-round':

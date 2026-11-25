@@ -255,3 +255,74 @@ describe('pruneQueue', () => {
     expect(pruneQueue(q, T + 1000)).toBe(q)
   })
 })
+
+describe('membership items in the queue', () => {
+  const CODE = 'k'.repeat(32)
+  const digest = 'cd'.repeat(32)
+
+  it('keeps every membership action in one ordered lane', () => {
+    for (const m of [
+      { type: 'leave' },
+      { type: 'rename', alias: 'A' },
+      { type: 'invite-create', digest, maxUses: 1, ttlMs: 120_000 },
+      { type: 'invite-revoke', digest },
+      { type: 'invite-policy', required: true },
+    ] as LeagueMutation[]) {
+      expect(laneFor(m)).toBe('membership')
+    }
+  })
+
+  it('classifies the new refusal codes as permanent', () => {
+    for (const code of [
+      'invite_required',
+      'invite_invalid',
+      'invite_exists',
+      'too_many_invites',
+      'invite_unknown',
+      'not_invite_owner',
+      'not_founder',
+    ]) {
+      expect(classifyOutcome({ kind: 'rejected', code })).toBe('permanent')
+    }
+  })
+
+  it('keeps the invite code while pending and scrubs it once accepted', () => {
+    const { queue, id } = add(createSyncQueue(), { type: 'join', alias: 'Bo', invite: CODE })
+    expect(JSON.stringify(queue)).toContain(CODE)
+    const settled = recordOutcome(queue, id, { kind: 'accepted' }, T)
+    expect(settled.items[0]!.status).toBe('sent')
+    expect(JSON.stringify(settled)).not.toContain(CODE)
+    expect(settled.items[0]!.mutation).toEqual({ type: 'join', alias: 'Bo' })
+  })
+
+  it('scrubs the invite code when the join is rejected, and blocks later membership items', () => {
+    let q = add(createSyncQueue(), { type: 'join', alias: 'Bo', invite: CODE }).queue
+    const second = add(q, { type: 'rename', alias: 'Bobby' })
+    q = second.queue
+    const joinId = q.items[0]!.id
+    const out = recordOutcome(q, joinId, { kind: 'rejected', code: 'invite_invalid' }, T)
+    expect(out.items[0]!.status).toBe('rejected')
+    expect(JSON.stringify(out)).not.toContain(CODE)
+    expect(out.items[1]!.status).toBe('rejected')
+    expect(out.items[1]!.lastCode).toBe('blocked_by:invite_invalid')
+  })
+
+  it('keeps the code across transient failures so a retry can still join', () => {
+    const { queue, id } = add(createSyncQueue(), { type: 'join', alias: 'Bo', invite: CODE })
+    const retry = recordOutcome(queue, id, { kind: 'transport-error' }, T)
+    expect(retry.items[0]!.status).toBe('pending')
+    expect(JSON.stringify(retry)).toContain(CODE)
+  })
+
+  it('a rejected invite-create does not block an unrelated later rename', () => {
+    let q = add(createSyncQueue(), {
+      type: 'invite-create',
+      digest,
+      maxUses: 1,
+      ttlMs: 120_000,
+    }).queue
+    q = add(q, { type: 'rename', alias: 'R' }).queue
+    const out = recordOutcome(q, q.items[0]!.id, { kind: 'rejected', code: 'too_many_invites' }, T)
+    expect(out.items[1]!.status).toBe('pending')
+  })
+})

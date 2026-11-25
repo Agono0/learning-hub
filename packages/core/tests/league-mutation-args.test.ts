@@ -92,3 +92,65 @@ describe('parseMutationArgs', () => {
     expect(err(['award', 'usr_a'])).toMatch(/unknown mutation type/)
   })
 })
+
+describe('membership mutation arguments', () => {
+  const digest = 'ab'.repeat(32)
+
+  it('parses join with an invite code in any position', () => {
+    const code = 'x'.repeat(32)
+    expect(parseMutationArgs(['join', '--invite', code, 'Ada', 'L'])).toEqual({
+      ok: true,
+      mutation: { type: 'join', alias: 'Ada L', invite: code },
+    })
+    expect(parseMutationArgs(['join', 'Ada'])).toEqual({
+      ok: true,
+      mutation: { type: 'join', alias: 'Ada' },
+    })
+    expect(err(['join', 'Ada', '--invite', 'short'])).toMatch(/invite/)
+    expect(err(['join', '--invite', code, '--invite', code, 'Ada'])).toMatch(/at most one/)
+  })
+
+  it('parses rename and leave', () => {
+    expect(parseMutationArgs(['rename', 'New', 'Name'])).toEqual({
+      ok: true,
+      mutation: { type: 'rename', alias: 'New Name' },
+    })
+    expect(err(['rename'])).toMatch(/alias/)
+    expect(parseMutationArgs(['leave']).ok).toBe(true)
+    expect(err(['leave', 'now'])).toMatch(/no arguments/)
+  })
+
+  it('parses invite-create with defaults and flags', () => {
+    expect(parseMutationArgs(['invite-create', digest])).toEqual({
+      ok: true,
+      mutation: { type: 'invite-create', digest, maxUses: 1, ttlMs: 24 * 60 * 60_000 },
+    })
+    expect(parseMutationArgs(['invite-create', '--uses', '5', digest, '--hours', '2'])).toEqual({
+      ok: true,
+      mutation: { type: 'invite-create', digest, maxUses: 5, ttlMs: 2 * 60 * 60_000 },
+    })
+  })
+
+  it('rejects malformed invite arguments with a readable error', () => {
+    expect(err(['invite-create'])).toMatch(/digest/)
+    expect(err(['invite-create', 'nothex'])).toMatch(/invalid invite-create/)
+    expect(err(['invite-create', digest, '--uses', 'many'])).toMatch(/numbers/)
+    expect(err(['invite-create', digest, '--uses', '99'])).toMatch(/invalid invite-create/)
+    expect(err(['invite-create', digest, '--hours', '1000'])).toMatch(/invalid invite-create/)
+    expect(err(['invite-revoke'])).toMatch(/digest/)
+    expect(parseMutationArgs(['invite-revoke', digest]).ok).toBe(true)
+  })
+
+  it('parses invite-policy on and off only', () => {
+    expect(parseMutationArgs(['invite-policy', 'on'])).toEqual({
+      ok: true,
+      mutation: { type: 'invite-policy', required: true },
+    })
+    expect(parseMutationArgs(['invite-policy', 'off'])).toEqual({
+      ok: true,
+      mutation: { type: 'invite-policy', required: false },
+    })
+    expect(err(['invite-policy', 'maybe'])).toMatch(/on or off/)
+    expect(err(['invite-policy'])).toMatch(/on or off/)
+  })
+})

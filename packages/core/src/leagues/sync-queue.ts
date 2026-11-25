@@ -201,8 +201,35 @@ export function nextWakeAt(queue: SyncQueue): number | null {
   return earliest
 }
 
+/**
+ * A join's invite code is a bearer secret. Once the item is settled it has no
+ * further use, so drop it rather than keep it in the local queue.
+ */
+function scrubSettled(queue: SyncQueue): SyncQueue {
+  let changed = false
+  const items = queue.items.map((i) => {
+    if (i.status === 'pending' || i.mutation.type !== 'join' || i.mutation.invite === undefined) {
+      return i
+    }
+    changed = true
+    const { invite: _dropped, ...rest } = i.mutation
+    void _dropped
+    return { ...i, mutation: rest }
+  })
+  return changed ? { ...queue, items } : queue
+}
+
 /** Record the result of sending one item. Unknown ids leave the queue unchanged. */
 export function recordOutcome(
+  queue: SyncQueue,
+  id: string,
+  outcome: SendOutcome,
+  now: number,
+): SyncQueue {
+  return scrubSettled(recordOutcomeRaw(queue, id, outcome, now))
+}
+
+function recordOutcomeRaw(
   queue: SyncQueue,
   id: string,
   outcome: SendOutcome,
@@ -267,6 +294,8 @@ function dependsOn(rejected: SyncItem, later: SyncItem): boolean {
   const r = rejected.mutation.type
   const l = later.mutation.type
   if (r === 'duel-open') return true
+  // A refused join leaves every later membership action without a member.
+  if (r === 'join') return true
   if (r === 'duel-start') return l === 'duel-answer'
   if (r === 'duel-answer') return l === 'duel-answer'
   return false
