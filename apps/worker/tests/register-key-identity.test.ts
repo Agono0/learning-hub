@@ -46,9 +46,8 @@ function envWith(db: D1Database): Env {
 }
 
 async function register(env: Env, alias: string, pair: { publicKey: string; privateKey: string }) {
-  const { identityChallenge, identitySigningPayload, signIdentityPayload } = await import(
-    '@learning-hub/core'
-  )
+  const { identityChallenge, identitySigningPayload, signIdentityPayload } =
+    await import('@learning-hub/core')
   const challenge = identityChallenge('usr_test', 1730000000000)
   const signature = await signIdentityPayload(
     pair.privateKey,
