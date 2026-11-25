@@ -12,7 +12,12 @@
 import { z } from 'zod'
 import { readJson, withRoute } from '@/lib/api'
 import {
+  applyAllPendingVersions,
   applyChannelUpdate,
+  canSubscribe,
+  diffVersions,
+  issueInviteToken,
+  migrateV1Envelope,
   ChannelItemSchema,
   ChannelManifestSchema,
   ChannelContentTypeSchema,
@@ -57,6 +62,44 @@ const postSchema = z.discriminatedUnion('action', [
     }),
   }),
   z.object({
+    action: z.literal('diff'),
+    manifest: ChannelManifestSchema,
+    fromVersion: z.number().int().positive(),
+    toVersion: z.number().int().positive(),
+  }),
+  z.object({
+    action: z.literal('apply-all'),
+    localItems: z.array(LocalItemSchema),
+    localVersion: z.number().int().nonnegative(),
+    channelId: z.string().min(1),
+    manifest: ChannelManifestSchema,
+  }),
+  z.object({
+    action: z.literal('migrate-v1'),
+    envelope: z.object({
+      type: ChannelContentTypeSchema,
+      metadata: z.object({
+        title: z.string().min(1),
+        author: z.string().optional(),
+        description: z.string().optional(),
+      }),
+      data: z.record(z.string(), z.unknown()),
+    }),
+    channelId: z.string().min(1),
+    authorHandle: z.string().min(1).max(50),
+    visibility: ChannelVisibilitySchema,
+  }),
+  z.object({
+    action: z.literal('invite'),
+    channelId: z.string().min(1),
+    inviteSecret: z.string().min(8),
+  }),
+  z.object({
+    action: z.literal('check-access'),
+    manifest: ChannelManifestSchema,
+    inviteToken: z.string().optional(),
+  }),
+  z.object({
     action: z.literal('verify'),
     manifest: ChannelManifestSchema,
   }),
@@ -80,6 +123,26 @@ export const POST = withRoute(async (req: Request) => {
       return Response.json(applyChannelUpdate(body.localItems, body.version))
     case 'verify':
       return Response.json(verifyManifest(body.manifest))
+    case 'diff': {
+      const from = body.manifest.versions.find((v) => v.version === body.fromVersion)
+      const to = body.manifest.versions.find((v) => v.version === body.toVersion)
+      if (!from || !to)
+        return Response.json({ error: 'version not found in manifest' }, { status: 404 })
+      return Response.json(diffVersions(from, to))
+    }
+    case 'apply-all': {
+      const sub = { ...subscribeToChannel(body.channelId), localVersion: body.localVersion }
+      return Response.json(applyAllPendingVersions(body.localItems, sub, body.manifest))
+    }
+    case 'migrate-v1':
+      return Response.json({ manifest: migrateV1Envelope(body) })
+    case 'invite':
+      return Response.json({
+        channelId: body.channelId,
+        inviteToken: issueInviteToken(body.channelId, body.inviteSecret),
+      })
+    case 'check-access':
+      return Response.json(canSubscribe(body.manifest, body.inviteToken))
     case 'status': {
       const sub = { ...subscribeToChannel(body.channelId), localVersion: body.localVersion }
       return Response.json({
