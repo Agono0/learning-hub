@@ -20,7 +20,9 @@ type Manifest = {
   currentVersion: number
   versions: {
     version: number
+    publishedAt: string
     changelog: string
+    checksum: string
     items: { id: string; content: Record<string, unknown>; revision: number }[]
   }[]
 }

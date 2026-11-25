@@ -206,9 +206,7 @@ export function ChannelUpdatesBanner() {
                   )
                 </Badge>
               )}
-              {state.kind === 'error' && (
-                <Callout className="w-full text-xs">Sync failed: {state.message}</Callout>
-              )}
+              {state.kind === 'error' && <Callout>Sync failed: {state.message}</Callout>}
               {(state.kind === 'current' || state.kind === 'error' || state.kind === 'applied') && (
                 <Button variant="secondary" className="min-h-11" onClick={() => void check(sub)}>
                   Check again
