@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { parseCalendarResponseBody } from '@learning-hub/core/ics'
 import { ApiError, readJson, withRoute } from '@/lib/api'
+import { boundedFetchText, BoundedFetchError } from '@/server/bounded-fetch'
+
+/** Feed size cap: iCal and CalDAV multistatus bodies are text; 10 MB is generous for a calendar. */
+const MAX_FEED_BYTES = 10 * 1024 * 1024
 
 /**
  * POST /api/calendar/import (S3-27).
@@ -16,9 +20,11 @@ import { ApiError, readJson, withRoute } from '@/lib/api'
  * Untrusted input, twice over: the URL must be https (calendar feeds are
  * credentials-adjacent; plain http is refused like core's assertHttps) and
  * the body is parsed defensively — junk feeds resolve to empty collections,
- * never an error the client must survive. No SSRF hardening beyond https +
- * no redirect-crossing: this is a user-entered, user-visible subscription
- * (the planner shows the URL), same trust level as the reader's RSS paths.
+ * never an error the client must survive. The fetch goes through
+ * `boundedFetchText`: https only, literal private/loopback/link-local hosts
+ * refused on every redirect hop, at most 3 manual redirects, a 10 MB byte cap
+ * and a 15 s deadline. Residual: no DNS resolution, so a public name that
+ * resolves to a private address is not caught (see bounded-fetch.ts).
  */
 const bodySchema = z.object({
   /** https feed URL (an .ics download or a CalDAV calendar-data report). */
@@ -32,12 +38,19 @@ export const POST = withRoute(async (req: Request) => {
 
   let text: string | null = null
   try {
-    const res = await fetch(url, {
+    const res = await boundedFetchText(url, {
+      maxBytes: MAX_FEED_BYTES,
+      timeoutMs: 15_000,
       headers: { accept: 'text/calendar, application/xml, text/xml, */*' },
-      signal: AbortSignal.timeout(15_000),
     })
-    if (res.ok) text = await res.text()
-  } catch {
+    if (res.ok) text = res.text
+  } catch (err) {
+    if (err instanceof BoundedFetchError && err.code === 'blocked') {
+      throw new ApiError(400, err.message)
+    }
+    if (err instanceof BoundedFetchError && err.code === 'too-large') {
+      throw new ApiError(413, 'The calendar feed is too large to import')
+    }
     // network error / timeout — falls through to the honest empty reply
   }
 
