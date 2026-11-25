@@ -38,6 +38,7 @@ import { lifestyleTools } from './tools/lifestyle'
 import { learningPathTools } from './tools/learning-path'
 import { readinessTools } from './tools/readiness'
 import { examPrepTools } from './tools/exam-prep'
+import { studySessionTools } from './tools/study-session'
 import { communityTools } from './tools/community'
 import { telemetryAudioTools } from './tools/telemetry-audio'
 import { advancedLearningTools } from './tools/advanced-learning'
@@ -79,6 +80,7 @@ async function main() {
     ...learningPathTools,
     ...readinessTools,
     ...examPrepTools,
+    ...studySessionTools,
     ...communityTools,
     ...telemetryAudioTools,
     ...advancedLearningTools,
