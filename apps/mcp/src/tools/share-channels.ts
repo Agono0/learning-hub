@@ -9,6 +9,7 @@
 import { z } from 'zod'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 import {
+  ProposalOperationSchema,
   applyAllPendingVersions,
   applyChannelUpdate,
   canSubscribe,
@@ -40,6 +41,14 @@ import {
   publishDeckAsChannel,
   publishCourseAsChannel,
   publishDeckUpdateFromLibrary,
+  hostChannel,
+  getHostedChannel,
+  listHostedChannels,
+  publishHostedChannelVersion,
+  unhostChannel,
+  createChannelProposal,
+  listChannelProposals,
+  decideChannelProposal,
 } from '@learning-hub/db'
 
 export const shareChannelTools: RegisteredTool[] = [
@@ -381,5 +390,85 @@ export const shareChannelTools: RegisteredTool[] = [
               })
       return json(result)
     },
+  ),
+  tool(
+    'share_channel_host',
+    'Hosts a channel manifest on this instance, making it fetchable over HTTP and eligible for proposals. Fails if the channelId is already hosted.',
+    { manifest: ChannelManifestSchema },
+    async ({ manifest }) => json(hostChannel(manifest)),
+  ),
+  tool(
+    'share_channel_list_hosted',
+    'Lists channels hosted on this instance (channelId, title, currentVersion, updatedAt).',
+    {},
+    async () => json({ ok: true, channels: listHostedChannels() }),
+  ),
+  tool(
+    'share_channel_hosted_manifest',
+    'Returns the full manifest of a locally hosted channel.',
+    { channelId: z.string().min(1) },
+    async ({ channelId }) => {
+      const manifest = getHostedChannel(channelId)
+      if (!manifest) return json({ ok: false, error: 'channel not hosted here' })
+      return json({ ok: true, manifest })
+    },
+  ),
+  tool(
+    'share_channel_publish_hosted_update',
+    'Publishes the next version of a locally hosted channel. Items absent from the list are removed from the channel.',
+    {
+      channelId: z.string().min(1),
+      items: z
+        .array(z.object({ id: z.string().min(1), content: z.record(z.string(), z.unknown()) }))
+        .min(1),
+      changelog: z.string().max(500),
+    },
+    async (input) => json(publishHostedChannelVersion(input)),
+  ),
+  tool(
+    'share_channel_unhost',
+    'Stops hosting a channel on this instance.',
+    { channelId: z.string().min(1) },
+    async ({ channelId }) => json(unhostChannel(channelId)),
+  ),
+  tool(
+    'share_channel_propose',
+    'Creates a subscription pull request: proposes upsert/remove operations against a hosted channel. The owner accepts or declines; accepting publishes the next version.',
+    {
+      channelId: z.string().min(1),
+      authorHandle: z.string().min(1).max(50),
+      title: z.string().min(1).max(200),
+      note: z.string().max(2000).optional(),
+      operations: z.array(ProposalOperationSchema).min(1).max(500),
+    },
+    async (input) =>
+      json(
+        createChannelProposal({
+          channelId: input.channelId,
+          authorHandle: input.authorHandle,
+          title: input.title,
+          operations: input.operations,
+          ...(input.note !== undefined ? { note: input.note } : {}),
+        }),
+      ),
+  ),
+  tool(
+    'share_channel_list_proposals',
+    'Lists proposals for a channel, optionally filtered by status.',
+    {
+      channelId: z.string().min(1),
+      status: z.enum(['open', 'accepted', 'declined']).optional(),
+    },
+    async ({ channelId, status }) =>
+      json({ ok: true, proposals: listChannelProposals(channelId, status) }),
+  ),
+  tool(
+    'share_channel_decide_proposal',
+    'Accepts or declines an open proposal. Accepting publishes the next channel version with the proposed changes.',
+    {
+      proposalId: z.string().min(1),
+      decision: z.enum(['accept', 'decline']),
+    },
+    async ({ proposalId, decision }) => json(decideChannelProposal(proposalId, decision)),
   ),
 ]

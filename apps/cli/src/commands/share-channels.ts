@@ -38,6 +38,14 @@ import {
   importChannelCourse,
   publishDeckAsChannel,
   publishCourseAsChannel,
+  hostChannel,
+  getHostedChannel,
+  listHostedChannels,
+  publishHostedChannelVersion,
+  unhostChannel,
+  createChannelProposal,
+  listChannelProposals,
+  decideChannelProposal,
 } from '@learning-hub/db'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -426,6 +434,175 @@ function shareChannelsCommand(args: string[]): void {
         if (result.skipped?.length) {
           console.log(`Skipped ${result.skipped.length} non-transportable card(s).`)
         }
+      }
+      return
+    }
+    case 'host': {
+      const data = readJsonPayload(args)
+      if (!data) {
+        console.error('usage: share-channels host --data <manifest-json> | --file <path> [--json]')
+        process.exitCode = 1
+        return
+      }
+      const result = hostChannel(ChannelManifestSchema.parse(data))
+      if (!result.ok) {
+        console.error(result.error ?? 'host failed')
+        process.exitCode = 1
+        return
+      }
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true }))
+      } else {
+        console.log(
+          `Channel ${result.manifest!.channelId} now hosted at v${result.manifest!.currentVersion}.`,
+        )
+      }
+      return
+    }
+    case 'host-list': {
+      const channels = listHostedChannels()
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, channels }))
+      } else {
+        console.log(`\nHosted channels (${channels.length})`)
+        for (const c of channels) console.log(`  ${c.channelId}  v${c.currentVersion}  ${c.title}`)
+      }
+      return
+    }
+    case 'host-get': {
+      const channelId = parseFlag(args, '--channel')
+      if (!channelId) {
+        console.error('usage: share-channels host-get --channel <id> [--json]')
+        process.exitCode = 1
+        return
+      }
+      const manifest = getHostedChannel(channelId)
+      if (!manifest) {
+        console.error('channel not hosted here')
+        process.exitCode = 1
+        return
+      }
+      console.log(JSON.stringify(manifest, null, asJson ? 0 : 2))
+      return
+    }
+    case 'host-publish': {
+      const channelId = parseFlag(args, '--channel')
+      const changelog = parseFlag(args, '--changelog') ?? 'Update'
+      const data = readJsonPayload(args)
+      if (!channelId || !Array.isArray(data)) {
+        console.error(
+          'usage: share-channels host-publish --channel <id> (--data <items-json> | --file <path>) [--changelog <c>] [--json]',
+        )
+        process.exitCode = 1
+        return
+      }
+      const result = publishHostedChannelVersion({ channelId, items: data, changelog })
+      if (!result.ok) {
+        console.error(result.error ?? 'publish failed')
+        process.exitCode = 1
+        return
+      }
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, version: result.manifest!.currentVersion }))
+      } else {
+        console.log(`Channel ${channelId} published at v${result.manifest!.currentVersion}.`)
+      }
+      return
+    }
+    case 'host-unhost': {
+      const channelId = parseFlag(args, '--channel')
+      if (!channelId) {
+        console.error('usage: share-channels host-unhost --channel <id>')
+        process.exitCode = 1
+        return
+      }
+      const result = unhostChannel(channelId)
+      if (!result.ok) {
+        console.error(result.error ?? 'unhost failed')
+        process.exitCode = 1
+        return
+      }
+      console.log(asJson ? JSON.stringify({ ok: true }) : `Channel ${channelId} unhosted.`)
+      return
+    }
+    case 'propose': {
+      const channelId = parseFlag(args, '--channel')
+      const author = parseFlag(args, '--author')
+      const title = parseFlag(args, '--title')
+      const data = readJsonPayload(args)
+      if (!channelId || !author || !title || !Array.isArray(data)) {
+        console.error(
+          'usage: share-channels propose --channel <id> --author <handle> --title <t> (--data <operations-json> | --file <path>) [--note <n>] [--json]',
+        )
+        process.exitCode = 1
+        return
+      }
+      const result = createChannelProposal({
+        channelId,
+        authorHandle: author,
+        title,
+        operations: data,
+        ...(parseFlag(args, '--note') ? { note: parseFlag(args, '--note')! } : {}),
+      })
+      if (!result.ok) {
+        console.error(result.error ?? 'proposal failed')
+        process.exitCode = 1
+        return
+      }
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, proposal: result.proposal }))
+      } else {
+        console.log(
+          `Proposal ${result.proposal!.id} created against ${channelId} v${result.proposal!.baseVersion}.`,
+        )
+      }
+      return
+    }
+    case 'proposals': {
+      const channelId = parseFlag(args, '--channel')
+      if (!channelId) {
+        console.error(
+          'usage: share-channels proposals --channel <id> [--status open|accepted|declined] [--json]',
+        )
+        process.exitCode = 1
+        return
+      }
+      const status = parseFlag(args, '--status') as 'open' | 'accepted' | 'declined' | undefined
+      const proposals = listChannelProposals(channelId, status)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, proposals }))
+      } else {
+        console.log(`\nProposals for ${channelId} (${proposals.length})`)
+        for (const pr of proposals) {
+          console.log(
+            `  [${pr.status}] ${pr.id.slice(0, 8)}  base v${pr.baseVersion}  ${pr.authorHandle}: ${pr.title}`,
+          )
+        }
+      }
+      return
+    }
+    case 'proposal-decide': {
+      const proposalId = parseFlag(args, '--proposal')
+      const decision = parseFlag(args, '--decision') as 'accept' | 'decline' | undefined
+      if (!proposalId || (decision !== 'accept' && decision !== 'decline')) {
+        console.error(
+          'usage: share-channels proposal-decide --proposal <id> --decision accept|decline [--json]',
+        )
+        process.exitCode = 1
+        return
+      }
+      const result = decideChannelProposal(proposalId, decision)
+      if (!result.ok) {
+        console.error(result.error ?? 'decision failed')
+        process.exitCode = 1
+        return
+      }
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, proposal: result.proposal }))
+      } else if (decision === 'accept') {
+        console.log(`Proposal accepted; channel now at v${result.version}.`)
+      } else {
+        console.log('Proposal declined.')
       }
       return
     }
