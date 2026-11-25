@@ -173,7 +173,7 @@ export function StatsLine({ report }: { report: CourseReport }) {
 }
 
 const cellTone = (score: number, matched: boolean) =>
-  matched ? (score >= 0.6 ? 'bg-success-bg' : 'bg-accent-bg') : 'bg-warning-bg'
+  matched ? (score >= 0.6 ? 'bg-emerald-500/30' : 'bg-violet-500/40') : 'bg-amber-500/30'
 
 export function AlignmentTable({ matrix }: { matrix: AlignmentMatrix }) {
   if (matrix.rows.length === 0) return <EmptyState title="No lessons" />
@@ -266,7 +266,7 @@ export function LevelBars({ matrix }: { matrix: AlignmentMatrix }) {
         <li key={level} className="flex items-center gap-2">
           <span className="w-24 shrink-0">{level}</span>
           <span
-            className="h-2 rounded bg-accent-bg"
+            className="h-2 rounded bg-violet-500/40"
             style={{ width: `${(n / max) * 100}%`, minWidth: n > 0 ? 6 : 0 }}
             aria-hidden="true"
           />
