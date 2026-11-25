@@ -7,6 +7,7 @@ import { queryId } from '@/lib/query-params'
 import { z } from 'zod'
 import { extractEpubBytes } from '@learning-hub/core'
 import { createSource, deleteSource, listSources } from '@learning-hub/db'
+import { htmlLimitError } from '@/lib/html-limit'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
 /** Upload cap per file, matching the 50 MB apkg import contract. */
@@ -65,7 +66,10 @@ export const POST = withRoute(async (req: Request) => {
       try {
         extracted = extractEpubBytes(buffer)
       } catch (err) {
-        throw new ApiError(400, err instanceof Error ? err.message : 'invalid EPUB file')
+        throw (
+          htmlLimitError(err) ??
+          new ApiError(400, err instanceof Error ? err.message : 'invalid EPUB file')
+        )
       }
       const title = customTitle || extracted.title || file.name.replace(/\.epub$/i, '')
       const source = createSource({

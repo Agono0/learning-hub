@@ -21,6 +21,7 @@ import { boundedFetchText, BoundedFetchError } from '@/server/bounded-fetch'
 const MAX_ARTICLE_BYTES = 5 * 1024 * 1024
 /** EPUB base64 payload cap, matching the 50 MB apkg import contract. */
 const MAX_EPUB_BASE64 = 50 * 1024 * 1024
+import { htmlLimitError } from '@/lib/html-limit'
 
 const ingestSchema = z.discriminatedUnion('mode', [
   z.object({
@@ -126,7 +127,12 @@ export const POST = withRoute(async (req: Request) => {
       )
     }
 
-    const extracted = extractArticleFromHtml(html, body.url)
+    let extracted: ReturnType<typeof extractArticleFromHtml>
+    try {
+      extracted = extractArticleFromHtml(html, body.url)
+    } catch (err) {
+      throw htmlLimitError(err) ?? err
+    }
     if (!extracted.content || extracted.content.length < 40) {
       throw new ApiError(
         422,
@@ -235,7 +241,10 @@ export const POST = withRoute(async (req: Request) => {
     try {
       extracted = extractEpubBytes(bytes)
     } catch (err) {
-      throw new ApiError(400, err instanceof Error ? err.message : 'Invalid EPUB')
+      throw (
+        htmlLimitError(err) ??
+        new ApiError(400, err instanceof Error ? err.message : 'Invalid EPUB')
+      )
     }
     const source = createSource({
       kind: 'epub',
