@@ -1106,9 +1106,28 @@ function DuelsTab({
                 <span>
                   <span className="font-medium">{d.slug}</span> — {d.playerA} vs {d.playerB}
                 </span>
-                <Badge tone={d.status === 'open' ? 'accent' : d.winner ? 'success' : 'neutral'}>
-                  {d.status === 'open' ? 'open' : d.winner ? `won by ${d.winner}` : 'draw'}
-                </Badge>
+                <span className="flex items-center gap-2">
+                  {d.status === 'complete' && (
+                    <Button
+                      variant="secondary"
+                      data-testid={`duel-rematch-${d.slug}`}
+                      onClick={() => {
+                        const taken = new Set(detail?.duels.map((x) => x.slug) ?? [])
+                        let n = 2
+                        while (taken.has(`${d.slug}-r${n}`)) n += 1
+                        void act(
+                          { action: 'duel-rematch', duelSlug: d.slug, newSlug: `${d.slug}-r${n}` },
+                          `Rematch ${d.slug}-r${n} created — same prompts, swapped seating.`,
+                        )
+                      }}
+                    >
+                      Rematch
+                    </Button>
+                  )}
+                  <Badge tone={d.status === 'open' ? 'accent' : d.winner ? 'success' : 'neutral'}>
+                    {d.status === 'open' ? 'open' : d.winner ? `won by ${d.winner}` : 'draw'}
+                  </Badge>
+                </span>
               </li>
             ))}
           </ul>

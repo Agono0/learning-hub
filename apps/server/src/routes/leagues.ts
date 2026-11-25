@@ -36,6 +36,7 @@ import {
   listLeagueTournaments,
   openTournamentMatches,
   recordTournamentMatchResult,
+  rematchLeagueDuel,
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER } from '@learning-hub/core'
@@ -105,6 +106,11 @@ const duelFromDeckSchema = z.object({
   playerB: z.string().min(1).max(50),
   limit: z.number().int().min(1).max(50).optional(),
   seed: z.number().int().optional(),
+})
+
+const duelRematchSchema = z.object({
+  duelSlug: z.string().min(1),
+  newSlug: z.string().min(1).max(60),
 })
 
 const duelAnswersSchema = z.object({
@@ -365,6 +371,17 @@ function getLeagueDivision(req: IncomingMessage, res: ServerResponse, url: URL):
   sendJson(res, 200, { ok: true, division: detail })
 }
 
+/** POST /leagues/duels/rematch — new duel: same players/prompts, swapped seats. */
+async function postDuelRematch(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, duelRematchSchema)
+  try {
+    const duel = rematchLeagueDuel(body.duelSlug, body.newSlug)
+    sendJson(res, 201, { ok: true, duel })
+  } catch (err) {
+    jsonError(res, 400, err instanceof Error ? err.message : 'rematch failed')
+  }
+}
+
 // ── Route table ─────────────────────────────────────────────────────────────
 
 export const leaguesRoutes: Route[] = [
@@ -465,6 +482,12 @@ export const leaguesRoutes: Route[] = [
     path: '/leagues/duels/from-deck',
     summary: 'create a duel from a deck of cards',
     handler: postDuelFromDeck,
+  },
+  {
+    method: 'POST',
+    path: '/leagues/duels/rematch',
+    summary: 'rematch a completed duel (same prompts, swapped seating)',
+    handler: postDuelRematch,
   },
   {
     method: 'POST',

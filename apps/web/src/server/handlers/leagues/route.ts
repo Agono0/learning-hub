@@ -30,6 +30,7 @@ import {
   listLeagueTournaments,
   openTournamentMatches,
   recordTournamentMatchResult,
+  rematchLeagueDuel,
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER } from '@learning-hub/core'
@@ -201,6 +202,11 @@ const postSchema = z.discriminatedUnion('action', [
     seed: z.number().int().optional(),
   }),
   z.object({
+    action: z.literal('duel-rematch'),
+    duelSlug: z.string().min(1),
+    newSlug: z.string().min(1).max(60),
+  }),
+  z.object({
     action: z.literal('duel-answer'),
     slug: z.string().min(1),
     side: z.enum(['A', 'B']),
@@ -281,6 +287,10 @@ export const POST = withRoute(async (req: Request) => {
           return Response.json({ error: `duel exists: ${body.slug}` }, { status: 409 })
         }
         const duel = createDuelFromDeck(body)
+        return Response.json({ ok: true, duel }, { status: 201 })
+      }
+      case 'duel-rematch': {
+        const duel = rematchLeagueDuel(body.duelSlug, body.newSlug)
         return Response.json({ ok: true, duel }, { status: 201 })
       }
       case 'duel-answer': {

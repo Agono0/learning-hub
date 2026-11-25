@@ -19,6 +19,7 @@
  *   leagues duel create <slug> <playerA> <playerB> [--league <slug>]
  *                      --prompt "id::question::ans1|ans2" [--prompt …]
  *   leagues duel answer <slug> <A|B> --answer "promptId::answer::ms" [--answer …]
+ *   leagues duel rematch <duelSlug> <newSlug>
  *   leagues duel list [--league <slug>] [--status open|complete]
  *   leagues tournament create <slug> "<title>" <seed1,seed2,…> [--league <slug>]
  *   leagues tournament open <slug>
@@ -57,6 +58,7 @@ import {
   listLeagueTournaments,
   openTournamentMatches,
   recordTournamentMatchResult,
+  rematchLeagueDuel,
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER, type DivisionTier } from '@learning-hub/core'
@@ -295,6 +297,20 @@ function roundsCommand(args: string[]): void {
 
 function duelCommand(args: string[]): void {
   const sub = args[0]
+  if (sub === 'rematch') {
+    const [, duelSlug, newSlug] = args
+    if (!duelSlug || !newSlug)
+      return fail('Usage: learning-hub leagues duel rematch <duelSlug> <newSlug>')
+    try {
+      const d = rematchLeagueDuel(duelSlug, newSlug)
+      console.log(
+        `Rematch ${d.slug}: ${d.playerA} vs ${d.playerB} (same prompts, swapped seating).`,
+      )
+    } catch (err) {
+      fail(err instanceof Error ? err.message : 'rematch failed')
+    }
+    return
+  }
   if (sub === 'create') {
     const [, slug, playerA, playerB] = args
     const prompts = parseAll(args, '--prompt').map((raw) => {

@@ -30,6 +30,7 @@ import {
   listLeagueTournaments,
   openTournamentMatches,
   recordTournamentMatchResult,
+  rematchLeagueDuel,
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER } from '@learning-hub/core'
@@ -92,6 +93,12 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'duel_rematch',
+    'Rematch a completed duel: a new open duel between the same players with the same prompts and swapped seating.',
+    { duelSlug: z.string().min(1), newSlug: z.string().min(1).max(60) },
+    ({ duelSlug, newSlug }) => json({ ok: true, duel: rematchLeagueDuel(duelSlug, newSlug) }),
   ),
   tool(
     'league_division',
