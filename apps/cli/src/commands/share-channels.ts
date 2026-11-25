@@ -13,8 +13,13 @@
 import { readFileSync } from 'node:fs'
 import { type RegisteredCommand } from './registry'
 import {
+  applyAllPendingVersions,
   applyChannelUpdate,
   ChannelManifestSchema,
+  canSubscribe,
+  diffVersions,
+  issueInviteToken,
+  migrateV1Envelope,
   createChannel,
   hasPendingUpdate,
   publishUpdate,
@@ -119,6 +124,97 @@ function shareChannelsCommand(args: string[]): void {
       }
       return
     }
+    case 'diff': {
+      const body = readJsonPayload(args) as {
+        manifest: unknown
+        fromVersion: number
+        toVersion: number
+      }
+      const m = ChannelManifestSchema.parse(body.manifest)
+      const from = m.versions.find((v) => v.version === body.fromVersion)
+      const to = m.versions.find((v) => v.version === body.toVersion)
+      if (!from || !to) {
+        console.error('version not found in manifest')
+        process.exitCode = 1
+        return
+      }
+      const diff = diffVersions(from, to)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, diff }))
+      } else {
+        console.log(`\nDiff v${body.fromVersion} -> v${body.toVersion}`)
+        console.log(`Added:     ${diff.addedIds.join(', ') || '(none)'}`)
+        console.log(`Removed:   ${diff.removedIds.join(', ') || '(none)'}`)
+        console.log(`Changed:   ${diff.changedIds.join(', ') || '(none)'}`)
+        console.log(`Unchanged: ${diff.unchangedIds.length} item(s)`)
+      }
+      return
+    }
+    case 'apply-all': {
+      const body = readJsonPayload(args) as {
+        localItems: Parameters<typeof applyAllPendingVersions>[0]
+        localVersion: number
+        channelId: string
+        manifest: unknown
+      }
+      const m = ChannelManifestSchema.parse(body.manifest)
+      const sub = {
+        channelId: body.channelId,
+        localVersion: body.localVersion,
+        subscribedAt: '',
+        lastSyncAt: null,
+      }
+      const { items, result, appliedVersions } = applyAllPendingVersions(body.localItems, sub, m)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, items, result, appliedVersions }))
+      } else {
+        console.log(`\nApplied versions: ${appliedVersions.join(', ') || '(none)'}`)
+        console.log(
+          `Added ${result.addedCount}, updated ${result.updatedCount}, kept ${result.removedCount}, conflicts ${result.conflictCount}`,
+        )
+      }
+      return
+    }
+    case 'migrate-v1': {
+      const body = readJsonPayload(args) as Parameters<typeof migrateV1Envelope>[0]
+      const manifest = migrateV1Envelope(body)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, manifest }))
+      } else {
+        console.log(
+          `\nMigrated to channel ${manifest.channelId} at version 1 (${manifest.versions[0].items.length} items).`,
+        )
+      }
+      return
+    }
+    case 'invite': {
+      const channelId = parseFlag(args, '--channel')
+      const secret = parseFlag(args, '--secret')
+      if (!channelId || !secret) {
+        console.error('usage: share-channels invite --channel <id> --secret <creator-secret>')
+        process.exitCode = 1
+        return
+      }
+      const token = issueInviteToken(channelId, secret)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, channelId, inviteToken: token }))
+      } else {
+        console.log(`\nInvite token for ${channelId}: ${token}`)
+        console.log('Share the token with invitees; rotate the secret to revoke all tokens.')
+      }
+      return
+    }
+    case 'check-access': {
+      const body = readJsonPayload(args) as { manifest: unknown; inviteToken?: string }
+      const m = ChannelManifestSchema.parse(body.manifest)
+      const gate = canSubscribe(m, body.inviteToken)
+      if (asJson) {
+        console.log(JSON.stringify({ ok: true, ...gate }))
+      } else {
+        console.log(gate.allowed ? '\nSubscription allowed.' : `\nRefused: ${gate.reason}`)
+      }
+      return
+    }
     case 'describe': {
       const body = readJsonPayload(args) as { manifest: unknown }
       const m = ChannelManifestSchema.parse(body.manifest)
@@ -166,7 +262,9 @@ function shareChannelsCommand(args: string[]): void {
     }
     default:
       console.error(`unknown subcommand: ${sub}`)
-      console.error('usage: share-channels [create|publish|apply|verify|describe|status] [--json]')
+      console.error(
+        'usage: share-channels [create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access] [--json]',
+      )
       process.exitCode = 1
   }
 }
@@ -175,7 +273,8 @@ export const shareChannelCommands: RegisteredCommand[] = [
   {
     name: 'share-channels',
     description: 'lh-share/v2 versioned shared material channels (create, publish, apply, verify)',
-    usage: '[create|publish|apply|verify|describe|status]',
+    usage:
+      '[create|publish|apply|apply-all|diff|verify|describe|status|migrate-v1|invite|check-access]',
     run: (runArgs) => shareChannelsCommand(runArgs),
   },
 ]

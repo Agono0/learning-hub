@@ -9,7 +9,12 @@
 import { z } from 'zod'
 import { json, tool, type RegisteredTool } from '../tool-kit'
 import {
+  applyAllPendingVersions,
   applyChannelUpdate,
+  canSubscribe,
+  diffVersions,
+  issueInviteToken,
+  migrateV1Envelope,
   ChannelItemSchema,
   ChannelManifestSchema,
   ChannelVisibilitySchema,
@@ -101,6 +106,81 @@ export const shareChannelTools: RegisteredTool[] = [
         pending: hasPendingUpdate({ ...sub, localVersion }, manifest),
         versionsBehind: Math.max(0, manifest.currentVersion - localVersion),
       })
+    },
+  ),
+  tool(
+    'share_channel_diff',
+    'Diffs two versions of a channel: added, removed, changed and unchanged item ids. Use to surface what changed before a subscriber applies an update.',
+    {
+      manifest: ChannelManifestSchema,
+      fromVersion: z.number().int().positive(),
+      toVersion: z.number().int().positive(),
+    },
+    async ({ manifest, fromVersion, toVersion }) => {
+      const from = manifest.versions.find((v) => v.version === fromVersion)
+      const to = manifest.versions.find((v) => v.version === toVersion)
+      if (!from || !to) return json({ error: 'version not found in manifest' })
+      return json(diffVersions(from, to))
+    },
+  ),
+  tool(
+    'share_channel_apply_all_pending',
+    'Applies every version a subscription is behind, in order, folding merge results and deduping conflicts. Learner state is preserved across the whole batch.',
+    {
+      localItems: z.array(LocalItemSchema),
+      localVersion: z.number().int().nonnegative(),
+      channelId: z.string().min(1),
+      manifest: ChannelManifestSchema,
+    },
+    async ({ localItems, localVersion, channelId, manifest }) => {
+      const sub = { ...subscribeToChannel(channelId), localVersion }
+      return json(applyAllPendingVersions(localItems, sub, manifest))
+    },
+  ),
+  tool(
+    'share_channel_migrate_v1',
+    'Upgrades a one-shot lh-share/v1 envelope into a v2 channel manifest at version 1, preserving item ids where present.',
+    {
+      envelope: z.object({
+        type: ChannelContentTypeSchema,
+        metadata: z.object({
+          title: z.string().min(1),
+          author: z.string().optional(),
+          description: z.string().optional(),
+        }),
+        data: z.record(z.string(), z.unknown()),
+      }),
+      channelId: z.string().min(1),
+      authorHandle: z.string().min(1).max(50),
+      visibility: ChannelVisibilitySchema,
+    },
+    async (input) => {
+      return json({ manifest: migrateV1Envelope(input) })
+    },
+  ),
+  tool(
+    'share_channel_issue_invite',
+    'Issues a deterministic invite token for an invite-only channel from the channel id and the creator invite secret. Rotating the secret revokes all outstanding tokens.',
+    {
+      channelId: z.string().min(1),
+      inviteSecret: z
+        .string()
+        .min(8)
+        .describe('Creator-only secret; never shared with subscribers.'),
+    },
+    async ({ channelId, inviteSecret }) => {
+      return json({ channelId, inviteToken: issueInviteToken(channelId, inviteSecret) })
+    },
+  ),
+  tool(
+    'share_channel_check_access',
+    'Checks whether a subscription attempt is allowed under the channel visibility: link channels accept anyone; invite channels require a token.',
+    {
+      manifest: ChannelManifestSchema,
+      inviteToken: z.string().optional(),
+    },
+    async ({ manifest, inviteToken }) => {
+      return json(canSubscribe(manifest, inviteToken))
     },
   ),
   tool(

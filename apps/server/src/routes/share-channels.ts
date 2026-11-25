@@ -6,7 +6,12 @@
 import { z } from 'zod'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
+  applyAllPendingVersions,
   applyChannelUpdate,
+  canSubscribe,
+  diffVersions,
+  issueInviteToken,
+  migrateV1Envelope,
   ChannelItemSchema,
   ChannelManifestSchema,
   ChannelContentTypeSchema,
@@ -161,8 +166,127 @@ export const shareChannelRoutes: Route[] = [
   },
   {
     method: 'POST',
+    path: '/share/channels/diff',
+    summary: 'diff two channel versions (added/removed/changed/unchanged)',
+    handler: postChannelDiff,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/apply-all',
+    summary: 'apply every pending version in order, folding merge results',
+    handler: postChannelApplyAll,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/migrate-v1',
+    summary: 'upgrade a one-shot lh-share/v1 envelope into a v2 channel',
+    handler: postChannelMigrate,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/invite',
+    summary: 'issue an invite token for an invite-only channel',
+    handler: postChannelInvite,
+  },
+  {
+    method: 'POST',
+    path: '/share/channels/check-access',
+    summary: 'check the visibility gate for a subscription attempt',
+    handler: postChannelCheckAccess,
+  },
+  {
+    method: 'POST',
     path: '/share/channels/status',
     summary: 'check whether a subscription has a pending update',
     handler: postChannelStatus,
   },
 ]
+
+const diffBodySchema = z.object({
+  manifest: ChannelManifestSchema,
+  fromVersion: z.number().int().positive(),
+  toVersion: z.number().int().positive(),
+})
+
+/** POST /share/channels/diff — what changed between two versions */
+async function postChannelDiff(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, diffBodySchema)
+  const from = body.manifest.versions.find((v) => v.version === body.fromVersion)
+  const to = body.manifest.versions.find((v) => v.version === body.toVersion)
+  if (!from || !to) {
+    sendJson(res, 404, { ok: false, error: 'version not found in manifest' })
+    return
+  }
+  sendJson(res, 200, { ok: true, diff: diffVersions(from, to) })
+}
+
+const applyAllBodySchema = z.object({
+  localItems: z.array(LocalItemSchema),
+  localVersion: z.number().int().nonnegative(),
+  channelId: z.string().min(1),
+  manifest: ChannelManifestSchema,
+})
+
+/** POST /share/channels/apply-all — fold every pending version in order */
+async function postChannelApplyAll(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, applyAllBodySchema)
+  const sub = {
+    channelId: body.channelId,
+    localVersion: body.localVersion,
+    subscribedAt: '',
+    lastSyncAt: null,
+  }
+  const { items, result, appliedVersions } = applyAllPendingVersions(
+    body.localItems,
+    sub,
+    body.manifest,
+  )
+  sendJson(res, 200, { ok: true, items, result, appliedVersions })
+}
+
+const migrateBodySchema = z.object({
+  envelope: z.object({
+    type: ChannelContentTypeSchema,
+    metadata: z.object({
+      title: z.string().min(1),
+      author: z.string().optional(),
+      description: z.string().optional(),
+    }),
+    data: z.record(z.string(), z.unknown()),
+  }),
+  channelId: z.string().min(1),
+  authorHandle: z.string().min(1).max(50),
+  visibility: ChannelVisibilitySchema,
+})
+
+/** POST /share/channels/migrate-v1 — upgrade a v1 envelope to a v2 channel */
+async function postChannelMigrate(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, migrateBodySchema)
+  sendJson(res, 200, { ok: true, manifest: migrateV1Envelope(body) })
+}
+
+const inviteBodySchema = z.object({
+  channelId: z.string().min(1),
+  inviteSecret: z.string().min(8),
+})
+
+/** POST /share/channels/invite — issue an invite token (creator side) */
+async function postChannelInvite(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, inviteBodySchema)
+  sendJson(res, 200, {
+    ok: true,
+    channelId: body.channelId,
+    inviteToken: issueInviteToken(body.channelId, body.inviteSecret),
+  })
+}
+
+const accessBodySchema = z.object({
+  manifest: ChannelManifestSchema,
+  inviteToken: z.string().optional(),
+})
+
+/** POST /share/channels/check-access — visibility gate for a subscription */
+async function postChannelCheckAccess(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJson(req, accessBodySchema)
+  sendJson(res, 200, { ok: true, gate: canSubscribe(body.manifest, body.inviteToken) })
+}
