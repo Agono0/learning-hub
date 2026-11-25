@@ -688,3 +688,34 @@ describe('Arena API — per-deck record', () => {
     expect(row.bestScore).toBeGreaterThanOrEqual(runRow.score)
   })
 })
+
+describe('Arena API — expanded achievements', () => {
+  it('a flawless 10-round victory unlocks arena_flawless exactly once', async () => {
+    const { deckId } = seedDeckWithCards(12)
+    const { runId, queue } = await startRun(deckId, 10)
+    // Every card graded Good, confidently: correct == rounds and a win.
+    const log = queue.map((cardId, i) => ({
+      cardId,
+      grade: 3,
+      confidence: 1,
+      timeMs: 2500 + i * 500,
+    }))
+    const post = await postSettlement(settlePayload(runId, log))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+    expect(settled.summary.result).toBe('victory')
+    expect(settled.summary.correct).toBe(settled.summary.rounds)
+    expect(settled.achievements).toContain('arena_flawless')
+
+    // And it is recorded in the catalog with a timestamp.
+    const { getAchievementStats, listAchievements } = M.db as unknown as {
+      getAchievementStats: () => { arenaFlawlessWins: number; arenaTotalCrits: number }
+      listAchievements: () => Array<{ key: string; unlockedAt: string | null }>
+    }
+    const stats = getAchievementStats()
+    expect(stats.arenaFlawlessWins).toBeGreaterThanOrEqual(1)
+    const row = listAchievements().find((a) => a.key === 'arena_flawless')
+    expect(row).toBeTruthy()
+    expect(row!.unlockedAt).not.toBeNull()
+  })
+})

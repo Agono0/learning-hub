@@ -356,6 +356,8 @@ export function getAchievementStats(
       victories: sql<number>`sum(case when ${arenaRuns.result} = 'victory' then 1 else 0 end)`,
       bestCombo: sql<number>`coalesce(max(${arenaRuns.bestCombo}), 0)`,
       bossWins: sql<number>`sum(case when ${arenaRuns.result} = 'victory' and ${arenaRuns.boss} = true then 1 else 0 end)`,
+      flawlessWins: sql<number>`sum(case when ${arenaRuns.result} = 'victory' and ${arenaRuns.rounds} >= 10 and ${arenaRuns.correct} = ${arenaRuns.rounds} then 1 else 0 end)`,
+      totalCrits: sql<number>`coalesce(sum(${arenaRuns.crits}), 0)`,
     })
     .from(arenaRuns)
     .all()
@@ -380,6 +382,8 @@ export function getAchievementStats(
     arenaVictories: Number(arenaAgg?.victories ?? 0),
     arenaBestCombo: Number(arenaAgg?.bestCombo ?? 0),
     arenaBossWins: Number(arenaAgg?.bossWins ?? 0),
+    arenaFlawlessWins: Number(arenaAgg?.flawlessWins ?? 0),
+    arenaTotalCrits: Number(arenaAgg?.totalCrits ?? 0),
   }
 }
 
