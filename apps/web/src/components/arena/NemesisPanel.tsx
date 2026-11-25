@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { Skull, Sparkles, Swords } from 'lucide-react'
 import { Badge, Button, EmptyState, Panel, ProgressBar, Skeleton } from '@/ui'
 import { apiGet } from '@/lib/transport'
+import { CardTimeline } from './CardTimeline'
 
 type Tier = 'new' | 'shaky' | 'learning' | 'steady' | 'mastered'
 
@@ -75,6 +76,7 @@ export function NemesisPanel({
 }): React.ReactElement {
   const [data, setData] = useState<NemesisPayload | null>(null)
   const [failed, setFailed] = useState(false)
+  const [openCard, setOpenCard] = useState<number | null>(null)
 
   useEffect(() => {
     let live = true
@@ -139,6 +141,16 @@ export function NemesisPanel({
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-faint">{nemesisReason(c)}</p>
+                  <button
+                    type="button"
+                    className="mt-1 text-xs font-medium text-indigo-500 hover:underline"
+                    aria-expanded={openCard === c.cardId}
+                    data-testid={`arena-nemesis-history-${c.cardId}`}
+                    onClick={() => setOpenCard(openCard === c.cardId ? null : c.cardId)}
+                  >
+                    {openCard === c.cardId ? 'Hide history' : 'Show history'}
+                  </button>
+                  {openCard === c.cardId ? <CardTimeline cardId={c.cardId} /> : null}
                   <div className="mt-1">
                     <ProgressBar
                       value={Math.round(c.accuracy * 100)}

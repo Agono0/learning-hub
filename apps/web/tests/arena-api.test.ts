@@ -30,6 +30,7 @@ type Modules = {
   nemesis: typeof import('../src/server/handlers/arena/nemesis/route')
   exportRoute: typeof import('../src/server/handlers/arena/export/route')
   progress: typeof import('../src/server/handlers/arena/progress/route')
+  cardRoute: typeof import('../src/server/handlers/arena/card/[id]/route')
   historyId: typeof import('../src/server/handlers/arena/history/[id]/route')
   db: typeof import('@learning-hub/db')
   core: typeof import('@learning-hub/core')
@@ -118,6 +119,7 @@ beforeAll(async () => {
   const nemesisMod = await import('../src/server/handlers/arena/nemesis/route')
   const exportMod = await import('../src/server/handlers/arena/export/route')
   const progressMod = await import('../src/server/handlers/arena/progress/route')
+  const cardMod = await import('../src/server/handlers/arena/card/[id]/route')
   const historyIdMod = await import('../src/server/handlers/arena/history/[id]/route')
   const coreMod = await import('@learning-hub/core')
   M = {
@@ -126,6 +128,7 @@ beforeAll(async () => {
     nemesis: nemesisMod,
     exportRoute: exportMod,
     progress: progressMod,
+    cardRoute: cardMod,
     historyId: historyIdMod,
     db: dbMod,
     core: coreMod,
@@ -1124,5 +1127,46 @@ describe('Arena API — practice progression', () => {
     expect(bad.status).toBe(400)
     const worse = await M.progress.GET(new Request('http://localhost/api/arena/progress?days=999'))
     expect(worse.status).toBe(400)
+  })
+})
+
+describe('Arena API — card timeline', () => {
+  it('returns the attempt timeline for a card seen in settled runs', async () => {
+    const { deckId } = seedDeckWithCards(3)
+    const { queue } = await startRun(deckId, 3)
+    const cardId = queue[0]!
+    const grades = [1, 2, 3, 4, 3]
+    grades.forEach((grade, i) => {
+      M.db.db
+        .insert(M.db.arenaSessions)
+        .values({
+          id: crypto.randomUUID(),
+          deckIds: [deckId],
+          cardIds: [cardId],
+          status: 'settled',
+          gradeLog: [{ cardId, grade, confidence: grade <= 2 ? 1 : 0, timeMs: 5000 - i * 800 }],
+          settledAt: new Date(Date.now() + 5000 + i).toISOString(),
+        })
+        .run()
+    })
+    const res = await M.cardRoute.GET(new Request(`http://localhost/api/arena/card/${cardId}`))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.cardId).toBe(cardId)
+    expect(body.front).toMatch(/^Arena D/)
+    expect(body.attempts.length).toBeGreaterThanOrEqual(5)
+    const mine = body.attempts.slice(-5)
+    expect(mine.map((a: { grade: number }) => a.grade)).toEqual(grades)
+    expect(mine[0].overconfident).toBe(true)
+    expect(body.stats.attempts).toBe(body.attempts.length)
+    expect(body.fastestMs).toBeLessThanOrEqual(body.slowestMs)
+    expect(body.bestCorrectStreak).toBeGreaterThanOrEqual(3)
+  })
+
+  it('404s for a card with no arena history and 400s for a bad id', async () => {
+    const missing = await M.cardRoute.GET(new Request('http://localhost/api/arena/card/99999999'))
+    expect(missing.status).toBe(404)
+    const bad = await M.cardRoute.GET(new Request('http://localhost/api/arena/card/abc'))
+    expect(bad.status).toBe(400)
   })
 })
