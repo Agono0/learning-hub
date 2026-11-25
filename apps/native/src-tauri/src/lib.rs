@@ -8,6 +8,7 @@
 
 mod focus;
 mod idle;
+mod loopback_http;
 // Max Focus lock windows (M2-05, wired as commands in M2-23). WINDOWS DESKTOP
 // ONLY: the fullscreen lock windows use desktop-only window APIs
 // (`decorations`) and the keyboard hook / refocus guard use the `windows`

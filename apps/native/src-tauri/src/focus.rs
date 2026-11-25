@@ -5,10 +5,14 @@
 //! 2. A foreground window watchdog minimizing unpermitted desktop applications.
 
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
+
+use crate::loopback_http::{
+    classify, read_request_head, write_busy, ConnGuard, Route, READ_DEADLINE,
+};
 // Duration feeds only the Windows watchdog cadence + heartbeat windows.
 #[cfg(windows)]
 use std::time::Duration;
@@ -86,8 +90,14 @@ fn start_loopback_server(state: Arc<Mutex<FocusState>>) {
 
         for stream in listener.incoming() {
             if let Ok(mut stream) = stream {
+                // Cap concurrent connections: extra ones get a 503 and are closed.
+                let Some(guard) = ConnGuard::acquire() else {
+                    write_busy(&mut stream);
+                    continue;
+                };
                 let state_clone = state.clone();
                 thread::spawn(move || {
+                    let _guard = guard;
                     handle_connection(&mut stream, state_clone);
                 });
             }
@@ -96,60 +106,45 @@ fn start_loopback_server(state: Arc<Mutex<FocusState>>) {
 }
 
 fn handle_connection(stream: &mut TcpStream, state: Arc<Mutex<FocusState>>) {
-    let mut buffer = [0u8; 4096];
-    let bytes_read = match stream.read(&mut buffer) {
-        Ok(n) if n > 0 => n,
-        _ => return,
+    // Bounded read (deadline + byte cap): an idle or slow client frees its thread.
+    let head = match read_request_head(stream, READ_DEADLINE) {
+        Ok(h) => h,
+        Err(_) => return,
     };
 
-    let req_text = String::from_utf8_lossy(&buffer[..bytes_read]);
-    let mut lines = req_text.lines();
-    let req_line = match lines.next() {
-        Some(l) => l,
-        None => return,
+    // Token check in constant time; an empty expected token (no active lock) never authorizes.
+    let expected_token = {
+        let current = state.lock().unwrap();
+        current
+            .lock
+            .as_ref()
+            .map(|l| l.token.clone())
+            .unwrap_or_default()
     };
+    let route = classify(&head, &expected_token);
 
-    let parts: Vec<&str> = req_line.split_whitespace().collect();
-    if parts.len() < 2 {
-        return;
-    }
-    let method = parts[0];
-    let path = parts[1];
-
-    // CORS preflight
-    if method == "OPTIONS" {
-        let response = "HTTP/1.1 204 No Content\r\n\
+    match route {
+        Route::Malformed => return,
+        Route::Options => {
+            let response = "HTTP/1.1 204 No Content\r\n\
 Access-Control-Allow-Origin: *\r\n\
 Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
 Access-Control-Allow-Headers: Authorization, Content-Type\r\n\
 Access-Control-Max-Age: 86400\r\n\r\n";
-        let _ = stream.write_all(response.as_bytes());
-        return;
-    }
-
-    // Extract Bearer token
-    let mut auth_token = "";
-    for line in lines {
-        if line.to_lowercase().starts_with("authorization: bearer ") {
-            auth_token = line[22..].trim();
-            break;
+            let _ = stream.write_all(response.as_bytes());
+            return;
         }
-    }
-
-    let current = state.lock().unwrap();
-    let expected_token = current.lock.as_ref().map(|l| l.token.as_str()).unwrap_or("");
-
-    if expected_token.is_empty() || auth_token != expected_token {
-        let response = "HTTP/1.1 401 Unauthorized\r\n\
+        Route::Unauthorized => {
+            let response = "HTTP/1.1 401 Unauthorized\r\n\
 Access-Control-Allow-Origin: *\r\n\
 Content-Type: application/json\r\n\r\n{\"error\":\"Unauthorized\"}";
-        let _ = stream.write_all(response.as_bytes());
-        return;
+            let _ = stream.write_all(response.as_bytes());
+            return;
+        }
+        Route::Lock | Route::Heartbeat | Route::NotFound => {}
     }
 
-    drop(current);
-
-    if path == "/v1/lock" || path == "/v1/status" {
+    if route == Route::Lock {
         let current = state.lock().unwrap();
         let payload = current.lock.clone();
         drop(current);
@@ -181,7 +176,7 @@ Content-Length: {}\r\n\r\n{}",
             body
         );
         let _ = stream.write_all(response.as_bytes());
-    } else if path == "/v1/heartbeat" {
+    } else if route == Route::Heartbeat {
         let mut current = state.lock().unwrap();
         current.last_heartbeat = Some(Instant::now());
         drop(current);
@@ -930,5 +925,88 @@ mod max_session_tests {
         assert_eq!(back.session_id, "s-1");
         assert_eq!(back.allowed_apps.len(), 2);
         assert_eq!(back.hard_cap_at_ms, 3_000);
+    }
+}
+
+#[cfg(test)]
+mod loopback_tests {
+    use super::*;
+    use std::io::Read;
+    use std::time::Duration;
+
+    fn state(token: Option<&str>) -> Arc<Mutex<FocusState>> {
+        Arc::new(Mutex::new(FocusState {
+            lock: token.map(|t| FocusLockPayload {
+                ends_at: "2030-01-01T00:00:00Z".into(),
+                apps: vec![],
+                domains: vec![],
+                token: t.into(),
+                strict: true,
+            }),
+            last_heartbeat: None,
+            server_running: false,
+            watchdog_running: false,
+        }))
+    }
+
+    fn roundtrip(st: Arc<Mutex<FocusState>>, req: &[u8]) -> (String, Arc<Mutex<FocusState>>) {
+        let l = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = l.local_addr().unwrap();
+        let st2 = st.clone();
+        let h = thread::spawn(move || {
+            let (mut s, _) = l.accept().unwrap();
+            handle_connection(&mut s, st2);
+        });
+        let mut c = TcpStream::connect(addr).unwrap();
+        c.write_all(req).unwrap();
+        let mut out = String::new();
+        c.read_to_string(&mut out).unwrap();
+        h.join().unwrap();
+        (out, st)
+    }
+
+    #[test]
+    fn authorized_heartbeat_is_recorded_and_lock_is_readable() {
+        let (r, st) = roundtrip(
+            state(Some("secret")),
+            b"POST /v1/heartbeat HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer secret\r\n\r\n",
+        );
+        assert!(r.starts_with("HTTP/1.1 200"), "{r}");
+        assert!(st.lock().unwrap().last_heartbeat.is_some());
+        let (r, _) = roundtrip(
+            state(Some("secret")),
+            b"GET /v1/lock HTTP/1.1\r\nauthorization: Bearer secret\r\n\r\n",
+        );
+        assert!(r.starts_with("HTTP/1.1 200") && r.contains("\"active\":true"), "{r}");
+    }
+
+    #[test]
+    fn wrong_missing_or_no_lock_token_is_401_and_records_nothing() {
+        let cases = [
+            (Some("secret"), "GET /v1/lock HTTP/1.1\r\nAuthorization: Bearer nope\r\n\r\n"),
+            (Some("secret"), "POST /v1/heartbeat HTTP/1.1\r\n\r\n"),
+            (None, "GET /v1/lock HTTP/1.1\r\nAuthorization: Bearer \r\n\r\n"),
+        ];
+        for (tok, req) in cases {
+            let (r, st) = roundtrip(state(tok), req.as_bytes());
+            assert!(r.starts_with("HTTP/1.1 401"), "{r}");
+            assert!(st.lock().unwrap().last_heartbeat.is_none());
+        }
+    }
+
+    #[test]
+    fn idle_client_is_dropped_after_the_read_deadline() {
+        let l = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = l.local_addr().unwrap();
+        let st = state(Some("s"));
+        let h = thread::spawn(move || {
+            let (mut s, _) = l.accept().unwrap();
+            let t = Instant::now();
+            handle_connection(&mut s, st);
+            t.elapsed()
+        });
+        let _idle = TcpStream::connect(addr).unwrap();
+        let took = h.join().unwrap();
+        assert!(took >= Duration::from_secs(4) && took < Duration::from_secs(8), "{took:?}");
     }
 }
