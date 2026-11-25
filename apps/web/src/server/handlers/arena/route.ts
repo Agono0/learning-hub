@@ -21,6 +21,7 @@ import {
   cards,
   db,
   decks,
+  evaluateAndUnlockAchievements,
   executeReview,
   getArenaStats,
   getCoinBalance,
@@ -295,7 +296,7 @@ export const POST = withRoute(async (req: Request) => {
 
   // 5) Persistent run record — same idempotency key as the coin mint, so a
   //    replay is a no-op here too and history can never double-count a run.
-  recordArenaRun({
+  const recorded = recordArenaRun({
     deckIds: body.deckIds,
     result: summary.result,
     archetype: body.archetype,
@@ -312,10 +313,16 @@ export const POST = withRoute(async (req: Request) => {
     referenceId,
   })
 
+  // 6) Achievement check — only on a genuinely new run (a replay unlocks
+  //    nothing twice; evaluateAndUnlockAchievements is itself idempotent,
+  //    but skipping the write path keeps replays read-only).
+  const achievements = recorded ? evaluateAndUnlockAchievements().newlyUnlocked : []
+
   return Response.json({
     ok: true,
     summary,
     reviewXp: reviewResults.reduce((sum, r) => sum + r.xpEarned, 0),
+    achievements,
     coinsAwarded,
     coinBalance,
     streak: reviewResults.length

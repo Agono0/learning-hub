@@ -98,6 +98,10 @@ describe('generateDailyQuests', () => {
 
 describe('achievements', () => {
   const KEYS = [
+    'arena_first',
+    'arena_10_wins',
+    'arena_combo_10',
+    'arena_boss_slayer',
     'first_review',
     'reviews_100',
     'reviews_1000',
@@ -118,7 +122,7 @@ describe('achievements', () => {
     'palace_built',
   ]
 
-  it('has the full 18-milestone white-hat catalog', () => {
+  it('has the full 22-milestone white-hat catalog', () => {
     expect(ACHIEVEMENTS.map((a) => a.key)).toEqual(KEYS)
     for (const a of ACHIEVEMENTS) {
       expect(a.title.length).toBeGreaterThan(0)
@@ -143,6 +147,10 @@ describe('achievements', () => {
     palacesBuilt: 0,
     certificates: 0,
     examsAced: 0,
+    arenaRuns: 0,
+    arenaVictories: 0,
+    arenaBestCombo: 0,
+    arenaBossWins: 0,
   }
 
   it('nothing is unlocked at zero stats', () => {

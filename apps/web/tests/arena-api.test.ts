@@ -267,6 +267,24 @@ describe('Arena API — POST /api/arena settlement', () => {
   })
 })
 
+describe('Arena API — achievements', () => {
+  it('the first settled run unlocks arena_first exactly once', async () => {
+    // The three settlements above already ran: the catalog shows arena_first
+    // unlocked, and no settlement response unlocked it twice.
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history'))
+    const body = await res.json()
+    expect(body.stats.runs).toBe(3)
+
+    const achievementsRes = await import('../src/server/handlers/achievements/route').then((m) =>
+      m.GET(new Request('http://localhost/api/achievements')),
+    )
+    const catalog = await achievementsRes.json()
+    const badge = catalog.catalog.find((a: { key: string }) => a.key === 'arena_first')
+    expect(badge.unlocked).toBe(true)
+    expect(catalog.newlyUnlocked).not.toContain('arena_first') // already unlocked earlier
+  })
+})
+
 describe('Arena API — run history (/api/arena/history)', () => {
   it('records one history row per settled run, never two on replay', async () => {
     const res = await M.history.GET(new Request('http://localhost/api/arena/history'))
