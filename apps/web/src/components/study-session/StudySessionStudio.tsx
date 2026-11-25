@@ -181,7 +181,7 @@ export function StudySessionStudio() {
             </div>
           </fieldset>
           {formError && (
-            <div className="mt-3" role="alert">
+            <div className="mt-3" data-testid="session-form-error">
               <Callout tone="danger">{formError}</Callout>
             </div>
           )}
@@ -235,11 +235,13 @@ export function StudySessionStudio() {
                 </p>
               )}
               {data.truncated && (
-                <Callout tone="neutral" data-testid="session-truncated">
-                  {data.matched - data.selected} more cards match but a session holds at most{' '}
-                  {data.selected}. The list is cut by your chosen order, not at random. Raise the
-                  size (up to {MAX_SESSION_CARDS}) or narrow the filters.
-                </Callout>
+                <div data-testid="session-truncated">
+                  <Callout tone="neutral">
+                    {data.matched - data.selected} more cards match but a session holds at most{' '}
+                    {data.selected}. The list is cut by your chosen order, not at random. Raise the
+                    size (up to {MAX_SESSION_CARDS}) or narrow the filters.
+                  </Callout>
+                </div>
               )}
               <ol className="space-y-1 text-xs opacity-80" data-testid="session-funnel">
                 {data.funnel.map((s) => (
@@ -281,7 +283,7 @@ export function StudySessionStudio() {
                 one yourself, and it counts as a real review.
               </p>
               {startError && (
-                <div className="mt-2" role="alert">
+                <div className="mt-2" data-testid="session-start-error">
                   <Callout tone="danger">{startError}</Callout>
                 </div>
               )}

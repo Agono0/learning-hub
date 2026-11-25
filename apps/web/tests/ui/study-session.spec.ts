@@ -200,12 +200,14 @@ test('study session refuses an out-of-range size instead of clamping it', async 
   await page.goto('/study-session')
   await page.getByTestId('session-limit').fill('101')
   await page.getByTestId('session-preview').click()
-  await expect(page.getByRole('alert')).toContainText('Cards per session must be 1 to 100')
+  await expect(page.getByTestId('session-form-error')).toContainText(
+    'Cards per session must be 1 to 100',
+  )
   expect(seen).toHaveLength(0)
   await page.getByTestId('session-limit').fill('100')
   await page.getByTestId('session-recall').fill('100')
   await page.getByTestId('session-preview').click()
-  await expect(page.getByRole('alert')).toContainText('1 to 99 percent')
+  await expect(page.getByTestId('session-form-error')).toContainText('1 to 99 percent')
   expect(seen).toHaveLength(0)
 })
 
