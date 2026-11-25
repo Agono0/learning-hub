@@ -394,6 +394,12 @@ export function ExportView({ course, ready }: { course: LhcfCourse; ready: boole
         />
         Include answers and explanations (collapsed)
       </label>
+      {!answers && (
+        <p className="mt-1 text-xs" data-testid="worked-example-note">
+          Exercise answers and explanations are left out. Worked examples are teaching material and
+          always keep their answers.
+        </p>
+      )}
       <div className="mt-2 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={build}>
           Build packet

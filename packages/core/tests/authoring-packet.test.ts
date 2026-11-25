@@ -211,3 +211,14 @@ describe('packet hardening', () => {
     expect(markdownProblems('```\nx\n```')).toEqual([])
   })
 })
+
+describe('answers-omitted disclosure', () => {
+  it('the packet itself says worked examples keep their answers', () => {
+    const off = buildPacket(makeCourse(), { includeAnswers: false })
+    expect(off.ok && off.html).toContain(
+      'Worked examples are teaching material and always include their answers',
+    )
+    const on = buildPacket(makeCourse())
+    expect(on.ok && on.html).not.toContain('Worked examples are teaching material')
+  })
+})

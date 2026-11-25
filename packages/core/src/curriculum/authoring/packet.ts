@@ -224,6 +224,10 @@ export function buildPacket(course: LhcfCourse, options: PacketOptions = {}): Pa
   body.push(
     `<p class="meta">${stats.modules} modules · ${stats.lessons} lessons · ${stats.exercises} exercises${course.author ? ` · ${escapeHtml(course.author)}` : ''}${course.version ? ` · v${escapeHtml(course.version)}` : ''}</p></header>`,
   )
+  if (!includeAnswers)
+    body.push(
+      '<p class="meta">Exercise answers and explanations are left out of this packet. Worked examples are teaching material and always include their answers.</p>',
+    )
   if (course.description) body.push(renderMarkdownSafe(course.description, { headingOffset: 1 }))
   if (course.outcomes.length)
     body.push(
