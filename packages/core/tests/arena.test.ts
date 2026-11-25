@@ -11,6 +11,8 @@ import {
   arenaSettlementSchema,
   buildArenaSummary,
   createArenaSession,
+  guardianConfig,
+  guardianForRun,
   strikeFor,
   summarizeGradeLog,
   type ArenaChallenge,
@@ -220,5 +222,144 @@ describe('summarizeGradeLog', () => {
       )
     }
     expect(summarizeGradeLog(events)).toEqual(buildArenaSummary(live))
+  })
+})
+
+// ─── Guardian archetypes ────────────────────────────────────────────────────
+
+describe('guardian archetypes', () => {
+  it('guardianConfig layers colossus tuning over the base config', () => {
+    const cfg = guardianConfig('colossus')
+    expect(cfg.againCounter).toBe(16)
+    expect(cfg.hardCounter).toBe(6)
+    expect(cfg.critTimeMs).toBe(3_000)
+    // Untuned fields stay at the base values.
+    expect(cfg.baseDamage).toBe(ARENA_DEFAULTS.baseDamage)
+    expect(cfg.maxHp).toBe(ARENA_DEFAULTS.maxHp)
+  })
+
+  it('guardianForRun rotates deterministically through the roster', () => {
+    expect(guardianForRun(0)).toBe('warden')
+    expect(guardianForRun(1)).toBe('colossus')
+    expect(guardianForRun(2)).toBe('shade')
+    expect(guardianForRun(3)).toBe('warden')
+    expect(guardianForRun(7)).toBe('colossus')
+  })
+
+  it('the shade forgives slower crits than the warden', () => {
+    const shade = guardianConfig('shade')
+    const warden = guardianConfig('warden')
+    // 5s, confident, correct: crits for the shade (6s window), not the warden (4s).
+    expect(strikeFor(3, 1, 5_000, 0, shade).crit).toBe(true)
+    expect(strikeFor(3, 1, 5_000, 0, warden).crit).toBe(false)
+  })
+
+  it('the colossus tightens the crit window and hits harder on Again', () => {
+    const colossus = guardianConfig('colossus')
+    expect(strikeFor(3, 1, 3_500, 0, colossus).crit).toBe(false)
+    expect(strikeFor(1, 0, 2_000, 0, colossus).counter).toBe(16)
+  })
+
+  it('archetype flows through session state', () => {
+    const state = createArenaSession(CH(3), ARENA_DEFAULTS, 'shade')
+    expect(state.archetype).toBe('shade')
+  })
+})
+
+// ─── Boss mode ──────────────────────────────────────────────────────────────
+
+describe('boss mode', () => {
+  it('runs at the threshold face a boss with a 50% HP premium', () => {
+    const normal = createArenaSession(CH(14))
+    expect(normal.boss).toBe(false)
+    expect(normal.guardianMaxHp).toBe(14 * ARENA_DEFAULTS.baseDamage)
+
+    const boss = createArenaSession(CH(15))
+    expect(boss.boss).toBe(true)
+    expect(boss.guardianMaxHp).toBe(Math.round(15 * ARENA_DEFAULTS.baseDamage * 1.5))
+  })
+
+  it('bosses enrage below half HP: counters hit 50% harder', () => {
+    // 15 challenges, baseDamage 10 → boss HP 225. Drive it below half with
+    // confident-correct crits, then grade Again and compare the counter.
+    let state = createArenaSession(CH(15), ARENA_DEFAULTS, 'warden')
+    const half = state.guardianMaxHp / 2
+    while (state.guardianHp > half && state.status === 'fighting') {
+      const next = CH(15)[state.round]!
+      state = applyGrade(state, next, 4, 1, 1_000)
+    }
+    expect(state.enraged).toBe(true)
+
+    const before = state.hp
+    const next = CH(15)[state.round]!
+    const after = applyGrade(state, next, 1, 0, 2_000)
+    // Enraged Again counter: ceil(12 * 1.5) = 18, minus whatever the shield
+    // soaks (the crit streak repairs it to full).
+    const expectedTaken = 18 - state.shield
+    expect(after.exchanges[after.exchanges.length - 1]!.counterTaken).toBe(expectedTaken)
+    expect(before - after.hp).toBe(expectedTaken)
+    // The same Again unenraged would have been 12 − shield.
+    expect(expectedTaken).toBe(12 - state.shield + 6)
+  })
+
+  it('non-boss runs never enrage', () => {
+    let state = createArenaSession(CH(5))
+    while (state.status === 'fighting') {
+      const next = CH(5)[state.round]!
+      state = applyGrade(state, next, 4, 1, 1_000)
+    }
+    expect(state.enraged).toBe(false)
+    expect(state.status).toBe('victory')
+  })
+
+  it('victory precedence holds on the final boss exchange', () => {
+    // Queue cleared on the same exchange HP would hit 0 → victory, not defeat.
+    let state = createArenaSession(CH(15))
+    while (state.status === 'fighting' && state.remaining > 1) {
+      const next = CH(15)[state.round]!
+      state = applyGrade(state, next, 1, 0, 2_000) // bleed HP with Agains
+      if (state.hp <= 12) break
+    }
+    if (state.status === 'fighting') {
+      // finish the queue with correct answers; even at 0 HP the last card wins
+      let guard = 0
+      while (state.status === 'fighting' && guard < 30) {
+        const next = CH(15)[state.round]!
+        state = applyGrade(state, next, 4, 0, 2_000)
+        guard++
+      }
+    }
+    expect(['victory', 'defeat']).toContain(state.status)
+    if (state.remaining === 0) expect(state.status).toBe('victory')
+  })
+})
+
+// ─── Server-side recompute with archetypes ──────────────────────────────────
+
+describe('summarizeGradeLog with archetypes', () => {
+  it('recomputes with the same guardian tuning the client used', () => {
+    const exchanges = [
+      { cardId: 1, grade: 3 as const, confidence: 1 as const, timeMs: 5_000 },
+      { cardId: 2, grade: 3 as const, confidence: 1 as const, timeMs: 5_000 },
+    ]
+    // 5s crits count for the shade but not the warden → different scores.
+    const asShade = summarizeGradeLog(exchanges, ARENA_DEFAULTS, 'shade')
+    const asWarden = summarizeGradeLog(exchanges, ARENA_DEFAULTS, 'warden')
+    expect(asShade.crits).toBe(2)
+    expect(asWarden.crits).toBe(0)
+    expect(asShade.score).toBeGreaterThan(asWarden.score)
+  })
+
+  it('rewards stay archetype-neutral: same log, same coins', () => {
+    const exchanges = [
+      { cardId: 1, grade: 3 as const, confidence: 1 as const, timeMs: 2_000 },
+      { cardId: 2, grade: 4 as const, confidence: 1 as const, timeMs: 1_800 },
+      { cardId: 3, grade: 2 as const, confidence: 0 as const, timeMs: 4_000 },
+    ]
+    const a = summarizeGradeLog(exchanges, ARENA_DEFAULTS, 'warden')
+    const b = summarizeGradeLog(exchanges, ARENA_DEFAULTS, 'colossus')
+    expect(a.coins).toBe(b.coins)
+    expect(a.xp).toBe(b.xp)
+    expect(a.correct).toBe(b.correct)
   })
 })

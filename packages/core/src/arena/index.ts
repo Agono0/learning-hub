@@ -57,6 +57,66 @@ export const ARENA_DEFAULTS: ArenaConfig = {
   shieldRepairCombo: 3,
 }
 
+// ─── Guardians ─────────────────────────────────────────────────────────────
+
+/**
+ * Guardian archetypes tune the same combat math, never the rewards: coins
+ * and XP come from correct retrieval (buildArenaSummary), so a harder
+ * guardian can only change how a run FEELS, not what it pays.
+ */
+export const guardianArchetypeSchema = z.enum(['warden', 'colossus', 'shade'])
+export type GuardianArchetype = z.infer<typeof guardianArchetypeSchema>
+
+export interface GuardianProfile {
+  archetype: GuardianArchetype
+  name: string
+  /** Flavor line for the setup screen / HUD. */
+  tagline: string
+  /** Config adjustments layered over the run's config. */
+  tune: Partial<ArenaConfig>
+}
+
+export const GUARDIANS: Record<GuardianArchetype, GuardianProfile> = {
+  warden: {
+    archetype: 'warden',
+    name: 'The Warden',
+    tagline: 'A measured duel. The baseline guardian.',
+    tune: {},
+  },
+  colossus: {
+    archetype: 'colossus',
+    name: 'The Colossus',
+    tagline: 'Slow, heavy counters. More HP, harsher misses, a tighter crit window.',
+    tune: { againCounter: 16, hardCounter: 6, critTimeMs: 3_000 },
+  },
+  shade: {
+    archetype: 'shade',
+    name: 'The Shade',
+    tagline: 'Fragile but relentless — chips you even on Hard, forgives slower crits.',
+    tune: { againCounter: 9, hardCounter: 8, critTimeMs: 6_000 },
+  },
+}
+
+/** Resolve the effective config for a run against a given guardian. */
+export function guardianConfig(
+  archetype: GuardianArchetype = 'warden',
+  base: ArenaConfig = ARENA_DEFAULTS,
+): ArenaConfig {
+  return { ...base, ...GUARDIANS[archetype].tune }
+}
+
+/** Deterministic rotation: run N faces guardian N mod 3 (history count + 1). */
+export function guardianForRun(runNumber: number): GuardianArchetype {
+  const order: GuardianArchetype[] = ['warden', 'colossus', 'shade']
+  return order[Math.abs(runNumber) % order.length]!
+}
+
+/** Runs at or above this many challenges face a boss (two-phase guardian). */
+export const BOSS_CHALLENGE_THRESHOLD = 15
+
+/** Bosses enrage below half HP: counters hit 50% harder (rounded up). */
+export const BOSS_ENRAGE_COUNTER_PERCENT = 50
+
 export function arenaConfig(overrides: Partial<ArenaConfig> = {}): ArenaConfig {
   return arenaConfigSchema.parse({ ...ARENA_DEFAULTS, ...overrides })
 }
@@ -96,6 +156,12 @@ export interface ArenaExchange {
 
 export interface ArenaState {
   status: ArenaStatus
+  /** Which guardian this run faces. */
+  archetype: GuardianArchetype
+  /** Long runs face a two-phase boss. */
+  boss: boolean
+  /** Boss below half HP — counters hit harder. */
+  enraged: boolean
   /** Guardian HP remaining (the guardian is the queue; 0 = victory). */
   guardianHp: number
   guardianMaxHp: number
@@ -179,10 +245,16 @@ export function strikeFor(
 export function createArenaSession(
   challenges: ArenaChallenge[],
   config: ArenaConfig = ARENA_DEFAULTS,
+  archetype: GuardianArchetype = 'warden',
 ): ArenaState {
-  const guardianMaxHp = challenges.length * config.baseDamage
+  const boss = challenges.length >= BOSS_CHALLENGE_THRESHOLD
+  // Bosses get a 50% HP premium on top of the queue's base damage budget.
+  const guardianMaxHp = Math.round(challenges.length * config.baseDamage * (boss ? 1.5 : 1))
   return {
     status: challenges.length === 0 ? 'victory' : 'fighting',
+    archetype,
+    boss,
+    enraged: false,
     guardianHp: guardianMaxHp,
     guardianMaxHp,
     hp: config.maxHp,
@@ -215,14 +287,22 @@ export function applyGrade(
 
   const strike = strikeFor(grade, confidence, Math.max(0, Math.round(timeMs)), state.combo, config)
 
-  const counterShielded = Math.min(state.shield, strike.counter)
-  const counterTaken = strike.counter - counterShielded
+  // Boss phase two: once the guardian falls below half HP the counters come
+  // 50% harder — including the counter on the strike that drove it there.
+  const guardianHpAfter = Math.max(0, state.guardianHp - strike.damage)
+  const enraged = state.boss && guardianHpAfter <= state.guardianMaxHp / 2
+  const counter = enraged
+    ? Math.ceil((strike.counter * (100 + BOSS_ENRAGE_COUNTER_PERCENT)) / 100)
+    : strike.counter
+
+  const counterShielded = Math.min(state.shield, counter)
+  const counterTaken = counter - counterShielded
   const shield = Math.max(
     0,
     Math.min(state.maxShield, state.shield - counterShielded + strike.shieldRepair),
   )
   const hp = Math.max(0, state.hp - counterTaken)
-  const guardianHp = Math.max(0, state.guardianHp - strike.damage)
+  const guardianHp = guardianHpAfter
   const combo = Math.max(0, state.combo + strike.comboDelta)
 
   const exchange: ArenaExchange = {
@@ -247,6 +327,7 @@ export function applyGrade(
   return {
     ...state,
     status,
+    enraged,
     guardianHp,
     hp,
     shield,
@@ -321,6 +402,10 @@ export const arenaSettlementSchema = z.object({
   exchanges: z.array(arenaGradeEventSchema).min(1).max(200),
   bestCombo: z.number().int().min(0),
   result: z.enum(['victory', 'defeat']),
+  /** Guardian faced; the server recomputes with the SAME guardian tuning. */
+  archetype: guardianArchetypeSchema.optional().default('warden'),
+  /** Run length decides boss mode server-side; this flag is telemetry. */
+  boss: z.boolean().optional(),
 })
 export type ArenaSettlement = z.infer<typeof arenaSettlementSchema>
 
@@ -328,10 +413,13 @@ export type ArenaSettlement = z.infer<typeof arenaSettlementSchema>
 export function summarizeGradeLog(
   exchanges: ArenaGradeEvent[],
   config: ArenaConfig = ARENA_DEFAULTS,
+  archetype: GuardianArchetype = 'warden',
 ): ArenaSummary {
+  const tuned = guardianConfig(archetype, config)
   let state = createArenaSession(
     exchanges.map((e) => ({ cardId: e.cardId, prompt: 'x', answer: 'x' })),
-    config,
+    tuned,
+    archetype,
   )
   for (const e of exchanges) {
     state = applyGrade(
@@ -340,7 +428,7 @@ export function summarizeGradeLog(
       e.grade,
       e.confidence,
       e.timeMs,
-      config,
+      tuned,
     )
   }
   return buildArenaSummary(state)
