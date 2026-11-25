@@ -386,7 +386,13 @@ export default function Arena3DPage() {
     // DOM floater — the canvas is decorative, so combat feedback always has a
     // text rendering (and reduced-motion users get the same information).
     if (last) {
-      if (last.counterTaken > 0) {
+      if (last.dodged) {
+        setFloater({
+          id: Date.now(),
+          text: 'Dodged — the strike lands half',
+          tone: 'counter',
+        })
+      } else if (last.counterTaken > 0) {
         setFloater({
           id: Date.now(),
           text: `-${last.counterTaken} HP`,
@@ -1030,6 +1036,16 @@ export default function Arena3DPage() {
                             {ex.crit ? (
                               <Badge tone="warning" data-testid="recap-crit">
                                 Crit
+                              </Badge>
+                            ) : null}
+                            {ex.dodged ? (
+                              <Badge tone="violet" data-testid="recap-dodged">
+                                Dodged
+                              </Badge>
+                            ) : null}
+                            {ex.armorBlocked > 0 ? (
+                              <Badge tone="cyan" data-testid="recap-armor">
+                                -{ex.armorBlocked} armor
                               </Badge>
                             ) : null}
                             {ex.counterTaken > 0 ? (

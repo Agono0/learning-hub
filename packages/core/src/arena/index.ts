@@ -43,6 +43,17 @@ export const arenaConfigSchema = z.object({
   comboStepPercent: z.number().int().min(0).max(50),
   /** Combo length at which each correct answer also repairs 1 shield. */
   shieldRepairCombo: z.number().int().min(2).max(20),
+  /**
+   * Flat damage blocked from every genuine strike (The Colossus's plating).
+   * A strike can never be armored below 1 — 0 disables the mechanic.
+   */
+  strikeArmor: z.number().int().min(0).max(50),
+  /**
+   * The guardian dodges every Nth round's strike (The Shade's flicker),
+   * halving its damage — 0 disables the mechanic. Round-indexed (not
+   * combo-indexed) so a replay of the same log dodges the same rounds.
+   */
+  dodgeEvery: z.number().int().min(0).max(10),
 })
 export type ArenaConfig = z.infer<typeof arenaConfigSchema>
 
@@ -55,6 +66,8 @@ export const ARENA_DEFAULTS: ArenaConfig = {
   hardCounter: 4,
   comboStepPercent: 10,
   shieldRepairCombo: 3,
+  strikeArmor: 0,
+  dodgeEvery: 0,
 }
 
 // ─── Guardians ─────────────────────────────────────────────────────────────
@@ -86,14 +99,16 @@ export const GUARDIANS: Record<GuardianArchetype, GuardianProfile> = {
   colossus: {
     archetype: 'colossus',
     name: 'The Colossus',
-    tagline: 'Slow, heavy counters. More HP, harsher misses, a tighter crit window.',
-    tune: { againCounter: 16, hardCounter: 6, critTimeMs: 3_000 },
+    tagline:
+      'Plated: blocks 3 damage from every strike — combos pierce armor best. Harsher misses, a tighter crit window.',
+    tune: { againCounter: 16, hardCounter: 6, critTimeMs: 3_000, strikeArmor: 3 },
   },
   shade: {
     archetype: 'shade',
     name: 'The Shade',
-    tagline: 'Fragile but relentless — chips you even on Hard, forgives slower crits.',
-    tune: { againCounter: 9, hardCounter: 8, critTimeMs: 6_000 },
+    tagline:
+      'Flicker: every third round its form slips and your strike lands half. Chips you even on Hard, forgives slower crits.',
+    tune: { againCounter: 9, hardCounter: 8, critTimeMs: 6_000, dodgeEvery: 3 },
   },
 }
 
@@ -152,6 +167,10 @@ export interface ArenaExchange {
   comboAfter: number
   /** Score gained this exchange. */
   scoreDelta: number
+  /** Damage blocked by guardian plating this exchange. */
+  armorBlocked: number
+  /** True when the guardian dodged this exchange's strike. */
+  dodged: boolean
 }
 
 export interface ArenaState {
@@ -189,6 +208,10 @@ export interface Strike {
   shieldRepair: number
   scoreDelta: number
   comboDelta: number
+  /** Damage blocked by guardian plating (config.strikeArmor). */
+  armorBlocked: number
+  /** True when the guardian dodged this round (config.dodgeEvery). */
+  dodged: boolean
 }
 
 /**
@@ -209,6 +232,8 @@ export function strikeFor(
   timeMs: number,
   combo: number,
   config: ArenaConfig = ARENA_DEFAULTS,
+  /** 1-based round index — only the dodge mechanic uses it. */
+  round = 0,
 ): Strike {
   if (grade === 1) {
     return {
@@ -218,6 +243,8 @@ export function strikeFor(
       shieldRepair: 0,
       scoreDelta: 0,
       comboDelta: -combo,
+      armorBlocked: 0,
+      dodged: false,
     }
   }
 
@@ -234,10 +261,27 @@ export function strikeFor(
   damage = Math.floor(damage * comboMultiplier)
   if (crit) damage = Math.floor(damage * 1.5)
 
+  // Guardian plating: flat reduction, but a genuine strike always lands for 1.
+  const armorBlocked = config.strikeArmor > 0 ? Math.min(config.strikeArmor, damage - 1) : 0
+  damage -= armorBlocked
+
+  // Guardian flicker: this round's strike lands half.
+  const dodged = config.dodgeEvery > 0 && round > 0 && round % config.dodgeEvery === 0
+  if (dodged) damage = Math.floor(damage / 2)
+
   const shieldRepair = grade >= 3 && combo + 1 >= config.shieldRepairCombo ? 1 : 0
   const scoreDelta = damage * 10 + (crit ? 50 : 0) + (grade === 2 ? 10 : 0)
 
-  return { damage, crit, counter, shieldRepair, scoreDelta, comboDelta: grade === 2 ? 0 : 1 }
+  return {
+    damage,
+    crit,
+    counter,
+    shieldRepair,
+    scoreDelta,
+    comboDelta: grade === 2 ? 0 : 1,
+    armorBlocked,
+    dodged,
+  }
 }
 
 // ─── Session lifecycle ──────────────────────────────────────────────────────
@@ -285,7 +329,14 @@ export function applyGrade(
 ): ArenaState {
   if (state.status !== 'fighting') return state
 
-  const strike = strikeFor(grade, confidence, Math.max(0, Math.round(timeMs)), state.combo, config)
+  const strike = strikeFor(
+    grade,
+    confidence,
+    Math.max(0, Math.round(timeMs)),
+    state.combo,
+    config,
+    state.round + 1,
+  )
 
   // Boss phase two: once the guardian falls below half HP the counters come
   // 50% harder — including the counter on the strike that drove it there.
@@ -316,6 +367,8 @@ export function applyGrade(
     counterShielded,
     comboAfter: combo,
     scoreDelta: strike.scoreDelta,
+    armorBlocked: strike.armorBlocked,
+    dodged: strike.dodged,
   }
 
   const remaining = state.remaining - 1

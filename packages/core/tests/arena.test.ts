@@ -372,3 +372,73 @@ describe('summarizeGradeLog with archetypes', () => {
     expect(a.correct).toBe(b.correct)
   })
 })
+
+describe('guardian signature mechanics', () => {
+  it('colossus plating blocks flat damage but never below 1', () => {
+    const cfg = guardianConfig('colossus', ARENA_DEFAULTS)
+    expect(cfg.strikeArmor).toBe(3)
+    const base = strikeFor(3, 1, 1_000, 0, ARENA_DEFAULTS)
+    const plated = strikeFor(3, 1, 1_000, 0, cfg)
+    expect(plated.damage).toBe(base.damage - 3)
+    expect(plated.armorBlocked).toBe(3)
+
+    // A fully-plated glancing strike still lands for 1.
+    const weak = strikeFor(2, 0, 9_000, 0, { ...cfg, strikeArmor: 50 })
+    expect(weak.damage).toBe(1)
+    expect(weak.armorBlocked).toBe(1) // base 10 /2 (hard) /2 (unsure) = 2 -> 1
+  })
+
+  it('shade flicker dodges every third round, round-indexed and deterministic', () => {
+    const cfg = guardianConfig('shade', ARENA_DEFAULTS)
+    expect(cfg.dodgeEvery).toBe(3)
+    expect(strikeFor(3, 1, 1_000, 0, cfg, 1).dodged).toBe(false)
+    expect(strikeFor(3, 1, 1_000, 0, cfg, 2).dodged).toBe(false)
+    const dodged = strikeFor(3, 1, 1_000, 0, cfg, 3)
+    expect(dodged.dodged).toBe(true)
+    const clean = strikeFor(3, 1, 1_000, 0, cfg, 4)
+    expect(dodged.damage).toBe(Math.floor(clean.damage / 2))
+    // Score follows the dodged damage.
+    expect(dodged.scoreDelta).toBe(dodged.damage * 10 + 50)
+  })
+
+  it('warden keeps the zero-mechanic baseline', () => {
+    const cfg = guardianConfig('warden', ARENA_DEFAULTS)
+    expect(cfg.strikeArmor).toBe(0)
+    expect(cfg.dodgeEvery).toBe(0)
+  })
+
+  it('mechanics replay identically through summarizeGradeLog', () => {
+    const events = [
+      { cardId: 1, grade: 3 as const, confidence: 1 as const, timeMs: 1_000 },
+      { cardId: 2, grade: 3 as const, confidence: 1 as const, timeMs: 1_000 },
+      { cardId: 3, grade: 3 as const, confidence: 1 as const, timeMs: 1_000 },
+      { cardId: 4, grade: 2 as const, confidence: 0 as const, timeMs: 5_000 },
+      { cardId: 5, grade: 3 as const, confidence: 1 as const, timeMs: 1_000 },
+      { cardId: 6, grade: 4 as const, confidence: 1 as const, timeMs: 900 },
+    ]
+    for (const archetype of ['shade', 'colossus'] as const) {
+      const cfg = guardianConfig(archetype, ARENA_DEFAULTS)
+      let live = createArenaSession(
+        events.map((e) => ({ cardId: e.cardId, prompt: 'x', answer: 'x' })),
+        cfg,
+        archetype,
+      )
+      for (const e of events) {
+        const ch = { cardId: e.cardId, prompt: 'x', answer: 'x' }
+        live = applyGrade(live, ch, e.grade, e.confidence, e.timeMs, cfg)
+      }
+      const replayed = summarizeGradeLog(events, ARENA_DEFAULTS, archetype)
+      expect(replayed.score).toBe(live.score)
+      expect(replayed.result).toBe(live.status)
+      // The shade dodged rounds 3 and 6 in both paths.
+      if (archetype === 'shade') {
+        expect(live.exchanges[2]!.dodged).toBe(true)
+        expect(live.exchanges[5]!.dodged).toBe(true)
+        expect(live.exchanges[0]!.dodged).toBe(false)
+      }
+      if (archetype === 'colossus') {
+        expect(live.exchanges[0]!.armorBlocked).toBeGreaterThan(0)
+      }
+    }
+  })
+})
