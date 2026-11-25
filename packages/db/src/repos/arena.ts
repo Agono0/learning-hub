@@ -194,6 +194,7 @@ export function createArenaSession(
     cardIds: number[]
     archetype: string
     boss: boolean
+    modifier?: string | null
   },
   db: LearningHubDB = getDb(),
 ): ArenaSessionRow {
@@ -207,6 +208,7 @@ export function createArenaSession(
       cardIds: input.cardIds,
       archetype: input.archetype,
       boss: input.boss,
+      modifier: input.modifier ?? null,
       status: 'open',
     })
     .returning()

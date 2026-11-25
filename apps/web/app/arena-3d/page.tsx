@@ -20,14 +20,17 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Coins, Flame, Heart, RotateCcw, Shield, Swords, Trophy } from 'lucide-react'
 import {
+  ARENA_MODIFIER_INFO,
   BOSS_CHALLENGE_THRESHOLD,
   GUARDIANS,
   applyGrade,
+  arenaModifierForDate,
   buildArenaSummary,
   createArenaSession,
   guardianForRun,
   type ArenaChallenge,
   type ArenaConfig,
+  type ArenaModifier,
   type ArenaState,
   type GuardianArchetype,
 } from '@learning-hub/core'
@@ -93,6 +96,8 @@ interface SessionPayload {
     tagline: string
     boss: boolean
   }
+  /** The daily rule twist this run was issued under (server-authoritative). */
+  modifier?: { key: ArenaModifier; name: string; description: string } | null
 }
 
 interface ScheduleEntry {
@@ -273,6 +278,7 @@ export default function Arena3DPage() {
   const [runDetail, setRunDetail] = useState<RunDetailPayload | null>(null)
   const [runDetailLoading, setRunDetailLoading] = useState(false)
   const [guardian, setGuardian] = useState<SessionPayload['guardian'] | null>(null)
+  const [modifier, setModifier] = useState<SessionPayload['modifier'] | null>(null)
 
   // The tuned config arrives with the session payload (guardian-specific).
   const [cfg, setCfg] = useState<ArenaConfig | null>(null)
@@ -338,6 +344,14 @@ export default function Arena3DPage() {
     }
   }, [record, challengeCount])
 
+  // Today's modifier preview: same deterministic daily rule the server
+  // applies when it issues the run, so the gate announces the twist the
+  // duel will actually get.
+  const todayModifier = useMemo(
+    () => ARENA_MODIFIER_INFO[arenaModifierForDate(new Date().toISOString().slice(0, 10))],
+    [],
+  )
+
   function toggleDeck(id: number): void {
     setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
   }
@@ -365,6 +379,7 @@ export default function Arena3DPage() {
       setRunId(payload.runId)
       setCfg(payload.config)
       setGuardian(payload.guardian)
+      setModifier(payload.modifier ?? null)
       setArena(createArenaSession(nextChallenges, payload.config, payload.guardian.archetype))
       arenaHandle.current?.setArchetype(payload.guardian.archetype)
       setRevealed(false)
@@ -515,6 +530,7 @@ export default function Arena3DPage() {
       setRunId(payload.runId)
       setCfg(payload.config)
       setGuardian(payload.guardian)
+      setModifier(payload.modifier ?? null)
       setArena(createArenaSession(nextChallenges, payload.config, payload.guardian!.archetype))
       arenaHandle.current?.setArchetype(payload.guardian!.archetype)
       setRevealed(false)
@@ -649,6 +665,16 @@ export default function Arena3DPage() {
                 <span className="text-faint">{guardianPreview.tagline}</span>
               </div>
             ) : null}
+
+            <div
+              className="flex flex-wrap items-center gap-2 text-sm"
+              data-testid="modifier-preview"
+            >
+              <Badge tone="cyan">
+                {'\u2726'} {todayModifier.name}
+              </Badge>
+              <span className="text-faint">{todayModifier.description}</span>
+            </div>
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
@@ -831,6 +857,11 @@ export default function Arena3DPage() {
               <div className="flex items-center justify-between text-xs text-faint">
                 <span className="flex flex-wrap items-center gap-2">
                   <span data-testid="guardian-name">{guardian?.name ?? 'Guardian'}</span>
+                  {modifier ? (
+                    <Badge tone="cyan" data-testid="guardian-modifier-badge">
+                      {'\u2726'} {modifier.name}
+                    </Badge>
+                  ) : null}
                   {arena.boss ? (
                     <Badge tone="violet" data-testid="guardian-boss-badge">
                       Boss
@@ -967,6 +998,11 @@ export default function Arena3DPage() {
                     {Math.round(settlement.summary.accuracy * 100)}% accuracy
                   </h2>
                 </div>
+                {modifier ? (
+                  <p className="text-sm text-faint" data-testid="results-modifier">
+                    {'\u2726'} {modifier.name}: {modifier.description}
+                  </p>
+                ) : null}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <Panel className="p-3">
                     <p className="text-xs text-faint">Score</p>

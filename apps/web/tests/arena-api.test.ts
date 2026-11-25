@@ -606,3 +606,58 @@ describe('Arena API — run history (/api/arena/history)', () => {
     expect(body.runs[0].result).toBe('victory')
   })
 })
+
+describe('Arena API — daily modifier', () => {
+  it('GET surfaces the daily modifier and issues a config tuned by it', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const res = await M.arena.GET(
+      new Request(`http://localhost/api/arena?deckIds=${deckId}&limit=5`),
+    )
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    const expected = M.core.arenaModifierForDate(new Date().toISOString().slice(0, 10))
+    expect(body.modifier.key).toBe(expected)
+    expect(body.modifier.name.length).toBeGreaterThan(0)
+    expect(body.modifier.description.length).toBeGreaterThan(0)
+    const tuned = M.core.applyArenaModifier(
+      expected,
+      M.core.guardianConfig(body.guardian.archetype, M.core.ARENA_DEFAULTS),
+    )
+    expect(body.config.baseDamage).toBe(tuned.baseDamage)
+    expect(body.config.critTimeMs).toBe(tuned.critTimeMs)
+    expect(body.config.maxShield).toBe(tuned.maxShield)
+  })
+
+  it('settles under the modifier stored at issuance, never the day of settlement', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const res = await M.arena.GET(
+      new Request(`http://localhost/api/arena?deckIds=${deckId}&limit=5`),
+    )
+    const body = await res.json()
+    const runId: string = body.runId
+    const today = M.core.arenaModifierForDate(new Date().toISOString().slice(0, 10))
+    // Simulate a run issued under a different day's twist: the stored row
+    // must be authoritative at settlement.
+    const flipped = today === 'heavy_air' ? 'swift_strikes' : 'heavy_air'
+    M.db.db
+      .update(M.db.arenaSessions)
+      .set({ modifier: flipped })
+      .where(eq(M.db.arenaSessions.id, runId))
+      .run()
+
+    const queue: number[] = body.cards.map((c: { id: number }) => c.id)
+    const log = gradeLog(queue, [0, Math.min(4, queue.length)])
+    const post = await postSettlement(settlePayload(runId, log))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+    const expected = M.core.summarizeGradeLog(
+      log,
+      M.core.ARENA_DEFAULTS,
+      body.guardian.archetype,
+      flipped,
+    )
+    expect(settled.summary.score).toBe(expected.score)
+    expect(settled.summary.crits).toBe(expected.crits)
+    expect(settled.summary.coins).toBe(expected.coins)
+  })
+})
