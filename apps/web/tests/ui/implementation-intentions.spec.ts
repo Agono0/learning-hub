@@ -46,8 +46,8 @@ test('automaticity tab projects days to habit strength', async ({ page }) => {
   await page.goto('/implementation-intentions')
   await page.getByRole('tab', { name: 'Automaticity' }).click()
 
-  await page.getByRole('textbox', { name: 'Days practiced so far' }).fill('21')
-  await page.getByRole('textbox', { name: 'Adherence (%)' }).fill('80')
+  await page.getByRole('spinbutton', { name: 'Days practiced so far' }).fill('21')
+  await page.getByRole('spinbutton', { name: 'Adherence (%)' }).fill('80')
   await page.getByRole('button', { name: /Project automaticity/ }).click()
 
   await expect(page.getByText('Days to ~95%')).toBeVisible()
