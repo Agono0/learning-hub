@@ -14,6 +14,7 @@
  *   invite-policy on|off
  *   remove-member <handle>
  *   unblock-member <handle>
+ *   transfer-founder <handle>
  *   duel-open <duelId> <opponentSignerId> --prompt "id::question::ans1|ans2" [--prompt …]
  *   duel-start <duelId>
  *   duel-answer <duelId> <promptId> <answer…>
@@ -96,7 +97,8 @@ export function parseMutationArgs(args: string[]): ParsedMutation {
       break
     }
     case 'remove-member':
-    case 'unblock-member': {
+    case 'unblock-member':
+    case 'transfer-founder': {
       if (tail.length !== 1) return { ok: false, error: `${type} needs exactly one <handle>` }
       candidate = { type, target: tail[0] }
       break

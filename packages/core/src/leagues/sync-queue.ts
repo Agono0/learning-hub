@@ -69,6 +69,7 @@ export function laneFor(mutation: LeagueMutation): string {
     case 'invite-policy':
     case 'remove-member':
     case 'unblock-member':
+    case 'transfer-founder':
       return 'membership'
     case 'close-round':
       return 'round'

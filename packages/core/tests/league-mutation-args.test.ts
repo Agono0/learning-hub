@@ -150,6 +150,11 @@ describe('membership mutation arguments', () => {
       ok: true,
       mutation: { type: 'unblock-member', target: 'usr_bo' },
     })
+    expect(parseMutationArgs(['transfer-founder', 'usr_bo'])).toEqual({
+      ok: true,
+      mutation: { type: 'transfer-founder', target: 'usr_bo' },
+    })
+    expect(err(['transfer-founder'])).toMatch(/handle/)
     expect(err(['remove-member'])).toMatch(/handle/)
     expect(err(['unblock-member', 'a', 'b'])).toMatch(/handle/)
   })

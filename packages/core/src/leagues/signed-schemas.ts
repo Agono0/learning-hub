@@ -50,6 +50,7 @@ export const LeagueMutationSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('remove-member'), target: z.string().min(1).max(64) }),
   /** Founder only: lift a block so the handle may join again. */
   z.object({ type: z.literal('unblock-member'), target: z.string().min(1).max(64) }),
+  z.object({ type: z.literal('transfer-founder'), target: z.string().min(1).max(64) }),
   /** Founder only: require an invite to join. */
   z.object({ type: z.literal('invite-policy'), required: z.boolean() }),
   /** Challenge another joined member to a duel the challenger authors. */

@@ -269,6 +269,7 @@ describe('membership items in the queue', () => {
       { type: 'invite-policy', required: true },
       { type: 'remove-member', target: 'usr_bo' },
       { type: 'unblock-member', target: 'usr_bo' },
+      { type: 'transfer-founder', target: 'usr_bo' },
     ] as LeagueMutation[]) {
       expect(laneFor(m)).toBe('membership')
     }

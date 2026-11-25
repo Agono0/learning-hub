@@ -30,6 +30,7 @@ export type MembershipForm =
   | { kind: 'policy'; required: boolean }
   | { kind: 'remove'; handle: string }
   | { kind: 'unblock'; handle: string }
+  | { kind: 'transfer'; handle: string }
 
 function enqueueBody(target: LinkTarget, candidate: unknown): BuiltRequest {
   const parsed = LeagueMutationSchema.safeParse(candidate)
@@ -72,11 +73,17 @@ export function buildMembershipRequest(target: LinkTarget, form: MembershipForm)
       return enqueueBody(target, { type: 'invite-revoke', digest })
     }
     case 'remove':
-    case 'unblock': {
+    case 'unblock':
+    case 'transfer': {
       const handle = form.handle.trim()
       if (!handle) return { ok: false, error: 'Pick a member handle first.' }
       return enqueueBody(target, {
-        type: form.kind === 'remove' ? 'remove-member' : 'unblock-member',
+        type:
+          form.kind === 'remove'
+            ? 'remove-member'
+            : form.kind === 'unblock'
+              ? 'unblock-member'
+              : 'transfer-founder',
         target: handle,
       })
     }

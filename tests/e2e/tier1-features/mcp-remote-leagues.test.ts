@@ -37,6 +37,7 @@ describe('Tier 1: MCP remote league membership tools', () => {
       'remote_league_invite_policy',
       'remote_league_remove_member',
       'remote_league_unblock_member',
+      'remote_league_transfer_founder',
     ]) {
       expect(names).toContain(n)
     }
@@ -51,6 +52,7 @@ describe('Tier 1: MCP remote league membership tools', () => {
       ['remote_league_invite_policy', { ...target, required: true }],
       ['remote_league_remove_member', { ...target, handle: 'usr_bo' }],
       ['remote_league_unblock_member', { ...target, handle: 'usr_bo' }],
+      ['remote_league_transfer_founder', { ...target, handle: 'usr_cy' }],
       ['remote_league_leave', target],
     ]
     let pending = 0
@@ -66,8 +68,8 @@ describe('Tier 1: MCP remote league membership tools', () => {
       target,
     )
     expect(q.ok).toBe(true)
-    expect(q.items).toBe(6)
-    expect(q.summary.pending).toBe(6)
+    expect(q.items).toBe(7)
+    expect(q.summary.pending).toBe(7)
   })
 
   it('shows the link with its queue counts and no key material', async () => {

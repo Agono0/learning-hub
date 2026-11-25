@@ -264,4 +264,26 @@ describe('LeagueRoom invites', () => {
     expect(spectate).not.toContain('modLog')
     expect(spectate).not.toContain('blocked')
   })
+
+  it('founder transfer: the new founder moderates, the old one is refused with 409', async () => {
+    const { room, clock, founder } = await setup()
+    const inv = await mint(room, founder, clock.t + 1, 5)
+    const bo = await actor()
+    const cy = await actor()
+    clock.t += 2
+    await send(room, bo, { type: 'join', alias: 'Bo', invite: inv.code }, clock.t)
+    await send(room, cy, { type: 'join', alias: 'Cy', invite: inv.code }, clock.t + 1)
+    clock.t += 3
+    const t = await send(room, founder, { type: 'transfer-founder', target: cy.handle }, clock.t)
+    expect(t.body.ok).toBe(true)
+    clock.t += 1
+    const old = await send(room, founder, { type: 'invite-policy', required: false }, clock.t)
+    expect(old.status).toBe(409)
+    expect(old.body.code).toBe('not_founder')
+    clock.t += 1
+    const heir = await send(room, cy, { type: 'invite-policy', required: false }, clock.t)
+    expect(heir.body.ok).toBe(true)
+    const full = JSON.parse(await view(room)) as { modLog?: Array<{ action: string }> }
+    expect(full.modLog?.map((e) => e.action)).toEqual(['transfer'])
+  })
 })

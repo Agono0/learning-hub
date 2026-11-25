@@ -90,7 +90,12 @@ export function RemoteRosterView({ roster }: { roster: RemoteRoster | null }) {
             {roster.moderation.map((e, i) => (
               <li key={`${e.at}-${i}`} data-testid="remote-moderation-row">
                 {new Date(e.at).toISOString().slice(0, 16).replace('T', ' ')} UTC · {e.by}{' '}
-                {e.action === 'remove' ? 'removed' : 'unblocked'} {e.target}
+                {e.action === 'remove'
+                  ? 'removed'
+                  : e.action === 'unblock'
+                    ? 'unblocked'
+                    : 'made founder'}{' '}
+                {e.target}
               </li>
             ))}
           </ul>
@@ -325,6 +330,21 @@ export function RemoteLinkActions({
           }
         >
           Unblock
+        </Button>
+        <Button
+          variant="secondary"
+          disabled={busy}
+          data-testid={testid('transfer-founder')}
+          onClick={() =>
+            go(() =>
+              run(
+                buildMembershipRequest(target, { kind: 'transfer', handle: modHandle }),
+                transport,
+              ),
+            )
+          }
+        >
+          Make founder
         </Button>
       </div>
       {shownCode && (

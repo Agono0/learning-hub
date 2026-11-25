@@ -120,7 +120,8 @@ async function drive(seed: number, steps: number) {
       mutation = { type: 'invite-revoke', digest: pick(codes).digest }
     } else if (roll < 0.7) mutation = { type: 'invite-policy', required: rand() < 0.5 }
     else if (roll < 0.87) mutation = { type: 'remove-member', target: pick(actors).handle }
-    else mutation = { type: 'unblock-member', target: pick(actors).handle }
+    else if (roll < 0.94) mutation = { type: 'unblock-member', target: pick(actors).handle }
+    else mutation = { type: 'transfer-founder', target: pick(actors).handle }
 
     const envelope = await signLeagueMutation({
       signer: me.signer,
@@ -165,7 +166,14 @@ describe('membership lifecycle fuzz', () => {
   }
 
   it('across the seeds, moderation and invites were actually accepted at least once', () => {
-    for (const k of ['join', 'leave', 'invite-create', 'remove-member', 'unblock-member']) {
+    for (const k of [
+      'join',
+      'leave',
+      'invite-create',
+      'remove-member',
+      'unblock-member',
+      'transfer-founder',
+    ]) {
       expect(totals.get(k) ?? 0, k).toBeGreaterThan(0)
     }
   })

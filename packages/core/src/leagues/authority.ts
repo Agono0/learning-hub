@@ -130,7 +130,7 @@ export const AuthorityStateSchema = z.object({
       z.object({
         at: z.number().int(),
         by: z.string(),
-        action: z.enum(['remove', 'unblock']),
+        action: z.enum(['remove', 'unblock', 'transfer']),
         target: z.string(),
       }),
     )
@@ -211,6 +211,7 @@ export type ReduceEffect =
   | { kind: 'invite-policy'; required: boolean }
   | { kind: 'removed'; handle: string; cancelledDuels: number }
   | { kind: 'unblocked'; handle: string }
+  | { kind: 'founder-transferred'; from: string; to: string }
 
 export type ReduceResult =
   | { ok: true; state: AuthorityState; effects: ReduceEffect[] }
@@ -279,7 +280,7 @@ function logMod(
   log: AuthorityState['modLog'],
   at: number,
   by: string,
-  action: 'remove' | 'unblock',
+  action: 'remove' | 'unblock' | 'transfer',
   target: string,
 ): AuthorityState['modLog'] {
   return [...log, { at, by, action, target }].slice(-MAX_MOD_LOG)
@@ -464,6 +465,25 @@ export function applyVerifiedMutation(
           modLog: logMod(state.modLog, now, handle, 'unblock', m.target),
         },
         [{ kind: 'unblocked', handle: m.target }],
+      )
+    }
+
+    case 'transfer-founder': {
+      if (!isMember) return reject(stateIn, 'not_member')
+      if (state.league.players[0]?.handle !== handle) return reject(stateIn, 'not_founder')
+      if (m.target === handle) return reject(stateIn, 'cannot_remove_self')
+      const heir = state.league.players.find((p) => p.handle === m.target)
+      if (!heir) return reject(stateIn, 'target_not_member')
+      const players = [heir, ...state.league.players.filter((p) => p.handle !== m.target)]
+      return commit(
+        state,
+        v,
+        now,
+        {
+          league: { ...state.league, players },
+          modLog: logMod(state.modLog, now, handle, 'transfer', m.target),
+        },
+        [{ kind: 'founder-transferred', from: handle, to: m.target }],
       )
     }
 

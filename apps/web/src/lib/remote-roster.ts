@@ -34,7 +34,7 @@ const StateSchema = z.object({
       z.object({
         at: z.number().int(),
         by: z.string(),
-        action: z.enum(['remove', 'unblock']),
+        action: z.enum(['remove', 'unblock', 'transfer']),
         target: z.string(),
       }),
     )
@@ -50,7 +50,7 @@ export interface RosterMember {
 
 export interface ModerationRow {
   at: number
-  action: 'remove' | 'unblock'
+  action: 'remove' | 'unblock' | 'transfer'
   /** Alias of the founder who acted, or "a founder" if unknown. */
   by: string
   /** Alias if still known, otherwise "a former member". */

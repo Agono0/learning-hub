@@ -725,4 +725,73 @@ describe('founder moderation', () => {
     const left = await must(full, bo, { type: 'leave' }, T0 + 6)
     expect(left.blocked).toHaveLength(MAX_BLOCKED)
   })
+
+  it('transfer-founder hands moderation to the chosen member and takes it from the old founder', async () => {
+    const { founder, bo, cy, state } = await trio()
+    const s = await must(state, founder, { type: 'transfer-founder', target: cy.handle }, T0 + 3)
+    expect(s.league.players[0]?.handle).toBe(cy.handle)
+    expect(s.league.players.map((p) => p.handle).sort()).toEqual(
+      [founder.handle, bo.handle, cy.handle].sort(),
+    )
+    const old = await send(s, founder, { type: 'remove-member', target: bo.handle }, T0 + 4)
+    expect(old.ok).toBe(false)
+    if (!old.ok) expect(old.code).toBe('not_founder')
+    const neu = await send(s, cy, { type: 'remove-member', target: bo.handle }, T0 + 5)
+    expect(neu.ok).toBe(true)
+    expect(s.modLog.at(-1)).toEqual({
+      at: T0 + 3,
+      by: founder.handle,
+      action: 'transfer',
+      target: cy.handle,
+    })
+  })
+
+  it('transfer-founder refuses non-founders, self and non-members', async () => {
+    const { founder, bo, cy, state } = await trio()
+    const a = await send(state, bo, { type: 'transfer-founder', target: cy.handle }, T0 + 3)
+    expect(a.ok).toBe(false)
+    if (!a.ok) expect(a.code).toBe('not_founder')
+    const b = await send(
+      state,
+      founder,
+      { type: 'transfer-founder', target: founder.handle },
+      T0 + 4,
+    )
+    expect(b.ok).toBe(false)
+    const outsider = await actor()
+    const c = await send(
+      state,
+      founder,
+      { type: 'transfer-founder', target: outsider.handle },
+      T0 + 5,
+    )
+    expect(c.ok).toBe(false)
+    if (!c.ok) expect(c.code).toBe('target_not_member')
+    const d = await send(state, outsider, { type: 'transfer-founder', target: bo.handle }, T0 + 6)
+    expect(d.ok).toBe(false)
+    if (!d.ok) expect(d.code).toBe('not_member')
+  })
+
+  it('after a transfer, the old founder leaving does not move the founder role', async () => {
+    const { founder, bo, cy, state } = await trio()
+    let s = await must(state, founder, { type: 'transfer-founder', target: cy.handle }, T0 + 3)
+    s = await must(s, founder, { type: 'leave' }, T0 + 4)
+    expect(s.league.players[0]?.handle).toBe(cy.handle)
+    expect(s.league.players.map((p) => p.handle)).toContain(bo.handle)
+  })
+
+  it('a transfer keeps members, points and open duels intact', async () => {
+    const { founder, bo, cy, state } = await trio()
+    const prompts = [{ id: 'p1', question: 'q', answers: ['a'] }]
+    const withDuel = await must(
+      state,
+      bo,
+      { type: 'duel-open', duelId: 'td', opponent: cy.handle, prompts },
+      T0 + 3,
+    )
+    const s = await must(withDuel, founder, { type: 'transfer-founder', target: cy.handle }, T0 + 4)
+    expect(Object.keys(s.duels)).toEqual(['td'])
+    expect(s.league.players).toHaveLength(3)
+    expect(s.blocked).toEqual(withDuel.blocked)
+  })
 })

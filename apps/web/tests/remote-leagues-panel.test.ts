@@ -96,6 +96,7 @@ describe('RemoteLinkActions', () => {
       'remote-mod-handle',
       'remote-remove-member',
       'remote-unblock-member',
+      'remote-transfer-founder',
     ]) {
       expect(html).toContain(`data-testid="${id}"`)
     }
@@ -228,6 +229,13 @@ describe('RemoteRosterView moderation', () => {
     })
     expect(out).not.toContain('<img')
     expect(out).toContain('&lt;img')
+  })
+
+  it('labels a founder transfer in the log', () => {
+    const out = html({
+      modLog: [{ at: 1, by: 'usr_a', action: 'transfer', target: 'usr_a' }],
+    })
+    expect(out).toContain('Amy made founder Amy')
   })
 
   it('never uses ranking or ban language', () => {

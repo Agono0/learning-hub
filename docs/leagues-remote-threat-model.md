@@ -112,10 +112,19 @@ practice, not an identity ban: a person with a new device key is a new handle.
 
 ### Moderation log
 
-Each removal and unblock is also recorded in a capped log (newest 50) with the
+Each removal, unblock and founder transfer is also recorded in a capped log (newest 50) with the
 acting founder, the target handle and the room time. Members see it in the
 room state view and the web panel shows the newest 20, so a founder cannot
 remove someone without it being visible to the rest of the league. The
 read-only `/spectate` view never includes the log or the block list. The log
 is cleared when the league empties. It is a transparency aid, not tamper
 evidence: the room operator can still edit stored state.
+
+### Founder transfer
+
+`transfer-founder` moves the founder role to another current member and is
+accepted only from the current founder. It does not touch members, points,
+duels, invites or the block list, and the old founder keeps their membership
+without moderation powers. It is logged like any other moderation action. It
+is a hand-off, not a recovery path: a founder who loses their device key
+cannot transfer, and the room has no admin override by design.

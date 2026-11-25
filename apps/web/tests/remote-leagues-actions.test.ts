@@ -80,6 +80,16 @@ describe('founder moderation requests', () => {
   })
 })
 
+describe('transfer founder request', () => {
+  it('builds a transfer-founder mutation and asks for a handle', () => {
+    expect(buildMembershipRequest(T, { kind: 'transfer', handle: ' usr_cy ' })).toMatchObject({
+      ok: true,
+      body: { mutation: { type: 'transfer-founder', target: 'usr_cy' } },
+    })
+    expect(buildMembershipRequest(T, { kind: 'transfer', handle: '' }).ok).toBe(false)
+  })
+})
+
 describe('buildNewInvite', () => {
   it('returns a code that is not part of the request, only its digest', async () => {
     const inv = await buildNewInvite(T, { uses: 3, hours: 2 })

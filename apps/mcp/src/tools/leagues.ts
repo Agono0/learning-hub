@@ -490,6 +490,13 @@ export const remoteLeagueMembershipTools: RegisteredTool[] = [
       queueRemoteMutation(target, { type: 'remove-member', target: handle }),
   ),
   tool(
+    'remote_league_transfer_founder',
+    'Queue handing the founder role to another member (founder only; the league decides). Offline queue only.',
+    { ...remoteTarget, handle: z.string().min(1).max(80) },
+    ({ handle, ...target }) =>
+      queueRemoteMutation(target, { type: 'transfer-founder', target: handle }),
+  ),
+  tool(
     'remote_league_unblock_member',
     'Queue lifting a block on a handle (founder only; the league decides). Offline queue only.',
     { ...remoteTarget, handle: z.string().min(1).max(80) },
