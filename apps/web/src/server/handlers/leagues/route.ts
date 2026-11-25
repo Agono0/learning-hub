@@ -17,6 +17,7 @@ import {
   getLeagueTournament,
   importLeague,
   joinLeagueRow,
+  leagueHeadToHead,
   leagueChampion,
   leaguePlayerProfile,
   leagueStandings,
@@ -42,6 +43,17 @@ export const GET = withRoute(async (req: Request) => {
   if (view === 'list') return Response.json({ ok: true, leagues: listLeagueRows() })
 
   const slug = url.searchParams.get('slug') ?? ''
+  if (view === 'h2h') {
+    const a = url.searchParams.get('a') ?? ''
+    const b = url.searchParams.get('b') ?? ''
+    if (!a || !b) return Response.json({ error: 'pass a and b handles' }, { status: 400 })
+    const headToHead = leagueHeadToHead(slug, a, b)
+    if (!headToHead) {
+      return Response.json({ error: 'league or player not found' }, { status: 404 })
+    }
+    return Response.json({ ok: true, headToHead })
+  }
+
   if (view === 'export') {
     const transfer = exportLeague(slug)
     if (!transfer) return Response.json({ error: `league not found: ${slug}` }, { status: 404 })

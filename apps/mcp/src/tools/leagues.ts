@@ -13,6 +13,7 @@ import {
   createLeagueTournament,
   exportLeague,
   importLeague,
+  leagueHeadToHead,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -87,6 +88,16 @@ export const leagueTools: RegisteredTool[] = [
     'Join a league; every player starts in bronze.',
     { slug: z.string().min(1), handle: z.string().min(1).max(50) },
     ({ slug, handle }) => json({ ok: true, player: joinLeagueRow(slug, handle) }),
+  ),
+  tool(
+    'league_head_to_head',
+    'Full head-to-head record between two league players: wins/draws, accuracy, speed, streaks, Elo gap and recent duels.',
+    { slug: z.string().min(1), a: z.string().min(1), b: z.string().min(1) },
+    ({ slug, a, b }) => {
+      const headToHead = leagueHeadToHead(slug, a, b)
+      if (!headToHead) throw new Error('league or player not found')
+      return json({ ok: true, headToHead })
+    },
   ),
   tool(
     'league_export',

@@ -109,6 +109,30 @@ type Detail = {
   tournaments: TournamentRow[]
 }
 
+type HeadToHead = {
+  summary: {
+    playerA: string
+    playerB: string
+    duels: number
+    winsA: number
+    winsB: number
+    draws: number
+    winRateA: number
+    winRateB: number
+    accuracyA: number
+    accuracyB: number
+    avgCorrectMsA: number
+    avgCorrectMsB: number
+    streakA: number
+    streakB: number
+    lastResult: 'A' | 'B' | 'draw' | null
+    lastDuelAt: string | null
+  }
+  leader: { leader: string | null; edge: number; even: boolean }
+  elo: { eloA: number; eloB: number; gap: number; higher: 'A' | 'B' | null }
+  recentDuels: { duelId: string; winner: string | null; completedAt: string }[]
+}
+
 const TIER_TONE: Record<string, 'neutral' | 'accent' | 'success' | 'warning' | 'cyan' | 'violet'> =
   {
     bronze: 'warning',
@@ -564,6 +588,7 @@ function StandingsTab({
             </div>
           </Panel>
           {profileHandle && <PlayerProfilePanel slug={selected} handle={profileHandle} />}
+          <HeadToHeadPanel detail={detail} selected={selected} />
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel>
               <h2 className="mb-2 text-base font-semibold">Log study points</h2>
@@ -758,6 +783,122 @@ function EloSparkline({ values, start }: { values: number[]; start: number }) {
     >
       <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>
+  )
+}
+
+function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: string }) {
+  const [a, setA] = useState('')
+  const [b, setB] = useState('')
+  const [result, setResult] = useState<HeadToHead | null>(null)
+  const [h2hError, setH2hError] = useState<string | null>(null)
+
+  async function compare() {
+    setH2hError(null)
+    setResult(null)
+    try {
+      const res = await apiGet<{ ok: boolean; headToHead: HeadToHead }>(
+        `/api/leagues?view=h2h&slug=${encodeURIComponent(selected)}&a=${encodeURIComponent(
+          a.trim(),
+        )}&b=${encodeURIComponent(b.trim())}`,
+      )
+      setResult(res.headToHead)
+    } catch (err) {
+      setH2hError(err instanceof Error ? err.message : 'head-to-head failed')
+    }
+  }
+
+  return (
+    <Panel>
+      <h2 className="mb-2 text-base font-semibold">Head-to-head</h2>
+      <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+        The full rivalry record between two players: every duel they played, accuracy, speed,
+        streaks and the Elo gap.
+      </p>
+      {h2hError && (
+        <Callout tone="danger" title="Head-to-head failed">
+          {h2hError}
+        </Callout>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-40">
+          <TextField
+            label="Player A"
+            value={a}
+            onChange={(e) => setA(e.target.value)}
+            data-testid="h2h-a"
+            list="h2h-players"
+          />
+        </div>
+        <div className="w-40">
+          <TextField
+            label="Player B"
+            value={b}
+            onChange={(e) => setB(e.target.value)}
+            data-testid="h2h-b"
+            list="h2h-players"
+          />
+        </div>
+        <datalist id="h2h-players">
+          {detail.players.map((p) => (
+            <option key={p.handle} value={p.handle} />
+          ))}
+        </datalist>
+        <Button
+          type="button"
+          data-testid="h2h-submit"
+          disabled={!a.trim() || !b.trim() || a.trim() === b.trim()}
+          onClick={() => void compare()}
+        >
+          Compare
+        </Button>
+      </div>
+      {result && (
+        <div className="mt-3 space-y-2" data-testid="h2h-result">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="accent">
+              {result.summary.duels} duel{result.summary.duels === 1 ? '' : 's'}
+            </Badge>
+            <Badge tone={result.leader.even ? 'neutral' : 'success'}>
+              {result.leader.leader
+                ? `${result.leader.leader} leads by ${result.leader.edge}`
+                : 'All square'}
+            </Badge>
+            <Badge tone="cyan">
+              Elo {result.elo.eloA} vs {result.elo.eloB}
+            </Badge>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {(['A', 'B'] as const).map((side) => {
+              const name = side === 'A' ? result.summary.playerA : result.summary.playerB
+              const wins = side === 'A' ? result.summary.winsA : result.summary.winsB
+              const acc = side === 'A' ? result.summary.accuracyA : result.summary.accuracyB
+              const speed =
+                side === 'A' ? result.summary.avgCorrectMsA : result.summary.avgCorrectMsB
+              const streak = side === 'A' ? result.summary.streakA : result.summary.streakB
+              return (
+                <div
+                  key={side}
+                  className="rounded-lg border border-neutral-200 p-3 dark:border-(--hub-border)"
+                  data-testid={`h2h-side-${side}`}
+                >
+                  <div className="font-medium">{name}</div>
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    {wins} wins · {(acc * 100).toFixed(0)}% accuracy · {speed}ms avg correct ·{' '}
+                    streak {streak}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+          {result.recentDuels.length > 0 && (
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              Recent:{' '}
+              {result.recentDuels.map((d) => `${d.duelId} → ${d.winner ?? 'draw'}`).join(' · ')}
+            </p>
+          )}
+        </div>
+      )}
+    </Panel>
   )
 }
 

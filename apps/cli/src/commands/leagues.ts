@@ -24,6 +24,7 @@
  *   leagues tournament open <slug>
  *   leagues tournament result <slug> <round> <position> <winner> [--duel <id>]
  *   leagues tournament list [--league <slug>] [--status open|complete]
+ *   leagues h2h <slug> <handleA> <handleB>
  *   leagues export <slug> [--out FILE]
  *   leagues import <file>
  */
@@ -38,6 +39,7 @@ import {
   exportLeague,
   getLeagueBySlug,
   importLeague,
+  leagueHeadToHead,
   joinLeagueRow,
   leagueChampion,
   leaguePlayerProfile,
@@ -504,6 +506,27 @@ function importCommand(args: string[]): void {
   }
 }
 
+function h2hCommand(args: string[]): void {
+  const [slug, a, b] = args
+  if (!slug || !a || !b) return fail('Usage: learning-hub leagues h2h <slug> <handleA> <handleB>')
+  const h2h = leagueHeadToHead(slug, a, b)
+  if (!h2h) return fail('League or player not found.')
+  const s = h2h.summary
+  const lead = h2h.leader.leader ? `${h2h.leader.leader} leads by ${h2h.leader.edge}` : 'all square'
+  console.log(
+    panel(`${a} vs ${b} in ${slug}`, [
+      `Duels: ${s.duels} (${s.winsA}-${s.draws}-${s.winsB}) — ${lead}`,
+      `Accuracy: ${a} ${(s.accuracyA * 100).toFixed(0)}% vs ${b} ${(s.accuracyB * 100).toFixed(0)}%`,
+      `Avg correct speed: ${a} ${s.avgCorrectMsA}ms vs ${b} ${s.avgCorrectMsB}ms`,
+      `Streaks: ${a} ${s.streakA} / ${b} ${s.streakB}`,
+      `Elo: ${a} ${h2h.elo.eloA} vs ${b} ${h2h.elo.eloB} (gap ${h2h.elo.gap})`,
+      ...(h2h.recentDuels.length > 0
+        ? [`Recent: ${h2h.recentDuels.map((d) => `${d.duelId}→${d.winner ?? 'draw'}`).join(', ')}`]
+        : []),
+    ]),
+  )
+}
+
 function leaguesCommand(args: string[]): void {
   const sub = args[0] || 'list'
   if (sub === 'list') return listLeaguesCommand()
@@ -517,6 +540,7 @@ function leaguesCommand(args: string[]): void {
   if (sub === 'close-due') return closeDueCommand()
   if (sub === 'rounds') return roundsCommand(args.slice(1))
   if (sub === 'seasons') return seasonsCommand(args.slice(1))
+  if (sub === 'h2h') return h2hCommand(args.slice(1))
   if (sub === 'export') return exportCommand(args.slice(1))
   if (sub === 'import') return importCommand(args.slice(1))
   if (sub === 'duel') return duelCommand(args.slice(1))
