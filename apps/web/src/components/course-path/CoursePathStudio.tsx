@@ -2,7 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Issue } from '@learning-hub/core/curriculum'
-import type { LessonFrontier, LintFinding, PlanResult } from '@learning-hub/core/course-path'
+import type {
+  LessonFrontier,
+  LintFinding,
+  PlanResult,
+  Unlocker,
+} from '@learning-hub/core/course-path'
 import {
   Badge,
   Button,
@@ -26,6 +31,7 @@ import {
   type PathPrefs,
 } from './state'
 
+const UNMET_SHOWN = 5
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function localDateKey(d: Date): string {
@@ -54,6 +60,30 @@ export function ParseIssues({ errors }: { errors: Issue[] }) {
       </ul>
       {errors.length > 8 && <p>{`${errors.length - 8} more problems not shown.`}</p>}
     </Callout>
+  )
+}
+
+export function LevelsNote() {
+  return (
+    <p className="mt-2 text-xs opacity-80" data-testid="levels-note">
+      Levels are your own estimate, not measured mastery. Only Solid counts as knowing a skill: a
+      lesson stays &quot;better later&quot; until the skills it builds on are Solid, and New or
+      Learning do not unlock it.
+    </p>
+  )
+}
+
+export function UnlockerList({ unlockers }: { unlockers: Unlocker[] }) {
+  return (
+    <ol className="list-decimal space-y-1 pl-5 text-sm" data-testid="unlockers">
+      {unlockers.map((u) => (
+        <li key={u.skill}>
+          {u.minutesToTrain > 0
+            ? `${u.name}: ${u.downstreamLessons} later lesson(s) depend on it, about ${u.minutesToTrain} min to train.`
+            : `${u.name}: ${u.downstreamLessons} later lesson(s) depend on it, but no lesson in this course teaches it.`}
+        </li>
+      ))}
+    </ol>
   )
 }
 
@@ -113,7 +143,20 @@ export function LessonList({
   )
 }
 
-export function PlanView({ plan, note }: { plan: PlanResult | null; note: string | null }) {
+export function PlanView({
+  plan,
+  note,
+  lessonTitles = {},
+  skillNames = {},
+}: {
+  plan: PlanResult | null
+  note: string | null
+  /** Optional slug to display name maps; slugs are shown when missing. */
+  lessonTitles?: Record<string, string>
+  skillNames?: Record<string, string>
+}) {
+  const lt = (slug: string) => lessonTitles[slug] ?? slug
+  const sn = (slug: string) => skillNames[slug] ?? slug
   if (!plan) return <EmptyState title="No plan yet">{note ?? ''}</EmptyState>
   const day = new Intl.DateTimeFormat('en', {
     weekday: 'short',
@@ -144,13 +187,18 @@ export function PlanView({ plan, note }: { plan: PlanResult | null; note: string
       {!plan.prerequisiteSafe && (
         <Callout tone="warning" title="Some prerequisites are not covered by this course">
           <ul className="list-disc pl-5" data-testid="plan-unmet">
-            {plan.unmetPrerequisites.slice(0, 5).map((u, i) => (
+            {plan.unmetPrerequisites.slice(0, UNMET_SHOWN).map((u, i) => (
               <li
                 key={i}
-              >{`${u.lesson} builds on ${u.prerequisite}, which is not Solid yet and no remaining lesson teaches it.`}</li>
+              >{`${lt(u.lesson)} builds on ${sn(u.prerequisite)}, which is not Solid yet and no remaining lesson teaches it.`}</li>
             ))}
+            {plan.unmetPrerequisites.length > UNMET_SHOWN && (
+              <li data-testid="plan-unmet-more">{`and ${plan.unmetPrerequisites.length - UNMET_SHOWN} more`}</li>
+            )}
             {plan.outOfOrder.map((o) => (
-              <li key={o.lesson}>{`${o.lesson} could not be ordered after its prerequisites.`}</li>
+              <li
+                key={o.lesson}
+              >{`${lt(o.lesson)} could not be ordered after its prerequisites.`}</li>
             ))}
           </ul>
         </Callout>
@@ -189,7 +237,7 @@ export function PlanView({ plan, note }: { plan: PlanResult | null; note: string
       </ol>
       {plan.unfinished.length > 0 && (
         <p className="text-xs" data-testid="plan-unfinished">
-          {`Not finished: ${plan.unfinished.map((u) => `${u.lesson} (${u.minutesLeft} min)`).join(', ')}.`}
+          {`Not finished: ${plan.unfinished.map((u) => `${lt(u.lesson)} (${u.minutesLeft} min)`).join(', ')}.`}
         </p>
       )}
     </div>
@@ -349,20 +397,12 @@ export function CoursePathStudio() {
                 </SelectField>
               ))}
             </div>
-            <p className="mt-2 text-xs opacity-80">
-              A lesson is marked "better later" until the skills it builds on are Solid.
-            </p>
+            <LevelsNote />
           </Panel>
 
           {analysis.frontier.unlockers.length > 0 && (
             <Panel title="Work on these first">
-              <ol className="list-decimal space-y-1 pl-5 text-sm" data-testid="unlockers">
-                {analysis.frontier.unlockers.map((u) => (
-                  <li key={u.skill}>
-                    {`${u.name}: ${u.downstreamLessons} later lesson(s) depend on it, about ${u.minutesToTrain} min to train.`}
-                  </li>
-                ))}
-              </ol>
+              <UnlockerList unlockers={analysis.frontier.unlockers} />
             </Panel>
           )}
 
@@ -424,6 +464,10 @@ export function CoursePathStudio() {
                     ? 'Minutes per day must be at least 1.'
                     : analysis.planNote
                 }
+                lessonTitles={Object.fromEntries(
+                  analysis.model.lessons.map((l) => [l.slug, l.title]),
+                )}
+                skillNames={Object.fromEntries(analysis.model.skills.map((k) => [k.slug, k.name]))}
               />
             </div>
           </Panel>

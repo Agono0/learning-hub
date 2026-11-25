@@ -7,6 +7,8 @@ import { EXAMPLE_COURSE } from '../src/components/course-path/example-course'
 import {
   CoursePathStudio,
   LessonList,
+  LevelsNote,
+  UnlockerList,
   LintList,
   ParseIssues,
   PlanView,
@@ -155,6 +157,60 @@ describe('views', () => {
     expect(html(React.createElement(PlanView, { plan: noReviews, note: null }))).not.toContain(
       'had no room',
     )
+  })
+
+  it('says how many unmet prerequisites are not listed', () => {
+    const base = ok(prefs({ deadline: '2026-12-20' })).plan!
+    const unmet = Array.from({ length: 8 }, (_, i) => ({
+      lesson: `l${i}`,
+      skill: 's',
+      prerequisite: 'base',
+      reason: 'no-remaining-lesson-trains-it' as const,
+    }))
+    const plan = { ...base, prerequisiteSafe: false, unmetPrerequisites: unmet }
+    const out = html(
+      React.createElement(PlanView, {
+        plan,
+        note: null,
+        lessonTitles: { l0: 'First lesson' },
+        skillNames: { base: 'Base skill' },
+      }),
+    )
+    expect(out).toContain('First lesson builds on Base skill')
+    expect(out).toContain('and 3 more')
+    const few = { ...plan, unmetPrerequisites: unmet.slice(0, 5) }
+    expect(html(React.createElement(PlanView, { plan: few, note: null }))).not.toContain(
+      'more</li>',
+    )
+  })
+
+  it('explains that levels are self-reported and only Solid unlocks', () => {
+    const out = html(React.createElement(LevelsNote))
+    expect(out).toContain('not measured mastery')
+    expect(out).toContain('Only Solid counts as knowing a skill')
+    expect(out).toContain('New or Learning do not unlock it')
+  })
+
+  it('does not claim training time for a skill no lesson teaches', () => {
+    const out = html(
+      React.createElement(UnlockerList, {
+        unlockers: [
+          {
+            skill: 'base',
+            name: 'Base',
+            downstreamLessons: 2,
+            minutesToTrain: 0,
+            lockedLessons: 2,
+          },
+          { skill: 'a', name: 'A', downstreamLessons: 1, minutesToTrain: 30, lockedLessons: 1 },
+        ],
+      }),
+    )
+    expect(out).toContain(
+      'Base: 2 later lesson(s) depend on it, but no lesson in this course teaches it.',
+    )
+    expect(out).toContain('A: 1 later lesson(s) depend on it, about 30 min to train.')
+    expect(out).not.toContain('about 0 min')
   })
 
   it('renders parse issues and lint findings', () => {
