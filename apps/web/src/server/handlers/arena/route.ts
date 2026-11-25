@@ -451,9 +451,21 @@ export const POST = withRoute(async (req: Request) => {
       // same transaction — and can only ever unlock once per run.
       const achievements = evaluateAndUnlockAchievements({ db: tx }).newlyUnlocked
 
+      // Per-card schedule recap: what FSRS actually did with each graded
+      // card — the results screen renders this so the player sees the real
+      // next-due outcomes, matching the normal review queue's summary.
+      const schedule = results.map((r) => ({
+        cardId: r.card.id,
+        due: r.card.due,
+        state: r.card.state,
+        reps: r.card.reps,
+        xpEarned: r.xpEarned,
+      }))
+
       settlement = {
         ok: true,
         summary,
+        schedule,
         reviewXp: results.reduce((sum, r) => sum + r.xpEarned, 0),
         achievements,
         coinsAwarded,

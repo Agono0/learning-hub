@@ -262,6 +262,20 @@ describe('Arena API — settlement execution', () => {
     expect(run.settledAt).toBeTruthy()
     expect((run.gradeLog as Exchange[]).length).toBe(3)
     expect((run.settlementJson as { ok: boolean }).ok).toBe(true)
+
+    // Per-card schedule recap matches what FSRS actually persisted.
+    expect(body.schedule.length).toBe(3)
+    for (const entry of body.schedule) {
+      const card = M.db.db
+        .select()
+        .from(M.db.cards)
+        .where(eq(M.db.cards.id, entry.cardId))
+        .limit(1)
+        .all()[0]!
+      expect(entry.due).toBe(card.due)
+      expect(entry.reps).toBe(card.reps)
+      expect(entry.xpEarned).toBeGreaterThan(0)
+    }
   })
 
   it('recomputes the summary server-side and ignores a lying client', async () => {
