@@ -21,6 +21,7 @@ import { habitsRoutes } from '../../../apps/server/src/routes/habits'
 import { ideasRoutes } from '../../../apps/server/src/routes/ideas'
 import { interleavingRoutes } from '../../../apps/server/src/routes/interleaving'
 import { notesRoutes } from '../../../apps/server/src/routes/notes'
+import { feedbackRoutes } from '../../../apps/server/src/routes/feedback'
 import { reviewRoutes } from '../../../apps/server/src/routes/review'
 import { studiosRoutes } from '../../../apps/server/src/routes/studios'
 import { systemRoutes } from '../../../apps/server/src/routes/system'
@@ -37,6 +38,7 @@ const AREA_TABLES = [
   ['focus', focusRoutes],
   ['habits', habitsRoutes],
   ['notes', notesRoutes],
+  ['feedback', feedbackRoutes],
 ] as const
 
 describe('headless server route composition (TD-11 guard)', () => {

@@ -77,6 +77,7 @@ function MetricBar(props: { label: string; value: number; icon: React.ReactNode;
  * component score, each with a tooltip naming its research basis.
  */
 export function FeedbackStudioHUD(props: FeedbackStudioHUDProps) {
+  const summaryLine = `${props.statementCount} statement${props.statementCount === 1 ? '' : 's'} analyzed`
   const fqi = Math.round(props.feedbackQualityIndex)
   return (
     <section
@@ -93,9 +94,7 @@ export function FeedbackStudioHUD(props: FeedbackStudioHUDProps) {
           </p>
           <p className={cx('text-3xl font-bold tabular-nums', scoreTone(fqi))}>{fqi}</p>
         </div>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          {props.statementCount} statement{props.statementCount === 1 ? '' : 's'} analyzed
-        </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">{summaryLine}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricBar
