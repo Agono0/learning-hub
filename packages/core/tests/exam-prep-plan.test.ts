@@ -84,6 +84,23 @@ describe('exam prep plan', () => {
     expect(p.days.some((d) => d.rest)).toBe(true)
   })
 
+  it('with more cards than maxCards it plans only the weakest and says so', async () => {
+    const cards = mixedDeck(60, 41)
+    const full = (await planExamPrep(cards, NOW, exam(20), 0.85, { maxCards: 1000 }))!
+    const cut = (await planExamPrep(cards, NOW, exam(20), 0.85, { maxCards: 10 }))!
+    expect(full.summary.truncated).toBe(false)
+    expect(cut.summary.truncated).toBe(true)
+    expect(cut.summary.consideredCards).toBe(10)
+    expect(
+      new Set(cut.days.flatMap((d) => d.reviews.map((r) => r.cardId))).size,
+    ).toBeLessThanOrEqual(10)
+    expect(cut.summary.baseline).toBe(full.summary.baseline)
+    expect(cut.summary.seenCards).toBe(full.summary.seenCards)
+    expect(cut.summary.planned).toBeLessThanOrEqual(full.summary.planned + 0.001)
+    const again = await planExamPrep(cards, NOW, exam(20), 0.85, { maxCards: 10 })
+    expect(again).toEqual(cut)
+  })
+
   it('agrees with the readiness simulation about the baseline', async () => {
     const cards = mixedDeck(40, 13)
     const p = (await planExamPrep(cards, NOW, exam(20), 0.85, { perDay: 0 }))!

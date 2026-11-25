@@ -180,6 +180,13 @@ export function ExamPrepStudio() {
                     figures and not in the schedule.
                   </p>
                 )}
+                {plan.summary.truncated && (
+                  <Callout tone="neutral">
+                    You have a very large collection. The schedule only considers the{' '}
+                    {plan.summary.consideredCards} cards the model expects you to remember least on
+                    exam day. The other cards are counted at their no-review figure.
+                  </Callout>
+                )}
                 {plan.summary.capacityBound && (
                   <Callout tone="neutral">
                     Some days had more useful reviews than the daily limit. Raising the limit would

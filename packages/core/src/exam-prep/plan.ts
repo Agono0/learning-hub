@@ -48,6 +48,7 @@ export async function planExamPrep(
     10,
     PREP_DEFAULTS.maxReviewsPerCard,
   )
+  const maxCards = clampInt(options.maxCards, 1, 50000, PREP_DEFAULTS.maxCards)
   const rest = [
     ...new Set((options.restWeekdays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)),
   ].sort()
@@ -68,6 +69,14 @@ export async function planExamPrep(
     examRecall: recallAt(src, exam),
   }))
   const baselineMean = state.length ? state.reduce((s, c) => s + c.examRecall, 0) / state.length : 0
+  // Weakest cards first, ties by id, so the cut is deterministic. Cards past the cut are never
+  // reviewed in the plan and stay at their no-review figure inside every mean below.
+  const truncated = state.length > maxCards
+  const active = truncated
+    ? [...state]
+        .sort((a, b) => a.examRecall - b.examRecall || a.src.id - b.src.id)
+        .slice(0, maxCards)
+    : state
 
   const days: PlanDay[] = []
   let capacityBound = false
@@ -85,7 +94,7 @@ export async function planExamPrep(
       const reviews: PlannedReview[] = []
       if (!isRest && perDay > 0) {
         const cands: { s: Live; next: FsrsCard; after: number; gain: number; before: number }[] = []
-        for (const s of state) {
+        for (const s of active) {
           if (s.count >= maxReviewsPerCard) continue
           // Exam prep is a deliberate extra review, so a card may be reviewed before it is due.
           const next = reviewOnce(sched, s.fsrs, when, 3)
@@ -141,9 +150,11 @@ export async function planExamPrep(
       seenCards: state.length,
       unseenCards,
       capacityBound,
+      truncated,
+      consideredCards: active.length,
     },
     confidence: assessConfidence(seen),
-    options: { perDay, minGain, maxReviewsPerCard, restWeekdays: rest },
+    options: { perDay, minGain, maxReviewsPerCard, maxCards, restWeekdays: rest },
     expired,
     assumptions: [...PREP_ASSUMPTIONS],
   }
