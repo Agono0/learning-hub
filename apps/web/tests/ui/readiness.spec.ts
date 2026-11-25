@@ -145,7 +145,10 @@ for (const view of [
     await expect(page.getByTestId('readiness-assumptions')).toContainText('not a measured result')
     await expect(page.getByTestId('readiness-decks-row')).toHaveCount(2)
     await expect(page.getByTestId('readiness-gain-row')).toHaveCount(10)
-    await expect(page.getByTestId('readiness-gain-summary')).toContainText('64 reviews')
+    await expect(page.getByTestId('readiness-gain-summary')).toContainText('about 64 reviews')
+    await expect(page.getByTestId('readiness-gain-summary')).toContainText('model estimates')
+    await expect(page.getByTestId('readiness-gain-summary')).toContainText('2026-12-20')
+    await expect(page.getByTestId('readiness-gains')).toContainText('normal review queue')
     // Never promise an outcome.
     await expect(page.getByTestId('readiness-studio')).not.toContainText(
       /guarantee|will pass|confidence interval/i,
