@@ -32,6 +32,7 @@ import {
   listLeagueRows,
   listLeagueTournaments,
   loadLeague,
+  notificationLog,
   openTournamentMatches,
   recordTournamentMatchResult,
   setDb,
@@ -49,6 +50,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   db.delete(xpEvents).run()
+  db.delete(notificationLog).run()
   db.delete(leagueTournaments).run()
   db.delete(leagueDuels).run()
   db.delete(leagueRounds).run()
@@ -178,6 +180,42 @@ describe('round close persistence', () => {
     joinLeagueRow('spring', 'amr', db)
     closeLeagueRound('spring', db)
     expect(db.select().from(xpEvents).where(eq(xpEvents.source, 'league')).all()).toHaveLength(0)
+  })
+
+  it('logs league-channel notifications for promotions, relegations and wins', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    joinLeagueRow('spring', 'sara', db)
+    awardLeaguePoints('spring', { kind: 'reviews', handle: 'amr', count: 100 }, db)
+    awardLeaguePoints('spring', { kind: 'reviews', handle: 'sara', count: 10 }, db)
+
+    closeLeagueRound('spring', db)
+
+    const log = db.select().from(notificationLog).all()
+    const leagueNotes = log.filter((n) => n.channel === 'league')
+    // winner + promotee folds into one message; the other promotee gets her own
+    expect(leagueNotes).toHaveLength(2)
+    expect(leagueNotes.map((n) => n.title).sort()).toEqual([
+      'Promoted to silver in Spring Season',
+      'Won bronze and promoted to silver in Spring Season',
+    ])
+    for (const n of leagueNotes) {
+      expect(n.decision).toBe('deliver')
+      expect(n.actionUrl).toBe('/leagues')
+    }
+  })
+
+  it('stays silent when nobody scored', () => {
+    makeLeague()
+    joinLeagueRow('spring', 'amr', db)
+    closeLeagueRound('spring', db)
+    expect(
+      db
+        .select()
+        .from(notificationLog)
+        .all()
+        .filter((n) => n.channel === 'league'),
+    ).toHaveLength(0)
   })
 
   it('standings and champion read back from persisted state', () => {
