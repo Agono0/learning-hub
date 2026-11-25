@@ -27,6 +27,7 @@ import {
   completeArenaSettlementInTx,
   createArenaSession,
   getArenaSession,
+  getWeakCardIdsForRun,
   recordArenaRun,
   releaseArenaClaim,
 } from '../src/repos/arena'
@@ -311,5 +312,45 @@ describe('executeBatchReview afterReviews hook (atomic settlement)', () => {
     const session = getArenaSession(run.id, db)!
     expect(session.status).toBe('settling')
     expect(session.settleAttempt).toBe(reclaimed.attempt)
+  })
+})
+
+describe('getWeakCardIdsForRun', () => {
+  let db: TestDb
+  beforeEach(() => {
+    db = createTestDb().db
+    seedCard(db, 1)
+    seedCard(db, 2)
+    seedCard(db, 3)
+  })
+
+  it('returns the cards graded Again or Hard from a settled run, deduped', () => {
+    const run = issueRun(db, [1, 2, 3])
+    const claim = claimArenaSettlement(run.id, { userId: 'default', db })
+    if (claim.kind !== 'claimed') throw new Error('setup failed')
+    const log = [
+      { cardId: 1, grade: 1, confidence: 0, timeMs: 900 },
+      { cardId: 2, grade: 2, confidence: 1, timeMs: 800 },
+      { cardId: 2, grade: 2, confidence: 1, timeMs: 700 },
+      { cardId: 3, grade: 4, confidence: 1, timeMs: 600 },
+    ]
+    withTransaction((tx) => {
+      completeArenaSettlementInTx(tx, run.id, claim.attempt, log, { ok: true })
+    }, db)
+    expect(getWeakCardIdsForRun(run.id, { db })!.sort()).toEqual([1, 2])
+  })
+
+  it('is undefined for unknown, foreign or unsettled runs', () => {
+    const run = issueRun(db, [1, 2, 3])
+    expect(getWeakCardIdsForRun(run.id, { db })).toBeUndefined() // still open
+    expect(getWeakCardIdsForRun('nope', { db })).toBeUndefined()
+
+    const claim = claimArenaSettlement(run.id, { userId: 'default', db })
+    if (claim.kind !== 'claimed') throw new Error('setup failed')
+    withTransaction((tx) => {
+      completeArenaSettlementInTx(tx, run.id, claim.attempt, [], { ok: true })
+    }, db)
+    expect(getWeakCardIdsForRun(run.id, { userId: 'intruder', db })).toBeUndefined()
+    expect(getWeakCardIdsForRun(run.id, { db })).toEqual([])
   })
 })

@@ -79,9 +79,13 @@ interface DeckInfo {
 interface SessionPayload {
   ok: boolean
   /** Server-issued run identity — settlement is bound to this run. */
-  runId: string
+  runId: string | null
   cards: ArenaCard[]
   limit: number
+  /** True when this queue is a weak-card drill from a settled run. */
+  drill?: boolean
+  /** True when the rematch run had no weak cards — nothing to drill. */
+  drillEmpty?: boolean
   config: ArenaConfig
   guardian: {
     archetype: GuardianArchetype
@@ -198,6 +202,8 @@ export default function Arena3DPage() {
 
   const [cards, setCards] = useState<ArenaCard[]>([])
   const [runId, setRunId] = useState<string | null>(null)
+  const [settledRunId, setSettledRunId] = useState<string | null>(null)
+  const [weakCount, setWeakCount] = useState(0)
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
   const [arena, setArena] = useState<ArenaState | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -392,6 +398,7 @@ export default function Arena3DPage() {
       return
     }
     try {
+      const weak = final.exchanges.filter((e) => e.grade <= 2).length
       const response = await apiSend<SettlementResponse>('/api/arena', 'POST', {
         runId,
         exchanges: final.exchanges.map((e) => ({
@@ -404,6 +411,8 @@ export default function Arena3DPage() {
         result: summary.result,
       })
       setSettlement(response)
+      setSettledRunId(runId)
+      setWeakCount(weak)
       if (response.achievements.length > 0) {
         toast({
           tone: 'success',
@@ -421,6 +430,43 @@ export default function Arena3DPage() {
       setSettlement(null)
     }
     setPhase('results')
+  }
+
+  async function startDrill(): Promise<void> {
+    if (!settledRunId) return
+    setPhase('loading')
+    setLoadError(null)
+    try {
+      const payload = await apiGet<SessionPayload>(`/api/arena?rematch=${settledRunId}`)
+      if (payload.drillEmpty || !payload.cards.length || !payload.runId) {
+        setLoadError('No weak cards left from that run — nothing to drill.')
+        setPhase('setup')
+        return
+      }
+      const nextChallenges = payload.cards.map((c) => ({
+        cardId: c.id,
+        prompt: cardFront(c),
+        answer: cardBack(c),
+      }))
+      setCards(payload.cards)
+      setChallenges(nextChallenges)
+      setRunId(payload.runId)
+      setCfg(payload.config)
+      setGuardian(payload.guardian)
+      setArena(createArenaSession(nextChallenges, payload.config, payload.guardian!.archetype))
+      arenaHandle.current?.setArchetype(payload.guardian!.archetype)
+      setRevealed(false)
+      setConfident(false)
+      setSettlement(null)
+      setSettledRunId(null)
+      setWeakCount(0)
+      setPhase('fighting')
+      setShownAt(performance.now())
+      arenaHandle.current?.reset()
+    } catch {
+      setLoadError('The drill could not be started. Check the connection and try again.')
+      setPhase('setup')
+    }
   }
 
   function playAgain(): void {
@@ -910,11 +956,21 @@ export default function Arena3DPage() {
                 description="The run finished locally but the grades were not recorded. Start a new run to review those cards — they are still due."
               />
             )}
-            <div>
+            <div className="flex flex-wrap items-center gap-3">
               <Button onClick={playAgain} data-testid="arena-play-again">
                 <RotateCcw className="mr-2 h-4 w-4" aria-hidden="true" />
                 Back to the gate
               </Button>
+              {settlement && settledRunId && weakCount > 0 ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => void startDrill()}
+                  data-testid="arena-drill-weak"
+                >
+                  <Swords className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Drill the {weakCount} weak card{weakCount === 1 ? '' : 's'}
+                </Button>
+              ) : null}
             </div>
           </div>
         </Panel>

@@ -149,6 +149,15 @@ describe('Arena API — GET /api/arena', () => {
     expect(a.runId).not.toBe(b.runId)
   })
 
+  it('defaults to a 10-card run when no limit is given (NaN regression)', async () => {
+    const { deckId } = seedDeckWithCards(4)
+    const res = await M.arena.GET(new Request(`http://localhost/api/arena?deckIds=${deckId}`))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.limit).toBe(10)
+    expect(body.cards.length).toBe(4) // all four due cards, no NaN-empty queue
+  })
+
   it('clamps the limit into the arena band (5..20)', async () => {
     const { deckId } = seedDeckWithCards(2)
     const res = await M.arena.GET(
@@ -399,6 +408,68 @@ describe('Arena API — exactly-once settlement', () => {
   })
 })
 
+describe('Arena API — weak-card drill (rematch)', () => {
+  it('builds a drill queue from exactly the run’s weak cards', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    // Grade two cards weak (1 and 2), the rest Good.
+    const exchanges = queue.slice(0, 4).map((cardId, i) => ({
+      cardId,
+      grade: [1, 2, 3, 4][i]!,
+      confidence: 1,
+      timeMs: 1000 + i * 500,
+    }))
+    const settle = await postSettlement(settlePayload(runId, exchanges))
+    expect(settle.status).toBe(200)
+
+    const res = await M.arena.GET(new Request(`http://localhost/api/arena?rematch=${runId}`))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.drill).toBe(true)
+    expect(body.cards.map((c: { id: number }) => c.id).sort()).toEqual(
+      [queue[0]!, queue[1]!].sort(),
+    )
+    // The drill issues its own server-owned run bound to the drill queue.
+    expect(typeof body.runId).toBe('string')
+    expect(body.runId).not.toBe(runId)
+    const drillRun = M.db.getArenaSession(body.runId)!
+    expect(drillRun.cardIds.slice().sort()).toEqual([queue[0]!, queue[1]!].sort())
+    expect(drillRun.status).toBe('open')
+  })
+
+  it('a perfect run has no weak cards — drill reports empty', async () => {
+    const { deckId } = seedDeckWithCards(5)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = queue.slice(0, 3).map((cardId, i) => ({
+      cardId,
+      grade: 4,
+      confidence: 1,
+      timeMs: 900 + i * 300,
+    }))
+    const settle = await postSettlement(settlePayload(runId, exchanges))
+    expect(settle.status).toBe(200)
+
+    const res = await M.arena.GET(new Request(`http://localhost/api/arena?rematch=${runId}`))
+    const body = await res.json()
+    expect(body.drillEmpty).toBe(true)
+    expect(body.cards).toEqual([])
+    expect(body.runId).toBeNull()
+  })
+
+  it('unknown or unsettled rematch runs are 404', async () => {
+    const res = await M.arena.GET(
+      new Request(`http://localhost/api/arena?rematch=${crypto.randomUUID()}`),
+    )
+    expect(res.status).toBe(404)
+
+    // An open (never settled) run has no accepted grade log to drill from.
+    const { deckId } = seedDeckWithCards(5)
+    const { runId } = await startRun(deckId, 5)
+    const res2 = await M.arena.GET(new Request(`http://localhost/api/arena?rematch=${runId}`))
+    expect(res2.status).toBe(404)
+  })
+})
+
 describe('Arena API — achievements', () => {
   it('arena_first unlocked exactly once across all settlements above', async () => {
     const achievementsRes = await import('../src/server/handlers/achievements/route').then((m) =>
@@ -418,10 +489,10 @@ describe('Arena API — run history (/api/arena/history)', () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
     // Settled runs above: canonical + lying-client + replay-first +
-    // altered-first + stale-reclaim + concurrent. 400/409 settlements and
-    // replays added none.
-    expect(body.stats.runs).toBe(6)
-    expect(body.runs.length).toBe(6)
+    // altered-first + stale-reclaim + concurrent + the two drill-test runs.
+    // 400/409 settlements and replays added none.
+    expect(body.stats.runs).toBe(8)
+    expect(body.runs.length).toBe(8)
   })
 
   it('lists runs newest-first keyed by the server-issued run id', async () => {
