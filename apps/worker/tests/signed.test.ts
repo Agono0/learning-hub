@@ -494,3 +494,82 @@ describe('isVerifiedItemId', () => {
     expect(isVerifiedItemId(undefined)).toBe(false)
   })
 })
+
+describe('library attribution invariant', () => {
+  const env = (db: D1Database) => ({ DB: db, EXPECTED_HOST: HOST }) as Env
+  type Row = { id: string; author: string; title: string; downloads: number }
+
+  it('an unsigned client cannot choose a digest-shaped id or overwrite a verified row', async () => {
+    const pair = await generateIdentityKeyPair()
+    const { db, library } = fakeDb({ [pair.publicKey]: { id: 'usr_1', alias: 'Ada' } })
+    const r1 = await worker.fetch(
+      await signedPublish({
+        priv: pair.privateKey,
+        pub: pair.publicKey,
+        body: JSON.stringify(item),
+      }),
+      env(db),
+    )
+    const verified = ((await r1.json()) as { item: Row }).item
+    expect(isVerifiedItemId(verified.id)).toBe(true)
+
+    // Unsigned: tries to publish with the verified row's exact id and a spoofed author.
+    const evil = JSON.stringify({ ...item, title: 'Hijack', id: verified.id, author: 'Ada' })
+    const r2 = await worker.fetch(
+      new Request(`http://${HOST}/api/v1/library/publish`, { method: 'POST', body: evil }),
+      env(db),
+    )
+    const anon = ((await r2.json()) as { item: Row & { authorVerified?: boolean } }).item
+    expect(anon.id).not.toBe(verified.id)
+    expect(isVerifiedItemId(anon.id)).toBe(false)
+    expect(anon.authorVerified).toBe(false)
+    expect(anon.author).toBe('Anonymous')
+    // The verified row is untouched.
+    expect(library.get(verified.id)).toMatchObject({ title: 'Cells', author: 'Ada' })
+  })
+
+  it('every anonymous id (many samples) is non-digest-shaped', async () => {
+    const { db, library } = fakeDb({})
+    for (let i = 0; i < 25; i++) {
+      await worker.fetch(
+        new Request(`http://${HOST}/api/v1/library/publish`, {
+          method: 'POST',
+          body: JSON.stringify({ ...item, title: `t${i}` }),
+        }),
+        env(db),
+      )
+    }
+    expect(library.size).toBe(25)
+    for (const id of library.keys()) expect(isVerifiedItemId(id)).toBe(false)
+  })
+
+  it('a signed replay returns the stored author and content, not a changed alias', async () => {
+    const pair = await generateIdentityKeyPair()
+    const users: Record<string, { id: string; alias: string }> = {
+      [pair.publicKey]: { id: 'usr_1', alias: 'Ada' },
+    }
+    const { db } = fakeDb(users)
+    const body = JSON.stringify(item)
+    const ts = Date.now()
+    const a = (
+      (await (
+        await worker.fetch(
+          await signedPublish({ priv: pair.privateKey, pub: pair.publicKey, body, ts }),
+          env(db),
+        )
+      ).json()) as { item: Row }
+    ).item
+    users[pair.publicKey]!.alias = 'Renamed'
+    const b = (
+      (await (
+        await worker.fetch(
+          await signedPublish({ priv: pair.privateKey, pub: pair.publicKey, body, ts }),
+          env(db),
+        )
+      ).json()) as { item: Row }
+    ).item
+    expect(b.id).toBe(a.id)
+    expect(b.author).toBe('Ada')
+    expect(b.title).toBe(a.title)
+  })
+})
