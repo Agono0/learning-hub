@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { BookOpenCheck, Download, Play, Trash2 } from 'lucide-react'
 import {
   SAMPLE_BLUEPRINTS,
@@ -19,7 +19,7 @@ import {
   type Blueprint,
   type BlueprintIssue,
   type BlueprintLibrary,
-} from '@learning-hub/core/src/blueprint'
+} from '@learning-hub/core/blueprint'
 import {
   Badge,
   Button,
