@@ -34,12 +34,12 @@ forward so later days see the spacing already chosen.
 
 ## Surfaces
 
-| Surface | Entry |
-| --- | --- |
-| Page | `/exam-prep` |
-| API | `GET /api/exam-prep?examId=3` or `?date=2026-12-01&title=Final` |
-| CLI | `learning-hub exam-prep plan --exam 3 --per-day 30 --rest 0,6` |
-| MCP | `exam_prep_plan` |
+| Surface | Entry                                                           |
+| ------- | --------------------------------------------------------------- |
+| Page    | `/exam-prep`                                                    |
+| API     | `GET /api/exam-prep?examId=3` or `?date=2026-12-01&title=Final` |
+| CLI     | `learning-hub exam-prep plan --exam 3 --per-day 30 --rest 0,6`  |
+| MCP     | `exam_prep_plan`                                                |
 
 API options: `target` (0.5-0.99), `perDay` (0-100), `minGain` (0-0.5),
 `maxReviewsPerCard` (1-10), `rest` (comma list of 0-6), `deckIds`. Bad input is
