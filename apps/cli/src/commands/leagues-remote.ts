@@ -24,12 +24,18 @@ import {
   listRemoteLinks,
   loadLeagueQueue,
 } from '@learning-hub/db'
-import { SyncQueueFullError, parseMutationArgs, summarizeQueue } from '@learning-hub/core'
+import {
+  SyncQueueFullError,
+  digestInviteCode,
+  generateInviteCode,
+  parseMutationArgs,
+  summarizeQueue,
+} from '@learning-hub/core'
 import { panel } from './ui'
 import type { RegisteredCommand } from './registry'
 
 const USAGE =
-  'Usage: learning-hub leagues-remote [list | link <serverUrl> <leagueId> | enqueue <serverUrl> <leagueId> <mutation…> | queue <serverUrl> <leagueId>]'
+  'Usage: learning-hub leagues-remote [list | link <serverUrl> <leagueId> | enqueue <serverUrl> <leagueId> <mutation…> | queue <serverUrl> <leagueId> | invite-new <serverUrl> <leagueId> [--uses N] [--hours H]]'
 
 function fail(msg: string): void {
   console.error(msg)
@@ -83,6 +89,33 @@ function enqueueCommand(args: string[]): void {
   }
 }
 
+/**
+ * Make a fresh invite code, queue only its digest, and show the code once.
+ * The code is a bearer secret: the room never stores it, and neither does
+ * this command, so a lost code means making a new one.
+ */
+async function inviteNewCommand(args: string[]): Promise<void> {
+  const [serverUrl, remoteLeagueId, ...flags] = args
+  if (!serverUrl || !remoteLeagueId) return fail(USAGE)
+  const code = generateInviteCode()
+  const digest = await digestInviteCode(code)
+  const parsed = parseMutationArgs(['invite-create', digest, ...flags])
+  if (!parsed.ok) return fail(parsed.error)
+  try {
+    const link = linkRemoteLeague({ serverUrl, remoteLeagueId })
+    const { itemId } = enqueueLeagueMutation(link.id, parsed.mutation)
+    console.log(`Queued invite-create as ${itemId}. Not sent yet.`)
+    console.log('Share this code only with the person you are inviting. It is shown once:')
+    console.log(code)
+    console.log('Anyone holding it can join until it expires, is used up or is revoked.')
+  } catch (err) {
+    if (err instanceof LeagueRemoteInputError || err instanceof SyncQueueFullError) {
+      return fail(err.message)
+    }
+    throw err
+  }
+}
+
 function queueCommand(args: string[]): void {
   const [serverUrl, remoteLeagueId] = args
   if (!serverUrl || !remoteLeagueId) return fail(USAGE)
@@ -103,12 +136,13 @@ function queueCommand(args: string[]): void {
   console.log(panel(`QUEUE ${remoteLeagueId}`, lines.length > 0 ? lines : ['Queue is empty.']))
 }
 
-function run(args: string[]): void {
+async function run(args: string[]): Promise<void> {
   const sub = args[0] || 'list'
   if (sub === 'list') return listCommand()
   if (sub === 'link') return linkCommand(args.slice(1))
   if (sub === 'enqueue') return enqueueCommand(args.slice(1))
   if (sub === 'queue') return queueCommand(args.slice(1))
+  if (sub === 'invite-new') return inviteNewCommand(args.slice(1))
   fail(USAGE)
 }
 
@@ -116,7 +150,7 @@ export const leaguesRemoteCommands: RegisteredCommand[] = [
   {
     name: 'leagues-remote',
     description: 'Link and queue signed remote league mutations (offline, inactive groundwork)',
-    usage: '[list|link|enqueue|queue]',
+    usage: '[list|link|enqueue|queue|invite-new]',
     run: (runArgs) => run(runArgs),
   },
 ]
