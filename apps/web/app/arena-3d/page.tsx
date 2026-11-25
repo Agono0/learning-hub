@@ -20,12 +20,16 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Coins, Flame, Heart, RotateCcw, Shield, Swords, Trophy } from 'lucide-react'
 import {
+  BOSS_CHALLENGE_THRESHOLD,
+  GUARDIANS,
   applyGrade,
-  arenaConfig,
   buildArenaSummary,
   createArenaSession,
+  guardianForRun,
   type ArenaChallenge,
+  type ArenaConfig,
   type ArenaState,
+  type GuardianArchetype,
 } from '@learning-hub/core'
 import type { CardContent, CardFormat, Grade } from '@learning-hub/core/types'
 import { apiGet, apiSend } from '@/lib/transport'
@@ -76,6 +80,13 @@ interface SessionPayload {
   ok: boolean
   cards: ArenaCard[]
   limit: number
+  config: ArenaConfig
+  guardian: {
+    archetype: GuardianArchetype
+    name: string
+    tagline: string
+    boss: boolean
+  }
 }
 
 interface SettlementResponse {
@@ -182,8 +193,10 @@ export default function Arena3DPage() {
   const [shownAt, setShownAt] = useState<number>(0)
   const [settlement, setSettlement] = useState<SettlementResponse | null>(null)
   const [record, setRecord] = useState<HistoryPayload | null>(null)
+  const [guardian, setGuardian] = useState<SessionPayload['guardian'] | null>(null)
 
-  const cfg = useMemo(() => arenaConfig(), [])
+  // The tuned config arrives with the session payload (guardian-specific).
+  const [cfg, setCfg] = useState<ArenaConfig | null>(null)
 
   // Deck catalog for the setup picker.
   useEffect(() => {
@@ -202,6 +215,19 @@ export default function Arena3DPage() {
 
   // Reduced-motion users never mount the canvas; the DOM HUD carries everything.
   const canvasEnabled = !reducedMotion
+
+  // Setup-screen preview of the guardian this run will face. The server picks
+  // by the same rule (guardianForRun over the run count), so what the gate
+  // announces is what the duel gets.
+  const guardianPreview = useMemo(() => {
+    if (!record) return null
+    const archetype = guardianForRun(record.stats.runs)
+    return {
+      name: GUARDIANS[archetype].name,
+      tagline: GUARDIANS[archetype].tagline,
+      boss: Number(challengeCount) >= BOSS_CHALLENGE_THRESHOLD,
+    }
+  }, [record, challengeCount])
 
   function toggleDeck(id: number): void {
     setSelectedDeckIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
@@ -227,7 +253,10 @@ export default function Arena3DPage() {
       }))
       setCards(payload.cards)
       setChallenges(nextChallenges)
-      setArena(createArenaSession(nextChallenges, cfg))
+      setCfg(payload.config)
+      setGuardian(payload.guardian)
+      setArena(createArenaSession(nextChallenges, payload.config, payload.guardian.archetype))
+      arenaHandle.current?.setArchetype(payload.guardian.archetype)
       setRevealed(false)
       setConfident(false)
       setSettlement(null)
@@ -255,12 +284,13 @@ export default function Arena3DPage() {
     } else if (lastGrade >= 3) {
       handle.strike({ crit: last?.crit ?? false })
     }
+    if (next.enraged) handle.setEnraged(true)
     if (next.status === 'victory') handle.guardianDefeated()
     if (next.status === 'defeat') handle.playerDefeated()
   }
 
   function grade(grade: Grade): void {
-    if (!arena || arena.status !== 'fighting') return
+    if (!arena || arena.status !== 'fighting' || !cfg) return
     const current = challenges[arena.round]
     if (!current) return
     const timeMs = Math.max(0, Math.round(performance.now() - shownAt))
@@ -291,6 +321,8 @@ export default function Arena3DPage() {
         })),
         bestCombo: final.bestCombo,
         result: summary.result,
+        archetype: final.archetype,
+        boss: final.boss,
       })
       setSettlement(response)
     } catch {
@@ -394,6 +426,18 @@ export default function Arena3DPage() {
             {loadError ? (
               <div data-testid="arena-load-error">
                 <Callout tone="warning">{loadError}</Callout>
+              </div>
+            ) : null}
+
+            {guardianPreview ? (
+              <div
+                className="flex flex-wrap items-center gap-2 text-sm"
+                data-testid="guardian-preview"
+              >
+                <Badge tone={guardianPreview.boss ? 'violet' : 'neutral'}>
+                  {guardianPreview.name}
+                </Badge>
+                <span className="text-faint">{guardianPreview.tagline}</span>
               </div>
             ) : null}
 
@@ -539,7 +583,19 @@ export default function Arena3DPage() {
             {/* Guardian — the remaining queue as a progress bar. */}
             <Panel className="p-3" data-testid="guardian-panel">
               <div className="flex items-center justify-between text-xs text-faint">
-                <span>Guardian — the queue you are clearing</span>
+                <span className="flex flex-wrap items-center gap-2">
+                  <span data-testid="guardian-name">{guardian?.name ?? 'Guardian'}</span>
+                  {arena.boss ? (
+                    <Badge tone="violet" data-testid="guardian-boss-badge">
+                      Boss
+                    </Badge>
+                  ) : null}
+                  {arena.enraged ? (
+                    <Badge tone="danger" data-testid="guardian-enraged-badge">
+                      Enraged
+                    </Badge>
+                  ) : null}
+                </span>
                 <span data-testid="guardian-progress-label">
                   Round {arena.round + 1} of {challenges.length}
                 </span>

@@ -12,6 +12,8 @@ import React, { useEffect, useImperativeHandle, useRef } from 'react'
 import { ArenaSceneManager, type ArenaQuality } from '@/lib/three/ArenaSceneManager'
 
 export interface ArenaCanvasHandle {
+  setArchetype: (archetype: 'warden' | 'colossus' | 'shade') => void
+  setEnraged: (enraged: boolean) => void
   strike: (options: { crit: boolean }) => void
   countered: () => void
   shieldRaise: () => void
@@ -35,6 +37,8 @@ export const ArenaCanvas = React.forwardRef<ArenaCanvasHandle, ArenaCanvasProps>
     useImperativeHandle(
       ref,
       (): ArenaCanvasHandle => ({
+        setArchetype: (archetype) => managerRef.current?.setArchetype(archetype),
+        setEnraged: (enraged) => managerRef.current?.setEnraged(enraged),
         strike: (options) => managerRef.current?.strike(options),
         countered: () => managerRef.current?.countered(),
         shieldRaise: () => managerRef.current?.shieldRaise(),
