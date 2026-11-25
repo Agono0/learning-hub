@@ -76,6 +76,22 @@ test.beforeAll(async ({ request }) => {
   expect(
     (
       await post({
+        action: 'duel-create',
+        slug: 'shots-duel-open',
+        leagueSlug: LEAGUE,
+        playerA: 'khaled',
+        playerB: 'omar',
+        prompts: [
+          { id: 'p1', question: 'What is 2+2?', answers: ['4'] },
+          { id: 'p2', question: 'Largest planet?', answers: ['Jupiter'] },
+        ],
+      })
+    ).ok(),
+  ).toBeTruthy()
+
+  expect(
+    (
+      await post({
         action: 'tournament-create',
         slug: 'shots-cup',
         leagueSlug: LEAGUE,
@@ -113,7 +129,40 @@ test('capture all /leagues surfaces', async ({ page }) => {
   await expect(page.getByTestId('duel-list').getByText('shots-duel')).toBeVisible()
   await page.screenshot({ path: 'shots/pr130-leagues-duels.png', fullPage: true })
 
+  // guided question-by-question play on the open duel
+  await page.getByTestId('duel-play-shots-duel-open').click()
+  await expect(page.getByTestId('guided-progress')).toHaveText('Question 1 of 2')
+  await expect(page.getByTestId('guided-question')).toHaveText('What is 2+2?')
+  await page.screenshot({ path: 'shots/pr130-duels-guided-q1.png', fullPage: true })
+  await page.getByTestId('guided-answer-input').fill('4')
+  await page.getByTestId('guided-answer-next').click()
+  await expect(page.getByTestId('guided-progress')).toHaveText('Question 2 of 2')
+  await page.screenshot({ path: 'shots/pr130-duels-guided-q2.png', fullPage: true })
+  await page.getByTestId('guided-answer-input').fill('Jupiter')
+  await page.getByTestId('guided-answer-next').click()
+  await expect(page.getByText('Answers submitted for shots-duel-open.')).toBeVisible()
+
   await page.getByRole('tab', { name: 'Tournaments' }).click()
   await expect(page.getByTestId('bracket-shots-cup')).toBeVisible({ timeout: 60_000 })
   await page.screenshot({ path: 'shots/pr130-leagues-tournaments.png', fullPage: true })
+})
+
+test('tab pill alignment after fonts settle, at two widths', async ({ page }) => {
+  test.setTimeout(120_000)
+  for (const width of [1280, 760]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/leagues')
+    await expect(page.getByTestId(`league-card-${LEAGUE}`)).toBeVisible({ timeout: 60_000 })
+    await page.getByTestId(`league-card-${LEAGUE}`).click()
+    for (const name of ['Standings', 'Duels', 'Tournaments', 'Overview']) {
+      await page.getByRole('tab', { name }).click()
+      // the pill re-measures on font swap; wait for fonts before shooting
+      await page.evaluate(() => document.fonts.ready)
+      const tablist = page.getByRole('tablist')
+      await expect(tablist).toBeVisible()
+      await tablist.screenshot({
+        path: `shots/pr130-tabs-${name.toLowerCase()}-${width}.png`,
+      })
+    }
+  }
 })
