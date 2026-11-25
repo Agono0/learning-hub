@@ -264,3 +264,70 @@ describe('channel analytics routes', () => {
     expect(stats.json.stats.totalSyncs).toBe(0)
   })
 })
+
+describe('channel collections routes', () => {
+  it('saves, lists, fetches and deletes a collection', async () => {
+    const collection = {
+      schema: 'lh-share-collection/v1',
+      id: 'col-e2e',
+      title: 'E2E pack',
+      description: '',
+      ownerHandle: 'owner-e2e',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      channels: [
+        createChannel({
+          channelId: 'ch-col-a',
+          type: 'deck',
+          title: 'Col A',
+          authorHandle: 'owner-e2e',
+          visibility: 'link',
+          items: [{ id: 'ca1', content: { front: 'Q?', back: 'A' } }],
+          now: '2026-01-01T00:00:00Z',
+        }),
+      ],
+    }
+    const saved = await post('/share/collections/save', { collection })
+    expect(saved.status).toBe(200)
+    expect(saved.json.ok).toBe(true)
+
+    const listed = await post('/share/collections/list', {})
+    expect(listed.status).toBe(200)
+    const found = listed.json.collections.find((c: any) => c.id === 'col-e2e')
+    expect(found).toBeTruthy()
+    expect(found.channelCount).toBe(1)
+
+    const got = await post('/share/collections/get', { id: 'col-e2e' })
+    expect(got.status).toBe(200)
+    expect(got.json.collection.channels[0].channelId).toBe('ch-col-a')
+
+    // save again with an extra channel (upsert)
+    const bigger = {
+      ...collection,
+      updatedAt: '2026-01-02T00:00:00Z',
+      channels: [
+        ...collection.channels,
+        createChannel({
+          channelId: 'ch-col-b',
+          type: 'deck',
+          title: 'Col B',
+          authorHandle: 'owner-e2e',
+          visibility: 'link',
+          items: [{ id: 'cb1', content: { front: 'Q?', back: 'B' } }],
+          now: '2026-01-01T00:00:00Z',
+        }),
+      ],
+    }
+    await post('/share/collections/save', { collection: bigger })
+    const got2 = await post('/share/collections/get', { id: 'col-e2e' })
+    expect(got2.json.collection.channels).toHaveLength(2)
+
+    const missing = await post('/share/collections/get', { id: 'col-ghost' })
+    expect(missing.status).toBe(404)
+
+    const deleted = await post('/share/collections/delete', { id: 'col-e2e' })
+    expect(deleted.status).toBe(200)
+    expect((await post('/share/collections/get', { id: 'col-e2e' })).status).toBe(404)
+    expect((await post('/share/collections/delete', { id: 'col-e2e' })).status).toBe(404)
+  })
+})

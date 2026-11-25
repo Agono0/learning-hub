@@ -143,6 +143,23 @@ subscriber-side sync outcomes per channel (`subscriptionSyncStats`).
 - MCP tools: `share_channel_hosted_analytics`, `share_channel_sync_stats`.
 - Each hosted channel on the Hosting tab has an Analytics block.
 
+## Collections
+
+`lh-share-collection/v1` bundles whole channel manifests into one portable
+JSON so a teacher can share a semester pack as a single paste. Subscribing to
+a collection subscribes to every channel in it (skipping ones already
+present); each channel then syncs independently through its own host.
+
+- Server routes: `POST /share/collections/save`, `/list`, `/get`, `/delete`.
+- Web actions: `collection-save`, `collection-list`, `collection-get`,
+  `collection-delete`.
+- MCP tools: `share_collection_save`, `share_collection_list`,
+  `share_collection_get`, `share_collection_delete`.
+- CLI: `collection-save`, `collections`, `collection-get`,
+  `collection-delete`.
+- The `/shared` Collections tab builds a collection from hosted channels and
+  imports a pasted collection JSON with subscribe-all.
+
 ## What a later PR adds
 
 - Channel discovery and a directory of public channels.
