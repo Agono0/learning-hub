@@ -36,6 +36,9 @@ type SubscriptionRecord = {
   manifest: Manifest
   localItems: LocalItem[]
   localVersion: number
+  /** Where the channel is hosted; enables the update banner's remote checks. */
+  hostBaseUrl?: string
+  inviteToken?: string
 }
 
 type MergeResult = {
@@ -78,6 +81,7 @@ export function ShareChannelsPanel() {
 
   // Subscribe form
   const [manifestText, setManifestText] = useState('')
+  const [hostUrl, setHostUrl] = useState('')
 
   // Update form
   const [updateText, setUpdateText] = useState('')
@@ -120,12 +124,18 @@ export function ShareChannelsPanel() {
     }))
     const next = [
       ...subs.filter((s) => s.manifest.channelId !== parsed.channelId),
-      { manifest: parsed, localItems, localVersion: parsed.currentVersion },
+      {
+        manifest: parsed,
+        localItems,
+        localVersion: parsed.currentVersion,
+        ...(hostUrl.trim() ? { hostBaseUrl: hostUrl.trim() } : {}),
+      },
     ]
     setSubs(next)
     saveSubscriptions(next)
     setNotice(`Subscribed to ${parsed.title} at version ${parsed.currentVersion}.`)
     setManifestText('')
+    setHostUrl('')
   }
 
   function pendingDiff(): {
@@ -354,6 +364,12 @@ export function ShareChannelsPanel() {
               onChange={(e) => setManifestText(e.target.value)}
               rows={8}
               placeholder='{"v":2,"schema":"lh-share/v2",...}'
+            />
+            <TextField
+              label="Host URL (optional, enables update checks)"
+              value={hostUrl}
+              onChange={(e) => setHostUrl(e.target.value)}
+              placeholder="https://hub.example.com"
             />
             <Button variant="primary" onClick={() => void subscribe()}>
               Subscribe
