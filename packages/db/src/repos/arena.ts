@@ -51,6 +51,79 @@ export interface ArenaStats {
   winStreak: number
 }
 
+/** Per-deck record: a run counts toward every deck it drew cards from. */
+export interface ArenaDeckStats {
+  deckId: number
+  runs: number
+  victories: number
+  winRate: number
+  rounds: number
+  correct: number
+  accuracy: number
+  bestCombo: number
+  bestScore: number
+}
+
+/**
+ * Aggregate the record book per deck. A multi-deck run counts toward each
+ * deck it touched, so deck totals can sum above the global run count —
+ * this answers "how do I do with THIS deck", not "partition the history".
+ * Computed from the append-only run rows (bounded read: latest 500 runs),
+ * never from mutable counters.
+ */
+export function getArenaStatsByDeck(
+  opts: { userId?: string; db?: LearningHubDB } = {},
+): ArenaDeckStats[] {
+  const db = opts.db ?? getDb()
+  const rows = db
+    .select({
+      deckIds: arenaRuns.deckIds,
+      result: arenaRuns.result,
+      rounds: arenaRuns.rounds,
+      correct: arenaRuns.correct,
+      bestCombo: arenaRuns.bestCombo,
+      score: arenaRuns.score,
+    })
+    .from(arenaRuns)
+    .where(eq(arenaRuns.userId, opts.userId ?? 'default'))
+    .orderBy(desc(arenaRuns.id))
+    .limit(500)
+    .all()
+
+  const byDeck = new Map<number, ArenaDeckStats>()
+  for (const row of rows) {
+    const deckIds = [...new Set(row.deckIds as number[])]
+    for (const deckId of deckIds) {
+      const agg = byDeck.get(deckId) ?? {
+        deckId,
+        runs: 0,
+        victories: 0,
+        winRate: 0,
+        rounds: 0,
+        correct: 0,
+        accuracy: 0,
+        bestCombo: 0,
+        bestScore: 0,
+      }
+      agg.runs += 1
+      if (row.result === 'victory') agg.victories += 1
+      agg.rounds += row.rounds
+      agg.correct += row.correct
+      agg.bestCombo = Math.max(agg.bestCombo, row.bestCombo)
+      agg.bestScore = Math.max(agg.bestScore, row.score)
+      byDeck.set(deckId, agg)
+    }
+  }
+  const out = [...byDeck.values()]
+  for (const agg of out) {
+    agg.winRate = agg.runs === 0 ? 0 : agg.victories / agg.runs
+    agg.accuracy = agg.rounds === 0 ? 0 : agg.correct / agg.rounds
+  }
+  // Most-played decks first — the record book leads with what matters.
+  out.sort((a, b) => b.runs - a.runs || b.winRate - a.winRate || a.deckId - b.deckId)
+  return out
+}
+
 /**
  * Record a settled run. Idempotent: the unique `referenceId` makes a replay
  * a silent no-op (returns false) instead of a duplicate row.

@@ -163,6 +163,19 @@ interface HistoryPayload {
   ok: boolean
   stats: ArenaStats
   runs: ArenaRunRow[]
+  perDeck: Array<{
+    deckId: number
+    name: string
+    emoji: string | null
+    runs: number
+    victories: number
+    winRate: number
+    rounds: number
+    correct: number
+    accuracy: number
+    bestCombo: number
+    bestScore: number
+  }>
 }
 
 interface RunDetailPayload {
@@ -746,6 +759,32 @@ export default function Arena3DPage() {
               </p>
             </div>
           </div>
+          {record.perDeck && record.perDeck.length > 0 ? (
+            <div className="mt-1" data-testid="arena-perdeck">
+              <p className="mb-2 text-xs font-medium text-faint">By deck</p>
+              <ul className="flex flex-col gap-1.5">
+                {record.perDeck.map((deck) => (
+                  <li
+                    key={deck.deckId}
+                    className="flex flex-wrap items-center gap-2 text-sm"
+                    data-testid={`arena-perdeck-row-${deck.deckId}`}
+                  >
+                    <span className="min-w-0 flex-1 truncate">
+                      {deck.emoji ? `${deck.emoji} ` : ''}
+                      {deck.name}
+                    </span>
+                    <span className="text-faint">{deck.runs} runs</span>
+                    <span className="text-faint">{Math.round(deck.winRate * 100)}% win</span>
+                    <span className="text-faint">{Math.round(deck.accuracy * 100)}% acc</span>
+                    <span className="text-faint">combo ×{deck.bestCombo}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-xs text-faint">
+                A run counts toward every deck it drew cards from.
+              </p>
+            </div>
+          ) : null}
           <ul className="flex flex-col gap-1.5" data-testid="arena-recent-runs">
             {record.runs.map((run) => (
               <li key={run.id} data-testid="arena-run-row">
