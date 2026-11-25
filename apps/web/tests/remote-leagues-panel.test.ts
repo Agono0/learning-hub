@@ -93,6 +93,9 @@ describe('RemoteLinkActions', () => {
       'remote-revoke-digest',
       'remote-revoke',
       'remote-leave',
+      'remote-mod-handle',
+      'remote-remove-member',
+      'remote-unblock-member',
     ]) {
       expect(html).toContain(`data-testid="${id}"`)
     }
@@ -177,5 +180,60 @@ describe('RemoteRosterView', () => {
     )
     expect(html).toContain('remote-roster-refresh')
     expect(html).not.toContain('data-testid="remote-roster"')
+  })
+})
+
+describe('RemoteRosterView moderation', () => {
+  const base = {
+    league: {
+      title: 'Friendly league',
+      currentRound: 1,
+      players: [{ handle: 'usr_a', seasonPoints: 0, duelsWon: 0, duelsLost: 0 }],
+    },
+    aliases: { usr_a: 'Amy' },
+  }
+  const html = (extra: Record<string, unknown>) =>
+    renderToString(
+      React.createElement(RemoteRosterView, { roster: parseRemoteRoster({ ...base, ...extra }) }),
+    ).replace(/<!-- -->/g, '')
+
+  it('shows no moderation section when nothing happened', () => {
+    expect(html({})).not.toContain('remote-moderation')
+  })
+
+  it('lists newest first with a UTC time, the actor and the blocked count', () => {
+    const out = html({
+      blocked: ['usr_gone'],
+      modLog: [
+        {
+          at: Date.parse('2026-03-02T10:00:00Z'),
+          by: 'usr_a',
+          action: 'remove',
+          target: 'usr_gone',
+        },
+        { at: Date.parse('2026-03-02T11:30:00Z'), by: 'usr_a', action: 'unblock', target: 'usr_x' },
+      ],
+    })
+    expect(out).toContain('Moderation · 1 blocked')
+    const rows = out.match(/data-testid="remote-moderation-row">[^<]*/g) ?? []
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toContain('2026-03-02 11:30 UTC · Amy unblocked a former member')
+    expect(rows[1]).toContain('2026-03-02 10:00 UTC · Amy removed a former member')
+  })
+
+  it('escapes a hostile alias in the log', () => {
+    const out = html({
+      aliases: { usr_a: 'Amy', usr_gone: '<img src=x onerror=alert(1)>' },
+      modLog: [{ at: 1, by: 'usr_a', action: 'remove', target: 'usr_gone' }],
+    })
+    expect(out).not.toContain('<img')
+    expect(out).toContain('&lt;img')
+  })
+
+  it('never uses ranking or ban language', () => {
+    const out = html({
+      modLog: [{ at: 1, by: 'usr_a', action: 'remove', target: 'usr_gone' }],
+    })
+    expect(/leaderboard|banned|rank \d/i.test(out)).toBe(false)
   })
 })
