@@ -1048,3 +1048,50 @@ describe('Arena API — record-book export', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('Arena API — nemesis drill', () => {
+  it('deals the cards the settled logs keep missing, with no drill lineage', async () => {
+    const { deckId } = seedDeckWithCards(4)
+    const { queue } = await startRun(deckId, 4)
+    const cardId = queue[0]!
+    for (let i = 0; i < 4; i++) {
+      M.db.db
+        .insert(M.db.arenaSessions)
+        .values({
+          id: crypto.randomUUID(),
+          deckIds: [deckId],
+          cardIds: [cardId],
+          status: 'settled',
+          gradeLog: [{ cardId, grade: 1, confidence: 1, timeMs: 2000 }],
+          settledAt: new Date(Date.now() + 1000 + i).toISOString(),
+        })
+        .run()
+    }
+    const res = await M.arena.GET(new Request('http://localhost/api/arena?nemesis=1'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.drill).toBe(true)
+    expect(typeof body.runId).toBe('string')
+    expect(body.cards.map((c: { id: number }) => c.id)).toContain(cardId)
+    expect(body.cards.length).toBeLessThanOrEqual(M.core.NEMESIS_DRILL_SIZE)
+    const session = M.db.getArenaSession(body.runId as string)
+    expect(session?.drillOfRunId ?? null).toBeNull()
+    expect(session?.cardIds).toContain(cardId)
+  })
+
+  it('a nemesis drill settles like any run and reports no drill comparison', async () => {
+    const res = await M.arena.GET(new Request('http://localhost/api/arena?nemesis=1'))
+    const body = await res.json()
+    const log = body.cards.slice(0, 2).map((c: { id: number }) => ({
+      cardId: c.id,
+      grade: 3,
+      confidence: 0,
+      timeMs: 3000,
+    }))
+    const post = await postSettlement(settlePayload(body.runId as string, log))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+    expect(settled.drill ?? null).toBeNull()
+  })
+})

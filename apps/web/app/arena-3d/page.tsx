@@ -582,14 +582,20 @@ export default function Arena3DPage() {
     setPhase('results')
   }
 
-  async function startDrill(): Promise<void> {
-    if (!settledRunId) return
+  async function startDrill(source: 'rematch' | 'nemesis' = 'rematch'): Promise<void> {
+    if (source === 'rematch' && !settledRunId) return
     setPhase('loading')
     setLoadError(null)
     try {
-      const payload = await apiGet<SessionPayload>(`/api/arena?rematch=${settledRunId}`)
+      const payload = await apiGet<SessionPayload>(
+        source === 'nemesis' ? '/api/arena?nemesis=1' : `/api/arena?rematch=${settledRunId}`,
+      )
       if (payload.drillEmpty || !payload.cards.length || !payload.runId) {
-        setLoadError('No weak cards left from that run — nothing to drill.')
+        setLoadError(
+          source === 'nemesis'
+            ? 'No nemesis cards yet — finish a few runs first.'
+            : 'No weak cards left from that run — nothing to drill.',
+        )
         setPhase('setup')
         return
       }
@@ -777,7 +783,7 @@ export default function Arena3DPage() {
               </div>
             ) : null}
 
-            <NemesisPanel refreshKey={phase} />
+            <NemesisPanel refreshKey={phase} onDrill={() => void startDrill('nemesis')} />
             <ArenaExportButtons disabled={(record?.stats?.runs ?? 0) === 0} />
 
             <div className="flex flex-wrap items-center gap-3">
