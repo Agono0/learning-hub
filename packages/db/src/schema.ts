@@ -883,6 +883,31 @@ export const leagueActivityCursors = table(
   (t) => [index('league_activity_cursors_league_idx').on(t.leagueId)],
 )
 
+/**
+ * Link between this device and ONE league on a remote league authority
+ * (apps/worker LeagueRoom). INACTIVE GROUNDWORK: rows only exist when the
+ * remote-leagues gate is on. `nextSeq` is the next per-league signing
+ * sequence number; it only ever increases, so a crash between reserving and
+ * sending leaves a harmless gap, never a reuse. Holds no key material.
+ */
+export const leagueRemoteLinks = table(
+  'league_remote_links',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    /** League id on the remote authority (not the local leagues.id). */
+    remoteLeagueId: text('remote_league_id').notNull(),
+    serverUrl: text('server_url').notNull(),
+    nextSeq: integer('next_seq').notNull().default(1),
+    /** Last outcome code from the authority ("ok" or a rejection code). */
+    lastStatus: text('last_status'),
+    lastSyncedAt: text('last_synced_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [uniqueIndex('league_remote_links_unique_idx').on(t.serverUrl, t.remoteLeagueId)],
+)
+
 export const leagueRounds = table(
   'league_rounds',
   {

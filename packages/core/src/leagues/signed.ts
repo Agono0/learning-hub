@@ -254,3 +254,22 @@ export async function signLeagueMutation(args: {
     signature: bytesToB64(sig),
   }
 }
+
+/**
+ * Import the stored identity key (base64 PKCS#8 private + base64 SPKI public,
+ * as written by generateIdentityKeyPair) as a signer. The private key stays
+ * local: this only builds the in-memory CryptoKey handle for one signing run.
+ */
+export async function leagueSignerFromStoredKey(args: {
+  publicKey: string
+  privateKey: string
+}): Promise<LeagueSigner> {
+  const privateKey = await crypto.subtle.importKey(
+    'pkcs8',
+    b64ToBytes(args.privateKey),
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign'],
+  )
+  return { pubKey: args.publicKey, privateKey }
+}
