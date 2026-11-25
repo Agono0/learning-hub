@@ -269,6 +269,7 @@ export default function LeaguesPage() {
       )}
       {notice && <Callout tone="success">{notice}</Callout>}
       <Tabs
+        label="League sections"
         items={[
           { key: 'overview', label: 'Overview' },
           { key: 'standings', label: 'Standings' },
