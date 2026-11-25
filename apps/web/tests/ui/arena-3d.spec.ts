@@ -83,6 +83,7 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
 
   // Setup: pick the seeded deck, keep the 10-challenge default, enter.
   await page.getByTestId(`arena-deck-${deckId}`).click()
+  await page.screenshot({ path: 'test-results/shots/1-gate.png' })
   await page.getByTestId('arena-start').click()
 
   // The session mounts: HUD up, first card showing, 3D stage present.
@@ -92,6 +93,8 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   await expect(page.getByTestId('arena-stage')).toBeVisible()
   await expect(page.getByTestId('arena-canvas')).toBeVisible()
   await expect(page.getByTestId('guardian-progress-label')).toContainText('Round 1 of 6')
+  await page.waitForTimeout(1500)
+  await page.screenshot({ path: 'test-results/shots/2-session.png' })
 
   // Fight the whole run: reveal → Sure → Good for each card.
   for (let round = 0; round < CARD_COUNT; round++) {
@@ -104,6 +107,7 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   // Settlement: victory results from the server summary.
   await expectSettled(page, track)
   await expect(page.getByTestId('arena-result-badge')).toHaveText('Victory')
+  await page.screenshot({ path: 'test-results/shots/3-victory.png', fullPage: true })
   await expect(page.getByTestId('results-score')).toBeVisible()
   await expect(page.getByTestId('results-xp')).toContainText('XP')
   await expect(page.getByTestId('results-coins')).toContainText('+')
@@ -154,6 +158,7 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
     page.getByTestId('arena-result-badge'),
     `defeat expected before the queue emptied (last HUD label: ${queueLabel}; ${track.lastReport()})`,
   ).toHaveText('Defeat')
+  await page.screenshot({ path: 'test-results/shots/4-defeat.png', fullPage: true })
 })
 
 test('reduced motion: the canvas never mounts and the DOM loop still completes', async ({
