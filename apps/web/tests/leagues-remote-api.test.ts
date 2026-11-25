@@ -338,3 +338,113 @@ describe('offline queue: enqueue, queue, sync', () => {
     expect(q).toMatchObject({ ok: true, recovered: true, queue: { pending: 0 } })
   })
 })
+
+describe('membership mutations through the route', () => {
+  const T = { serverUrl: SERVER, remoteLeagueId: LEAGUE }
+  const CODE = 'z'.repeat(32)
+  const storedQueueJson = () =>
+    tables
+      .listRemoteLinks()
+      .map((l) => tables.loadLeagueQueue(l.id).queue)
+      .map((q) => JSON.stringify(q))
+      .join('\n')
+
+  it('accepts leave, rename and invite mutations and rejects malformed ones', async () => {
+    process.env.LH_REMOTE_LEAGUES = '1'
+    const digest = 'ef'.repeat(32)
+    for (const mutation of [
+      { type: 'leave' },
+      { type: 'rename', alias: 'Ann B' },
+      { type: 'invite-create', digest, maxUses: 2, ttlMs: 3_600_000 },
+      { type: 'invite-revoke', digest },
+      { type: 'invite-policy', required: true },
+    ]) {
+      const res = await H.POST(post({ action: 'enqueue', ...T, mutation }))
+      expect(res.status).toBe(202)
+    }
+    for (const mutation of [
+      { type: 'invite-create', digest: 'short', maxUses: 2, ttlMs: 3_600_000 },
+      { type: 'invite-create', digest, maxUses: 500, ttlMs: 3_600_000 },
+      { type: 'rename', alias: '' },
+      { type: 'join', alias: 'A', invite: 'short' },
+    ]) {
+      const res = await H.POST(post({ action: 'enqueue', ...T, mutation }))
+      expect(res.status).toBe(400)
+    }
+    const q = await (await H.POST(post({ action: 'queue', ...T }))).json()
+    expect(q.queue.pending).toBe(5)
+  })
+
+  it('never echoes an invite code in an enqueue or queue response', async () => {
+    process.env.LH_REMOTE_LEAGUES = '1'
+    const enq = await H.POST(
+      post({ action: 'enqueue', ...T, mutation: { type: 'join', alias: 'Bo', invite: CODE } }),
+    )
+    expect(await enq.text()).not.toContain(CODE)
+    const q = await H.POST(post({ action: 'queue', ...T }))
+    expect(await q.text()).not.toContain(CODE)
+    const get = await H.GET(new Request('http://x/api/leagues/remote'))
+    expect(await get.text()).not.toContain(CODE)
+  })
+
+  it('keeps the code while the join waits and scrubs it once the authority accepts', async () => {
+    await enableWithDeviceKey()
+    fakeAuthority()
+    await H.POST(
+      post({ action: 'enqueue', ...T, mutation: { type: 'join', alias: 'Bo', invite: CODE } }),
+    )
+    expect(storedQueueJson()).toContain(CODE)
+    const res = await H.POST(post({ action: 'sync', ...T }))
+    expect(res.status).toBe(200)
+    expect(storedQueueJson()).not.toContain(CODE)
+  })
+
+  it('keeps the code when the authority is unreachable so a retry can still join', async () => {
+    await enableWithDeviceKey()
+    setRemoteFetch(async () => {
+      throw new Error('offline')
+    })
+    await H.POST(
+      post({ action: 'enqueue', ...T, mutation: { type: 'join', alias: 'Bo', invite: CODE } }),
+    )
+    await H.POST(post({ action: 'sync', ...T }))
+    expect(storedQueueJson()).toContain(CODE)
+  })
+
+  it('scrubs the code after a refused join and blocks the rename queued behind it', async () => {
+    await enableWithDeviceKey()
+    setRemoteFetch(async () =>
+      Response.json({ ok: false, code: 'invite_invalid' }, { status: 409 }),
+    )
+    await H.POST(
+      post({ action: 'enqueue', ...T, mutation: { type: 'join', alias: 'Bo', invite: CODE } }),
+    )
+    await H.POST(post({ action: 'enqueue', ...T, mutation: { type: 'rename', alias: 'Bobby' } }))
+    await H.POST(post({ action: 'sync', ...T }))
+    const queue = tables.loadLeagueQueue(tables.listRemoteLinks()[0]!.id).queue
+    expect(queue.items[0]!.status).toBe('rejected')
+    expect(queue.items[0]!.lastCode).toBe('invite_invalid')
+    expect(queue.items[1]!.lastCode).toBe('blocked_by:invite_invalid')
+    expect(storedQueueJson()).not.toContain(CODE)
+  })
+
+  it('signs an invite-create with the device key without ever sending a code', async () => {
+    await enableWithDeviceKey()
+    const sent: string[] = []
+    setRemoteFetch(async (_url, init) => {
+      sent.push(String(init?.body))
+      return Response.json({ ok: true, effects: ['invite-created'], accepted: 1 })
+    })
+    const digest = '12'.repeat(32)
+    const res = await H.POST(
+      post({
+        action: 'mutate',
+        ...T,
+        mutation: { type: 'invite-create', digest, maxUses: 1, ttlMs: 3_600_000 },
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain(digest)
+  })
+})

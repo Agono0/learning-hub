@@ -33,6 +33,38 @@ challenger authored, but the player's device still chooses what to send.
 | Spectator | Harvest keys | `/spectate` returns aliases and counts only |
 | Corrupt local queue | Wedge syncing | Queue loads through a schema; a bad document resets to empty and reports `recovered` |
 
+## Membership, invites, leave and rename
+
+- Invite codes are bearer secrets. A member generates a 192-bit code on their
+  device, signs only its SHA-256 digest (`invite-create`), and shares the code
+  out of band. The room stores digests, never codes. The code is sent once, in
+  the invitee's signed `join`, and digested in the room before the reducer runs.
+- Possession of a live code is enough to join: it proves "someone with the code
+  asked", not who they are. Share codes only with the person invited.
+- A code is live until it expires (60 seconds to 7 days, set by the creator),
+  is revoked, or reaches its use limit (1 to 20). Expiry uses the authority
+  clock, never the sender's clock.
+- One answer (`invite_invalid`) covers unknown, expired, revoked and spent
+  codes, so a caller cannot probe which codes exist. `invite_required` only
+  says the league is invite-only, which the public view already shows.
+- Each member may hold 5 live invites. A digest can never be reused, even after
+  it is revoked. Dead invites are dropped 7 days after expiry, so a stale code
+  stays refused for that long.
+- The founder is the earliest remaining member. Only the founder sets the
+  invite policy; the creator or the founder may revoke an invite. If the
+  founder leaves, the next earliest member becomes founder. An empty league is
+  open again and forgets its invites.
+- `leave` removes the member and alias, cancels that member's open duels, and
+  revokes their invites. Completed duels stay as history. Sequence numbers and
+  nonces are kept, so an old envelope cannot be replayed after leaving. A member
+  who rejoins starts from zero points.
+- `rename` changes the display alias only. Aliases are never identity.
+- The local queue holds a join's code only while the join is pending. Once the
+  item is sent or refused, the code is dropped from the stored queue. The CLI
+  `invite-new` prints a new code once and does not store it.
+- Public views show the invite policy and a count of live invites. They never
+  show digests, uses or who created an invite.
+
 ## Explicit non-goals
 
 - Anti-cheat. Client-controlled grading is an honor system. Exactly-once
