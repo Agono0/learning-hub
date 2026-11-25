@@ -255,6 +255,8 @@ test.describe('leagues season lifecycle', () => {
   test('weekly digest panel recaps the league on the overview tab', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
+    // card click selects + jumps to Standings; the digest lives on Overview
+    await page.getByRole('tab', { name: 'Overview' }).click()
     const digest = page.getByTestId('league-digest')
     await expect(digest).toBeVisible({ timeout: 60_000 })
     await expect(digest.getByText('Weekly digest')).toBeVisible()
