@@ -37,6 +37,9 @@ import {
   syncAllSubscriptions,
   importChannelDeck,
   importChannelCourse,
+  publishDeckAsChannel,
+  publishCourseAsChannel,
+  publishDeckUpdateFromLibrary,
 } from '@learning-hub/db'
 
 export const shareChannelTools: RegisteredTool[] = [
@@ -333,6 +336,49 @@ export const shareChannelTools: RegisteredTool[] = [
       if (!row) return json({ ok: false, error: 'no local subscription for this channel' })
       const result =
         row.contentType === 'course' ? importChannelCourse(channelId) : importChannelDeck(channelId)
+      return json(result)
+    },
+  ),
+  tool(
+    'share_channel_publish_from_library',
+    'Publishes an existing library deck or course as a channel (or the next version of one, when manifest is passed with deckId). Item ids derive from stable card ids / lesson slugs so subscriber merge state survives republishes. Returns the manifest plus a truthful change summary for updates.',
+    {
+      channelId: z.string().min(1),
+      authorHandle: z.string().min(1).max(50),
+      visibility: ChannelVisibilitySchema,
+      deckId: z.number().int().positive().optional(),
+      courseId: z.number().int().positive().optional(),
+      title: z.string().min(1).max(200).optional(),
+      changelog: z.string().max(500).optional(),
+      manifest: ChannelManifestSchema.optional(),
+    },
+    async (input) => {
+      if (input.deckId === undefined && input.courseId === undefined) {
+        return json({ ok: false, error: 'pass deckId or courseId' })
+      }
+      const result =
+        input.manifest && input.deckId !== undefined
+          ? publishDeckUpdateFromLibrary({
+              deckId: input.deckId,
+              manifest: input.manifest,
+              changelog: input.changelog ?? '',
+            })
+          : input.deckId !== undefined
+            ? publishDeckAsChannel({
+                deckId: input.deckId,
+                channelId: input.channelId,
+                title: input.title ?? `Channel ${input.channelId}`,
+                authorHandle: input.authorHandle,
+                visibility: input.visibility,
+                ...(input.changelog !== undefined ? { changelog: input.changelog } : {}),
+              })
+            : publishCourseAsChannel({
+                courseId: input.courseId!,
+                channelId: input.channelId,
+                authorHandle: input.authorHandle,
+                visibility: input.visibility,
+                ...(input.changelog !== undefined ? { changelog: input.changelog } : {}),
+              })
       return json(result)
     },
   ),

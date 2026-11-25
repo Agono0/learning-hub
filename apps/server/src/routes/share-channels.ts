@@ -33,6 +33,9 @@ import {
   syncAllSubscriptions,
   importChannelDeck,
   importChannelCourse,
+  publishDeckAsChannel,
+  publishCourseAsChannel,
+  publishDeckUpdateFromLibrary,
 } from '@learning-hub/db'
 import { sendJson, readJson } from '../http'
 import type { Route } from './shared'
@@ -408,6 +411,59 @@ async function postChannelSyncRecords(req: IncomingMessage, res: ServerResponse)
   sendJson(res, 200, { ok: true, records: listSyncRecords(body.channelId, { limit: body.limit }) })
 }
 
+const publishFromLibraryBodySchema = z.object({
+  channelId: z.string().min(1),
+  authorHandle: z.string().min(1).max(50),
+  visibility: ChannelVisibilitySchema,
+  deckId: z.number().int().positive().optional(),
+  courseId: z.number().int().positive().optional(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(1000).optional(),
+  changelog: z.string().max(500).optional(),
+  /** When set, publish the next version of this existing manifest. */
+  manifest: ChannelManifestSchema.optional(),
+})
+
+/**
+ * POST /share/channels/publish-from-library — create (or update) a channel
+ * straight from a deck or course in the local library.
+ */
+async function postChannelPublishFromLibrary(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const body = await readJson(req, publishFromLibraryBodySchema)
+  if (body.deckId === undefined && body.courseId === undefined) {
+    sendJson(res, 400, { ok: false, error: 'pass deckId or courseId' })
+    return
+  }
+  const result =
+    body.manifest && body.deckId !== undefined
+      ? publishDeckUpdateFromLibrary({
+          deckId: body.deckId,
+          manifest: body.manifest,
+          changelog: body.changelog ?? '',
+        })
+      : body.deckId !== undefined
+        ? publishDeckAsChannel({
+            deckId: body.deckId,
+            channelId: body.channelId,
+            title: body.title ?? `Channel ${body.channelId}`,
+            authorHandle: body.authorHandle,
+            visibility: body.visibility,
+            ...(body.description !== undefined ? { description: body.description } : {}),
+            ...(body.changelog !== undefined ? { changelog: body.changelog } : {}),
+          })
+        : publishCourseAsChannel({
+            courseId: body.courseId!,
+            channelId: body.channelId,
+            authorHandle: body.authorHandle,
+            visibility: body.visibility,
+            ...(body.changelog !== undefined ? { changelog: body.changelog } : {}),
+          })
+  sendJson(res, result.ok ? 200 : 422, result)
+}
+
 const importBodySchema = z.object({ channelId: z.string().min(1) })
 
 /** POST /share/channels/import — import a subscription into the library (deck or course) */
@@ -426,6 +482,12 @@ async function postChannelImport(req: IncomingMessage, res: ServerResponse): Pro
 }
 
 shareChannelRoutes.push(
+  {
+    method: 'POST',
+    path: '/share/channels/publish-from-library',
+    summary: 'create or update a channel from a library deck or course',
+    handler: postChannelPublishFromLibrary,
+  },
   {
     method: 'POST',
     path: '/share/channels/import',

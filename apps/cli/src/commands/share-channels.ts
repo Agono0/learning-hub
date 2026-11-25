@@ -36,6 +36,8 @@ import {
   syncAllSubscriptions,
   importChannelDeck,
   importChannelCourse,
+  publishDeckAsChannel,
+  publishCourseAsChannel,
 } from '@learning-hub/db'
 
 function parseFlag(args: string[], flag: string): string | undefined {
@@ -371,6 +373,59 @@ function shareChannelsCommand(args: string[]): void {
         console.log(
           `\nImported ${channelId} into deck "${r.deckName}": ${r.created} new, ${r.updated} updated`,
         )
+      }
+      return
+    }
+    case 'publish-from-library': {
+      const channelId = parseFlag(args, '--channel')
+      const author = parseFlag(args, '--author')
+      const visibility = (parseFlag(args, '--visibility') ?? 'link') as 'link' | 'invite'
+      const deckIdRaw = parseFlag(args, '--deck')
+      const courseIdRaw = parseFlag(args, '--course')
+      if (!channelId || !author || (!deckIdRaw && !courseIdRaw)) {
+        console.error(
+          'usage: share-channels publish-from-library --channel <id> --author <handle> (--deck <deckId> | --course <courseId>) [--visibility link|invite] [--title <t>] [--changelog <c>] [--json]',
+        )
+        process.exitCode = 1
+        return
+      }
+      const result = deckIdRaw
+        ? publishDeckAsChannel({
+            deckId: Number(deckIdRaw),
+            channelId,
+            title: parseFlag(args, '--title') ?? `Channel ${channelId}`,
+            authorHandle: author,
+            visibility,
+            ...(parseFlag(args, '--changelog')
+              ? { changelog: parseFlag(args, '--changelog')! }
+              : {}),
+          })
+        : publishCourseAsChannel({
+            courseId: Number(courseIdRaw),
+            channelId,
+            authorHandle: author,
+            visibility,
+            ...(parseFlag(args, '--changelog')
+              ? { changelog: parseFlag(args, '--changelog')! }
+              : {}),
+          })
+      if (!result.ok) {
+        console.error(result.error ?? 'publish failed')
+        process.exitCode = 1
+        return
+      }
+      if (asJson) {
+        console.log(
+          JSON.stringify({ ok: true, manifest: result.manifest, skipped: result.skipped }),
+        )
+      } else {
+        const m = result.manifest!
+        console.log(
+          `\nChannel ${m.channelId} published at v${m.currentVersion} (${m.versions[0].items.length} items)`,
+        )
+        if (result.skipped?.length) {
+          console.log(`Skipped ${result.skipped.length} non-transportable card(s).`)
+        }
       }
       return
     }
