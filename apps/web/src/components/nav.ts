@@ -170,6 +170,7 @@ export const NAV: NavGroup[] = [
         icon: Gauge,
         shortLabel: 'Retention',
       },
+      { href: '/readiness', label: 'Exam readiness', icon: Target, shortLabel: 'Readiness' },
     ],
   },
   {
