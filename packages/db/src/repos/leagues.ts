@@ -789,6 +789,37 @@ export function createLeagueTournament(
   return row!
 }
 
+/**
+ * Seed a tournament straight from league standings: strongest players first
+ * (highest division, then season points), so the bracket pairs best-vs-worst.
+ * `size` caps the field; defaults to everyone in the league.
+ */
+export function seedLeagueTournamentFromStandings(
+  data: { slug: string; leagueSlug: string; title: string; size?: number },
+  database?: LearningHubDB,
+): LeagueTournamentRow {
+  const conn = database ?? getDb()
+  const league = getLeagueBySlug(data.leagueSlug, conn)
+  if (!league) throw new Error(`league not found: ${data.leagueSlug}`)
+  const players = conn
+    .select()
+    .from(leaguePlayers)
+    .where(eq(leaguePlayers.leagueId, league.id))
+    .all()
+  const core = rowsToLeague(league, players)
+  const ordered = DIVISION_ORDER.slice()
+    .reverse()
+    .flatMap((tier) => divisionStandings(core, tier).map((p) => p.handle))
+  const picked = ordered.slice(0, data.size ?? ordered.length)
+  if (picked.length < 2) {
+    throw new Error(`need at least 2 players to seed a tournament (have ${picked.length})`)
+  }
+  return createLeagueTournament(
+    { slug: data.slug, leagueSlug: data.leagueSlug, title: data.title, seeds: picked },
+    conn,
+  )
+}
+
 export function getLeagueTournament(
   slug: string,
   database?: LearningHubDB | Transaction,

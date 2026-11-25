@@ -22,6 +22,7 @@
  *   leagues duel rematch <duelSlug> <newSlug>
  *   leagues duel list [--league <slug>] [--status open|complete]
  *   leagues tournament create <slug> "<title>" <seed1,seed2,…> [--league <slug>]
+ *   leagues tournament seed <slug> "<title>" --league <slug> [--size N]
  *   leagues tournament open <slug>
  *   leagues tournament result <slug> <round> <position> <winner> [--duel <id>]
  *   leagues tournament list [--league <slug>] [--status open|complete]
@@ -61,6 +62,7 @@ import {
   openTournamentMatches,
   recordTournamentMatchResult,
   rematchLeagueDuel,
+  seedLeagueTournamentFromStandings,
   submitDuelAnswers,
 } from '@learning-hub/db'
 import { DIVISION_ORDER, type DivisionTier } from '@learning-hub/core'
@@ -436,6 +438,26 @@ function tournamentCommand(args: string[]): void {
       )
     } catch (err) {
       fail(err instanceof Error ? err.message : 'tournament creation failed')
+    }
+    return
+  }
+  if (sub === 'seed') {
+    const [, slug, title] = args
+    const league = parseFlag(args, '--league')
+    const sizeRaw = parseFlag(args, '--size')
+    const size = sizeRaw ? Number.parseInt(sizeRaw, 10) : undefined
+    if (!slug || !title?.trim() || !league) {
+      return fail(
+        'Usage: learning-hub leagues tournament seed <slug> "<title>" --league <slug> [--size N]',
+      )
+    }
+    try {
+      const t = seedLeagueTournamentFromStandings({ slug, title, leagueSlug: league, size })
+      console.log(
+        `Tournament ${t.slug} seeded from ${league} standings: ${t.seedsJson.join(', ')}.`,
+      )
+    } catch (err) {
+      fail(err instanceof Error ? err.message : 'tournament seeding failed')
     }
     return
   }

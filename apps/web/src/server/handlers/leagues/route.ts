@@ -11,6 +11,7 @@ import {
   createLeagueDuel,
   createLeagueRow,
   createLeagueTournament,
+  seedLeagueTournamentFromStandings,
   exportLeague,
   getLeagueBySlug,
   getLeagueDuel,
@@ -233,6 +234,13 @@ const postSchema = z.discriminatedUnion('action', [
     seeds: z.array(z.string().min(1)).min(2).max(64),
   }),
   z.object({
+    action: z.literal('tournament-seed'),
+    slug: z.string().min(1).max(60),
+    leagueSlug: z.string().min(1),
+    title: z.string().min(1).max(200),
+    size: z.number().int().min(2).max(64).optional(),
+  }),
+  z.object({
     action: z.literal('tournament-result'),
     slug: z.string().min(1),
     round: z.number().int().positive(),
@@ -309,6 +317,13 @@ export const POST = withRoute(async (req: Request) => {
           return Response.json({ error: `tournament exists: ${body.slug}` }, { status: 409 })
         }
         const tournament = createLeagueTournament(body)
+        return Response.json({ ok: true, tournament }, { status: 201 })
+      }
+      case 'tournament-seed': {
+        if (getLeagueTournament(body.slug)) {
+          return Response.json({ error: `tournament exists: ${body.slug}` }, { status: 409 })
+        }
+        const tournament = seedLeagueTournamentFromStandings(body)
         return Response.json({ ok: true, tournament }, { status: 201 })
       }
       case 'tournament-result': {

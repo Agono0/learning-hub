@@ -14,6 +14,7 @@ import {
   exportLeague,
   importLeague,
   buildLeagueDigest,
+  seedLeagueTournamentFromStandings,
   leagueDivisionDetail,
   leagueHeadToHead,
   listLeagueAchievements,
@@ -110,6 +111,21 @@ export const leagueTools: RegisteredTool[] = [
       if (!division) throw new Error(`league not found: ${slug}`)
       return json({ ok: true, division })
     },
+  ),
+  tool(
+    'tournament_seed',
+    'Auto-seed a tournament bracket from league standings: strongest players first (highest division, then season points), best-vs-worst pairing. Size caps the field.',
+    {
+      slug: z.string().min(1).max(60),
+      leagueSlug: z.string().min(1),
+      title: z.string().min(1).max(200),
+      size: z.number().int().min(2).max(64).optional(),
+    },
+    ({ slug, leagueSlug, title, size }) =>
+      json({
+        ok: true,
+        tournament: seedLeagueTournamentFromStandings({ slug, leagueSlug, title, size }),
+      }),
   ),
   tool(
     'league_digest',
