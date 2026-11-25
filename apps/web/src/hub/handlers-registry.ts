@@ -22,6 +22,7 @@ import * as aiGenerate from '../server/handlers/ai/generate/route'
 import * as aiRubric from '../server/handlers/ai/rubric/route'
 import * as aiTransport from '../server/handlers/ai/transport/route'
 import * as analytics from '../server/handlers/analytics/route'
+import * as arenaHistoryId from '../server/handlers/arena/history/[id]/route'
 import * as arenaHistory from '../server/handlers/arena/history/route'
 import * as arena from '../server/handlers/arena/route'
 import * as ankiConnect from '../server/handlers/anki/connect/route'
@@ -295,6 +296,7 @@ add('ai/transport', aiTransport)
 add('analytics', analytics)
 add('arena', arena)
 add('arena/history', arenaHistory)
+add('arena/history/[id]', arenaHistoryId)
 add('anki/connect', ankiConnect)
 add('audio/digest', audioDigest)
 add('audio/grade', audioGrade)

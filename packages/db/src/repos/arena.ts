@@ -338,6 +338,14 @@ export function releaseArenaClaim(
     .run()
 }
 
+/** One arena run row by id (record book detail). */
+export function getArenaRun(
+  id: number,
+  db: LearningHubDB = getDb(),
+): typeof arenaRuns.$inferSelect | undefined {
+  return db.select().from(arenaRuns).where(eq(arenaRuns.id, id)).limit(1).all()[0]
+}
+
 /** Card ids graded Again (1) or Hard (2) in a settled run — the drill pool. */
 export function getWeakCardIdsForRun(
   runId: string,
