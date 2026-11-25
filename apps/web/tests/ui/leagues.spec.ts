@@ -36,6 +36,8 @@ test.describe('leagues season lifecycle', () => {
     for (const handle of ['amr', 'sara']) {
       await page.getByTestId('join-league-slug').fill(LEAGUE)
       await page.getByTestId('join-league-handle').fill(handle)
+      // a join re-renders the list; make sure the fill survived before clicking
+      await expect(page.getByTestId('join-league-handle')).toHaveValue(handle)
       await page.getByTestId('join-league-submit').click()
       await expect(page.getByText(`${handle} joined ${LEAGUE} in bronze.`)).toBeVisible()
     }
@@ -114,7 +116,7 @@ test.describe('leagues season lifecycle', () => {
   }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     // duel-1 was decided in the previous test: amr beat sara
     await page.getByTestId('standings-row-amr').click()
@@ -132,7 +134,7 @@ test.describe('leagues season lifecycle', () => {
   test('profile shows earned achievement badges', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     // amr won duel-1 and the round: first-blood (auto-banked on duel
     // completion) and more badges show on his profile
@@ -141,17 +143,19 @@ test.describe('leagues season lifecycle', () => {
     await expect(page.getByTestId('profile-achievements')).toBeVisible()
     await expect(page.getByTestId('achievement-first-blood')).toBeVisible()
 
-    // sara lost the duel and never scored: no badges
+    // sara lost the duel (no first-blood) but promoted with her 10 reviews:
+    // she holds silver-climb, not the duel badges
     await page.getByTestId('standings-row-amr').click()
     await page.getByTestId('standings-row-sara').click()
     await expect(page.getByTestId('player-profile')).toBeVisible()
-    await expect(page.getByTestId('profile-achievements')).toHaveCount(0)
+    await expect(page.getByTestId('achievement-first-blood')).toHaveCount(0)
+    await expect(page.getByTestId('achievement-silver-climb')).toBeVisible()
   })
 
   test('division drill-down shows standings, winners and movement', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     // amr was promoted to silver in the earlier round close
     await page.getByTestId('division-open-silver').click()
@@ -172,7 +176,7 @@ test.describe('leagues season lifecycle', () => {
   test('head-to-head panel compares the two duelists', async ({ page }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
-    await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('standings-silver')).toBeVisible({ timeout: 60_000 })
 
     await page.getByTestId('h2h-a').fill('amr')
     await page.getByTestId('h2h-b').fill('sara')
@@ -296,10 +300,18 @@ test.describe('leagues season lifecycle', () => {
   })
 
   test('league cards flag a round past its calendar end as due', async ({ page }) => {
+    // spring's round was closed earlier in the lifecycle, so it is NOT due;
+    // a league whose season started two weeks ago with 7-day rounds and no
+    // closes is past its current round's calendar end
+    const past = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10)
+    const res = await page.request.post('/api/leagues', {
+      data: { action: 'create', slug: 'due-e2e', title: 'Due E2E', seasonStart: past },
+    })
+    expect(res.ok()).toBeTruthy()
     await page.goto('/leagues')
-    // spring's season start is in the past and its round was never closed on
-    // the calendar, so the engine math marks the current round due
-    await expect(page.getByTestId(`league-due-${LEAGUE}`)).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('league-due-due-e2e')).toBeVisible({ timeout: 60_000 })
+    // spring sits in a fresh round after the lifecycle close: no due badge
+    await expect(page.getByTestId(`league-due-${LEAGUE}`)).toHaveCount(0)
   })
 
   test('rematch a completed duel from the duel list', async ({ page }) => {

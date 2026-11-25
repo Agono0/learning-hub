@@ -542,7 +542,7 @@ function OverviewTab({
               void act(
                 { action: 'join', slug: joinLeague.trim(), handle: joinHandle.trim() },
                 `${joinHandle.trim()} joined ${joinLeague.trim()} in bronze.`,
-              ).then(() => setJoinHandle(''))
+              )
             }}
           >
             <TextField
@@ -1172,6 +1172,7 @@ function DivisionPanel({ slug, tier, mode }: { slug: string; tier: string; mode:
 }
 
 function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: string }) {
+  const practice = detail.league.mode !== 'competitive'
   const [a, setA] = useState('')
   const [b, setB] = useState('')
   const [result, setResult] = useState<HeadToHead | null>(null)
@@ -1196,8 +1197,9 @@ function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: strin
     <Panel>
       <h2 className="mb-2 text-base font-semibold">Head-to-head</h2>
       <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
-        The full rivalry record between two players: every duel they played, accuracy, speed,
-        streaks and the Elo gap.
+        {practice
+          ? 'The full friendly rivalry record between two players: every duel they played, accuracy, speed and streaks.'
+          : 'The full rivalry record between two players: every duel they played, accuracy, speed, streaks and the Elo gap.'}
       </p>
       {h2hError && (
         <Callout tone="danger" title="Head-to-head failed">
@@ -1248,9 +1250,11 @@ function HeadToHeadPanel({ detail, selected }: { detail: Detail; selected: strin
                 ? `${result.leader.leader} leads by ${result.leader.edge}`
                 : 'All square'}
             </Badge>
-            <Badge tone="cyan">
-              Elo {result.elo.eloA} vs {result.elo.eloB}
-            </Badge>
+            {!practice && (
+              <Badge tone="cyan">
+                Elo {result.elo.eloA} vs {result.elo.eloB}
+              </Badge>
+            )}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {(['A', 'B'] as const).map((side) => {
@@ -1532,11 +1536,12 @@ function DuelsTab({
                   onChange={(e) => setDeckId(e.target.value)}
                   data-testid="duel-deck-id"
                 />
-                <TextField
+                <TextArea
                   label={'Prompts — one per line: id::question::answer1|answer2'}
                   value={promptsText}
                   onChange={(e) => setPromptsText(e.target.value)}
                   data-testid="duel-prompts"
+                  rows={3}
                 />
               </div>
             </details>
@@ -1619,11 +1624,12 @@ function DuelsTab({
                   Side B
                 </Button>
               </div>
-              <TextField
+              <TextArea
                 label={'Answers — one per line: promptId::answer::milliseconds'}
                 value={answersText}
                 onChange={(e) => setAnswersText(e.target.value)}
                 data-testid="answer-text"
+                rows={3}
               />
               <Button
                 type="submit"
