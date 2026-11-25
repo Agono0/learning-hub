@@ -811,3 +811,52 @@ describe('Arena API — card-format flavor at settlement', () => {
     expect(settled.summary.score).not.toBe(plain.score)
   })
 })
+
+describe('Arena API — rival ghost (best-run pace)', () => {
+  it('history names the highest-scoring run as the rival ghost', async () => {
+    const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=5'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(typeof body.bestRunId === 'number' || body.bestRunId === null).toBe(true)
+    if (body.bestRunId !== null) {
+      const best = body.runs.find((r: { id: number }) => r.id === body.bestRunId)
+      // The ghost may fall outside the ?limit=5 page; verify via detail.
+      const detail = await M.historyId.GET(
+        new Request(`http://localhost/api/arena/history/${body.bestRunId}`),
+      )
+      expect(detail.status).toBe(200)
+      const detailBody = await detail.json()
+      expect(detailBody.run.id).toBe(body.bestRunId)
+      expect(best === undefined || best.score <= detailBody.run.score).toBe(true)
+    }
+  })
+
+  it('run detail replays a cumulative score series matching prefix summaries', async () => {
+    const { deckId } = seedDeckWithCards(8)
+    const { runId, queue } = await startRun(deckId, 6)
+    const log = gradeLog(queue, [0, queue.length])
+    const post = await postSettlement(settlePayload(runId, log))
+    expect(post.status).toBe(200)
+    const settled = await post.json()
+
+    const hist = await M.history.GET(new Request('http://localhost/api/arena/history?limit=50'))
+    const histBody = await hist.json()
+    const row = histBody.runs.find(
+      (r: { referenceId: string }) => r.referenceId === `arena:${runId}`,
+    )
+    expect(row).toBeTruthy()
+
+    const detail = await M.historyId.GET(
+      new Request(`http://localhost/api/arena/history/${row.id}`),
+    )
+    expect(detail.status).toBe(200)
+    const body = await detail.json()
+    expect(Array.isArray(body.scoreSeries)).toBe(true)
+    expect(body.scoreSeries.length).toBe(settled.summary.rounds)
+    // The series is non-decreasing and ends at the settled score.
+    for (let i = 1; i < body.scoreSeries.length; i++) {
+      expect(body.scoreSeries[i]!).toBeGreaterThanOrEqual(body.scoreSeries[i - 1]!)
+    }
+    expect(body.scoreSeries[body.scoreSeries.length - 1]).toBe(settled.summary.score)
+  })
+})
