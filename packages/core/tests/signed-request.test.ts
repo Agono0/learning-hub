@@ -19,7 +19,13 @@ describe('signed request payloads', () => {
   })
 
   it('binds every field of the request payload', async () => {
-    const base = { method: 'post', host: 'w.example', pathAndQuery: '/a?x=1', timestamp: 5, bodySha256: 'ab' }
+    const base = {
+      method: 'post',
+      host: 'w.example',
+      pathAndQuery: '/a?x=1',
+      timestamp: 5,
+      bodySha256: 'ab',
+    }
     const p = requestSigningPayload(base)
     expect(p).toBe('lh-req:v1|POST|w.example|/a?x=1|5|ab')
     for (const k of Object.keys(base) as (keyof typeof base)[]) {
