@@ -24,6 +24,7 @@ import { focusCommands } from './commands/focus-pomodoro'
 import { exposureCommands } from './commands/exposure'
 import { goalsCommands } from './commands/goals'
 import { leaguesCommands } from './commands/leagues'
+import { leaguesRemoteCommands } from './commands/leagues-remote'
 import { notesCommands } from './commands/notes'
 import { tasksCommands } from './commands/tasks'
 import { reviewCommands } from './commands/review'
@@ -150,6 +151,7 @@ const builtinCommands: RegisteredCommand[] = [
   // New domain commands over the shared repos (commands/goals.ts, commands/notes.ts)
   ...goalsCommands,
   ...leaguesCommands,
+  ...leaguesRemoteCommands,
   ...notesCommands,
   ...tasksCommands,
 ]
