@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { apiSend } from '@/lib/transport'
+import { acceptChannelVersion, diffVersions } from '@learning-hub/core/share-channels'
 import { Badge, Button, Callout, Panel, Tabs, TextArea, TextField } from '@/ui'
 
 type Manifest = {
@@ -81,6 +82,7 @@ export function ShareChannelsPanel() {
   // Update form
   const [updateText, setUpdateText] = useState('')
   const [lastMerge, setLastMerge] = useState<MergeResult | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     setSubs(loadSubscriptions())
@@ -124,6 +126,60 @@ export function ShareChannelsPanel() {
     saveSubscriptions(next)
     setNotice(`Subscribed to ${parsed.title} at version ${parsed.currentVersion}.`)
     setManifestText('')
+  }
+
+  function pendingDiff(): {
+    added: number
+    removed: number
+    changed: number
+    channelId: string
+  } | null {
+    try {
+      const incoming = JSON.parse(updateText) as Manifest
+      const sub = subs.find((s) => s.manifest.channelId === incoming.channelId)
+      if (!sub) return null
+      const oldV = sub.manifest.versions[sub.manifest.versions.length - 1]
+      const newV = incoming.versions[incoming.versions.length - 1]
+      const d = diffVersions(oldV, newV)
+      return {
+        added: d.addedIds.length,
+        removed: d.removedIds.length,
+        changed: d.changedIds.length,
+        channelId: incoming.channelId,
+      }
+    } catch {
+      return null
+    }
+  }
+
+  function resolveConflict(channelItemId: string) {
+    const next = subs.map((s) => {
+      if (expandedId === null || s.manifest.channelId !== expandedId) return s
+      const latest = s.manifest.versions[s.manifest.versions.length - 1]
+      return {
+        ...s,
+        localItems: s.localItems.map((i) =>
+          i.channelItemId === channelItemId ? acceptChannelVersion(i, latest) : i,
+        ),
+      }
+    })
+    setSubs(next)
+    saveSubscriptions(next)
+  }
+
+  function itemConflicts(s: SubscriptionRecord): string[] {
+    return s.localItems
+      .filter(
+        (i) =>
+          i.channelContent !== null &&
+          JSON.stringify(i.channelContent) !== JSON.stringify(i.localContent),
+      )
+      .map((i) => i.channelItemId!)
+  }
+
+  function itemTitle(content: Record<string, unknown>): string {
+    const v = content.front ?? content.title ?? content.name ?? content.question
+    return typeof v === 'string' && v.length > 0 ? v.slice(0, 80) : '(untitled item)'
   }
 
   async function applyUpdate() {
@@ -185,18 +241,60 @@ export function ShareChannelsPanel() {
           ) : (
             <ul className="space-y-2">
               {subs.map((s) => (
-                <li
-                  key={s.manifest.channelId}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{s.manifest.title}</p>
-                    <p className="text-xs text-neutral-500">
-                      {s.manifest.authorHandle} · {s.localItems.length} items · local v
-                      {s.localVersion}
-                    </p>
-                  </div>
-                  <Badge tone="neutral">{s.manifest.visibility}</Badge>
+                <li key={s.manifest.channelId} className="rounded-lg border border-neutral-200 p-3">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                    onClick={() =>
+                      setExpandedId(
+                        expandedId === s.manifest.channelId ? null : s.manifest.channelId,
+                      )
+                    }
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{s.manifest.title}</p>
+                      <p className="text-xs text-neutral-500">
+                        {s.manifest.authorHandle} · {s.localItems.length} items · local v
+                        {s.localVersion}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {itemConflicts(s).length > 0 && (
+                        <Badge tone="accent">{itemConflicts(s).length} conflict(s)</Badge>
+                      )}
+                      <Badge tone="neutral">{s.manifest.visibility}</Badge>
+                    </div>
+                  </button>
+                  {expandedId === s.manifest.channelId && (
+                    <ul className="mt-3 space-y-1 border-t border-neutral-100 pt-3">
+                      {s.localItems.slice(0, 50).map((i) => {
+                        const conflict =
+                          i.channelContent !== null &&
+                          JSON.stringify(i.channelContent) !== JSON.stringify(i.localContent)
+                        return (
+                          <li
+                            key={i.channelItemId ?? 'mine-' + itemTitle(i.localContent)}
+                            className="flex items-center justify-between gap-2 text-sm"
+                          >
+                            <span className="truncate">{itemTitle(i.localContent)}</span>
+                            {conflict && (
+                              <Button
+                                variant="secondary"
+                                onClick={() => resolveConflict(i.channelItemId!)}
+                              >
+                                Take publisher version
+                              </Button>
+                            )}
+                          </li>
+                        )
+                      })}
+                      {s.localItems.length > 50 && (
+                        <li className="text-xs text-neutral-500">
+                          and {s.localItems.length - 50} more items
+                        </li>
+                      )}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
@@ -277,6 +375,14 @@ export function ShareChannelsPanel() {
               onChange={(e) => setUpdateText(e.target.value)}
               rows={8}
             />
+            {pendingDiff() && (
+              <Callout tone="neutral">
+                <p className="text-sm">
+                  Incoming changes for {pendingDiff()!.channelId}: {pendingDiff()!.added} added,{' '}
+                  {pendingDiff()!.changed} changed, {pendingDiff()!.removed} removed (kept locally).
+                </p>
+              </Callout>
+            )}
             <Button variant="primary" onClick={() => void applyUpdate()}>
               Merge update
             </Button>
