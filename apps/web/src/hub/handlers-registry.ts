@@ -132,6 +132,7 @@ import * as importRoute from '../server/handlers/import/route'
 import * as journalAi from '../server/handlers/journal/ai/route'
 import * as journalWeekly from '../server/handlers/journal/weekly/route'
 import * as journal from '../server/handlers/journal/route'
+import * as leagues from '../server/handlers/leagues/route'
 import * as mindmapsIdCards from '../server/handlers/mindmaps/[id]/cards/route'
 import * as mindmapsId from '../server/handlers/mindmaps/[id]/route'
 import * as mindmaps from '../server/handlers/mindmaps/route'
@@ -490,6 +491,7 @@ add('anchored', anchored)
 add('contrasting', contrasting)
 add('collaborative', collaborative)
 add('knowledge-space', knowledgeSpace)
+add('leagues', leagues)
 add('system-dynamics', systemDynamics)
 add('model-inquiry', modelInquiry)
 add('prototype-exemplar', prototypeExemplar)

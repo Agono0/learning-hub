@@ -444,9 +444,9 @@ function OverviewTab({
                   type="button"
                   data-testid={`league-card-${l.slug}`}
                   onClick={() => onSelect(l.slug)}
-                  className={`w-full rounded-lg border p-3 text-left transition hover:border-accent ${
+                  className={`w-full rounded-lg border p-3 text-left transition hover:border-indigo-500 ${
                     selected === l.slug
-                      ? 'border-accent bg-accent/5'
+                      ? 'border-indigo-500 bg-indigo-600/10'
                       : 'border-neutral-200 dark:border-neutral-700'
                   }`}
                 >
@@ -748,7 +748,7 @@ function StandingsTab({
                               setProfileHandle((cur) => (cur === s.handle ? null : s.handle))
                             }
                             className={`flex w-full justify-between rounded px-1 py-0.5 text-left text-sm transition hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-                              profileHandle === s.handle ? 'bg-accent/10' : ''
+                              profileHandle === s.handle ? 'bg-indigo-600/10' : ''
                             }`}
                           >
                             <span>
@@ -1584,7 +1584,7 @@ function TournamentsTab({
                                   `${w} takes R${m.round} #${m.position} of ${t.title}.`,
                                 )
                               }
-                              className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs transition hover:border-accent hover:text-accent dark:border-neutral-600"
+                              className="rounded border border-neutral-300 px-1.5 py-0.5 text-xs transition hover:border-indigo-500 hover:text-indigo-600 dark:border-neutral-600 dark:hover:text-indigo-300"
                             >
                               {w} wins
                             </button>
