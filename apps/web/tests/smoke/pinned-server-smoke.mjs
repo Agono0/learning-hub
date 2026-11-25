@@ -22,7 +22,6 @@ import {
   rmSync,
   renameSync,
   statSync,
-  writeFileSync,
 } from 'node:fs'
 import http from 'node:http'
 import { networkInterfaces, tmpdir } from 'node:os'
