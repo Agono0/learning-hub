@@ -180,16 +180,16 @@ export function ReadinessStudio() {
           {review && !r.expired && (
             <Panel title="Where a review helps most" data-testid="readiness-gains">
               <p className="text-sm" data-testid="readiness-gain-summary">
-                Reviewing the best {review.budget} cards today would move average recall from{' '}
-                {pct(review.meanRecallBefore)} to {pct(review.meanRecallAfter)}.{' '}
+                {`The model estimates that if you reviewed the best ${review.budget} cards today and remembered each one, average recall on ${r.target.date} would move from ${pct(review.meanRecallBefore)} to ${pct(review.meanRecallAfter)}. `}
                 {review.reviewsNeededForTarget === null
-                  ? `Reaching ${pct(r.targetRecall)} is not possible with one review each today.`
+                  ? `Under the same assumption, ${pct(r.targetRecall)} on ${r.target.date} is not reachable with one review per card today.`
                   : review.reviewsNeededForTarget === 0
-                    ? `You are already at ${pct(r.targetRecall)} if you stop.`
-                    : `About ${review.reviewsNeededForTarget} reviews today would reach ${pct(r.targetRecall)}.`}
+                    ? `The model already estimates ${pct(r.targetRecall)} or more on ${r.target.date} if you stop.`
+                    : `Under the same assumption, the model estimates about ${review.reviewsNeededForTarget} reviews today would be needed to reach ${pct(r.targetRecall)} on ${r.target.date}.`}
               </p>
               <p className="mt-1 text-xs opacity-70">
-                Assumes each card is reviewed once and remembered.
+                An estimate, not a promise. It assumes each card is reviewed once today and answered
+                correctly.
               </p>
               <ol className="mt-2 space-y-1 text-sm">
                 {review.top.slice(0, 10).map((g) => (
@@ -205,9 +205,13 @@ export function ReadinessStudio() {
                   </li>
                 ))}
               </ol>
+              <p className="mt-2 text-xs opacity-70">
+                This list is advice only. The button opens your normal review queue, which does not
+                follow this list or its order.
+              </p>
               <div className="mt-3">
                 <Button variant="secondary" onClick={() => (window.location.href = '/review')}>
-                  Start reviewing
+                  Open the review queue
                 </Button>
               </div>
             </Panel>
