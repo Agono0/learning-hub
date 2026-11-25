@@ -72,7 +72,7 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   for (let round = 0; round < CARD_COUNT; round++) {
     await page.getByTestId('arena-reveal').click()
     await expect(page.getByTestId('arena-card-back')).toBeVisible()
-    await page.getByRole('radio', { name: 'Sure' }).click()
+    await page.getByRole('radio', { name: 'Sure', exact: true }).click()
     await page.getByTestId('arena-grade-3').click()
   }
 
@@ -111,10 +111,19 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
   await page.getByTestId('arena-start').click()
   await expect(page.getByTestId('arena-session')).toBeVisible()
 
+  const settleResponse = page.waitForResponse(
+    (r) => r.url().endsWith('/api/arena') && r.request().method() === 'POST',
+    { timeout: 30_000 },
+  )
   for (let round = 0; round < 6; round++) {
     await page.getByTestId('arena-reveal').click()
     await page.getByTestId('arena-grade-1').click()
   }
+  const settled = await settleResponse
+  expect(
+    settled.ok(),
+    `defeat settlement: ${settled.status()} ${await settled.text()}`,
+  ).toBeTruthy()
 
   await expect(page.getByTestId('arena-results')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('arena-result-badge')).toHaveText('Defeat')
