@@ -142,6 +142,42 @@ describe('exam prep plan', () => {
     expect(p.summary.planned).toBeGreaterThanOrEqual(p.summary.baseline)
   })
 
+  it('stays finite and bounded with all rest days, past dates and non-finite inputs', async () => {
+    const cards = mixedDeck(80, 61)
+    const allRest = (await planExamPrep(cards, NOW, exam(30), 0.85, {
+      restWeekdays: [0, 1, 2, 3, 4, 5, 6],
+    }))!
+    expect(allRest.summary.studyDays).toBe(0)
+    expect(allRest.summary.plannedReviews).toBe(0)
+    expect(allRest.summary.planned).toBe(allRest.summary.baseline)
+    const past = (await planExamPrep(cards, NOW, exam(-400), 0.85))!
+    expect(past.expired).toBe(true)
+    expect(past.days).toEqual([])
+    const bad = (await planExamPrep(cards, NOW, exam(10), Number.NaN, {
+      perDay: Number.POSITIVE_INFINITY,
+      minGain: Number.NaN,
+      maxCards: Number.POSITIVE_INFINITY,
+      maxReviewsPerCard: Number.NaN,
+    }))!
+    expect(bad.targetRecall).toBe(0.85)
+    expect(bad.options).toMatchObject({
+      perDay: 30,
+      minGain: 0.01,
+      maxReviewsPerCard: 3,
+      maxCards: PREP_DEFAULTS.maxCards,
+    })
+    for (const v of [
+      bad.summary.baseline,
+      bad.summary.planned,
+      ...bad.days.map((d) => d.meanExamRecallAfter),
+    ])
+      expect(Number.isFinite(v)).toBe(true)
+    // the same-day exam has zero study days: no divide-by-zero in the card budget
+    const same = (await planExamPrep(cards, NOW, new Date(NOW.getTime() + 1000), 0.85))!
+    expect(same.options.maxCards).toBeGreaterThanOrEqual(1)
+    expect(await planExamPrep(cards, new Date('x'), exam(5), 0.85)).toBeNull()
+  })
+
   it('agrees with the readiness simulation about the baseline', async () => {
     const cards = mixedDeck(40, 13)
     const p = (await planExamPrep(cards, NOW, exam(20), 0.85, { perDay: 0 }))!

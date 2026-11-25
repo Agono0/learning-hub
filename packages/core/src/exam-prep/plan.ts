@@ -22,6 +22,10 @@ interface Live {
   examRecall: number
 }
 
+/** A finite number clamped into [lo, hi]; NaN and +-Infinity fall back to `dflt`. */
+const finiteIn = (n: number | undefined, lo: number, hi: number, dflt: number): number =>
+  n === undefined || !Number.isFinite(n) ? dflt : Math.max(lo, Math.min(hi, n))
+
 const clampInt = (n: number | undefined, lo: number, hi: number, dflt: number): number =>
   n === undefined || !Number.isFinite(n) ? dflt : Math.max(lo, Math.min(hi, Math.floor(n)))
 
@@ -41,7 +45,7 @@ export async function planExamPrep(
 ): Promise<PrepPlan | null> {
   if (Number.isNaN(exam.getTime()) || Number.isNaN(now.getTime())) return null
   const perDay = clampInt(options.perDay, 0, PREP_DEFAULTS.maxPerDay, PREP_DEFAULTS.perDay)
-  const minGain = Math.max(0, Math.min(0.5, options.minGain ?? PREP_DEFAULTS.minGain))
+  const minGain = finiteIn(options.minGain, 0, 0.5, PREP_DEFAULTS.minGain)
   const maxReviewsPerCard = clampInt(
     options.maxReviewsPerCard,
     1,
@@ -51,7 +55,7 @@ export async function planExamPrep(
   const rest = [
     ...new Set((options.restWeekdays ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)),
   ].sort()
-  const target = Math.max(0.5, Math.min(0.99, targetRecall))
+  const target = finiteIn(targetRecall, 0.5, 0.99, 0.85)
 
   const live = cards.filter((c) => !c.suspended)
   const seen = live.filter(isSeen)
