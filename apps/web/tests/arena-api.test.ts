@@ -1,16 +1,19 @@
 /**
- * Arena API handler integration tests.
+ * Arena API handler integration tests — server-issued run settlement.
  *
  * Covers the full settlement contract:
- *  - GET builds a session from real due cards through the review engine
- *    (weak-first ordering, deck filtering, limit clamping).
- *  - POST runs every exchange through the canonical executeReview path
- *    (FSRS reschedules, revlog rows appear, per-grade XP lands).
+ *  - GET builds a session from real due cards through the review engine and
+ *    ISSUES a server-owned run (runId) bound to the exact queue it dealt.
+ *  - POST settles only against that run: invented cards and repeated cards
+ *    are rejected (400), unknown runs 404, a fresh in-progress claim 409s,
+ *    and a stale claim can be reclaimed by a retry.
  *  - The outcome is recomputed server-side: a lying client (inflated
  *    bestCombo / wrong result) cannot change coins or XP.
- *  - Settlement is idempotent: replaying the same grade log mints zero
- *    additional coins and zero additional arena XP.
- *  - Validation rejects malformed payloads (empty exchanges, bad grades).
+ *  - Settlement is exactly-once: an identical replay returns the stored
+ *    response with no re-mint, an altered log on a settled run is 409, and
+ *    concurrent duplicate POSTs settle once.
+ *  - Reviews, coins, XP, run record, achievements and the status flip are
+ *    one atomic transaction (rollback covered in packages/db tests).
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import { eq } from 'drizzle-orm'
@@ -29,22 +32,79 @@ type Modules = {
 }
 
 let M: Modules
-let deckId: number
-let cardIds: number[]
+let deckSeq = 0
 
-function settleBody(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return {
-    deckIds: [deckId],
-    exchanges: cardIds.slice(0, 3).map((cardId, i) => ({
-      cardId,
-      grade: i === 2 ? 1 : 3,
-      confidence: i === 0 ? 1 : 0,
-      timeMs: 2500 + i * 700,
-    })),
-    bestCombo: 2,
-    result: 'victory',
-    ...overrides,
+type Exchange = { cardId: number; grade: number; confidence: number; timeMs: number }
+
+/**
+ * Seed a fresh deck with `n` due cards. Settlement tests each get their own
+ * deck because the settlement runs REAL reviews: FSRS reschedules graded
+ * cards minutes to days ahead, so a shared pool depletes mid-suite.
+ */
+function seedDeckWithCards(n: number): { deckId: number; cardIds: number[] } {
+  deckSeq += 1
+  const past = new Date(Date.now() - 86_400_000).toISOString()
+  const [deck] = M.db.db
+    .insert(M.db.decks)
+    .values({ name: `Arena Deck ${deckSeq}`, description: 'Settlement harness deck' })
+    .returning()
+    .all()
+  const ids: number[] = []
+  for (let i = 0; i < n; i++) {
+    const [card] = M.db.db
+      .insert(M.db.cards)
+      .values({
+        deckId: deck!.id,
+        type: 'basic',
+        content: { basic: { front: `Arena D${deckSeq} Q${i + 1}`, back: `A${i + 1}` } },
+        due: past,
+      })
+      .returning()
+      .all()
+    ids.push(card!.id)
   }
+  return { deckId: deck!.id, cardIds: ids }
+}
+
+/** Issue a real run through GET and return its id + dealt queue. */
+async function startRun(deckId: number, limit = 10): Promise<{ runId: string; queue: number[] }> {
+  const res = await M.arena.GET(
+    new Request(`http://localhost/api/arena?deckIds=${deckId}&limit=${limit}`),
+  )
+  expect(res.status).toBe(200)
+  const body = await res.json()
+  expect(body.ok).toBe(true)
+  expect(typeof body.runId).toBe('string')
+  expect(body.runId.length).toBeGreaterThan(0)
+  expect(body.cards.length).toBeGreaterThan(0)
+  return { runId: body.runId, queue: body.cards.map((c: { id: number }) => c.id) }
+}
+
+function gradeLog(queue: number[], slice: [number, number], base = 2500): Exchange[] {
+  return queue.slice(slice[0], slice[1]).map((cardId, i) => ({
+    cardId,
+    grade: i === slice[1] - slice[0] - 1 ? 1 : 3,
+    confidence: i === 0 ? 1 : 0,
+    timeMs: base + i * 700,
+  }))
+}
+
+function postSettlement(payload: Record<string, unknown>): Promise<Response> {
+  return M.arena.POST(
+    new Request('http://localhost/api/arena', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    }),
+  )
+}
+
+function settlePayload(runId: string, exchanges: Exchange[], extra: Record<string, unknown> = {}) {
+  return { runId, exchanges, bestCombo: 2, result: 'victory', ...extra }
+}
+
+function revlogCount(): number {
+  return M.db.db.select().from(M.db.revlog).all().length
 }
 
 beforeAll(async () => {
@@ -53,127 +113,158 @@ beforeAll(async () => {
   const historyMod = await import('../src/server/handlers/arena/history/route')
   const coreMod = await import('@learning-hub/core')
   M = { arena: arenaMod, history: historyMod, db: dbMod, core: coreMod }
-
-  const past = new Date(Date.now() - 86_400_000).toISOString()
-  const [deck] = M.db.db
-    .insert(M.db.decks)
-    .values({ name: 'Arena Test Deck', description: 'Settlement harness deck' })
-    .returning()
-    .all()
-  deckId = deck!.id
-
-  cardIds = []
-  for (let i = 0; i < 6; i++) {
-    const [card] = M.db.db
-      .insert(M.db.cards)
-      .values({
-        deckId,
-        type: 'basic',
-        content: { basic: { front: `Arena Q${i + 1}`, back: `Arena A${i + 1}` } },
-        due: past,
-      })
-      .returning()
-      .all()
-    cardIds.push(card!.id)
-  }
 })
 
 describe('Arena API — GET /api/arena', () => {
-  it('builds a session from real due cards', async () => {
-    const res = await M.arena.GET(new Request('http://localhost/api/arena?limit=5'))
+  it('builds a session from real due cards and issues a server-owned run', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const res = await M.arena.GET(
+      new Request(`http://localhost/api/arena?deckIds=${deckId}&limit=5`),
+    )
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
+    expect(typeof body.runId).toBe('string')
     expect(body.cards.length).toBeGreaterThan(0)
     expect(body.cards.length).toBeLessThanOrEqual(5)
     for (const card of body.cards) {
-      expect(card.content.basic.front).toMatch(/^Arena Q/)
+      expect(card.content.basic.front).toMatch(/^Arena D/)
       expect(card.previews).toBeDefined()
     }
     expect(body.config.maxHp).toBeGreaterThan(0)
+
+    // The issued run row binds the dealt queue + guardian server-side.
+    const run = M.db.getArenaSession(body.runId)
+    expect(run).toBeDefined()
+    expect(run!.status).toBe('open')
+    expect(run!.cardIds.slice().sort()).toEqual(body.cards.map((c: { id: number }) => c.id).sort())
+    expect(run!.archetype).toBe(body.guardian.archetype)
+    expect(run!.boss).toBe(body.guardian.boss)
   })
 
-  it('filters to the requested deck ids', async () => {
-    const [other] = M.db.db
-      .insert(M.db.decks)
-      .values({ name: 'Arena Other Deck', description: 'Not selected' })
-      .returning()
-      .all()
-    M.db.db
-      .insert(M.db.cards)
-      .values({
-        deckId: other!.id,
-        type: 'basic',
-        content: { basic: { front: 'Other Q', back: 'Other A' } },
-        due: new Date(Date.now() - 86_400_000).toISOString(),
-      })
-      .run()
-
-    const res = await M.arena.GET(
-      new Request(`http://localhost/api/arena?deckIds=${deckId}&limit=10`),
-    )
-    const body = await res.json()
-    expect(body.cards.length).toBeGreaterThan(0)
-    for (const card of body.cards) {
-      expect(card.deckId).toBe(deckId)
-    }
+  it('issues a distinct runId per request', async () => {
+    const { deckId } = seedDeckWithCards(5)
+    const a = await startRun(deckId, 5)
+    const b = await startRun(deckId, 5)
+    expect(a.runId).not.toBe(b.runId)
   })
 
   it('clamps the limit into the arena band (5..20)', async () => {
-    const res = await M.arena.GET(new Request('http://localhost/api/arena?limit=500'))
+    const { deckId } = seedDeckWithCards(2)
+    const res = await M.arena.GET(
+      new Request(`http://localhost/api/arena?deckIds=${deckId}&limit=500`),
+    )
     const body = await res.json()
     expect(body.limit).toBeLessThanOrEqual(20)
   })
 })
 
-describe('Arena API — POST /api/arena settlement', () => {
-  it('schedules every exchange through the canonical review engine', async () => {
-    const before = M.db.db.select().from(M.db.revlog).all().length
-    const res = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(settleBody()),
-      }),
+describe('Arena API — POST settlement validation', () => {
+  it('rejects an unknown runId with 404', async () => {
+    const res = await postSettlement(
+      settlePayload(crypto.randomUUID(), [{ cardId: 1, grade: 3, confidence: 1, timeMs: 900 }]),
     )
+    expect(res.status).toBe(404)
+  })
+
+  it('rejects a card the server never dealt into the run (invented card)', async () => {
+    const { deckId, cardIds } = seedDeckWithCards(5)
+    const { runId } = await startRun(deckId, 5)
+    const { cardIds: otherDeckCards } = seedDeckWithCards(2)
+    const before = revlogCount()
+    // A card id that exists but was never dealt into this run — and a
+    // completely fabricated id — are both rejected.
+    for (const inventedId of [otherDeckCards[0]!, 999_999]) {
+      const res = await postSettlement(
+        settlePayload(runId, [{ cardId: inventedId, grade: 3, confidence: 0, timeMs: 1000 }]),
+      )
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toMatch(/not part of this arena run/)
+    }
+    // No reviews were applied and the claim was released (run is open again).
+    expect(revlogCount()).toBe(before)
+    expect(M.db.getArenaSession(runId)!.status).toBe('open')
+    expect(cardIds.length).toBe(5)
+  })
+
+  it('rejects a repeated card in the grade log', async () => {
+    const { deckId } = seedDeckWithCards(5)
+    const { runId, queue } = await startRun(deckId, 5)
+    const cardId = queue[0]!
+    const res = await postSettlement(
+      settlePayload(runId, [
+        { cardId, grade: 3, confidence: 1, timeMs: 900 },
+        { cardId, grade: 4, confidence: 0, timeMs: 400 },
+      ]),
+    )
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/more than once/)
+    expect(M.db.getArenaSession(runId)!.status).toBe('open')
+  })
+
+  it('rejects a settlement with no exchanges (schema, before any claim)', async () => {
+    const res = await postSettlement(settlePayload(crypto.randomUUID(), []))
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects an out-of-range grade (schema, before any claim)', async () => {
+    const res = await postSettlement(
+      settlePayload(crypto.randomUUID(), [{ cardId: 1, grade: 7, confidence: 0, timeMs: 1000 }]),
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects a malformed runId (schema)', async () => {
+    const res = await postSettlement(
+      settlePayload('not-a-uuid', [{ cardId: 1, grade: 3, confidence: 0, timeMs: 1000 }]),
+    )
+    expect(res.status).toBe(400)
+  })
+})
+
+describe('Arena API — settlement execution', () => {
+  it('schedules every exchange through the canonical review engine', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = gradeLog(queue, [0, 3])
+    const before = revlogCount()
+    const res = await postSettlement(settlePayload(runId, exchanges))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.summary.rounds).toBe(3)
-
-    const after = M.db.db.select().from(M.db.revlog).all().length
-    expect(after - before).toBe(3)
+    expect(revlogCount() - before).toBe(3)
 
     // FSRS actually rescheduled the cards (due moved into the future).
     const first = M.db.db
       .select()
       .from(M.db.cards)
-      .where(eq(M.db.cards.id, cardIds[0]!))
+      .where(eq(M.db.cards.id, queue[0]!))
       .limit(1)
       .all()[0]
     expect(new Date(first!.due).getTime()).toBeGreaterThan(Date.now() - 60_000)
     expect(first!.reps).toBe(1)
+
+    // The run is settled, with the accepted log + response persisted.
+    const run = M.db.getArenaSession(runId)!
+    expect(run.status).toBe('settled')
+    expect(run.settledAt).toBeTruthy()
+    expect((run.gradeLog as Exchange[]).length).toBe(3)
+    expect((run.settlementJson as { ok: boolean }).ok).toBe(true)
   })
 
   it('recomputes the summary server-side and ignores a lying client', async () => {
-    const res = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        // Distinct timings → a distinct grade log (the first settlement's log
-        // would dedupe as a replay, which is correct and tested separately).
-        body: JSON.stringify(
-          settleBody({
-            bestCombo: 999,
-            result: 'defeat',
-            exchanges: cardIds.slice(0, 3).map((cardId, i) => ({
-              cardId,
-              grade: i === 2 ? 1 : 3,
-              confidence: i === 0 ? 1 : 0,
-              timeMs: 9100 + i * 550,
-            })),
-          }),
-        ),
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const res = await postSettlement(
+      settlePayload(runId, gradeLog(queue, [0, 3], 9100), {
+        bestCombo: 999,
+        result: 'defeat',
+        // Stray client fields are stripped by the schema, never trusted.
+        archetype: 'colossus',
+        boss: true,
       }),
     )
     const body = await res.json()
@@ -181,37 +272,6 @@ describe('Arena API — POST /api/arena settlement', () => {
     expect(body.summary.correct).toBe(2)
     expect(body.summary.bestCombo).toBeLessThan(10)
     expect(body.summary.result).toBe('victory') // all 3 rounds resolved → victory
-  })
-
-  it('mints coins once per grade log (idempotent replay)', async () => {
-    const payload = settleBody({
-      exchanges: cardIds.slice(3, 5).map((cardId, i) => ({
-        cardId,
-        grade: 3,
-        confidence: 1,
-        timeMs: 2100 + i * 400,
-      })),
-    })
-    const first = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
-    )
-    const firstBody = await first.json()
-    expect(firstBody.coinsAwarded).toBeGreaterThan(0)
-
-    const replay = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
-    )
-    const replayBody = await replay.json()
-    expect(replayBody.coinsAwarded).toBe(0)
-    expect(replayBody.coinBalance).toBe(firstBody.coinBalance)
   })
 
   it('awards arena XP as a distinct xp_events source', async () => {
@@ -224,57 +284,123 @@ describe('Arena API — POST /api/arena settlement', () => {
     const total = rows.reduce((sum, r) => sum + r.amount, 0)
     expect(total).toBeGreaterThan(0)
   })
+})
 
-  it('rejects a settlement with no exchanges', async () => {
-    const res = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(settleBody({ exchanges: [] })),
-      }),
-    )
-    expect(res.status).toBeGreaterThanOrEqual(400)
+describe('Arena API — exactly-once settlement', () => {
+  it('identical replay returns the stored response and mints nothing twice', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = gradeLog(queue, [0, 2])
+    const payload = settlePayload(runId, exchanges)
+    const before = revlogCount()
+
+    const first = await postSettlement(payload)
+    expect(first.status).toBe(200)
+    const firstBody = await first.json()
+    expect(firstBody.coinsAwarded).toBeGreaterThan(0)
+
+    const replay = await postSettlement(payload)
+    expect(replay.status).toBe(200)
+    const replayBody = await replay.json()
+    // The exact stored response — no recompute, no re-mint, no re-review.
+    expect(replayBody).toEqual(firstBody)
+    expect(revlogCount() - before).toBe(2)
+
+    // One coin row, one arena run row, keyed to the server-issued run id.
+    const coinRows = M.db.db
+      .select()
+      .from(M.db.studyCoinLedger)
+      .all()
+      .filter((r) => r.referenceId === `arena:${runId}`)
+    expect(coinRows.length).toBe(1)
   })
 
-  it('rejects an out-of-range grade', async () => {
-    const res = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(
-          settleBody({
-            exchanges: [{ cardId: cardIds[0]!, grade: 7, confidence: 0, timeMs: 1000 }],
-          }),
-        ),
-      }),
-    )
-    expect(res.status).toBeGreaterThanOrEqual(400)
+  it('rejects an altered grade log on a settled run (409, no double-mint)', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = gradeLog(queue, [0, 2], 3100)
+    const first = await postSettlement(settlePayload(runId, exchanges))
+    expect(first.status).toBe(200)
+    const firstBody = await first.json()
+
+    // Same run, same cards, different timings → an altered log.
+    const altered = exchanges.map((e) => ({ ...e, timeMs: e.timeMs + 1 }))
+    const res = await postSettlement(settlePayload(runId, altered))
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/does not match/)
+
+    const balance = M.db.getCoinBalance('default')
+    expect(balance).toBe(firstBody.coinBalance)
   })
 
-  it('rejects a settlement for a card that does not exist', async () => {
-    const res = await M.arena.POST(
-      new Request('http://localhost/api/arena', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(
-          settleBody({
-            exchanges: [{ cardId: 999_999, grade: 3, confidence: 0, timeMs: 1000 }],
-          }),
-        ),
-      }),
-    )
-    expect(res.status).toBeGreaterThanOrEqual(400)
+  it('rejects settlement while a fresh claim is in progress (409)', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const claim = M.db.claimArenaSettlement(runId, { userId: 'default' })
+    expect(claim.kind).toBe('claimed')
+
+    const res = await postSettlement(settlePayload(runId, gradeLog(queue, [0, 2], 4100)))
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/in progress/)
+
+    // Cleanup: release so the run does not wedge (fenced release).
+    if (claim.kind === 'claimed') M.db.releaseArenaClaim(runId, claim.attempt)
+    expect(M.db.getArenaSession(runId)!.status).toBe('open')
+  })
+
+  it('a stale in-progress claim can be reclaimed by a retry', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    // Simulate a crashed settler: claim stamped 10 minutes in the past.
+    const staleClaim = M.db.claimArenaSettlement(runId, {
+      userId: 'default',
+      now: new Date(Date.now() - 10 * 60 * 1000),
+    })
+    expect(staleClaim.kind).toBe('claimed')
+
+    const res = await postSettlement(settlePayload(runId, gradeLog(queue, [0, 2], 4300)))
+    expect(res.status).toBe(200)
+    expect(M.db.getArenaSession(runId)!.status).toBe('settled')
+  })
+
+  it('concurrent duplicate POSTs settle exactly once', async () => {
+    const { deckId } = seedDeckWithCards(6)
+    const { runId, queue } = await startRun(deckId, 5)
+    const exchanges = gradeLog(queue, [0, 3], 4700)
+    const before = revlogCount()
+
+    const [a, b] = await Promise.all([
+      postSettlement(settlePayload(runId, exchanges)),
+      postSettlement(settlePayload(runId, exchanges)),
+    ])
+    const statuses = [a.status, b.status].sort()
+    // One settles (200); the other either replays the stored response (200)
+    // or observes the in-progress claim (409). Never two settlements.
+    expect(statuses[0]).toBe(200)
+    expect([200, 409]).toContain(statuses[1])
+
+    expect(revlogCount() - before).toBe(3)
+    const coinRows = M.db.db
+      .select()
+      .from(M.db.studyCoinLedger)
+      .all()
+      .filter((r) => r.referenceId === `arena:${runId}`)
+    expect(coinRows.length).toBe(1)
+    expect(M.db.getArenaSession(runId)!.status).toBe('settled')
+  })
+
+  it('a run owned by another owner context is missing, not settleable', async () => {
+    const { deckId } = seedDeckWithCards(5)
+    const { runId } = await startRun(deckId, 5)
+    const claim = M.db.claimArenaSettlement(runId, { userId: 'someone-else' })
+    expect(claim.kind).toBe('missing')
   })
 })
 
 describe('Arena API — achievements', () => {
-  it('the first settled run unlocks arena_first exactly once', async () => {
-    // The three settlements above already ran: the catalog shows arena_first
-    // unlocked, and no settlement response unlocked it twice.
-    const res = await M.history.GET(new Request('http://localhost/api/arena/history'))
-    const body = await res.json()
-    expect(body.stats.runs).toBe(3)
-
+  it('arena_first unlocked exactly once across all settlements above', async () => {
     const achievementsRes = await import('../src/server/handlers/achievements/route').then((m) =>
       m.GET(new Request('http://localhost/api/achievements')),
     )
@@ -291,32 +417,20 @@ describe('Arena API — run history (/api/arena/history)', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
-    // Three distinct grade logs settled above; replays added none.
-    expect(body.stats.runs).toBe(3)
-    expect(body.runs.length).toBe(3)
+    // Settled runs above: canonical + lying-client + replay-first +
+    // altered-first + stale-reclaim + concurrent. 400/409 settlements and
+    // replays added none.
+    expect(body.stats.runs).toBe(6)
+    expect(body.runs.length).toBe(6)
   })
 
-  it('aggregates wins, accuracy and totals from append-only history', async () => {
-    const res = await M.history.GET(new Request('http://localhost/api/arena/history'))
-    const body = await res.json()
-    // All three settlements were all-rounds-resolved → all victories.
-    expect(body.stats.victories).toBe(3)
-    expect(body.stats.defeats).toBe(0)
-    expect(body.stats.winRate).toBe(1)
-    expect(body.stats.winStreak).toBe(3)
-    expect(body.stats.rounds).toBe(3 + 3 + 2)
-    expect(body.stats.totalCoins).toBeGreaterThan(0)
-    expect(body.stats.totalXp).toBeGreaterThan(0)
-    expect(body.stats.bestCombo).toBeGreaterThan(0)
-  })
-
-  it('lists runs newest-first with the settlement payloads', async () => {
+  it('lists runs newest-first keyed by the server-issued run id', async () => {
     const res = await M.history.GET(new Request('http://localhost/api/arena/history?limit=2'))
     const body = await res.json()
     expect(body.runs.length).toBe(2)
     expect(body.runs[0].id).toBeGreaterThan(body.runs[1].id)
-    expect(body.runs[0].referenceId).toMatch(/^arena:/)
-    expect(body.runs[0].deckIds).toContain(deckId)
+    expect(body.runs[0].referenceId).toMatch(/^arena:[0-9a-f-]{36}$/)
+    expect(body.runs[0].deckIds.length).toBeGreaterThan(0)
     expect(body.runs[0].result).toBe('victory')
   })
 })

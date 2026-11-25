@@ -1565,6 +1565,45 @@ export const studyCoinLedger = table(
 )
 
 /**
+ * Review Arena sessions — the server-issued run identity. GET /api/arena
+ * inserts one row bound to the exact queue it dealt; the settlement POST
+ * references it by id, and the status machine (open → settling → settled)
+ * makes reward settlement exactly-once even under retries and concurrent
+ * duplicates. `gradeLog`/`settlementJson` let an identical replay return the
+ * stored response while an altered log on a settled run is rejected.
+ */
+export const arenaSessions = table(
+  'arena_sessions',
+  {
+    id: text('id').primaryKey(), // server-issued uuid
+    userId: text('user_id').notNull().default('default'),
+    deckIds: text('deck_ids', { mode: 'json' }).$type<number[]>().notNull(),
+    cardIds: text('card_ids', { mode: 'json' }).$type<number[]>().notNull(),
+    archetype: text('archetype').notNull().default('warden'),
+    boss: integer('boss', { mode: 'boolean' }).notNull().default(false),
+    status: text('status').notNull().default('open'), // 'open' | 'settling' | 'settled'
+    /**
+     * Fencing token: increments on every settlement claim. The settlement
+     * transaction commits its status flip with WHERE settleAttempt = the
+     * claimant's token, so the original claimant of a stale-then-reclaimed
+     * run can never commit over the new owner.
+     */
+    settleAttempt: integer('settle_attempt').notNull().default(0),
+    gradeLog: text('grade_log', { mode: 'json' }).$type<unknown[]>(),
+    settlementJson: text('settlement_json', { mode: 'json' }).$type<Record<string, unknown>>(),
+    settlingStartedAt: text('settling_started_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    settledAt: text('settled_at'),
+  },
+  (t) => [
+    index('arena_sessions_user_idx').on(t.userId),
+    index('arena_sessions_status_idx').on(t.status),
+  ],
+)
+
+/**
  * Review Arena run history — one row per settled session. `referenceId` is
  * the settlement idempotency key (FNV-1a over the grade log, shared with the
  * coin ledger), so a replayed settlement can never double-record a run.

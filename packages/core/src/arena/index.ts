@@ -398,14 +398,16 @@ export type ArenaGradeEvent = z.infer<typeof arenaGradeEventSchema>
 
 /** Client → server: finished session, for reward settlement + telemetry. */
 export const arenaSettlementSchema = z.object({
-  deckIds: z.array(z.number().int().positive()).min(1),
+  /**
+   * Server-issued run identity (from GET /api/arena): the settlement is
+   * bound to the queue the server actually dealt. The server owns the run's
+   * guardian/config; client-supplied score, combo, result and archetype
+   * fields are telemetry, never integrity inputs.
+   */
+  runId: z.string().uuid(),
   exchanges: z.array(arenaGradeEventSchema).min(1).max(200),
   bestCombo: z.number().int().min(0),
   result: z.enum(['victory', 'defeat']),
-  /** Guardian faced; the server recomputes with the SAME guardian tuning. */
-  archetype: guardianArchetypeSchema.optional().default('warden'),
-  /** Run length decides boss mode server-side; this flag is telemetry. */
-  boss: z.boolean().optional(),
 })
 export type ArenaSettlement = z.infer<typeof arenaSettlementSchema>
 
