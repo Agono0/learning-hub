@@ -321,7 +321,7 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
                 <Users className="h-4 w-4" /> Join Room
               </Button>
               {joinRefused && (
-                <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+                <p role="alert" className="text-xs text-danger-text">
                   {joinRefused}
                 </p>
               )}
