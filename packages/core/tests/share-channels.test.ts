@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest'
 import {
   acceptChannelVersion,
   applyChannelUpdate,
+  canSubscribe,
+  issueInviteToken,
+  verifyInviteToken,
   createChannel,
   hasPendingUpdate,
   publishUpdate,
@@ -196,5 +199,26 @@ describe('verifyManifest', () => {
     const report = verifyManifest(tampered)
     expect(report.ok).toBe(false)
     expect(report.badVersions).toEqual([1])
+  })
+})
+
+describe('invite tokens', () => {
+  it('issues and verifies deterministic tokens', () => {
+    const t = issueInviteToken('ch-bio-101', 'creator-secret')
+    expect(verifyInviteToken('ch-bio-101', 'creator-secret', t)).toBe(true)
+    expect(verifyInviteToken('ch-bio-101', 'wrong-secret', t)).toBe(false)
+    expect(verifyInviteToken('ch-other', 'creator-secret', t)).toBe(false)
+  })
+
+  it('link channels accept anyone; invite channels require a token', () => {
+    const link = manifestWithTwo()
+    expect(canSubscribe(link).allowed).toBe(true)
+    const invite = { ...link, visibility: 'invite' as const }
+    expect(canSubscribe(invite).allowed).toBe(false)
+    expect(canSubscribe(invite).reason).toMatch(/invite-only/)
+    const token = issueInviteToken(invite.channelId, 'creator-secret')
+    expect(canSubscribe(invite, token).allowed).toBe(true)
+    expect(canSubscribe(invite, 'bogus-token', 'creator-secret').allowed).toBe(false)
+    expect(canSubscribe(invite, token, 'creator-secret').allowed).toBe(true)
   })
 })

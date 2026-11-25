@@ -60,6 +60,7 @@ import {
   Route,
   Scale,
   Search as SearchIcon,
+  Share2,
   Settings,
   Shapes,
   ShieldCheck,
@@ -383,6 +384,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: '/search', label: 'Search', icon: SearchIcon },
       { href: '/notes', label: 'Notes', icon: PenTool },
+      { href: '/shared', label: 'Shared Materials', icon: Share2, shortLabel: 'Shared' },
       { href: '/graph', label: 'Graph', icon: Network },
       { href: '/canvas', label: 'Canvas', icon: Images },
       { href: '/palace', label: 'Palace', icon: Map },

@@ -330,3 +330,50 @@ export function verifyManifest(manifest: ChannelManifest): { ok: boolean; badVer
   }
   return { ok: bad.length === 0, badVersions: bad }
 }
+
+/* ==========================================================================
+ * INVITE TOKENS (invite-only channels)
+ * ========================================================================== */
+
+/**
+ * Issue an invite token for an invite-only channel. The token derives from
+ * the channel id plus the creator's invite secret, so the creator can rotate
+ * access by changing the secret (which invalidates all outstanding tokens).
+ * Deterministic and offline-verifiable, matching the manual-mode guarantee.
+ */
+export function issueInviteToken(channelId: string, inviteSecret: string): string {
+  return computeEnvelopeChecksum(`lh-invite:${channelId}:${inviteSecret}`)
+}
+
+/** Verify an invite token presented by a subscriber. */
+export function verifyInviteToken(channelId: string, inviteSecret: string, token: string): boolean {
+  return issueInviteToken(channelId, inviteSecret) === token.trim()
+}
+
+/**
+ * Gate a subscription attempt on the channel's visibility. Link channels
+ * accept anyone holding the manifest; invite channels require a valid token.
+ * Returns a human-readable reason when refused.
+ */
+export function canSubscribe(
+  manifest: ChannelManifest,
+  inviteToken?: string,
+  inviteSecret?: string,
+): { allowed: boolean; reason?: string } {
+  if (manifest.visibility === 'link') return { allowed: true }
+  if (!inviteToken) {
+    return {
+      allowed: false,
+      reason: 'This channel is invite-only; ask the creator for an invite token.',
+    }
+  }
+  if (!inviteSecret) {
+    // Subscriber-side check: without the creator's secret we cannot verify
+    // locally, so the presence of a token is all the client can assert. The
+    // creator verifies on their side with the secret.
+    return { allowed: true }
+  }
+  return verifyInviteToken(manifest.channelId, inviteSecret, inviteToken)
+    ? { allowed: true }
+    : { allowed: false, reason: 'Invite token does not match this channel.' }
+}
