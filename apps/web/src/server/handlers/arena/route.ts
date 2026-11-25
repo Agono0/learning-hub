@@ -22,6 +22,7 @@ import {
   db,
   decks,
   executeReview,
+  getArenaStats,
   getCoinBalance,
   recordArenaRun,
   recordCoinTransaction,
@@ -31,8 +32,12 @@ import {
 } from '@learning-hub/db'
 import {
   ARENA_DEFAULTS,
+  BOSS_CHALLENGE_THRESHOLD,
+  GUARDIANS,
   arenaSettlementSchema,
   buildSession,
+  guardianConfig,
+  guardianForRun,
   interleaveBySemanticDistance,
   previewGrades,
   summarizeGradeLog,
@@ -195,11 +200,24 @@ export async function GET(req: Request) {
     }),
   )
 
+  // The guardian rotates deterministically over the player's run count, so
+  // the client and the settlement recompute always agree on the tuning.
+  const runNumber = getArenaStats().runs
+  const archetype = guardianForRun(runNumber)
+  const boss = cardsWithPreviews.length >= BOSS_CHALLENGE_THRESHOLD
+  const tunedConfig = guardianConfig(archetype, ARENA_DEFAULTS)
+
   return Response.json({
     ok: true,
     cards: cardsWithPreviews,
     limit,
-    config: ARENA_DEFAULTS,
+    config: tunedConfig,
+    guardian: {
+      archetype,
+      name: GUARDIANS[archetype].name,
+      tagline: GUARDIANS[archetype].tagline,
+      boss,
+    },
   })
 }
 
@@ -221,9 +239,11 @@ export const POST = withRoute(async (req: Request) => {
     reviewResults.push(await executeReview(payload))
   }
 
-  // 2) Server-side outcome: the summary is recomputed from the raw grade log,
-  //    never from client-supplied score/combo/result fields.
-  const summary = summarizeGradeLog(body.exchanges)
+  // 2) Server-side outcome: the summary is recomputed from the raw grade log
+  //    with the SAME guardian tuning — never from client-supplied
+  //    score/combo/result fields.
+  // summarizeGradeLog applies guardianConfig internally; pass the base config.
+  const summary = summarizeGradeLog(body.exchanges, ARENA_DEFAULTS, body.archetype)
 
   // 3) Bonus coins: minted at most once per grade log. The referenceId is a
   //    deterministic FNV-1a hash of the full exchange list, so a retried
@@ -278,6 +298,8 @@ export const POST = withRoute(async (req: Request) => {
   recordArenaRun({
     deckIds: body.deckIds,
     result: summary.result,
+    archetype: body.archetype,
+    boss: body.exchanges.length >= BOSS_CHALLENGE_THRESHOLD,
     rounds: summary.rounds,
     correct: summary.correct,
     accuracy: summary.accuracy,

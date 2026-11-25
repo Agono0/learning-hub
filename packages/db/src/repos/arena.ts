@@ -18,6 +18,8 @@ export interface ArenaRunRecord {
   userId?: string
   deckIds: number[]
   result: 'victory' | 'defeat'
+  archetype?: 'warden' | 'colossus' | 'shade'
+  boss?: boolean
   rounds: number
   correct: number
   accuracy: number
@@ -60,6 +62,8 @@ export function recordArenaRun(record: ArenaRunRecord, db: LearningHubDB = getDb
       userId: record.userId ?? 'default',
       deckIds: record.deckIds,
       result: record.result,
+      archetype: record.archetype ?? 'warden',
+      boss: record.boss ?? false,
       rounds: record.rounds,
       correct: record.correct,
       accuracy: record.accuracy,

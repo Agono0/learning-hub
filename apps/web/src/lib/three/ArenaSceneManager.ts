@@ -63,6 +63,21 @@ const PALETTE = {
   defeat: 0xd96a6a,
 }
 
+/** Per-archetype guardian look: body/trim colors, eye color, scale. */
+const GUARDIAN_LOOKS: Record<
+  'warden' | 'colossus' | 'shade',
+  { body: number; trim: number; eye: number; scale: number }
+> = {
+  warden: {
+    body: PALETTE.guardian,
+    trim: PALETTE.guardianTrim,
+    eye: PALETTE.guardianEye,
+    scale: 1,
+  },
+  colossus: { body: 0x4a5568, trim: 0x6b7a94, eye: 0xffb84d, scale: 1.22 },
+  shade: { body: 0x2d3a4a, trim: 0x3f5a6e, eye: 0x5ce8d5, scale: 0.88 },
+}
+
 interface Particle {
   mesh: THREE.Mesh
   velocity: THREE.Vector3
@@ -125,6 +140,9 @@ export class ArenaSceneManager {
   private moodGlow: THREE.PointLight
   private endState: 'none' | 'victory' | 'defeat' = 'none'
   private endGlow = 0
+  private archetype: 'warden' | 'colossus' | 'shade' = 'warden'
+  private enraged = false
+  private enrageGlow = 0
 
   constructor(config: ArenaSceneConfig) {
     this.profile = QUALITY_PROFILES[config.quality ?? 'medium']
@@ -470,6 +488,22 @@ export class ArenaSceneManager {
     this.cameraShake = Math.min(1, this.cameraShake + 1)
   }
 
+  /** Restyle the guardian for the run's archetype (colors + scale). */
+  setArchetype(archetype: 'warden' | 'colossus' | 'shade'): void {
+    this.archetype = archetype
+    const look = GUARDIAN_LOOKS[archetype]
+    ;(this.guardianBody.material as THREE.MeshStandardMaterial).color.setHex(look.body)
+    for (const eye of this.guardianEyes) {
+      ;(eye.material as THREE.MeshBasicMaterial).color.setHex(look.eye)
+    }
+    this.guardian.scale.setScalar(look.scale)
+  }
+
+  /** Boss phase two: the guardian burns red. */
+  setEnraged(enraged: boolean): void {
+    this.enraged = enraged
+  }
+
   /** Restore the opening tableau for a fresh session. */
   reset(): void {
     this.guardianProgress = 0
@@ -479,6 +513,8 @@ export class ArenaSceneManager {
     this.shieldTarget = 0
     this.endState = 'none'
     this.endGlow = 0
+    this.enraged = false
+    this.enrageGlow = 0
     this.cameraShake = 0
     for (const p of this.particles) {
       p.active = false
@@ -571,8 +607,16 @@ export class ArenaSceneManager {
     const sink = this.guardianDeath * 3.2
     this.guardian.position.y = this.guardianBaseY + Math.sin(t * 1.4) * 0.06 - slump * 0.3 - sink
     this.guardian.rotation.x = slump * 0.22 + this.guardianDeath * 0.5
-    const guardianScale = 1 - this.guardianDeath * 0.35
+    const baseScale = GUARDIAN_LOOKS[this.archetype].scale
+    const guardianScale = baseScale * (1 - this.guardianDeath * 0.35)
     this.guardian.scale.setScalar(Math.max(0.05, guardianScale))
+
+    // Enrage: eyes burn and the body smolders.
+    if (this.enraged && this.enrageGlow < 1) {
+      this.enrageGlow = Math.min(1, this.enrageGlow + dt * 1.6)
+    } else if (!this.enraged && this.enrageGlow > 0) {
+      this.enrageGlow = Math.max(0, this.enrageGlow - dt * 2.4)
+    }
 
     // Hit flash: lerp the body emissive back to zero.
     if (this.guardianFlash > 0) {
@@ -582,13 +626,20 @@ export class ArenaSceneManager {
     bodyMat.emissive.setHex(PALETTE.strike)
     bodyMat.emissiveIntensity = this.guardianFlash * 0.8
 
-    // Eyes dim as the queue clears.
+    // Eyes dim as the queue clears; enrage overrides with a burn.
+    const look = GUARDIAN_LOOKS[this.archetype]
+    const eyeColor = new THREE.Color(look.eye).lerp(new THREE.Color(0xff3b1f), this.enrageGlow)
     for (const eye of this.guardianEyes) {
       const mat = eye.material as THREE.MeshBasicMaterial
-      mat.color.setHex(PALETTE.guardianEye)
+      mat.color.copy(eyeColor)
       const dim = 1 - this.guardianProgress * 0.6 - this.guardianDeath
-      mat.color.multiplyScalar(Math.max(0.15, dim))
+      mat.color.multiplyScalar(Math.max(0.15, dim + this.enrageGlow * 0.4))
     }
+    bodyMat.emissive.lerp(new THREE.Color(0x8a1f0f), this.enrageGlow * 0.5)
+    bodyMat.emissiveIntensity = Math.max(
+      this.guardianFlash * 0.8,
+      this.enrageGlow * (0.35 + Math.sin(t * 6) * 0.1),
+    )
 
     // Player idle sway + counter flash.
     this.player.position.y = Math.sin(t * 1.9 + 1) * 0.04

@@ -1875,6 +1875,8 @@ export const arenaRuns = table(
     userId: text('user_id').notNull().default('default'),
     deckIds: text('deck_ids', { mode: 'json' }).$type<number[]>().notNull(),
     result: text('result').notNull(), // 'victory' | 'defeat'
+    archetype: text('archetype').notNull().default('warden'),
+    boss: integer('boss', { mode: 'boolean' }).notNull().default(false),
     rounds: integer('rounds').notNull(),
     correct: integer('correct').notNull(),
     accuracy: real('accuracy').notNull(),
