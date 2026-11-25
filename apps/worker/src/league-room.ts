@@ -23,6 +23,7 @@ import {
   LeagueSchema,
   applyVerifiedMutation,
   createAuthorityState,
+  digestInviteCode,
   leaguePlausibilityReport,
   ledgerOf,
   leagueSigningMessage,
@@ -45,12 +46,21 @@ export interface LeagueRoomDeps {
   verify?: SignatureVerifier
 }
 
+function countLiveInvites(state: AuthorityState, now: number): number {
+  return Object.values(state.invites).filter(
+    (i) => !i.revoked && now < i.expiresAt && i.uses.length < i.maxUses,
+  ).length
+}
+
 /** What a client may see: standings and duel progress, never accepted answers. */
-export function publicLeagueView(state: AuthorityState) {
+export function publicLeagueView(state: AuthorityState, now: number = Date.now()) {
   return {
     ok: true as const,
     league: state.league,
     aliases: state.aliases,
+    /** Policy and a live-invite count only: digests and uses stay private. */
+    inviteOnly: state.inviteOnly,
+    liveInvites: countLiveInvites(state, now),
     duels: Object.values(state.duels).map((d) => ({
       id: d.id,
       playerA: d.playerA,
@@ -97,6 +107,7 @@ export function spectatorView(state: AuthorityState) {
     round: state.league.currentRound,
     practiceOnly: true as const,
     members,
+    inviteOnly: state.inviteOnly,
     duelStatus,
     acceptedMutations: state.accepted,
   }
@@ -138,7 +149,7 @@ export class LeagueRoom {
     if (request.method === 'GET' && url.pathname.endsWith('/state')) {
       if (!this.authority)
         return Response.json({ error: 'league not initialized' }, { status: 404 })
-      return Response.json(publicLeagueView(this.authority))
+      return Response.json(publicLeagueView(this.authority, this.now()))
     }
 
     if (request.method === 'GET' && url.pathname.endsWith('/spectate')) {
@@ -209,7 +220,7 @@ export class LeagueRoom {
     const next = createAuthorityState(league)
     await this.state.storage.put(STATE_KEY, next)
     this.authority = next
-    return Response.json(publicLeagueView(next), { status: 201 })
+    return Response.json(publicLeagueView(next, this.now()), { status: 201 })
   }
 
   private async mutate(request: Request): Promise<Response> {
@@ -237,7 +248,13 @@ export class LeagueRoom {
       return Response.json({ ok: false, code: verified.code }, { status })
     }
 
-    const reduced = applyVerifiedMutation(current, verified, now)
+    // The reducer is synchronous, so the join's secret is digested here.
+    // Only the digest reaches the reducer, state and storage.
+    const inviteDigest =
+      verified.mutation.type === 'join' && verified.mutation.invite
+        ? await digestInviteCode(verified.mutation.invite)
+        : undefined
+    const reduced = applyVerifiedMutation(current, verified, now, { inviteDigest })
     if (!reduced.ok) return Response.json({ ok: false, code: reduced.code }, { status: 409 })
 
     // Persist first; memory only advances once storage accepted the write.
