@@ -169,11 +169,11 @@ export class ArenaSceneManager {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.05
+    this.renderer.toneMappingExposure = 1.3
 
     this.scene = new THREE.Scene()
     this.scene.background = new THREE.Color(PALETTE.sky)
-    this.scene.fog = new THREE.Fog(PALETTE.fog, 18, 46)
+    this.scene.fog = new THREE.Fog(PALETTE.fog, 24, 56)
 
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120)
     this.camera.position.set(0, 4.4, 12.5)
@@ -202,10 +202,10 @@ export class ArenaSceneManager {
   // ─── Construction ────────────────────────────────────────────────────────
 
   private buildLighting(): void {
-    const ambient = new THREE.AmbientLight(0x8d84a8, 0.5)
+    const ambient = new THREE.AmbientLight(0xa49bc0, 0.95)
     this.scene.add(ambient)
 
-    const key = new THREE.DirectionalLight(0xcfd8ff, 1.1)
+    const key = new THREE.DirectionalLight(0xdfe6ff, 1.6)
     key.position.set(-6, 12, 6)
     key.castShadow = true
     key.shadow.mapSize.set(this.profile.shadowMapSize, this.profile.shadowMapSize)
@@ -215,6 +215,11 @@ export class ArenaSceneManager {
     key.shadow.camera.bottom = -14
     key.shadow.bias = -0.0004
     this.scene.add(key)
+
+    // Soft front fill so the guardian and hero face the lens, not just the rim.
+    const fill = new THREE.DirectionalLight(0xffffff, 0.7)
+    fill.position.set(0, 5, 14)
+    this.scene.add(fill)
 
     const rim = new THREE.DirectionalLight(0xffb37a, 0.35)
     rim.position.set(6, 4, -8)
@@ -272,6 +277,9 @@ export class ArenaSceneManager {
       const angle = (i / torchCount) * Math.PI * 2 + Math.PI / torchCount
       const x = Math.cos(angle) * 8.6
       const z = Math.sin(angle) * 8.6
+      // Keep the camera's line of sight (and the guardian's backdrop) clear:
+      // no pillar stands on the front/back axis between lens and action.
+      if (Math.abs(x) < 2.6) continue
 
       const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 5.4, 8), pillarMat)
       pillar.position.set(x, 2.7, z)

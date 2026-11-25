@@ -107,7 +107,11 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   // Settlement: victory results from the server summary.
   await expectSettled(page, track)
   await expect(page.getByTestId('arena-result-badge')).toHaveText('Victory')
-  await page.screenshot({ path: 'test-results/shots/3-victory.png', fullPage: true })
+  // Normal-viewport shot after the transient toast clears (not fullPage), so
+  // overlap and fixed-sidebar behaviour are what a user would actually see.
+  await page.waitForTimeout(7_000)
+  await page.getByTestId('arena-results').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/shots/3-victory.png' })
   await expect(page.getByTestId('results-score')).toBeVisible()
   await expect(page.getByTestId('results-xp')).toContainText('XP')
   await expect(page.getByTestId('results-coins')).toContainText('+')
@@ -158,7 +162,9 @@ test('arena defeat: grading Again until HP runs out ends the run early', async (
     page.getByTestId('arena-result-badge'),
     `defeat expected before the queue emptied (last HUD label: ${queueLabel}; ${track.lastReport()})`,
   ).toHaveText('Defeat')
-  await page.screenshot({ path: 'test-results/shots/4-defeat.png', fullPage: true })
+  await page.waitForTimeout(7_000)
+  await page.getByTestId('arena-results').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/shots/4-defeat.png' })
 })
 
 test('reduced motion: the canvas never mounts and the DOM loop still completes', async ({
@@ -186,6 +192,26 @@ test('reduced motion: the canvas never mounts and the DOM loop still completes',
   await page.getByTestId('arena-reveal').click()
   await page.getByTestId('arena-grade-4').click()
   await expect(page.getByTestId('guardian-progress-label')).toContainText('Round 2 of 6')
+  await page.screenshot({ path: 'test-results/shots/6-reduced-motion.png' })
+})
+
+test('narrow viewport: the session stays playable and the stage is visible', async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const deckId = await seedArenaDeck(request)
+  await page.goto('/arena-3d')
+  await expect(page.getByRole('heading', { name: 'Review Arena', level: 1 })).toBeVisible({
+    timeout: 60_000,
+  })
+  await page.getByTestId(`arena-deck-${deckId}`).click()
+  await page.getByTestId('arena-start').click()
+  await expect(page.getByTestId('arena-canvas')).toBeVisible()
+  await page.waitForTimeout(1500)
+  await page.screenshot({ path: 'test-results/shots/5-narrow-session.png' })
+  await page.getByTestId('arena-reveal').click()
+  await expect(page.getByTestId('arena-grade-3')).toBeVisible()
 })
 
 test('empty selection shows a recoverable notice instead of a broken session', async ({
