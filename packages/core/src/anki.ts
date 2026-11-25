@@ -695,8 +695,11 @@ interface AnkiModel {
  * collection (`collection.anki2` / `collection.anki21`). Maps the standard
  * models — `Basic`, `Basic (and reversed card)` (→ two reciprocal basic cards)
  * and `Cloze` (type-1 models, `{{cN::…}}` syntax is identical to ours) — onto
- * basic/cloze ParsedCards. Notes on any other model are skipped and their model
- * names reported in `skippedModels`. Media and scheduling state are ignored.
+ * basic/cloze ParsedCards. Other normal (type 0) models go through
+ * `anki-import/mapUnmatchedModel`, which maps plain-text templates onto basic cards
+ * from the existing cards(nid, ord) rows, all-or-nothing per model. Every model it
+ * refuses is reported by plain name in `skippedModels` (typed reasons only through
+ * `options.onDiagnostic`). Media and scheduling state are ignored.
  *
  * The database is opened through `options.openDatabase` when given (portable
  * runtimes); otherwise the Node default lazily imports better-sqlite3 — the
