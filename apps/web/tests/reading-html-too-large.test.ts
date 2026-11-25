@@ -79,7 +79,7 @@ describe('oversized HTML maps to 422, not 400 or 500', () => {
   it('reading upload: an oversized chapter is a 422', async () => {
     const big = epubWithChapter(chapterOf(MAX_CHAPTER_HTML_CHARS + 10))
     const form = new FormData()
-    form.set('file', new File([big], 'book.epub', { type: 'application/epub+zip' }))
+    form.set('file', new File([new Uint8Array(big)], 'book.epub', { type: 'application/epub+zip' }))
     const res = await readingPost(
       new Request('http://localhost/api/reading', { method: 'POST', body: form }),
     )
