@@ -22,6 +22,7 @@ import { ideasRoutes } from '../../../apps/server/src/routes/ideas'
 import { leaguesRoutes } from '../../../apps/server/src/routes/leagues'
 import { interleavingRoutes } from '../../../apps/server/src/routes/interleaving'
 import { notesRoutes } from '../../../apps/server/src/routes/notes'
+import { embodiedLearningRoutes } from '../../../apps/server/src/routes/embodied-learning'
 import { implementationIntentionRoutes } from '../../../apps/server/src/routes/implementation-intentions'
 import { feedbackRoutes } from '../../../apps/server/src/routes/feedback'
 import { shareChannelRoutes } from '../../../apps/server/src/routes/share-channels'
@@ -42,6 +43,7 @@ const AREA_TABLES = [
   ['focus', focusRoutes],
   ['habits', habitsRoutes],
   ['notes', notesRoutes],
+  ['embodied-learning', embodiedLearningRoutes],
   ['implementation-intentions', implementationIntentionRoutes],
   ['feedback', feedbackRoutes],
   ['share-channels', shareChannelRoutes],
