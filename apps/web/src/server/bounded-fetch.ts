@@ -215,6 +215,13 @@ export async function boundedFetchText(
   } catch (err) {
     if (err instanceof BoundedFetchError) throw err
     if (signal.aborted) throw new BoundedFetchError('timeout', 'The request timed out')
-    throw new BoundedFetchError('network', err instanceof Error ? err.message : 'network error')
+    // Never echo the underlying message: it can carry the host or URL (secret iCal tokens).
+    const code = (err as { code?: unknown } | null)?.code
+    throw new BoundedFetchError(
+      'network',
+      typeof code === 'string' && /^[A-Z0-9_]+$/.test(code)
+        ? `The request failed (${code})`
+        : 'The request failed',
+    )
   }
 }

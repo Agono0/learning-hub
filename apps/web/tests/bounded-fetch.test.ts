@@ -203,6 +203,18 @@ describe('handlers use the bound', () => {
     ).toBe(413)
   })
 
+  it('network errors never echo the URL, path or query token', async () => {
+    const secret = 'https://calendar.example.com/ical/SECRETTOKEN123/basic.ics?key=QUERYSECRET'
+    const fetchFn = async () => {
+      throw Object.assign(new Error(`connect failed for ${secret}`), { code: 'ECONNRESET' })
+    }
+    const err = await boundedFetchText(secret, { ...base, fetchFn }).catch((e: Error) => e)
+    expect(err).toBeInstanceOf(BoundedFetchError)
+    const msg = (err as Error).message
+    expect(msg).toBe('The request failed (ECONNRESET)')
+    expect(msg).not.toMatch(/SECRETTOKEN|QUERYSECRET|calendar\.example/)
+  })
+
   it('http is allowed for article ingest only (preserved), never for calendar import', async () => {
     const f = vi.fn(async () => ok('<html><body><p>short</p></body></html>'))
     vi.stubGlobal('fetch', f)
