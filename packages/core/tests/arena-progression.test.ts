@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   PRACTICE_RANKS,
-  buildActivityHeatmap,
+  buildArenaActivityHeatmap,
   practiceRank,
   runPracticePoints,
   type ProgressionRun,
@@ -70,12 +70,12 @@ describe('practiceRank', () => {
   })
 })
 
-describe('buildActivityHeatmap', () => {
+describe('buildArenaActivityHeatmap', () => {
   const now = new Date('2026-11-25T12:00:00.000Z')
   const at = (d: string) => ({ createdAt: `${d}T09:00:00.000Z` })
 
   it('returns span days oldest first ending today', () => {
-    const h = buildActivityHeatmap([], now, 7)
+    const h = buildArenaActivityHeatmap([], now, 7)
     expect(h.days).toHaveLength(7)
     expect(h.days[0]!.date).toBe('2026-11-19')
     expect(h.days[6]!.date).toBe('2026-11-25')
@@ -92,7 +92,7 @@ describe('buildActivityHeatmap', () => {
       at('2026-11-23'),
       at('2026-11-23'),
     ]
-    const h = buildActivityHeatmap(runs, now, 7)
+    const h = buildArenaActivityHeatmap(runs, now, 7)
     const byDate = Object.fromEntries(h.days.map((d) => [d.date, d]))
     expect(byDate['2026-11-25']!.runs).toBe(4)
     expect(byDate['2026-11-25']!.level).toBe(4)
@@ -101,30 +101,34 @@ describe('buildActivityHeatmap', () => {
     expect(h.busiestDay).toEqual({ date: '2026-11-25', runs: 4 })
   })
   it('current streak includes today when played', () => {
-    const h = buildActivityHeatmap([at('2026-11-25'), at('2026-11-24'), at('2026-11-23')], now, 14)
+    const h = buildArenaActivityHeatmap(
+      [at('2026-11-25'), at('2026-11-24'), at('2026-11-23')],
+      now,
+      14,
+    )
     expect(h.currentStreak).toBe(3)
   })
   it('streak stays alive through yesterday when today is empty', () => {
-    const h = buildActivityHeatmap([at('2026-11-24'), at('2026-11-23')], now, 14)
+    const h = buildArenaActivityHeatmap([at('2026-11-24'), at('2026-11-23')], now, 14)
     expect(h.currentStreak).toBe(2)
   })
   it('streak is 0 when a full day was skipped', () => {
-    const h = buildActivityHeatmap([at('2026-11-23')], now, 14)
+    const h = buildArenaActivityHeatmap([at('2026-11-23')], now, 14)
     expect(h.currentStreak).toBe(0)
   })
   it('longest streak spans gaps correctly', () => {
     const runs = [at('2026-11-10'), at('2026-11-11'), at('2026-11-12'), at('2026-11-20')]
-    const h = buildActivityHeatmap(runs, now, 30)
+    const h = buildArenaActivityHeatmap(runs, now, 30)
     expect(h.longestStreak).toBe(3)
     expect(h.activeDays).toBe(4)
   })
   it('ignores runs outside the window and invalid dates', () => {
-    const h = buildActivityHeatmap([at('2026-01-01'), { createdAt: 'nope' }], now, 7)
+    const h = buildArenaActivityHeatmap([at('2026-01-01'), { createdAt: 'nope' }], now, 7)
     expect(h.totalRuns).toBe(0)
   })
   it('clamps absurd spans', () => {
-    expect(buildActivityHeatmap([], now, 100000).days).toHaveLength(366)
-    expect(buildActivityHeatmap([], now, 0).days).toHaveLength(1)
+    expect(buildArenaActivityHeatmap([], now, 100000).days).toHaveLength(366)
+    expect(buildArenaActivityHeatmap([], now, 0).days).toHaveLength(1)
   })
 })
 
