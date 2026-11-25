@@ -109,7 +109,9 @@ test.describe('leagues season lifecycle', () => {
     await expect(page.getByTestId('duel-list').getByText('won by amr')).toBeVisible()
   })
 
-  test('player profile shows duel record and Elo trajectory', async ({ page }) => {
+  test('player profile shows the friendly duel record (no Elo in practice mode)', async ({
+    page,
+  }) => {
     await page.goto('/leagues')
     await page.getByTestId(`league-card-${LEAGUE}`).click()
     await expect(page.getByTestId('standings-bronze')).toBeVisible({ timeout: 60_000 })
@@ -118,7 +120,8 @@ test.describe('leagues season lifecycle', () => {
     await page.getByTestId('standings-row-amr').click()
     await expect(page.getByTestId('player-profile')).toBeVisible()
     await expect(page.getByTestId('profile-record')).toContainText('1W · 0D · 0L')
-    await expect(page.getByTestId('profile-elo-sparkline')).toBeVisible()
+    // practice mode: no ranked trajectory is shown at all
+    await expect(page.getByTestId('profile-elo-sparkline')).toHaveCount(0)
     await expect(page.getByTestId('profile-duels')).toContainText('duel-1')
 
     // clicking the row again collapses the panel
@@ -268,9 +271,10 @@ test.describe('leagues season lifecycle', () => {
     const digest = page.getByTestId('league-digest')
     await expect(digest).toBeVisible({ timeout: 60_000 })
     await expect(digest.getByText('Weekly digest')).toBeVisible()
-    // duel-1 completed earlier in the lifecycle, so amr gained Elo this week
-    await expect(page.getByTestId('digest-elo-movers').getByText(/amr \+/)).toBeVisible()
-    await expect(page.getByTestId('digest-elo-movers').getByText(/sara -/)).toBeVisible()
+    // duel-1 completed earlier in the lifecycle; practice mode records no
+    // Elo movers, but the digest still recaps the completed duel
+    await expect(page.getByTestId('digest-elo-movers')).toHaveCount(0)
+    await expect(digest.getByText(/duel-1/)).toBeVisible()
     // the calendar strip shows the current round window and the next rounds
     const strip = page.getByTestId('digest-schedule')
     await expect(strip).toBeVisible()
