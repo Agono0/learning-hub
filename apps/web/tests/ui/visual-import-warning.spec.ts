@@ -54,6 +54,10 @@ for (const vp of viewports) {
       await expect(alert).toContainText('2 cards were not imported')
       await expect(alert).toContainText('2 unsupported note types were skipped')
       await expect(alert).toHaveAttribute('data-kind', 'warn')
+      // The import invalidates the deck list; wait for the refetch so the counts are settled
+      // before any screenshot (a capture mid-refetch showed 2 in the badge and 1 in the label).
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByText(/^2 decks$/i)).toBeVisible()
       await alert.scrollIntoViewIfNeeded()
       // No horizontal overflow of the page at this width.
       const overflow = await page.evaluate(
@@ -74,6 +78,58 @@ for (const vp of viewports) {
       })
       if (clear !== null) expect(clear).toBeGreaterThanOrEqual(0)
       await page.screenshot({ path: path.join(OUT, `backup-maxscroll-${tag}.png`) })
+    })
+  }
+}
+
+// Onboarding wizard (step 3 "Bring it in"): the same partial result shows as a warning toast.
+for (const vp of viewports) {
+  for (const reduced of [false, true]) {
+    test(`wizard partial-import toast at ${vp.name}${reduced ? ' reduced-motion' : ''}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height })
+      if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' })
+      await page.route('**/api/import', (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(PARTIAL),
+        }),
+      )
+      // FIXTURE: the smoke DB is not a first run, so patch the real GET /api/settings reply to
+      // make the wizard open (onboardingCompleted=false, isEmptyWorkspace=true).
+      await page.route('**/api/settings', async (route) => {
+        if (route.request().method() !== 'GET') return route.continue()
+        const res = await route.fetch()
+        const body = await res.json()
+        body.settings = { ...body.settings, onboardingCompleted: false, isEmptyWorkspace: true }
+        return route.fulfill({ response: res, json: body })
+      })
+      await page.goto('/')
+      const dialog = page.getByRole('dialog', { name: /Welcome to Learning HUB/ })
+      await expect(dialog).toBeVisible()
+      await page.getByRole('button', { name: 'Continue' }).click()
+      await page.getByRole('button', { name: 'Continue' }).click()
+      await expect(page.getByText('Step 3/5')).toBeVisible()
+      await page.locator('input[type="file"][accept=".apkg,.txt"]').setInputFiles({
+        name: 'fixture.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('front\tback\n'),
+      })
+      const toast = page.getByText('2 unsupported note types were skipped', { exact: false })
+      await expect(toast).toBeVisible()
+      await expect(page.getByText('Imported 3 cards')).toBeVisible()
+      await page.waitForLoadState('networkidle')
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        ),
+      ).toBeLessThanOrEqual(0)
+      const tag = `${vp.name}${reduced ? '-reduced' : ''}`
+      await page.screenshot({ path: path.join(OUT, `wizard-warning-${tag}.png`) })
+      await page.getByText('Step 3/5').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: path.join(OUT, `wizard-step3-${tag}.png`) })
     })
   }
 }
