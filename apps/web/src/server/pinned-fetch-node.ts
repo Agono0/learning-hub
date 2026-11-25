@@ -15,7 +15,7 @@
  * - `init.signal` destroys the socket; the body is a web ReadableStream, cancel destroys it.
  * - Only GET and HEAD without a body are supported.
  *
- * Node only. This file is imported from a Node-only entry (instrumentation.ts), never from
+ * Node only. This file is imported from a Node-only entry (src/instrumentation.ts), never from
  * handler code, so it is not part of the browser or native worker bundles.
  */
 import dns from 'node:dns'
@@ -33,6 +33,8 @@ export interface PinnedFetchOptions {
   resolve?: ResolveFn
   /** Injected for tests; defaults to refusing private, loopback and link-local addresses. */
   isAllowedAddress?: (address: string) => boolean
+  /** Test-only: extra trusted CA (PEM) so a synthetic certificate can be verified. */
+  ca?: string
 }
 
 export class AddressRefusedError extends Error {
@@ -119,6 +121,7 @@ export function createPinnedNodeFetch(opts: PinnedFetchOptions = {}) {
           method,
           headers: headersFrom(init),
           lookup: lookup as never,
+          ...(opts.ca ? { ca: opts.ca } : {}),
           // Node's default autoSelectFamily path asks lookup for all answers; ours checks all.
           servername: net.isIP(host) ? undefined : host,
         },
