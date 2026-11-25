@@ -4,6 +4,12 @@
  */
 import { ROOM_MAX_PARTICIPANTS, WS_MAX_MESSAGE_CHARS, parseJoinParticipant } from './validation'
 import {
+  JOIN_ASSERTION_MAX_TTL_MS,
+  joinAssertionPayload,
+  verifyIdentityPayload,
+} from '@learning-hub/core/identity-crypto'
+import { lookupRegistered, type IdentityEnv } from './signed-request'
+import {
   filterContentSafety,
   type StudyRoomParticipant,
   type StudyRoomState,
@@ -13,12 +19,17 @@ interface WsSessionAttachment {
   participantId?: string
 }
 
+/** Most unexpired join-assertion ids remembered per room; beyond this, joins are refused. */
+const MAX_REMEMBERED_JTIS = 1000
+
 export class StudyRoom {
   private state: DurableObjectState
   private room: StudyRoomState
+  private env: IdentityEnv
 
-  constructor(state: DurableObjectState) {
+  constructor(state: DurableObjectState, env: IdentityEnv = {}) {
     this.state = state
+    this.env = env
     this.room = {
       code: '------',
       title: 'Study Room',
@@ -81,17 +92,28 @@ export class StudyRoom {
 
       switch (data.type) {
         case 'join': {
-          const v = parseJoinParticipant(data.participant)
+          const attach = (ws.deserializeAttachment() as WsSessionAttachment | null) ?? {}
+          // A socket joins once. It cannot switch to another identity afterwards.
+          if (attach.participantId) break
+          const who = await this.resolveJoinIdentity(ws, attach, data)
+          if (!who.ok) {
+            this.reject(ws, who.code)
+            break
+          }
+          // Identity comes from the verified assertion or the server; the rest is validated.
+          const input = (data.participant ?? {}) as Record<string, unknown>
+          const v = parseJoinParticipant({
+            ...input,
+            id: who.id,
+            alias: who.alias ?? input.alias,
+          })
           if (!v.ok) break
-          const already = this.room.participants.some((x) => x.id === v.value.id)
-          if (!already && this.room.participants.length >= ROOM_MAX_PARTICIPANTS) break
-          const p = {
-            ...v.value,
-            joinedAt: new Date().toISOString(),
-          } as StudyRoomParticipant
-          ws.serializeAttachment({ participantId: p.id } as WsSessionAttachment)
-
-          // Add or replace
+          if (this.room.participants.length >= ROOM_MAX_PARTICIPANTS) {
+            this.reject(ws, 'room_full')
+            break
+          }
+          const p = { ...v.value, joinedAt: new Date().toISOString() } as StudyRoomParticipant
+          ws.serializeAttachment({ ...attach, participantId: p.id } as WsSessionAttachment)
           this.room.participants = [...this.room.participants.filter((x) => x.id !== p.id), p]
           await this.persistAndBroadcast()
           break
@@ -148,6 +170,83 @@ export class StudyRoom {
     } catch {
       // Ignore malformed frames
     }
+  }
+
+  private reject(ws: WebSocket, code: string): void {
+    try {
+      ws.send(JSON.stringify({ type: 'error', code }))
+      ws.close(1008, code)
+    } catch {
+      // socket already gone
+    }
+  }
+
+  /**
+   * Decides who a join is. No assertion: anonymous with a server-chosen random id (a client
+   * can no longer choose its id, so it cannot replace someone else). A supplied assertion must
+   * verify (audience, room, expiry, key registered, unique id not seen before) or the join is
+   * refused: no downgrade. Duplicate or replayed joins never replace an existing participant.
+   */
+  private async resolveJoinIdentity(
+    ws: WebSocket,
+    attach: WsSessionAttachment,
+    data: Record<string, unknown>,
+  ): Promise<{ ok: true; id: string; alias?: string } | { ok: false; code: string }> {
+    const a = data.assertion
+    if (a === undefined || a === null) {
+      const bytes = crypto.getRandomValues(new Uint8Array(8))
+      return {
+        ok: true,
+        id: `anon_${Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')}`,
+      }
+    }
+    if (typeof a !== 'object') return { ok: false, code: 'invalid_assertion' }
+    const { key, exp, jti, sig } = a as Record<string, unknown>
+    const now = Date.now()
+    if (
+      typeof key !== 'string' ||
+      typeof sig !== 'string' ||
+      typeof jti !== 'string' ||
+      typeof exp !== 'number' ||
+      !Number.isInteger(exp) ||
+      key.length > 512 ||
+      sig.length > 256 ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(key) ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(sig) ||
+      !/^[A-Za-z0-9_-]{8,64}$/.test(jti) ||
+      exp <= now ||
+      exp - now > JOIN_ASSERTION_MAX_TTL_MS
+    ) {
+      return { ok: false, code: 'invalid_assertion' }
+    }
+    const host = this.env.EXPECTED_HOST
+    if (!host) return { ok: false, code: 'audience_unconfigured' }
+    const payload = joinAssertionPayload({ host, room: this.room.code, exp, jti })
+    if (!(await verifyIdentityPayload(key, payload, sig))) {
+      return { ok: false, code: 'invalid_assertion' }
+    }
+    const found = await lookupRegistered(this.env, key)
+    if (found === 'unavailable') return { ok: false, code: 'identity_unavailable' }
+    if (!found) return { ok: false, code: 'register_required' }
+
+    // Check-and-consume under the storage gate so concurrent joins cannot both pass.
+    return this.state.blockConcurrencyWhile(async () => {
+      const seen = (await this.state.storage.get<Record<string, number>>('jtis')) ?? {}
+      for (const [k, v] of Object.entries(seen)) if (v <= now) delete seen[k]
+      if (seen[jti] !== undefined) return { ok: false as const, code: 'replayed' }
+      if (Object.keys(seen).length >= MAX_REMEMBERED_JTIS)
+        return { ok: false as const, code: 'busy' }
+      const taken = this.state.getWebSockets().some((w) => {
+        if (w === ws) return false
+        const at = w.deserializeAttachment() as WsSessionAttachment | null
+        return at?.participantId === found.id
+      })
+      // The id is spent even when refused: a refused assertion cannot be retried.
+      seen[jti] = exp
+      await this.state.storage.put('jtis', seen)
+      if (taken) return { ok: false as const, code: 'already_joined' }
+      return { ok: true as const, id: found.id, alias: filterContentSafety(found.alias).clean }
+    })
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {

@@ -6,6 +6,7 @@
  * enforces rate limits per IP, and creates or comments on GitHub issues.
  */
 import { z } from 'zod'
+import { readBytesCapped } from './body'
 
 // ─── Crash Report Schema ────────────────────────────────────────────────────
 
@@ -558,27 +559,8 @@ function telemetryJsonResponse(
  * the running total exceeds `maxBytes` (the rest of the stream is cancelled, never buffered).
  */
 export async function readBodyCapped(request: Request, maxBytes: number): Promise<string | null> {
-  if (!request.body) return ''
-  const reader = request.body.getReader()
-  const chunks: Uint8Array[] = []
-  let total = 0
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.byteLength
-    if (total > maxBytes) {
-      await reader.cancel().catch(() => undefined)
-      return null
-    }
-    chunks.push(value)
-  }
-  const all = new Uint8Array(total)
-  let off = 0
-  for (const c of chunks) {
-    all.set(c, off)
-    off += c.byteLength
-  }
-  return new TextDecoder().decode(all)
+  const bytes = await readBytesCapped(request, maxBytes)
+  return bytes === null ? null : new TextDecoder().decode(bytes)
 }
 
 /**
