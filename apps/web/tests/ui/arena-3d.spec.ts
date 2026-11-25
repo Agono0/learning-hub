@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 /**
@@ -112,6 +113,9 @@ test('arena session: setup → duel → settlement reschedules the deck', async 
   await page.waitForTimeout(7_000)
   await page.getByTestId('arena-results').scrollIntoViewIfNeeded()
   await page.screenshot({ path: 'test-results/shots/3-victory.png' })
+  // The Next dev "1 Issue" badge means the page logged an error: record it.
+  mkdirSync('test-results/shots', { recursive: true })
+  writeFileSync('test-results/shots/console-log.txt', track.lastReport())
   await expect(page.getByTestId('results-score')).toBeVisible()
   await expect(page.getByTestId('results-xp')).toContainText('XP')
   await expect(page.getByTestId('results-coins')).toContainText('+')
