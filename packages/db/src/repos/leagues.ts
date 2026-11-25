@@ -40,6 +40,7 @@ import {
   leagueTournaments,
 } from '../schema'
 import { withTransaction } from '../transaction'
+import { getNotificationPrefs, logNotification } from './notification-center'
 import { awardXp } from './xp'
 
 export type LeagueRow = typeof leagues.$inferSelect
@@ -270,7 +271,12 @@ export function closeLeagueRound(
   relegated: LeagueRoundRow['relegationsJson']
 } {
   const conn = database ?? getDb()
-  return withTransaction((tx) => {
+  // captured for the post-commit notification pass (the notification ledger
+  // repos take a LearningHubDB, not a transaction handle)
+  let leagueTitle = ''
+  let closedRound = 0
+  let scoringWinnerHandles: string[] = []
+  const outcome = withTransaction((tx) => {
     const league = getLeagueBySlug(slug, tx)
     if (!league) throw new Error(`league not found: ${slug}`)
     const players = tx
@@ -279,6 +285,14 @@ export function closeLeagueRound(
       .where(eq(leaguePlayers.leagueId, league.id))
       .all()
     const result = closeRound(rowsToLeague(league, players))
+    leagueTitle = league.title
+    closedRound = league.currentRound
+    scoringWinnerHandles = result.roundWinners
+      .filter((w) => {
+        const row = players.find((p) => p.handle === w.handle && p.tier === w.tier)
+        return row !== undefined && row.points > 0
+      })
+      .map((w) => w.handle)
 
     for (const p of result.league.players) {
       tx.update(leaguePlayers)
@@ -296,10 +310,9 @@ export function closeLeagueRound(
       .where(eq(leagues.id, league.id))
       .run()
     // canonical XP for every division winner who actually scored this round
-    // (AGENTS rule 7: one XP path; no reward for an uncontested zero-point top)
+    // (one XP path; no reward for an uncontested zero-point top)
     for (const w of result.roundWinners) {
-      const row = players.find((p) => p.handle === w.handle && p.tier === w.tier)
-      if (!row || row.points <= 0) continue
+      if (!scoringWinnerHandles.includes(w.handle)) continue
       awardXp(tx, {
         source: 'league',
         meta: { leagueSlug: slug, round: league.currentRound, tier: w.tier, handle: w.handle },
@@ -316,8 +329,64 @@ export function closeLeagueRound(
       })
       .returning()
       .all()
-    return { round: round!, promoted: result.promoted, relegated: result.relegated }
+    return { round: round!, promoted: result.promoted, relegated: result.relegated, result }
   }, conn)
+
+  // league-round notifications on the 'league' channel, honoring prefs
+  // (master switch / per-channel toggle) via the delivery decision
+  const prefs = getNotificationPrefs(conn)
+  const leaguePref = prefs.channels['league']
+  const decision = !prefs.masterEnabled
+    ? ('suppress_master' as const)
+    : leaguePref && !leaguePref.enabled
+      ? ('suppress_channel' as const)
+      : ('deliver' as const)
+  const now = new Date().toISOString()
+  const promotedHandles = new Set(outcome.promoted.map((p) => p.handle))
+  for (const p of outcome.promoted) {
+    const alsoWon = scoringWinnerHandles.includes(p.handle)
+    logNotification(
+      {
+        channel: 'league',
+        title: alsoWon
+          ? `Won ${p.from} and promoted to ${p.to} in ${leagueTitle}`
+          : `Promoted to ${p.to} in ${leagueTitle}`,
+        body: `Round ${closedRound} is closed.${alsoWon ? ' Top of the division.' : ''} Round points are reset — the climb restarts.`,
+        actionUrl: '/leagues',
+        decision,
+        createdAt: now,
+      },
+      conn,
+    )
+  }
+  for (const r of outcome.relegated) {
+    logNotification(
+      {
+        channel: 'league',
+        title: `Relegated to ${r.to} in ${leagueTitle}`,
+        body: `Round ${closedRound}: bottom of ${r.from}. Log reviews or win a duel to climb back.`,
+        actionUrl: '/leagues',
+        decision,
+        createdAt: now,
+      },
+      conn,
+    )
+  }
+  for (const w of outcome.result.roundWinners) {
+    if (!scoringWinnerHandles.includes(w.handle) || promotedHandles.has(w.handle)) continue
+    logNotification(
+      {
+        channel: 'league',
+        title: `Won ${w.tier} in round ${closedRound} of ${leagueTitle}`,
+        body: 'Division winners earn leagueRoundWin XP. Diamond has no promotion — defend the crown.',
+        actionUrl: '/leagues',
+        decision,
+        createdAt: now,
+      },
+      conn,
+    )
+  }
+  return { round: outcome.round, promoted: outcome.promoted, relegated: outcome.relegated }
 }
 
 export function listLeagueRounds(slug: string, database?: LearningHubDB): LeagueRoundRow[] {
