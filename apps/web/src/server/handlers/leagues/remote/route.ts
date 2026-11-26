@@ -25,7 +25,9 @@ import {
   recordRemoteOutcome,
   reserveNextSeq,
   fetchRemoteState,
+  isRedirectReply,
   readBoundedReply,
+  REMOTE_REDIRECT_MODE,
   syncRemoteLeague,
   REMOTE_REQUEST_TIMEOUT_MS,
   remoteBase,
@@ -160,7 +162,12 @@ export const POST = withRoute(async (req: Request) => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ envelope }),
       signal: AbortSignal.timeout(REMOTE_REQUEST_TIMEOUT_MS),
+      redirect: REMOTE_REDIRECT_MODE,
     })
+    if (isRedirectReply(res)) {
+      await res.body?.cancel().catch(() => undefined)
+      throw new Error('authority redirected')
+    }
   } catch {
     recordRemoteOutcome(link.id, 'unreachable')
     return Response.json({ ok: false, status: 0, code: 'unreachable', seq }, { status: 502 })

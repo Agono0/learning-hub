@@ -221,6 +221,27 @@ describe('mutate', () => {
     expect(tables.getRemoteLink(SERVER, LEAGUE)?.nextSeq).toBe(2)
   })
 
+  it('never follows an authority redirect: manual mode, one call, 502 unreachable', async () => {
+    await enableWithDeviceKey()
+    const calls: (RequestInit | undefined)[] = []
+    setRemoteFetch(async (_url, init) => {
+      calls.push(init)
+      return new Response(null, { status: 307, headers: { location: 'http://10.0.0.5/mutate' } })
+    })
+    const res = await H.POST(
+      post({
+        action: 'mutate',
+        serverUrl: SERVER,
+        remoteLeagueId: LEAGUE,
+        mutation: { type: 'join', alias: 'Ann' },
+      }),
+    )
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.redirect).toBe('manual')
+    expect(res.status).toBe(502)
+    expect(await res.json()).toMatchObject({ code: 'unreachable' })
+  })
+
   it('maps authority 5xx to 502 and survives a non-JSON reply', async () => {
     await enableWithDeviceKey()
     setRemoteFetch(async () => new Response('<html>oops</html>', { status: 500 }))

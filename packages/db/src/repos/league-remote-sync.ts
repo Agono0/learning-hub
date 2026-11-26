@@ -57,12 +57,46 @@ export function remoteBase(link: Pick<LeagueRemoteLink, 'serverUrl' | 'remoteLea
   return `${link.serverUrl}/api/v1/leagues/${link.remoteLeagueId}`
 }
 
-/** Read a reply with a size cap. Anything unreadable becomes an error object. */
+/**
+ * Init for every request to a league authority: redirects are never followed by the runtime. A
+ * signed mutation must go to the origin the link names, not wherever a reply points.
+ */
+export const REMOTE_REDIRECT_MODE = 'manual' as const
+
+/** True for a redirect reply (what `redirect: 'manual'` hands back instead of following). */
+export function isRedirectReply(res: Response): boolean {
+  return res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)
+}
+
+/**
+ * Read a reply with a byte cap, counted while streaming. The reader is cancelled the moment the
+ * cap is crossed, so a hostile authority cannot make the client buffer more than the cap plus one
+ * chunk. Anything unreadable becomes an error object.
+ */
 export async function readBoundedReply(res: Response): Promise<unknown> {
-  const text = await res.text()
-  if (text.length > MAX_REMOTE_REPLY_BYTES) return { error: 'authority reply too large' }
+  const reader = res.body?.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > MAX_REMOTE_REPLY_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        return { error: 'authority reply too large' }
+      }
+      chunks.push(value)
+    }
+  }
+  const all = new Uint8Array(size)
+  let at = 0
+  for (const c of chunks) {
+    all.set(c, at)
+    at += c.byteLength
+  }
   try {
-    return JSON.parse(text)
+    return JSON.parse(new TextDecoder().decode(all))
   } catch {
     return { error: 'authority reply was not JSON' }
   }
@@ -112,7 +146,12 @@ export async function syncRemoteLeague(
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ envelope }),
           signal: AbortSignal.timeout(deps.timeoutMs ?? REMOTE_REQUEST_TIMEOUT_MS),
+          redirect: REMOTE_REDIRECT_MODE,
         })
+        if (isRedirectReply(res)) {
+          await res.body?.cancel().catch(() => undefined)
+          return { kind: 'network-error' }
+        }
         return { kind: 'http', status: res.status, body: await readBoundedReply(res) }
       } catch {
         return { kind: 'network-error' }
@@ -143,6 +182,11 @@ export async function fetchRemoteState(
 ): Promise<StateOutcome> {
   const res = await deps.fetch(`${remoteBase(link)}/state`, {
     signal: AbortSignal.timeout(deps.timeoutMs ?? REMOTE_REQUEST_TIMEOUT_MS),
+    redirect: REMOTE_REDIRECT_MODE,
   })
+  if (isRedirectReply(res)) {
+    await res.body?.cancel().catch(() => undefined)
+    return { ok: false, status: res.status, remote: { error: 'authority redirected' } }
+  }
   return { ok: res.ok, status: res.status, remote: await readBoundedReply(res) }
 }
