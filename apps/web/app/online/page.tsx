@@ -194,6 +194,18 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
         setJoinRefused(joinRefusalMessage(code))
         setActiveRoom(null)
       },
+      // Fresh join on every open (first connect and reconnects), no timer race.
+      onOpen: (sock) =>
+        sock.send({
+          type: 'join',
+          participant: {
+            id: identity?.userId ?? `usr_${Date.now()}`,
+            alias: identity?.alias ?? 'Learner',
+            status: 'studying',
+            streak: 1,
+            cardsReviewed: 0,
+          },
+        }),
     })
     setJoinRefused(null)
 
@@ -498,14 +510,15 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
             setActiveRaid(state as PartyRaidState)
           }
         },
+        onOpen: (sock) =>
+          sock.send({
+            type: 'join',
+            member: { id: identity?.userId ?? 'usr_self', alias: identity?.alias ?? 'You' },
+          }),
       })
       raidSocketRef.current?.close()
       raidSocketRef.current = socket
       socket.connect()
-      socket.send({
-        type: 'join',
-        member: { id: identity?.userId ?? 'usr_self', alias: identity?.alias ?? 'You' },
-      })
 
       const seeded: PartyRaidState =
         res.raid ??
