@@ -78,7 +78,7 @@ export function ReciprocalTeachingHUD({
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-(--hub-primary-soft,rgba(59,130,246,0.1)) text-(--hub-primary,#2563eb)">
             <MessageCircleQuestion className="h-4 w-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-sm font-semibold text-strong">Reciprocal Dialogic Telemetry</h3>
             {activePassageTitle && (
               <p className="text-xs text-secondary truncate max-w-md">

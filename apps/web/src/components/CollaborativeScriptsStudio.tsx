@@ -451,7 +451,7 @@ export function CollaborativeScriptsStudio() {
 
             {/* Message Input & Speech Act Selector */}
             <div className="space-y-2 pt-2 border-t border-neutral-200 dark:border-(--hub-border)">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 <span className="text-[11px] font-medium text-tertiary">Tag Transactive Act:</span>
                 <select
                   value={selectedSpeechAct}

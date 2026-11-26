@@ -382,7 +382,7 @@ export function DeliberatePracticeStudio() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 max-w-full">
           <label htmlFor="suite-select" className="text-xs font-medium text-secondary">
             Practice Suite:
           </label>

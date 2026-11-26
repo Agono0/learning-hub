@@ -37,11 +37,23 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
   for (const url of routes) {
     const errors: string[] = []
     const onErr = (m: import('@playwright/test').ConsoleMessage) => {
-      if (m.type() === 'error') errors.push(`console: ${m.text().slice(0, 700)}`)
+      if (m.type() !== 'error') return
+      const loc = m.location()
+      errors.push(`console: ${m.text().slice(0, 700)} @ ${loc.url}:${loc.lineNumber}`)
+      // React's component stack arrives as extra args; keep it for the loop and hydration reports.
+      if (/Maximum update depth|hydrated/.test(m.text())) {
+        void Promise.all(m.args().map((a) => a.jsonValue().catch(() => '')))
+          .then((vals) => errors.push(`args: ${JSON.stringify(vals).slice(0, 1800)}`))
+          .catch(() => undefined)
+      }
+    }
+    const onResp = (r: import('@playwright/test').Response) => {
+      if (r.status() >= 400) errors.push(`http ${r.status()} ${r.request().method()} ${r.url()}`)
     }
     const onPage = (e: Error) => errors.push(`pageerror: ${e.message.slice(0, 160)}`)
     page.on('console', onErr)
     page.on('pageerror', onPage)
+    page.on('response', onResp)
     let status = 0
     let h1 = false
     let overflow = -1
@@ -97,6 +109,7 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
     }
     page.off('console', onErr)
     page.off('pageerror', onPage)
+    page.off('response', onResp)
     rows.push({
       url,
       status,
@@ -104,7 +117,7 @@ test('route survey at 390px records status, errors, h1 and overflow', async ({ p
       firstHeading,
       overflow,
       culprits,
-      errors: errors.slice(0, 4),
+      errors: errors.slice(0, 8),
       note,
     })
   }

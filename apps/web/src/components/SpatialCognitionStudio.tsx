@@ -228,7 +228,7 @@ export function SpatialCognitionStudio() {
               </div>
 
               {/* Stimulus Shape Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 max-w-full">
                 <span className="text-xs text-secondary">Stimulus:</span>
                 <select
                   value={selectedShapeId}

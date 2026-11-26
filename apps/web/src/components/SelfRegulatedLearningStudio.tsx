@@ -284,7 +284,7 @@ export function SelfRegulatedLearningStudio() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 max-w-full">
           <label htmlFor="challenge-select" className="text-xs font-medium text-secondary">
             Challenge Scenario:
           </label>

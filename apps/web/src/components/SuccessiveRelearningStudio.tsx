@@ -202,7 +202,7 @@ export function SuccessiveRelearningStudio() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 max-w-full">
           <label htmlFor="sr-suite-select" className="text-xs font-medium text-secondary">
             Cohort:
           </label>

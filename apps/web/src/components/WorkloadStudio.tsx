@@ -279,7 +279,7 @@ export function WorkloadStudio() {
               <span>Upcoming Review Load Forecast</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 max-w-full">
               {/* Deck Filter */}
               <select
                 aria-label="Filter forecast by deck"

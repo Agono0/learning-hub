@@ -238,7 +238,7 @@ export function SelfExplanationStudio({
         </div>
 
         {/* Problem Selector Dropdown */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs text-tertiary font-medium">Derivation:</span>
           <select
             className="rounded-lg border border-neutral-200/80 dark:border-(--hub-border)/80 bg-white dark:bg-(--hub-panel) px-2.5 py-1 text-xs font-medium text-strong focus:outline-hidden focus:ring-1 focus:ring-(--ac-strong)"

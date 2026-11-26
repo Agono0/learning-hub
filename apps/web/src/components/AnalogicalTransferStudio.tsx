@@ -174,7 +174,7 @@ export function AnalogicalTransferStudio({
       {/* Suite Selector & Workspace Navigation Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         {/* Suite Quick Selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <label htmlFor="suite-select" className="text-xs font-semibold text-faint">
             Analogical Problem Suite:
           </label>

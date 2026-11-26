@@ -210,7 +210,7 @@ export function ModelInquiryStudio() {
         </div>
 
         {/* Scenario Selector Dropdown */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-tertiary">Scenario:</span>
           <select
             value={activeScenario.id}

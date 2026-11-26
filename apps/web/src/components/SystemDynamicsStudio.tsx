@@ -403,7 +403,7 @@ export function SystemDynamicsStudio() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="text-xs font-bold text-strong">{loop.name}</span>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 max-w-full">
                       <label className="flex items-center gap-1.5 text-xs text-secondary cursor-pointer">
                         <input
                           type="checkbox"
