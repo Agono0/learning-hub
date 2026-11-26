@@ -19,6 +19,7 @@ import { ideasRoutes } from './ideas'
 import { focusRoutes } from './focus'
 import { habitsRoutes } from './habits'
 import { notesRoutes } from './notes'
+import { leaguesRoutes } from './leagues'
 import { feedbackRoutes } from './feedback'
 import { shareChannelRoutes } from './share-channels'
 import { type Route } from './shared'
@@ -43,6 +44,7 @@ export const routes: Route[] = [
   ...focusRoutes,
   ...habitsRoutes,
   ...notesRoutes,
+  ...leaguesRoutes,
   ...feedbackRoutes,
   ...shareChannelRoutes,
 ]

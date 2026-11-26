@@ -73,6 +73,7 @@ import {
   Target,
   Telescope,
   Timer,
+  Trophy,
   Users,
   Zap,
 } from 'lucide-react'
@@ -426,6 +427,7 @@ export const NAV: NavGroup[] = [
         icon: Globe,
         shortLabel: 'Online',
       },
+      { href: '/leagues', label: 'Leagues', icon: Trophy },
       {
         href: '/world',
         label: '3D World',
