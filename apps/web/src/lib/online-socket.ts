@@ -12,6 +12,11 @@ export interface OnlineSocketOptions<TState, TChat> {
   onState: (state: TState) => void
   onChat?: (message: TChat) => void
   onStatusChange?: (status: ConnectionStatus) => void
+  /**
+   * Called on EVERY open (first connect and each reconnect). Build and send the
+   * join payload here so it is fresh each time; nothing is cached or queued.
+   */
+  onOpen?: (socket: OnlineSocket<TState, TChat>) => void
 }
 
 /**
@@ -24,6 +29,7 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
   private onState: (state: TState) => void
   private onChat?: (message: TChat) => void
   private onStatusChange?: (status: ConnectionStatus) => void
+  private onOpen?: (socket: OnlineSocket<TState, TChat>) => void
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -35,6 +41,17 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
     this.onState = options.onState
     this.onChat = options.onChat
     this.onStatusChange = options.onStatusChange
+    this.onOpen = options.onOpen
+  }
+
+  /** Detach handlers so a stale socket cannot call back after close/reconnect. */
+  private detach(): void {
+    const ws = this.ws
+    if (!ws) return
+    ws.onopen = null
+    ws.onmessage = null
+    ws.onclose = null
+    ws.onerror = null
   }
 
   connect(): void {
@@ -42,12 +59,16 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
     this.setStatus('connecting')
 
     try {
-      this.ws = new WebSocket(this.url)
+      this.detach()
+      const ws = new WebSocket(this.url)
+      this.ws = ws
 
       this.ws.onopen = () => {
+        if (this.closedExplicitly || this.ws !== ws) return
         this.setStatus('connected')
         this.reconnectAttempts = 0
         this.startHeartbeat()
+        this.onOpen?.(this)
       }
 
       this.ws.onmessage = (event) => {
@@ -89,6 +110,7 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
       this.reconnectTimer = null
     }
     try {
+      this.detach()
       this.ws?.close()
     } catch {
       // ignore double-close
@@ -110,6 +132,7 @@ export class OnlineSocket<TState = unknown, TChat = unknown> {
       this.reconnectTimer = null
     }
     if (this.ws) {
+      this.detach()
       this.ws.close()
       this.ws = null
     }

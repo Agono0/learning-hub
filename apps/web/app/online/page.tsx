@@ -183,24 +183,22 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
       url: wsUrl,
       onState: (state) => setActiveRoom(state),
       onChat: (msg) => setChatMessages((prev) => [...prev.slice(-40), msg]),
+      // Fresh join on every open (first connect and reconnects), no timer race.
+      onOpen: (sock) =>
+        sock.send({
+          type: 'join',
+          participant: {
+            id: identity?.userId ?? `usr_${Date.now()}`,
+            alias: identity?.alias ?? 'Learner',
+            status: 'studying',
+            streak: 1,
+            cardsReviewed: 0,
+          },
+        }),
     })
 
     socket.connect()
     socketRef.current = socket
-
-    // Send join packet
-    setTimeout(() => {
-      socket.send({
-        type: 'join',
-        participant: {
-          id: identity?.userId ?? `usr_${Date.now()}`,
-          alias: identity?.alias ?? 'Learner',
-          status: 'studying',
-          streak: 1,
-          cardsReviewed: 0,
-        },
-      })
-    }, 300)
   }
 
   useEffect(() => {
@@ -476,14 +474,15 @@ function PartyRaidsSection({ identity }: { identity?: IdentityResponse['identity
             setActiveRaid(state as PartyRaidState)
           }
         },
+        onOpen: (sock) =>
+          sock.send({
+            type: 'join',
+            member: { id: identity?.userId ?? 'usr_self', alias: identity?.alias ?? 'You' },
+          }),
       })
       raidSocketRef.current?.close()
       raidSocketRef.current = socket
       socket.connect()
-      socket.send({
-        type: 'join',
-        member: { id: identity?.userId ?? 'usr_self', alias: identity?.alias ?? 'You' },
-      })
 
       const seeded: PartyRaidState =
         res.raid ??
