@@ -270,6 +270,8 @@ test.describe('nav disclosure follows the route', () => {
     page,
     context,
   }) => {
+    // Three cold route compiles on the dev server (palace-3d first) can exceed the 60s default.
+    test.setTimeout(150_000)
     await prepare(page, context, 'dark')
     // Persisted state says Explore is collapsed; the active route must still show it.
     await context.addInitScript(() =>
