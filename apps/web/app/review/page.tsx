@@ -1063,6 +1063,7 @@ function ReviewPageInner() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setDeckId(null)}
+                  aria-pressed={deckId === null}
                   className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                     deckId === null
                       ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
@@ -1078,6 +1079,7 @@ function ReviewPageInner() {
                   <button
                     key={d.id}
                     onClick={() => setDeckId(d.id)}
+                    aria-pressed={deckId === d.id}
                     className={`rounded-lg border px-3 py-2 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-(--ac-strong) focus-visible:ring-offset-2 focus-visible:ring-offset-(--hub-bg) focus-visible:outline-none [@media(pointer:coarse)]:min-h-11 ${
                       deckId === d.id
                         ? 'border-indigo-500 bg-indigo-600/10 text-indigo-300'
@@ -1098,6 +1100,7 @@ function ReviewPageInner() {
                       <button
                         key={d.id}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => {
                           setSelectedDeckIds((prev) =>
                             isSelected ? prev.filter((id) => id !== d.id) : [...prev, d.id],
@@ -1146,6 +1149,7 @@ function ReviewPageInner() {
                     <Button
                       key={m}
                       onClick={() => setMode(m)}
+                      aria-pressed={mode === m}
                       variant={mode === m ? 'secondary' : 'ghost'}
                     >
                       {m === 'commute' ? '🎧 commute' : m}
@@ -1174,6 +1178,7 @@ function ReviewPageInner() {
                       max={100}
                       value={limit}
                       onChange={(e) => setLimit(Number(e.target.value))}
+                      aria-label="Session size (cards)"
                       className="input"
                     />
                   </div>

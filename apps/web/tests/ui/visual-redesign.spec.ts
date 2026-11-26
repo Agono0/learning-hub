@@ -130,9 +130,8 @@ test.describe('theme persistence (real control)', () => {
     await page.goto('/settings')
     await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
     // Clicks before hydration finishes hit inert buttons (the first diagnostic run proved it:
-    // no PUT, aria-pressed unchanged). Wait for the app to be interactive first.
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(2000)
+    // no PUT, aria-pressed unchanged). Wait for the app to be interactive first (networkidle never settles: the app polls).
+    await page.waitForTimeout(4000)
     const result: Record<string, unknown> = {}
     const group = page.getByRole('group', { name: 'Theme preference' })
     const puts: string[] = []
