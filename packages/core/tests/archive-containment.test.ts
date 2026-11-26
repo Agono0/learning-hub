@@ -199,9 +199,9 @@ describe('parseApkg containment', () => {
       'collection.anki21': new Uint8Array([9, 9, 9]),
     })
     const seen: Uint8Array[] = []
-    await expect(parseApkg(z, { openDatabase: opener(seen) as never })).rejects.toThrow(
-      /both collection\.anki2 and collection\.anki21/,
-    )
+    await expect(
+      parseApkg(z, { openDatabase: opener(seen) as never, trustCustomOpener: true }),
+    ).rejects.toThrow(/both collection\.anki2 and collection\.anki21/)
     expect(seen).toHaveLength(0)
   })
 
@@ -211,7 +211,7 @@ describe('parseApkg containment', () => {
       // media entry '0' sorts first in the object (integer key): corrupt its CRC; if inflated, parseApkg would throw
       const bad = patched(z, (dv) => dv.setUint32(cenOffsets(z)[0]! + 16, 123, true))
       const seen: Uint8Array[] = []
-      await parseApkg(bad, { openDatabase: opener(seen) as never })
+      await parseApkg(bad, { openDatabase: opener(seen) as never, trustCustomOpener: true })
       expect([...seen[0]!]).toEqual([1, 2, 3])
     }
   })
@@ -219,18 +219,18 @@ describe('parseApkg containment', () => {
   it('rejects a lying collection header instead of importing a truncated database', async () => {
     const z = zipSync({ 'collection.anki2': strToU8('x'.repeat(2000)) })
     const lie = patched(z, (dv) => dv.setUint32(cenOffsets(z)[0]! + 24, 10, true))
-    await expect(parseApkg(lie, { openDatabase: opener([]) as never })).rejects.toThrow(
-      /invalid \.apkg/,
-    )
+    await expect(
+      parseApkg(lie, { openDatabase: opener([]) as never, trustCustomOpener: true }),
+    ).rejects.toThrow(/invalid \.apkg/)
   })
 
   it('rejects an over-limit entry and non-ZIP input with a clear error', async () => {
     const tiny = zipSync({ 'collection.anki2': new Uint8Array([1, 2, 3]) })
     // header-only lie: declares 70 MiB; refused at open, nothing is allocated or inflated
     const bomb = patched(tiny, (dv) => dv.setUint32(cenOffsets(tiny)[0]! + 24, 70 * MiB, true))
-    await expect(parseApkg(bomb, { openDatabase: opener([]) as never })).rejects.toThrow(
-      /entry limit/,
-    )
+    await expect(
+      parseApkg(bomb, { openDatabase: opener([]) as never, trustCustomOpener: true }),
+    ).rejects.toThrow(/entry limit/)
     await expect(parseApkg(new Uint8Array(50))).rejects.toThrow(/invalid \.apkg/)
   })
 })
