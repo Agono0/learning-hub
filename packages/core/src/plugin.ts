@@ -76,8 +76,9 @@ export interface PluginLogger {
 export function createPluginLogger(pluginName: string): PluginLogger {
   const prefix = `[plugin:${pluginName}]`
   return {
-    debug: (...args: unknown[]) => console.debug(prefix, ...args),
-    info: (...args: unknown[]) => console.info(prefix, ...args),
+    // stdout belongs to the host (JSON-RPC frames, --json output), so status lines go to stderr.
+    debug: (...args: unknown[]) => console.error(prefix, ...args),
+    info: (...args: unknown[]) => console.error(prefix, ...args),
     warn: (...args: unknown[]) => console.warn(prefix, ...args),
     error: (...args: unknown[]) => console.error(prefix, ...args),
   }
