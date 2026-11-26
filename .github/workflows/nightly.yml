@@ -33,7 +33,18 @@ name: Nightly OTA
 on:
   schedule:
     # 02:30 UTC daily — after the day's merges have settled, before EU morning.
+    # NOTE: GitHub-hosted cron fires late under load (recent runs started 8–10h
+    # after the schedule). The workflow_run trigger below is the timely path;
+    # the cron is only the backstop for days with no merges.
     - cron: '30 2 * * *'
+  # Release on push to main: every green CI run on main publishes a release
+  # through this same pipeline (manifest + patches + installer + APKs +
+  # pointer move) instead of waiting for the nightly cron. A red or cancelled
+  # CI publishes nothing (guarded in the meta job's `if`).
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -64,7 +75,8 @@ jobs:
   meta:
     name: Compute nightly metadata
     runs-on: ubuntu-latest
-    if: ${{ !inputs.measure_patch }}
+    # workflow_run: publish only when the triggering CI run on main succeeded.
+    if: ${{ !inputs.measure_patch && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     timeout-minutes: 10
     outputs:
       version: ${{ steps.meta.outputs.version }}
@@ -79,28 +91,38 @@ jobs:
         with:
           # Full history so we can diff native inputs against the previous tag.
           fetch-depth: 0
+          # workflow_run: build the exact commit CI just proved green, not
+          # whatever happens to sit at the default-branch tip.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Compute version, tag, shell version and native-change flag
         id: meta
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          SHORT_SHA="${GITHUB_SHA::7}"
+          SHORT_SHA="${HEAD_SHA::7}"
           NIGHT_DATE="$(date -u +%Y%m%d)"
           VERSION="${NIGHT_DATE}-${SHORT_SHA}"
           TAG="nightly-${VERSION}"
-          # Monotonic native-shell version (semver, Android versionCode-safe):
-          # 0.1.<run_number>. The official Windows updater compares latest.json
-          # against this, so it must advance every nightly and stay small enough
-          # for Android's derived versionCode (major*1e6 + minor*1e3 + patch).
-          SHELL_VERSION="0.1.${{ github.run_number }}"
+          # Native-shell version: 0.1.<UTC date> (semver, Android
+          # versionCode-safe: major*1e6 + minor*1e3 + patch). Date-based so the
+          # nightly pipeline and native.yml's `latest` APKs share one monotonic
+          # scale — per-workflow run numbers drift apart and caused downgrade
+          # rejects. latest.json is only republished when requires_native is
+          # true, so same-day web-only releases never prompt an NSIS reinstall.
+          SHELL_VERSION="0.1.$(date -u +%y%m%d)"
 
           REQUIRES_NATIVE=false
           PREV_TAG="$(gh release list --limit 30 --json tagName --jq '[.[].tagName | select(startswith("nightly-"))][0] // ""')"
           if [ -n "$PREV_TAG" ]; then
-            if [ -n "$(git diff --name-only "${PREV_TAG}" HEAD -- apps/native packages/db ':(exclude)**/*.md' 2>/dev/null)" ]; then
+            # Everything that can change the built shell — mirrors native.yml's
+            # push path filter. The old list (apps/native + packages/db only)
+            # missed the Tauri build scripts and dependency manifests, so a
+            # build-script change produced a nightly with no rebuilt APKs.
+            if [ -n "$(git diff --name-only "${PREV_TAG}" HEAD -- apps/native packages/db scripts/tauri-web.mjs scripts/tauri-android.mjs scripts/serve-static.mjs scripts/vendor-sqlite-wasm.mjs package.json package-lock.json .github/workflows/native.yml ':(exclude)**/*.md' 2>/dev/null)" ]; then
               REQUIRES_NATIVE=true
             fi
           fi
@@ -120,7 +142,10 @@ jobs:
     name: Web export
     needs: meta
     runs-on: ubuntu-latest
-    if: ${{ !inputs.measure_patch }}
+    # Explicit meta-success gate: a custom `if` replaces the implicit needs
+    # success check, so without this a skipped meta (e.g. workflow_run from a
+    # failed CI) would let this job run with empty metadata.
+    if: ${{ !inputs.measure_patch && needs.meta.result == 'success' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -173,7 +198,7 @@ jobs:
   android:
     name: Android APK (${{ matrix.abi }})
     needs: [meta, web-export]
-    if: ${{ !inputs.measure_patch && needs.meta.outputs.requires_native == 'true' }}
+    if: ${{ !inputs.measure_patch && needs.meta.result == 'success' && needs.meta.outputs.requires_native == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -273,6 +298,7 @@ jobs:
     if: |
       always() &&
       !cancelled() &&
+      needs.meta.result == 'success' &&
       !contains(needs.*.result, 'failure') &&
       !inputs.measure_patch
     runs-on: windows-latest
@@ -285,6 +311,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # workflow_run: build the exact commit CI just proved green.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -527,6 +555,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          TAG="${{ needs.meta.outputs.tag }}"
+          TARGET="${{ github.event.workflow_run.head_sha || github.sha }}"
           ASSETS=(dist/nightly/manifest.json dist/nightly/nightly.json dist/nightly/latest.json)
           for f in dist/nightly/*.sig dist/nightly/patch-*.zip; do
             if [ -e "$f" ]; then ASSETS+=("$f"); fi
@@ -540,11 +570,20 @@ jobs:
               if [ -e "$f" ]; then ASSETS+=("$f"); fi
             done
           fi
-          gh release create "${{ needs.meta.outputs.tag }}" \
-            --title "Nightly ${{ needs.meta.outputs.version }}" \
-            --notes "Automated nightly build ${{ needs.meta.outputs.version }} (commit ${{ github.sha }}). Fast delta OTA updates + Windows installer." \
-            --prerelease \
-            "${ASSETS[@]}"
+          # Idempotent: a same-day rerun on the same commit (schedule after a
+          # dispatch, or a retried failed run) must not die on "tag already
+          # exists" — reuse the release and replace the assets instead.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists — uploading assets with --clobber"
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$TAG" \
+              --target "$TARGET" \
+              --title "Nightly ${{ needs.meta.outputs.version }}" \
+              --notes "Automated nightly build ${{ needs.meta.outputs.version }} (commit $TARGET). Fast delta OTA updates + Windows installer." \
+              --prerelease \
+              "${ASSETS[@]}"
+          fi
 
       # O1-11 pointer hosting: ONE stable URL per channel on the fixed
       # `channel-pointers` release (the nightly tag changes every night).
@@ -563,7 +602,16 @@ jobs:
           if [ -e dist/nightly/manifest.json.sig ]; then
             cp dist/nightly/manifest.json.sig dist/nightly/manifest-nightly.json.sig
           fi
-          ASSETS=(dist/nightly/nightly.json dist/nightly/manifest-nightly.json dist/nightly/latest.json)
+          ASSETS=(dist/nightly/nightly.json dist/nightly/manifest-nightly.json)
+          # latest.json moves the OFFICIAL Windows updater (NSIS reinstall).
+          # Only republish it when the native shell actually changed — a
+          # web-only nightly must ride the A/B slot hot update, not prompt a
+          # full installer download every night.
+          if [ "${{ needs.meta.outputs.requires_native }}" = "true" ]; then
+            ASSETS+=(dist/nightly/latest.json)
+          else
+            echo "requires_native=false — leaving channel-pointers latest.json untouched (web-only hot update)"
+          fi
           for f in dist/nightly/nightly.json.sig dist/nightly/manifest-nightly.json.sig; do
             if [ -e "$f" ]; then ASSETS+=("$f"); fi
           done
