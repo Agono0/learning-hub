@@ -60,7 +60,7 @@ export const INF_DEFAULTS = {
   /** A reviewed exposure to the other card counts if it was within this many hours before the review. */
   lagHours: 24,
   /** Minimum reviews in each exposure group before a lift is reported. */
-  minGroup: 5,
+  minGroup: 8,
   watchAt: 0.3,
   highAt: 0.55,
 } as const
@@ -160,6 +160,17 @@ export function jaccard(a: readonly string[], b: readonly string[]): number {
   let inter = 0
   for (const t of a) if (sb.has(t)) inter++
   return inter / (a.length + b.length - inter)
+}
+
+/** Wilson score interval (95%). */
+export function wilson(successes: number, n: number): { low: number; high: number } {
+  if (n <= 0) return { low: 0, high: 1 }
+  const z = 1.96
+  const p = successes / n
+  const d = 1 + (z * z) / n
+  const c = p + (z * z) / (2 * n)
+  const m = z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))
+  return { low: clamp01((c - m) / d), high: clamp01((c + m) / d) }
 }
 
 export const clamp01 = (n: number) => (Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0)

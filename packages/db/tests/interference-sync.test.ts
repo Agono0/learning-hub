@@ -109,4 +109,57 @@ describe('interference sync', () => {
     await mergeBackup(backupAll(a.raw), b.raw)
     expect(counts(b).drills).toBe(2)
   })
+  it('a remap that flips the id order keeps one row per pair, merged twice', async () => {
+    const mkCards = (d: Dev, dnaId: number, rnaId: number) => {
+      d.db.insert(schema.decks).values({ id: 1, name: 'Bio' }).run()
+      const mk = (id: number, front: string, back: string) =>
+        d.db
+          .insert(schema.cards)
+          .values({
+            id,
+            deckId: 1,
+            type: 'basic',
+            content: { basic: { front, back } },
+            due: '2026-11-21T00:00:00.000Z',
+          })
+          .run()
+      mk(dnaId, 'Enzyme that unwinds DNA', 'Helicase')
+      mk(rnaId, 'Enzyme that unwinds RNA', 'Topoisomerase')
+    }
+    const a = createDeviceDb()
+    const b = createDeviceDb()
+    mkCards(a, 1, 2)
+    mkCards(b, 11, 10) // A's smaller id (DNA) is the larger local id
+    const at = '2026-11-20T10:00:00.000Z'
+    a.db
+      .insert(schema.interferencePairs)
+      .values({ cardAId: 1, cardBId: 2, status: 'confirmed', createdAt: at, updatedAt: at })
+      .run()
+    a.db
+      .insert(schema.interferenceDrills)
+      .values({
+        cardAId: 1,
+        cardBId: 2,
+        day: '2026-11-20',
+        correct: 1,
+        total: 2,
+        createdAt: at,
+        updatedAt: at,
+      })
+      .run()
+    const snap = backupAll(a.raw)
+    await mergeBackup(snap, b.raw)
+    await mergeBackup(snap, b.raw)
+    expect(counts(b)).toEqual({ pairs: 1, drills: 1 })
+    const row = b.db.select().from(schema.interferencePairs).get()!
+    expect([row.cardAId, row.cardBId]).toEqual([10, 11])
+    // A later change on the other device updates that row instead of adding one.
+    a.db
+      .update(schema.interferencePairs)
+      .set({ status: 'dismissed', updatedAt: '2099-01-01T00:00:00.000Z' })
+      .run()
+    await mergeBackup(backupAll(a.raw), b.raw)
+    expect(counts(b).pairs).toBe(1)
+    expect(b.db.select().from(schema.interferencePairs).get()!.status).toBe('dismissed')
+  })
 })

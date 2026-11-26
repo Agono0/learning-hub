@@ -55,6 +55,8 @@ export async function interferenceCommand(args: string[]): Promise<void> {
     if (sub === 'audit') {
       const deck = flag(rest, '--deck')
       const days = num(flag(rest, '--days') ?? '90')
+      if (deck !== undefined && !(Number.isInteger(num(deck)) && num(deck) > 0))
+        throw new Error('--deck must be a positive integer')
       const run = runInterferenceAuditDb({
         deckId: deck === undefined ? undefined : num(deck),
         windowDays: Number.isFinite(days) ? Math.min(365, Math.max(7, days)) : 90,

@@ -9,8 +9,8 @@ export function normalize(text: string): string {
     .trim()
 }
 
-function trigrams(text: string): Map<string, number> {
-  const s = `  ${normalize(text)} `
+function trigramsOfNormalized(norm: string): Map<string, number> {
+  const s = `  ${norm} `
   const m = new Map<string, number>()
   const chars = [...s]
   for (let i = 0; i + 3 <= chars.length; i++) {
@@ -20,25 +20,55 @@ function trigrams(text: string): Map<string, number> {
   return m
 }
 
-/** Dice coefficient over character trigrams (catches typos, plurals, near-wording). */
-export function trigramDice(a: string, b: string): number {
-  const ta = trigrams(a)
-  const tb = trigrams(b)
-  let na = 0
-  let nb = 0
-  let inter = 0
-  for (const v of ta.values()) na += v
-  for (const v of tb.values()) nb += v
-  if (na === 0 || nb === 0) return 0
-  for (const [g, v] of ta) inter += Math.min(v, tb.get(g) ?? 0)
-  return (2 * inter) / (na + nb)
+/** Features of one string, computed once so a card is not re-tokenised for every pair it is in. */
+export interface Prepared {
+  norm: string
+  tokens: string[]
+  tri: Map<string, number>
+  triTotal: number
 }
 
-/** Similarity of two strings in [0, 1]: the larger of word overlap and trigram overlap. */
-export function textSimilarity(a: string, b: string): number {
-  if (normalize(a) === normalize(b)) return normalize(a) === '' ? 0 : 1
-  return round3(clamp01(Math.max(jaccard(tokens(a), tokens(b)), trigramDice(a, b))))
+export function prepareText(text: string): Prepared {
+  const norm = normalize(text)
+  const tri = trigramsOfNormalized(norm)
+  let triTotal = 0
+  for (const v of tri.values()) triTotal += v
+  return { norm, tokens: tokens(text), tri, triTotal }
 }
+
+/** Dice coefficient over character trigrams (catches typos, plurals, near-wording). */
+export function trigramDicePrepared(a: Prepared, b: Prepared): number {
+  if (a.triTotal === 0 || b.triTotal === 0) return 0
+  let inter = 0
+  const [small, big] = a.tri.size <= b.tri.size ? [a.tri, b.tri] : [b.tri, a.tri]
+  for (const [g, v] of small) inter += Math.min(v, big.get(g) ?? 0)
+  return (2 * inter) / (a.triTotal + b.triTotal)
+}
+
+export function trigramDice(a: string, b: string): number {
+  return trigramDicePrepared(prepareText(a), prepareText(b))
+}
+
+/** Similarity of two prepared strings in [0, 1]: the larger of word overlap and trigram overlap. */
+export function similarityPrepared(a: Prepared, b: Prepared): number {
+  if (a.norm === b.norm) return a.norm === '' ? 0 : 1
+  return round3(clamp01(Math.max(jaccard(a.tokens, b.tokens), trigramDicePrepared(a, b))))
+}
+
+/** Similarity of two strings in [0, 1]. */
+export function textSimilarity(a: string, b: string): number {
+  return similarityPrepared(prepareText(a), prepareText(b))
+}
+
+export interface PreparedCard {
+  cue: Prepared
+  target: Prepared
+}
+
+export const prepareCard = (c: { cue: string; target: string }): PreparedCard => ({
+  cue: prepareText(c.cue),
+  target: prepareText(c.target),
+})
 
 export interface Classified {
   kind: PairKind | null
@@ -59,8 +89,18 @@ export function classifyPair(
   minCue: number = INF_DEFAULTS.minCueSimilarity,
   minTarget: number = INF_DEFAULTS.minTargetSimilarity,
 ): Classified {
-  const cueSimilarity = textSimilarity(a.cue, b.cue)
-  const targetSimilarity = textSimilarity(a.target, b.target)
+  return classifyPrepared(prepareCard(a), prepareCard(b), minCue, minTarget)
+}
+
+/** Same as classifyPair on features that were computed once per card. */
+export function classifyPrepared(
+  a: PreparedCard,
+  b: PreparedCard,
+  minCue: number = INF_DEFAULTS.minCueSimilarity,
+  minTarget: number = INF_DEFAULTS.minTargetSimilarity,
+): Classified {
+  const cueSimilarity = similarityPrepared(a.cue, b.cue)
+  const targetSimilarity = similarityPrepared(a.target, b.target)
   const out = (kind: PairKind | null, base: number): Classified => ({
     kind,
     cueSimilarity,

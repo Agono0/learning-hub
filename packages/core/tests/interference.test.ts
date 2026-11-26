@@ -111,6 +111,26 @@ describe('candidate search', () => {
     )
     expect(findCandidates(many).candidates).toEqual([])
   })
+  it('reports skipped common words, and still links templated cards by prefix or answer', () => {
+    const many = Array.from({ length: 80 }, (_, i) =>
+      card(i + 1, `What is the capital city of region${i} in the old atlas`, `town${i * 7}`),
+    )
+    many.push(card(200, 'What is the capital city of region5 in the old atlas', 'town35'))
+    many.push(card(201, 'Largest river of region9 in the old atlas', 'town63'))
+    const r = findCandidates(many)
+    expect(r.skippedWords).toBeGreaterThan(0)
+    expect(r.candidates.some((c) => c.a === 6 && c.b === 200)).toBe(true)
+    const none = findCandidates(
+      Array.from({ length: 80 }, (_, i) =>
+        card(i + 1, `What is the thing number${i}`, `unique${i * 7}`),
+      ),
+    )
+    expect(none.skippedWords).toBeGreaterThan(0)
+    expect(none.unlinkedCards).toBeGreaterThan(0)
+  })
+  it('counts cards that were not linked to any other card', () => {
+    expect(findCandidates(deck).unlinkedCards).toBe(2)
+  })
   it('truncates by card count and by pair budget, and says so', () => {
     expect(findCandidates(deck, { maxCards: 2 }).scanned).toBe(2)
     expect(findCandidates(deck, { maxCards: 2 }).truncated).toBe(true)
@@ -118,6 +138,22 @@ describe('candidate search', () => {
   })
   it('is deterministic', () => {
     expect(findCandidates(deck)).toEqual(findCandidates([...deck].reverse()))
+  })
+})
+
+describe('review evidence interval', () => {
+  it('needs 8 reviews in each group', () => {
+    expect(INF_DEFAULTS.minGroup).toBe(8)
+  })
+  it('stays inside [-1, 1] when a group never fails', () => {
+    const rs: InfReview[] = []
+    for (let d = 1; d <= 12; d++) {
+      rs.push(rv(1, 3, at(d, 9)), rv(2, 1, at(d, 9).replace(':00:00', ':05:00')))
+    }
+    const e = pairEvidence(1, 2, rs)
+    expect(e.exposedReviews).toBeGreaterThanOrEqual(8)
+    expect(e.liftLow ?? 0).toBeGreaterThanOrEqual(-1)
+    expect(e.liftHigh ?? 0).toBeLessThanOrEqual(1)
   })
 })
 

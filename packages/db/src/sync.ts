@@ -649,6 +649,15 @@ export async function mergeBackup(
           }
         }
         if (missingParent) continue
+        // Card pairs are stored (smaller, larger); a remap can flip that, so restore it.
+        if (table === 'interference_pairs' || table === 'interference_drills') {
+          const x = remapped['card_a_id']
+          const y = remapped['card_b_id']
+          if (typeof x === 'number' && typeof y === 'number' && x > y) {
+            remapped['card_a_id'] = y
+            remapped['card_b_id'] = x
+          }
+        }
 
         const nk = computeRecordNaturalKey(table, remapped)
 

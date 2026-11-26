@@ -17,6 +17,14 @@ export function summarizeInterference(a: InfAudit): InfReport {
     caveats.push(
       'Too many cards or pairs in scope: only part was checked. Narrow the audit to one deck.',
     )
+  if (a.skippedWords > 0)
+    caveats.push(
+      `${a.skippedWords} very common word(s) were too frequent to link cards. Cards that differ only in a templated slot are linked by their shared opening words or identical answer instead.`,
+    )
+  if (a.unlinkedCards > 0 && a.unlinkedCards >= a.scanned * 0.5)
+    caveats.push(
+      `${a.unlinkedCards} of ${a.scanned} cards shared no usable words or answer with any other card, so they could not be compared.`,
+    )
   const risky = a.pairs.filter((p) => p.kind !== 'near-duplicate')
   const high = risky.filter((p) => p.band === 'high')
   const proven = risky.filter((p) => p.evidence.verdict === 'interfering')
@@ -27,7 +35,7 @@ export function summarizeInterference(a: InfAudit): InfReport {
       headline:
         a.scanned < 2
           ? 'Fewer than two usable cards. Nothing to compare.'
-          : `No lookalike cards found among ${a.scanned} cards.`,
+          : `No lookalike cards found among ${a.scanned} cards${a.unlinkedCards >= a.scanned * 0.5 ? ` (${a.unlinkedCards} could not be compared, see notes)` : ''}.`,
       advice: a.dismissed > 0 ? [`${a.dismissed} pair(s) were dismissed and are hidden.`] : [],
       caveats,
     }

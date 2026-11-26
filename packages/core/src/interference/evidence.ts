@@ -3,10 +3,11 @@
  * its lookalike was reviewed? Reviews of card X count as "exposed" when the
  * other card was reviewed within the lag window just before. This is
  * observational (cards reviewed together may share a hard topic) and reviews
- * of one card are not independent, so the interval is rough and the verdict is
- * conservative.
+ * of one card are not independent, so even the Newcombe interval is optimistic:
+ * a pair is called interfering only when the whole interval is above 5 points
+ * and each group has at least 8 reviews.
  */
-import { INF_DEFAULTS, clamp01, round3, type InfReview } from './cues'
+import { INF_DEFAULTS, clamp01, round3, wilson, type InfReview } from './cues'
 
 export interface Evidence {
   /** Reviews of either card that came within the lag window after the other card. */
@@ -24,13 +25,22 @@ export interface Evidence {
   verdict: 'interfering' | 'no-signal' | 'insufficient'
 }
 
-/** Normal-approximation interval on a difference of two proportions. */
+/**
+ * Newcombe's hybrid-score interval for a difference of two proportions
+ * (Wilson limits for each rate, combined). It stays inside [-1, 1] and does
+ * not collapse when a rate is near 0 or 1, unlike the Wald interval.
+ */
 function diffInterval(s1: number, n1: number, s2: number, n2: number) {
   const p1 = s1 / n1
   const p2 = s2 / n2
-  const se = Math.sqrt((p1 * (1 - p1)) / n1 + (p2 * (1 - p2)) / n2)
+  const w1 = wilson(s1, n1)
+  const w2 = wilson(s2, n2)
   const d = p1 - p2
-  return { d, low: d - 1.96 * se, high: d + 1.96 * se }
+  return {
+    d,
+    low: d - Math.sqrt((p1 - w1.low) ** 2 + (w2.high - p2) ** 2),
+    high: d + Math.sqrt((w1.high - p1) ** 2 + (p2 - w2.low) ** 2),
+  }
 }
 
 export const FAIL_RATING = 1
