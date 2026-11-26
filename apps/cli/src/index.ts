@@ -77,6 +77,7 @@ import { implementationIntentionCommands } from './commands/implementation-inten
 import { feedbackCommands } from './commands/feedback'
 import { shareChannelCommands } from './commands/share-channels'
 import { cognitiveLoadCommands } from './commands/cognitive-load'
+import { elaborativeInterrogationCommands } from './commands/elaborative-interrogation'
 import { dualcodingCommands } from './commands/dualcoding'
 
 const rawArgs = process.argv.slice(2)
@@ -149,6 +150,7 @@ const builtinCommands: RegisteredCommand[] = [
   ...feedbackCommands,
   ...shareChannelCommands,
   ...cognitiveLoadCommands,
+  ...elaborativeInterrogationCommands,
   ...dualcodingCommands,
   ...knowledgeSpaceCommands,
   ...cpsCommands,

@@ -52,6 +52,7 @@ const APPEND_ONLY_TABLES = new Set([
   'circadian_audio_sessions',
   'dialectic_arena_debates',
   'exposure_events',
+  'ei_attempts',
 ])
 
 const SKIP_TABLES = new Set([
@@ -217,6 +218,14 @@ export function computeRecordNaturalKey(
       return `card:${str(row['card_id'])}`
     case 'palace_3d_scenes':
       return `palace:${str(row['palace_id'])}`
+    // Elaborative interrogation: facts dedupe by their text across devices;
+    // state is one row per fact; attempts are identified by fact, time and style.
+    case 'ei_facts':
+      return `stmt:${str(row['statement'])}`
+    case 'ei_fact_states':
+      return `fact:${str(row['fact_id'])}`
+    case 'ei_attempts':
+      return `fact:${str(row['fact_id'])}:at:${str(row['created_at'])}:style:${str(row['style'])}`
     default:
       return null
   }
@@ -765,6 +774,22 @@ export async function mergeBackup(
               )
               .run(...updateCols.map((c) => normalizeBackupValue(remapped[c] as never)), palaceId)
             Object.assign(matchedLocal, { ...remapped, palace_id: palaceId })
+            updated += 1
+          }
+          continue
+        }
+
+        if (table === 'ei_fact_states' && matchedLocal) {
+          // One row per fact, keyed by fact_id: the more recently updated state wins.
+          if (str(remapped['updated_at']) > str(matchedLocal['updated_at'])) {
+            const factId = matchedLocal['fact_id'] as number
+            const updateCols = columns.filter((c) => c !== 'fact_id')
+            database
+              .prepare(
+                `UPDATE "ei_fact_states" SET ${updateCols.map((c) => `"${c}" = ?`).join(', ')} WHERE fact_id = ?`,
+              )
+              .run(...updateCols.map((c) => normalizeBackupValue(remapped[c] as never)), factId)
+            Object.assign(matchedLocal, { ...remapped, fact_id: factId })
             updated += 1
           }
           continue

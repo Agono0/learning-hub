@@ -2531,3 +2531,65 @@ export const channelProposals = table(
   },
   (t) => [index('channel_proposals_channel_idx').on(t.channelId, t.status)],
 )
+
+// ─── Elaborative Interrogation (fact bank, adaptive state, attempt log) ─────
+
+export const eiFacts = table(
+  'ei_facts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    statement: text('statement').notNull(),
+    keyTerms: text('key_terms', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    priorKnowledge: real('prior_knowledge').notNull().default(0.5),
+    archivedAt: text('archived_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [index('ei_facts_archived_idx').on(t.archivedAt)],
+)
+
+export const eiFactStates = table('ei_fact_states', {
+  factId: integer('fact_id')
+    .primaryKey()
+    .references(() => eiFacts.id, { onDelete: 'cascade' }),
+  level: integer('level').notNull().default(1),
+  attempts: integer('attempts').notNull().default(0),
+  bestScore: real('best_score').notNull().default(0),
+  lastScore: real('last_score').notNull().default(0),
+  streak: integer('streak').notNull().default(0),
+  intervalDays: real('interval_days').notNull().default(0),
+  dueDay: integer('due_day').notNull().default(0),
+  stylesSeen: text('styles_seen', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+/** Append-only: one row per graded explanation. Never updated. */
+export const eiAttempts = table(
+  'ei_attempts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    factId: integer('fact_id')
+      .notNull()
+      .references(() => eiFacts.id, { onDelete: 'cascade' }),
+    style: text('style').notNull(),
+    answer: text('answer').notNull(),
+    score: real('score').notNull(),
+    band: text('band').notNull(),
+    predicted: real('predicted'),
+    fsrsRating: integer('fsrs_rating').notNull(),
+    rubric: text('rubric', { mode: 'json' }).$type<unknown[]>().notNull().default([]),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => [
+    index('ei_attempts_fact_idx').on(t.factId, t.createdAt),
+    index('ei_attempts_created_idx').on(t.createdAt),
+  ],
+)
