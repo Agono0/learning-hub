@@ -46,6 +46,8 @@ import { claySpring } from '@/lib/motion'
 // restructure (docs/ux-audit.md P1-2); existing saved arrays predate it, so a
 // one-time key bump re-applies the calmer defaults instead of showing the new
 // group expanded for everyone.
+const DAILY_LEARN_HREFS = ['/', '/review', '/courses', '/decks', '/reading', '/planner', '/metrics']
+
 const COLLAPSED_STORAGE_KEY = 'lh-sidebar-collapsed-v2'
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -208,6 +210,31 @@ function Sidebar({ pathname }: { pathname: string | null }) {
         {NAV.map((section) => {
           const hasActiveItem = section.items.some((item) => isActive(pathname, item.href))
           const isGroupCollapsed = collapsed.includes(section.group) && !hasActiveItem
+          // Daily core of the Learn group stays visible; the long tail folds into one disclosure.
+          const split = section.group === 'Learn'
+          const daily = split
+            ? section.items.filter((i) => DAILY_LEARN_HREFS.includes(i.href))
+            : section.items
+          const rest = split ? section.items.filter((i) => !DAILY_LEARN_HREFS.includes(i.href)) : []
+          const renderItem = (item: (typeof section.items)[number]) => {
+            const active = isActive(pathname, item.href)
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+                  active
+                    ? 'nav-active font-medium text-indigo-600 dark:text-indigo-300'
+                    : 'text-neutral-600 hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {item.label}
+              </Link>
+            )
+          }
           return (
             <div key={section.group}>
               <button
@@ -232,25 +259,24 @@ function Sidebar({ pathname }: { pathname: string | null }) {
               </button>
               {!isGroupCollapsed && (
                 <div className="mt-0.5">
-                  {section.items.map((item) => {
-                    const active = isActive(pathname, item.href)
-                    const Icon = item.icon
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        aria-current={active ? 'page' : undefined}
-                        className={`mb-0.5 flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                          active
-                            ? 'nav-active font-medium text-indigo-600 dark:text-indigo-300'
-                            : 'text-neutral-600 hover:bg-neutral-100 dark:text-faint dark:hover:bg-(--hub-panel-2)'
-                        }`}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {item.label}
-                      </Link>
-                    )
-                  })}
+                  {daily.map(renderItem)}
+                  {rest.length > 0 && (
+                    <details
+                      className="group/more"
+                      open={rest.some((i) => isActive(pathname, i.href))}
+                    >
+                      <summary className="[@media(pointer:coarse)]:min-h-11 mb-0.5 flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-1.5 text-sm text-tertiary transition-colors hover:bg-neutral-100 dark:hover:bg-(--hub-panel-2) [&::-webkit-details-marker]:hidden">
+                        <span>More ways to learn</span>
+                        <span className="flex items-center gap-1">
+                          <span className="rounded-full bg-neutral-200/70 px-1.5 text-[9px] tabular-nums dark:bg-(--hub-border)">
+                            {rest.length}
+                          </span>
+                          <ChevronDown className="h-3 w-3 transition-transform group-open/more:rotate-180" />
+                        </span>
+                      </summary>
+                      {rest.map(renderItem)}
+                    </details>
+                  )}
                 </div>
               )}
             </div>
