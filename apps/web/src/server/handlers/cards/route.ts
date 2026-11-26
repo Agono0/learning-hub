@@ -54,7 +54,11 @@ export async function GET(req: Request) {
   const deckId = url.searchParams.get('deckId')
   const tags = url.searchParams.get('tags') // comma-separated; card must contain all
   const state = url.searchParams.get('state') // 0 new | 1 learning | 2 review | 3 relearning
-  const limit = Math.min(Number(url.searchParams.get('limit') ?? 200), 500)
+  // Clamp: a negative value is SQLite's "no limit" and NaN binds as NULL, either of
+  // which bypassed the 500-row cap. Invalid (non-finite / negative) falls back to the default.
+  const rawLimit = Number(url.searchParams.get('limit') ?? 200)
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit >= 0 ? Math.min(Math.floor(rawLimit), 500) : 200
 
   const filters: SQL[] = []
   if (deckId) filters.push(eq(cards.deckId, Number(deckId)))
