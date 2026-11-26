@@ -16,7 +16,6 @@
 
 import { readBoundedJson } from '../bounded-input'
 import { numFlag } from '../flags'
-import { readFileSync } from 'node:fs'
 import { type RegisteredCommand } from './registry'
 import {
   CANONICAL_CATEGORIZATION_SETS,
@@ -163,10 +162,6 @@ export function prototypeExemplarCommand(args: string[]): void {
     const historyPayload = parseFlag(args, '--history')
     if (historyPayload !== undefined) {
       const sessions = studyPlanSessionSchema.array().parse(readBoundedJson(historyPayload))
-      const horizonDays = parseInt(parseFlag(args, '--days') || '10', 10)
-      const sessions = studyPlanSessionSchema
-        .array()
-        .parse(JSON.parse(readFileSync(historyPayload, 'utf8')))
       const horizonDays = numFlag(parseFlag(args, '--days'), '--days', 10, { int: true })
       schedule = planCategorizationStudy(sessions, {
         now: parseFlag(args, '--now') || new Date().toISOString(),

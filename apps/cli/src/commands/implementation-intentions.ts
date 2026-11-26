@@ -11,7 +11,6 @@
 
 import { readBoundedJson } from '../bounded-input'
 import { numFlag } from '../flags'
-import { readFileSync } from 'node:fs'
 import { type RegisteredCommand } from './registry'
 import {
   evaluatePlanQuality,
