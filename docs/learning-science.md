@@ -831,6 +831,13 @@ Feedback answers three questions (Where am I going? How am I going? Where to nex
 | Weakness radar, study planner, Today agenda, notifications                       | ✅ landed                        |
 | Global search (FTS5) + ⌘K, glossary, cards from notes, mind map, sentence mining | ✅ landed                        |
 
+### Interference and the fan effect — McGeoch 1942; Underwood 1957; Anderson 1974
+
+Similar items compete at recall, and the more facts hang on one cue the slower and less accurate recall becomes. Spacing competing items apart and practising what differs between them reduces the damage.
+
+- **In Learning HUB:** Interference & Lookalikes (`/interference`, CLI `interf`, MCP `interf_*`) finds confusable cards by wording, checks whether failures follow the lookalike, offers a discrimination drill, and reorders a review queue to keep lookalikes apart. Observational; it never changes a schedule. See `docs/interference.md`.
+- **Status:** ✅
+
 ### Encoding specificity and context variability — Tulving & Thomson, 1973; Smith, Glenberg & Bjork, 1978
 
 Recall is better when the retrieval context matches the encoding context, and studying in more than one context makes memory less tied to any one of them. The effect is real but modest (Smith & Vela, 2001).
