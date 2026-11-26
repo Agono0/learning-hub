@@ -9,6 +9,7 @@ import {
   markQuickCaptureProcessed,
 } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 const captureSchema = z.object({
   text: z.string().min(1),
@@ -24,7 +25,7 @@ const updateCaptureSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 50)))
+  const limit = intParam(url.searchParams.get('limit'), { fallback: 50, min: 1, max: 100 })
   const includeProcessed = url.searchParams.get('includeProcessed') === 'true'
 
   const captures = listQuickCaptures(limit, includeProcessed)

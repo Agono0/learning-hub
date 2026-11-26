@@ -13,11 +13,12 @@ import { z } from 'zod'
 import { db, cards, executeBatchReview } from '@learning-hub/db'
 import { generateMatchingPairs, gradeForAccuracy } from '@learning-hub/core'
 import { readJson, withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const deckId = Number(url.searchParams.get('deckId') ?? 0)
-  const maxPairs = Math.min(Number(url.searchParams.get('maxPairs') ?? 8), 12)
+  const maxPairs = intParam(url.searchParams.get('maxPairs'), { fallback: 8, min: 1, max: 12 })
   if (!deckId) return Response.json({ error: 'deckId required' }, { status: 400 })
   const rows = await db
     .select()

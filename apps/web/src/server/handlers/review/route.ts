@@ -44,6 +44,7 @@ import {
 import { readJson, withRoute } from '@/lib/api'
 import { ensureEnginesLoaded } from '@/server/engine'
 import { parseCardIds } from './card-ids'
+import { intParam } from '@/server/query-params'
 
 const DAY_MS = 86_400_000
 
@@ -85,7 +86,7 @@ export async function GET(req: Request) {
   const deckId = url.searchParams.get('deckId')
   const deckIdsParam = url.searchParams.get('deckIds')
   const courseId = url.searchParams.get('courseId')
-  const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100)
+  const limit = intParam(url.searchParams.get('limit'), { fallback: 20, min: 1, max: 100 })
   const mode = (url.searchParams.get('mode') ?? 'normal') as SessionMode
   const now = new Date()
 

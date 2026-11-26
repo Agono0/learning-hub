@@ -20,6 +20,7 @@ import {
 } from '@learning-hub/db'
 import { paceStats } from '@learning-hub/core'
 import { withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 // ─── Weekly trial ───────────────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ function accuracyInsight(recent: ArenaRunRow[]): {
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 10), 1), 50)
+  const limit = intParam(url.searchParams.get('limit'), { fallback: 10, min: 1, max: 50 })
   const perDeck = getArenaStatsByDeck()
   // The trend reads left-to-right oldest → newest over the latest runs.
   const trendRows = listArenaRuns({ limit: 10 }).reverse()

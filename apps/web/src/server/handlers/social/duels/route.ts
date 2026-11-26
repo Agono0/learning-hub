@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { calculateElo } from '@learning-hub/core/guilds'
 import { listRecentDuels, recordDuelResult } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 const recordDuelSchema = z.object({
   player1Alias: z.string().min(1),
@@ -18,7 +19,7 @@ const recordDuelSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 10)))
+  const limit = intParam(url.searchParams.get('limit'), { fallback: 10, min: 1, max: 50 })
   const duels = listRecentDuels(limit)
 
   return Response.json({

@@ -4,6 +4,7 @@
 import { z } from 'zod'
 import { addForestPlot, getForestPlots, getUserAvatar } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 const addPlotSchema = z.object({
   treeType: z.string().min(1),
@@ -17,7 +18,7 @@ const addPlotSchema = z.object({
 
 export const GET = withRoute(async (req: Request) => {
   const url = new URL(req.url)
-  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get('limit') || 100)))
+  const limit = intParam(url.searchParams.get('limit'), { fallback: 100, min: 1, max: 200 })
   const plots = getForestPlots('default', limit)
 
   return Response.json({

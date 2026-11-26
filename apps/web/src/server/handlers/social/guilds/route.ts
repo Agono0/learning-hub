@@ -14,6 +14,7 @@ import {
   listGuilds,
 } from '@learning-hub/db'
 import { readJson, withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 const guildActionSchema = z.discriminatedUnion('action', [
   z.object({
@@ -54,7 +55,7 @@ export const GET = withRoute(async (req: Request) => {
     })
   }
 
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20)))
+  const limit = intParam(url.searchParams.get('limit'), { fallback: 20, min: 1, max: 50 })
   const guildsList = listGuilds(limit)
   return Response.json({
     ok: true,

@@ -84,6 +84,7 @@ import {
   type GuardianArchetype,
 } from '@learning-hub/core'
 import { ApiError, readJson, withRoute } from '@/lib/api'
+import { intParam } from '@/server/query-params'
 
 const DAY_MS = 86_400_000
 
@@ -137,10 +138,11 @@ export const GET = withRoute(async function GET(req: Request) {
   const url = new URL(req.url)
   const deckIdsParam = url.searchParams.get('deckIds')
   const rematchParam = url.searchParams.get('rematch')
-  const limit = Math.min(
-    Math.max(Number(url.searchParams.get('limit') ?? ARENA_DEFAULT_LIMIT), ARENA_MIN_LIMIT),
-    ARENA_MAX_LIMIT,
-  )
+  const limit = intParam(url.searchParams.get('limit'), {
+    fallback: ARENA_DEFAULT_LIMIT,
+    min: ARENA_MIN_LIMIT,
+    max: ARENA_MAX_LIMIT,
+  })
   const now = new Date()
 
   // Daily modifier: one rotating rule twist per UTC day, layered over the
