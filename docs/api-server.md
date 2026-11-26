@@ -44,19 +44,32 @@ There is no login. The server is meant for the local user's own machine. What it
   are served; anything else gets `421`. This stops DNS rebinding, where a web page re-points its own
   hostname at your machine to read your data. Serve a hostname with
   `LEARNING_HUB_ALLOWED_HOSTS=desk.lan,other.lan:4000` (comma list, `host:port` pins the port).
-- **Origin on writes.** A cross-origin `POST`/`PUT`/`PATCH`/`DELETE` gets `403`, including the
-  `text/plain` form a web page can send without a preflight. Trusted without configuration:
-  same-origin, the native shell (`tauri://localhost`, `http(s)://tauri.localhost`) and any
-  `chrome-extension://` origin. Add more with `LEARNING_HUB_ALLOWED_ORIGINS=https://phone.lan` and pin
-  the extension with `LEARNING_HUB_EXTENSION_IDS=<id>,<id>`.
-- **Bearer token (optional).** Set `LEARNING_HUB_API_TOKEN` and every request must send
-  `Authorization: Bearer <token>` (`401` otherwise). Use it whenever you pass `--host 0.0.0.0`: the
-  server prints a warning at boot if it listens beyond loopback with no token.
+- **Origin on writes.** A cross-origin `POST`/`PUT`/`PATCH`/`DELETE` gets `403`. Trusted without
+  configuration: same-origin, the native shell (`tauri://localhost` on desktop and iOS,
+  `http(s)://tauri.localhost` on Windows and Android) and any `chrome-extension://` origin. Add
+  origins (a phone web app, a LAN page) with `LEARNING_HUB_ALLOWED_ORIGINS=https://phone.lan`, exact
+  strings, comma separated, and pin the extension with `LEARNING_HUB_EXTENSION_IDS=<id>,<id>`.
+- **JSON on writes.** A write that carries a body must be `application/json` (or `+json`), else
+  `415`. That is the form a cross-site page can send without a preflight (`text/plain`, form
+  posts). `curl -d` defaults to a form type, so add `-H 'Content-Type: application/json'`, or set
+  `LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE=1` to turn the check off. Bodyless writes and all reads are
+  not checked.
+- **Bearer token.** Set `LEARNING_HUB_API_TOKEN` and every request must send
+  `Authorization: Bearer <token>` (`401` otherwise). When the server listens beyond loopback
+  (`--host 0.0.0.0`, a LAN address) a request with no `Origin` header (curl, a script, another
+  machine) is refused with `401` unless a token is set; `LEARNING_HUB_ALLOW_UNAUTHENTICATED=1`
+  restores the old open behavior and the server then warns at boot. Loopback binds stay open.
 - **Body size.** A JSON body over 1 MiB gets `413`.
 
-What this is not: a request with no `Origin` header (curl, a script, a local program) passes the
-Host and Origin checks, so only the token protects against another program or another machine that
-can reach the port. CORS headers are never sent, so other origins cannot read responses.
+Compatibility: no first-party client talks to this server today (the native shell, whose
+`tauri.conf.json` serves `web/.next-tauri` and `localhost:3000` in dev, the browser extension, the
+CLI and the MCP server all use the web host or the database directly), so these defaults cannot
+break one. The native-shell origins are allowed up front so a future client needs no
+configuration; anything else is opt-in by exact origin.
+
+What this is not: on a loopback bind, a request with no `Origin` header (curl, a script, a local
+program) passes the Host and Origin checks, so only the token protects against another program
+that can reach the port. CORS headers are never sent, so other origins cannot read responses.
 
 ## Endpoints
 
