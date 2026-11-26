@@ -64,6 +64,8 @@ const SKIP_TABLES = new Set([
   'online_identity',
   // This browser's Web Push endpoint and keys: never exported, never merged in.
   'push_subscriptions',
+  // Per-device presence prefs (active room code): a singleton, merging added a second row.
+  'online_prefs',
 ])
 
 function str(val: unknown): string {
@@ -248,6 +250,70 @@ export function computeRecordNaturalKey(
       return `start:${str(row['started_at'])}:place:${str(row['place'])}`
     case 'context_goals':
       return `label:${str(row['label']).toLowerCase()}:place:${str(row['place'])}`
+
+    // Tables below had no natural key: every re-merge of the same snapshot inserted
+    // them again once ids collided across devices. Keys use stable content plus the
+    // (already remapped) parent ids.
+    case 'study_plans':
+      return `created:${str(row['created_at'])}:wk:${str(row['weekly_minutes'])}`
+    case 'reminder_log':
+      return `kind:${str(row['kind'])}:at:${str(row['sent_at'])}:title:${str(row['title'])}`
+    case 'reminder_clicks':
+      return `log:${str(row['reminder_log_id'])}:at:${str(row['clicked_at'])}`
+    case 'notification_log':
+      return `ch:${str(row['channel'])}:at:${str(row['created_at'])}:title:${str(row['title'])}`
+    case 'mindmaps':
+      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+    case 'boss_battles':
+      return `boss:${str(row['boss_key'])}:started:${str(row['started_at'])}`
+    case 'online_servers':
+      return `url:${str(row['url'])}`
+    case 'online_inbox':
+      return `kind:${str(row['kind'])}:from:${str(row['sender_alias'])}:at:${str(row['received_at'])}`
+    case 'audio_sessions':
+      return `deck:${str(row['deck_id'])}:mode:${str(row['mode'])}:at:${str(row['created_at'])}`
+    case 'quick_captures':
+      return `at:${str(row['created_at'])}:txt:${str(row['text'])}`
+    case 'concept_dependencies':
+      return `src:${str(row['source_concept'])}:tgt:${str(row['target_concept'])}`
+    case 'seasonal_progress':
+      return `season:${str(row['season_id'])}`
+    case 'review_duels':
+      return `p1:${str(row['player1_alias'])}:p2:${str(row['player2_alias'])}:at:${str(row['completed_at'])}`
+    case 'exposure_events':
+      return `tok:${str(row['token'])}:src:${str(row['source_type'])}:${str(row['source_id'])}:at:${str(row['created_at'])}`
+    case 'prototype_exemplar_sessions':
+      return `set:${str(row['set_id'])}:phase:${str(row['phase'])}:at:${str(row['created_at'])}`
+    case 'share_channel_sync_records':
+      return `ch:${str(row['channel_id'])}:at:${str(row['at'])}:to:${str(row['to_version'])}`
+    case 'task_projects':
+      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+    case 'task_tags':
+      return `name:${str(row['name'])}`
+    case 'task_repeat_cfgs':
+      return `created:${str(row['created_at'])}:cycle:${str(row['cycle'])}:int:${str(row['interval'])}`
+    case 'task_items':
+      return `title:${str(row['title'])}:created:${str(row['created_at'])}`
+    case 'task_item_tags':
+      return `item:${str(row['item_id'])}:tag:${str(row['tag_id'])}`
+    case 'task_reminders':
+      return `task:${str(row['task_id'])}:at:${str(row['remind_at'])}:type:${str(row['type'])}`
+    case 'task_time_logs':
+      return `task:${str(row['task_id'])}:day:${str(row['day'])}:at:${str(row['created_at'])}:ms:${str(row['session_ms'])}`
+    case 'task_sections':
+      return `name:${str(row['name'])}:created:${str(row['created_at'])}`
+    case 'task_attachments':
+      return `task:${str(row['task_id'])}:type:${str(row['type'])}:val:${str(row['value'])}`
+    case 'task_archive_tiers':
+      return `task:${str(row['task_id'])}`
+    case 'simple_counters':
+      return `label:${str(row['label'])}:created:${str(row['created_at'])}`
+    case 'simple_counter_logs':
+      return `counter:${str(row['counter_id'])}:day:${str(row['day'])}`
+    case 'metric_days':
+      return `day:${str(row['day'])}`
+    case 'task_views':
+      return `name:${str(row['name'])}:kind:${str(row['kind'])}`
     default:
       return null
   }
@@ -320,6 +386,28 @@ const LOGICAL_FOREIGN_KEYS: Record<string, ForeignKeySpec[]> = {
   ],
   elo_events: [{ fromCol: 'skill_id', toTable: 'skills', strictParent: false }],
   friction_events: [{ fromCol: 'session_id', toTable: 'focus_sessions', strictParent: false }],
+  focus_sessions: [{ fromCol: 'allowlist_id', toTable: 'focus_allowlists', strictParent: false }],
+  forest_plots: [{ fromCol: 'focus_session_id', toTable: 'focus_sessions', strictParent: false }],
+  audio_sessions: [{ fromCol: 'deck_id', toTable: 'decks', strictParent: false }],
+  reminder_clicks: [{ fromCol: 'reminder_log_id', toTable: 'reminder_log', strictParent: false }],
+  // Task system: the columns carry no SQLite REFERENCES, so without these entries ids
+  // collided across devices and children (tags, time logs, subtasks) attached to the
+  // wrong task after a merge.
+  task_items: [
+    { fromCol: 'parent_id', toTable: 'task_items', strictParent: false },
+    { fromCol: 'project_id', toTable: 'task_projects', strictParent: false },
+    { fromCol: 'repeat_cfg_id', toTable: 'task_repeat_cfgs', strictParent: false },
+    { fromCol: 'section_id', toTable: 'task_sections', strictParent: false },
+  ],
+  task_item_tags: [
+    { fromCol: 'item_id', toTable: 'task_items', strictParent: true },
+    { fromCol: 'tag_id', toTable: 'task_tags', strictParent: true },
+  ],
+  task_reminders: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  task_time_logs: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  task_attachments: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  task_archive_tiers: [{ fromCol: 'task_id', toTable: 'task_items', strictParent: true }],
+  simple_counter_logs: [{ fromCol: 'counter_id', toTable: 'simple_counters', strictParent: true }],
 }
 
 function foreignKeysFor(database: RawSqliteHandle, table: string): ForeignKeySpec[] {
