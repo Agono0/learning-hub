@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const OUT = path.resolve(process.cwd(), process.env.VISUAL_OUT ?? 'visual-out')
-const targets = ['/contrasting', '/skills']
+const targets = ['/contrasting', '/skills', '/constellation>/contrasting']
 
 test.describe('console diagnosis (fresh page per route)', () => {
   test.setTimeout(180_000)
@@ -26,12 +26,15 @@ test.describe('console diagnosis (fresh page per route)', () => {
           orig(...args)
         }
       })
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+      for (const hop of url.split('>')) {
+        await page.goto(hop, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+        await page.waitForTimeout(url.includes('>') ? 2500 : 0)
+      }
       await page.waitForTimeout(6000)
       const errs = await page.evaluate(() => (window as unknown as { __errs: string[] }).__errs)
       fs.mkdirSync(OUT, { recursive: true })
       fs.writeFileSync(
-        path.join(OUT, `console-${url.slice(1)}.json`),
+        path.join(OUT, `console-${url.replace(/[^a-z]+/g, '-').replace(/^-/, '')}.json`),
         JSON.stringify({ url, count: errs.length, errs }, null, 2),
       )
       expect(errs).toBeDefined()
