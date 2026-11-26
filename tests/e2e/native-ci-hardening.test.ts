@@ -49,12 +49,20 @@ describe('native command argument trust', () => {
     expect(update).toContain('struct VerifiedRegistry')
     expect(update).toMatch(/update_fetch_verified_manifest[\s\S]*?reg\.remember\(&manifest\)/)
     expect(update).toContain('manifest_is_verified(&target)')
-    expect(update).toContain('apk_sha_is_verified(&expected_sha256)')
+    expect(update).toContain('apk_is_verified(&expected_sha256, total)')
   })
 
   it('the generic downloader cannot mint installer-trusted APK names, and patches must be listed', () => {
     expect(update).toContain('is_reserved_download_name(&dest_path)')
     expect(update).toContain('patch_is_listed(&target, &patch_url, &patch_sha256, patch_size)')
+  })
+
+  it('patch zip entries are read with a bound derived from the signed manifest size', () => {
+    expect(update).toContain('fn read_bounded')
+    expect(update).toContain('read_bounded(&mut entry, target_file.size)')
+    expect(update).not.toContain(
+      '.read_to_end(&mut bytes)\n            .map_err(|e| UpdateError::Parse(format!("patch entry',
+    )
   })
 
   it('Dependabot keeps the pinned workflow actions current', () => {
