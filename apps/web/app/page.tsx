@@ -24,6 +24,7 @@ import { ErrorBoundary } from '@/ui'
 import { classifyRequestError } from '@/lib/use-api-error'
 import { QuickReviewWidget } from '@/components/QuickReviewWidget'
 import { ProfileTunedBanner } from '@/components/dashboard/ProfileTunedBanner'
+import { NextUpCard } from '@/components/dashboard/NextUpCard'
 import type { DashboardData } from '@/server/handlers/dashboard/route'
 import { queryKeys } from '@/lib/query-keys'
 import { ClayIn, staggerDelay } from '@/lib/motion'
@@ -258,6 +259,8 @@ export default function DashboardPage() {
           is read after mount), so wrapping it would add a permanent empty div
           that shifts the space-y-5 rhythm. */}
       <ProfileTunedBanner />
+
+      <NextUpCard data={d} />
 
       {rows.map((row, rowIdx) => (
         <Entrance
