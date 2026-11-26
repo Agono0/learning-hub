@@ -19,7 +19,7 @@
  * in. On browser/webview runtimes, pass `{ openDatabase }` to {@link parseApkg}
  * with an adapter over any SQLite implementation (sql.js, wa-sqlite, …).
  */
-import { unzipSync } from 'fflate'
+import { APKG_LIMITS, ArchiveLimitError, openBoundedZip } from './archive-limits'
 import { parseCloze } from './cards'
 import type { CardContent } from './types'
 
@@ -678,8 +678,25 @@ export async function parseApkg(
   options?: { openDatabase?: SqliteOpener },
 ): Promise<ParsedDeck> {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
-  const files = unzipSync(bytes)
-  const collectionKey = ['collection.anki2', 'collection.anki21'].find((k) => k in files)
+  let zip: ReturnType<typeof openBoundedZip>
+  try {
+    zip = openBoundedZip(bytes, APKG_LIMITS)
+  } catch (err) {
+    if (err instanceof ArchiveLimitError) throw new Error(`invalid .apkg: ${err.message}`)
+    throw err
+  }
+  // Exactly one legacy collection is accepted. When both collection.anki2 and
+  // collection.anki21 are present, which one holds the real data depends on the exporting
+  // Anki version (legacy-support exports can carry a stub next to the real one), and no rule
+  // is grounded in fixtures here, so refuse instead of guessing. Neither is inflated first.
+  const present = ['collection.anki2', 'collection.anki21'].filter((k) => zip.has(k))
+  if (present.length > 1) {
+    throw new Error(
+      'invalid .apkg: both collection.anki2 and collection.anki21 are present and which one ' +
+        'holds the deck is ambiguous; re-export the deck from a single Anki version',
+    )
+  }
+  const collectionKey = present[0]
   if (!collectionKey) {
     throw new Error(
       'no legacy collection found in .apkg — expected collection.anki2 or collection.anki21 ' +
@@ -687,9 +704,16 @@ export async function parseApkg(
     )
   }
 
+  let collection: Uint8Array
+  try {
+    collection = zip.read(collectionKey)
+  } catch (err) {
+    if (err instanceof ArchiveLimitError) throw new Error(`invalid .apkg: ${err.message}`)
+    throw err
+  }
   const db = options?.openDatabase
-    ? options.openDatabase(files[collectionKey])
-    : await openSqliteNode(files[collectionKey])
+    ? options.openDatabase(collection)
+    : await openSqliteNode(collection)
   try {
     const colRow = db.prepare('SELECT models, decks FROM col LIMIT 1').get() as
       { models: string; decks: string } | undefined
