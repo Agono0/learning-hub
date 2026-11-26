@@ -26,9 +26,16 @@ export interface GuardConfig {
   extensionIds: string[]
   /** Bearer token. Empty/undefined = no token required. */
   token?: string
+  /** True when the server listens beyond loopback (set from the bind address, not the env). */
+  exposed?: boolean
+  /** Opt-out: serve token-less non-browser clients even when exposed (LEARNING_HUB_ALLOW_UNAUTHENTICATED=1). */
+  allowUnauthenticated?: boolean
+  /** Opt-out: accept any Content-Type on writes (LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE=1). */
+  allowAnyContentType?: boolean
 }
 
-export type GuardVerdict = { ok: true } | { ok: false; status: 401 | 403 | 421; reason: string }
+export type GuardVerdict =
+  { ok: true } | { ok: false; status: 401 | 403 | 415 | 421; reason: string }
 
 const LOOPBACK_NAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -46,6 +53,10 @@ function list(value: string | undefined): string[] {
     .filter(Boolean)
 }
 
+function flag(value: string | undefined): boolean {
+  return value === '1' || value?.toLowerCase() === 'true'
+}
+
 /** Read the guard settings from the environment. */
 export function readGuardConfig(env: Record<string, string | undefined>): GuardConfig {
   return {
@@ -53,6 +64,8 @@ export function readGuardConfig(env: Record<string, string | undefined>): GuardC
     allowedOrigins: list(env.LEARNING_HUB_ALLOWED_ORIGINS),
     extensionIds: list(env.LEARNING_HUB_EXTENSION_IDS),
     token: env.LEARNING_HUB_API_TOKEN?.trim() || undefined,
+    allowUnauthenticated: flag(env.LEARNING_HUB_ALLOW_UNAUTHENTICATED),
+    allowAnyContentType: flag(env.LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE),
   }
 }
 
@@ -130,6 +143,16 @@ export interface GuardRequest {
   origin: string | null
   secFetchSite: string | null
   authorization: string | null
+  /** Content-Type header, if any. */
+  contentType?: string | null
+  /** True when the request carries a body (Content-Length above 0 or Transfer-Encoding). */
+  hasBody?: boolean
+}
+
+/** `application/json` or a `+json` type, with optional parameters (charset). */
+export function isJsonContentType(value: string | null | undefined): boolean {
+  const type = (value ?? '').split(';')[0]!.trim().toLowerCase()
+  return type === 'application/json' || /^application\/[\w.+-]+\+json$/.test(type)
 }
 
 function tokenMatches(header: string | null, token: string): boolean {
@@ -150,6 +173,16 @@ export function checkRequest(req: GuardRequest, cfg: GuardConfig): GuardVerdict 
   }
 
   const safe = SAFE_METHODS.has(req.method.toUpperCase())
+
+  // Exposed beyond loopback: a request with no Origin is a script or another machine, and only the
+  // token can tell it from an attacker. Fail closed unless the operator opted out.
+  if (cfg.exposed && req.origin === null && !cfg.token && !cfg.allowUnauthenticated) {
+    return { ok: false, status: 401, reason: 'token-not-configured' }
+  }
+  // A body that is not JSON on a write is what a cross-site form or text/plain fetch sends.
+  if (!safe && req.hasBody && !cfg.allowAnyContentType && !isJsonContentType(req.contentType)) {
+    return { ok: false, status: 415, reason: 'json-required' }
+  }
   // Fetch metadata (browsers only): a cross-site write is refused even if Origin were stripped.
   if (!safe && req.secFetchSite === 'cross-site') {
     return { ok: false, status: 403, reason: 'cross-site-write' }
@@ -182,6 +215,8 @@ export function guardRequest(req: IncomingMessage, res: ServerResponse, cfg: Gua
       origin: header(req, 'origin'),
       secFetchSite: header(req, 'sec-fetch-site'),
       authorization: header(req, 'authorization'),
+      contentType: header(req, 'content-type'),
+      hasBody: Number(req.headers['content-length'] ?? 0) > 0 || 'transfer-encoding' in req.headers,
     },
     cfg,
   )

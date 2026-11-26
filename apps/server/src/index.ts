@@ -41,11 +41,14 @@ async function main(): Promise<void> {
 
   const webhooks = setupWebhooks(process.env.LEARNING_HUB_WEBHOOKS)
 
-  const guard = readGuardConfig(process.env)
-  if (!isLoopbackBind(config.host) && !guard.token) {
+  const guard = { ...readGuardConfig(process.env), exposed: !isLoopbackBind(config.host) }
+  if (guard.exposed && !guard.token) {
     console.warn(
-      '[server] WARNING: listening beyond loopback with no LEARNING_HUB_API_TOKEN, so anyone who can ' +
-        'reach this port can read and write your data. Set a token (see docs/api-server.md).',
+      guard.allowUnauthenticated
+        ? '[server] WARNING: listening beyond loopback with no LEARNING_HUB_API_TOKEN and ' +
+            'LEARNING_HUB_ALLOW_UNAUTHENTICATED set: anyone who can reach this port can read and write your data.'
+        : '[server] listening beyond loopback with no LEARNING_HUB_API_TOKEN: requests without an Origin ' +
+            'header (curl, scripts) are refused with 401. Set a token (see docs/api-server.md).',
     )
   }
 

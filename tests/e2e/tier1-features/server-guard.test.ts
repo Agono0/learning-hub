@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net'
 import { dispatch } from '../../../apps/server/src/routes'
 import {
   checkRequest,
+  isJsonContentType,
   isLoopbackBind,
   readGuardConfig,
   withGuard,
@@ -76,20 +77,69 @@ describe('server guard: pure decisions', () => {
     ).toBe(false)
   })
 
+  it('requires JSON on writes that carry a body, unless opted out', () => {
+    const body = { hasBody: true }
+    expect(checkRequest(req({ ...body, contentType: 'text/plain' }), base)).toMatchObject({
+      ok: false,
+      status: 415,
+    })
+    for (const ct of [
+      null,
+      'application/x-www-form-urlencoded',
+      'multipart/form-data; boundary=x',
+    ]) {
+      expect(checkRequest(req({ ...body, contentType: ct }), base).ok).toBe(false)
+    }
+    for (const ct of [
+      'application/json',
+      'Application/JSON; charset=utf-8',
+      'application/ld+json',
+    ]) {
+      expect(checkRequest(req({ ...body, contentType: ct }), base).ok).toBe(true)
+    }
+    // no body: nothing to misread, and reads are never checked
+    expect(checkRequest(req({ hasBody: false, contentType: null }), base).ok).toBe(true)
+    expect(checkRequest(req({ ...body, method: 'GET', contentType: 'text/plain' }), base).ok).toBe(
+      true,
+    )
+    const optOut = { ...base, allowAnyContentType: true }
+    expect(checkRequest(req({ ...body, contentType: 'text/plain' }), optOut).ok).toBe(true)
+    expect(isJsonContentType('text/json')).toBe(false)
+    expect(isJsonContentType('application/jsonp')).toBe(false)
+  })
+
+  it('beyond loopback, a request with no Origin needs the token (loopback stays open)', () => {
+    const exposed = { ...base, exposed: true }
+    expect(checkRequest(req(), exposed)).toMatchObject({ ok: false, status: 401 })
+    expect(checkRequest(req(), { ...exposed, allowUnauthenticated: true }).ok).toBe(true)
+    const withToken = { ...exposed, token: 'tok-123' }
+    expect(checkRequest(req(), withToken).ok).toBe(false)
+    expect(checkRequest(req({ authorization: 'Bearer tok-123' }), withToken).ok).toBe(true)
+    expect(checkRequest(req(), base).ok).toBe(true)
+    expect(checkRequest(req(), { ...base, exposed: false }).ok).toBe(true)
+  })
+
   it('reads settings from the environment and classifies bind addresses', () => {
     const cfg = readGuardConfig({
       LEARNING_HUB_ALLOWED_HOSTS: 'a.lan, b.lan',
       LEARNING_HUB_ALLOWED_ORIGINS: 'https://x.lan',
       LEARNING_HUB_EXTENSION_IDS: 'id1',
       LEARNING_HUB_API_TOKEN: ' tok ',
+      LEARNING_HUB_ALLOW_UNAUTHENTICATED: '1',
+      LEARNING_HUB_ALLOW_ANY_CONTENT_TYPE: 'true',
     })
     expect(cfg).toEqual({
       allowedHosts: ['a.lan', 'b.lan'],
       allowedOrigins: ['https://x.lan'],
       extensionIds: ['id1'],
       token: 'tok',
+      allowUnauthenticated: true,
+      allowAnyContentType: true,
     })
     expect(readGuardConfig({}).token).toBeUndefined()
+    expect(readGuardConfig({ LEARNING_HUB_ALLOW_UNAUTHENTICATED: '0' }).allowUnauthenticated).toBe(
+      false,
+    )
     for (const h of ['127.0.0.1', 'localhost', '::1', '[::1]', '127.0.0.5']) {
       expect(isLoopbackBind(h)).toBe(true)
     }
@@ -141,16 +191,26 @@ describe('server guard: over a real socket', () => {
 
   const idea = JSON.stringify({ title: 'planted by a web page' })
 
-  it('blocks the CSRF-simple write (text/plain, foreign Origin) and creates nothing', async () => {
-    const before = JSON.parse((await send('GET', '/ideas', { Host: `127.0.0.1:${port}` })).body)
-    const bad = await send(
+  it('blocks a foreign-Origin write, JSON or text/plain, and creates nothing', async () => {
+    const h = { Host: `127.0.0.1:${port}` }
+    const before = JSON.parse((await send('GET', '/ideas', h)).body)
+    const origin = 'https://evil.example'
+    // a JSON body isolates the Origin check; text/plain is the preflight-free form a page can send
+    const json = await send(
       'POST',
       '/ideas',
-      { Host: `127.0.0.1:${port}`, Origin: 'https://evil.example', 'Content-Type': 'text/plain' },
+      { ...h, Origin: origin, 'Content-Type': 'application/json' },
       idea,
     )
-    expect(bad.status).toBe(403)
-    const after = JSON.parse((await send('GET', '/ideas', { Host: `127.0.0.1:${port}` })).body)
+    expect(json.status).toBe(403)
+    const plain = await send(
+      'POST',
+      '/ideas',
+      { ...h, Origin: origin, 'Content-Type': 'text/plain' },
+      idea,
+    )
+    expect([403, 415]).toContain(plain.status)
+    const after = JSON.parse((await send('GET', '/ideas', h)).body)
     expect(after).toEqual(before)
   })
 
@@ -160,6 +220,16 @@ describe('server guard: over a real socket', () => {
     expect(get.body).not.toContain('"ideas"')
     const post = await send('POST', '/ideas', { Host: `attacker.test:${port}` }, idea)
     expect(post.status).toBe(421)
+  })
+
+  it('refuses a non-JSON write body even with no Origin (415), serves JSON', async () => {
+    const h = { Host: `127.0.0.1:${port}` }
+    expect(
+      (await send('POST', '/ideas', { ...h, 'Content-Type': 'text/plain' }, idea)).status,
+    ).toBe(415)
+    expect(
+      (await send('POST', '/ideas', { ...h, 'Content-Type': 'application/json' }, idea)).status,
+    ).toBeLessThan(300)
   })
 
   it('still serves a plain local client and a native-shell origin', async () => {
