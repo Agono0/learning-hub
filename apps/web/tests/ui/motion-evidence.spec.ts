@@ -6,12 +6,11 @@ import { expect, test } from '@playwright/test'
  * Motion and loading-state evidence on the real app (`next dev`/`next start`, seeded fixture DB).
  *  - skeleton frames: the REAL handlers with the dashboard responses artificially held back, so the
  *    loading state is on screen long enough to capture (delayed-response evidence, not an error).
- *  - entrance frames: PNGs of Today at fixed offsets after navigation, plus a per-animation-frame
- *    sample of computed opacity/transform of the first panels (browser-computed values), for normal
- *    motion and for prefers-reduced-motion.
+ *  - entrance frames: PNGs of Today at fixed offsets after the content attaches, for normal motion
+ *    and for prefers-reduced-motion.
  *  - a recorded .webm of Today -> Review -> Decks through the sidebar (viewed as sampled frames).
- * Files land in VISUAL_OUT (default visual-out). Pass/fail asserts only that things rendered and
- * that reduced-motion produced no opacity/transform animation.
+ * Files land in VISUAL_OUT (default visual-out). Pass/fail asserts that things rendered and, in
+ * reduced motion, that the last-staggered block (Review loop) is already fully opaque at attach.
  */
 const OUT = path.resolve(process.cwd(), process.env.VISUAL_OUT ?? 'visual-out')
 mkdirSync(OUT, { recursive: true })
@@ -58,51 +57,35 @@ for (const mode of ['normal', 'reduced'] as const) {
       viewport: { width: 1280, height: 800 },
       reducedMotion: mode === 'reduced' ? 'reduce' : 'no-preference',
     })
-    test('today entrance frames and computed samples', async ({ page }) => {
+    test('today entrance frames', async ({ page }) => {
       await page.goto('/', { waitUntil: 'commit' })
-      // Start sampling once the page content has attached, so the entrance (or its absence under
-      // reduced motion) is inside the sampled window.
+      // Frames are timed from the moment the page content has attached.
       await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
-      // Install the sampler as early as the document allows, then capture timed frames.
-      const samples = page.evaluate(
-        () =>
-          new Promise<Array<{ t: number; vals: Array<{ o: string; tr: string }> }>>((resolve) => {
-            const out: Array<{ t: number; vals: Array<{ o: string; tr: string }> }> = []
-            const t0 = performance.now()
-            const tick = () => {
-              const els = Array.from(
-                document.querySelectorAll('main .panel, main [class*="bento"]'),
-              )
-                .filter((e) => e instanceof HTMLElement)
-                .slice(0, 6)
-              out.push({
-                t: Math.round(performance.now() - t0),
-                vals: els.map((e) => {
-                  const cs = getComputedStyle(e)
-                  return { o: cs.opacity, tr: cs.transform }
-                }),
-              })
-              if (performance.now() - t0 < 1800) requestAnimationFrame(tick)
-              else resolve(out)
-            }
-            requestAnimationFrame(tick)
-          }),
+      // The last-staggered block, measured on the real node chain: the lowest computed opacity of
+      // the 'Review loop' panel and every ancestor, the instant the heading is visible.
+      const loopOpacity = await page.evaluate(() => {
+        const label = Array.from(document.querySelectorAll('main *')).find(
+          (e) => e.children.length === 0 && /^review loop$/i.test((e.textContent ?? '').trim()),
+        )
+        let min = 1
+        for (let n: Element | null = label ?? null; n && n !== document.body; n = n.parentElement) {
+          min = Math.min(min, Number(getComputedStyle(n).opacity))
+        }
+        return label ? min : null
+      })
+      writeFileSync(
+        path.join(OUT, `motion-loop-opacity-${mode}.json`),
+        JSON.stringify({ loopOpacityAtAttach: loopOpacity }),
       )
+      if (mode === 'reduced') expect(loopOpacity).toBe(1)
       let elapsed = 0
       for (const ms of [150, 350, 700, 1500]) {
         await page.waitForTimeout(ms - elapsed)
         elapsed = ms
         await page.screenshot({ path: path.join(OUT, `motion-entrance-${mode}-${ms}ms.png`) })
       }
-      const rows = await samples
-      const distinctOpacity = new Set(rows.flatMap((r) => r.vals.map((v) => v.o))).size
-      const distinctTransform = new Set(rows.flatMap((r) => r.vals.map((v) => v.tr))).size
-      writeFileSync(
-        path.join(OUT, `motion-samples-${mode}.json`),
-        JSON.stringify({ frames: rows.length, distinctOpacity, distinctTransform, rows }),
-      )
-      // Only the emulation itself is asserted. Whether the page animates is judged from the frames
-      // (the sampler above is informational and cannot prove either outcome).
+      // Only the emulation itself is asserted. Whether the page animates is judged from the timed
+      // frames above (no computed-style sampler: it measured the wrong nodes and proved nothing).
       const mq = await page.evaluate(
         () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       )
