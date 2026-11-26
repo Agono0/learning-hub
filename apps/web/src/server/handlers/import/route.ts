@@ -23,6 +23,8 @@ import { ApiError, readJson, withRoute } from '@/lib/api'
 
 /** The .apkg payload is base64 — capped at 50MB per the import contract. */
 const MAX_APKG_BASE64_CHARS = 50 * 1024 * 1024
+/** JSON body cap for this route: the base64 payload plus a little for the other fields. */
+const MAX_IMPORT_BODY_BYTES = MAX_APKG_BASE64_CHARS + 64 * 1024
 /** Plain-text/JSON payloads — 10MB is far beyond any real text export. */
 const MAX_TEXT_CHARS = 10 * 1024 * 1024
 /** Cards per bulk INSERT (stays far below SQLite's bound-parameter limit). */
@@ -111,7 +113,7 @@ async function uniqueDeckName(base: string): Promise<string> {
 }
 
 export const POST = withRoute(async (req: Request) => {
-  const body = await readJson(req, importSchema)
+  const body = await readJson(req, importSchema, { maxBytes: MAX_IMPORT_BODY_BYTES })
   const parsed = await parsePayload(body.kind, body.payload)
 
   // Per-format content validation — invalid rows are skipped, not inserted.
