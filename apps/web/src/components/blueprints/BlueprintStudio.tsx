@@ -1,27 +1,34 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { BookOpenCheck, Download, Play, Trash2 } from 'lucide-react'
 import {
   SAMPLE_BLUEPRINTS,
   abortSession,
   completePhase,
   currentPhase,
-  emptyLibrary,
   estimateMinutes,
   explainIssue,
   installIntoLibrary,
-  parseLibrary,
+  loadStudioState,
+  emptyState,
+  addToHistory,
+  entryFromSession,
+  resetUnreadable,
+  saveStudioState,
   resolveNumber,
   resolveParams,
   roundsFor,
-  serializeLibrary,
   startInLibrary,
   summarizeSession,
   uninstallFromLibrary,
   type Blueprint,
   type BlueprintIssue,
   type BlueprintLibrary,
+  type BlueprintSession,
+  type HistoryEntry,
+  type StorageStatus,
+  type StudioState,
 } from '@learning-hub/core/blueprint'
 import {
   Badge,
@@ -35,8 +42,10 @@ import {
   TextField,
 } from '@/ui'
 
-/** Where the installed library lives. Client-only: no server state to migrate. */
+/** First storage format (library only). Read once to migrate, never deleted. */
 export const BLUEPRINT_STORAGE_KEY = 'learning-hub.blueprints.v1'
+/** Current storage format: library and session history. Browser-only, per device. */
+export const BLUEPRINT_STORAGE_KEY_V2 = 'learning-hub.blueprints.v2'
 
 function IssueList({ issues }: { issues: BlueprintIssue[] }) {
   return (
@@ -126,10 +135,12 @@ function SessionRunner({
   blueprint,
   library,
   setLibrary,
+  onSession,
 }: {
   blueprint: Blueprint
   library: BlueprintLibrary
   setLibrary: (lib: BlueprintLibrary) => void
+  onSession: (blueprint: Blueprint, session: BlueprintSession) => void
 }) {
   const session = library.sessions[blueprint.id]
   const [score, setScore] = useState('')
@@ -137,8 +148,7 @@ function SessionRunner({
   if (!session) return null
   const phase = currentPhase(blueprint, session)
   const rounds = phase ? roundsFor(blueprint, session, phase.id) : 1
-  const update = (s: typeof session) =>
-    setLibrary({ ...library, sessions: { ...library.sessions, [blueprint.id]: s } })
+  const update = (s: typeof session) => onSession(blueprint, s)
 
   if (session.status !== 'running') {
     const sum = summarizeSession(session)
@@ -188,7 +198,8 @@ function SessionRunner({
     const result = skipped
       ? { skipped: true }
       : { ...(score !== '' ? { score: Number(score) } : {}) }
-    const out = completePhase(blueprint, session, result)
+    const stamped = { ...result, at: new Date().toISOString() }
+    const out = completePhase(blueprint, session, stamped)
     if (!out.ok) {
       setError(out.issues.map((i) => i.message).join('; '))
       return
@@ -246,19 +257,186 @@ function SessionRunner({
   )
 }
 
+export function StorageNotice({
+  storage,
+  saveFailed,
+  onReset,
+}: {
+  storage: { status: StorageStatus; unreadable: boolean; dropped: number }
+  saveFailed: 'quota' | 'unavailable' | null
+  onReset: () => void
+}) {
+  return (
+    <>
+      {storage.unreadable && (
+        <Callout tone="warning" title="Saved study methods could not be read">
+          <p>
+            {storage.status === 'unsupported-version'
+              ? 'They were saved by a newer version of the app.'
+              : storage.status === 'too-large'
+                ? 'The saved data is too large to load safely.'
+                : 'The saved data is damaged.'}{' '}
+            Your changes will not be saved until you reset. Reset keeps a backup copy of the old
+            data in this browser.
+          </p>
+          <Button variant="secondary" onClick={onReset}>
+            Reset saved data
+          </Button>
+        </Callout>
+      )}
+      {storage.status === 'migrated-v1' && (
+        <Callout tone="success">
+          Your earlier study methods were moved to the new storage format.
+        </Callout>
+      )}
+      {storage.dropped > 0 && !storage.unreadable && (
+        <Callout tone="warning">
+          {storage.dropped} saved {storage.dropped === 1 ? 'item was' : 'items were'} invalid and
+          skipped.
+        </Callout>
+      )}
+      {saveFailed && (
+        <Callout tone="danger" title="Could not save">
+          {saveFailed === 'quota'
+            ? 'This browser has no storage space left. Your changes work for now but will be lost when you leave the page. Clear the history below or free browser storage.'
+            : 'This browser blocked saving. Your changes work for now but will be lost when you leave the page.'}
+        </Callout>
+      )}
+    </>
+  )
+}
+
+export function HistoryPanel({
+  history,
+  onClear,
+}: {
+  history: HistoryEntry[]
+  onClear: () => void
+}) {
+  const [confirm, setConfirm] = useState(false)
+  if (history.length === 0)
+    return (
+      <Panel title="History" data-testid="history-empty">
+        <p className="text-sm opacity-80">
+          Finished or stopped sessions show up here. Scores are the ones you typed in.
+        </p>
+      </Panel>
+    )
+  return (
+    <Panel
+      title="History"
+      data-testid="history"
+      actions={
+        confirm ? (
+          <>
+            <Button
+              variant="danger"
+              onClick={() => {
+                onClear()
+                setConfirm(false)
+              }}
+            >
+              Yes, clear history
+            </Button>
+            <Button variant="ghost" onClick={() => setConfirm(false)}>
+              Keep
+            </Button>
+          </>
+        ) : (
+          <Button variant="ghost" onClick={() => setConfirm(true)}>
+            Clear history
+          </Button>
+        )
+      }
+    >
+      <p className="text-xs opacity-70">
+        Every score is self-reported: you typed it in. Newest first, last {history.length} kept (up
+        to 200).
+      </p>
+      <ul className="space-y-2">
+        {history.slice(0, 20).map((h) => (
+          <li key={h.id} className="rounded-lg border p-2 text-sm" data-testid="history-entry">
+            <details>
+              <summary className="cursor-pointer">
+                <strong>{h.blueprintName}</strong> v{h.blueprintVersion} ·{' '}
+                {new Date(h.endedAt).toLocaleString()} ·{' '}
+                {h.status === 'aborted' ? 'stopped early' : 'finished'}
+                {h.scoreAverage !== null
+                  ? ` · average ${h.scoreAverage}% of ${h.scoreCount} self-reported`
+                  : ''}
+              </summary>
+              <ol className="mt-2 list-decimal space-y-1 pl-5">
+                {h.steps.map((st, i) => (
+                  <li key={i}>
+                    {st.title}
+                    {st.rounds > 1 ? `, round ${st.round} of ${st.rounds}` : ''}
+                    {st.score !== undefined
+                      ? `: score ${st.score}% (${st.source ?? 'self-reported'})`
+                      : ''}
+                    {st.skipped ? ': skipped' : ''}
+                  </li>
+                ))}
+              </ol>
+              {Object.keys(h.params).length > 0 && (
+                <p className="mt-1 text-xs opacity-70">
+                  Settings:{' '}
+                  {Object.entries(h.params)
+                    .map(([k, v]) => `${k} = ${String(v)}`)
+                    .join(', ')}
+                </p>
+              )}
+            </details>
+          </li>
+        ))}
+      </ul>
+      {history.length > 20 && <p className="text-xs opacity-70">Showing the newest 20.</p>}
+    </Panel>
+  )
+}
+
 /** Install, configure and run study blueprints. Everything runs in the browser. */
 export function BlueprintStudio() {
-  const [library, setLibraryState] = useState<BlueprintLibrary>(emptyLibrary())
+  const [studio, setStudio] = useState<StudioState>(emptyState())
+  const library = studio.library
   const [loaded, setLoaded] = useState(false)
+  const [storage, setStorage] = useState<{
+    status: StorageStatus
+    unreadable: boolean
+    dropped: number
+  }>({
+    status: 'empty',
+    unreadable: false,
+    dropped: 0,
+  })
+  const [saveFailed, setSaveFailed] = useState<'quota' | 'unavailable' | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [paste, setPaste] = useState('')
   const [issues, setIssues] = useState<BlueprintIssue[] | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [paramValues, setParamValues] = useState<Record<string, unknown>>({})
 
+  const store = () => {
+    try {
+      return window.localStorage
+    } catch {
+      return null
+    }
+  }
+
   useEffect(() => {
-    const lib = parseLibrary(window.localStorage.getItem(BLUEPRINT_STORAGE_KEY))
-    setLibraryState(lib)
+    const ls = store()
+    let v2: string | null = null
+    let v1: string | null = null
+    try {
+      v2 = ls?.getItem(BLUEPRINT_STORAGE_KEY_V2) ?? null
+      v1 = ls?.getItem(BLUEPRINT_STORAGE_KEY) ?? null
+    } catch {
+      /* storage blocked: start empty, saves will report it */
+    }
+    const load = loadStudioState(v2, v1)
+    setStudio(load.state)
+    setStorage({ status: load.status, unreadable: load.unreadable, dropped: load.dropped })
+    const lib = load.state.library
     const open = new URLSearchParams(window.location.search).get('open')
     setSelected(
       open && lib.installed.some((b) => b.id === open) ? open : (lib.installed[0]?.id ?? null),
@@ -266,10 +444,40 @@ export function BlueprintStudio() {
     setLoaded(true)
   }, [])
 
-  const setLibrary = useCallback((lib: BlueprintLibrary) => {
-    setLibraryState(lib)
-    window.localStorage.setItem(BLUEPRINT_STORAGE_KEY, serializeLibrary(lib))
-  }, [])
+  /** Update state and save it. Unreadable stored data is never overwritten. */
+  const commit = (next: StudioState) => {
+    setStudio(next)
+    if (storage.unreadable) return
+    const res = saveStudioState(store(), BLUEPRINT_STORAGE_KEY_V2, next)
+    setSaveFailed(res.ok ? null : res.reason)
+  }
+  const setLibrary = (lib: BlueprintLibrary) => commit({ ...studio, library: lib })
+
+  /** A session changed; archive it when it just ended. */
+  const onSession = (bp: Blueprint, session: BlueprintSession) => {
+    const sessions = { ...library.sessions, [bp.id]: session }
+    const entry = entryFromSession(bp, session, {
+      id: `${bp.id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      now: new Date().toISOString(),
+    })
+    commit({
+      library: { ...library, sessions },
+      history: entry ? addToHistory(studio.history, entry) : studio.history,
+    })
+  }
+
+  const resetStored = () => {
+    const ls = store()
+    if (!ls) return
+    const res = resetUnreadable(ls, BLUEPRINT_STORAGE_KEY_V2)
+    if (!res.ok) {
+      setSaveFailed(res.reason)
+      return
+    }
+    setStorage({ status: 'empty', unreadable: false, dropped: 0 })
+    setStudio(emptyState())
+    setSaveFailed(null)
+  }
 
   const install = (input: unknown) => {
     const res = installIntoLibrary(library, input)
@@ -322,6 +530,8 @@ export function BlueprintStudio() {
         subtitle="Define a study method as a small JSON file, install it, and run it step by step."
         icon={<BookOpenCheck className="h-5 w-5" aria-hidden />}
       />
+
+      <StorageNotice storage={storage} saveFailed={saveFailed} onReset={resetStored} />
 
       <Panel title="Starter methods">
         <div className="grid gap-3 md:grid-cols-3">
@@ -423,11 +633,18 @@ export function BlueprintStudio() {
                   Uninstall
                 </Button>
               </div>
-              <SessionRunner blueprint={active} library={library} setLibrary={setLibrary} />
+              <SessionRunner
+                blueprint={active}
+                library={library}
+                setLibrary={setLibrary}
+                onSession={onSession}
+              />
             </div>
           )}
         </Panel>
       )}
+
+      <HistoryPanel history={studio.history} onClear={() => commit({ ...studio, history: [] })} />
     </div>
   )
 }
