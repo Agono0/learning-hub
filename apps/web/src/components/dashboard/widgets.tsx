@@ -792,7 +792,7 @@ function PrototypeExemplarWidget(_props: WidgetProps) {
 import { timerWidgetDef } from './TimerWidget'
 
 export const BUILT_IN_WIDGETS: WidgetDef[] = [
-  { id: 'daily-loop', title: 'Daily loop', span: 'full', component: DailyLoopWidget },
+  { id: 'daily-loop', title: 'Review loop', span: 'full', component: DailyLoopWidget },
   { id: 'stats', title: 'Stats', span: 'full', component: StatsWidget },
   timerWidgetDef,
   { id: 'open-loops', title: 'Open loops', span: 'full', component: OpenLoopsWidget },

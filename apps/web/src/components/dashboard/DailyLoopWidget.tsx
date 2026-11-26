@@ -1,11 +1,10 @@
 'use client'
 
 /**
- * Daily Loop — the hero strip of the Today page: four progress rings that
- * answer "how is today going?" at a glance — the due queue, reviews logged
- * today, focus minutes against the one-Pomodoro target (agenda.ts
- * FOCUS_TARGET_MINUTES), and level progress (same math as the StatsWidget XP
- * card, so the two always agree).
+ * Review loop: two progress rings, the due queue and reviews logged today
+ * against a soft target. Focus minutes, level and streak live in the Today hero
+ * stat tiles (TodayStatTiles), so this widget no longer repeats them: each
+ * number on Today now has exactly one home.
  *
  * Pure display: everything comes from the dashboard payload (no fetches), so
  * it refreshes whenever `queryKeys.dashboard` invalidates — including focus
@@ -16,8 +15,6 @@
 import React, { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import Link from 'next/link'
-import { FOCUS_TARGET_MINUTES } from '@learning-hub/core'
-import { levelFromXp, levelProgress } from '@learning-hub/core/xp'
 import { useMotionValueEvent, useSpring } from 'framer-motion'
 import { Badge, ProgressRing } from '@/ui'
 import { SectionHeader } from '@/components/ui/section-header'
@@ -116,13 +113,9 @@ function LoopTileView({ tile }: { tile: LoopTile }): ReactElement {
 }
 
 export function DailyLoopWidget({ data: d }: WidgetProps) {
-  const level = levelFromXp(d.xpTotal)
-  const levelFraction = levelProgress(d.xpTotal)
-
   const dueFraction =
     d.dueCount > 0 ? Math.min(1, d.dueCount / Math.max(d.dueCount, DUE_SATURATION)) : 0
   const reviewFraction = Math.min(1, d.reviewsToday / REVIEW_TARGET)
-  const focusFraction = Math.min(1, d.focusMinutesToday / FOCUS_TARGET_MINUTES)
 
   const tiles: LoopTile[] = [
     {
@@ -141,30 +134,14 @@ export function DailyLoopWidget({ data: d }: WidgetProps) {
       fraction: reviewFraction,
       ringLabel: `${d.reviewsToday} of ${REVIEW_TARGET} reviews today`,
     },
-    {
-      key: 'focus',
-      value: d.focusMinutesToday,
-      target: FOCUS_TARGET_MINUTES,
-      label: 'Focus minutes',
-      fraction: focusFraction,
-      ringLabel: `${d.focusMinutesToday} of ${FOCUS_TARGET_MINUTES} focus minutes`,
-    },
-    {
-      key: 'level',
-      value: level,
-      target: null,
-      label: 'Level',
-      fraction: levelFraction,
-      ringLabel: `Level ${level}, ${Math.round(levelFraction * 100)}% to level ${level + 1}`,
-    },
   ]
 
   return (
-    <section className="panel" aria-label="Daily loop">
+    <section className="panel" aria-label="Review loop">
       {/* Kit SectionHeader (audit L5); the live-focus badge rides the action
           slot and keeps its 44px touch target. */}
       <SectionHeader
-        title="The daily loop"
+        title="Review loop"
         action={
           d.runningFocus ? (
             <Link
@@ -178,7 +155,7 @@ export function DailyLoopWidget({ data: d }: WidgetProps) {
           ) : undefined
         }
       />
-      <Stagger className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <Stagger className="mt-3 grid grid-cols-2 gap-3">
         {tiles.map((t, i) => (
           <StaggerItem
             key={t.key}
