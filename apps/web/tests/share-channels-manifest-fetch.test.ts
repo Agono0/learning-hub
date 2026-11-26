@@ -80,4 +80,17 @@ describe('share-channels fetch-manifest transport', () => {
     expect(JSON.stringify(await res.json())).toMatch(/address pinning is not registered/)
     expect(globalFetch).not.toHaveBeenCalled()
   })
+
+  it('outboundFetch accepts a URL object as well as a string (the FetchLike contract)', async () => {
+    const { outboundFetch } = await import('@/server/bounded-fetch')
+    const seen: unknown[] = []
+    setPinnedFetch(async (url) => {
+      seen.push(url)
+      return new Response('{}', { status: 200 })
+    })
+    await outboundFetch(new URL('https://hub.example.com/a?b=1'))
+    await outboundFetch('https://hub.example.com/c')
+    expect(seen).toEqual(['https://hub.example.com/a?b=1', 'https://hub.example.com/c'])
+    expect(globalFetch).not.toHaveBeenCalled()
+  })
 })

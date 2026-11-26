@@ -187,8 +187,8 @@ function defaultFetch(): (url: string, init?: RequestInit) => Promise<Response> 
  * registered), the native bridge elsewhere. Resolved on every call so a later registration is seen.
  * Never the bare global fetch: that would skip the address check on what the socket connects to.
  */
-export function outboundFetch(url: string, init?: RequestInit): Promise<Response> {
-  return defaultFetch()(url, init)
+export function outboundFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+  return defaultFetch()(typeof input === 'string' ? input : input.toString(), init)
 }
 
 export function setPinnedFetch(fn: FetchLike | null): void {
