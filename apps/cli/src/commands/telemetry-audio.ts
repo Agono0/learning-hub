@@ -1,7 +1,7 @@
 /**
  * Audio schedule, Cognitive Load telemetry, and Solo RPG Games CLI commands.
  */
-import { limitFlag, numFlag } from '../flags'
+import { limitFlag, numFlag, optNumFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import { BOSS_ROSTER, buildTonightPlan, sleepProfileSchema } from '@learning-hub/core'
 import {
@@ -134,12 +134,13 @@ export function audioCommand(args: string[]): void {
   console.error(
     `Unknown subcommand: ${sub}. Usage: learning-hub audio schedule [--kind commute|tmr]`,
   )
+  process.exitCode = 1
 }
 
 export function focusLoadCmd(args: string[]): void {
   const limit = limitFlag(parseFlag(args, '--limit'), 20)
   const cardIdStr = parseFlag(args, '--card')
-  const cardId = cardIdStr ? Number(cardIdStr) : undefined
+  const cardId = optNumFlag(cardIdStr, '--card', { int: true, min: 1 })
 
   const events = getRecentCognitiveTelemetry(limit, cardId)
   if (events.length === 0) {
@@ -203,6 +204,7 @@ export function gamesCommand(args: string[]): void {
   }
 
   console.error(`Unknown subcommand: ${sub}. Usage: learning-hub games status`)
+  process.exitCode = 1
 }
 
 export const audioCommands: RegisteredCommand[] = [

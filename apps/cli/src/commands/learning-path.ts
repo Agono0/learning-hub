@@ -1,6 +1,7 @@
 /**
  * Reading, Study Plan, and GKT CLI commands.
  */
+import { numFlag, optNumFlag } from '../flags'
 import { type RegisteredCommand } from './registry'
 import { writeFileSync } from 'node:fs'
 import { readBoundedText } from '../bounded-input'
@@ -53,7 +54,7 @@ export function readingCommand(args: string[]): void {
     const url = parseFlag(args, '--url')
     const kind = (parseFlag(args, '--kind') ?? 'article') as SourceKind
     const prioStr = parseFlag(args, '--priority')
-    const priority = prioStr ? Number(prioStr) : 50
+    const priority = numFlag(prioStr, '--priority', 50, { int: true, min: 0, max: 100 })
 
     let content = parseFlag(args, '--content')
     if (filePath) {
@@ -61,6 +62,7 @@ export function readingCommand(args: string[]): void {
         content = readBoundedText(filePath)
       } catch (err) {
         console.error(`✖ Failed to read file "${filePath}": ${(err as Error).message}`)
+        process.exitCode = 1
         return
       }
     }
@@ -69,6 +71,7 @@ export function readingCommand(args: string[]): void {
       console.error(
         'Usage: learning-hub reading add --title "Title" (--file <path> | --content "text") [--url URL] [--priority 0-100]',
       )
+      process.exitCode = 1
       return
     }
 
@@ -89,11 +92,13 @@ export function readingCommand(args: string[]): void {
     const id = Number(args[1])
     if (!Number.isInteger(id) || id <= 0) {
       console.error('Usage: learning-hub reading finish <id>')
+      process.exitCode = 1
       return
     }
     const updated = updateSource(id, { status: 'done', position: 100 })
     if (!updated) {
       console.error(`✖ Source #${id} not found.`)
+      process.exitCode = 1
       return
     }
     console.log(`✔ Marked source #${id} as done.`)
@@ -168,10 +173,11 @@ export function planCommand(args: string[]): void {
     const restStr = parseFlag(args, '--rest-day')
     if (!minStr) {
       console.error('Usage: learning-hub plan set --minutes <N> [--rest-day 0-6]')
+      process.exitCode = 1
       return
     }
-    const weeklyMinutes = Number(minStr)
-    const restDay = restStr !== undefined ? Number(restStr) : null
+    const weeklyMinutes = numFlag(minStr, '--minutes', 0, { int: true, min: 1, max: 10080 })
+    const restDay = optNumFlag(restStr, '--rest-day', { int: true, min: 0, max: 6 }) ?? null
     const { plan } = generateAndSaveStudyPlan({ weeklyMinutes, restDay })
     console.log(
       `✔ Generated and saved study plan template: ${plan.weeklyMinutes} min/week over ${plan.weeks} estimated weeks.`,

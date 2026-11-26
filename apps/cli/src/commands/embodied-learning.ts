@@ -201,6 +201,7 @@ function embodiedLearningCommand(args: string[]): void {
     }
     default:
       console.error(`unknown subcommand: ${sub}`)
+      process.exitCode = 1
       console.error(
         'usage: embodied-learning [scenarios|scenario|evaluate-plan|mismatch|ladder|enact] [--json]',
       )

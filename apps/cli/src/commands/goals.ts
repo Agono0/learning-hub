@@ -10,7 +10,7 @@
  *   goals plan list [--goal <id>] | plan add <goalId> "<if…>" "<then…>"
  *                   | plan pause <planId> | plan resume <planId> | plan delete <planId>
  */
-import { limitFlag } from '../flags'
+import { limitFlag, optNumFlag } from '../flags'
 import {
   createGoal,
   createIfThenPlan,
@@ -75,6 +75,7 @@ function updateGoalCommand(args: string[]): void {
     console.error(
       'Usage: learning-hub goals update <id> [--status done] [--progress 0-100] [--wish s] [--outcome s] [--obstacle s] [--plan s]',
     )
+    process.exitCode = 1
     return
   }
   const progressStr = parseFlag(args, '--progress')
@@ -84,10 +85,11 @@ function updateGoalCommand(args: string[]): void {
     obstacle: parseFlag(args, '--obstacle'),
     ifThenPlan: parseFlag(args, '--plan'),
     status: parseFlag(args, '--status'),
-    progressPct: progressStr !== undefined ? Number(progressStr) : undefined,
+    progressPct: optNumFlag(progressStr, '--progress', { min: 0, max: 100 }),
   })
   if (!res.goal) {
     console.error(`✖ Goal #${id} not found.`)
+    process.exitCode = 1
     return
   }
   console.log(
@@ -99,16 +101,20 @@ function deleteGoalCommand(args: string[]): void {
   const id = Number(args[1])
   if (!Number.isInteger(id) || id <= 0) {
     console.error('Usage: learning-hub goals delete <id>')
+    process.exitCode = 1
     return
   }
   if (deleteGoal(id)) console.log(`✔ Deleted goal #${id} (and its quote bindings).`)
-  else console.error(`✖ Goal #${id} not found.`)
+  else {
+    console.error(`✖ Goal #${id} not found.`)
+    process.exitCode = 1
+  }
 }
 
 function planListCommand(args: string[]): void {
   const goalStr = parseFlag(args, '--goal')
   const plans = listIfThenPlans({ context: 'goal' })
-  const goalId = goalStr !== undefined ? Number(goalStr) : undefined
+  const goalId = optNumFlag(goalStr, '--goal', { int: true, min: 1 })
   const filtered = goalId !== undefined ? plans.filter((p) => p.linkedId === goalId) : plans
   if (filtered.length === 0) {
     console.log(
@@ -144,11 +150,13 @@ function planToggleCommand(args: string[], active: boolean): void {
   const id = Number(args[1])
   if (!Number.isInteger(id) || id <= 0) {
     console.error(`Usage: learning-hub goals plan ${active ? 'resume' : 'pause'} <planId>`)
+    process.exitCode = 1
     return
   }
   const updated = updateIfThenPlan(id, { active })
   if (!updated) {
     console.error(`✖ If-then plan #${id} not found.`)
+    process.exitCode = 1
     return
   }
   console.log(`✔ Plan #${id} ${active ? 'resumed' : 'paused'}.`)
@@ -158,10 +166,14 @@ function planDeleteCommand(args: string[]): void {
   const id = Number(args[1])
   if (!Number.isInteger(id) || id <= 0) {
     console.error('Usage: learning-hub goals plan delete <planId>')
+    process.exitCode = 1
     return
   }
   if (deleteIfThenPlan(id)) console.log(`✔ Deleted if-then plan #${id}.`)
-  else console.error(`✖ If-then plan #${id} not found.`)
+  else {
+    console.error(`✖ If-then plan #${id} not found.`)
+    process.exitCode = 1
+  }
 }
 
 export function goalsCommand(args: string[]): void {
@@ -182,12 +194,14 @@ export function goalsCommand(args: string[]): void {
     console.error(
       'Usage: learning-hub goals plan [list [--goal <id>] | add <goalId> "<if>" "<then>" | pause|resume|delete <planId>]',
     )
+    process.exitCode = 1
     return
   }
 
   console.error(
     'Usage: learning-hub goals [list [--status s] [--limit N] | create "<wish>" [--outcome s] [--obstacle s] [--plan s] | update <id> […] | delete <id> | plan …]',
   )
+  process.exitCode = 1
 }
 
 export const goalsCommands: RegisteredCommand[] = [
