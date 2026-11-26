@@ -80,6 +80,9 @@ for (const mode of [
         // Record real runtime errors apart from the Next dev overlay badge.
         const errors: string[] = []
         page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
+        page.on('response', (r) => {
+          if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url().slice(0, 200)}`)
+        })
         page.on('console', (m) => {
           if (m.type() === 'error') errors.push(`console.error: ${m.text().slice(0, 300)}`)
         })
@@ -110,5 +113,97 @@ test.describe('reduced motion', () => {
     await page.goto('/')
     await settle(page)
     await page.screenshot({ path: path.join(OUT, 'redesign-today-reduced-motion.png') })
+  })
+})
+
+/**
+ * Real theme selection: click the Settings control, then reload and confirm the root class still
+ * matches. Records the outcome to theme-persistence.json instead of asserting, so the artifact
+ * shows what actually happened.
+ */
+test.describe('theme persistence (real control)', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  test('light via Settings survives reload', async ({ page, context }) => {
+    await context.addInitScript(() => {
+      window.localStorage.setItem('lh-onboarding-dismissed', '1')
+    })
+    await page.goto('/settings')
+    await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
+    const result: Record<string, unknown> = {}
+    const group = page.getByRole('group', { name: 'Theme preference' })
+    await group.getByRole('button', { name: 'Light' }).click()
+    await page.waitForTimeout(800)
+    result.darkClassAfterClick = await page.evaluate(() =>
+      document.documentElement.classList.contains('dark'),
+    )
+    await page.reload()
+    await expect(page.locator('h1').first()).toBeVisible({ timeout: 60_000 })
+    await page.waitForTimeout(1500)
+    result.darkClassAfterReload = await page.evaluate(() =>
+      document.documentElement.classList.contains('dark'),
+    )
+    result.storedTheme = await page.evaluate(() => window.localStorage.getItem('lh-theme'))
+    writeFileSync(path.join(OUT, 'theme-persistence.json'), JSON.stringify(result, null, 2))
+    await page.screenshot({ path: path.join(OUT, 'redesign-settings-after-light-reload.png') })
+  })
+})
+
+/**
+ * Computed (browser) contrast for the text the critique flagged, on Today in light. Colors are
+ * resolved through a canvas so color-mix() values become real RGB. Written to contrast-probe.json.
+ */
+test.describe('computed contrast probe', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  test('light nav and recall button', async ({ page, context }) => {
+    await prepare(page, context, 'light')
+    await page.goto('/')
+    await settle(page, 'light')
+    const rows = await page.evaluate(() => {
+      const cv = document.createElement('canvas')
+      cv.width = cv.height = 1
+      const ctx = cv.getContext('2d')!
+      const rgba = (c: string): [number, number, number, number] => {
+        ctx.clearRect(0, 0, 1, 1)
+        ctx.fillStyle = '#000'
+        ctx.fillStyle = c
+        ctx.fillRect(0, 0, 1, 1)
+        const d = ctx.getImageData(0, 0, 1, 1).data
+        return [d[0], d[1], d[2], d[3] / 255]
+      }
+      const lum = ([r, g, b]: number[]) => {
+        const f = (v: number) => {
+          const x = v / 255
+          return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+        }
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+      }
+      const bgOf = (el: Element | null): number[] => {
+        let cur: Element | null = el
+        while (cur) {
+          const c = rgba(getComputedStyle(cur).backgroundColor)
+          if (c[3] > 0.95) return c.slice(0, 3)
+          cur = cur.parentElement
+        }
+        return [255, 255, 255]
+      }
+      const probe = (label: string, el: Element | null) => {
+        if (!el) return { label, missing: true }
+        const fg = rgba(getComputedStyle(el).color).slice(0, 3)
+        const bg = bgOf(el)
+        const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x)
+        return { label, fg, bg, ratio: Math.round(((a + 0.05) / (b + 0.05)) * 100) / 100 }
+      }
+      const nav = Array.from(document.querySelectorAll('nav[aria-label="Main"] a'))
+      const inactive = nav.find((a) => a.getAttribute('aria-current') !== 'page') ?? null
+      const recall = Array.from(document.querySelectorAll('button')).find((b) =>
+        /Try recall/.test(b.textContent ?? ''),
+      )
+      return [
+        probe('sidebar inactive link', inactive),
+        probe('recall button', recall ?? null),
+        probe('body caption', document.querySelector('[data-testid="quick-review-widget"] p')),
+      ]
+    })
+    writeFileSync(path.join(OUT, 'contrast-probe.json'), JSON.stringify(rows, null, 2))
   })
 })
