@@ -19,13 +19,16 @@ import type { CardContent, CardFormat } from '@learning-hub/core/types'
 import { cards, db, decks, importCurriculum, withTransaction } from '@learning-hub/db'
 import { ApiError, readJson, withRoute } from '@/lib/api'
 
+/** A shared deck is text; 16 MiB is far above any real share and well below the .apkg path. */
+const MAX_SHARE_IMPORT_BODY_BYTES = 16 * 1024 * 1024
+
 const importPayloadSchema = z.object({
   payload: z.union([z.string().min(1), shareEnvelopeSchema]),
   targetDeckId: z.number().int().positive().optional(),
 })
 
 export const POST = withRoute(async (req: Request) => {
-  const body = await readJson(req, importPayloadSchema)
+  const body = await readJson(req, importPayloadSchema, { maxBytes: MAX_SHARE_IMPORT_BODY_BYTES })
 
   let envelope: ShareEnvelope
   if (typeof body.payload === 'string') {

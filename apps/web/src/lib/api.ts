@@ -79,13 +79,59 @@ export class ApiError extends Error {
 }
 
 /**
- * Parse a request body as JSON and validate it with the given zod schema.
- * Throws ApiError(400) with flattened issues as `detail` on any failure.
+ * Default cap on a JSON request body (1 MiB, the same limit apps/server enforces). Anything
+ * larger answers 413 before it is parsed. A route that legitimately takes more passes
+ * `{ maxBytes }` explicitly; the exceptions are listed in tests/request-size-policy.test.ts.
  */
-export async function readJson<T>(req: Request, schema: z.ZodType<T>): Promise<T> {
+export const DEFAULT_JSON_BODY_BYTES = 1024 * 1024
+
+/**
+ * Read the body as text, refusing once it passes `limit` bytes. `Content-Length` is only a hint
+ * (a chunked body has none and a client can send a wrong one), so the stream is counted too and
+ * cancelled as soon as it goes over.
+ */
+async function readBodyText(req: Request, limit: number): Promise<string> {
+  const declared = Number(req.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > limit) {
+    throw new ApiError(413, 'Request body too large')
+  }
+  if (!req.body) return ''
+  const reader = req.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > limit) {
+      await reader.cancel().catch(() => undefined)
+      throw new ApiError(413, 'Request body too large')
+    }
+    chunks.push(value)
+  }
+  const all = new Uint8Array(size)
+  let at = 0
+  for (const c of chunks) {
+    all.set(c, at)
+    at += c.byteLength
+  }
+  return new TextDecoder().decode(all)
+}
+
+/**
+ * Parse a request body as JSON and validate it with the given zod schema.
+ * Throws ApiError(400) with flattened issues as `detail` on a malformed or invalid body, and
+ * ApiError(413) when the body is over `maxBytes` (default {@link DEFAULT_JSON_BODY_BYTES}).
+ */
+export async function readJson<T>(
+  req: Request,
+  schema: z.ZodType<T>,
+  opts: { maxBytes?: number } = {},
+): Promise<T> {
+  const text = await readBodyText(req, opts.maxBytes ?? DEFAULT_JSON_BODY_BYTES)
   let raw: unknown
   try {
-    raw = await req.json()
+    raw = JSON.parse(text)
   } catch {
     throw new ApiError(400, 'Request body must be valid JSON')
   }

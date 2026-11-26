@@ -17,6 +17,9 @@ import { courses, importCurriculum } from '@learning-hub/db'
 import { db } from '@/lib/db'
 import { readJson, withRoute } from '@/lib/api'
 
+/** At most 4 UTF-8 bytes per source character, plus the other fields. */
+const MAX_IMPORT_BODY_BYTES = LHCF_MAX_SOURCE_CHARS * 4 + 4096
+
 const importSchema = z.object({
   text: z
     .string()
@@ -27,7 +30,7 @@ const importSchema = z.object({
 })
 
 export const POST = withRoute(async (req: Request) => {
-  const body = await readJson(req, importSchema)
+  const body = await readJson(req, importSchema, { maxBytes: MAX_IMPORT_BODY_BYTES })
   const parsed = parseCurriculum(body.text, { format: body.format, filename: body.filename })
   if (!parsed.ok) {
     return Response.json({
