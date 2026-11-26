@@ -17,7 +17,11 @@ import { readJson, withRoute } from '@/lib/api'
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const deckId = Number(url.searchParams.get('deckId') ?? 0)
-  const maxPairs = Math.min(Number(url.searchParams.get('maxPairs') ?? 8), 12)
+  // Invalid (NaN, negative) falls back to the default: a negative count sliced from the end and
+  // returned more than the cap of 12 pairs.
+  const rawPairs = Number(url.searchParams.get('maxPairs') ?? 8)
+  const maxPairs =
+    Number.isFinite(rawPairs) && rawPairs >= 0 ? Math.min(Math.floor(rawPairs), 12) : 8
   if (!deckId) return Response.json({ error: 'deckId required' }, { status: 400 })
   const rows = await db
     .select()

@@ -85,7 +85,11 @@ export async function GET(req: Request) {
   const deckId = url.searchParams.get('deckId')
   const deckIdsParam = url.searchParams.get('deckIds')
   const courseId = url.searchParams.get('courseId')
-  const limit = Math.min(Number(url.searchParams.get('limit') ?? 20), 100)
+  // Invalid (NaN, negative) falls back to the default: a negative value reached the session
+  // builder as a slice offset and returned nearly everything, past the 100 cap.
+  const rawLimit = Number(url.searchParams.get('limit') ?? 20)
+  const limit =
+    Number.isFinite(rawLimit) && rawLimit >= 0 ? Math.min(Math.floor(rawLimit), 100) : 20
   const mode = (url.searchParams.get('mode') ?? 'normal') as SessionMode
   const now = new Date()
 
