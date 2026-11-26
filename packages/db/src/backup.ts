@@ -33,7 +33,13 @@ export interface BackupFile {
 
 /** zod schema for a backup envelope (`restoreAll` boundary validation). */
 export const backupFileSchema = z.object({
-  version: z.number().int(),
+  // Only envelope versions this build understands: a future (or zero/negative)
+  // version may carry semantics a destructive whole-DB restore would misread.
+  version: z
+    .number()
+    .int()
+    .min(1, 'unsupported backup version')
+    .max(BACKUP_VERSION, 'unsupported backup version (newer than this app)'),
   exportedAt: z.string(),
   tables: z.record(
     z.string(),

@@ -15,6 +15,7 @@ import {
   type Subscription,
   type SyncRecord,
 } from '@learning-hub/core'
+import { canonicalJson, sha256Hex } from '@learning-hub/core/crypto-sync'
 
 import { getRawDb, type RawSqliteHandle } from '../index'
 
@@ -107,14 +108,14 @@ function itemKeyOf(item: LocalItem, index: number): string {
   return item.channelItemId ?? `local:${index}:${stableItemFingerprint(item.localContent)}`
 }
 
-/** Deterministic fingerprint so re-saving an unchanged roster is idempotent. */
+/**
+ * Deterministic fingerprint so re-saving an unchanged roster is idempotent.
+ * Canonical JSON (keys sorted at every depth) hashed with SHA-256: the previous
+ * `JSON.stringify(content, Object.keys(content).sort())` dropped every nested
+ * key not named at the top level, and the 32-bit rolling hash collided easily.
+ */
 function stableItemFingerprint(content: Record<string, unknown>): string {
-  const json = JSON.stringify(content, Object.keys(content).sort())
-  let hash = 0
-  for (let i = 0; i < json.length; i += 1) {
-    hash = (hash * 31 + json.charCodeAt(i)) | 0
-  }
-  return (hash >>> 0).toString(36)
+  return sha256Hex(canonicalJson(content)).slice(0, 16)
 }
 
 /**

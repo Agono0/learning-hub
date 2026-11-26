@@ -160,6 +160,17 @@ present); each channel then syncs independently through its own host.
 - The `/shared` Collections tab builds a collection from hosted channels and
   imports a pasted collection JSON with subscribe-all.
 
+## Invite token format and integrity notes
+
+- Invite tokens are `lh2.` plus a 128-bit truncated HMAC-SHA-256 of the channel
+  id keyed by the creator's invite secret, compared in constant time. Tokens
+  from the earlier 8-hex checksum scheme are rejected: re-issue them.
+- Local item keys use a SHA-256 over canonical JSON (keys sorted at every
+  depth), so nested content differences produce distinct keys.
+- Backup restore and merge accept only envelope versions 1 through the current
+  `BACKUP_VERSION`.
+- CLI `--file` and stdin payloads are capped at 8 MiB and must be regular files.
+
 ## What a later PR adds
 
 - Channel discovery and a directory of public channels.

@@ -6,7 +6,7 @@
  *   curriculum prompt "<topic>"            print the any-AI course prompt
  */
 import { type RegisteredCommand } from './registry'
-import { readFileSync } from 'node:fs'
+import { readBoundedText } from '../bounded-input'
 import { basename } from 'node:path'
 import { buildCurriculumPrompt, lhcfStats, parseCurriculum } from '@learning-hub/core/curriculum'
 import { importCurriculum, listCourses } from '@learning-hub/db'
@@ -21,7 +21,7 @@ function importFile(path: string | undefined, dryRun: boolean): number {
     console.error(USAGE)
     return 2
   }
-  const parsed = parseCurriculum(readFileSync(path, 'utf8'), { filename: basename(path) })
+  const parsed = parseCurriculum(readBoundedText(path), { filename: basename(path) })
   for (const w of parsed.warnings) console.warn(`  ! ${w.path}: ${w.message}`)
   if (!parsed.ok) {
     console.error(`✖ ${basename(path)} is not a valid course (${parsed.format}):`)
