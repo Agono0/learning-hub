@@ -39,6 +39,7 @@ import {
 } from '@learning-hub/core/online'
 import { apiGet, apiSend } from '@/lib/transport'
 import { OnlineSocket, joinRefusalMessage } from '@/lib/online-socket'
+import { createJoinGate, runJoinOnOpen } from '@/lib/join-gate'
 import { OnlineIdentityLabel } from '@/components/OnlineIdentityLabel'
 import {
   Badge,
@@ -186,27 +187,37 @@ function StudyRoomsSection({ identity }: { identity?: IdentityResponse['identity
   const connectRoomSocket = (wsUrl: string, _room: StudyRoomState, assertion?: unknown) => {
     socketRef.current?.disconnect()
 
-    let assertionPending = true
-    const socket = new OnlineSocket<StudyRoomState, RoomMessage>({
+    // join-gate: first open uses the assertion just fetched, every reconnect fetches a fresh one,
+    // a verified session never downgrades to anonymous, failures close (no retry policy).
+    const roomCode = _room.code
+    const gate = createJoinGate(assertion, () =>
+      apiGet<{ joinAssertion?: unknown }>(`/api/online/rooms?code=${encodeURIComponent(roomCode)}`),
+    )
+    const socket: OnlineSocket<StudyRoomState, RoomMessage> = new OnlineSocket<
+      StudyRoomState,
+      RoomMessage
+    >({
       url: wsUrl,
       onState: (state) => setActiveRoom(state),
       onChat: (msg) => setChatMessages((prev) => [...prev.slice(-40), msg]),
-      // Fresh join on every open, no timer race. The signed assertion is single-use, so it
-      // rides only the first open; a later reconnect sends no assertion and the server's
-      // verified-join policy decides (it refuses, surfaced through onRefused).
       onOpen: (sock) => {
-        const withAssertion = assertionPending && assertion ? { assertion } : {}
-        assertionPending = false
-        sock.send({
-          type: 'join',
-          ...withAssertion,
-          participant: {
-            id: identity?.userId ?? `usr_${Date.now()}`,
-            alias: identity?.alias ?? 'Learner',
-            status: 'studying',
-            streak: 1,
-            cardsReviewed: 0,
+        void runJoinOnOpen(gate, () => socketRef.current === socket, {
+          failClosed: () => {
+            setJoinRefused(joinRefusalMessage('unverified'))
+            setActiveRoom(null)
           },
+          send: (proof) =>
+            sock.send({
+              type: 'join',
+              ...(proof ? { assertion: proof } : {}),
+              participant: {
+                id: identity?.userId ?? `usr_${Date.now()}`,
+                alias: identity?.alias ?? 'Learner',
+                status: 'studying',
+                streak: 1,
+                cardsReviewed: 0,
+              },
+            }),
         })
       },
       onRefused: (code) => {
