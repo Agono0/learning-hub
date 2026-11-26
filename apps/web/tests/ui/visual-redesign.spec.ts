@@ -79,12 +79,12 @@ for (const mode of [
         await prepare(page, context, mode.theme)
         // Record real runtime errors apart from the Next dev overlay badge.
         const errors: string[] = []
-        page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
+        page.on('pageerror', (e) => errors.push(`pageerror: ${e.message.slice(0, 2500)}`))
         page.on('response', (r) => {
           if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url().slice(0, 200)}`)
         })
         page.on('console', (m) => {
-          if (m.type() === 'error') errors.push(`console.error: ${m.text().slice(0, 300)}`)
+          if (m.type() === 'error') errors.push(`console.error: ${m.text().slice(0, 2500)}`)
         })
         await page.goto(r.url)
         await settle(page, mode.theme)
