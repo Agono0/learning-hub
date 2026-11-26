@@ -5,6 +5,10 @@
  * (lh-share/v2). Engine calls go through /api/share-channels; subscriptions
  * and local item copies persist in localStorage (manual mode).
  */
+import {
+  parseStoredSubscriptions,
+  writeStoredSubscriptions,
+} from '@/lib/channel-subscriptions-storage'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiSend } from '@/lib/transport'
@@ -116,15 +120,14 @@ const STORAGE_KEY = 'lh-share-channels-v1'
 
 function loadSubscriptions(): SubscriptionRecord[] {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as SubscriptionRecord[]) : []
+    return parseStoredSubscriptions<SubscriptionRecord>(window.localStorage.getItem(STORAGE_KEY))
   } catch {
     return []
   }
 }
 
 function saveSubscriptions(subs: SubscriptionRecord[]): void {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(subs))
+  writeStoredSubscriptions(STORAGE_KEY, subs)
 }
 
 export function ShareChannelsPanel() {

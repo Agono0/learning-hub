@@ -8,9 +8,10 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { BookOpenCheck, Clock, Play, Square } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { stopSpeaking, speakText } from '@/lib/audio-engine'
 import { isSpeechAvailable } from '@/lib/speech'
+import { createCueSequencer } from '@/lib/cue-sequencer'
 import { apiGet } from '@/lib/transport'
 import { cx } from '@/ui/cx'
 
@@ -59,24 +60,34 @@ export function AudioDigestCard({ className }: AudioDigestCardProps) {
 
   const cues = q.data?.script.cues ?? []
 
+  const sequencerRef = useRef<ReturnType<typeof createCueSequencer> | null>(null)
+
+  // Leaving the page must silence the digest, not leave it talking in the background.
+  useEffect(
+    () => () => {
+      sequencerRef.current?.stop()
+      stopSpeaking()
+    },
+    [],
+  )
+
   const playFrom = (start: number) => {
     if (!isSpeechAvailable()) return
+    sequencerRef.current?.stop()
     setPlaying(true)
     setCursor(start)
-    const speakCue = (i: number): Promise<void> => {
-      if (i >= cues.length) {
-        setPlaying(false)
-        return Promise.resolve()
-      }
-      setCursor(i)
-      return speakText(cues[i].text).then(() => {
-        window.setTimeout(() => void speakCue(i + 1), Math.min(4000, cues[i].pauseMs))
-      })
-    }
-    void speakCue(start)
+    const sequencer = createCueSequencer({
+      cues,
+      speak: (text) => speakText(text),
+      onCursor: setCursor,
+      onDone: () => setPlaying(false),
+    })
+    sequencerRef.current = sequencer
+    sequencer.start(start)
   }
 
   const stop = () => {
+    sequencerRef.current?.stop()
     stopSpeaking()
     setPlaying(false)
   }

@@ -5,6 +5,7 @@
  * screen wake-lock, and audio feedback beeps.
  */
 import { getMasterGain, getSharedAudioContext } from './audio-graph'
+import { detectSpeechLang } from './speech-text'
 
 export interface SpeechSynthesisOptions {
   rate?: number
@@ -28,7 +29,7 @@ export function speakText(text: string, options?: SpeechSynthesisOptions): Promi
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = options?.rate ?? 1.0
     utterance.pitch = options?.pitch ?? 1.0
-    utterance.lang = options?.lang ?? 'en-US'
+    utterance.lang = options?.lang ?? detectSpeechLang(text)
 
     utterance.onend = () => resolve()
     utterance.onerror = () => resolve()
